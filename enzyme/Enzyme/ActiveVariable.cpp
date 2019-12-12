@@ -221,7 +221,7 @@ bool trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> t
     return false;
 }
 
-bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false) {
+bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
     auto idx = std::pair<Value*, bool>(v, shouldConsiderUnknownUse);
     if (intseen.find(idx) != intseen.end()) {
         if (intseen[idx] == IntType::Integer) {
@@ -231,6 +231,8 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
     }
     intseen[idx] = IntType::Unknown;
     
+    assert(v);
+    assert(v->getType());
     assert(v->getType()->isIntegerTy());
 
     if (isa<UndefValue>(v)) {
@@ -278,7 +280,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
             if (ci->getDestTy()->isIntegerTy()) {
               if (cast<IntegerType>(ci->getDestTy())->getBitWidth() < 8) continue;
 
-              if (trackInt(ci, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+              if (trackInt(ci, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
                 if (fast_tracking) return true;
               }
               continue;
@@ -288,7 +290,17 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
         }
 
         if (auto bi = dyn_cast<BinaryOperator>(use)) {
-            if (trackInt(bi, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+            //And's should not have their int uses propagated to v (e.g. if ptr & 1 is used somewhere as an integer/index into an array, this does not mean that ptr is an integer)
+            if (bi->getOpcode() == BinaryOperator::And) continue;
+
+            if (trackInt(bi, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
+                if (fast_tracking) return true;
+            }
+            continue;
+        }
+
+        if (auto pn = dyn_cast<PHINode>(use)) {
+            if (trackInt(pn, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
                 if (fast_tracking) return true;
             }
             continue;
@@ -296,7 +308,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
         
         if (auto seli = dyn_cast<SelectInst>(use)) {
             assert(seli->getCondition() != v);
-            if (trackInt(seli, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldconsiderUnknownUse=*/false)) {
+            if (trackInt(seli, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldconsiderUnknownUse=*/false, sawReturn)) {
                 //llvm::errs() << "find select use of " << *v << " in " << *seli << " intUse: " << intUse << "\n";
                 if (fast_tracking) return true;
             }
@@ -338,13 +350,21 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
                 }
                 if (!ci->empty()) {
                     auto a = ci->arg_begin();
+                    bool shouldHandleReturn=false;
                     for(size_t i=0; i<call->getNumArgOperands(); i++) {
                         if (call->getArgOperand(i) == v) {
-                            if(trackInt(a, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+                            //TODO consider allowing return to be ignored as an unknown use below, so long as we also then look at use of call value itself
+                            if(trackInt(a, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, &shouldHandleReturn)) {
                                 if (fast_tracking) return true;
                             }
                         }
                         a++;
+                    }
+
+                    if (shouldHandleReturn) {
+                        if(trackInt(call, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, sawReturn)) {
+                            if (fast_tracking) return true;
+                        }
                     }
                     continue;
                 }
@@ -395,7 +415,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
                             break;
                         }
                     } else if (auto li = dyn_cast<LoadInst>(user)) {
-                        if (trackInt(li, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+                        if (trackInt(li, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
                             if (fast_tracking) return true;
                         } 
                     } else baduse = true;
@@ -405,8 +425,15 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
         }
 
         if (isa<CmpInst>(use)) continue;
+        if (isa<SwitchInst>(use)) continue;
+
+        if (sawReturn && isa<ReturnInst>(use)) { 
+            *sawReturn = true;
+            continue;
+        }
 
         unknownUse = true;
+        //llvm::errs() << "unknown use : " << *use << " of v: " << *v << "\n";
         continue;
     }
 

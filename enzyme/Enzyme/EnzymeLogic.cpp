@@ -2793,6 +2793,7 @@ realcall:
       Type* op_type = op->getType();
       bool op_valconstant = gutils->isConstantValue(op);
       auto op_orig = gutils->getOriginal(op);
+      auto alignment = op->getAlignment();
 
       Value* inverted_operand = nullptr;
       
@@ -2870,7 +2871,7 @@ realcall:
         setDiffe(inst, Constant::getNullValue(op_type));
         //llvm::errs() << "  + doing load propagation: op_orig:" << *op_orig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";
         assert(inverted_operand);
-        gutils->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2);
+        gutils->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2, alignment);
       }
 
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
@@ -2891,6 +2892,7 @@ realcall:
           //llvm::errs() << "  considering adding to value:" << *op->getValueOperand() << " " << *op << " " << gutils->isConstantValue(op->getValueOperand()) << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
           if (!gutils->isConstantValue(op->getValueOperand())) {
             auto dif1 = Builder2.CreateLoad(invertPointer(op->getPointerOperand()));
+            dif1->setAlignment(op->getAlignment());
             //llvm::errs() << "    nonconst value considering adding to value:" << *op->getValueOperand() << " " << *op << " dif1: " << *dif1 << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
             ts = gutils->setPtrDiffe(op->getPointerOperand(), Constant::getNullValue(op->getValueOperand()->getType()), Builder2);
             addToDiffe(op->getValueOperand(), dif1);
@@ -2914,7 +2916,11 @@ realcall:
             valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
         }
         Value* pointerop = gutils->invertPointerM(op->getPointerOperand(), storeBuilder);
-        storeBuilder.CreateStore(valueop, pointerop);
+        StoreInst* ts = storeBuilder.CreateStore(valueop, pointerop);
+        ts->setAlignment(op->getAlignment());
+        ts->setVolatile(op->isVolatile());
+        ts->setOrdering(op->getOrdering());
+        ts->setSyncScopeID(op->getSyncScopeID());
       }
     } else if(auto op = dyn_cast<ExtractValueInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;

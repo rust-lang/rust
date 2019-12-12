@@ -1788,11 +1788,13 @@ public:
         } else {
             res = BuilderM.CreateBitCast(res, val->getType());
         }
-        BuilderM.CreateStore(res, getDifferential(val));
+        auto store = BuilderM.CreateStore(res, getDifferential(val));
+        //store->setAlignment(align);
         return addedSelects;
       } else if (val->getType()->isFPOrFPVectorTy()) {
         res = faddForSelect(old, dif);
-        BuilderM.CreateStore(res, getDifferential(val));
+        auto store = BuilderM.CreateStore(res, getDifferential(val));
+        //store->setAlignment(align);
         return addedSelects;
       } else if (val->getType()->isStructTy()) {
         auto st = cast<StructType>(val->getType());
@@ -1822,7 +1824,7 @@ public:
         llvm::errs() << "tostore:" << *tostore << "\n";
       }
       assert(toset->getType() == cast<PointerType>(tostore->getType())->getElementType());
-      BuilderM.CreateStore(toset, tostore);
+      auto store = BuilderM.CreateStore(toset, tostore);
   }
 
   SelectInst* addToDiffeIndexed(Value* val, Value* dif, ArrayRef<Value*> idxs, IRBuilder<> &BuilderM) {
@@ -1877,7 +1879,8 @@ public:
       return addedSelect;
   }
 
-  void addToInvertedPtrDiffe(Value* ptr, Value* dif, IRBuilder<> &BuilderM) {
+  //! align is the alignment that should be specified for load/store to pointer
+  void addToInvertedPtrDiffe(Value* ptr, Value* dif, IRBuilder<> &BuilderM, unsigned align) {
       if (!(ptr->getType()->isPointerTy()) || !(cast<PointerType>(ptr->getType())->getElementType() == dif->getType())) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
@@ -1891,7 +1894,8 @@ public:
       assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
 
       Value* res;
-      Value* old = BuilderM.CreateLoad(ptr);
+      LoadInst* old = BuilderM.CreateLoad(ptr);
+      old->setAlignment(align);
 
       if (old->getType()->isIntOrIntVectorTy()) {
         res = BuilderM.CreateFAdd(BuilderM.CreateBitCast(old, IntToFloatTy(old->getType())), BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType())));
@@ -1904,7 +1908,8 @@ public:
         llvm::errs() << *newFunc << "\n" << "cannot handle type " << *old << "\n" << *dif;
         report_fatal_error("cannot handle type");
       }
-      BuilderM.CreateStore(res, ptr);
+      StoreInst* st = BuilderM.CreateStore(res, ptr);
+      st->setAlignment(align);
   }
 
   StoreInst* setPtrDiffe(Value* ptr, Value* newval, IRBuilder<> &BuilderM) {
