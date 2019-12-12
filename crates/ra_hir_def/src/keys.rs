@@ -12,7 +12,7 @@ use crate::{
     TypeAliasId, TypeParamId, UnionId,
 };
 
-type Key<K, V> = crate::dyn_map::Key<InFile<K>, V, AstPtrPolicy<K, V>>;
+pub type Key<K, V> = crate::dyn_map::Key<InFile<K>, V, AstPtrPolicy<K, V>>;
 
 pub const FUNCTION: Key<ast::FnDef, FunctionId> = Key::new();
 pub const CONST: Key<ast::ConstDef, ConstId> = Key::new();
