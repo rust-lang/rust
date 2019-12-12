@@ -463,6 +463,20 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     }
 }
 
+#[unstable(feature = "mutex_partial_eq", issue = "0")]
+impl<T: PartialEq> PartialEq for Mutex<T> {
+    fn eq(&self, other: &Self) -> bool {
+        if ptr::eq(&self, &other) {
+            true
+        } else {
+            self.lock().unwrap().deref() == other.lock().unwrap().deref()
+        }
+    }
+}
+
+#[unstable(feature = "mutex_eq", issue = "0")]
+impl<T: Eq> Eq for Mutex<T> {}
+
 pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
     &guard.lock.inner
 }
@@ -700,5 +714,11 @@ mod tests {
         }
         let comp: &[i32] = &[4, 2, 5];
         assert_eq!(&*mutex.lock().unwrap(), comp);
+    }
+
+    #[test]
+    fn test_mutex_partial_eq() {
+        assert!(Mutex::new(1_usize).eq(&Mutex::new(1_usize)));
+        assert!(!Mutex::new(1_usize).eq(&Mutex::new(2_usize)));
     }
 }
