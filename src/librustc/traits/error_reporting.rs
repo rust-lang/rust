@@ -2242,9 +2242,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         ty::Adt(ty::AdtDef { did, .. }, ..) if
                             self.tcx.is_diagnostic_item(sym::gen_future, *did) => {},
                         ty::Generator(did, ..) => {
+                            generator = Some(did);
                             debug!("note_obligation_cause_for_async_await: found generator {:?}",
                                    generator);
-                            generator = Some(did);
                             break;
                         },
                         ty::GeneratorWitness(_) | ty::Opaque(..) => {},
@@ -2259,11 +2259,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Now that we've found a generator, try to determine if we should
         // skip over any subsequence causes.
         while let Some(code) = next_code {
-            debug!("note_obligation_cause_for_async_await: code={:?}", code);
+            debug!("note_obligation_cause_for_async_await: inspecting code={:?}", code);
             match code {
                 ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) |
                 ObligationCauseCode::ImplDerivedObligation(derived_obligation) => {
-                    debug!("note_obligation_cause_for_async_await: self_ty.kind={:?}",
+                    debug!("note_obligation_cause_for_async_await: inspecting self_ty.kind={:?}",
                            derived_obligation.parent_trait_ref.self_ty().kind);
 
 
@@ -2286,40 +2286,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 _ => break
             }
         }
-
-
-
-        // Now that we've found a generator, try to determine if we should
-        // skip over any subsequence causes.
-        while let Some(code) = next_code {
-            debug!("note_obligation_cause_for_async_await: code={:?}", code);
-            match code {
-                ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) |
-                ObligationCauseCode::ImplDerivedObligation(derived_obligation) => {
-                    debug!("note_obligation_cause_for_async_await: self_ty.kind={:?}",
-                           derived_obligation.parent_trait_ref.self_ty().kind);
-
-
-                    match derived_obligation.parent_trait_ref.self_ty().kind {
-                        ty::Adt(ty::AdtDef { did, .. }, ..) if
-                            self.tcx.is_diagnostic_item(sym::gen_future, *did) => {},
-                        ty::Opaque(did, _) if
-                            self.tcx.parent(did).map(|parent| {
-                                self.tcx.is_diagnostic_item(sym::from_generator, parent)
-                            }).unwrap_or(false) => {}
-                        _ => break,
-                    }
-
-                    next_code = Some(derived_obligation.parent_code.as_ref());
-                    next_predicate = Some(
-                        self.resolve_vars_if_possible(&derived_obligation.parent_trait_ref)
-                        .to_predicate()
-                    )
-                },
-                _ => break
-            }
-        }
-
 
         let generator_did = generator.expect("can only reach this if there was a generator");
 
