@@ -2255,7 +2255,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
 
                 },
-                _ => return false,
+                _ => break,
             }
         };
 
