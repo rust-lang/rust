@@ -65,7 +65,7 @@ pub struct FulfillmentContext<'tcx> {
 #[derive(Clone, Debug)]
 pub struct PendingPredicateObligation<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
-    pub stalled_on: Vec<Ty<'tcx>>,
+    pub stalled_on: Vec<ty::InferTy>,
 }
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -263,8 +263,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             // Match arms are in order of frequency, which matters because this
             // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
             1 => {
-                let ty = pending_obligation.stalled_on[0];
-                ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(ty)
+                let infer = pending_obligation.stalled_on[0];
+                ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(infer)
             }
             0 => {
                 // In this case we haven't changed, but wish to make a change.
@@ -274,8 +274,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 // This `for` loop was once a call to `all()`, but this lower-level
                 // form was a perf win. See #64545 for details.
                 (|| {
-                    for &ty in &pending_obligation.stalled_on {
-                        if ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(ty) {
+                    for &infer in &pending_obligation.stalled_on {
+                        if ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(infer) {
                             return true;
                         }
                     }
@@ -304,6 +304,13 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         debug!("process_obligation: obligation = {:?} cause = {:?}", obligation, obligation.cause);
+
+        fn infer_ty(ty: Ty<'tcx>) -> ty::InferTy {
+            match ty.kind {
+                ty::Infer(infer) => infer,
+                _ => panic!(),
+            }
+        }
 
         match obligation.predicate {
             ty::Predicate::Trait(ref data) => {
@@ -459,7 +466,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     obligation.cause.span,
                 ) {
                     None => {
-                        pending_obligation.stalled_on = vec![ty];
+                        pending_obligation.stalled_on = vec![infer_ty(ty)];
                         ProcessResult::Unchanged
                     }
                     Some(os) => ProcessResult::Changed(mk_pending(os))
@@ -472,8 +479,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                                                            subtype) {
                     None => {
                         // None means that both are unresolved.
-                        pending_obligation.stalled_on = vec![subtype.skip_binder().a,
-                                                             subtype.skip_binder().b];
+                        pending_obligation.stalled_on = vec![infer_ty(subtype.skip_binder().a),
+                                                             infer_ty(subtype.skip_binder().b)];
                         ProcessResult::Unchanged
                     }
                     Some(Ok(ok)) => {
@@ -517,7 +524,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             ))
                         }
                     } else {
-                        pending_obligation.stalled_on = substs.types().collect();
+                        pending_obligation.stalled_on =
+                            substs.types().map(|ty| infer_ty(ty)).collect();
                         ProcessResult::Unchanged
                     }
                 }
@@ -542,13 +550,13 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 fn trait_ref_type_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
     t: ty::PolyTraitRef<'tcx>,
-) -> Vec<Ty<'tcx>> {
+) -> Vec<ty::InferTy> {
     t.skip_binder() // ok b/c this check doesn't care about regions
      .input_types()
      .map(|t| selcx.infcx().resolve_vars_if_possible(&t))
      .filter(|t| t.has_infer_types())
      .flat_map(|t| t.walk())
-     .filter(|t| match t.kind { ty::Infer(_) => true, _ => false })
+     .filter_map(|t| match t.kind { ty::Infer(infer) => Some(infer), _ => None })
      .collect()
 }
 
