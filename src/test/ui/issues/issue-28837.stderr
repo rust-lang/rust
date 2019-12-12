@@ -68,7 +68,7 @@ LL |     a | a;
    |
    = note: an implementation of `std::ops::BitOr` might be missing for `A`
 
-error[E0369]: no implementation for `A << A
+error[E0369]: no implementation for `A << A`
   --> $DIR/issue-28837.rs:20:7
    |
 LL |     a << a;
@@ -78,7 +78,7 @@ LL |     a << a;
    |
    = note: an implementation of `std::ops::Shl` might be missing for `A`
 
-error[E0369]: no implementation for `A >> A
+error[E0369]: no implementation for `A >> A`
   --> $DIR/issue-28837.rs:22:7
    |
 LL |     a >> a;
