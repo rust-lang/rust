@@ -564,7 +564,8 @@ impl HasResolver for TypeAliasId {
 
 impl HasResolver for ImplId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db)
+        self.lookup(db)
+            .container
             .resolver(db)
             .push_generic_params_scope(db, self.into())
             .push_impl_block_scope(self)

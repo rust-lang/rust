@@ -1123,6 +1123,7 @@ dependencies = [
  "rowan 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_lexer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
  "walkdir 2.2.9 (registry+https://github.com/rust-lang/crates.io-index)",

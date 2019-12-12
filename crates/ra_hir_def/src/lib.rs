@@ -289,12 +289,24 @@ impl Lookup for TypeAliasId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplId(salsa::InternId);
 impl_intern_key!(ImplId);
-impl AstItemDef<ast::ImplBlock> for ImplId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::ImplBlock>) -> Self {
-        db.intern_impl(loc)
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ImplLoc {
+    pub container: ModuleId,
+    pub ast_id: AstId<ast::ImplBlock>,
+}
+
+impl Intern for ImplLoc {
+    type ID = ImplId;
+    fn intern(self, db: &impl db::DefDatabase) -> ImplId {
+        db.intern_impl(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::ImplBlock> {
-        db.lookup_intern_impl(self)
+}
+
+impl Lookup for ImplId {
+    type Data = ImplLoc;
+    fn lookup(&self, db: &impl db::DefDatabase) -> ImplLoc {
+        db.lookup_intern_impl(*self)
     }
 }
 
@@ -479,7 +491,7 @@ impl HasModule for FunctionLoc {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match self.container {
             ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.module(db),
+            ContainerId::ImplId(it) => it.lookup(db).container,
             ContainerId::TraitId(it) => it.module(db),
         }
     }
@@ -489,7 +501,7 @@ impl HasModule for TypeAliasLoc {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match self.container {
             ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.module(db),
+            ContainerId::ImplId(it) => it.lookup(db).container,
             ContainerId::TraitId(it) => it.module(db),
         }
     }
@@ -499,7 +511,7 @@ impl HasModule for ConstLoc {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match self.container {
             ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.module(db),
+            ContainerId::ImplId(it) => it.lookup(db).container,
             ContainerId::TraitId(it) => it.module(db),
         }
     }
@@ -532,7 +544,7 @@ impl HasModule for GenericDefId {
             GenericDefId::AdtId(it) => it.module(db),
             GenericDefId::TraitId(it) => it.module(db),
             GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
-            GenericDefId::ImplId(it) => it.module(db),
+            GenericDefId::ImplId(it) => it.lookup(db).container,
             GenericDefId::EnumVariantId(it) => it.parent.module(db),
             GenericDefId::ConstId(it) => it.lookup(db).module(db),
         }

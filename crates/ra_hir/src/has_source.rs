@@ -114,7 +114,7 @@ impl HasSource for MacroDef {
 impl HasSource for ImplBlock {
     type Ast = ast::ImplBlock;
     fn source(self, db: &impl DefDatabase) -> InFile<ast::ImplBlock> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for Import {

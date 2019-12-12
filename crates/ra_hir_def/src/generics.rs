@@ -109,7 +109,7 @@ impl GenericParams {
             // type-parameter, but rather is a type-alias for impl's target
             // type, so this is handled by the resolver.
             GenericDefId::ImplId(it) => {
-                let src = it.source(db);
+                let src = it.lookup(db).source(db);
                 generics.fill(&mut sm, &src.value);
                 src.file_id
             }
