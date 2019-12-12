@@ -53,6 +53,9 @@ macro_rules! declare_features {
                 $(f(stringify!($feature), self.$feature);)+
             }
 
+            /// Is the given feature enabled?
+            ///
+            /// Panics if the symbol doesn't correspond to a declared feature.
             pub fn enabled(&self, feature: Symbol) -> bool {
                 match feature {
                     $( sym::$feature => self.$feature, )*
