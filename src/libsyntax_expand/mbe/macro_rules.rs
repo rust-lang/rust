@@ -379,7 +379,7 @@ pub fn compile_declarative_macro(
 
     // Extract the arguments:
     let lhses = match argument_map[&lhs_nm] {
-        MatchedSeq(ref s, _) => s
+        MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
@@ -402,7 +402,7 @@ pub fn compile_declarative_macro(
     };
 
     let rhses = match argument_map[&rhs_nm] {
-        MatchedSeq(ref s, _) => s
+        MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
