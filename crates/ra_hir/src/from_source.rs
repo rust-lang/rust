@@ -44,16 +44,16 @@ impl FromSource for Enum {
 impl FromSource for Trait {
     type Ast = ast::TraitDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        // XXX: use `.parent()` to avoid finding ourselves
-        let parent = src.value.syntax().parent()?;
-        let container = Container::find(db, src.with_value(parent).as_ref())?;
-        container.child_by_source(db)[keys::TRAIT].get(&src).copied().map(Trait::from)
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::TRAIT]
+            .get(&src)
+            .copied()
+            .map(Trait::from)
     }
 }
 impl FromSource for Function {
     type Ast = ast::FnDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        Container::find(db, src.as_ref().map(|it| it.syntax()))?.child_by_source(db)[keys::FUNCTION]
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::FUNCTION]
             .get(&src)
             .copied()
             .map(Function::from)
@@ -63,7 +63,7 @@ impl FromSource for Function {
 impl FromSource for Const {
     type Ast = ast::ConstDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        Container::find(db, src.as_ref().map(|it| it.syntax()))?.child_by_source(db)[keys::CONST]
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::CONST]
             .get(&src)
             .copied()
             .map(Const::from)
@@ -72,7 +72,7 @@ impl FromSource for Const {
 impl FromSource for Static {
     type Ast = ast::StaticDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        Container::find(db, src.as_ref().map(|it| it.syntax()))?.child_by_source(db)[keys::STATIC]
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::STATIC]
             .get(&src)
             .copied()
             .map(Static::from)
@@ -82,8 +82,7 @@ impl FromSource for Static {
 impl FromSource for TypeAlias {
     type Ast = ast::TypeAliasDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        Container::find(db, src.as_ref().map(|it| it.syntax()))?.child_by_source(db)
-            [keys::TYPE_ALIAS]
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::TYPE_ALIAS]
             .get(&src)
             .copied()
             .map(TypeAlias::from)
@@ -109,10 +108,10 @@ impl FromSource for MacroDef {
 impl FromSource for ImplBlock {
     type Ast = ast::ImplBlock;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        // XXX: use `.parent()` to avoid finding ourselves
-        let parent = src.value.syntax().parent()?;
-        let container = Container::find(db, src.with_value(parent).as_ref())?;
-        container.child_by_source(db)[keys::IMPL].get(&src).copied().map(ImplBlock::from)
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::IMPL]
+            .get(&src)
+            .copied()
+            .map(ImplBlock::from)
     }
 }
 
@@ -262,44 +261,30 @@ where
     Some(DEF::from_ast_id(ctx, item_id))
 }
 
-enum Container {
-    Trait(Trait),
-    ImplBlock(ImplBlock),
-    Module(Module),
+fn analyze_container(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> DynMap {
+    _analyze_container(db, src).unwrap_or_default()
 }
 
-impl Container {
-    fn find(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> Option<Container> {
-        // FIXME: this doesn't try to handle nested declarations
-        for container in src.value.ancestors() {
-            let res = match_ast! {
-                match container {
-                    ast::TraitDef(it) => {
-                        let c = Trait::from_source(db, src.with_value(it))?;
-                        Container::Trait(c)
-                    },
-                    ast::ImplBlock(it) => {
-                        let c = ImplBlock::from_source(db, src.with_value(it))?;
-                        Container::ImplBlock(c)
-                     },
-                    _ => { continue },
-                }
-            };
-            return Some(res);
-        }
-
-        let module_source = ModuleSource::from_child_node(db, src);
-        let c = Module::from_definition(db, src.with_value(module_source))?;
-        Some(Container::Module(c))
+fn _analyze_container(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> Option<DynMap> {
+    // FIXME: this doesn't try to handle nested declarations
+    for container in src.value.ancestors().skip(1) {
+        let res = match_ast! {
+            match container {
+                ast::TraitDef(it) => {
+                    let c = Trait::from_source(db, src.with_value(it))?;
+                    c.id.child_by_source(db)
+                },
+                ast::ImplBlock(it) => {
+                    let c = ImplBlock::from_source(db, src.with_value(it))?;
+                    c.id.child_by_source(db)
+                 },
+                _ => { continue },
+            }
+        };
+        return Some(res);
     }
-}
 
-impl ChildBySource for Container {
-    fn child_by_source(&self, db: &impl DefDatabase) -> DynMap {
-        match self {
-            Container::Trait(it) => it.id.child_by_source(db),
-            Container::ImplBlock(it) => it.id.child_by_source(db),
-            Container::Module(it) => it.id.child_by_source(db),
-        }
-    }
+    let module_source = ModuleSource::from_child_node(db, src);
+    let c = Module::from_definition(db, src.with_value(module_source))?;
+    Some(c.id.child_by_source(db))
 }
