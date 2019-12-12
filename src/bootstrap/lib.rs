@@ -805,12 +805,8 @@ impl Build {
                                                        .and_then(|c| c.linker.as_ref()) {
             Some(linker)
         } else if target != self.config.build &&
-                  !target.contains("msvc") &&
-                  !target.contains("emscripten") &&
-                  !target.contains("wasm32") &&
-                  !target.contains("nvptx") &&
-                  !target.contains("fortanix") &&
-                  !target.contains("fuchsia") {
+                  util::use_host_linker(&target) &&
+                  !target.contains("msvc") {
             Some(self.cc(target))
         } else {
             None
