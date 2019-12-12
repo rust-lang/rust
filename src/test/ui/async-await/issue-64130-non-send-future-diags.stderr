@@ -1,20 +1,32 @@
-error[E0277]: `std::sync::MutexGuard<'_, u32>` cannot be sent between threads safely
+error[E0277]: future cannot be sent between threads safely
   --> $DIR/issue-64130-non-send-future-diags.rs:21:5
    |
 LL | fn is_send<T: Send>(t: T) { }
    |    -------    ---- required by this bound in `is_send`
 ...
 LL |     is_send(foo());
-   |     ^^^^^^^ `std::sync::MutexGuard<'_, u32>` cannot be sent between threads safely
+   |     ^^^^^^^ future is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::sync::MutexGuard<'_, u32>`
-   = note: required because it appears within the type `for<'r, 's> {&'r std::sync::Mutex<u32>, std::sync::MutexGuard<'s, u32>, impl std::future::Future, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/issue-64130-non-send-future-diags.rs:13:30: 16:2 x:&std::sync::Mutex<u32> for<'r, 's> {&'r std::sync::Mutex<u32>, std::sync::MutexGuard<'s, u32>, impl std::future::Future, impl std::future::Future, ()}]`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/issue-64130-non-send-future-diags.rs:15:5
+   |
+LL |     let g = x.lock().unwrap();
+   |         - has type `std::sync::MutexGuard<'_, u32>`
+LL |     baz().await;
+   |     ^^^^^^^^^^^ await occurs here, with `g` maybe used later
+LL | }
+   | - `g` is later dropped here
    = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/issue-64130-non-send-future-diags.rs:13:30: 16:2 x:&std::sync::Mutex<u32> for<'r, 's> {&'r std::sync::Mutex<u32>, std::sync::MutexGuard<'s, u32>, impl std::future::Future, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
-   = note: required because it appears within the type `impl std::future::Future`
-   = note: required because it appears within the type `for<'r, 's, 't0, 't1> {u32, std::sync::Mutex<u32>, &'r std::sync::Mutex<u32>, &'s std::sync::Mutex<u32>, impl std::future::Future, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/issue-64130-non-send-future-diags.rs:9:16: 11:2 for<'r, 's, 't0, 't1> {u32, std::sync::Mutex<u32>, &'r std::sync::Mutex<u32>, &'s std::sync::Mutex<u32>, impl std::future::Future, impl std::future::Future, ()}]`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/issue-64130-non-send-future-diags.rs:10:5
+   |
+LL |     bar(&Mutex::new(22)).await;
+   |     --------------------^^^^^^- `bar(&Mutex::new(22))` is later dropped here
+   |     |
+   |     await occurs here, with `bar(&Mutex::new(22))` maybe used later
+   |     has type `impl std::future::Future`
    = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/issue-64130-non-send-future-diags.rs:9:16: 11:2 for<'r, 's, 't0, 't1> {u32, std::sync::Mutex<u32>, &'r std::sync::Mutex<u32>, &'s std::sync::Mutex<u32>, impl std::future::Future, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`

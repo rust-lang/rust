@@ -9,8 +9,15 @@ LL |     is_qux(bar());
    |
    = help: the following implementations were found:
              <Foo as Qux>
-   = note: required because it appears within the type `{Foo, impl std::future::Future, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/issue-64130-3-other.rs:15:16: 18:2 {Foo, impl std::future::Future, impl std::future::Future, ()}]`
+note: future does not implement `Qux` as this value is used across an await
+  --> $DIR/issue-64130-3-other.rs:17:5
+   |
+LL |     let x = Foo;
+   |         - has type `Foo`
+LL |     baz().await;
+   |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
+LL | }
+   | - `x` is later dropped here
    = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/issue-64130-3-other.rs:15:16: 18:2 {Foo, impl std::future::Future, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`

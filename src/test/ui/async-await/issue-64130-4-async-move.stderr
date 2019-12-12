@@ -1,16 +1,24 @@
-error[E0277]: `(dyn std::any::Any + std::marker::Send + 'static)` cannot be shared between threads safely
+error[E0277]: future cannot be sent between threads safely
   --> $DIR/issue-64130-4-async-move.rs:15:17
    |
 LL | pub fn foo() -> impl Future + Send {
-   |                 ^^^^^^^^^^^^^^^^^^ `(dyn std::any::Any + std::marker::Send + 'static)` cannot be shared between threads safely
+   |                 ^^^^^^^^^^^^^^^^^^ future is not `Send`
    |
    = help: the trait `std::marker::Sync` is not implemented for `(dyn std::any::Any + std::marker::Send + 'static)`
    = note: required because of the requirements on the impl of `std::marker::Sync` for `std::ptr::Unique<(dyn std::any::Any + std::marker::Send + 'static)>`
    = note: required because it appears within the type `std::boxed::Box<(dyn std::any::Any + std::marker::Send + 'static)>`
    = note: required because it appears within the type `Client`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `&Client`
-   = note: required because it appears within the type `for<'r> {&'r Client, Client, u16, u16, impl std::future::Future, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/issue-64130-4-async-move.rs:18:16: 25:6 client:Client for<'r> {&'r Client, Client, u16, u16, impl std::future::Future, impl std::future::Future, ()}]`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/issue-64130-4-async-move.rs:21:26
+   |
+LL |         match client.status() {
+   |               ------ has type `&Client`
+LL |             200 => {
+LL |                 let _x = get().await;
+   |                          ^^^^^^^^^^^ await occurs here, with `client` maybe used later
+...
+LL |     }
+   |     - `client` is later dropped here
    = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/issue-64130-4-async-move.rs:18:16: 25:6 client:Client for<'r> {&'r Client, Client, u16, u16, impl std::future::Future, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: the return type of a function must have a statically known size
