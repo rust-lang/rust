@@ -55,7 +55,13 @@ pub struct Subtree {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Delimiter {
+pub struct Delimiter {
+    pub id: TokenId,
+    pub kind: DelimiterKind,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DelimiterKind {
     Parenthesis,
     Brace,
     Bracket,
@@ -97,10 +103,10 @@ impl fmt::Display for TokenTree {
 
 impl fmt::Display for Subtree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (l, r) = match self.delimiter {
-            Some(Delimiter::Parenthesis) => ("(", ")"),
-            Some(Delimiter::Brace) => ("{", "}"),
-            Some(Delimiter::Bracket) => ("[", "]"),
+        let (l, r) = match self.delimiter.map(|it| it.kind) {
+            Some(DelimiterKind::Parenthesis) => ("(", ")"),
+            Some(DelimiterKind::Brace) => ("{", "}"),
+            Some(DelimiterKind::Bracket) => ("[", "]"),
             None => ("", ""),
         };
         f.write_str(l)?;

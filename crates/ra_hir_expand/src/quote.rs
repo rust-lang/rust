@@ -16,7 +16,10 @@ macro_rules! __quote {
         {
             let children = $crate::__quote!($($tt)*);
             let subtree = tt::Subtree {
-                delimiter: Some(tt::Delimiter::$delim),
+                delimiter: Some(tt::Delimiter {
+                    kind: tt::DelimiterKind::$delim,
+                    id: tt::TokenId::unspecified(),
+                }),
                 token_trees: $crate::quote::IntoTt::to_tokens(children),
             };
             subtree
@@ -257,8 +260,13 @@ mod tests {
         let fields =
             fields.iter().map(|it| quote!(#it: self.#it.clone(), ).token_trees.clone()).flatten();
 
-        let list =
-            tt::Subtree { delimiter: Some(tt::Delimiter::Brace), token_trees: fields.collect() };
+        let list = tt::Subtree {
+            delimiter: Some(tt::Delimiter {
+                kind: tt::DelimiterKind::Brace,
+                id: tt::TokenId::unspecified(),
+            }),
+            token_trees: fields.collect(),
+        };
 
         let quoted = quote! {
             impl Clone for #struct_name {

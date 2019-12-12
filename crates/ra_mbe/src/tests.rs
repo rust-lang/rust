@@ -77,13 +77,15 @@ macro_rules! foobar {
     }
 
     assert_eq!(expansion.token_trees.len(), 3);
-    // ($e:ident) => { foo bar $e }
-    //  0123      45    6   7  89
-    assert_eq!(get_id(&expansion.token_trees[0]), Some(6));
-    assert_eq!(get_id(&expansion.token_trees[1]), Some(7));
+    // {($e:ident) => { foo bar $e }}
+    // 012345      67 8 9   T   12
+    assert_eq!(get_id(&expansion.token_trees[0]), Some(9));
+    assert_eq!(get_id(&expansion.token_trees[1]), Some(10));
 
-    // So baz should be 10
-    assert_eq!(get_id(&expansion.token_trees[2]), Some(10));
+    // The input args of macro call include parentheses:
+    // (baz)
+    // So baz should be 12+1+1
+    assert_eq!(get_id(&expansion.token_trees[2]), Some(14));
 }
 
 #[test]
