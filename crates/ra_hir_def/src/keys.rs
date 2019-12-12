@@ -8,8 +8,8 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     dyn_map::{DynMap, Policy},
-    ConstId, EnumVariantId, FunctionId, ImplId, StaticId, StructFieldId, StructId, TraitId,
-    TypeAliasId, TypeParamId, EnumId, UnionId,
+    ConstId, EnumId, EnumVariantId, FunctionId, ImplId, StaticId, StructFieldId, StructId, TraitId,
+    TypeAliasId, TypeParamId, UnionId,
 };
 
 type Key<K, V> = crate::dyn_map::Key<InFile<K>, V, AstPtrPolicy<K, V>>;
