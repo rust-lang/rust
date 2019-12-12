@@ -23,8 +23,10 @@ pub trait FromSource: Sized {
 impl FromSource for Struct {
     type Ast = ast::StructDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        let id = from_source(db, src)?;
-        Some(Struct { id })
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::STRUCT]
+            .get(&src)
+            .copied()
+            .map(Struct::from)
     }
 }
 impl FromSource for Union {

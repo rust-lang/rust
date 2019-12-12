@@ -269,7 +269,7 @@ pub struct Struct {
 
 impl Struct {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -290,7 +290,7 @@ impl Struct {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
-        Type::from_def(db, self.id.module(db).krate, self.id)
+        Type::from_def(db, self.id.lookup(db).container.krate, self.id)
     }
 
     fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {

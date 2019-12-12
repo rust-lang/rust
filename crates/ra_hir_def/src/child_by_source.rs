@@ -11,8 +11,8 @@ use crate::{
     dyn_map::DynMap,
     keys,
     src::{HasChildSource, HasSource},
-    AssocItemId, EnumId, EnumVariantId, ImplId, Lookup, ModuleDefId, ModuleId, StructFieldId,
-    TraitId, VariantId,
+    AdtId, AssocItemId, EnumId, EnumVariantId, ImplId, Lookup, ModuleDefId, ModuleId,
+    StructFieldId, TraitId, VariantId,
 };
 
 pub trait ChildBySource {
@@ -98,6 +98,14 @@ impl ChildBySource for ModuleId {
                     let src = trait_.lookup(db).source(db);
                     res[keys::TRAIT].insert(src, trait_)
                 }
+                ModuleDefId::AdtId(adt) => match adt {
+                    AdtId::StructId(strukt) => {
+                        let src = strukt.lookup(db).source(db);
+                        res[keys::STRUCT].insert(src, strukt)
+                    }
+                    AdtId::UnionId(_) => (),
+                    AdtId::EnumId(_) => (),
+                },
                 _ => (),
             }
         }

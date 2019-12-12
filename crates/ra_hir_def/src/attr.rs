@@ -56,7 +56,7 @@ impl Attrs {
                 Attrs::from_attrs_owner(db, src.map(|it| it as &dyn AttrsOwner))
             }
             AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
+                AdtId::StructId(it) => attrs_from_loc(it.lookup(db), db),
                 AdtId::EnumId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
                 AdtId::UnionId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
             },

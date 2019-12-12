@@ -51,7 +51,7 @@ impl HasSource for StructField {
 impl HasSource for Struct {
     type Ast = ast::StructDef;
     fn source(self, db: &impl DefDatabase) -> InFile<ast::StructDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for Union {

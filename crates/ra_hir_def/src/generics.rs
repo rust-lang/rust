@@ -71,7 +71,7 @@ impl GenericParams {
                 src.file_id
             }
             GenericDefId::AdtId(AdtId::StructId(it)) => {
-                let src = it.source(db);
+                let src = it.lookup(db).source(db);
                 generics.fill(&mut sm, &src.value);
                 src.file_id
             }

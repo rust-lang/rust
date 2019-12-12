@@ -149,12 +149,24 @@ impl Lookup for FunctionId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructId(salsa::InternId);
 impl_intern_key!(StructId);
-impl AstItemDef<ast::StructDef> for StructId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::StructDef>) -> Self {
-        db.intern_struct(loc)
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StructLoc {
+    pub container: ModuleId,
+    pub ast_id: AstId<ast::StructDef>,
+}
+
+impl Intern for StructLoc {
+    type ID = StructId;
+    fn intern(self, db: &impl db::DefDatabase) -> StructId {
+        db.intern_struct(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::StructDef> {
-        db.lookup_intern_struct(self)
+}
+
+impl Lookup for StructId {
+    type Data = StructLoc;
+    fn lookup(&self, db: &impl db::DefDatabase) -> StructLoc {
+        db.lookup_intern_struct(*self)
     }
 }
 
@@ -532,7 +544,7 @@ impl HasModule for ConstLoc {
 impl HasModule for AdtId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match self {
-            AdtId::StructId(it) => it.module(db),
+            AdtId::StructId(it) => it.lookup(db).container,
             AdtId::UnionId(it) => it.module(db),
             AdtId::EnumId(it) => it.module(db),
         }

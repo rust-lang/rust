@@ -11,8 +11,9 @@ use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    db::DefDatabase, src::HasChildSource, trace::Trace, type_ref::TypeRef, AstItemDef, EnumId,
-    LocalEnumVariantId, LocalStructFieldId, StructId, UnionId, VariantId,
+    db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace, type_ref::TypeRef,
+    AstItemDef, EnumId, LocalEnumVariantId, LocalStructFieldId, Lookup, StructId, UnionId,
+    VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -50,7 +51,7 @@ pub struct StructFieldData {
 
 impl StructData {
     pub(crate) fn struct_data_query(db: &impl DefDatabase, id: StructId) -> Arc<StructData> {
-        let src = id.source(db);
+        let src = id.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(src.value.kind());
         let variant_data = Arc::new(variant_data);
@@ -153,7 +154,7 @@ impl HasChildSource for VariantId {
                 let src = it.parent.child_source(db);
                 src.map(|map| map[it.local_id].kind())
             }
-            VariantId::StructId(it) => it.source(db).map(|it| it.kind()),
+            VariantId::StructId(it) => it.lookup(db).source(db).map(|it| it.kind()),
             VariantId::UnionId(it) => it.source(db).map(|it| {
                 it.record_field_def_list()
                     .map(ast::StructKind::Record)

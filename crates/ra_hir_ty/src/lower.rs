@@ -699,7 +699,7 @@ impl CallableDef {
     pub fn krate(self, db: &impl HirDatabase) -> CrateId {
         match self {
             CallableDef::FunctionId(f) => f.lookup(db).module(db).krate,
-            CallableDef::StructId(s) => s.module(db).krate,
+            CallableDef::StructId(s) => s.lookup(db).container.krate,
             CallableDef::EnumVariantId(e) => e.parent.module(db).krate,
         }
     }
