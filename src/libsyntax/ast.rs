@@ -2243,7 +2243,7 @@ pub struct Mod {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ForeignMod {
     pub abi: Option<StrLit>,
-    pub items: Vec<ForeignItem>,
+    pub items: Vec<P<ForeignItem>>,
 }
 
 /// Global inline assembly.
@@ -2605,7 +2605,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<AssocItem>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<P<AssocItem>>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2624,7 +2624,7 @@ pub enum ItemKind {
         of_trait: Option<TraitRef>,
 
         self_ty: P<Ty>,
-        items: Vec<AssocItem>,
+        items: Vec<P<AssocItem>>,
     },
     /// A macro invocation.
     ///

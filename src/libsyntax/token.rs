@@ -680,10 +680,14 @@ pub enum Nonterminal {
     // Used only for passing items to proc macro attributes (they are not
     // strictly necessary for that, `Annotatable` can be converted into
     // tokens directly, but doing that naively regresses pretty-printing).
-    NtTraitItem(ast::AssocItem),
-    NtImplItem(ast::AssocItem),
-    NtForeignItem(ast::ForeignItem),
+    NtTraitItem(P<ast::AssocItem>),
+    NtImplItem(P<ast::AssocItem>),
+    NtForeignItem(P<ast::ForeignItem>),
 }
+
+// `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Nonterminal, 72);
 
 impl PartialEq for Nonterminal {
     fn eq(&self, rhs: &Self) -> bool {

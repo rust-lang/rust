@@ -1007,7 +1007,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     /// When evaluating a `trait` use its associated types' idents for suggestionsa in E0412.
     fn with_trait_items<T>(
         &mut self,
-        trait_items: &Vec<AssocItem>,
+        trait_items: &Vec<P<AssocItem>>,
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
         let trait_assoc_types = replace(
@@ -1084,7 +1084,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         opt_trait_reference: &'ast Option<TraitRef>,
         self_type: &'ast Ty,
         item_id: NodeId,
-        impl_items: &'ast [AssocItem],
+        impl_items: &'ast [P<AssocItem>],
     ) {
         debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
