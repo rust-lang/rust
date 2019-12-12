@@ -1,7 +1,8 @@
 //! FIXME: write short doc here
 use hir_def::{
-    child_by_source::ChildBySource, dyn_map::DynMap, keys, nameres::ModuleSource, EnumVariantId,
-    GenericDefId, ModuleId, VariantId,
+    child_by_source::ChildBySource, dyn_map::DynMap, keys, keys::Key, nameres::ModuleSource,
+    ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
@@ -20,80 +21,46 @@ pub trait FromSource: Sized {
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self>;
 }
 
-impl FromSource for Struct {
-    type Ast = ast::StructDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::STRUCT]
-            .get(&src)
-            .copied()
-            .map(Struct::from)
-    }
+pub trait FromSourceByContainer: Sized {
+    type Ast: AstNode + 'static;
+    type Id: Copy + 'static;
+    const KEY: Key<Self::Ast, Self::Id>;
 }
-impl FromSource for Union {
-    type Ast = ast::UnionDef;
+
+impl<T: FromSourceByContainer> FromSource for T
+where
+    T: From<<T as FromSourceByContainer>::Id>,
+{
+    type Ast = <T as FromSourceByContainer>::Ast;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::UNION]
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[T::KEY]
             .get(&src)
             .copied()
-            .map(Union::from)
-    }
-}
-impl FromSource for Enum {
-    type Ast = ast::EnumDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::ENUM]
-            .get(&src)
-            .copied()
-            .map(Enum::from)
-    }
-}
-impl FromSource for Trait {
-    type Ast = ast::TraitDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::TRAIT]
-            .get(&src)
-            .copied()
-            .map(Trait::from)
-    }
-}
-impl FromSource for Function {
-    type Ast = ast::FnDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::FUNCTION]
-            .get(&src)
-            .copied()
-            .map(Function::from)
+            .map(Self::from)
     }
 }
 
-impl FromSource for Const {
-    type Ast = ast::ConstDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::CONST]
-            .get(&src)
-            .copied()
-            .map(Const::from)
-    }
-}
-impl FromSource for Static {
-    type Ast = ast::StaticDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::STATIC]
-            .get(&src)
-            .copied()
-            .map(Static::from)
-    }
+macro_rules! from_source_by_container_impls {
+    ($(($hir:ident, $id:ident, $ast:path, $key:path)),* ,) => {$(
+        impl FromSourceByContainer for $hir {
+            type Ast = $ast;
+            type Id = $id;
+            const KEY: Key<Self::Ast, Self::Id> = $key;
+        }
+    )*}
 }
 
-impl FromSource for TypeAlias {
-    type Ast = ast::TypeAliasDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::TYPE_ALIAS]
-            .get(&src)
-            .copied()
-            .map(TypeAlias::from)
-    }
-}
+from_source_by_container_impls![
+    (Struct, StructId, ast::StructDef, keys::STRUCT),
+    (Union, UnionId, ast::UnionDef, keys::UNION),
+    (Enum, EnumId, ast::EnumDef, keys::ENUM),
+    (Trait, TraitId, ast::TraitDef, keys::TRAIT),
+    (Function, FunctionId, ast::FnDef, keys::FUNCTION),
+    (Static, StaticId, ast::StaticDef, keys::STATIC),
+    (Const, ConstId, ast::ConstDef, keys::CONST),
+    (TypeAlias, TypeAliasId, ast::TypeAliasDef, keys::TYPE_ALIAS),
+    (ImplBlock, ImplId, ast::ImplBlock, keys::IMPL),
+];
 
 impl FromSource for MacroDef {
     type Ast = ast::MacroCall;
@@ -108,16 +75,6 @@ impl FromSource for MacroDef {
 
         let id: MacroDefId = MacroDefId { krate, ast_id, kind };
         Some(MacroDef { id })
-    }
-}
-
-impl FromSource for ImplBlock {
-    type Ast = ast::ImplBlock;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::IMPL]
-            .get(&src)
-            .copied()
-            .map(ImplBlock::from)
     }
 }
 
