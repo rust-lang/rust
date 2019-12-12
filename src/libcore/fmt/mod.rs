@@ -455,7 +455,10 @@ impl Display for Arguments<'_> {
 ///
 /// impl fmt::Debug for Point {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         write!(f, "Point {{ x: {}, y: {} }}", self.x, self.y)
+///         f.debug_struct("Point")
+///          .field("x", &self.x)
+///          .field("y", &self.y)
+///          .finish()
 ///     }
 /// }
 ///
@@ -528,7 +531,10 @@ pub trait Debug {
     ///
     /// impl fmt::Debug for Position {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "({:?}, {:?})", self.longitude, self.latitude)
+    ///         f.debug_tuple("")
+    ///          .field(&self.longitude)
+    ///          .field(&self.latitude)
+    ///          .finish()
     ///     }
     /// }
     ///
@@ -912,8 +918,8 @@ pub trait Pointer {
 ///
 /// impl fmt::LowerExp for Length {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         let val = self.0;
-///         write!(f, "{}e1", val / 10)
+///         let val = f64::from(self.0);
+///         fmt::LowerExp::fmt(&val, f) // delegate to f64's implementation
 ///     }
 /// }
 ///
@@ -955,8 +961,8 @@ pub trait LowerExp {
 ///
 /// impl fmt::UpperExp for Length {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         let val = self.0;
-///         write!(f, "{}E1", val / 10)
+///         let val = f64::from(self.0);
+///         fmt::UpperExp::fmt(&val, f) // delegate to f64's implementation
 ///     }
 /// }
 ///
