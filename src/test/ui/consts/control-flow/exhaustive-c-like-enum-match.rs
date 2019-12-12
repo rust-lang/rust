@@ -3,6 +3,7 @@
 // check-pass
 
 #![feature(const_if_match)]
+#![feature(const_fn)]
 
 enum E {
     A,
