@@ -2251,11 +2251,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             trait_ref = *derived_obligation.parent_trait_ref.skip_binder();
                             target_ty = ty;
                         },
-                        _ => {},
+                        _ => return false,
                     }
 
                 },
-                _ => break,
+                _ => return false,
             }
         };
 
