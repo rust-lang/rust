@@ -36,7 +36,7 @@ error[E0282]: type annotations needed
   --> $DIR/E0401.rs:11:5
    |
 LL |     bfnr(x);
-   |     ^^^^ cannot infer type for `U`
+   |     ^^^^ cannot infer type for type parameter `U`
 
 error: aborting due to 4 previous errors
 

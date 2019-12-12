@@ -11,7 +11,7 @@ LL | | {
 LL | |     x.foo();
 LL | |     y.foo();
 LL | | }
-   | |_^ cannot infer type for `&'a T`
+   | |_^ cannot infer type for reference `&'a T`
    |
    = note: cannot resolve `&'a T: Foo`
 

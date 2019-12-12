@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/issue-16966.rs:2:5
    |
 LL |     panic!(std::default::Default::default());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for `M`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `M`
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 

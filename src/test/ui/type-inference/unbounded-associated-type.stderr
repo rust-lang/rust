@@ -1,0 +1,15 @@
+error[E0282]: type annotations needed
+  --> $DIR/unbounded-associated-type.rs:15:5
+   |
+LL |     type A;
+   |     ------- `<Self as T>::A` defined here
+...
+LL |     S(std::marker::PhantomData).foo();
+   |     ^--------------------------------
+   |     |
+   |     this method call resolves to `<Self as T>::A`
+   |     cannot infer type for type parameter `X`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

@@ -9,6 +9,7 @@ use syntax::source_map::DesugaringKind;
 use syntax::symbol::kw;
 use syntax_pos::Span;
 use errors::{Applicability, DiagnosticBuilder};
+use std::borrow::Cow;
 
 use rustc_error_codes::*;
 
@@ -113,6 +114,7 @@ fn closure_return_type_suggestion(
     err: &mut DiagnosticBuilder<'_>,
     output: &FunctionRetTy,
     body: &Body,
+    descr: &str,
     name: &str,
     ret: &str,
 ) {
@@ -136,7 +138,7 @@ fn closure_return_type_suggestion(
         suggestion,
         Applicability::HasPlaceholders,
     );
-    err.span_label(span, InferCtxt::missing_type_msg(&name));
+    err.span_label(span, InferCtxt::missing_type_msg(&name, &descr));
 }
 
 /// Given a closure signature, return a `String` containing a list of all its argument types.
@@ -175,13 +177,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         highlight: Option<ty::print::RegionHighlightMode>,
-    ) -> (String, Option<Span>) {
+    ) -> (String, Option<Span>, Cow<'static, str>) {
         if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind {
             let ty_vars = self.type_variables.borrow();
             let var_origin = ty_vars.var_origin(ty_vid);
             if let TypeVariableOriginKind::TypeParameterDefinition(name) = var_origin.kind {
                 if name != kw::SelfUpper {
-                    return (name.to_string(), Some(var_origin.span));
+                    return (
+                        name.to_string(),
+                        Some(var_origin.span),
+                        "type parameter".into(),
+                    );
                 }
             }
         }
@@ -192,7 +198,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             printer.region_highlight_mode = highlight;
         }
         let _ = ty.print(printer);
-        (s, None)
+        (s, None, ty.prefix_string())
     }
 
     pub fn need_type_info_err(
@@ -203,7 +209,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         error_code: TypeAnnotationNeeded,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
-        let (name, name_sp) = self.extract_type_name(&ty, None);
+        let (name, name_sp, descr) = self.extract_type_name(&ty, None);
 
         let mut local_visitor = FindLocalByTypeVisitor::new(&self, ty, &self.tcx.hir());
         let ty_to_string = |ty: Ty<'tcx>| -> String {
@@ -308,6 +314,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             &mut err,
                             &decl.output,
                             &body,
+                            &descr,
                             &name,
                             &ret,
                         );
@@ -427,7 +434,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 span_label.label.is_some() && span_label.span == span
             }) && local_visitor.found_arg_pattern.is_none()
         { // Avoid multiple labels pointing at `span`.
-            err.span_label(span, InferCtxt::missing_type_msg(&name));
+            err.span_label(span, InferCtxt::missing_type_msg(&name, &descr));
         }
 
         err
@@ -468,10 +475,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     );
                 } else {
                     let sig = self.tcx.fn_sig(did);
-                    err.span_label(e.span, &format!(
-                        "this method call resolves to `{:?}`",
-                        sig.output().skip_binder(),
-                    ));
+                    let bound_output = sig.output();
+                    let output = bound_output.skip_binder();
+                    err.span_label(e.span, &format!("this method call resolves to `{:?}`", output));
+                    let kind = &output.kind;
+                    if let ty::Projection(proj) | ty::UnnormalizedProjection(proj) = kind {
+                        if let Some(span) = self.tcx.hir().span_if_local(proj.item_def_id) {
+                            err.span_label(span, &format!("`{:?}` defined here", output));
+                        }
+                    }
                 }
             }
         }
@@ -484,19 +496,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
-        let name = self.extract_type_name(&ty, None).0;
+        let (name, _, descr) = self.extract_type_name(&ty, None);
         let mut err = struct_span_err!(
             self.tcx.sess, span, E0698, "type inside {} must be known in this context", kind,
         );
-        err.span_label(span, InferCtxt::missing_type_msg(&name));
+        err.span_label(span, InferCtxt::missing_type_msg(&name, &descr));
         err
     }
 
-    fn missing_type_msg(type_name: &str) -> String {
+    fn missing_type_msg(type_name: &str, descr: &str) -> Cow<'static, str>{
         if type_name == "_" {
-            "cannot infer type".to_owned()
+            "cannot infer type".into()
         } else {
-            format!("cannot infer type for `{}`", type_name)
+            format!("cannot infer type for {} `{}`", descr, type_name).into()
         }
     }
 }

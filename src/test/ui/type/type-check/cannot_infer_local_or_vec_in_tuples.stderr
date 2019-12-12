@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for `(std::vec::Vec<T>,)`
   --> $DIR/cannot_infer_local_or_vec_in_tuples.rs:2:18
    |
 LL |     let (x, ) = (vec![], );
-   |         -----    ^^^^^^ cannot infer type for `T`
+   |         -----    ^^^^^^ cannot infer type for type parameter `T`
    |         |
    |         consider giving this pattern the explicit type `(std::vec::Vec<T>,)`, where the type parameter `T` is specified
    |
