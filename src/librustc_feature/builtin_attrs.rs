@@ -239,6 +239,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N")),
     ungated!(type_length_limit, CrateLevel, template!(NameValueStr: "N")),
+    gated!(
+        const_limit, CrateLevel, template!(NameValueStr: "N"), const_limit,
+        experimental!(const_limit)
+    ),
 
     // Entry point:
     ungated!(main, Normal, template!(Word)),

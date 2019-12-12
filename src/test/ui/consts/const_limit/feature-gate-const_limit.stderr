@@ -1,0 +1,12 @@
+error[E0658]: the `#[const_limit]` attribute is an experimental feature
+  --> $DIR/feature-gate-const_limit.rs:1:1
+   |
+LL | #![const_limit="1"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/67217
+   = help: add `#![feature(const_limit)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

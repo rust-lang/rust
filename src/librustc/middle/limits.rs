@@ -1,4 +1,4 @@
-// Recursion limit.
+// Registering limits, recursion_limit, type_length_limit and const_limit
 //
 // There are various parts of the compiler that must impose arbitrary limits
 // on how deeply they recurse to prevent stack overflow. Users can override
@@ -16,6 +16,7 @@ use rustc_data_structures::sync::Once;
 pub fn update_limits(sess: &Session, krate: &ast::Crate) {
     update_limit(sess, krate, &sess.recursion_limit, sym::recursion_limit, 128);
     update_limit(sess, krate, &sess.type_length_limit, sym::type_length_limit, 1048576);
+    update_limit(sess, krate, &sess.const_limit, sym::const_limit, 128);
 }
 
 fn update_limit(
