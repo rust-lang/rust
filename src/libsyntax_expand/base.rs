@@ -777,7 +777,7 @@ impl SyntaxExtension {
         let is_builtin = attr::contains_name(attrs, sym::rustc_builtin_macro);
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
         if const_stability.is_some() {
-            sess.span_diagnostic.span_err(span, "macros can't have const stability attributes");
+            sess.span_diagnostic.span_err(span, "macros cannot have const stability attributes");
         }
 
         SyntaxExtension {
