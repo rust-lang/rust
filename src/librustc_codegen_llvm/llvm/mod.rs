@@ -10,11 +10,11 @@ pub use self::Linkage::*;
 
 use std::str::FromStr;
 use std::string::FromUtf8Error;
-use std::slice;
 use std::ffi::CStr;
 use std::cell::RefCell;
-use libc::{c_uint, c_char, size_t};
+use libc::c_uint;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_llvm::RustString;
 
 pub mod archive_ro;
 pub mod diagnostic;
@@ -79,21 +79,6 @@ impl FromStr for ArchiveKind {
             _ => Err(()),
         }
     }
-}
-
-#[repr(C)]
-pub struct RustString {
-    bytes: RefCell<Vec<u8>>,
-}
-
-/// Appending to a Rust string -- used by RawRustStringOstream.
-#[no_mangle]
-pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: &RustString,
-                                                 ptr: *const c_char,
-                                                 size: size_t) {
-    let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
-
-    sr.bytes.borrow_mut().extend_from_slice(slice);
 }
 
 pub fn SetInstructionCallConv(instr: &'a Value, cc: CallConv) {

@@ -13,6 +13,9 @@ path = "lib.rs"
 static-libstdcpp = []
 emscripten = []
 
+[dependencies]
+libc = "0.2"
+
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 cc = "1.0.1"
