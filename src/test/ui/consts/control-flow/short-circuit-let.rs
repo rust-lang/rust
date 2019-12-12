@@ -4,6 +4,7 @@
 
 #![feature(const_if_match)]
 #![feature(const_panic)]
+#![feature(const_fn)]
 
 const X: i32 = {
     let mut x = 0;
