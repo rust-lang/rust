@@ -5,7 +5,7 @@ LL | fn is_send<T: Send>(t: T) { }
    |    -------    ---- required by this bound in `is_send`
 ...
 LL |     is_send(foo());
-   |     ^^^^^^^ future is not `Send`
+   |     ^^^^^^^ future returned by `foo` is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::sync::MutexGuard<'_, u32>`
 note: future is not `Send` as this value is used across an await

@@ -5,7 +5,7 @@ LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(local_dropped_before_await());
-   |     ^^^^^^^^^^^ future is not `Send`
+   |     ^^^^^^^^^^^ future returned by `local_dropped_before_await` is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
 note: future is not `Send` as this value is used across an await
@@ -27,7 +27,7 @@ LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(non_send_temporary_in_match());
-   |     ^^^^^^^^^^^ future is not `Send`
+   |     ^^^^^^^^^^^ future returned by `non_send_temporary_in_match` is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
 note: future is not `Send` as this value is used across an await
@@ -49,7 +49,7 @@ LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(non_sync_with_method_call());
-   |     ^^^^^^^^^^^ future is not `Send`
+   |     ^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
    |
    = help: the trait `std::marker::Send` is not implemented for `dyn std::fmt::Write`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&mut dyn std::fmt::Write`
@@ -74,7 +74,7 @@ LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(non_sync_with_method_call());
-   |     ^^^^^^^^^^^ future is not `Send`
+   |     ^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
    |
    = help: within `std::fmt::ArgumentV1<'_>`, the trait `std::marker::Sync` is not implemented for `*mut (dyn std::ops::Fn() + 'static)`
    = note: required because it appears within the type `std::marker::PhantomData<*mut (dyn std::ops::Fn() + 'static)>`

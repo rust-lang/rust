@@ -5,7 +5,7 @@ LL | fn require_send<T: Send>(_val: T) {}
    |    ------------    ---- required by this bound in `require_send`
 ...
 LL |     require_send(wrapped);
-   |     ^^^^^^^^^^^^ future is not `Send`
+   |     ^^^^^^^^^^^^ future returned by `first` is not `Send`
    |
    = help: within `main::Wrapper<impl std::future::Future>`, the trait `std::marker::Send` is not implemented for `*const ()`
    = note: required because it appears within the type `third::{{closure}}#0::NotSend`

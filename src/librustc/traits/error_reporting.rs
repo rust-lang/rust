@@ -2210,7 +2210,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // the type. The last generator has information about where the bound was introduced. At
         // least one generator should be present for this diagnostic to be modified.
         let mut generator = None;
-        let mut last_generator = None;
         let mut next_code = Some(code);
         let mut next_predicate = None;
 
@@ -2280,6 +2279,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         let generator_did = generator.expect("can only reach this if there was a generator");
+
+        // Finally, see if there are any generator types remaining in the 'error stack'.
+        // If there aren't, then treat the current generator as the 'last generator',
+        // which will make `note_obligation_cause_for_async_await` emit an extra
+        // message for it
+        let mut target_code = next_code;
+        let mut last_generator = Some(generator_did);
+        while let Some(code) = target_code {
+            debug!("note_obligation_cause_for_async_await: last_generator code={:?}", code);
+            if let ObligationCauseCode::BuiltinDerivedObligation(obligation) |
+                ObligationCauseCode::ImplDerivedObligation(obligation) = code {
+                    if let ty::Generator(..) = obligation.parent_trait_ref.self_ty().kind {
+                        // We found another generator, so our current generator can't be
+                        // the last one
+                        last_generator = None;
+                        break;
+                    }
+                    target_code = Some(obligation.parent_code.as_ref());
+            } else {
+                break;
+            }
+        }
 
 
         let span = self.tcx.def_span(generator_did);
