@@ -29,8 +29,7 @@ pub struct PathSegment {
 }
 
 /// Generic arguments to a path segment (e.g. the `i32` in `Option<i32>`). This
-/// can (in the future) also include bindings of associated types, like in
-/// `Iterator<Item = Foo>`.
+/// also includes bindings of associated types, like in `Iterator<Item = Foo>`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArgs {
     pub args: Vec<GenericArg>,
