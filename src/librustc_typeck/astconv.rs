@@ -937,6 +937,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 bounds,
                 speculative,
                 &mut dup_bindings,
+                span,
             );
             // Okay to ignore `Err` because of `ErrorReported` (see above).
         }
@@ -1189,6 +1190,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
         dup_bindings: &mut FxHashMap<DefId, Span>,
+        path_span: Span,
     ) -> Result<(), ErrorReported> {
         let tcx = self.tcx();
 
@@ -1259,7 +1261,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     || traits::supertraits(tcx, trait_ref),
                     &trait_ref.print_only_trait_path().to_string(),
                     binding.item_name,
-                    binding.span,
+                    path_span,
                 )
             }?;
 
