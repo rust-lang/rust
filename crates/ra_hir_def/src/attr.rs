@@ -60,7 +60,7 @@ impl Attrs {
                 AdtId::EnumId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
                 AdtId::UnionId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
             },
-            AttrDefId::TraitId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
+            AttrDefId::TraitId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::MacroDefId(it) => {
                 it.ast_id.map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db))
             }

@@ -94,6 +94,10 @@ impl ChildBySource for ModuleId {
                     let src = ty.lookup(db).source(db);
                     res[keys::TYPE_ALIAS].insert(src, ty)
                 }
+                ModuleDefId::TraitId(trait_) => {
+                    let src = trait_.lookup(db).source(db);
+                    res[keys::TRAIT].insert(src, trait_)
+                }
                 _ => (),
             }
         }

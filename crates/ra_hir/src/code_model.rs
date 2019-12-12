@@ -577,7 +577,7 @@ pub struct Trait {
 
 impl Trait {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Name {

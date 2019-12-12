@@ -17,9 +17,9 @@ use crate::{
     nameres::{BuiltinShadowMode, CrateDefMap},
     path::{Path, PathKind},
     per_ns::PerNs,
-    AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId,
-    StructId, TraitId, TypeAliasId, TypeParamId, VariantId,
+    AdtId, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
+    HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId,
+    TypeAliasId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -524,7 +524,7 @@ impl HasResolver for ModuleId {
 
 impl HasResolver for TraitId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db).resolver(db).push_generic_params_scope(db, self.into())
+        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
     }
 }
 

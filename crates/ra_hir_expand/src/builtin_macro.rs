@@ -367,6 +367,9 @@ mod tests {
             BuiltinFnLikeExpander::FormatArgs,
         );
 
-        assert_eq!(expanded, r#"std::fmt::Arguments::new_v1(&[] ,&[std::fmt::ArgumentV1::new(&(arg1(a,b,c)),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(arg2),std::fmt::Display::fmt),])"#);
+        assert_eq!(
+            expanded,
+            r#"std::fmt::Arguments::new_v1(&[] ,&[std::fmt::ArgumentV1::new(&(arg1(a,b,c)),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(arg2),std::fmt::Display::fmt),])"#
+        );
     }
 }

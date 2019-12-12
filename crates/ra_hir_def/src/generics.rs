@@ -86,7 +86,7 @@ impl GenericParams {
                 src.file_id
             }
             GenericDefId::TraitId(it) => {
-                let src = it.source(db);
+                let src = it.lookup(db).source(db);
 
                 // traits get the Self type as an implicit first type parameter
                 let self_param_id =

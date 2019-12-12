@@ -253,12 +253,24 @@ impl Lookup for StaticId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TraitId(salsa::InternId);
 impl_intern_key!(TraitId);
-impl AstItemDef<ast::TraitDef> for TraitId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::TraitDef>) -> Self {
-        db.intern_trait(loc)
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TraitLoc {
+    pub container: ModuleId,
+    pub ast_id: AstId<ast::TraitDef>,
+}
+
+impl Intern for TraitLoc {
+    type ID = TraitId;
+    fn intern(self, db: &impl db::DefDatabase) -> TraitId {
+        db.intern_trait(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::TraitDef> {
-        db.lookup_intern_trait(self)
+}
+
+impl Lookup for TraitId {
+    type Data = TraitLoc;
+    fn lookup(&self, db: &impl db::DefDatabase) -> TraitLoc {
+        db.lookup_intern_trait(*self)
     }
 }
 
@@ -492,7 +504,7 @@ impl HasModule for FunctionLoc {
         match self.container {
             ContainerId::ModuleId(it) => it,
             ContainerId::ImplId(it) => it.lookup(db).container,
-            ContainerId::TraitId(it) => it.module(db),
+            ContainerId::TraitId(it) => it.lookup(db).container,
         }
     }
 }
@@ -502,7 +514,7 @@ impl HasModule for TypeAliasLoc {
         match self.container {
             ContainerId::ModuleId(it) => it,
             ContainerId::ImplId(it) => it.lookup(db).container,
-            ContainerId::TraitId(it) => it.module(db),
+            ContainerId::TraitId(it) => it.lookup(db).container,
         }
     }
 }
@@ -512,7 +524,7 @@ impl HasModule for ConstLoc {
         match self.container {
             ContainerId::ModuleId(it) => it,
             ContainerId::ImplId(it) => it.lookup(db).container,
-            ContainerId::TraitId(it) => it.module(db),
+            ContainerId::TraitId(it) => it.lookup(db).container,
         }
     }
 }
@@ -542,7 +554,7 @@ impl HasModule for GenericDefId {
         match self {
             GenericDefId::FunctionId(it) => it.lookup(db).module(db),
             GenericDefId::AdtId(it) => it.module(db),
-            GenericDefId::TraitId(it) => it.module(db),
+            GenericDefId::TraitId(it) => it.lookup(db).container,
             GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
             GenericDefId::ImplId(it) => it.lookup(db).container,
             GenericDefId::EnumVariantId(it) => it.parent.module(db),

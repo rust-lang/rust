@@ -93,7 +93,7 @@ impl HasSource for Static {
 impl HasSource for Trait {
     type Ast = ast::TraitDef;
     fn source(self, db: &impl DefDatabase) -> InFile<ast::TraitDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for TypeAlias {

@@ -44,8 +44,10 @@ impl FromSource for Enum {
 impl FromSource for Trait {
     type Ast = ast::TraitDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        let id = from_source(db, src)?;
-        Some(Trait { id })
+        // XXX: use `.parent()` to avoid finding ourselves
+        let parent = src.value.syntax().parent()?;
+        let container = Container::find(db, src.with_value(parent).as_ref())?;
+        container.child_by_source(db)[keys::TRAIT].get(&src).copied().map(Trait::from)
     }
 }
 impl FromSource for Function {

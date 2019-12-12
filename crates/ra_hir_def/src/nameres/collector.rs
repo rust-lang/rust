@@ -26,7 +26,7 @@ use crate::{
     per_ns::PerNs,
     AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplLoc,
     Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticLoc, StructId,
-    TraitId, TypeAliasLoc, UnionId,
+    TraitLoc, TypeAliasLoc, UnionId,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -796,7 +796,12 @@ where
 
                 PerNs::values(def.into())
             }
-            raw::DefKind::Trait(ast_id) => PerNs::types(TraitId::from_ast_id(ctx, ast_id).into()),
+            raw::DefKind::Trait(ast_id) => {
+                let def = TraitLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db);
+
+                PerNs::types(def.into())
+            }
             raw::DefKind::TypeAlias(ast_id) => {
                 let def = TypeAliasLoc {
                     container: ContainerId::ModuleId(module),

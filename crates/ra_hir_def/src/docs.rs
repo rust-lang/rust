@@ -59,7 +59,7 @@ impl Documentation {
                 let src = it.parent.child_source(db);
                 docs_from_ast(&src.value[it.local_id])
             }
-            AttrDefId::TraitId(it) => docs_from_ast(&it.source(db).value),
+            AttrDefId::TraitId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             AttrDefId::MacroDefId(it) => docs_from_ast(&it.ast_id?.to_node(db)),
             AttrDefId::ConstId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             AttrDefId::StaticId(it) => docs_from_ast(&it.lookup(db).source(db).value),

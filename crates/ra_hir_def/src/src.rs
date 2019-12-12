@@ -4,7 +4,7 @@ use hir_expand::InFile;
 use ra_arena::map::ArenaMap;
 use ra_syntax::ast;
 
-use crate::{db::DefDatabase, ConstLoc, FunctionLoc, ImplLoc, StaticLoc, TypeAliasLoc};
+use crate::{db::DefDatabase, ConstLoc, FunctionLoc, ImplLoc, StaticLoc, TraitLoc, TypeAliasLoc};
 
 pub trait HasSource {
     type Value;
@@ -51,6 +51,15 @@ impl HasSource for ImplLoc {
     type Value = ast::ImplBlock;
 
     fn source(&self, db: &impl DefDatabase) -> InFile<ast::ImplBlock> {
+        let node = self.ast_id.to_node(db);
+        InFile::new(self.ast_id.file_id, node)
+    }
+}
+
+impl HasSource for TraitLoc {
+    type Value = ast::TraitDef;
+
+    fn source(&self, db: &impl DefDatabase) -> InFile<ast::TraitDef> {
         let node = self.ast_id.to_node(db);
         InFile::new(self.ast_id.file_id, node)
     }
