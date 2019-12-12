@@ -15,7 +15,7 @@ use rustc::traits::Obligation;
 use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use rustc::ty::print::with_crate_prefix;
 use syntax_pos::{Span, FileName};
-use syntax::ast;
+use syntax::{ast, source_map};
 use syntax::util::lev_distance;
 
 use rustc_error_codes::*;
@@ -78,61 +78,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if rcvr_ty.references_error() {
             return None;
         }
-
-        let print_disambiguation_help = |
-            err: &mut DiagnosticBuilder<'_>,
-            trait_name: String,
-            rcvr_ty: Ty<'_>,
-            kind: ty::AssocKind,
-            span: Span,
-            candidate: Option<usize>,
-        | {
-            let mut applicability = Applicability::MachineApplicable;
-            let sugg_args = if let ty::AssocKind::Method = kind {
-                format!(
-                    "({}{})",
-                    if rcvr_ty.is_region_ptr() && args.is_some() {
-                        if rcvr_ty.is_mutable_ptr() {
-                            "&mut "
-                        } else {
-                            "&"
-                        }
-                    } else {
-                        ""
-                    },
-                    args.map(|arg| arg
-                        .iter()
-                        .map(|arg| self.tcx.sess.source_map().span_to_snippet(arg.span)
-                            .unwrap_or_else(|_| {
-                                applicability = Applicability::HasPlaceholders;
-                                "...".to_owned()
-                            }))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                    ).unwrap_or_else(|| {
-                        applicability = Applicability::HasPlaceholders;
-                        "...".to_owned()
-                    }),
-                )
-            } else {
-                String::new()
-            };
-            let sugg = format!("{}::{}{}", trait_name, item_name, sugg_args);
-            err.span_suggestion(
-                span,
-                &format!(
-                    "disambiguate the {} for {}",
-                    kind.suggestion_descr(),
-                    if let Some(candidate) = candidate {
-                        format!("candidate #{}", candidate)
-                    } else {
-                        "the candidate".to_string()
-                    },
-                ),
-                sugg,
-                applicability,
-            );
-        };
 
         let report_candidates = |
             span: Span,
@@ -215,7 +160,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .map(|ty| *ty)
                                     .unwrap_or(rcvr_ty),
                             };
-                            print_disambiguation_help(err, path, ty, item.kind, sugg_span, idx);
+                            print_disambiguation_help(
+                                item_name,
+                                args,
+                                err,
+                                path,
+                                ty,
+                                item.kind,
+                                sugg_span,
+                                idx,
+                                self.tcx.sess.source_map(),
+                            );
                         }
                     }
                     CandidateSource::TraitSource(trait_did) => {
@@ -244,7 +199,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             None
                         };
                         let path = self.tcx.def_path_str(trait_did);
-                        print_disambiguation_help(err, path, rcvr_ty, item.kind, sugg_span, idx);
+                        print_disambiguation_help(
+                            item_name,
+                            args,
+                            err,
+                            path,
+                            rcvr_ty,
+                            item.kind,
+                            sugg_span,
+                            idx,
+                            self.tcx.sess.source_map(),
+                        );
                     }
                 }
             }
@@ -1179,4 +1144,57 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
     ) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {
         hir::intravisit::NestedVisitorMap::None
     }
+}
+
+fn print_disambiguation_help(
+    item_name: ast::Ident,
+    args: Option<&'tcx [hir::Expr]>,
+    err: &mut DiagnosticBuilder<'_>,
+    trait_name: String,
+    rcvr_ty: Ty<'_>,
+    kind: ty::AssocKind,
+    span: Span,
+    candidate: Option<usize>,
+    source_map: &source_map::SourceMap,
+) {
+    let mut applicability = Applicability::MachineApplicable;
+    let sugg_args = if let (ty::AssocKind::Method, Some(args)) = (kind, args) {
+        format!(
+            "({}{})",
+            if rcvr_ty.is_region_ptr() {
+                if rcvr_ty.is_mutable_ptr() {
+                    "&mut "
+                } else {
+                    "&"
+                }
+            } else {
+                ""
+            },
+            args.iter()
+                .map(|arg| source_map.span_to_snippet(arg.span)
+                    .unwrap_or_else(|_| {
+                        applicability = Applicability::HasPlaceholders;
+                        "_".to_owned()
+                    }))
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
+    } else {
+        String::new()
+    };
+    let sugg = format!("{}::{}{}", trait_name, item_name, sugg_args);
+    err.span_suggestion(
+        span,
+        &format!(
+            "disambiguate the {} for {}",
+            kind.suggestion_descr(),
+            if let Some(candidate) = candidate {
+                format!("candidate #{}", candidate)
+            } else {
+                "the candidate".to_string()
+            },
+        ),
+        sugg,
+        applicability,
+    );
 }
