@@ -11,8 +11,8 @@ use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    db::DefDatabase, src::HasChildSource, trace::Trace, type_ref::TypeRef, AstItemDef, EnumId,
-    LocalEnumVariantId, LocalStructFieldId, StructId, UnionId, VariantId,
+    db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace, type_ref::TypeRef, EnumId,
+    LocalEnumVariantId, LocalStructFieldId, Lookup, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -50,14 +50,14 @@ pub struct StructFieldData {
 
 impl StructData {
     pub(crate) fn struct_data_query(db: &impl DefDatabase, id: StructId) -> Arc<StructData> {
-        let src = id.source(db);
+        let src = id.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(src.value.kind());
         let variant_data = Arc::new(variant_data);
         Arc::new(StructData { name, variant_data })
     }
     pub(crate) fn union_data_query(db: &impl DefDatabase, id: UnionId) -> Arc<StructData> {
-        let src = id.source(db);
+        let src = id.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(
             src.value
@@ -72,7 +72,7 @@ impl StructData {
 
 impl EnumData {
     pub(crate) fn enum_data_query(db: &impl DefDatabase, e: EnumId) -> Arc<EnumData> {
-        let src = e.source(db);
+        let src = e.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let mut trace = Trace::new_for_arena();
         lower_enum(&mut trace, &src.value);
@@ -89,7 +89,7 @@ impl HasChildSource for EnumId {
     type ChildId = LocalEnumVariantId;
     type Value = ast::EnumVariant;
     fn child_source(&self, db: &impl DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
-        let src = self.source(db);
+        let src = self.lookup(db).source(db);
         let mut trace = Trace::new_for_map();
         lower_enum(&mut trace, &src.value);
         src.with_value(trace.into_map())
@@ -153,8 +153,8 @@ impl HasChildSource for VariantId {
                 let src = it.parent.child_source(db);
                 src.map(|map| map[it.local_id].kind())
             }
-            VariantId::StructId(it) => it.source(db).map(|it| it.kind()),
-            VariantId::UnionId(it) => it.source(db).map(|it| {
+            VariantId::StructId(it) => it.lookup(db).source(db).map(|it| it.kind()),
+            VariantId::UnionId(it) => it.lookup(db).source(db).map(|it| {
                 it.record_field_def_list()
                     .map(ast::StructKind::Record)
                     .unwrap_or(ast::StructKind::Unit)

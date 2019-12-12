@@ -11,7 +11,7 @@ use ra_syntax::ast;
 use crate::{
     db::DefDatabase,
     src::{HasChildSource, HasSource},
-    AdtId, AstItemDef, AttrDefId, Lookup,
+    AdtId, AttrDefId, Lookup,
 };
 
 /// Holds documentation
@@ -51,15 +51,15 @@ impl Documentation {
                 }
             }
             AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => docs_from_ast(&it.source(db).value),
-                AdtId::EnumId(it) => docs_from_ast(&it.source(db).value),
-                AdtId::UnionId(it) => docs_from_ast(&it.source(db).value),
+                AdtId::StructId(it) => docs_from_ast(&it.lookup(db).source(db).value),
+                AdtId::EnumId(it) => docs_from_ast(&it.lookup(db).source(db).value),
+                AdtId::UnionId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             },
             AttrDefId::EnumVariantId(it) => {
                 let src = it.parent.child_source(db);
                 docs_from_ast(&src.value[it.local_id])
             }
-            AttrDefId::TraitId(it) => docs_from_ast(&it.source(db).value),
+            AttrDefId::TraitId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             AttrDefId::MacroDefId(it) => docs_from_ast(&it.ast_id?.to_node(db)),
             AttrDefId::ConstId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             AttrDefId::StaticId(it) => docs_from_ast(&it.lookup(db).source(db).value),

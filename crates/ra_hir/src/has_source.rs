@@ -4,7 +4,7 @@ use either::Either;
 use hir_def::{
     nameres::ModuleSource,
     src::{HasChildSource, HasSource as _},
-    AstItemDef, Lookup, VariantId,
+    Lookup, VariantId,
 };
 use ra_syntax::ast;
 
@@ -51,19 +51,19 @@ impl HasSource for StructField {
 impl HasSource for Struct {
     type Ast = ast::StructDef;
     fn source(self, db: &impl DefDatabase) -> InFile<ast::StructDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for Union {
     type Ast = ast::UnionDef;
     fn source(self, db: &impl DefDatabase) -> InFile<ast::UnionDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for Enum {
     type Ast = ast::EnumDef;
     fn source(self, db: &impl DefDatabase) -> InFile<ast::EnumDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for EnumVariant {
@@ -93,7 +93,7 @@ impl HasSource for Static {
 impl HasSource for Trait {
     type Ast = ast::TraitDef;
     fn source(self, db: &impl DefDatabase) -> InFile<ast::TraitDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for TypeAlias {

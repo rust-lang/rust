@@ -11,7 +11,7 @@ use hir_def::{
     per_ns::PerNs,
     resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
-    AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, HasModule, ImplId,
+    AdtId, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, HasModule, ImplId,
     LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId,
     StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
 };
@@ -269,7 +269,7 @@ pub struct Struct {
 
 impl Struct {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -290,7 +290,7 @@ impl Struct {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
-        Type::from_def(db, self.id.module(db).krate, self.id)
+        Type::from_def(db, self.id.lookup(db).container.krate, self.id)
     }
 
     fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
@@ -309,11 +309,11 @@ impl Union {
     }
 
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
-        Type::from_def(db, self.id.module(db).krate, self.id)
+        Type::from_def(db, self.id.lookup(db).container.krate, self.id)
     }
 
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
@@ -337,7 +337,7 @@ pub struct Enum {
 
 impl Enum {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -357,7 +357,7 @@ impl Enum {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
-        Type::from_def(db, self.id.module(db).krate, self.id)
+        Type::from_def(db, self.id.lookup(db).container.krate, self.id)
     }
 }
 
@@ -577,7 +577,7 @@ pub struct Trait {
 
 impl Trait {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Name {

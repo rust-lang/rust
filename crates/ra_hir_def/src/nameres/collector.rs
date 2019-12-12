@@ -24,9 +24,9 @@ use crate::{
     },
     path::{Path, PathKind},
     per_ns::PerNs,
-    AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplLoc,
-    Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticLoc, StructId,
-    TraitId, TypeAliasLoc, UnionId,
+    AdtId, AstId, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
+    LocalImportId, LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitLoc,
+    TypeAliasLoc, UnionLoc,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -753,8 +753,6 @@ where
 
     fn define_def(&mut self, def: &raw::DefData, attrs: &Attrs) {
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };
-        let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
-
         // FIXME: check attrs to see if this is an attribute macro invocation;
         // in which case we don't add the invocation, just a single attribute
         // macro invocation
@@ -773,14 +771,20 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Struct(ast_id) => {
-                let id = StructId::from_ast_id(ctx, ast_id).into();
-                PerNs::both(id, id)
+                let def = StructLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db);
+                PerNs::both(def.into(), def.into())
             }
             raw::DefKind::Union(ast_id) => {
-                let id = UnionId::from_ast_id(ctx, ast_id).into();
-                PerNs::both(id, id)
+                let def = UnionLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db);
+                PerNs::both(def.into(), def.into())
             }
-            raw::DefKind::Enum(ast_id) => PerNs::types(EnumId::from_ast_id(ctx, ast_id).into()),
+            raw::DefKind::Enum(ast_id) => {
+                let def = EnumLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db);
+                PerNs::types(def.into())
+            }
             raw::DefKind::Const(ast_id) => {
                 let def = ConstLoc {
                     container: ContainerId::ModuleId(module),
@@ -796,7 +800,12 @@ where
 
                 PerNs::values(def.into())
             }
-            raw::DefKind::Trait(ast_id) => PerNs::types(TraitId::from_ast_id(ctx, ast_id).into()),
+            raw::DefKind::Trait(ast_id) => {
+                let def = TraitLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db);
+
+                PerNs::types(def.into())
+            }
             raw::DefKind::TypeAlias(ast_id) => {
                 let def = TypeAliasLoc {
                     container: ContainerId::ModuleId(module),

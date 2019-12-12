@@ -14,7 +14,7 @@ use hir_def::{
     path::{GenericArg, Path, PathKind, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId,
+    AdtId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId,
     LocalStructFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
 use ra_arena::map::ArenaMap;
@@ -698,10 +698,11 @@ impl_froms!(CallableDef: FunctionId, StructId, EnumVariantId);
 impl CallableDef {
     pub fn krate(self, db: &impl HirDatabase) -> CrateId {
         match self {
-            CallableDef::FunctionId(f) => f.lookup(db).module(db).krate,
-            CallableDef::StructId(s) => s.module(db).krate,
-            CallableDef::EnumVariantId(e) => e.parent.module(db).krate,
+            CallableDef::FunctionId(f) => f.lookup(db).module(db),
+            CallableDef::StructId(s) => s.lookup(db).container,
+            CallableDef::EnumVariantId(e) => e.parent.lookup(db).container,
         }
+        .krate
     }
 }
 

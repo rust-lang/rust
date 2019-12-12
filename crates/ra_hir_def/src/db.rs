@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use hir_expand::{db::AstDatabase, HirFileId};
 use ra_db::{salsa, CrateId, SourceDatabase};
-use ra_syntax::{ast, SmolStr};
+use ra_syntax::SmolStr;
 
 use crate::{
     adt::{EnumData, StructData},
@@ -17,9 +17,9 @@ use crate::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, FunctionId, FunctionLoc, GenericDefId,
-    ImplId, ImplLoc, ItemLoc, ModuleId, StaticId, StaticLoc, StructId, TraitId, TypeAliasId,
-    TypeAliasLoc, UnionId,
+    AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
+    GenericDefId, ImplId, ImplLoc, ModuleId, StaticId, StaticLoc, StructId, StructLoc, TraitId,
+    TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -27,17 +27,17 @@ pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_function(&self, loc: FunctionLoc) -> FunctionId;
     #[salsa::interned]
-    fn intern_struct(&self, loc: ItemLoc<ast::StructDef>) -> StructId;
+    fn intern_struct(&self, loc: StructLoc) -> StructId;
     #[salsa::interned]
-    fn intern_union(&self, loc: ItemLoc<ast::UnionDef>) -> UnionId;
+    fn intern_union(&self, loc: UnionLoc) -> UnionId;
     #[salsa::interned]
-    fn intern_enum(&self, loc: ItemLoc<ast::EnumDef>) -> EnumId;
+    fn intern_enum(&self, loc: EnumLoc) -> EnumId;
     #[salsa::interned]
     fn intern_const(&self, loc: ConstLoc) -> ConstId;
     #[salsa::interned]
     fn intern_static(&self, loc: StaticLoc) -> StaticId;
     #[salsa::interned]
-    fn intern_trait(&self, loc: ItemLoc<ast::TraitDef>) -> TraitId;
+    fn intern_trait(&self, loc: TraitLoc) -> TraitId;
     #[salsa::interned]
     fn intern_type_alias(&self, loc: TypeAliasLoc) -> TypeAliasId;
     #[salsa::interned]
