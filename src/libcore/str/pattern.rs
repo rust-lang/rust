@@ -450,15 +450,13 @@ impl<'a> Pattern<'a> for char {
 
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
-        let mut buffer = [0u8; 4];
-        self.encode_utf8(&mut buffer).is_prefix_of(haystack)
+        self.encode_utf8(&mut [0u8; 4]).is_prefix_of(haystack)
     }
 
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool where Self::Searcher: ReverseSearcher<'a>
     {
-        let mut buffer = [0u8; 4];
-        self.encode_utf8(&mut buffer).is_suffix_of(haystack)
+        self.encode_utf8(&mut [0u8; 4]).is_suffix_of(haystack)
     }
 }
 
