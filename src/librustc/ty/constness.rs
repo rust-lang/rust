@@ -104,11 +104,11 @@ impl<'tcx> TyCtxt<'tcx> {
                         // err on the "safe" side and require min_const_fn.
                         true
                     } else {
-                        // Unstable functions need not conform to min const fn.
+                        // Unstable functions need not conform to min_const_fn.
                         false
                     }
                 } else {
-                    // Internal functions are forced to conform to min const fn.
+                    // Internal functions are forced to conform to min_const_fn.
                     // Annotate the internal function with a const stability attribute if
                     // you need to use unstable features.
                     // Note: this is an arbitrary choice that does not affect stability or const
