@@ -2176,19 +2176,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trait_predicate: &TraitPredicate<'tcx>,
         code: &ObligationCauseCode<'tcx>,
     ) -> bool {
-        /*debug!("note_obligation_cause_for_async_await: obligation.predicate={:?} \
-                obligation.cause.span={:?}", obligation.predicate, obligation.cause.span);*/
+        debug!("note_obligation_cause_for_async_await: trait_predicate={:?} \
+                code={:?}", trait_predicate, code);
         let source_map = self.tcx.sess.source_map();
 
-        // Look into the obligation predicate to determine the type in the generator which meant
-        // that the predicate was not satisifed.
-        /*let (trait_ref, target_ty) = match obligation.predicate {
-            ty::Predicate::Trait(trait_predicate) =>
-                (trait_predicate.skip_binder().trait_ref, trait_predicate.skip_binder().self_ty()),
-            _ => return false,
-        };*/
-
-        let (mut trait_ref, mut target_ty) = (trait_predicate.trait_ref, trait_predicate.self_ty());
+        let (trait_ref, target_ty) = (trait_predicate.trait_ref, trait_predicate.self_ty());
 
         debug!("note_obligation_cause_for_async_await: target_ty={:?}", target_ty);
 
