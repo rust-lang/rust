@@ -238,39 +238,18 @@ impl TokenStream {
             0 => TokenStream::default(),
             1 => streams.pop().unwrap(),
             _ => {
-                // We are going to extend the first stream in `streams` with
-                // the elements from the subsequent streams. This requires
-                // using `make_mut()` on the first stream, and in practice this
-                // doesn't cause cloning 99.9% of the time.
-                //
-                // One very common use case is when `streams` has two elements,
-                // where the first stream has any number of elements within
-                // (often 1, but sometimes many more) and the second stream has
-                // a single element within.
-
-                // Determine how much the first stream will be extended.
-                // Needed to avoid quadratic blow up from on-the-fly
-                // reallocations (#57735).
-                let num_appends = streams.iter()
-                    .skip(1)
-                    .map(|ts| ts.len())
+                // rust-lang/rust#57735: pre-allocate vector to avoid
+                // quadratic blow-up due to on-the-fly reallocations.
+                let tree_count = streams.iter()
+                    .map(|ts| ts.0.len())
                     .sum();
 
-                // Get the first stream. If it's `None`, create an empty
-                // stream.
-                let mut iter = streams.drain(..);
-                let mut first_stream_lrc = iter.next().unwrap().0;
+                let mut vec = Vec::with_capacity(tree_count);
 
-                // Append the elements to the first stream, after reserving
-                // space for them.
-                let first_vec_mut = Lrc::make_mut(&mut first_stream_lrc);
-                first_vec_mut.reserve(num_appends);
-                for stream in iter {
-                    first_vec_mut.extend(stream.0.iter().cloned());
+                for stream in streams {
+                    vec.extend(stream.0.iter().cloned());
                 }
-
-                // Create the final `TokenStream`.
-                TokenStream(first_stream_lrc)
+                TokenStream::new(vec)
             }
         }
     }
