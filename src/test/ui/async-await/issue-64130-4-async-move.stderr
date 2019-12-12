@@ -1,11 +1,10 @@
-error[E0277]: `(dyn std::any::Any + std::marker::Send + 'static)` cannot be shared between threads safely
+error[E0277]: future cannot be sent between threads safely
   --> $DIR/issue-64130-4-async-move.rs:15:17
    |
 LL | pub fn foo() -> impl Future + Send {
    |                 ^^^^^^^^^^^^^^^^^^ future returned by `foo` is not `Send`
    |
    = help: the trait `std::marker::Sync` is not implemented for `(dyn std::any::Any + std::marker::Send + 'static)`
-   = note: future cannot be sent between threads safely
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-4-async-move.rs:21:26
    |

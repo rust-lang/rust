@@ -1,4 +1,4 @@
-error[E0277]: `Foo` cannot be shared between threads safely
+error[E0277]: future cannot be shared between threads safely
   --> $DIR/issue-64130-1-sync.rs:21:5
    |
 LL | fn is_sync<T: Sync>(t: T) { }
@@ -8,7 +8,6 @@ LL |     is_sync(bar());
    |     ^^^^^^^ future returned by `bar` is not `Sync`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Sync` is not implemented for `Foo`
-   = note: future cannot be shared between threads safely
 note: future is not `Sync` as this value is used across an await
   --> $DIR/issue-64130-1-sync.rs:15:5
    |

@@ -1,4 +1,4 @@
-error[E0277]: `std::sync::MutexGuard<'_, u32>` cannot be sent between threads safely
+error[E0277]: future cannot be sent between threads safely
   --> $DIR/issue-64130-non-send-future-diags.rs:21:5
    |
 LL | fn is_send<T: Send>(t: T) { }
@@ -8,7 +8,6 @@ LL |     is_send(foo());
    |     ^^^^^^^ future returned by `foo` is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::sync::MutexGuard<'_, u32>`
-   = note: future cannot be sent between threads safely
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-non-send-future-diags.rs:15:5
    |

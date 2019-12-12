@@ -2408,7 +2408,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ("`Sync`", "shared")
             };
 
-            err.note(
+            err.set_primary_message(
                 &format!("future cannot be {} between threads safely", trait_verb)
             );
 

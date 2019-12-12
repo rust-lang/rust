@@ -1,4 +1,4 @@
-error[E0277]: `Foo` cannot be sent between threads safely
+error[E0277]: future cannot be sent between threads safely
   --> $DIR/issue-64130-2-send.rs:21:5
    |
 LL | fn is_send<T: Send>(t: T) { }
@@ -8,7 +8,6 @@ LL |     is_send(bar());
    |     ^^^^^^^ future returned by `bar` is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `Foo`
-   = note: future cannot be sent between threads safely
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-2-send.rs:15:5
    |
