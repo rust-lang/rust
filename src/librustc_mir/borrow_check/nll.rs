@@ -1,13 +1,5 @@
-use crate::borrow_check::borrow_set::BorrowSet;
-use crate::borrow_check::location::LocationTable;
-use crate::borrow_check::nll::facts::AllFactsExt;
-use crate::borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
-use crate::borrow_check::nll::region_infer::values::RegionValueElements;
-use crate::dataflow::move_paths::{InitLocation, MoveData, InitKind};
-use crate::dataflow::FlowAtLocation;
-use crate::dataflow::MaybeInitializedPlaces;
-use crate::transform::MirSource;
-use crate::borrow_check::Upvar;
+//! The entry point of the NLL borrow checker.
+
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements,
@@ -27,24 +19,23 @@ use syntax::symbol::sym;
 
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
+
 use crate::util as mir_util;
 use crate::util::pretty;
+use crate::dataflow::move_paths::{InitLocation, MoveData, InitKind};
+use crate::dataflow::FlowAtLocation;
+use crate::dataflow::MaybeInitializedPlaces;
+use crate::transform::MirSource;
 
-mod constraint_generation;
-mod facts;
-mod invalidation;
-mod renumber;
-
-mod member_constraints;
-
-crate mod constraints;
-crate mod universal_regions;
-crate mod type_check;
-crate mod region_infer;
-
-use self::facts::{AllFacts, RustcFacts};
-use self::region_infer::RegionInferenceContext;
-use self::universal_regions::UniversalRegions;
+use crate::borrow_check::{
+    borrow_set::BorrowSet,
+    location::LocationTable,
+    facts::{AllFacts, AllFactsExt, RustcFacts},
+    region_infer::{RegionInferenceContext, values::RegionValueElements},
+    universal_regions::UniversalRegions,
+    type_check::{self, MirTypeckResults, MirTypeckRegionConstraints},
+    Upvar, renumber, constraint_generation, invalidation,
+};
 
 crate type PoloniusOutput = Output<RustcFacts>;
 

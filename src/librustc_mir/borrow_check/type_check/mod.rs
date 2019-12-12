@@ -34,30 +34,32 @@ use rustc_error_codes::*;
 use rustc_index::vec::{Idx, IndexVec};
 use syntax_pos::{DUMMY_SP, Span};
 
-use crate::borrow_check::borrow_set::BorrowSet;
-use crate::borrow_check::location::LocationTable;
-use crate::borrow_check::nll::constraints::{OutlivesConstraint, OutlivesConstraintSet};
-use crate::borrow_check::nll::facts::AllFacts;
-use crate::borrow_check::nll::member_constraints::MemberConstraintSet;
-use crate::borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
-use crate::borrow_check::nll::region_infer::values::LivenessValues;
-use crate::borrow_check::nll::region_infer::values::PlaceholderIndex;
-use crate::borrow_check::nll::region_infer::values::PlaceholderIndices;
-use crate::borrow_check::nll::region_infer::values::RegionValueElements;
-use crate::borrow_check::nll::renumber;
-use crate::borrow_check::nll::ToRegionVid;
-use crate::borrow_check::nll::type_check::free_region_relations::{
-    CreateResult, UniversalRegionRelations,
-};
-use crate::borrow_check::nll::universal_regions::{DefiningTy, UniversalRegions};
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::dataflow::move_paths::MoveData;
 use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
 
+use crate::borrow_check::{
+    borrow_set::BorrowSet,
+    location::LocationTable,
+    constraints::{OutlivesConstraintSet, OutlivesConstraint},
+    member_constraints::MemberConstraintSet,
+    facts::AllFacts,
+    region_infer::values::{
+        LivenessValues, PlaceholderIndex, PlaceholderIndices, RegionValueElements,
+    },
+    region_infer::{ClosureRegionRequirementsExt, TypeTest},
+    type_check::free_region_relations::{
+        CreateResult, UniversalRegionRelations,
+    },
+    universal_regions::{DefiningTy, UniversalRegions},
+    nll::ToRegionVid,
+    renumber,
+};
+
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
-        $crate::borrow_check::nll::type_check::mirbug(
+        $crate::borrow_check::type_check::mirbug(
             $context.tcx(),
             $context.last_span,
             &format!(

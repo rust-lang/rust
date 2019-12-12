@@ -1,5 +1,4 @@
-use crate::borrow_check::nll::region_infer::RegionInferenceContext;
-use crate::borrow_check::nll::ToRegionVid;
+use crate::borrow_check::{nll::ToRegionVid, region_infer::RegionInferenceContext};
 use crate::borrow_check::Upvar;
 use rustc::mir::{Local, Body};
 use rustc::ty::{RegionVid, TyCtxt};

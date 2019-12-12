@@ -23,28 +23,25 @@ use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 
 use crate::borrow_check::{
-    nll::{
-        constraints::{
-            graph::NormalConstraintGraph,
-            ConstraintSccIndex,
-            OutlivesConstraint,
-            OutlivesConstraintSet,
-        },
-        member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
-        region_infer::values::{
-            PlaceholderIndices, RegionElement, ToElementIndex
-        },
-        type_check::{free_region_relations::UniversalRegionRelations, Locations},
+    constraints::{
+        graph::NormalConstraintGraph,
+        ConstraintSccIndex,
+        OutlivesConstraint,
+        OutlivesConstraintSet,
     },
+    member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
+    region_infer::values::{
+        PlaceholderIndices, RegionElement, ToElementIndex, LivenessValues, RegionValueElements,
+        RegionValues,
+    },
+    type_check::{free_region_relations::UniversalRegionRelations, Locations},
     diagnostics::{
         OutlivesSuggestionBuilder, RegionErrorNamingCtx,
     },
+    nll::{ToRegionVid, PoloniusOutput},
+    universal_regions::UniversalRegions,
     Upvar,
 };
-
-use self::values::{LivenessValues, RegionValueElements, RegionValues};
-use super::universal_regions::UniversalRegions;
-use super::{PoloniusOutput, ToRegionVid};
 
 mod dump_mir;
 mod graphviz;

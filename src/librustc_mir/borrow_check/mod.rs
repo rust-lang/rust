@@ -1,6 +1,5 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use rustc::hir::{self, HirId};
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
@@ -41,7 +40,6 @@ use crate::dataflow::{do_dataflow, DebugFormatted};
 use crate::dataflow::EverInitializedPlaces;
 use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 
-use self::borrow_set::{BorrowData, BorrowSet};
 use self::flows::Flows;
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
@@ -50,17 +48,31 @@ use self::diagnostics::AccessKind;
 
 use self::path_utils::*;
 
-crate mod borrow_set;
 mod diagnostics;
 mod flows;
 mod location;
 mod path_utils;
-crate mod place_ext;
-crate mod places_conflict;
 mod prefixes;
 mod used_muts;
+mod constraint_generation;
+mod facts;
+mod invalidation;
+mod renumber;
+mod member_constraints;
+mod constraints;
+mod universal_regions;
+mod type_check;
+mod region_infer;
+mod borrow_set;
+mod place_ext;
+mod places_conflict;
+mod nll;
 
-pub(crate) mod nll;
+crate use region_infer::RegionInferenceContext;
+crate use borrow_set::{BorrowSet, BorrowData};
+crate use places_conflict::{places_conflict, PlaceConflictBias};
+crate use place_ext::PlaceExt;
+crate use nll::ToRegionVid;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]

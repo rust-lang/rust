@@ -1,7 +1,3 @@
-use crate::borrow_check::nll::type_check::constraint_conversion;
-use crate::borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
-use crate::borrow_check::nll::universal_regions::UniversalRegions;
-use crate::borrow_check::nll::ToRegionVid;
 use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;
@@ -13,6 +9,13 @@ use rustc::ty::{self, RegionVid, Ty};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use std::rc::Rc;
 use syntax_pos::DUMMY_SP;
+
+use crate::borrow_check::{
+    type_check::constraint_conversion,
+    type_check::{Locations, MirTypeckRegionConstraints},
+    universal_regions::UniversalRegions,
+    nll::ToRegionVid,
+};
 
 #[derive(Debug)]
 crate struct UniversalRegionRelations<'tcx> {

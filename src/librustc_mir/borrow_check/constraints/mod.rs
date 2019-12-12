@@ -1,10 +1,11 @@
-use crate::borrow_check::nll::type_check::Locations;
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::vec::{Idx, IndexVec};
 use std::fmt;
 use std::ops::Index;
+
+use crate::borrow_check::type_check::Locations;
 
 crate mod graph;
 

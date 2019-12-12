@@ -1,9 +1,3 @@
-use crate::borrow_check::borrow_set::BorrowSet;
-use crate::borrow_check::location::LocationTable;
-use crate::borrow_check::nll::ToRegionVid;
-use crate::borrow_check::nll::facts::AllFacts;
-use crate::borrow_check::nll::region_infer::values::LivenessValues;
-use crate::borrow_check::places_conflict;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
@@ -14,6 +8,15 @@ use rustc::mir::{
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, RegionVid, Ty};
 use rustc::ty::subst::SubstsRef;
+
+use crate::borrow_check::{
+    borrow_set::BorrowSet,
+    location::LocationTable,
+    nll::ToRegionVid,
+    facts::AllFacts,
+    region_infer::values::LivenessValues,
+    places_conflict,
+};
 
 pub(super) fn generate_constraints<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,

@@ -1,6 +1,3 @@
-use crate::borrow_check::borrow_set::{BorrowSet, BorrowData};
-use crate::borrow_check::place_ext::PlaceExt;
-
 use rustc::mir::{self, Location, Place, PlaceBase, Body};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::RegionVid;
@@ -9,10 +6,11 @@ use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
 
+use crate::borrow_check::{
+    ToRegionVid, BorrowSet, BorrowData, RegionInferenceContext, PlaceExt, PlaceConflictBias,
+    places_conflict,
+};
 use crate::dataflow::{BitDenotation, BottomValue, GenKillSet};
-use crate::borrow_check::nll::region_infer::RegionInferenceContext;
-use crate::borrow_check::nll::ToRegionVid;
-use crate::borrow_check::places_conflict;
 
 use std::rc::Rc;
 
@@ -221,13 +219,13 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             // locations.
             let definitely_conflicting_borrows = other_borrows_of_local
                 .filter(|&&i| {
-                    places_conflict::places_conflict(
+                    places_conflict(
                         self.tcx,
                         self.param_env,
                         self.body,
                         &self.borrow_set.borrows[i].borrowed_place,
                         place,
-                        places_conflict::PlaceConflictBias::NoOverlap)
+                        PlaceConflictBias::NoOverlap)
                 });
 
             trans.kill_all(definitely_conflicting_borrows);

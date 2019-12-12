@@ -1,11 +1,14 @@
-use crate::borrow_check::nll::type_check::Locations;
-use crate::borrow_check::nll::constraints::OutlivesConstraintIndex;
-use crate::borrow_check::nll::constraints::{OutlivesConstraintSet, OutlivesConstraint};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph;
 use rustc_index::vec::IndexVec;
 use syntax_pos::DUMMY_SP;
+
+use crate::borrow_check::{
+    type_check::Locations,
+    constraints::OutlivesConstraintIndex,
+    constraints::{OutlivesConstraintSet, OutlivesConstraint},
+};
 
 /// The construct graph organizes the constraints by their end-points.
 /// It can be used to view a `R1: R2` constraint as either an edge `R1

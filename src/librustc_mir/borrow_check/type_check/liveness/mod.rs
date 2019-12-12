@@ -1,16 +1,20 @@
-use crate::borrow_check::location::LocationTable;
-use crate::borrow_check::nll::constraints::OutlivesConstraintSet;
-use crate::borrow_check::nll::facts::{AllFacts, AllFactsExt};
-use crate::borrow_check::nll::region_infer::values::RegionValueElements;
-use crate::borrow_check::nll::universal_regions::UniversalRegions;
-use crate::borrow_check::nll::ToRegionVid;
-use crate::dataflow::move_paths::MoveData;
-use crate::dataflow::FlowAtLocation;
-use crate::dataflow::MaybeInitializedPlaces;
 use rustc::mir::{Body, Local, ReadOnlyBodyAndCache};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use std::rc::Rc;
+
+use crate::dataflow::move_paths::MoveData;
+use crate::dataflow::FlowAtLocation;
+use crate::dataflow::MaybeInitializedPlaces;
+
+use crate::borrow_check::{
+    location::LocationTable,
+    constraints::OutlivesConstraintSet,
+    facts::{AllFacts, AllFactsExt},
+    region_infer::values::RegionValueElements,
+    universal_regions::UniversalRegions,
+    nll::ToRegionVid,
+};
 
 use super::TypeChecker;
 
