@@ -17,8 +17,6 @@ LL |     baz().await;
    |     ^^^^^^^^^^^ await occurs here, with `g` maybe used later
 LL | }
    | - `g` is later dropped here
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/issue-64130-non-send-future-diags.rs:13:30: 16:2 x:&std::sync::Mutex<u32> for<'r, 's> {&'r std::sync::Mutex<u32>, std::sync::MutexGuard<'s, u32>, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-non-send-future-diags.rs:10:5
    |
@@ -27,8 +25,6 @@ LL |     bar(&Mutex::new(22)).await;
    |     |
    |     await occurs here, with `bar(&Mutex::new(22))` maybe used later
    |     has type `impl std::future::Future`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/issue-64130-non-send-future-diags.rs:9:16: 11:2 for<'r, 's, 't0, 't1> {u32, std::sync::Mutex<u32>, &'r std::sync::Mutex<u32>, &'s std::sync::Mutex<u32>, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 
 error: aborting due to previous error

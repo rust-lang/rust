@@ -1,0 +1,42 @@
+error[E0277]: future cannot be sent between threads safely
+  --> $DIR/nested-async-calls.rs:26:5
+   |
+LL | fn require_send<T: Send>(_val: T) {}
+   |    ------------    ---- required by this bound in `require_send`
+...
+LL |     require_send(wrapped);
+   |     ^^^^^^^^^^^^ future is not `Send`
+   |
+   = help: within `main::Wrapper<impl std::future::Future>`, the trait `std::marker::Send` is not implemented for `*const ()`
+   = note: required because it appears within the type `third::{{closure}}#0::NotSend`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/nested-async-calls.rs:17:5
+   |
+LL |     let _a: Outer;
+   |         -- has type `third::{{closure}}#0::Outer`
+LL |     dummy().await;
+   |     ^^^^^^^^^^^^^ await occurs here, with `_a` maybe used later
+LL | }
+   | - `_a` is later dropped here
+note: future is not `Send` as this value is used across an await
+  --> $DIR/nested-async-calls.rs:8:5
+   |
+LL |     third().await;
+   |     -------^^^^^^- `third()` is later dropped here
+   |     |
+   |     await occurs here, with `third()` maybe used later
+   |     has type `impl std::future::Future`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/nested-async-calls.rs:4:5
+   |
+LL |     second().await;
+   |     --------^^^^^^- `second()` is later dropped here
+   |     |
+   |     await occurs here, with `second()` maybe used later
+   |     has type `impl std::future::Future`
+   = note: required because it appears within the type `impl std::future::Future`
+   = note: required because it appears within the type `main::Wrapper<impl std::future::Future>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

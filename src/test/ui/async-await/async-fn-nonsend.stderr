@@ -18,8 +18,6 @@ LL |     fut().await;
    |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
 LL | }
    | - `x` is later dropped here
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:21:39: 26:2 {impl std::fmt::Debug, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 
 error[E0277]: future cannot be sent between threads safely
@@ -42,8 +40,6 @@ LL |         Some(_) => fut().await,
 ...
 LL | }
    | - `non_send()` is later dropped here
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 {impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 
 error[E0277]: future cannot be sent between threads safely
@@ -69,8 +65,6 @@ LL |         fut().await;
 LL |     }
 LL | }
    | - `f` is later dropped here
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 
 error[E0277]: future cannot be sent between threads safely
@@ -100,8 +94,6 @@ LL |         fut().await;
 LL |     }
 LL | }
    | - `f` is later dropped here
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 
 error: aborting due to 4 previous errors

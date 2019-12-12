@@ -19,8 +19,6 @@ LL |                 let _x = get().await;
 ...
 LL |     }
    |     - `client` is later dropped here
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/issue-64130-4-async-move.rs:18:16: 25:6 client:Client for<'r> {&'r Client, Client, u16, u16, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
    = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error
