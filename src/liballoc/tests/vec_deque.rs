@@ -2,6 +2,7 @@ use std::collections::TryReserveError::*;
 use std::collections::{vec_deque::Drain, VecDeque};
 use std::fmt::Debug;
 use std::mem::size_of;
+use std::panic::catch_unwind;
 use std::{isize, usize};
 
 use crate::hash;
@@ -707,6 +708,39 @@ fn test_drop_clear() {
 
     drop(ring);
     assert_eq!(unsafe { DROPS }, 4);
+}
+
+#[test]
+fn test_drop_panic() {
+    static mut DROPS: i32 = 0;
+
+    struct D(bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.0 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut q = VecDeque::new();
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_front(D(false));
+    q.push_front(D(false));
+    q.push_front(D(true));
+
+    catch_unwind(move || drop(q)).ok();
+
+    assert_eq!(unsafe { DROPS }, 8);
 }
 
 #[test]
