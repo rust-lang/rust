@@ -8,7 +8,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
-#![cfg_attr(bootstrap, feature(never_type))]
+#![feature(never_type)]
 #![feature(nll)]
 #![feature(in_band_lifetimes)]
 

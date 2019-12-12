@@ -1,3 +1,4 @@
+#![feature(never_type)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #![allow(dead_code)]

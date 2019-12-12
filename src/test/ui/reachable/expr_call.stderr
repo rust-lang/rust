@@ -1,5 +1,5 @@
 error: unreachable expression
-  --> $DIR/expr_call.rs:12:17
+  --> $DIR/expr_call.rs:13:17
    |
 LL |     foo(return, 22);
    |         ------  ^^ unreachable expression
@@ -7,13 +7,13 @@ LL |     foo(return, 22);
    |         any code following this expression is unreachable
    |
 note: lint level defined here
-  --> $DIR/expr_call.rs:4:9
+  --> $DIR/expr_call.rs:5:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable call
-  --> $DIR/expr_call.rs:17:5
+  --> $DIR/expr_call.rs:18:5
    |
 LL |     bar(return);
    |     ^^^ ------ any code following this expression is unreachable

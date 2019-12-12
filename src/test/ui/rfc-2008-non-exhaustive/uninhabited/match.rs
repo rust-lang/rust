@@ -1,4 +1,5 @@
 // aux-build:uninhabited.rs
+#![feature(never_type)]
 
 extern crate uninhabited;
 

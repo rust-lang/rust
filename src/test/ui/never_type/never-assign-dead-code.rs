@@ -2,6 +2,7 @@
 
 // check-pass
 
+#![feature(never_type)]
 #![warn(unused)]
 
 fn main() {

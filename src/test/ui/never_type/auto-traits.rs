@@ -1,6 +1,7 @@
 // check-pass
 
 #![feature(optin_builtin_traits)]
+#![feature(never_type)]
 
 fn main() {
     enum Void {}

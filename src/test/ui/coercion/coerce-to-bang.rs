@@ -1,3 +1,5 @@
+#![feature(never_type)]
+
 fn foo(x: usize, y: !, z: usize) { }
 
 fn call_foo_a() {
