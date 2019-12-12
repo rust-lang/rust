@@ -2,7 +2,7 @@ error[E0107]: wrong number of lifetime arguments: expected 1, found 0
   --> $DIR/unboxed-closure-sugar-region.rs:30:51
    |
 LL | fn test2(x: &dyn Foo<(isize,),Output=()>, y: &dyn Foo(isize)) {
-   |                                                   ^^^^^^^^^^ expected 1 lifetime argument
+   |                                                   ^^^ expected 1 lifetime argument
 
 error: aborting due to previous error
 

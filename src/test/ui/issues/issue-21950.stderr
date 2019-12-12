@@ -1,16 +1,27 @@
 error[E0393]: the type parameter `Rhs` must be explicitly specified
   --> $DIR/issue-21950.rs:5:18
    |
-LL |             &dyn Add;
-   |                  ^^^ missing reference to `Rhs`
+LL |               &dyn Add;
+   |                    ^^^ help: set the type parameter to the desired type: `Add<Rhs>`
+   | 
+  ::: $SRC_DIR/libcore/ops/arith.rs:LL:COL
+   |
+LL | / pub trait Add<Rhs = Self> {
+LL | |     /// The resulting type after applying the `+` operator.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Output;
+...  |
+LL | |     fn add(self, rhs: Rhs) -> Self::Output;
+LL | | }
+   | |_- type parameter `Rhs` must be specified for this
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 
-error[E0191]: the value of the associated type `Output` (from the trait `std::ops::Add`) must be specified
-  --> $DIR/issue-21950.rs:5:14
+error[E0191]: the value of the associated type `Output` (from trait `std::ops::Add`) must be specified
+  --> $DIR/issue-21950.rs:5:18
    |
 LL |             &dyn Add;
-   |              ^^^^^^^ associated type `Output` must be specified
+   |                  ^^^ help: specify the associated type: `Add<Output = Type>`
 
 error: aborting due to 2 previous errors
 
