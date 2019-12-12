@@ -12,8 +12,7 @@ use ra_syntax::{
 use tt::Subtree;
 
 use crate::{
-    db::DefDatabase, path::Path, src::HasChildSource, src::HasSource, AdtId, AstItemDef, AttrDefId,
-    Lookup,
+    db::DefDatabase, path::Path, src::HasChildSource, src::HasSource, AdtId, AttrDefId, Lookup,
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -57,8 +56,8 @@ impl Attrs {
             }
             AttrDefId::AdtId(it) => match it {
                 AdtId::StructId(it) => attrs_from_loc(it.lookup(db), db),
-                AdtId::EnumId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
-                AdtId::UnionId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
+                AdtId::EnumId(it) => attrs_from_loc(it.lookup(db), db),
+                AdtId::UnionId(it) => attrs_from_loc(it.lookup(db), db),
             },
             AttrDefId::TraitId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::MacroDefId(it) => {

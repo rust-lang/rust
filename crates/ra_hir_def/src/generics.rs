@@ -21,7 +21,7 @@ use crate::{
     src::HasChildSource,
     src::HasSource,
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, GenericDefId, LocalTypeParamId, Lookup, TypeParamId,
+    AdtId, GenericDefId, LocalTypeParamId, Lookup, TypeParamId,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -76,12 +76,12 @@ impl GenericParams {
                 src.file_id
             }
             GenericDefId::AdtId(AdtId::UnionId(it)) => {
-                let src = it.source(db);
+                let src = it.lookup(db).source(db);
                 generics.fill(&mut sm, &src.value);
                 src.file_id
             }
             GenericDefId::AdtId(AdtId::EnumId(it)) => {
-                let src = it.source(db);
+                let src = it.lookup(db).source(db);
                 generics.fill(&mut sm, &src.value);
                 src.file_id
             }

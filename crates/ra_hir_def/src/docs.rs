@@ -11,7 +11,7 @@ use ra_syntax::ast;
 use crate::{
     db::DefDatabase,
     src::{HasChildSource, HasSource},
-    AdtId, AstItemDef, AttrDefId, Lookup,
+    AdtId, AttrDefId, Lookup,
 };
 
 /// Holds documentation
@@ -52,8 +52,8 @@ impl Documentation {
             }
             AttrDefId::AdtId(it) => match it {
                 AdtId::StructId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-                AdtId::EnumId(it) => docs_from_ast(&it.source(db).value),
-                AdtId::UnionId(it) => docs_from_ast(&it.source(db).value),
+                AdtId::EnumId(it) => docs_from_ast(&it.lookup(db).source(db).value),
+                AdtId::UnionId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             },
             AttrDefId::EnumVariantId(it) => {
                 let src = it.parent.child_source(db);

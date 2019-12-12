@@ -5,7 +5,8 @@ use ra_arena::map::ArenaMap;
 use ra_syntax::ast;
 
 use crate::{
-    db::DefDatabase, ConstLoc, FunctionLoc, ImplLoc, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc,
+    db::DefDatabase, ConstLoc, EnumLoc, FunctionLoc, ImplLoc, StaticLoc, StructLoc, TraitLoc,
+    TypeAliasLoc, UnionLoc,
 };
 
 pub trait HasSource {
@@ -71,6 +72,24 @@ impl HasSource for StructLoc {
     type Value = ast::StructDef;
 
     fn source(&self, db: &impl DefDatabase) -> InFile<ast::StructDef> {
+        let node = self.ast_id.to_node(db);
+        InFile::new(self.ast_id.file_id, node)
+    }
+}
+
+impl HasSource for UnionLoc {
+    type Value = ast::UnionDef;
+
+    fn source(&self, db: &impl DefDatabase) -> InFile<ast::UnionDef> {
+        let node = self.ast_id.to_node(db);
+        InFile::new(self.ast_id.file_id, node)
+    }
+}
+
+impl HasSource for EnumLoc {
+    type Value = ast::EnumDef;
+
+    fn source(&self, db: &impl DefDatabase) -> InFile<ast::EnumDef> {
         let node = self.ast_id.to_node(db);
         InFile::new(self.ast_id.file_id, node)
     }

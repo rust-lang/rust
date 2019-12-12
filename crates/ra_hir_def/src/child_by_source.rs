@@ -103,8 +103,14 @@ impl ChildBySource for ModuleId {
                         let src = strukt.lookup(db).source(db);
                         res[keys::STRUCT].insert(src, strukt)
                     }
-                    AdtId::UnionId(_) => (),
-                    AdtId::EnumId(_) => (),
+                    AdtId::UnionId(union_) => {
+                        let src = union_.lookup(db).source(db);
+                        res[keys::UNION].insert(src, union_)
+                    }
+                    AdtId::EnumId(enum_) => {
+                        let src = enum_.lookup(db).source(db);
+                        res[keys::ENUM].insert(src, enum_)
+                    }
                 },
                 _ => (),
             }

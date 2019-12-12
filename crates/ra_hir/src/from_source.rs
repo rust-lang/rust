@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 use hir_def::{
-    child_by_source::ChildBySource, dyn_map::DynMap, keys, nameres::ModuleSource, AstItemDef,
-    EnumVariantId, GenericDefId, LocationCtx, ModuleId, VariantId,
+    child_by_source::ChildBySource, dyn_map::DynMap, keys, nameres::ModuleSource, EnumVariantId,
+    GenericDefId, ModuleId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
@@ -32,15 +32,19 @@ impl FromSource for Struct {
 impl FromSource for Union {
     type Ast = ast::UnionDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        let id = from_source(db, src)?;
-        Some(Union { id })
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::UNION]
+            .get(&src)
+            .copied()
+            .map(Union::from)
     }
 }
 impl FromSource for Enum {
     type Ast = ast::EnumDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        let id = from_source(db, src)?;
-        Some(Enum { id })
+        analyze_container(db, src.as_ref().map(|it| it.syntax()))[keys::ENUM]
+            .get(&src)
+            .copied()
+            .map(Enum::from)
     }
 }
 impl FromSource for Trait {
@@ -248,19 +252,6 @@ impl Module {
         })?;
         Some(Module { id: ModuleId { krate, local_id } })
     }
-}
-
-fn from_source<N, DEF>(db: &(impl DefDatabase + AstDatabase), src: InFile<N>) -> Option<DEF>
-where
-    N: AstNode,
-    DEF: AstItemDef<N>,
-{
-    let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
-    let module = Module::from_definition(db, InFile::new(src.file_id, module_src))?;
-    let ctx = LocationCtx::new(db, module.id, src.file_id);
-    let items = db.ast_id_map(src.file_id);
-    let item_id = items.ast_id(&src.value);
-    Some(DEF::from_ast_id(ctx, item_id))
 }
 
 fn analyze_container(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> DynMap {

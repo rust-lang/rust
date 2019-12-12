@@ -173,24 +173,48 @@ impl Lookup for StructId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnionId(salsa::InternId);
 impl_intern_key!(UnionId);
-impl AstItemDef<ast::UnionDef> for UnionId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::UnionDef>) -> Self {
-        db.intern_union(loc)
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UnionLoc {
+    pub container: ModuleId,
+    pub ast_id: AstId<ast::UnionDef>,
+}
+
+impl Intern for UnionLoc {
+    type ID = UnionId;
+    fn intern(self, db: &impl db::DefDatabase) -> UnionId {
+        db.intern_union(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::UnionDef> {
-        db.lookup_intern_union(self)
+}
+
+impl Lookup for UnionId {
+    type Data = UnionLoc;
+    fn lookup(&self, db: &impl db::DefDatabase) -> UnionLoc {
+        db.lookup_intern_union(*self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumId(salsa::InternId);
 impl_intern_key!(EnumId);
-impl AstItemDef<ast::EnumDef> for EnumId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::EnumDef>) -> Self {
-        db.intern_enum(loc)
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EnumLoc {
+    pub container: ModuleId,
+    pub ast_id: AstId<ast::EnumDef>,
+}
+
+impl Intern for EnumLoc {
+    type ID = EnumId;
+    fn intern(self, db: &impl db::DefDatabase) -> EnumId {
+        db.intern_enum(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::EnumDef> {
-        db.lookup_intern_enum(self)
+}
+
+impl Lookup for EnumId {
+    type Data = EnumLoc;
+    fn lookup(&self, db: &impl db::DefDatabase) -> EnumLoc {
+        db.lookup_intern_enum(*self)
     }
 }
 
@@ -545,8 +569,8 @@ impl HasModule for AdtId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match self {
             AdtId::StructId(it) => it.lookup(db).container,
-            AdtId::UnionId(it) => it.module(db),
-            AdtId::EnumId(it) => it.module(db),
+            AdtId::UnionId(it) => it.lookup(db).container,
+            AdtId::EnumId(it) => it.lookup(db).container,
         }
     }
 }
@@ -569,7 +593,7 @@ impl HasModule for GenericDefId {
             GenericDefId::TraitId(it) => it.lookup(db).container,
             GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
             GenericDefId::ImplId(it) => it.lookup(db).container,
-            GenericDefId::EnumVariantId(it) => it.parent.module(db),
+            GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container,
             GenericDefId::ConstId(it) => it.lookup(db).module(db),
         }
     }
