@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 use hir_def::{
-    lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutability, AssocItemId, AstItemDef,
-    FunctionId, HasModule, ImplId, Lookup, TraitId,
+    lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutability, AssocItemId, FunctionId,
+    HasModule, ImplId, Lookup, TraitId,
 };
 use hir_expand::name::Name;
 use ra_db::CrateId;
@@ -134,7 +134,7 @@ impl Ty {
                 LangItemTarget::ImplBlockId(it) => Some(it),
                 _ => None,
             })
-            .map(|it| it.module(db).krate)
+            .map(|it| it.lookup(db).container.krate)
             .collect();
         Some(res)
     }

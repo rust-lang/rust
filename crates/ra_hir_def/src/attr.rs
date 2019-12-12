@@ -64,7 +64,7 @@ impl Attrs {
             AttrDefId::MacroDefId(it) => {
                 it.ast_id.map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db))
             }
-            AttrDefId::ImplId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
+            AttrDefId::ImplId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::ConstId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::StaticId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::FunctionId(it) => attrs_from_loc(it.lookup(db), db),

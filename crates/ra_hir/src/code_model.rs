@@ -809,7 +809,10 @@ impl ImplBlock {
         let resolver = self.id.resolver(db);
         let environment = TraitEnvironment::lower(db, &resolver);
         let ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
-        Type { krate: self.id.module(db).krate, ty: InEnvironment { value: ty, environment } }
+        Type {
+            krate: self.id.lookup(db).container.krate,
+            ty: InEnvironment { value: ty, environment },
+        }
     }
 
     pub fn items(&self, db: &impl DefDatabase) -> Vec<AssocItem> {
@@ -821,7 +824,7 @@ impl ImplBlock {
     }
 
     pub fn module(&self, db: &impl DefDatabase) -> Module {
-        self.id.module(db).into()
+        self.id.lookup(db).container.into()
     }
 
     pub fn krate(&self, db: &impl DefDatabase) -> Crate {

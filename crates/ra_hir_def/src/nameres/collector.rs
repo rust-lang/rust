@@ -24,7 +24,7 @@ use crate::{
     },
     path::{Path, PathKind},
     per_ns::PerNs,
-    AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplId,
+    AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplLoc,
     Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticLoc, StructId,
     TraitId, TypeAliasLoc, UnionId,
 };
@@ -661,9 +661,11 @@ where
                             krate: self.def_collector.def_map.krate,
                             local_id: self.module_id,
                         };
-                        let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
-                        let imp_id = ImplId::from_ast_id(ctx, self.raw_items[imp].ast_id);
-                        self.def_collector.def_map.modules[self.module_id].impls.push(imp_id)
+                        let ast_id = self.raw_items[imp].ast_id;
+                        let impl_id =
+                            ImplLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                                .intern(self.def_collector.db);
+                        self.def_collector.def_map.modules[self.module_id].impls.push(impl_id)
                     }
                 }
             }

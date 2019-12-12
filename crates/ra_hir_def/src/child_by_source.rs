@@ -98,6 +98,11 @@ impl ChildBySource for ModuleId {
             }
         }
 
+        for &impl_ in crate_def_map[self.local_id].impls.iter() {
+            let src = impl_.lookup(db).source(db);
+            res[keys::IMPL].insert(src, impl_)
+        }
+
         res
     }
 }

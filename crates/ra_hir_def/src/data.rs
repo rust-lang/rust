@@ -167,7 +167,7 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn impl_data_query(db: &impl DefDatabase, id: ImplId) -> Arc<ImplData> {
-        let src = id.source(db);
+        let src = id.lookup(db).source(db);
         let items = db.ast_id_map(src.file_id);
 
         let target_trait = src.value.target_trait().map(TypeRef::from_ast);
