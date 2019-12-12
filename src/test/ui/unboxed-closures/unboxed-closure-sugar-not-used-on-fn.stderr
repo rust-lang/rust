@@ -1,20 +1,22 @@
-error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/unboxed-closure-sugar-not-used-on-fn.rs:3:17
    |
 LL | fn bar1(x: &dyn Fn<(), Output=()>) {
-   |                 ^^^^^^^^^^^^^^^^^
+   |                 ^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = help: use parenthetical notation instead: `Fn(Foo, Bar) -> Baz`
 
-error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/unboxed-closure-sugar-not-used-on-fn.rs:7:28
    |
 LL | fn bar2<T>(x: &T) where T: Fn<()> {
-   |                            ^^^^^^
+   |                            ^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = help: use parenthetical notation instead: `Fn(Foo, Bar) -> Baz`
 
 error: aborting due to 2 previous errors
 
