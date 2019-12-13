@@ -587,6 +587,11 @@ unsafe impl Send for DroplessArena {}
 impl DroplessArena {
     #[inline]
     pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
+        if !self.backend.current.can_allocate(bytes, align) {
+            self.backend.current.grow(bytes, align, &mut *self.backend.chunks.borrow_mut());
+            debug_assert!(self.backend.current.can_allocate(bytes, align));
+        }
+
         unsafe {
             let ptr = self.backend.current.alloc_raw_slice(bytes, align);
             slice::from_raw_parts_mut(ptr, bytes)
@@ -732,6 +737,11 @@ impl SyncDroplessArena {
 
     #[inline]
     pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
+        if !self.current.can_allocate(bytes, align) {
+            self.current.grow(bytes, align, &mut *self.chunks.borrow_mut());
+            debug_assert!(self.current.can_allocate(bytes, align));
+        }
+
         unsafe {
             let ptr = self.current.alloc_raw_slice(bytes, align);
             slice::from_raw_parts_mut(ptr, bytes)
