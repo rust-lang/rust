@@ -1793,7 +1793,7 @@ impl<'tcx> Place<'tcx> {
 
 impl From<Local> for Place<'_> {
     fn from(local: Local) -> Self {
-        Place { local: local.into(), projection: List::empty() }
+        Place { local, projection: List::empty() }
     }
 }
 
