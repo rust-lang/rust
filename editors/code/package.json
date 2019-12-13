@@ -286,7 +286,7 @@
                 },
                 "rust-analyzer.cargoFeatures.allFeatures": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Activate all available features"
                 },
                 "rust-analyzer.cargoFeatures.features": {

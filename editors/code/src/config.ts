@@ -43,7 +43,7 @@ export class Config {
     };
     public cargoFeatures: CargoFeatures = {
         noDefaultFeatures: false,
-        allFeatures: false,
+        allFeatures: true,
         features: [],
     };
 
@@ -88,7 +88,8 @@ export class Config {
         }
 
         if (this.prevEnhancedTyping !== this.enableEnhancedTyping) {
-            requireReloadMessage = 'Changing enhanced typing setting requires a reload';
+            requireReloadMessage =
+                'Changing enhanced typing setting requires a reload';
             this.prevEnhancedTyping = this.enableEnhancedTyping;
         }
 
@@ -165,7 +166,7 @@ export class Config {
         if (config.has('cargoFeatures.allFeatures')) {
             this.cargoFeatures.allFeatures = config.get(
                 'cargoFeatures.allFeatures',
-                false,
+                true,
             );
         }
         if (config.has('cargoFeatures.features')) {
@@ -175,12 +176,18 @@ export class Config {
             );
         }
 
-        if (this.prevCargoFeatures !== null && (
-            this.cargoFeatures.allFeatures !== this.prevCargoFeatures.allFeatures ||
-            this.cargoFeatures.noDefaultFeatures !== this.prevCargoFeatures.noDefaultFeatures ||
-            this.cargoFeatures.features.length !== this.prevCargoFeatures.features.length ||
-            this.cargoFeatures.features.some((v, i) => v !== this.prevCargoFeatures!.features[i])
-        )) {
+        if (
+            this.prevCargoFeatures !== null &&
+            (this.cargoFeatures.allFeatures !==
+                this.prevCargoFeatures.allFeatures ||
+                this.cargoFeatures.noDefaultFeatures !==
+                    this.prevCargoFeatures.noDefaultFeatures ||
+                this.cargoFeatures.features.length !==
+                    this.prevCargoFeatures.features.length ||
+                this.cargoFeatures.features.some(
+                    (v, i) => v !== this.prevCargoFeatures!.features[i],
+                ))
+        ) {
             requireReloadMessage = 'Changing cargo features requires a reload';
         }
         this.prevCargoFeatures = { ...this.cargoFeatures };
