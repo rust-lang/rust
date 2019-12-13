@@ -148,8 +148,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                         self.tables,
                     );
                     patcx.include_lint_checks();
-                    let pattern: &_ =
-                        cx.pattern_arena.alloc(expand_pattern(cx, patcx.lower_pattern(&arm.pat)));
+                    let pattern = patcx.lower_pattern(&arm.pat);
+                    let pattern: &_ = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
                     if !patcx.errors.is_empty() {
                         patcx.report_inlining_errors(arm.pat.span);
                         have_errors = true;
@@ -166,73 +166,12 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             // Fourth, check for unreachable arms.
             let matrix = check_arms(cx, &inlined_arms, source);
 
-            // Then, if the match has no arms, check whether the scrutinee
-            // is uninhabited.
-            let pat_ty = self.tables.node_type(scrut.hir_id);
-            let module = self.tcx.hir().get_module_parent(scrut.hir_id);
-            let mut def_span = None;
-            let mut missing_variants = vec![];
-            if inlined_arms.is_empty() {
-                let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
-                    self.tcx.is_ty_uninhabited_from(module, pat_ty)
-                } else {
-                    match pat_ty.kind {
-                        ty::Never => true,
-                        ty::Adt(def, _) => {
-                            def_span = self.tcx.hir().span_if_local(def.did);
-                            if def.variants.len() < 4 && !def.variants.is_empty() {
-                                // keep around to point at the definition of non-covered variants
-                                missing_variants =
-                                    def.variants.iter().map(|variant| variant.ident).collect();
-                            }
-
-                            let is_non_exhaustive_and_non_local =
-                                def.is_variant_list_non_exhaustive() && !def.did.is_local();
-
-                            !(is_non_exhaustive_and_non_local) && def.variants.is_empty()
-                        }
-                        _ => false,
-                    }
-                };
-                if !scrutinee_is_uninhabited {
-                    // We know the type is inhabited, so this must be wrong
-                    let mut err = create_e0004(
-                        self.tcx.sess,
-                        scrut.span,
-                        format!(
-                            "non-exhaustive patterns: {}",
-                            match missing_variants.len() {
-                                0 => format!("type `{}` is non-empty", pat_ty),
-                                1 => format!(
-                                    "pattern `{}` of type `{}` is not handled",
-                                    missing_variants[0].name, pat_ty,
-                                ),
-                                _ => format!(
-                                    "multiple patterns of type `{}` are not handled",
-                                    pat_ty
-                                ),
-                            }
-                        ),
-                    );
-                    err.help(
-                        "ensure that all possible cases are being handled, \
-                         possibly by adding wildcards or more match arms",
-                    );
-                    if let Some(sp) = def_span {
-                        err.span_label(sp, format!("`{}` defined here", pat_ty));
-                    }
-                    // point at the definition of non-covered enum variants
-                    for variant in &missing_variants {
-                        err.span_label(variant.span, "variant not covered");
-                    }
-                    err.emit();
-                }
-                // If the type *is* uninhabited, it's vacuously exhaustive
-                return;
-            }
-
+            // Fifth, check if the match is exhaustive.
             let scrut_ty = self.tables.node_type(scrut.hir_id);
-            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id);
+            // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
+            // since an empty matrix can occur when there are arms, if those arms all have guards.
+            let is_empty_match = inlined_arms.is_empty();
+            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
         })
     }
 
@@ -390,7 +329,7 @@ fn check_arms<'p, 'tcx>(
     for (arm_index, (pat, hir_pat, has_guard)) in arms.iter().enumerate() {
         let v = PatStack::from_pattern(pat);
 
-        match is_useful(cx, &seen, &v, LeaveOutWitness, hir_pat.hir_id) {
+        match is_useful(cx, &seen, &v, LeaveOutWitness, hir_pat.hir_id, true) {
             NotUseful => {
                 match source {
                     hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => bug!(),
@@ -478,7 +417,8 @@ fn check_not_useful<'p, 'tcx>(
     hir_id: HirId,
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
     let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(ty));
-    match is_useful(cx, matrix, &PatStack::from_pattern(wild_pattern), ConstructWitness, hir_id) {
+    let v = PatStack::from_pattern(wild_pattern);
+    match is_useful(cx, matrix, &v, ConstructWitness, hir_id, true) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
             bug!("Exhaustiveness check returned no witnesses")
@@ -495,25 +435,60 @@ fn check_exhaustive<'p, 'tcx>(
     sp: Span,
     matrix: &Matrix<'p, 'tcx>,
     hir_id: HirId,
+    is_empty_match: bool,
 ) {
+    // In the absence of the `exhaustive_patterns` feature, empty matches are not detected by
+    // `is_useful` to exhaustively match uninhabited types, so we manually check here.
+    if is_empty_match && !cx.tcx.features().exhaustive_patterns {
+        let scrutinee_is_visibly_uninhabited = match scrut_ty.kind {
+            ty::Never => true,
+            ty::Adt(def, _) => {
+                def.is_enum()
+                    && def.variants.is_empty()
+                    && !cx.is_foreign_non_exhaustive_enum(scrut_ty)
+            }
+            _ => false,
+        };
+        if scrutinee_is_visibly_uninhabited {
+            // If the type *is* uninhabited, an empty match is vacuously exhaustive.
+            return;
+        }
+    }
+
     let witnesses = match check_not_useful(cx, scrut_ty, matrix, hir_id) {
         Ok(_) => return,
         Err(err) => err,
     };
 
-    let joined_patterns = joined_uncovered_patterns(&witnesses);
-    let mut err = create_e0004(
-        cx.tcx.sess,
-        sp,
-        format!("non-exhaustive patterns: {} not covered", joined_patterns),
-    );
-    err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+    let non_empty_enum = match scrut_ty.kind {
+        ty::Adt(def, _) => def.is_enum() && !def.variants.is_empty(),
+        _ => false,
+    };
+    // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
+    // informative.
+    let mut err;
+    if is_empty_match && !non_empty_enum {
+        err = create_e0004(
+            cx.tcx.sess,
+            sp,
+            format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
+        );
+    } else {
+        let joined_patterns = joined_uncovered_patterns(&witnesses);
+        err = create_e0004(
+            cx.tcx.sess,
+            sp,
+            format!("non-exhaustive patterns: {} not covered", joined_patterns),
+        );
+        err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+    };
+
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.help(
         "ensure that all possible cases are being handled, \
          possibly by adding wildcards or more match arms",
-    )
-    .emit();
+    );
+    err.emit();
 }
 
 fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {

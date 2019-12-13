@@ -1,10 +1,7 @@
-error[E0004]: non-exhaustive patterns: pattern `UninhabitedStruct` of type `UninhabitedStruct` is not handled
+error[E0004]: non-exhaustive patterns: type `UninhabitedStruct` is non-empty
   --> $DIR/match_same_crate.rs:28:11
    |
-LL |   pub struct UninhabitedStruct {
-   |   -          ----------------- variant not covered
-   |  _|
-   | |
+LL | / pub struct UninhabitedStruct {
 LL | |     _priv: !,
 LL | | }
    | |_- `UninhabitedStruct` defined here
@@ -14,33 +11,30 @@ LL |       match x {}
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: pattern `UninhabitedTupleStruct` of type `UninhabitedTupleStruct` is not handled
+error[E0004]: non-exhaustive patterns: type `UninhabitedTupleStruct` is non-empty
   --> $DIR/match_same_crate.rs:32:11
    |
 LL | pub struct UninhabitedTupleStruct(!);
-   | -------------------------------------
-   | |          |
-   | |          variant not covered
-   | `UninhabitedTupleStruct` defined here
+   | ------------------------------------- `UninhabitedTupleStruct` defined here
 ...
 LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: multiple patterns of type `UninhabitedVariants` are not handled
+error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covered
   --> $DIR/match_same_crate.rs:36:11
    |
 LL | / pub enum UninhabitedVariants {
 LL | |     #[non_exhaustive] Tuple(!),
-   | |                       ----- variant not covered
+   | |                       ----- not covered
 LL | |     #[non_exhaustive] Struct { x: ! }
-   | |                       ------ variant not covered
+   | |                       ------ not covered
 LL | | }
    | |_- `UninhabitedVariants` defined here
 ...
 LL |       match x {}
-   |             ^
+   |             ^ patterns `Tuple(_)` and `Struct { .. }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
