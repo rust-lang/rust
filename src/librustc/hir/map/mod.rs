@@ -1016,8 +1016,8 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn name(&self, id: HirId) -> Name {
-        match self.get(id) {
+    pub fn opt_name(&self, id: HirId) -> Option<Name> {
+        Some(match self.get(id) {
             Node::Item(i) => i.ident.name,
             Node::ForeignItem(fi) => fi.ident.name,
             Node::ImplItem(ii) => ii.ident.name,
@@ -1028,7 +1028,14 @@ impl<'hir> Map<'hir> {
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
             Node::Ctor(..) => self.name(self.get_parent_item(id)),
-            _ => bug!("no name for {}", self.node_to_string(id))
+            _ => return None,
+        })
+    }
+
+    pub fn name(&self, id: HirId) -> Name {
+        match self.opt_name(id) {
+            Some(name) => name,
+            None => bug!("no name for {}", self.node_to_string(id)),
         }
     }
 
