@@ -398,6 +398,7 @@ impl<Idx> RangeInclusive<Idx> {
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     #[rustc_promotable]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_range_new", since = "1.32.0"))]
     pub const fn new(start: Idx, end: Idx) -> Self {
         Self { start, end, is_empty: None }
     }
@@ -421,6 +422,10 @@ impl<Idx> RangeInclusive<Idx> {
     /// assert_eq!((3..=5).start(), &3);
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_inclusive_range_methods", since = "1.32.0"),
+    )]
     #[inline]
     pub const fn start(&self) -> &Idx {
         &self.start
@@ -445,6 +450,10 @@ impl<Idx> RangeInclusive<Idx> {
     /// assert_eq!((3..=5).end(), &5);
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_inclusive_range_methods", since = "1.32.0"),
+    )]
     #[inline]
     pub const fn end(&self) -> &Idx {
         &self.end

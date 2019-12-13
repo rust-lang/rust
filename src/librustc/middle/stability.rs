@@ -19,7 +19,7 @@ use syntax_pos::{Span, MultiSpan};
 use syntax::ast::{Attribute, CRATE_NODE_ID};
 use syntax::errors::Applicability;
 use syntax::feature_gate::{feature_err, feature_err_issue};
-use syntax::attr::{self, Stability, Deprecation, RustcDeprecation};
+use syntax::attr::{self, Stability, Deprecation, RustcDeprecation, ConstStability};
 use crate::ty::{self, TyCtxt};
 use crate::util::nodemap::{FxHashSet, FxHashMap};
 
@@ -91,6 +91,7 @@ pub struct Index<'tcx> {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
     stab_map: FxHashMap<HirId, &'tcx Stability>,
+    const_stab_map: FxHashMap<HirId, &'tcx ConstStability>,
     depr_map: FxHashMap<HirId, DeprecationEntry>,
 
     /// Maps for each crate whether it is part of the staged API.
@@ -123,8 +124,14 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 self.tcx.sess.span_err(item_sp, "`#[deprecated]` cannot be used in staged API; \
                                                  use `#[rustc_deprecated]` instead");
             }
-            if let Some(mut stab) = attr::find_stability(&self.tcx.sess.parse_sess,
-                                                         attrs, item_sp) {
+            let (stab, const_stab) = attr::find_stability(
+                &self.tcx.sess.parse_sess, attrs, item_sp,
+            );
+            if let Some(const_stab) = const_stab {
+                let const_stab = self.tcx.intern_const_stability(const_stab);
+                self.index.const_stab_map.insert(hir_id, const_stab);
+            }
+            if let Some(mut stab) = stab {
                 // Error if prohibited, or can't inherit anything from a container.
                 if kind == AnnotationKind::Prohibited ||
                    (kind == AnnotationKind::Container &&
@@ -189,9 +196,15 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         } else {
             // Emit errors for non-staged-api crates.
+            let unstable_attrs = [
+                sym::unstable, sym::stable,
+                sym::rustc_deprecated,
+                sym::rustc_const_unstable,
+                sym::rustc_const_stable,
+            ];
             for attr in attrs {
                 let name = attr.name_or_empty();
-                if [sym::unstable, sym::stable, sym::rustc_deprecated].contains(&name) {
+                if unstable_attrs.contains(&name) {
                     attr::mark_used(attr);
                     struct_span_err!(
                         self.tcx.sess,
@@ -399,6 +412,7 @@ impl<'tcx> Index<'tcx> {
         let mut index = Index {
             staged_api,
             stab_map: Default::default(),
+            const_stab_map: Default::default(),
             depr_map: Default::default(),
             active_features: Default::default(),
         };
@@ -440,9 +454,6 @@ impl<'tcx> Index<'tcx> {
                     },
                     feature: sym::rustc_private,
                     rustc_depr: None,
-                    const_stability: None,
-                    promotable: false,
-                    allow_const_fn_ptr: false,
                 });
                 annotator.parent_stab = Some(stability);
             }
@@ -458,6 +469,10 @@ impl<'tcx> Index<'tcx> {
 
     pub fn local_stability(&self, id: HirId) -> Option<&'tcx Stability> {
         self.stab_map.get(&id).cloned()
+    }
+
+    pub fn local_const_stability(&self, id: HirId) -> Option<&'tcx ConstStability> {
+        self.const_stab_map.get(&id).cloned()
     }
 
     pub fn local_deprecation_entry(&self, id: HirId) -> Option<DeprecationEntry> {

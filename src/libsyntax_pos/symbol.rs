@@ -605,6 +605,7 @@ symbols! {
         rustc_builtin_macro,
         rustc_clean,
         rustc_const_unstable,
+        rustc_const_stable,
         rustc_conversion_suggestion,
         rustc_def_path,
         rustc_deprecated,

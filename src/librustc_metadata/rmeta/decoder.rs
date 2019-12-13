@@ -852,6 +852,10 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
+    fn get_const_stability(&self, id: DefIndex) -> Option<attr::ConstStability> {
+        self.root.per_def.const_stability.get(self, id).map(|stab| stab.decode(self))
+    }
+
     fn get_deprecation(&self, id: DefIndex) -> Option<attr::Deprecation> {
         self.root.per_def.deprecation.get(self, id)
             .filter(|_| !self.is_proc_macro(id))

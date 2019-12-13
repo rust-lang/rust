@@ -22,6 +22,7 @@ use std::process::{Command, Stdio};
 // of the const fn kicks in, causing a different code path in the
 // compiler to be executed (see PR #66294).
 #[stable(feature = "rustc", since = "1.0.0")]
+#[rustc_const_stable(feature = "rustc", since = "1.0.0")]
 #[rustc_promotable]
 const fn bar(_: bool) -> usize { 0 - 1 }
 

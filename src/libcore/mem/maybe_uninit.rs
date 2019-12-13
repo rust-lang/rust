@@ -250,6 +250,10 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: #method.assume_init
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0"),
+    )]
     #[inline(always)]
     pub const fn new(val: T) -> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
@@ -264,6 +268,10 @@ impl<T> MaybeUninit<T> {
     ///
     /// [type]: union.MaybeUninit.html
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0"),
+    )]
     #[inline(always)]
     #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "maybe_uninit_uninit")]
     pub const fn uninit() -> MaybeUninit<T> {

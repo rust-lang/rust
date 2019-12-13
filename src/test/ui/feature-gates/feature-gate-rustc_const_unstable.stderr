@@ -1,11 +1,9 @@
-error[E0658]: the `#[rustc_const_unstable]` attribute is an internal feature
-  --> $DIR/feature-gate-rustc_const_unstable.rs:8:1
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/feature-gate-rustc_const_unstable.rs:5:1
    |
 LL | #[rustc_const_unstable(feature="fzzzzzt")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(rustc_const_unstable)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0734`.

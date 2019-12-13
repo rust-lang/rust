@@ -1066,7 +1066,11 @@ pub struct GlobalCtxt<'tcx> {
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
+    /// `#[stable]` and `#[unstable]` attributes
     stability_interner: ShardedHashMap<&'tcx attr::Stability, ()>,
+
+    /// `#[rustc_const_stable]` and `#[rustc_const_unstable]` attributes
+    const_stability_interner: ShardedHashMap<&'tcx attr::ConstStability, ()>,
 
     /// Stores the value of constants (and deduplicates the actual memory)
     allocation_interner: ShardedHashMap<&'tcx Allocation, ()>,
@@ -1125,6 +1129,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'tcx attr::Stability {
         self.stability_interner.intern(stab, |stab| {
+            self.arena.alloc(stab)
+        })
+    }
+
+    pub fn intern_const_stability(self, stab: attr::ConstStability) -> &'tcx attr::ConstStability {
+        self.const_stability_interner.intern(stab, |stab| {
             self.arena.alloc(stab)
         })
     }
@@ -1269,6 +1279,7 @@ impl<'tcx> TyCtxt<'tcx> {
             data_layout,
             layout_interner: Default::default(),
             stability_interner: Default::default(),
+            const_stability_interner: Default::default(),
             allocation_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames.clone()),
@@ -2058,6 +2069,7 @@ impl<'tcx> TyCtxt<'tcx> {
         println!("InternalSubsts interner: #{}", self.interners.substs.len());
         println!("Region interner: #{}", self.interners.region.len());
         println!("Stability interner: #{}", self.stability_interner.len());
+        println!("Const Stability interner: #{}", self.const_stability_interner.len());
         println!("Allocation interner: #{}", self.allocation_interner.len());
         println!("Layout interner: #{}", self.layout_interner.len());
     }
@@ -2991,6 +3003,11 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id.krate, LOCAL_CRATE);
         let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
         tcx.stability().local_stability(id)
+    };
+    providers.lookup_const_stability = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
+        tcx.stability().local_const_stability(id)
     };
     providers.lookup_deprecation_entry = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);

@@ -30,7 +30,12 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
     pub fn is_unstable_const_fn(self, def_id: DefId) -> Option<Symbol> {
         if self.is_const_fn_raw(def_id) {
-            self.lookup_stability(def_id)?.const_stability
+            let const_stab = self.lookup_const_stability(def_id)?;
+            if const_stab.level.is_unstable() {
+                Some(const_stab.feature)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -83,15 +88,36 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         if self.features().staged_api {
-            // in order for a libstd function to be considered min_const_fn
-            // it needs to be stable and have no `rustc_const_unstable` attribute
-            match self.lookup_stability(def_id) {
-                // stable functions with unstable const fn aren't `min_const_fn`
-                Some(&attr::Stability { const_stability: Some(_), .. }) => false,
-                // unstable functions don't need to conform
-                Some(&attr::Stability { ref level, .. }) if level.is_unstable() => false,
-                // everything else needs to conform, because it would be callable from
-                // other `min_const_fn` functions
+            // In order for a libstd function to be considered min_const_fn
+            // it needs to be stable and have no `rustc_const_unstable` attribute.
+            match self.lookup_const_stability(def_id) {
+                // `rustc_const_unstable` functions don't need to conform.
+                Some(&attr::ConstStability { ref level, .. }) if level.is_unstable() => false,
+                None => if let Some(stab) = self.lookup_stability(def_id) {
+                    if stab.level.is_stable() {
+                        self.sess.span_err(
+                            self.def_span(def_id),
+                            "stable const functions must have either `rustc_const_stable` or \
+                            `rustc_const_unstable` attribute",
+                        );
+                        // While we errored above, because we don't know if we need to conform, we
+                        // err on the "safe" side and require min_const_fn.
+                        true
+                    } else {
+                        // Unstable functions need not conform to min_const_fn.
+                        false
+                    }
+                } else {
+                    // Internal functions are forced to conform to min_const_fn.
+                    // Annotate the internal function with a const stability attribute if
+                    // you need to use unstable features.
+                    // Note: this is an arbitrary choice that does not affect stability or const
+                    // safety or anything, it just changes whether we need to annotate some
+                    // internal functions with `rustc_const_stable` or with `rustc_const_unstable`
+                    true
+                },
+                // Everything else needs to conform, because it would be callable from
+                // other `min_const_fn` functions.
                 _ => true,
             }
         } else {
@@ -188,7 +214,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     }
 
     fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        tcx.is_const_fn(def_id) && match tcx.lookup_stability(def_id) {
+        tcx.is_const_fn(def_id) && match tcx.lookup_const_stability(def_id) {
             Some(stab) => {
                 if cfg!(debug_assertions) && stab.promotable {
                     let sig = tcx.fn_sig(def_id);
@@ -207,7 +233,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 
     fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         tcx.is_const_fn(def_id) &&
-            tcx.lookup_stability(def_id)
+            tcx.lookup_const_stability(def_id)
                 .map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)
     }
 

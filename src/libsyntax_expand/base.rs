@@ -775,6 +775,10 @@ impl SyntaxExtension {
         }
 
         let is_builtin = attr::contains_name(attrs, sym::rustc_builtin_macro);
+        let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
+        if const_stability.is_some() {
+            sess.span_diagnostic.span_err(span, "macros cannot have const stability attributes");
+        }
 
         SyntaxExtension {
             kind,
@@ -782,7 +786,7 @@ impl SyntaxExtension {
             allow_internal_unstable,
             allow_internal_unsafe: attr::contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
-            stability: attr::find_stability(&sess, attrs, span),
+            stability,
             deprecation: attr::find_deprecation(&sess, attrs, span),
             helper_attrs,
             edition,

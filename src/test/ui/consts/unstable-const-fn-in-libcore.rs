@@ -14,7 +14,7 @@ enum Opt<T> {
 }
 
 impl<T> Opt<T> {
-    #[rustc_const_unstable(feature = "foo")]
+    #[rustc_const_unstable(feature = "foo", issue = "0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     const fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
     //~^ ERROR destructors cannot be evaluated at compile-time

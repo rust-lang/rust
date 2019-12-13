@@ -130,6 +130,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_consts", since = "1.32.0"))]
     pub fn new(secs: u64, nanos: u32) -> Duration {
         let secs =
             secs.checked_add((nanos / NANOS_PER_SEC) as u64).expect("overflow in Duration::new");
@@ -152,6 +153,7 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     #[rustc_promotable]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_consts", since = "1.32.0"))]
     pub const fn from_secs(secs: u64) -> Duration {
         Duration { secs, nanos: 0 }
     }
@@ -171,6 +173,7 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     #[rustc_promotable]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_consts", since = "1.32.0"))]
     pub const fn from_millis(millis: u64) -> Duration {
         Duration {
             secs: millis / MILLIS_PER_SEC,
@@ -193,6 +196,7 @@ impl Duration {
     #[stable(feature = "duration_from_micros", since = "1.27.0")]
     #[inline]
     #[rustc_promotable]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_consts", since = "1.32.0"))]
     pub const fn from_micros(micros: u64) -> Duration {
         Duration {
             secs: micros / MICROS_PER_SEC,
@@ -215,6 +219,7 @@ impl Duration {
     #[stable(feature = "duration_extras", since = "1.27.0")]
     #[inline]
     #[rustc_promotable]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_consts", since = "1.32.0"))]
     pub const fn from_nanos(nanos: u64) -> Duration {
         Duration {
             secs: nanos / (NANOS_PER_SEC as u64),
@@ -251,6 +256,7 @@ impl Duration {
     ///
     /// [`subsec_nanos`]: #method.subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration", since = "1.32.0"))]
     #[inline]
     pub const fn as_secs(&self) -> u64 {
         self.secs
@@ -272,6 +278,7 @@ impl Duration {
     /// assert_eq!(duration.subsec_millis(), 432);
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_extras", since = "1.32.0"))]
     #[inline]
     pub const fn subsec_millis(&self) -> u32 {
         self.nanos / NANOS_PER_MILLI
@@ -293,6 +300,7 @@ impl Duration {
     /// assert_eq!(duration.subsec_micros(), 234_567);
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_extras", since = "1.32.0"))]
     #[inline]
     pub const fn subsec_micros(&self) -> u32 {
         self.nanos / NANOS_PER_MICRO
@@ -314,6 +322,7 @@ impl Duration {
     /// assert_eq!(duration.subsec_nanos(), 10_000_000);
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration", since = "1.32.0"))]
     #[inline]
     pub const fn subsec_nanos(&self) -> u32 {
         self.nanos
@@ -330,6 +339,7 @@ impl Duration {
     /// assert_eq!(duration.as_millis(), 5730);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_as_u128", since = "1.33.0"))]
     #[inline]
     pub const fn as_millis(&self) -> u128 {
         self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos / NANOS_PER_MILLI) as u128
@@ -346,6 +356,7 @@ impl Duration {
     /// assert_eq!(duration.as_micros(), 5730023);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_as_u128", since = "1.33.0"))]
     #[inline]
     pub const fn as_micros(&self) -> u128 {
         self.secs as u128 * MICROS_PER_SEC as u128 + (self.nanos / NANOS_PER_MICRO) as u128
@@ -362,6 +373,7 @@ impl Duration {
     /// assert_eq!(duration.as_nanos(), 5730023852);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "duration_as_u128", since = "1.33.0"))]
     #[inline]
     pub const fn as_nanos(&self) -> u128 {
         self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos as u128

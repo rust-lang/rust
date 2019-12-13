@@ -62,6 +62,7 @@ impl<T> [T] {
     /// assert_eq!(a.len(), 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_slice_len", since = "1.32.0"))]
     #[inline]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     #[allow(unused_attributes)]
@@ -81,6 +82,10 @@ impl<T> [T] {
     /// assert!(!a.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_slice_is_empty", since = "1.32.0"),
+    )]
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
@@ -376,6 +381,10 @@ impl<T> [T] {
     ///
     /// [`as_mut_ptr`]: #method.as_mut_ptr
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_slice_as_ptr", since = "1.32.0"),
+    )]
     #[inline]
     pub const fn as_ptr(&self) -> *const T {
         self as *const [T] as *const T
