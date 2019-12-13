@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
 use std::mem::size_of;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::vec::{Drain, IntoIter};
 use std::{isize, usize};
 
@@ -583,6 +584,44 @@ fn test_drain_max_vec_size() {
 fn test_drain_inclusive_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     v.drain(5..=5);
+}
+
+#[test]
+fn test_drain_leak() {
+    static mut DROPS: i32 = 0;
+
+    #[derive(Debug, PartialEq)]
+    struct D(u32, bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.1 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut v = vec![
+        D(0, false),
+        D(1, false),
+        D(2, false),
+        D(3, false),
+        D(4, true),
+        D(5, false),
+        D(6, false),
+    ];
+
+    catch_unwind(AssertUnwindSafe(|| {
+        v.drain(2..=5);
+    }))
+    .ok();
+
+    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(v, vec![D(0, false), D(1, false), D(6, false),]);
 }
 
 #[test]

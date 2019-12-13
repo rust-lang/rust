@@ -2700,23 +2700,40 @@ impl<T> DoubleEndedIterator for Drain<'_, T> {
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> Drop for Drain<'_, T> {
     fn drop(&mut self) {
-        // exhaust self first
-        self.for_each(drop);
+        /// Continues dropping the remaining elements when a destructor unwinds.
+        struct DropGuard<'r, 'a, T>(&'r mut Drain<'a, T>);
 
-        if self.tail_len > 0 {
-            unsafe {
-                let source_vec = self.vec.as_mut();
-                // memmove back untouched tail, update to new length
-                let start = source_vec.len();
-                let tail = self.tail_start;
-                if tail != start {
-                    let src = source_vec.as_ptr().add(tail);
-                    let dst = source_vec.as_mut_ptr().add(start);
-                    ptr::copy(src, dst, self.tail_len);
+        impl<'r, 'a, T> Drop for DropGuard<'r, 'a, T> {
+            fn drop(&mut self) {
+                // Continue the same loop we do below. This only runs when a destructor has
+                // panicked. If another one panics this will abort.
+                self.0.for_each(drop);
+
+                if self.0.tail_len > 0 {
+                    unsafe {
+                        let source_vec = self.0.vec.as_mut();
+                        // memmove back untouched tail, update to new length
+                        let start = source_vec.len();
+                        let tail = self.0.tail_start;
+                        if tail != start {
+                            let src = source_vec.as_ptr().add(tail);
+                            let dst = source_vec.as_mut_ptr().add(start);
+                            ptr::copy(src, dst, self.0.tail_len);
+                        }
+                        source_vec.set_len(start + self.0.tail_len);
+                    }
                 }
-                source_vec.set_len(start + self.tail_len);
             }
         }
+
+        // exhaust self first
+        while let Some(item) = self.next() {
+            let guard = DropGuard(self);
+            drop(item);
+            mem::forget(guard);
+        }
+
+        DropGuard(self);
     }
 }
 
