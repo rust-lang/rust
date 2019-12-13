@@ -38,11 +38,10 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:6
    |
 LL | impl Fn<()> for Foo {
-   |      ^^^^^^
+   |      ^^^^^^ help: use parenthetical notation instead: `Fn() -> ()`
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = help: use parenthetical notation instead: `Fn(Foo, Bar) -> Baz`
 
 error[E0229]: associated type bindings are not allowed here
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:15:6
@@ -54,21 +53,19 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:21:6
    |
 LL | impl FnMut<()> for Bar {
-   |      ^^^^^^^^^
+   |      ^^^^^^^^^ help: use parenthetical notation instead: `FnMut() -> ()`
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = help: use parenthetical notation instead: `Fn(Foo, Bar) -> Baz`
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:27:6
    |
 LL | impl FnOnce<()> for Baz {
-   |      ^^^^^^^^^^
+   |      ^^^^^^^^^^ help: use parenthetical notation instead: `FnOnce() -> ()`
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = help: use parenthetical notation instead: `Fn(Foo, Bar) -> Baz`
 
 error: aborting due to 8 previous errors
 

@@ -4,9 +4,9 @@
 
 use crate::hir::def::{CtorOf, DefKind, Res};
 use crate::hir::def_id::DefId;
+use crate::hir::print;
 use crate::hir::ptr::P;
-use crate::hir::HirVec;
-use crate::hir::{self, ExprKind, GenericArg, GenericArgs};
+use crate::hir::{self, ExprKind, GenericArg, GenericArgs, HirVec};
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
@@ -1025,19 +1025,46 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             && trait_segment.generic_args().parenthesized != trait_def.paren_sugar
         {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
-            let (msg, help) = if trait_def.paren_sugar {
+            let (msg, sugg) = if trait_def.paren_sugar {
                 (
                     "the precise format of `Fn`-family traits' type parameters is subject to \
                      change",
-                    Some("use parenthetical notation instead: `Fn(Foo, Bar) -> Baz`"),
+                    Some(format!(
+                        "{}{} -> {}",
+                        trait_segment.ident,
+                        trait_segment
+                            .args
+                            .as_ref()
+                            .and_then(|args| args.args.get(0))
+                            .and_then(|arg| match arg {
+                                hir::GenericArg::Type(ty) => {
+                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                }
+                                _ => None,
+                            })
+                            .unwrap_or_else(|| "()".to_string()),
+                        trait_segment
+                            .generic_args()
+                            .bindings
+                            .iter()
+                            .filter_map(|b| match (b.ident.as_str() == "Output", &b.kind) {
+                                (true, hir::TypeBindingKind::Equality { ty }) => {
+                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                }
+                                _ => None,
+                            })
+                            .next()
+                            .unwrap_or_else(|| "()".to_string()),
+                    )),
                 )
             } else {
                 ("parenthetical notation is only stable when used with `Fn`-family traits", None)
             };
             let sess = &self.tcx().sess.parse_sess;
             let mut err = feature_err(sess, sym::unboxed_closures, span, msg);
-            if let Some(help) = help {
-                err.help(help);
+            if let Some(sugg) = sugg {
+                let msg = "use parenthetical notation instead";
+                err.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
             }
             err.emit();
         }
