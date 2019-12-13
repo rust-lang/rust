@@ -974,31 +974,20 @@ where
         let (mplace, size) = match place.place {
             Place::Local { frame, local } => {
                 match self.stack[frame].locals[local].access_mut()? {
-                    Ok(local_val) => {
+                    Ok(&mut local_val) => {
                         // We need to make an allocation.
-                        // FIXME: Consider not doing anything for a ZST, and just returning
-                        // a fake pointer?  Are we even called for ZST?
-
-                        // We cannot hold on to the reference `local_val` while allocating,
-                        // but we can hold on to the value in there.
-                        let old_val =
-                            if let LocalValue::Live(Operand::Immediate(value)) = *local_val {
-                                Some(value)
-                            } else {
-                                None
-                            };
 
                         // We need the layout of the local.  We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
-                        // We also need to support unsized types, and hence cannot use `allocate`.
                         let local_layout = self.layout_of_local(&self.stack[frame], local, None)?;
+                        // We also need to support unsized types, and hence cannot use `allocate`.
                         let (size, align) = self
                             .size_and_align_of(meta, local_layout)?
                             .expect("Cannot allocate for non-dyn-sized type");
                         let ptr = self.memory.allocate(size, align, MemoryKind::Stack);
                         let mplace = MemPlace { ptr: ptr.into(), align, meta };
-                        if let Some(value) = old_val {
+                        if let LocalValue::Live(Operand::Immediate(value)) = local_val {
                             // Preserve old value.
                             // We don't have to validate as we can assume the local
                             // was already valid for its type.

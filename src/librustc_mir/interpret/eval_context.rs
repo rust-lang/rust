@@ -118,7 +118,7 @@ pub struct LocalState<'tcx, Tag = (), Id = AllocId> {
 }
 
 /// Current value of a local variable
-#[derive(Clone, PartialEq, Eq, Debug, HashStable)] // Miri debug-prints these
+#[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable)] // Miri debug-prints these
 pub enum LocalValue<Tag = (), Id = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
