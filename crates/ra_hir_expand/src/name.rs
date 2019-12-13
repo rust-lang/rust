@@ -152,6 +152,8 @@ pub const RANGE_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(b"RangeInclusive")
 pub const RANGE_TO_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(b"RangeToInclusive");
 pub const RANGE_TO_TYPE: Name = Name::new_inline_ascii(b"RangeTo");
 pub const RANGE_TYPE: Name = Name::new_inline_ascii(b"Range");
+pub const NEG_TYPE: Name = Name::new_inline_ascii(b"Neg");
+pub const NOT_TYPE: Name = Name::new_inline_ascii(b"Not");
 
 // Builtin Macros
 pub const FILE_MACRO: Name = Name::new_inline_ascii(b"file");

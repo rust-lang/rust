@@ -36,8 +36,8 @@ use ra_prof::profile;
 use super::{
     primitive::{FloatTy, IntTy},
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
-    Uncertain,
+    ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
+    TypeWalk, Uncertain,
 };
 use crate::{db::HirDatabase, infer::diagnostics::InferenceDiagnostic};
 
@@ -431,6 +431,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let path = known::std_ops_try();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name::OK_TYPE)
+    }
+
+    fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
+        let path = known::std_ops_neg();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
+    }
+
+    fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
+        let path = known::std_ops_not();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {

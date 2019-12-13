@@ -332,31 +332,36 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     },
                     UnaryOp::Neg => {
                         match &inner_ty {
-                            Ty::Apply(a_ty) => match a_ty.ctor {
-                                TypeCtor::Int(Uncertain::Unknown)
-                                | TypeCtor::Int(Uncertain::Known(IntTy {
-                                    signedness: Signedness::Signed,
-                                    ..
-                                }))
-                                | TypeCtor::Float(..) => inner_ty,
-                                _ => Ty::Unknown,
-                            },
-                            Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => {
-                                inner_ty
-                            }
-                            // FIXME: resolve ops::Neg trait
-                            _ => Ty::Unknown,
+                            // Fast path for builtins
+                            Ty::Apply(ApplicationTy {
+                                ctor:
+                                    TypeCtor::Int(Uncertain::Known(IntTy {
+                                        signedness: Signedness::Signed,
+                                        ..
+                                    })),
+                                ..
+                            })
+                            | Ty::Apply(ApplicationTy {
+                                ctor: TypeCtor::Int(Uncertain::Unknown),
+                                ..
+                            })
+                            | Ty::Apply(ApplicationTy { ctor: TypeCtor::Float(_), .. })
+                            | Ty::Infer(InferTy::IntVar(..))
+                            | Ty::Infer(InferTy::FloatVar(..)) => inner_ty,
+                            // Otherwise we resolve via the std::ops::Neg trait
+                            _ => self
+                                .resolve_associated_type(inner_ty, self.resolve_ops_neg_output()),
                         }
                     }
                     UnaryOp::Not => {
                         match &inner_ty {
-                            Ty::Apply(a_ty) => match a_ty.ctor {
-                                TypeCtor::Bool | TypeCtor::Int(_) => inner_ty,
-                                _ => Ty::Unknown,
-                            },
-                            Ty::Infer(InferTy::IntVar(..)) => inner_ty,
-                            // FIXME: resolve ops::Not trait for inner_ty
-                            _ => Ty::Unknown,
+                            // Fast path for builtins
+                            Ty::Apply(ApplicationTy { ctor: TypeCtor::Bool, .. })
+                            | Ty::Apply(ApplicationTy { ctor: TypeCtor::Int(_), .. })
+                            | Ty::Infer(InferTy::IntVar(..)) => inner_ty,
+                            // Otherwise we resolve via the std::ops::Not trait
+                            _ => self
+                                .resolve_associated_type(inner_ty, self.resolve_ops_not_output()),
                         }
                     }
                 }

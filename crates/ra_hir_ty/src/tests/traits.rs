@@ -116,6 +116,70 @@ mod collections {
 }
 
 #[test]
+fn infer_ops_neg() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+
+struct Bar;
+struct Foo;
+
+impl std::ops::Neg for Bar {
+    type Output = Foo;
+}
+
+fn test() {
+    let a = Bar;
+    let b = -a;
+    b<|>;
+}
+
+//- /std.rs crate:std
+
+#[prelude_import] use ops::*;
+mod ops {
+    pub trait Neg {
+        type Output;
+    }
+}
+"#,
+    );
+    assert_eq!("Foo", type_at_pos(&db, pos));
+}
+
+#[test]
+fn infer_ops_not() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+
+struct Bar;
+struct Foo;
+
+impl std::ops::Not for Bar {
+    type Output = Foo;
+}
+
+fn test() {
+    let a = Bar;
+    let b = !a;
+    b<|>;
+}
+
+//- /std.rs crate:std
+
+#[prelude_import] use ops::*;
+mod ops {
+    pub trait Not {
+        type Output;
+    }
+}
+"#,
+    );
+    assert_eq!("Foo", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_from_bound_1() {
     assert_snapshot!(
         infer(r#"
