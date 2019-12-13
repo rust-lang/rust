@@ -76,10 +76,7 @@ impl Path {
         }
     }
 
-    pub(crate) fn from_simple_segments(
-        kind: PathKind,
-        segments: impl IntoIterator<Item = Name>,
-    ) -> Path {
+    pub fn from_simple_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> Path {
         Path {
             kind,
             segments: segments
@@ -296,64 +293,36 @@ impl From<Name> for Path {
     }
 }
 
-pub mod known {
-    use hir_expand::name::name;
+pub use hir_expand::name as __name;
 
-    use super::{Path, PathKind};
-
-    macro_rules! P {
-        ($start:ident $(:: $seg:ident)*) => { Path::from_simple_segments(PathKind::Abs, vec![name![$start], $(name![$seg],)*]) };
-    }
-
-    pub fn std_iter_into_iterator() -> Path {
-        P![std::iter::IntoIterator]
-    }
-
-    pub fn std_ops_try() -> Path {
-        P![std::ops::Try]
-    }
-
-    pub fn std_ops_range() -> Path {
-        P![std::ops::Range]
-    }
-
-    pub fn std_ops_range_from() -> Path {
-        P![std::ops::RangeFrom]
-    }
-
-    pub fn std_ops_range_full() -> Path {
-        P![std::ops::RangeFull]
-    }
-
-    pub fn std_ops_range_inclusive() -> Path {
-        P![std::ops::RangeInclusive]
-    }
-
-    pub fn std_ops_range_to() -> Path {
-        P![std::ops::RangeTo]
-    }
-
-    pub fn std_ops_range_to_inclusive() -> Path {
-        P![std::ops::RangeToInclusive]
-    }
-
-    pub fn std_ops_neg() -> Path {
-        P![std::ops::Neg]
-    }
-
-    pub fn std_ops_not() -> Path {
-        P![std::ops::Not]
-    }
-
-    pub fn std_result_result() -> Path {
-        P![std::result::Result]
-    }
-
-    pub fn std_future_future() -> Path {
-        P![std::future::Future]
-    }
-
-    pub fn std_boxed_box() -> Path {
-        P![std::boxed::Box]
-    }
+#[macro_export]
+macro_rules! __known_path {
+    (std::iter::IntoIterator) => {};
+    (std::result::Result) => {};
+    (std::ops::Range) => {};
+    (std::ops::RangeFrom) => {};
+    (std::ops::RangeFull) => {};
+    (std::ops::RangeTo) => {};
+    (std::ops::RangeToInclusive) => {};
+    (std::ops::RangeInclusive) => {};
+    (std::boxed::Box) => {};
+    (std::future::Future) => {};
+    (std::ops::Try) => {};
+    (std::ops::Neg) => {};
+    (std::ops::Not) => {};
+    ($path:path) => {
+        compile_error!("Please register your known path in the path module")
+    };
 }
+
+#[macro_export]
+macro_rules! __path {
+    ($start:ident $(:: $seg:ident)*) => ({
+        $crate::__known_path!($start $(:: $seg)*);
+        $crate::path::Path::from_simple_segments($crate::path::PathKind::Abs, vec![
+            $crate::path::__name![$start], $($crate::path::__name![$seg],)*
+        ])
+    });
+}
+
+pub use crate::__path as path;
