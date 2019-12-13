@@ -3,7 +3,7 @@
 use hir::{db::AstDatabase, InFile};
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
-    match_ast, AstNode, SyntaxNode,
+    match_ast, AstNode, SyntaxKind, SyntaxNode,
 };
 
 use crate::{
@@ -20,7 +20,7 @@ pub(crate) fn goto_definition(
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let file = db.parse_or_expand(position.file_id.into())?;
     let original_token =
-        file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+        file.token_at_offset(position.offset).find(|it| it.kind() == SyntaxKind::IDENT)?;
     let token = descend_into_macros(db, position.file_id, original_token.clone());
 
     let nav_targets = match_ast! {
@@ -229,6 +229,18 @@ mod tests {
             //- /lib.rs
             struct Foo;
             enum E { X(Foo<|>) }
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_at_start_of_item() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            enum E { X(<|>Foo) }
             ",
             "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
         );

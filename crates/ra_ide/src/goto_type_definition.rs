@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::db::AstDatabase;
-use ra_syntax::{ast, AstNode};
+use ra_syntax::{ast, AstNode, SyntaxKind};
 
 use crate::{
     db::RootDatabase, display::ToNav, expand::descend_into_macros, FilePosition, NavigationTarget,
@@ -13,7 +13,7 @@ pub(crate) fn goto_type_definition(
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+    let token = file.token_at_offset(position.offset).find(|it| it.kind() == SyntaxKind::IDENT)?;
     let token = descend_into_macros(db, position.file_id, token);
 
     let node = token.value.ancestors().find_map(|token| {
@@ -100,6 +100,18 @@ mod tests {
             }
             ",
             "Foo STRUCT_DEF FileId(1) [52; 65) [59; 62)",
+        );
+    }
+
+    #[test]
+    fn goto_type_definition_works_param() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            fn foo(<|>f: Foo) {}
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
         );
     }
 }
