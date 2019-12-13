@@ -4,6 +4,7 @@
 
 #![feature(const_panic)]
 #![feature(const_if_match)]
+#![feature(const_fn)]
 
 const X: u32 = 4;
 const Y: u32 = 5;
