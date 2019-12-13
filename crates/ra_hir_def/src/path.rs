@@ -342,6 +342,14 @@ pub mod known {
         )
     }
 
+    pub fn std_ops_neg() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::NEG_TYPE])
+    }
+
+    pub fn std_ops_not() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::NOT_TYPE])
+    }
+
     pub fn std_result_result() -> Path {
         Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::RESULT, name::RESULT_TYPE])
     }

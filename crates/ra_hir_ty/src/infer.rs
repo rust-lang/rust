@@ -36,8 +36,8 @@ use ra_prof::profile;
 use super::{
     primitive::{FloatTy, IntTy},
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
-    Uncertain,
+    ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
+    TypeWalk, Uncertain,
 };
 use crate::{db::HirDatabase, infer::diagnostics::InferenceDiagnostic};
 
@@ -338,6 +338,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.table.resolve_ty_shallow(ty)
     }
 
+    fn resolve_associated_type(&mut self, inner_ty: Ty, assoc_ty: Option<TypeAliasId>) -> Ty {
+        match assoc_ty {
+            Some(res_assoc_ty) => {
+                let ty = self.table.new_type_var();
+                let projection = ProjectionPredicate {
+                    ty: ty.clone(),
+                    projection_ty: ProjectionTy {
+                        associated_ty: res_assoc_ty,
+                        parameters: Substs::single(inner_ty),
+                    },
+                };
+                self.obligations.push(Obligation::Projection(projection));
+                self.resolve_ty_as_possible(ty)
+            }
+            None => Ty::Unknown,
+        }
+    }
+
     /// Recurses through the given type, normalizing associated types mentioned
     /// in it by replacing them by type variables and registering obligations to
     /// resolve later. This should be done once for every type we get from some
@@ -413,6 +431,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let path = known::std_ops_try();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name::OK_TYPE)
+    }
+
+    fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
+        let path = known::std_ops_neg();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
+    }
+
+    fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
+        let path = known::std_ops_not();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {

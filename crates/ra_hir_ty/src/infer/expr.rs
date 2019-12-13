@@ -19,8 +19,8 @@ use crate::{
     method_resolution, op,
     traits::InEnvironment,
     utils::{generics, variant_data, Generics},
-    CallableDef, InferTy, IntTy, Mutability, Obligation, ProjectionPredicate, ProjectionTy, Substs,
-    TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
+    ApplicationTy, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef, Ty,
+    TypeCtor, TypeWalk, Uncertain,
 };
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
@@ -95,21 +95,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::For { iterable, body, pat } => {
                 let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
 
-                let pat_ty = match self.resolve_into_iter_item() {
-                    Some(into_iter_item_alias) => {
-                        let pat_ty = self.table.new_type_var();
-                        let projection = ProjectionPredicate {
-                            ty: pat_ty.clone(),
-                            projection_ty: ProjectionTy {
-                                associated_ty: into_iter_item_alias,
-                                parameters: Substs::single(iterable_ty),
-                            },
-                        };
-                        self.obligations.push(Obligation::Projection(projection));
-                        self.resolve_ty_as_possible(pat_ty)
-                    }
-                    None => Ty::Unknown,
-                };
+                let pat_ty =
+                    self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
 
                 self.infer_pat(*pat, &pat_ty, BindingMode::default());
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
@@ -284,40 +271,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Await { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                let ty = match self.resolve_future_future_output() {
-                    Some(future_future_output_alias) => {
-                        let ty = self.table.new_type_var();
-                        let projection = ProjectionPredicate {
-                            ty: ty.clone(),
-                            projection_ty: ProjectionTy {
-                                associated_ty: future_future_output_alias,
-                                parameters: Substs::single(inner_ty),
-                            },
-                        };
-                        self.obligations.push(Obligation::Projection(projection));
-                        self.resolve_ty_as_possible(ty)
-                    }
-                    None => Ty::Unknown,
-                };
+                let ty =
+                    self.resolve_associated_type(inner_ty, self.resolve_future_future_output());
                 ty
             }
             Expr::Try { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                let ty = match self.resolve_ops_try_ok() {
-                    Some(ops_try_ok_alias) => {
-                        let ty = self.table.new_type_var();
-                        let projection = ProjectionPredicate {
-                            ty: ty.clone(),
-                            projection_ty: ProjectionTy {
-                                associated_ty: ops_try_ok_alias,
-                                parameters: Substs::single(inner_ty),
-                            },
-                        };
-                        self.obligations.push(Obligation::Projection(projection));
-                        self.resolve_ty_as_possible(ty)
-                    }
-                    None => Ty::Unknown,
-                };
+                let ty = self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok());
                 ty
             }
             Expr::Cast { expr, type_ref } => {
@@ -372,31 +332,36 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     },
                     UnaryOp::Neg => {
                         match &inner_ty {
-                            Ty::Apply(a_ty) => match a_ty.ctor {
-                                TypeCtor::Int(Uncertain::Unknown)
-                                | TypeCtor::Int(Uncertain::Known(IntTy {
-                                    signedness: Signedness::Signed,
-                                    ..
-                                }))
-                                | TypeCtor::Float(..) => inner_ty,
-                                _ => Ty::Unknown,
-                            },
-                            Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => {
-                                inner_ty
-                            }
-                            // FIXME: resolve ops::Neg trait
-                            _ => Ty::Unknown,
+                            // Fast path for builtins
+                            Ty::Apply(ApplicationTy {
+                                ctor:
+                                    TypeCtor::Int(Uncertain::Known(IntTy {
+                                        signedness: Signedness::Signed,
+                                        ..
+                                    })),
+                                ..
+                            })
+                            | Ty::Apply(ApplicationTy {
+                                ctor: TypeCtor::Int(Uncertain::Unknown),
+                                ..
+                            })
+                            | Ty::Apply(ApplicationTy { ctor: TypeCtor::Float(_), .. })
+                            | Ty::Infer(InferTy::IntVar(..))
+                            | Ty::Infer(InferTy::FloatVar(..)) => inner_ty,
+                            // Otherwise we resolve via the std::ops::Neg trait
+                            _ => self
+                                .resolve_associated_type(inner_ty, self.resolve_ops_neg_output()),
                         }
                     }
                     UnaryOp::Not => {
                         match &inner_ty {
-                            Ty::Apply(a_ty) => match a_ty.ctor {
-                                TypeCtor::Bool | TypeCtor::Int(_) => inner_ty,
-                                _ => Ty::Unknown,
-                            },
-                            Ty::Infer(InferTy::IntVar(..)) => inner_ty,
-                            // FIXME: resolve ops::Not trait for inner_ty
-                            _ => Ty::Unknown,
+                            // Fast path for builtins
+                            Ty::Apply(ApplicationTy { ctor: TypeCtor::Bool, .. })
+                            | Ty::Apply(ApplicationTy { ctor: TypeCtor::Int(_), .. })
+                            | Ty::Infer(InferTy::IntVar(..)) => inner_ty,
+                            // Otherwise we resolve via the std::ops::Not trait
+                            _ => self
+                                .resolve_associated_type(inner_ty, self.resolve_ops_not_output()),
                         }
                     }
                 }
