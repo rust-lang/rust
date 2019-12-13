@@ -1,6 +1,7 @@
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use crate::ty::{self, Ty, TyVid};
+use crate::hir::def_id::DefId;
 
 use std::cmp;
 use std::marker::PhantomData;
@@ -49,7 +50,7 @@ pub enum TypeVariableOriginKind {
     MiscVariable,
     NormalizeProjectionType,
     TypeInference,
-    TypeParameterDefinition(Symbol),
+    TypeParameterDefinition(Symbol, Option<DefId>),
 
     /// One of the upvars or closure kind parameters in a `ClosureSubsts`
     /// (before it has been determined).
