@@ -223,18 +223,24 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn report(&mut self, error: GroupedMoveError<'tcx>) {
         let (mut err, err_span) = {
-            let (span, original_path, kind): (Span, &Place<'tcx>, &IllegalMoveOriginKind<'_>) =
+            let (span, use_spans, original_path, kind,):
+            (
+                Span,
+                Option<UseSpans>,
+                &Place<'tcx>,
+                &IllegalMoveOriginKind<'_>,
+            ) =
                 match error {
                     GroupedMoveError::MovesFromPlace { span, ref original_path, ref kind, .. } |
                     GroupedMoveError::MovesFromValue { span, ref original_path, ref kind, .. } => {
-                        (span, original_path, kind)
+                        (span, None, original_path, kind)
                     }
                     GroupedMoveError::OtherIllegalMove {
                         use_spans,
                         ref original_path,
                         ref kind
                     } => {
-                        (use_spans.args_or_use(), original_path, kind)
+                        (use_spans.args_or_use(), Some(use_spans), original_path, kind)
                     },
                 };
             debug!("report: original_path={:?} span={:?}, kind={:?} \
@@ -250,6 +256,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             original_path,
                             target_place,
                             span,
+                            use_spans,
                         )
                     }
                     IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
@@ -296,6 +303,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         move_place: &Place<'tcx>,
         deref_target_place: &Place<'tcx>,
         span: Span,
+        use_spans: Option<UseSpans>,
     ) -> DiagnosticBuilder<'a> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -416,7 +424,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             let is_option = move_ty.starts_with("std::option::Option");
             let is_result = move_ty.starts_with("std::result::Result");
-            if is_option || is_result {
+            if (is_option || is_result) && use_spans.map_or(true, |v| !v.for_closure()) {
                 err.span_suggestion(
                     span,
                     &format!("consider borrowing the `{}`'s content", if is_option {
