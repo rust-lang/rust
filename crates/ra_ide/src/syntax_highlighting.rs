@@ -108,14 +108,17 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 match name_kind {
                     Some(name_kind) => highlight_name(db, name_kind),
                     None => name.syntax().parent().map_or("function", |x| match x.kind() {
-                        TYPE_PARAM | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => "type",
+                        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => "type",
+                        TYPE_PARAM => "type.param",
                         RECORD_FIELD_DEF => "field",
                         _ => "function",
                     }),
                 }
             }
-            INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
-            LIFETIME => "parameter",
+            INT_NUMBER | FLOAT_NUMBER => "literal.numeric",
+            BYTE => "literal.byte",
+            CHAR => "literal.char",
+            LIFETIME => "lifetime",
             T![unsafe] => "keyword.unsafe",
             k if is_control_keyword(k) => "keyword.control",
             k if k.is_keyword() => "keyword",
@@ -215,17 +218,18 @@ fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
         Field(_) => "field",
         AssocItem(hir::AssocItem::Function(_)) => "function",
         AssocItem(hir::AssocItem::Const(_)) => "constant",
-        AssocItem(hir::AssocItem::TypeAlias(_)) => "type",
+        AssocItem(hir::AssocItem::TypeAlias(_)) => "type.alias",
         Def(hir::ModuleDef::Module(_)) => "module",
         Def(hir::ModuleDef::Function(_)) => "function",
         Def(hir::ModuleDef::Adt(_)) => "type",
         Def(hir::ModuleDef::EnumVariant(_)) => "constant",
         Def(hir::ModuleDef::Const(_)) => "constant",
         Def(hir::ModuleDef::Static(_)) => "constant",
-        Def(hir::ModuleDef::Trait(_)) => "type",
-        Def(hir::ModuleDef::TypeAlias(_)) => "type",
-        Def(hir::ModuleDef::BuiltinType(_)) => "type",
-        SelfType(_) | TypeParam(_) => "type",
+        Def(hir::ModuleDef::Trait(_)) => "type.trait",
+        Def(hir::ModuleDef::TypeAlias(_)) => "type.alias",
+        Def(hir::ModuleDef::BuiltinType(_)) => "type.builtin",
+        SelfType(_) => "type.self",
+        TypeParam(_) => "type.param",
         Local(local) => {
             if local.is_mut(db) {
                 "variable.mut"
