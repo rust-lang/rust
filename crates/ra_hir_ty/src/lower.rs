@@ -11,7 +11,7 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::BuiltinType,
     generics::WherePredicate,
-    path::{GenericArg, Path, PathKind, PathSegment},
+    path::{GenericArg, Path, PathKind, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId,
@@ -101,13 +101,13 @@ impl Ty {
             TypeRef::Path(path) => path,
             _ => return None,
         };
-        if let PathKind::Type(_) = &path.kind {
+        if let PathKind::Type(_) = path.kind() {
             return None;
         }
-        if path.segments.len() > 1 {
+        if path.segments().len() > 1 {
             return None;
         }
-        let resolution = match resolver.resolve_path_in_type_ns(db, path) {
+        let resolution = match resolver.resolve_path_in_type_ns(db, path.mod_path()) {
             Some((it, None)) => it,
             _ => return None,
         };
@@ -124,11 +124,11 @@ impl Ty {
         db: &impl HirDatabase,
         resolver: &Resolver,
         ty: Ty,
-        remaining_segments: &[PathSegment],
+        remaining_segments: PathSegments<'_>,
     ) -> Ty {
         if remaining_segments.len() == 1 {
             // resolve unselected assoc types
-            let segment = &remaining_segments[0];
+            let segment = remaining_segments.first().unwrap();
             Ty::select_associated_type(db, resolver, ty, segment)
         } else if remaining_segments.len() > 1 {
             // FIXME report error (ambiguous associated type)
@@ -142,15 +142,15 @@ impl Ty {
         db: &impl HirDatabase,
         resolver: &Resolver,
         resolution: TypeNs,
-        resolved_segment: &PathSegment,
-        remaining_segments: &[PathSegment],
+        resolved_segment: PathSegment<'_>,
+        remaining_segments: PathSegments<'_>,
     ) -> Ty {
         let ty = match resolution {
             TypeNs::TraitId(trait_) => {
                 let trait_ref =
                     TraitRef::from_resolved_path(db, resolver, trait_, resolved_segment, None);
                 return if remaining_segments.len() == 1 {
-                    let segment = &remaining_segments[0];
+                    let segment = remaining_segments.first().unwrap();
                     let associated_ty = associated_type_by_name_including_super_traits(
                         db,
                         trait_ref.trait_,
@@ -202,21 +202,21 @@ impl Ty {
 
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Ty {
         // Resolve the path (in type namespace)
-        if let PathKind::Type(type_ref) = &path.kind {
+        if let PathKind::Type(type_ref) = path.kind() {
             let ty = Ty::from_hir(db, resolver, &type_ref);
-            let remaining_segments = &path.segments[..];
-            return Ty::from_type_relative_path(db, resolver, ty, remaining_segments);
+            return Ty::from_type_relative_path(db, resolver, ty, path.segments());
         }
-        let (resolution, remaining_index) = match resolver.resolve_path_in_type_ns(db, path) {
-            Some(it) => it,
-            None => return Ty::Unknown,
-        };
+        let (resolution, remaining_index) =
+            match resolver.resolve_path_in_type_ns(db, path.mod_path()) {
+                Some(it) => it,
+                None => return Ty::Unknown,
+            };
         let (resolved_segment, remaining_segments) = match remaining_index {
             None => (
-                path.segments.last().expect("resolved path has at least one element"),
-                &[] as &[PathSegment],
+                path.segments().last().expect("resolved path has at least one element"),
+                PathSegments::EMPTY,
             ),
-            Some(i) => (&path.segments[i - 1], &path.segments[i..]),
+            Some(i) => (path.segments().get(i - 1).unwrap(), path.segments().skip(i)),
         };
         Ty::from_partly_resolved_hir_path(
             db,
@@ -231,7 +231,7 @@ impl Ty {
         db: &impl HirDatabase,
         resolver: &Resolver,
         self_ty: Ty,
-        segment: &PathSegment,
+        segment: PathSegment<'_>,
     ) -> Ty {
         let param_idx = match self_ty {
             Ty::Param { idx, .. } => idx,
@@ -261,7 +261,7 @@ impl Ty {
     fn from_hir_path_inner(
         db: &impl HirDatabase,
         resolver: &Resolver,
-        segment: &PathSegment,
+        segment: PathSegment<'_>,
         typable: TyDefId,
     ) -> Ty {
         let generic_def = match typable {
@@ -284,7 +284,7 @@ impl Ty {
         // special-case enum variants
         resolved: ValueTyDefId,
     ) -> Substs {
-        let last = path.segments.last().expect("path should have at least one segment");
+        let last = path.segments().last().expect("path should have at least one segment");
         let (segment, generic_def) = match resolved {
             ValueTyDefId::FunctionId(it) => (last, Some(it.into())),
             ValueTyDefId::StructId(it) => (last, Some(it.into())),
@@ -296,13 +296,11 @@ impl Ty {
                 // referring to the variant. So `Option::<T>::None` and
                 // `Option::None::<T>` are both allowed (though the former is
                 // preferred). See also `def_ids_for_path_segments` in rustc.
-                let len = path.segments.len();
-                let segment = if len >= 2 && path.segments[len - 2].args_and_bindings.is_some() {
-                    // Option::<T>::None
-                    &path.segments[len - 2]
-                } else {
-                    // Option::None::<T>
-                    last
+                let len = path.segments().len();
+                let penultimate = if len >= 2 { path.segments().get(len - 2) } else { None };
+                let segment = match penultimate {
+                    Some(segment) if segment.args_and_bindings.is_some() => segment,
+                    _ => last,
                 };
                 (segment, Some(var.parent.into()))
             }
@@ -314,7 +312,7 @@ impl Ty {
 pub(super) fn substs_from_path_segment(
     db: &impl HirDatabase,
     resolver: &Resolver,
-    segment: &PathSegment,
+    segment: PathSegment<'_>,
     def_generic: Option<GenericDefId>,
     add_self_param: bool,
 ) -> Substs {
@@ -372,11 +370,11 @@ impl TraitRef {
         path: &Path,
         explicit_self_ty: Option<Ty>,
     ) -> Option<Self> {
-        let resolved = match resolver.resolve_path_in_type_ns_fully(db, &path)? {
+        let resolved = match resolver.resolve_path_in_type_ns_fully(db, path.mod_path())? {
             TypeNs::TraitId(tr) => tr,
             _ => return None,
         };
-        let segment = path.segments.last().expect("path should have at least one segment");
+        let segment = path.segments().last().expect("path should have at least one segment");
         Some(TraitRef::from_resolved_path(db, resolver, resolved.into(), segment, explicit_self_ty))
     }
 
@@ -384,7 +382,7 @@ impl TraitRef {
         db: &impl HirDatabase,
         resolver: &Resolver,
         resolved: TraitId,
-        segment: &PathSegment,
+        segment: PathSegment<'_>,
         explicit_self_ty: Option<Ty>,
     ) -> Self {
         let mut substs = TraitRef::substs_from_path(db, resolver, segment, resolved);
@@ -410,7 +408,7 @@ impl TraitRef {
     fn substs_from_path(
         db: &impl HirDatabase,
         resolver: &Resolver,
-        segment: &PathSegment,
+        segment: PathSegment<'_>,
         resolved: TraitId,
     ) -> Substs {
         let has_self_param =
@@ -464,12 +462,12 @@ fn assoc_type_bindings_from_type_bound<'a>(
     trait_ref: TraitRef,
 ) -> impl Iterator<Item = GenericPredicate> + 'a {
     let last_segment = match bound {
-        TypeBound::Path(path) => path.segments.last(),
+        TypeBound::Path(path) => path.segments().last(),
         TypeBound::Error => None,
     };
     last_segment
         .into_iter()
-        .flat_map(|segment| segment.args_and_bindings.iter())
+        .flat_map(|segment| segment.args_and_bindings.into_iter())
         .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
         .map(move |(name, type_ref)| {
             let associated_ty =

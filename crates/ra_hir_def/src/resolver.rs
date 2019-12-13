@@ -15,7 +15,7 @@ use crate::{
     expr::{ExprId, PatId},
     generics::GenericParams,
     nameres::{BuiltinShadowMode, CrateDefMap},
-    path::{Path, PathKind},
+    path::{ModPath, PathKind},
     per_ns::PerNs,
     AdtId, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
     HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId,
@@ -91,7 +91,7 @@ pub enum ValueNs {
 
 impl Resolver {
     /// Resolve known trait from std, like `std::futures::Future`
-    pub fn resolve_known_trait(&self, db: &impl DefDatabase, path: &Path) -> Option<TraitId> {
+    pub fn resolve_known_trait(&self, db: &impl DefDatabase, path: &ModPath) -> Option<TraitId> {
         let res = self.resolve_module_path(db, path, BuiltinShadowMode::Other).take_types()?;
         match res {
             ModuleDefId::TraitId(it) => Some(it),
@@ -100,7 +100,7 @@ impl Resolver {
     }
 
     /// Resolve known struct from std, like `std::boxed::Box`
-    pub fn resolve_known_struct(&self, db: &impl DefDatabase, path: &Path) -> Option<StructId> {
+    pub fn resolve_known_struct(&self, db: &impl DefDatabase, path: &ModPath) -> Option<StructId> {
         let res = self.resolve_module_path(db, path, BuiltinShadowMode::Other).take_types()?;
         match res {
             ModuleDefId::AdtId(AdtId::StructId(it)) => Some(it),
@@ -109,7 +109,7 @@ impl Resolver {
     }
 
     /// Resolve known enum from std, like `std::result::Result`
-    pub fn resolve_known_enum(&self, db: &impl DefDatabase, path: &Path) -> Option<EnumId> {
+    pub fn resolve_known_enum(&self, db: &impl DefDatabase, path: &ModPath) -> Option<EnumId> {
         let res = self.resolve_module_path(db, path, BuiltinShadowMode::Other).take_types()?;
         match res {
             ModuleDefId::AdtId(AdtId::EnumId(it)) => Some(it),
@@ -120,33 +120,30 @@ impl Resolver {
     fn resolve_module_path(
         &self,
         db: &impl DefDatabase,
-        path: &Path,
+        path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> PerNs {
         let (item_map, module) = match self.module() {
             Some(it) => it,
             None => return PerNs::none(),
         };
-        let (module_res, segment_index) = item_map.resolve_path(db, module, path, shadow);
+        let (module_res, segment_index) = item_map.resolve_path(db, module, &path, shadow);
         if segment_index.is_some() {
             return PerNs::none();
         }
         module_res
     }
 
-    pub fn resolve_module_path_in_items(&self, db: &impl DefDatabase, path: &Path) -> PerNs {
+    pub fn resolve_module_path_in_items(&self, db: &impl DefDatabase, path: &ModPath) -> PerNs {
         self.resolve_module_path(db, path, BuiltinShadowMode::Module)
     }
 
     pub fn resolve_path_in_type_ns(
         &self,
         db: &impl DefDatabase,
-        path: &Path,
+        path: &ModPath,
     ) -> Option<(TypeNs, Option<usize>)> {
-        if path.is_type_relative() {
-            return None;
-        }
-        let first_name = &path.segments.first()?.name;
+        let first_name = path.segments.first()?;
         let skip_to_mod = path.kind != PathKind::Plain;
         for scope in self.scopes.iter().rev() {
             match scope {
@@ -178,7 +175,7 @@ impl Resolver {
                     let (module_def, idx) = m.crate_def_map.resolve_path(
                         db,
                         m.module_id,
-                        path,
+                        &path,
                         BuiltinShadowMode::Other,
                     );
                     let res = match module_def.take_types()? {
@@ -205,7 +202,7 @@ impl Resolver {
     pub fn resolve_path_in_type_ns_fully(
         &self,
         db: &impl DefDatabase,
-        path: &Path,
+        path: &ModPath,
     ) -> Option<TypeNs> {
         let (res, unresolved) = self.resolve_path_in_type_ns(db, path)?;
         if unresolved.is_some() {
@@ -214,17 +211,14 @@ impl Resolver {
         Some(res)
     }
 
-    pub fn resolve_path_in_value_ns<'p>(
+    pub fn resolve_path_in_value_ns(
         &self,
         db: &impl DefDatabase,
-        path: &'p Path,
+        path: &ModPath,
     ) -> Option<ResolveValueResult> {
-        if path.is_type_relative() {
-            return None;
-        }
         let n_segments = path.segments.len();
         let tmp = name![self];
-        let first_name = if path.is_self() { &tmp } else { &path.segments.first()?.name };
+        let first_name = if path.is_self() { &tmp } else { &path.segments.first()? };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         for scope in self.scopes.iter().rev() {
             match scope {
@@ -276,7 +270,7 @@ impl Resolver {
                     let (module_def, idx) = m.crate_def_map.resolve_path(
                         db,
                         m.module_id,
-                        path,
+                        &path,
                         BuiltinShadowMode::Other,
                     );
                     return match idx {
@@ -322,7 +316,7 @@ impl Resolver {
     pub fn resolve_path_in_value_ns_fully(
         &self,
         db: &impl DefDatabase,
-        path: &Path,
+        path: &ModPath,
     ) -> Option<ValueNs> {
         match self.resolve_path_in_value_ns(db, path)? {
             ResolveValueResult::ValueNs(it) => Some(it),
@@ -330,9 +324,13 @@ impl Resolver {
         }
     }
 
-    pub fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &Path) -> Option<MacroDefId> {
+    pub fn resolve_path_as_macro(
+        &self,
+        db: &impl DefDatabase,
+        path: &ModPath,
+    ) -> Option<MacroDefId> {
         let (item_map, module) = self.module()?;
-        item_map.resolve_path(db, module, path, BuiltinShadowMode::Other).0.take_macros()
+        item_map.resolve_path(db, module, &path, BuiltinShadowMode::Other).0.take_macros()
     }
 
     pub fn process_all_names(&self, db: &impl DefDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {

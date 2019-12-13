@@ -188,10 +188,9 @@ impl<'a> CompletionContext<'a> {
             self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
             self.has_type_args = segment.type_arg_list().is_some();
 
-            if let Some(mut path) = hir::Path::from_ast(path.clone()) {
-                if !path.is_ident() {
-                    path.segments.pop().unwrap();
-                    self.path_prefix = Some(path);
+            if let Some(path) = hir::Path::from_ast(path.clone()) {
+                if let Some(path_prefix) = path.qualifier() {
+                    self.path_prefix = Some(path_prefix);
                     return;
                 }
             }

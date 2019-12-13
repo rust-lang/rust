@@ -17,7 +17,7 @@ use test_utils::tested_by;
 use crate::{
     db::DefDatabase,
     nameres::{BuiltinShadowMode, CrateDefMap},
-    path::{Path, PathKind},
+    path::{ModPath, PathKind},
     per_ns::PerNs,
     AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
 };
@@ -69,7 +69,7 @@ impl CrateDefMap {
         db: &impl DefDatabase,
         mode: ResolveMode,
         original_module: LocalModuleId,
-        path: &Path,
+        path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
         // if it is not the last segment, we prefer the module to the builtin
@@ -113,7 +113,7 @@ impl CrateDefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
-                self.resolve_name_in_crate_root_or_extern_prelude(&segment.name, prefer_module(idx))
+                self.resolve_name_in_crate_root_or_extern_prelude(&segment, prefer_module(idx))
             }
             PathKind::Plain => {
                 let (idx, segment) = match segments.next() {
@@ -121,7 +121,7 @@ impl CrateDefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in module", segment);
-                self.resolve_name_in_module(db, original_module, &segment.name, prefer_module(idx))
+                self.resolve_name_in_module(db, original_module, &segment, prefer_module(idx))
             }
             PathKind::Super => {
                 if let Some(p) = self.modules[original_module].parent {
@@ -137,7 +137,7 @@ impl CrateDefMap {
                     Some((_, segment)) => segment,
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
-                if let Some(def) = self.extern_prelude.get(&segment.name) {
+                if let Some(def) = self.extern_prelude.get(&segment) {
                     log::debug!("absolute path {:?} resolved to crate {:?}", path, def);
                     PerNs::types(*def)
                 } else {
@@ -168,8 +168,10 @@ impl CrateDefMap {
             curr_per_ns = match curr {
                 ModuleDefId::ModuleId(module) => {
                     if module.krate != self.krate {
-                        let path =
-                            Path { segments: path.segments[i..].to_vec(), kind: PathKind::Self_ };
+                        let path = ModPath {
+                            segments: path.segments[i..].to_vec(),
+                            kind: PathKind::Self_,
+                        };
                         log::debug!("resolving {:?} in other crate", path);
                         let defp_map = db.crate_def_map(module.krate);
                         let (def, s) = defp_map.resolve_path(db, module.local_id, &path, shadow);
@@ -182,10 +184,10 @@ impl CrateDefMap {
                     }
 
                     // Since it is a qualified path here, it should not contains legacy macros
-                    match self[module.local_id].scope.get(&segment.name, prefer_module(i)) {
+                    match self[module.local_id].scope.get(&segment, prefer_module(i)) {
                         Some(res) => res.def,
                         _ => {
-                            log::debug!("path segment {:?} not found", segment.name);
+                            log::debug!("path segment {:?} not found", segment);
                             return ResolvePathResult::empty(ReachedFixedPoint::No);
                         }
                     }
@@ -194,7 +196,7 @@ impl CrateDefMap {
                     // enum variant
                     tested_by!(can_import_enum_variant);
                     let enum_data = db.enum_data(e);
-                    match enum_data.variant(&segment.name) {
+                    match enum_data.variant(&segment) {
                         Some(local_id) => {
                             let variant = EnumVariantId { parent: e, local_id };
                             PerNs::both(variant.into(), variant.into())
@@ -214,7 +216,7 @@ impl CrateDefMap {
                     // (`Struct::method`), or some other kind of associated item
                     log::debug!(
                         "path segment {:?} resolved to non-module {:?}, but is not last",
-                        segment.name,
+                        segment,
                         curr,
                     );
 
