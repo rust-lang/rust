@@ -78,10 +78,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .collect();
 
         if move_out_indices.is_empty() {
-            let root_place = self
-                .prefixes(used_place, PrefixSet::All)
-                .last()
-                .unwrap();
+            let root_place = PlaceRef { projection: &[], ..used_place };
 
             if !self.uninitialized_error_reported.insert(root_place) {
                 debug!(

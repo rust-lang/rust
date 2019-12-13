@@ -1005,6 +1005,7 @@ pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
 mod impls {
+    use crate::hint::unreachable_unchecked;
     use crate::cmp::Ordering::{self, Less, Greater, Equal};
 
     macro_rules! partial_eq_impl {
@@ -1125,7 +1126,16 @@ mod impls {
     impl Ord for bool {
         #[inline]
         fn cmp(&self, other: &bool) -> Ordering {
-            (*self as u8).cmp(&(*other as u8))
+            // Casting to i8's and converting the difference to an Ordering generates
+            // more optimal assembly.
+            // See <https://github.com/rust-lang/rust/issues/66780> for more info.
+            match (*self as i8) - (*other as i8) {
+                -1 => Less,
+                0 => Equal,
+                1 => Greater,
+                // SAFETY: bool as i8 returns 0 or 1, so the difference can't be anything else
+                _ => unsafe { unreachable_unchecked() },
+            }
         }
     }
 

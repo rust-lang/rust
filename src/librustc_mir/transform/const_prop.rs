@@ -636,19 +636,45 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     ScalarMaybeUndef::Scalar(one),
                     ScalarMaybeUndef::Scalar(two)
                 ) => {
+                    // Found a value represented as a pair. For now only do cont-prop if type of
+                    // Rvalue is also a pair with two scalars. The more general case is more
+                    // complicated to implement so we'll do it later.
                     let ty = &value.layout.ty.kind;
+                    // Only do it for tuples
                     if let ty::Tuple(substs) = ty {
-                        *rval = Rvalue::Aggregate(
-                            Box::new(AggregateKind::Tuple),
-                            vec![
-                                self.operand_from_scalar(
-                                    one, substs[0].expect_ty(), source_info.span
-                                ),
-                                self.operand_from_scalar(
-                                    two, substs[1].expect_ty(), source_info.span
-                                ),
-                            ],
-                        );
+                        // Only do it if tuple is also a pair with two scalars
+                        if substs.len() == 2 {
+                            let opt_ty1_ty2 = self.use_ecx(source_info, |this| {
+                                let ty1 = substs[0].expect_ty();
+                                let ty2 = substs[1].expect_ty();
+                                let ty_is_scalar = |ty| {
+                                    this.ecx
+                                        .layout_of(ty)
+                                        .ok()
+                                        .map(|ty| ty.details.abi.is_scalar())
+                                        == Some(true)
+                                };
+                                if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
+                                    Ok(Some((ty1, ty2)))
+                                } else {
+                                    Ok(None)
+                                }
+                            });
+
+                            if let Some(Some((ty1, ty2))) = opt_ty1_ty2 {
+                                *rval = Rvalue::Aggregate(
+                                    Box::new(AggregateKind::Tuple),
+                                    vec![
+                                        self.operand_from_scalar(
+                                            one, ty1, source_info.span
+                                        ),
+                                        self.operand_from_scalar(
+                                            two, ty2, source_info.span
+                                        ),
+                                    ],
+                                );
+                            }
+                        }
                     }
                 },
                 _ => { }

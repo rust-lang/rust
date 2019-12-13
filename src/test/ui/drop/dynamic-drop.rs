@@ -269,6 +269,28 @@ fn subslice_pattern_reassign(a: &Allocator) {
     let[_, _y @ ..] = ar;
 }
 
+fn index_field_mixed_ends(a: &Allocator) {
+    let ar = [(a.alloc(), a.alloc()), (a.alloc(), a.alloc())];
+    let[(_x, _), ..] = ar;
+    let[(_, _y), _] = ar;
+    let[_, (_, _w)] = ar;
+    let[.., (_z, _)] = ar;
+}
+
+fn subslice_mixed_min_lengths(a: &Allocator, c: i32) {
+    let ar = [(a.alloc(), a.alloc()), (a.alloc(), a.alloc())];
+    match c {
+        0 => { let[_x, ..] = ar; }
+        1 => { let[_x, _, ..] = ar; }
+        2 => { let[_x, _] = ar; }
+        3 => { let[(_x, _), _, ..] = ar; }
+        4 => { let[.., (_x, _)] = ar; }
+        5 => { let[.., (_x, _), _] = ar; }
+        6 => { let [_y @ ..] = ar; }
+        _ => { let [_y @ .., _] = ar; }
+    }
+}
+
 fn panic_after_return(a: &Allocator) -> Ptr<'_> {
     // Panic in the drop of `p` or `q` can leak
     let exceptions = vec![8, 9];
@@ -421,6 +443,16 @@ fn main() {
     run_test(|a| subslice_pattern_from_end_with_drop(a, false, false));
     run_test(|a| slice_pattern_reassign(a));
     run_test(|a| subslice_pattern_reassign(a));
+
+    run_test(|a| index_field_mixed_ends(a));
+    run_test(|a| subslice_mixed_min_lengths(a, 0));
+    run_test(|a| subslice_mixed_min_lengths(a, 1));
+    run_test(|a| subslice_mixed_min_lengths(a, 2));
+    run_test(|a| subslice_mixed_min_lengths(a, 3));
+    run_test(|a| subslice_mixed_min_lengths(a, 4));
+    run_test(|a| subslice_mixed_min_lengths(a, 5));
+    run_test(|a| subslice_mixed_min_lengths(a, 6));
+    run_test(|a| subslice_mixed_min_lengths(a, 7));
 
     run_test(|a| {
         panic_after_return(a);

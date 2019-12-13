@@ -88,14 +88,17 @@ impl<'tcx> PlaceTy<'tcx> {
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } =>
                 PlaceTy::from_ty(self.ty.builtin_index().unwrap()),
-            ProjectionElem::Subslice { from, to } => {
+            ProjectionElem::Subslice { from, to, from_end } => {
                 PlaceTy::from_ty(match self.ty.kind {
-                    ty::Array(inner, size) => {
+                    ty::Slice(..) => self.ty,
+                    ty::Array(inner, _) if !from_end => {
+                        tcx.mk_array(inner, (to - from) as u64)
+                    }
+                    ty::Array(inner, size) if from_end => {
                         let size = size.eval_usize(tcx, param_env);
                         let len = size - (from as u64) - (to as u64);
                         tcx.mk_array(inner, len)
                     }
-                    ty::Slice(..) => self.ty,
                     _ => {
                         bug!("cannot subslice non-array type: `{:?}`", self)
                     }

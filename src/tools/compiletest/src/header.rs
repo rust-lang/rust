@@ -71,6 +71,7 @@ pub struct EarlyProps {
     pub ignore: Ignore,
     pub should_fail: bool,
     pub aux: Vec<String>,
+    pub aux_crate: Vec<(String, String)>,
     pub revisions: Vec<String>,
 }
 
@@ -80,6 +81,7 @@ impl EarlyProps {
             ignore: Ignore::Run,
             should_fail: false,
             aux: Vec::new(),
+            aux_crate: Vec::new(),
             revisions: vec![],
         };
 
@@ -155,6 +157,10 @@ impl EarlyProps {
 
             if let Some(s) = config.parse_aux_build(ln) {
                 props.aux.push(s);
+            }
+
+            if let Some(ac) = config.parse_aux_crate(ln) {
+                props.aux_crate.push(ac);
             }
 
             if let Some(r) = config.parse_revisions(ln) {
@@ -311,10 +317,9 @@ pub struct TestProps {
     // directory as the test, but for backwards compatibility reasons
     // we also check the auxiliary directory)
     pub aux_builds: Vec<String>,
-    // A list of crates to pass '--extern-private name:PATH' flags for
-    // This should be a subset of 'aux_build'
-    // FIXME: Replace this with a better solution: https://github.com/rust-lang/rust/pull/54020
-    pub extern_private: Vec<String>,
+    // Similar to `aux_builds`, but a list of NAME=somelib.rs of dependencies
+    // to build and pass with the `--extern` flag.
+    pub aux_crates: Vec<(String, String)>,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
     // Environment variables to unset prior to compiling.
@@ -387,7 +392,7 @@ impl TestProps {
             run_flags: None,
             pp_exact: None,
             aux_builds: vec![],
-            extern_private: vec![],
+            aux_crates: vec![],
             revisions: vec![],
             rustc_env: vec![],
             unset_rustc_env: vec![],
@@ -514,8 +519,8 @@ impl TestProps {
                 self.aux_builds.push(ab);
             }
 
-            if let Some(ep) = config.parse_extern_private(ln) {
-                self.extern_private.push(ep);
+            if let Some(ac) = config.parse_aux_crate(ln) {
+                self.aux_crates.push(ac);
             }
 
             if let Some(ee) = config.parse_env(ln, "exec-env") {
@@ -713,8 +718,14 @@ impl Config {
             .map(|r| r.trim().to_string())
     }
 
-    fn parse_extern_private(&self, line: &str) -> Option<String> {
-        self.parse_name_value_directive(line, "extern-private")
+    fn parse_aux_crate(&self, line: &str) -> Option<(String, String)> {
+        self.parse_name_value_directive(line, "aux-crate").map(|r| {
+            let mut parts = r.trim().splitn(2, '=');
+            (
+                parts.next().expect("aux-crate name").to_string(),
+                parts.next().expect("aux-crate value").to_string(),
+            )
+        })
     }
 
     fn parse_compile_flags(&self, line: &str) -> Option<String> {

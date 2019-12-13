@@ -981,7 +981,7 @@ impl<'a> Builder<'a> {
         // argument manually via `-C link-args=-Wl,-rpath,...`. Plus isn't it
         // fun to pass a flag to a tool to pass a flag to pass a flag to a tool
         // to change a flag in a binary?
-        if self.config.rust_rpath {
+        if self.config.rust_rpath && util::use_host_linker(&target) {
             let rpath = if target.contains("apple") {
 
                 // Note that we need to take one extra step on macOS to also pass
@@ -991,10 +991,7 @@ impl<'a> Builder<'a> {
                 // flesh out rpath support more fully in the future.
                 rustflags.arg("-Zosx-rpath-install-name");
                 Some("-Wl,-rpath,@loader_path/../lib")
-            } else if !target.contains("windows") &&
-                      !target.contains("wasm32") &&
-                      !target.contains("emscripten") &&
-                      !target.contains("fuchsia") {
+            } else if !target.contains("windows") {
                 Some("-Wl,-rpath,$ORIGIN/../lib")
             } else {
                 None

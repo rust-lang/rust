@@ -15,6 +15,7 @@ use build_helper::t;
 
 use crate::config::Config;
 use crate::builder::Builder;
+use crate::cache::Interned;
 
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {
@@ -305,4 +306,16 @@ pub fn forcing_clang_based_tests() -> bool {
     } else {
         false
     }
+}
+
+pub fn use_host_linker(target: &Interned<String>) -> bool {
+    // FIXME: this information should be gotten by checking the linker flavor
+    // of the rustc target
+    !(
+        target.contains("emscripten") ||
+        target.contains("wasm32") ||
+        target.contains("nvptx") ||
+        target.contains("fortanix") ||
+        target.contains("fuchsia")
+    )
 }

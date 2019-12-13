@@ -802,6 +802,14 @@ impl Abi {
             _ => false,
         }
     }
+
+    /// Returns `true` is this is a scalar type
+    pub fn is_scalar(&self) -> bool {
+        match *self {
+            Abi::Scalar(_) => true,
+            _ => false,
+        }
+    }
 }
 
 rustc_index::newtype_index! {

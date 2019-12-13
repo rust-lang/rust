@@ -1,8 +1,7 @@
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use crate::borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
-use crate::borrow_check::nll::ToRegionVid;
+use crate::borrow_check::{nll::ToRegionVid, region_infer::{Cause, RegionInferenceContext}};
 use crate::util::liveness::{self, DefUse};
 use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
 use rustc::mir::{Local, Location, Body};

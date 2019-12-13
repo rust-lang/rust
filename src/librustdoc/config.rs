@@ -7,10 +7,10 @@ use errors;
 use getopts;
 use rustc::lint::Level;
 use rustc::session;
-use rustc::session::config::{CrateType, parse_crate_types_from_list};
+use rustc::session::config::{CrateType, parse_crate_types_from_list, parse_externs};
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
-                             get_cmd_lint_options, host_triple, ExternEntry};
+                             get_cmd_lint_options, host_triple};
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
@@ -320,13 +320,7 @@ impl Options {
         let libs = matches.opt_strs("L").iter()
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
-        let externs = match parse_externs(&matches) {
-            Ok(ex) => ex,
-            Err(err) => {
-                diag.struct_err(&err).emit();
-                return Err(1);
-            }
-        };
+        let externs = parse_externs(&matches, &debugging_options, error_format);
         let extern_html_root_urls = match parse_extern_html_roots(&matches) {
             Ok(ex) => ex,
             Err(err) => {
@@ -616,25 +610,4 @@ fn parse_extern_html_roots(
     }
 
     Ok(externs)
-}
-
-/// Extracts `--extern CRATE=PATH` arguments from `matches` and
-/// returns a map mapping crate names to their paths or else an
-/// error message.
-/// Also handles `--extern-private` which for the purposes of rustdoc
-/// we can treat as `--extern`
-// FIXME(eddyb) This shouldn't be duplicated with `rustc::session`.
-fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
-    let mut externs: BTreeMap<_, ExternEntry> = BTreeMap::new();
-    for arg in matches.opt_strs("extern").iter().chain(matches.opt_strs("extern-private").iter()) {
-        let mut parts = arg.splitn(2, '=');
-        let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
-        let location = parts.next().map(|s| s.to_string());
-        let name = name.to_string();
-        // For Rustdoc purposes, we can treat all externs as public
-        externs.entry(name)
-            .or_default()
-            .locations.insert(location.clone());
-    }
-    Ok(Externs::new(externs))
 }

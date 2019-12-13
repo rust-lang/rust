@@ -1,6 +1,6 @@
 use core::slice::Iter;
 use rustc::mir::*;
-use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::{Ty, TyCtxt, ParamEnv};
 use rustc::util::nodemap::FxHashMap;
 use rustc_index::vec::{Enumerated, Idx, IndexVec};
 use smallvec::SmallVec;
@@ -318,8 +318,9 @@ impl<'tcx> MoveData<'tcx> {
     pub fn gather_moves(
         body: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
     ) -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
-        builder::gather_moves(body, tcx)
+        builder::gather_moves(body, tcx, param_env)
     }
 
     /// For the move path `mpi`, returns the root local variable (if any) that starts the path.
