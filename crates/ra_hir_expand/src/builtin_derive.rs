@@ -34,7 +34,7 @@ macro_rules! register_builtin {
 
         pub fn find_builtin_derive(ident: &name::Name) -> Option<MacroDefId> {
             let kind = match ident {
-                $( id if id == &name::N![$trait] => BuiltinDeriveExpander::$trait, )*
+                $( id if id == &name::name![$trait] => BuiltinDeriveExpander::$trait, )*
                  _ => return None,
             };
 

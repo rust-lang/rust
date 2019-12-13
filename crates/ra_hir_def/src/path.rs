@@ -6,7 +6,7 @@ use std::{iter, sync::Arc};
 use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
-    name::{AsName, Name, N},
+    name::{name, AsName, Name},
 };
 use ra_db::CrateId;
 use ra_syntax::{
@@ -276,7 +276,7 @@ impl GenericArgs {
         }
         if let Some(ret_type) = ret_type {
             let type_ref = TypeRef::from_ast_opt(ret_type.type_ref());
-            bindings.push((N![Output], type_ref))
+            bindings.push((name![Output], type_ref))
         }
         if args.is_empty() && bindings.is_empty() {
             None
@@ -297,12 +297,12 @@ impl From<Name> for Path {
 }
 
 pub mod known {
-    use hir_expand::name::N;
+    use hir_expand::name::name;
 
     use super::{Path, PathKind};
 
     macro_rules! P {
-        ($start:ident $(:: $seg:ident)*) => { Path::from_simple_segments(PathKind::Abs, vec![N![$start], $(N![$seg],)*]) };
+        ($start:ident $(:: $seg:ident)*) => { Path::from_simple_segments(PathKind::Abs, vec![name![$start], $(name![$seg],)*]) };
     }
 
     pub fn std_iter_into_iterator() -> Path {

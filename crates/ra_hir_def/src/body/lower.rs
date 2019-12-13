@@ -2,7 +2,7 @@
 //! representation.
 
 use either::Either;
-use hir_expand::name::{AsName, Name, N};
+use hir_expand::name::{name, AsName, Name};
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
@@ -68,7 +68,7 @@ where
                 let ptr = AstPtr::new(&self_param);
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
-                        name: N![self],
+                        name: name![self],
                         mode: BindingAnnotation::Unannotated,
                         subpat: None,
                     },

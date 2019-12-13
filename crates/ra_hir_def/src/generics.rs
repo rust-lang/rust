@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use either::Either;
 use hir_expand::{
-    name::{AsName, Name, N},
+    name::{name, AsName, Name},
     InFile,
 };
 use ra_arena::{map::ArenaMap, Arena};
@@ -90,11 +90,11 @@ impl GenericParams {
 
                 // traits get the Self type as an implicit first type parameter
                 let self_param_id =
-                    generics.types.alloc(TypeParamData { name: N![Self], default: None });
+                    generics.types.alloc(TypeParamData { name: name![Self], default: None });
                 sm.insert(self_param_id, Either::Left(src.value.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
-                let self_param = TypeRef::Path(N![Self].into());
+                let self_param = TypeRef::Path(name![Self].into());
                 generics.fill_bounds(&src.value, self_param);
 
                 generics.fill(&mut sm, &src.value);

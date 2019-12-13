@@ -34,7 +34,7 @@ macro_rules! register_builtin {
             ast_id: AstId<ast::MacroCall>,
         ) -> Option<MacroDefId> {
             let kind = match ident {
-                 $( id if id == &name::N![$name] => BuiltinFnLikeExpander::$kind, )*
+                 $( id if id == &name::name![$name] => BuiltinFnLikeExpander::$kind, )*
                  _ => return None,
             };
 

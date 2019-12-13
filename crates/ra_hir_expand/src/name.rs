@@ -186,7 +186,7 @@ pub mod known {
     pub const SELF_TYPE: super::Name = super::Name::new_inline_ascii(b"Self");
 
     #[macro_export]
-    macro_rules! N {
+    macro_rules! name {
         (self) => {
             $crate::name::known::SELF_PARAM
         };
@@ -199,4 +199,4 @@ pub mod known {
     }
 }
 
-pub use crate::N;
+pub use crate::name;

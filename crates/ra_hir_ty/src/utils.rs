@@ -10,7 +10,7 @@ use hir_def::{
     type_ref::TypeRef,
     ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId, VariantId,
 };
-use hir_expand::name::{Name, N};
+use hir_expand::name::{name, Name};
 
 fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
@@ -22,7 +22,7 @@ fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
         .where_predicates
         .iter()
         .filter_map(|pred| match &pred.type_ref {
-            TypeRef::Path(p) if p.as_ident() == Some(&N![Self]) => pred.bound.as_path(),
+            TypeRef::Path(p) if p.as_ident() == Some(&name![Self]) => pred.bound.as_path(),
             _ => None,
         })
         .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path) {
