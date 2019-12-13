@@ -1,4 +1,5 @@
 use std::collections::LinkedList;
+use std::panic::catch_unwind;
 
 #[test]
 fn test_basic() {
@@ -528,4 +529,110 @@ fn drain_filter_complex() {
         assert_eq!(list.len(), 10);
         assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
     }
+}
+
+
+#[test]
+fn test_drop() {
+    static mut DROPS: i32 = 0;
+    struct Elem;
+    impl Drop for Elem {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+        }
+    }
+
+    let mut ring = LinkedList::new();
+    ring.push_back(Elem);
+    ring.push_front(Elem);
+    ring.push_back(Elem);
+    ring.push_front(Elem);
+    drop(ring);
+
+    assert_eq!(unsafe { DROPS }, 4);
+}
+
+#[test]
+fn test_drop_with_pop() {
+    static mut DROPS: i32 = 0;
+    struct Elem;
+    impl Drop for Elem {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+        }
+    }
+
+    let mut ring = LinkedList::new();
+    ring.push_back(Elem);
+    ring.push_front(Elem);
+    ring.push_back(Elem);
+    ring.push_front(Elem);
+
+    drop(ring.pop_back());
+    drop(ring.pop_front());
+    assert_eq!(unsafe { DROPS }, 2);
+
+    drop(ring);
+    assert_eq!(unsafe { DROPS }, 4);
+}
+
+#[test]
+fn test_drop_clear() {
+    static mut DROPS: i32 = 0;
+    struct Elem;
+    impl Drop for Elem {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+        }
+    }
+
+    let mut ring = LinkedList::new();
+    ring.push_back(Elem);
+    ring.push_front(Elem);
+    ring.push_back(Elem);
+    ring.push_front(Elem);
+    ring.clear();
+    assert_eq!(unsafe { DROPS }, 4);
+
+    drop(ring);
+    assert_eq!(unsafe { DROPS }, 4);
+}
+
+#[test]
+fn test_drop_panic() {
+    static mut DROPS: i32 = 0;
+
+    struct D(bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.0 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut q = LinkedList::new();
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_front(D(false));
+    q.push_front(D(false));
+    q.push_front(D(true));
+
+    catch_unwind(move || drop(q)).ok();
+
+    assert_eq!(unsafe { DROPS }, 8);
 }
