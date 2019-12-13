@@ -1606,3 +1606,41 @@ fn truncate_leak() {
 
     assert_eq!(unsafe { DROPS }, 7);
 }
+
+#[test]
+fn test_drain_leak() {
+    static mut DROPS: i32 = 0;
+
+    #[derive(Debug, PartialEq)]
+    struct D(u32, bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.1 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut v = VecDeque::new();
+    v.push_back(D(4, false));
+    v.push_back(D(5, false));
+    v.push_back(D(6, false));
+    v.push_front(D(3, false));
+    v.push_front(D(2, true));
+    v.push_front(D(1, false));
+    v.push_front(D(0, false));
+
+    catch_unwind(AssertUnwindSafe(|| {
+        v.drain(1..=4);
+    })).ok();
+
+    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(v.len(), 3);
+    drop(v);
+    assert_eq!(unsafe { DROPS }, 7);
+}

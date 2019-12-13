@@ -2575,47 +2575,61 @@ unsafe impl<T: Send> Send for Drain<'_, T> {}
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> Drop for Drain<'_, T> {
     fn drop(&mut self) {
-        self.for_each(drop);
+        struct DropGuard<'r, 'a, T>(&'r mut Drain<'a, T>);
 
-        let source_deque = unsafe { self.deque.as_mut() };
+        impl<'r, 'a, T> Drop for DropGuard<'r, 'a, T> {
+            fn drop(&mut self) {
+                self.0.for_each(drop);
 
-        // T = source_deque_tail; H = source_deque_head; t = drain_tail; h = drain_head
-        //
-        //        T   t   h   H
-        // [. . . o o x x o o . . .]
-        //
-        let orig_tail = source_deque.tail;
-        let drain_tail = source_deque.head;
-        let drain_head = self.after_tail;
-        let orig_head = self.after_head;
+                let source_deque = unsafe { self.0.deque.as_mut() };
 
-        let tail_len = count(orig_tail, drain_tail, source_deque.cap());
-        let head_len = count(drain_head, orig_head, source_deque.cap());
+                // T = source_deque_tail; H = source_deque_head; t = drain_tail; h = drain_head
+                //
+                //        T   t   h   H
+                // [. . . o o x x o o . . .]
+                //
+                let orig_tail = source_deque.tail;
+                let drain_tail = source_deque.head;
+                let drain_head = self.0.after_tail;
+                let orig_head = self.0.after_head;
 
-        // Restore the original head value
-        source_deque.head = orig_head;
+                let tail_len = count(orig_tail, drain_tail, source_deque.cap());
+                let head_len = count(drain_head, orig_head, source_deque.cap());
 
-        match (tail_len, head_len) {
-            (0, 0) => {
-                source_deque.head = 0;
-                source_deque.tail = 0;
-            }
-            (0, _) => {
-                source_deque.tail = drain_head;
-            }
-            (_, 0) => {
-                source_deque.head = drain_tail;
-            }
-            _ => unsafe {
-                if tail_len <= head_len {
-                    source_deque.tail = source_deque.wrap_sub(drain_head, tail_len);
-                    source_deque.wrap_copy(source_deque.tail, orig_tail, tail_len);
-                } else {
-                    source_deque.head = source_deque.wrap_add(drain_tail, head_len);
-                    source_deque.wrap_copy(drain_tail, drain_head, head_len);
+                // Restore the original head value
+                source_deque.head = orig_head;
+
+                match (tail_len, head_len) {
+                    (0, 0) => {
+                        source_deque.head = 0;
+                        source_deque.tail = 0;
+                    }
+                    (0, _) => {
+                        source_deque.tail = drain_head;
+                    }
+                    (_, 0) => {
+                        source_deque.head = drain_tail;
+                    }
+                    _ => unsafe {
+                        if tail_len <= head_len {
+                            source_deque.tail = source_deque.wrap_sub(drain_head, tail_len);
+                            source_deque.wrap_copy(source_deque.tail, orig_tail, tail_len);
+                        } else {
+                            source_deque.head = source_deque.wrap_add(drain_tail, head_len);
+                            source_deque.wrap_copy(drain_tail, drain_head, head_len);
+                        }
+                    },
                 }
-            },
+            }
         }
+
+        while let Some(item) = self.next() {
+            let guard = DropGuard(self);
+            drop(item);
+            mem::forget(guard);
+        }
+
+        DropGuard(self);
     }
 }
 
