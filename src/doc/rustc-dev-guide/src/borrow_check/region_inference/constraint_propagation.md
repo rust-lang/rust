@@ -10,7 +10,7 @@ on one at a time (each of them is fairly independent from the others):
 - outlives constraints (`R1: R2`), which arise from subtyping;
 - [member constraints][m_c] (`member R_m of [R_c...]`), which arise from impl Trait.
 
-[`propagate_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.propagate_constraints
+[`propagate_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#method.propagate_constraints
 [m_c]: ./member_constraints.md
 
 In this chapter, we'll explain the "heart" of constraint propagation,
@@ -68,8 +68,8 @@ though; instead, we store a (sparse) bitset per region variable (of
 type [`LivenessValues`]). This way we only need a single bit for each
 liveness constraint.
 
-[`liveness_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.liveness_constraints
-[`LivenessValues`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/values/struct.LivenessValues.html
+[`liveness_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.liveness_constraints
+[`LivenessValues`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/values/struct.LivenessValues.html
 
 One thing that is worth mentioning: All lifetime parameters are always
 considered to be live over the entire function body. This is because
@@ -112,9 +112,9 @@ induces an edge `'a -> 'b`. This conversion happens in the
 [`RegionInferenceContext::new`] function that creates the inference
 context.
 
-[`ConstraintSet`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/constraints/struct.OutlivesConstraintSet.html
-[graph-fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/constraints/struct.OutlivesConstraintSet.html#method.graph
-[`RegionInferenceContext::new`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.new
+[`ConstraintSet`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/constraints/struct.OutlivesConstraintSet.html
+[graph-fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/constraints/struct.OutlivesConstraintSet.html#method.graph
+[`RegionInferenceContext::new`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#method.new
 
 When using a graph representation, we can detect regions that must be equal
 by looking for cycles. That is, if you have a constraint like
@@ -146,8 +146,8 @@ of fields are defined in terms of SCCs. For example, the
 of a specific region `'a` then, we first figure out the SCC that the
 region is a part of, and then find the value of that SCC.
 
-[`constraint_sccs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.constraint_sccs
-[`scc_values`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.scc_values
+[`constraint_sccs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.constraint_sccs
+[`scc_values`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.scc_values
 
 When we compute SCCs, we not only figure out which regions are a
 member of each SCC, we also figure out the edges between them. So for example

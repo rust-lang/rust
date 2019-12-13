@@ -1,11 +1,9 @@
 # Region inference (NLL)
 
-The MIR-based region checking code is located in
-[the `rustc_mir::borrow_check::nll` module][nll]. (NLL, of course,
-stands for "non-lexical lifetimes", a term that will hopefully be
-deprecated once they become the standard kind of lifetime.)
+The MIR-based region checking code is located in [the `rustc_mir::borrow_check`
+module][nll].
 
-[nll]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/index.html
+[nll]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html
 
 The MIR-based region analysis consists of two major functions:
 
@@ -36,12 +34,12 @@ The MIR-based region analysis consists of two major functions:
   - The [NLL RFC] also includes fairly thorough (and hopefully readable)
     coverage.
 
-[cp]: ./region_inference/constraint_propagation.html
-[fvb]: ../appendix/background.html#free-vs-bound
+[cp]: ./region_inference/constraint_propagation.md
+[fvb]: ../appendix/background.md#free-vs-bound
 [`replace_regions_in_mir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/fn.replace_regions_in_mir.html
 [`compute_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/fn.compute_regions.html
-[`RegionInferenceContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html
-[`solve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.solve
+[`RegionInferenceContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html
+[`solve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#method.solve
 [NLL RFC]: https://rust-lang.github.io/rfcs/2094-nll.html
 [MIR type checker]: ./type_check.md
 
@@ -68,7 +66,7 @@ the moment.
 
 TODO: write about _how_ these regions are computed.
 
-[`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/universal_regions/struct.UniversalRegions.html
+[`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/universal_regions/struct.UniversalRegions.html
 
 <a name="region-variables"></a>
 
@@ -84,7 +82,7 @@ maintain a set storing what elements are present in its value (to make this
 efficient, we give each kind of element an index, the `RegionElementIndex`, and
 use sparse bitsets).
 
-[ri]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir/borrow_check/nll/region_infer/
+[ri]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir/borrow_check/region_infer/
 
 The kinds of region elements are as follows:
 
@@ -115,7 +113,7 @@ common sorts of constraints are:
 2. Liveness constraints. Each region needs to be live at points where it can be
    used. These constraints are collected by [`generate_constraints`].
 
-[`generate_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/constraint_generation/fn.generate_constraints.html
+[`generate_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/constraint_generation/fn.generate_constraints.html
 
 ## Inference Overview
 
@@ -219,12 +217,12 @@ Here are some of the fields of the struct:
 - [`closure_bounds_mapping`]: used for propagating region constraints from
   closures back out to the creator of the closure.
 
-[`constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.constraints
-[`liveness_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.liveness_constraints
-[`universal_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.universal_regions
-[`universal_region_relations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.universal_region_relations
-[`type_tests`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.type_tests
-[`closure_bounds_mapping`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.closure_bounds_mapping
+[`constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.constraints
+[`liveness_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.liveness_constraints
+[`universal_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.universal_regions
+[`universal_region_relations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.universal_region_relations
+[`type_tests`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.type_tests
+[`closure_bounds_mapping`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.closure_bounds_mapping
 
 TODO: should we discuss any of the others fields? What about the SCCs?
 
@@ -233,6 +231,6 @@ inference. This is done by calling the [`solve`] method on the context. This
 is where we call [`propagate_constraints`] and then check the resulting type
 tests and universal regions, as discussed above.
 
-[`propagate_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.propagate_constraints
-[`check_type_tests`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.check_type_tests
-[`check_universal_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.check_universal_regions
+[`propagate_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#method.propagate_constraints
+[`check_type_tests`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#method.check_type_tests
+[`check_universal_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#method.check_universal_regions

@@ -29,9 +29,9 @@ relationships to one another. So if you have e.g. `where 'a: 'b`, then
 the [`UniversalRegionRelations`] struct would track that `'a: 'b` is
 known to hold (which could be tested with the [`outlives`] function.
 
-[`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/universal_regions/struct.UniversalRegions.html
-[`UniversalRegionRelations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/type_check/free_region_relations/struct.UniversalRegionRelations.html
-[`outlives`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/type_check/free_region_relations/struct.UniversalRegionRelations.html#method.outlives
+[`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/universal_regions/struct.UniversalRegions.html
+[`UniversalRegionRelations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/type_check/free_region_relations/struct.UniversalRegionRelations.html
+[`outlives`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/type_check/free_region_relations/struct.UniversalRegionRelations.html#method.outlives
 
 ## Everything is a region variable
 
@@ -56,7 +56,7 @@ type). These subdivisions are not important for the topics discussed
 here, but become important when we consider [closure constraint
 propagation](./closure_constraints.html), so we discuss them there.
 
-[`RegionClassification`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/universal_regions/enum.RegionClassification.html#variant.Local
+[`RegionClassification`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/universal_regions/enum.RegionClassification.html#variant.Local
 
 ## Universal lifetimes as the elements of a region's value
 
@@ -86,7 +86,7 @@ liveness constraint (i.e., `'a` must extend until the end of
 itself). In the code, these liveness constraints are setup in
 [`init_free_and_bound_regions`].
 
-[`init_free_and_bound_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.init_free_and_bound_regions
+[`init_free_and_bound_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#method.init_free_and_bound_regions
 
 ## Propagating outlives constraints for universal regions
 
@@ -122,4 +122,4 @@ not, as in our example, that is an error. This check is done in the
 universal regions, inspects their final value, and tests against the
 declared [`UniversalRegionRelations`].
 
-[`check_universal_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.check_universal_regions
+[`check_universal_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#method.check_universal_regions

@@ -11,13 +11,8 @@ enforcing a number of properties:
 - That you can't mutate a place while it is immutably borrowed.
 - etc
 
-At the time of this writing, the code is in a state of transition. The
-"main" borrow checker still works by processing [the HIR](hir.html),
-but that is being phased out in favor of the MIR-based borrow checker.
-Accordingly, this documentation focuses on the new, MIR-based borrow
-checker.
-
-Doing borrow checking on MIR has several advantages:
+The borrow checker operates on the MIR. An older implementation operated on the
+HIR. Doing borrow checking on MIR has several advantages:
 
 - The MIR is *far* less complex than the HIR; the radical desugaring
   helps prevent bugs in the borrow checker. (If you're curious, you
@@ -42,15 +37,15 @@ the [`mir_borrowck`] query.
   we will modify this copy in place to modify the types and things to
   include references to the new regions that we are computing.
 - We then invoke [`replace_regions_in_mir`] to modify our local MIR.
-  Among other things, this function will replace all of the [regions](./appendix/glossary.html) in
-  the MIR with fresh [inference variables](./appendix/glossary.html).
+  Among other things, this function will replace all of the [regions](./appendix/glossary.md) in
+  the MIR with fresh [inference variables](./appendix/glossary.md).
 - Next, we perform a number of
-  [dataflow analyses](./appendix/background.html#dataflow) that
+  [dataflow analyses](./appendix/background.md#dataflow) that
   compute what data is moved and when.
-- We then do a [second type check](borrow_check/type_check.html) across the MIR:
+- We then do a [second type check](borrow_check/type_check.md) across the MIR:
   the purpose of this type check is to determine all of the constraints between
   different regions.
-- Next, we do [region inference](borrow_check/region_inference.html), which computes
+- Next, we do [region inference](borrow_check/region_inference.md), which computes
   the values of each region — basically, the points in the control-flow graph where
   each lifetime must be valid according to the constraints we collected.
 - At this point, we can compute the "borrows in scope" at each point.
