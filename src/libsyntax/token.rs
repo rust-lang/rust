@@ -673,7 +673,7 @@ pub enum Nonterminal {
     NtLifetime(ast::Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
-    NtMeta(ast::AttrItem),
+    NtMeta(P<ast::AttrItem>),
     NtPath(ast::Path),
     NtVis(ast::Visibility),
     NtTT(TokenTree),
@@ -687,7 +687,7 @@ pub enum Nonterminal {
 
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Nonterminal, 72);
+rustc_data_structures::static_assert_size!(Nonterminal, 40);
 
 impl PartialEq for Nonterminal {
     fn eq(&self, rhs: &Self) -> bool {
