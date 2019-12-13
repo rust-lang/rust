@@ -367,8 +367,9 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     /// Do not call this method!  Use either `assert_ptr` or `force_ptr`.
+    /// This method is intentionally private, do not make it public.
     #[inline]
-    pub fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
+    fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
         match self {
             Scalar::Raw { data: 0, .. } => throw_unsup!(InvalidNullPointerUsage),
             Scalar::Raw { .. } => throw_unsup!(ReadBytesAsPointer),
@@ -542,12 +543,6 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUndef::Undef => throw_unsup!(ReadUndefBytes(Size::ZERO)),
         }
-    }
-
-    /// Do not call this method!  Use either `assert_ptr` or `force_ptr`.
-    #[inline(always)]
-    pub fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
-        self.not_undef()?.to_ptr()
     }
 
     /// Do not call this method!  Use either `assert_bits` or `force_bits`.
