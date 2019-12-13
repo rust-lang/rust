@@ -227,7 +227,7 @@ impl ExpansionInfo {
         let token_id = self.macro_arg.1.token_by_range(range)?;
         let token_id = self.macro_def.0.map_id_down(token_id);
 
-        let range = self.exp_map.range_by_token(token_id)?;
+        let range = self.exp_map.range_by_token(token_id)?.range(token.value.kind())?;
 
         let token = algo::find_covering_element(&self.expanded.value, range).into_token()?;
 
@@ -248,7 +248,7 @@ impl ExpansionInfo {
             }
         };
 
-        let range = token_map.range_by_token(token_id)?;
+        let range = token_map.range_by_token(token_id)?.range(token.value.kind())?;
         let token = algo::find_covering_element(&tt.value, range + tt.value.text_range().start())
             .into_token()?;
         Some((tt.with_value(token), origin))

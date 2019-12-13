@@ -12,11 +12,30 @@ use tt::buffer::{Cursor, TokenBuffer};
 use crate::subtree_source::SubtreeTokenSource;
 use crate::ExpandError;
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum TokenTextRange {
+    Token(TextRange),
+    Delimiter(TextRange, TextRange),
+}
+
+impl TokenTextRange {
+    pub fn range(self, kind: SyntaxKind) -> Option<TextRange> {
+        match self {
+            TokenTextRange::Token(it) => Some(it),
+            TokenTextRange::Delimiter(open, close) => match kind {
+                T!['{'] | T!['('] | T!['['] => Some(open),
+                T!['}'] | T![')'] | T![']'] => Some(close),
+                _ => None,
+            },
+        }
+    }
+}
+
 /// Maps `tt::TokenId` to the relative range of the original token.
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct TokenMap {
     /// Maps `tt::TokenId` to the *relative* source range.
-    entries: Vec<(tt::TokenId, TextRange)>,
+    entries: Vec<(tt::TokenId, TokenTextRange)>,
 }
 
 /// Convert the syntax tree (what user has written) to a `TokenTree` (what macro
@@ -72,26 +91,32 @@ pub fn token_tree_to_syntax_node(
 
 impl TokenMap {
     pub fn token_by_range(&self, relative_range: TextRange) -> Option<tt::TokenId> {
-        let &(token_id, _) = self.entries.iter().find(|(_, range)| *range == relative_range)?;
+        let &(token_id, _) = self.entries.iter().find(|(_, range)| match range {
+            TokenTextRange::Token(it) => *it == relative_range,
+            TokenTextRange::Delimiter(open, close) => {
+                *open == relative_range || *close == relative_range
+            }
+        })?;
         Some(token_id)
     }
 
-    pub fn range_by_token(&self, token_id: tt::TokenId) -> Option<TextRange> {
+    pub fn range_by_token(&self, token_id: tt::TokenId) -> Option<TokenTextRange> {
         let &(_, range) = self.entries.iter().find(|(tid, _)| *tid == token_id)?;
         Some(range)
     }
 
     fn insert(&mut self, token_id: tt::TokenId, relative_range: TextRange) {
-        self.entries.push((token_id, relative_range));
+        self.entries.push((token_id, TokenTextRange::Token(relative_range)));
     }
 
     fn insert_delim(
         &mut self,
-        _token_id: tt::TokenId,
-        _open_relative_range: TextRange,
-        _close_relative_range: TextRange,
+        token_id: tt::TokenId,
+        open_relative_range: TextRange,
+        close_relative_range: TextRange,
     ) {
-        // FIXME: Add entries for delimiter
+        self.entries
+            .push((token_id, TokenTextRange::Delimiter(open_relative_range, close_relative_range)));
     }
 }
 
