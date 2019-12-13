@@ -260,11 +260,11 @@ impl<T> ChunkBackend<T> for TypedCurrentChunk<T> {
 /// It is spearated from `TypedCurrentChunk` for code reuse in `DroplessArena`.
 struct DroplessCurrentChunk<T> {
     /// A pointer to the next object to be allocated.
-    ptr: Cell<*mut u8>,
+    /// When this pointer is reached, a new chunk is allocated.
+    start: Cell<*mut u8>,
 
-    /// A pointer to the end of the allocated area. When this pointer is
-    /// reached, a new chunk is allocated.
-    end: Cell<*mut u8>,
+    /// A pointer to the end of the allocated area.
+    ptr: Cell<*mut u8>,
 
     /// Ensure correct semantics.
     _own: PhantomData<*mut T>,
@@ -276,10 +276,10 @@ impl<T> ChunkBackend<T> for DroplessCurrentChunk<T> {
     #[inline]
     fn new() -> Self {
         DroplessCurrentChunk {
-            // We set both `ptr` and `end` to 0 so that the first call to
+            // We set both `start` and `end` to 0 so that the first call to
             // alloc() will trigger a grow().
+            start: Cell::new(ptr::null_mut()),
             ptr: Cell::new(ptr::null_mut()),
-            end: Cell::new(ptr::null_mut()),
             _own: PhantomData,
         }
     }
@@ -290,14 +290,10 @@ impl<T> ChunkBackend<T> for DroplessCurrentChunk<T> {
     }
 
     #[inline]
-    fn can_allocate(&self, len: usize, align: usize) -> bool {
+    fn can_allocate(&self, len: usize, _align: usize) -> bool {
         let len = len * mem::size_of::<T>();
-        let ptr = self.ptr.get();
-        let ptr = unsafe { ptr.add(ptr.align_offset(align)) };
-        let available_capacity = unsafe { self.end.get().offset_from(ptr) };
-        assert!(available_capacity >= 0);
-        let available_capacity = available_capacity as usize;
-        available_capacity >= len
+        // start is always aligned, so removing len from ptr cannot go below it
+        (unsafe { self.start.get().add(len) }) <= self.ptr.get()
     }
 
     /// Grows the arena.
@@ -308,10 +304,11 @@ impl<T> ChunkBackend<T> for DroplessCurrentChunk<T> {
         unsafe {
             let mut new_capacity;
             if let Some(last_chunk) = chunks.last_mut() {
-                let currently_used_cap = self.ptr.get() as usize - last_chunk.start() as usize;
+                let currently_used_cap = last_chunk.end().offset_from(self.ptr.get());
+                let currently_used_cap = currently_used_cap as usize;
                 last_chunk.entries = currently_used_cap;
                 if last_chunk.storage.reserve_in_place(currently_used_cap, len) {
-                    self.end.set(last_chunk.end());
+                    self.ptr.set(last_chunk.end());
                     return;
                 } else {
                     new_capacity = last_chunk.storage.capacity();
@@ -327,21 +324,21 @@ impl<T> ChunkBackend<T> for DroplessCurrentChunk<T> {
             }
 
             let chunk = TypedArenaChunk::new(new_capacity);
-            self.ptr.set(chunk.start());
-            self.end.set(chunk.end());
+            self.start.set(chunk.start());
+            self.ptr.set(chunk.end());
             chunks.push(chunk);
         }
     }
 
     #[inline]
     unsafe fn alloc_raw_slice(&self, len: usize, align: usize) -> *mut T {
+        assert!(self.can_allocate(len, align));
         let len = len * mem::size_of::<T>();
-        let ptr = self.ptr.get();
-        let ptr = ptr.add(ptr.align_offset(align));
-        let end = ptr.add(len);
-        assert!(end <= self.end.get());
+        let ptr = self.ptr.get().sub(len);
+        let ptr = ((ptr as usize) & !(align - 1)) as *mut u8;
+        assert!(ptr >= self.start.get());
 
-        self.ptr.set(end);
+        self.ptr.set(ptr);
         ptr as *mut T
     }
 
@@ -349,7 +346,7 @@ impl<T> ChunkBackend<T> for DroplessCurrentChunk<T> {
     fn clear(&self, chunks: &mut Self::ChunkVecType) {
         if let Some(last_chunk) = chunks.last_mut() {
             // Clear the last chunk, which is partially filled.
-            self.ptr.set(last_chunk.start())
+            self.ptr.set(last_chunk.end())
         }
     }
 }
