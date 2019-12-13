@@ -116,6 +116,7 @@ E0211: include_str!("./error_codes/E0211.md"),
 E0214: include_str!("./error_codes/E0214.md"),
 E0220: include_str!("./error_codes/E0220.md"),
 E0221: include_str!("./error_codes/E0221.md"),
+E0222: include_str!("./error_codes/E0222.md"),
 E0223: include_str!("./error_codes/E0223.md"),
 E0225: include_str!("./error_codes/E0225.md"),
 E0229: include_str!("./error_codes/E0229.md"),
@@ -457,8 +458,6 @@ E0745: include_str!("./error_codes/E0745.md"),
 //  E0217, // ambiguous associated type, defined in multiple supertraits
 //  E0218, // no associated type defined
 //  E0219, // associated type defined in higher-ranked supertrait
-//  E0222, // Error code E0045 (variadic function must have C or cdecl calling
-           // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required

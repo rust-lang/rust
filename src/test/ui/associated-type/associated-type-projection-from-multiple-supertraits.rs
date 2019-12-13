@@ -20,11 +20,9 @@ fn dent<C:BoxCar>(c: C, color: C::Color) {
     //~^ ERROR ambiguous associated type `Color` in bounds of `C`
 }
 
-// FIXME: add error code to detect this case and explain that you'll want the approach in
-// `dent_object_3` of using a new type param and relying on the `where` clauses.
 fn dent_object<COLOR>(c: dyn BoxCar<Color=COLOR>) {
     //~^ ERROR ambiguous associated type
-    //~| ERROR the value of the associated type `Color` (from trait `Vehicle`) must be specified
+    //~| ERROR the value of the associated types `Color` (from trait `Vehicle`), `Color` (from
 }
 
 fn paint<C:BoxCar>(c: C, d: C::Color) {

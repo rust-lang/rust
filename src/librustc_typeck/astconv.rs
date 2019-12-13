@@ -1267,7 +1267,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let candidate =
             if self.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
                 // Simple case: X is defined in the current trait.
-                Ok(trait_ref)
+                trait_ref
             } else {
                 // Otherwise, we have to walk through the supertraits to find
                 // those that do.
@@ -1276,8 +1276,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     &trait_ref.print_only_trait_path().to_string(),
                     binding.item_name,
                     path_span,
-                )
-            }?;
+                    match binding.kind {
+                        ConvertedBindingKind::Equality(ty) => Some(ty.to_string()),
+                        _ => None,
+                    },
+                )?
+            };
 
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(binding.item_name, candidate.def_id(), hir_ref_id);
@@ -1626,20 +1630,31 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
         let mut suggestions_len = suggestions.len();
         if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(sugg_span) {
-            if potential_assoc_types.is_empty() && trait_bounds.len() == 1 &&
+            let assoc_types: Vec<String> = associated_types
+                .iter()
+                .map(|item_def_id| {
+                    let assoc_item = tcx.associated_item(*item_def_id);
+                    format!("{} = Type", assoc_item.ident)
+                })
+                .collect();
+            let dedup = assoc_types.clone().drain(..).collect::<FxHashSet<_>>();
+
+            if dedup.len() != assoc_types.len() && trait_bounds.len() == 1 {
+                // If there are duplicates associated type names and a single trait bound do not
+                // use structured suggestion, it means that there are multiple super-traits with
+                // the same associated type name.
+                err.help(
+                    "consider introducing a new type parameter, adding `where` constraints \
+                          using the fully-qualified path to the associated type",
+                );
+            } else if dedup.len() == assoc_types.len() &&
+                potential_assoc_types.is_empty() &&
+                trait_bounds.len() == 1 &&
                 // Do not attempt to suggest when we don't know which path segment needs the
                 // type parameter set.
                 trait_bounds[0].trait_ref.path.segments.len() == 1
             {
-                debug!("path segments {:?}", trait_bounds[0].trait_ref.path.segments);
                 applicability = Applicability::HasPlaceholders;
-                let assoc_types: Vec<String> = associated_types
-                    .iter()
-                    .map(|item_def_id| {
-                        let assoc_item = tcx.associated_item(*item_def_id);
-                        format!("{} = Type", assoc_item.ident)
-                    })
-                    .collect();
                 let sugg = assoc_types.join(", ");
                 if snippet.ends_with('>') {
                     // The user wrote `Trait<'a>` or similar and we don't have a type we can
@@ -1666,7 +1681,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .collect::<Vec<_>>()
                 .join(", ");
             err.span_label(
-                span,
+                sugg_span,
                 format!(
                     "associated type{} {} must be specified",
                     pluralize!(associated_types.len()),
@@ -1743,15 +1758,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             &param_name.as_str(),
             assoc_name,
             span,
+            None,
         )
     }
 
+    // Checks that `bounds` contains exactly one element and reports appropriate
+    // errors otherwise.
     fn one_bound_for_assoc_type<I>(
         &self,
         all_candidates: impl Fn() -> I,
         ty_param_name: &str,
         assoc_name: ast::Ident,
         span: Span,
+        is_equality: Option<String>,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -1778,16 +1797,29 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             debug!("one_bound_for_assoc_type: bound2 = {:?}", bound2);
 
             let bounds = iter::once(bound).chain(iter::once(bound2)).chain(matching_candidates);
-            let mut err = struct_span_err!(
-                self.tcx().sess,
-                span,
-                E0221,
-                "ambiguous associated type `{}` in bounds of `{}`",
-                assoc_name,
-                ty_param_name
-            );
+            let mut err = if is_equality.is_some() {
+                // More specific Error Index entry.
+                struct_span_err!(
+                    self.tcx().sess,
+                    span,
+                    E0222,
+                    "ambiguous associated type `{}` in bounds of `{}`",
+                    assoc_name,
+                    ty_param_name
+                )
+            } else {
+                struct_span_err!(
+                    self.tcx().sess,
+                    span,
+                    E0221,
+                    "ambiguous associated type `{}` in bounds of `{}`",
+                    assoc_name,
+                    ty_param_name
+                )
+            };
             err.span_label(span, format!("ambiguous associated type `{}`", assoc_name));
 
+            let mut where_bounds = vec![];
             for bound in bounds {
                 let bound_span = self
                     .tcx()
@@ -1807,17 +1839,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             bound.print_only_trait_path(),
                         ),
                     );
-                    err.span_suggestion(
-                        span,
-                        "use fully qualified syntax to disambiguate",
-                        format!(
-                            "<{} as {}>::{}",
-                            ty_param_name,
-                            bound.print_only_trait_path(),
-                            assoc_name,
-                        ),
-                        Applicability::MaybeIncorrect,
-                    );
+                    if let Some(constraint) = &is_equality {
+                        where_bounds.push(format!(
+                            "        T: {trait}::{assoc} = {constraint}",
+                            trait=bound.print_only_trait_path(),
+                            assoc=assoc_name,
+                            constraint=constraint,
+                        ));
+                    } else {
+                        err.span_suggestion(
+                            span,
+                            "use fully qualified syntax to disambiguate",
+                            format!(
+                                "<{} as {}>::{}",
+                                ty_param_name,
+                                bound.print_only_trait_path(),
+                                assoc_name,
+                            ),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 } else {
                     err.note(&format!(
                         "associated type `{}` could derive from `{}`",
@@ -1826,9 +1867,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ));
                 }
             }
+            if !where_bounds.is_empty() {
+                err.help(&format!(
+                    "consider introducing a new type parameter `T` and adding `where` constraints:\
+                     \n    where\n        T: {},\n{}",
+                    ty_param_name,
+                    where_bounds.join(",\n"),
+                ));
+            }
             err.emit();
+            if !where_bounds.is_empty() {
+                return Err(ErrorReported);
+            }
         }
-
         return Ok(bound);
     }
 
@@ -1933,6 +1984,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     "Self",
                     assoc_ident,
                     span,
+                    None,
                 )?
             }
             (&ty::Param(_), Res::SelfTy(Some(param_did), None))

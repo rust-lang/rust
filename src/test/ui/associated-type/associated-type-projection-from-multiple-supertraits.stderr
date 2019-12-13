@@ -1,8 +1,10 @@
-error: equality constraints are not yet supported in where clauses (see #20041)
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:34:46
+error: equality constraints are not yet supported in where clauses
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:32:46
    |
 LL | fn dent_object_2<COLOR>(c: dyn BoxCar) where <dyn BoxCar as Vehicle>::Color = COLOR {
-   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not supported
+   |
+   = note: for more information, see #20041
 
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:19:32
@@ -25,8 +27,8 @@ help: use fully qualified syntax to disambiguate
 LL | fn dent<C:BoxCar>(c: C, color: <C as Vehicle>::Color) {
    |                                ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0221]: ambiguous associated type `Color` in bounds of `BoxCar`
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:25:30
+error[E0222]: ambiguous associated type `Color` in bounds of `BoxCar`
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:30
    |
 LL |     type Color;
    |     ----------- ambiguous `Color` from `Vehicle`
@@ -37,26 +39,28 @@ LL |     type Color;
 LL | fn dent_object<COLOR>(c: dyn BoxCar<Color=COLOR>) {
    |                              ^^^^^^^^^^^^^^^^^^^ ambiguous associated type `Color`
    |
-help: use fully qualified syntax to disambiguate
-   |
-LL | fn dent_object<COLOR>(c: dyn <BoxCar as Box>::Color) {
-   |                              ^^^^^^^^^^^^^^^^^^^^^^
-help: use fully qualified syntax to disambiguate
-   |
-LL | fn dent_object<COLOR>(c: dyn <BoxCar as Vehicle>::Color) {
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider introducing a new type parameter `T` and adding `where` constraints:
+               where
+                   T: BoxCar,
+                   T: Box::Color = COLOR,
+                   T: Vehicle::Color = COLOR
 
-error[E0191]: the value of the associated type `Color` (from trait `Vehicle`) must be specified
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:25:30
+error[E0191]: the value of the associated types `Color` (from trait `Vehicle`), `Color` (from trait `Box`) must be specified
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:30
    |
 LL |     type Color;
    |     ----------- `Color` defined here
 ...
+LL |     type Color;
+   |     ----------- `Color` defined here
+...
 LL | fn dent_object<COLOR>(c: dyn BoxCar<Color=COLOR>) {
-   |                              ^^^^^^^^^^^^^^^^^^^ help: specify the associated type: `BoxCar<Color=COLOR, Color = Type>`
+   |                              ^^^^^^^^^^^^^^^^^^^ associated types `Color`, `Color` must be specified
+   |
+   = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated type
 
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:30:29
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:28:29
    |
 LL |     type Color;
    |     ----------- ambiguous `Color` from `Vehicle`
@@ -77,7 +81,7 @@ LL | fn paint<C:BoxCar>(c: C, d: <C as Vehicle>::Color) {
    |                             ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0191]: the value of the associated types `Color` (from trait `Vehicle`), `Color` (from trait `Box`) must be specified
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:34:32
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:32:32
    |
 LL |     type Color;
    |     ----------- `Color` defined here
@@ -86,9 +90,11 @@ LL |     type Color;
    |     ----------- `Color` defined here
 ...
 LL | fn dent_object_2<COLOR>(c: dyn BoxCar) where <dyn BoxCar as Vehicle>::Color = COLOR {
-   |                                ^^^^^^ help: specify the associated types: `BoxCar<Color = Type, Color = Type>`
+   |                                ^^^^^^ associated types `Color`, `Color` must be specified
+   |
+   = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated type
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0191, E0221.
+Some errors have detailed explanations: E0191, E0221, E0222.
 For more information about an error, try `rustc --explain E0191`.
