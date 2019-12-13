@@ -417,13 +417,17 @@ error[E0308]: mismatched types
   --> $DIR/recover-range-pats.rs:21:12
    |
 LL |     if let .0..Y = 0 {}
-   |            ^^^^^ expected integer, found floating-point number
+   |            ^^  - this is of type `u8`
+   |            |
+   |            expected integer, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:23:12
+  --> $DIR/recover-range-pats.rs:23:16
    |
 LL |     if let X.. .0 = 0 {}
-   |            ^^^^^^ expected integer, found floating-point number
+   |            -   ^^ expected integer, found floating-point number
+   |            |
+   |            this is of type `u8`
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:32:12
@@ -445,13 +449,17 @@ error[E0308]: mismatched types
   --> $DIR/recover-range-pats.rs:34:12
    |
 LL |     if let .0..=Y = 0 {}
-   |            ^^^^^^ expected integer, found floating-point number
+   |            ^^   - this is of type `u8`
+   |            |
+   |            expected integer, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:36:12
+  --> $DIR/recover-range-pats.rs:36:16
    |
 LL |     if let X..=.0 = 0 {}
-   |            ^^^^^^ expected integer, found floating-point number
+   |            -   ^^ expected integer, found floating-point number
+   |            |
+   |            this is of type `u8`
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:45:12
@@ -473,13 +481,17 @@ error[E0308]: mismatched types
   --> $DIR/recover-range-pats.rs:49:12
    |
 LL |     if let .0...Y = 0 {}
-   |            ^^^^^^ expected integer, found floating-point number
+   |            ^^   - this is of type `u8`
+   |            |
+   |            expected integer, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:52:12
+  --> $DIR/recover-range-pats.rs:52:17
    |
 LL |     if let X... .0 = 0 {}
-   |            ^^^^^^^ expected integer, found floating-point number
+   |            -    ^^ expected integer, found floating-point number
+   |            |
+   |            this is of type `u8`
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:60:12
@@ -491,7 +503,7 @@ error[E0308]: mismatched types
   --> $DIR/recover-range-pats.rs:62:12
    |
 LL |     if let .0.. = 0 {}
-   |            ^^^^ expected integer, found floating-point number
+   |            ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:70:12
@@ -503,7 +515,7 @@ error[E0308]: mismatched types
   --> $DIR/recover-range-pats.rs:72:12
    |
 LL |     if let .0..= = 0 {}
-   |            ^^^^^ expected integer, found floating-point number
+   |            ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:82:12
@@ -515,7 +527,7 @@ error[E0308]: mismatched types
   --> $DIR/recover-range-pats.rs:85:12
    |
 LL |     if let .0... = 0 {}
-   |            ^^^^^ expected integer, found floating-point number
+   |            ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:94:14
@@ -524,10 +536,10 @@ LL |     if let ..true = 0 {}
    |              ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:96:12
+  --> $DIR/recover-range-pats.rs:96:15
    |
 LL |     if let .. .0 = 0 {}
-   |            ^^^^^ expected integer, found floating-point number
+   |               ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:104:15
@@ -536,10 +548,10 @@ LL |     if let ..=true = 0 {}
    |               ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:106:12
+  --> $DIR/recover-range-pats.rs:106:15
    |
 LL |     if let ..=.0 = 0 {}
-   |            ^^^^^ expected integer, found floating-point number
+   |               ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:116:15
@@ -548,10 +560,10 @@ LL |     if let ...true = 0 {}
    |               ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:119:12
+  --> $DIR/recover-range-pats.rs:119:15
    |
 LL |     if let ....3 = 0 {}
-   |            ^^^^^ expected integer, found floating-point number
+   |               ^^ expected integer, found floating-point number
 
 error: aborting due to 85 previous errors
 
