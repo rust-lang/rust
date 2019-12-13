@@ -262,7 +262,7 @@ struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine>,
     tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
-    can_const_prop: IndexVec<Local, bool>,
+    can_const_prop: IndexVec<Local, ConstPropMode>,
     param_env: ParamEnv<'tcx>,
     // FIXME(eddyb) avoid cloning these two fields more than once,
     // by accessing them through `ecx` instead.
@@ -708,17 +708,28 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 }
 
+/// The mode that `ConstProp` is allowed to run in for a given `Local`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum ConstPropMode {
+    /// The `Local` can be propagated into and reads of this `Local` can also be propagated.
+    FullConstProp,
+    /// The `Local` can be propagated into but reads cannot be propagated.
+    OnlyPropagateInto,
+    /// No propagation is allowed at all.
+    NoPropagation,
+}
+
 struct CanConstProp {
-    can_const_prop: IndexVec<Local, bool>,
+    can_const_prop: IndexVec<Local, ConstPropMode>,
     // false at the beginning, once set, there are not allowed to be any more assignments
     found_assignment: IndexVec<Local, bool>,
 }
 
 impl CanConstProp {
     /// returns true if `local` can be propagated
-    fn check(body: ReadOnlyBodyAndCache<'_, '_>) -> IndexVec<Local, bool> {
+    fn check(body: ReadOnlyBodyAndCache<'_, '_>) -> IndexVec<Local, ConstPropMode> {
         let mut cpv = CanConstProp {
-            can_const_prop: IndexVec::from_elem(true, &body.local_decls),
+            can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
             found_assignment: IndexVec::from_elem(false, &body.local_decls),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
@@ -728,10 +739,10 @@ impl CanConstProp {
             // FIXME(oli-obk): lint variables until they are used in a condition
             // FIXME(oli-obk): lint if return value is constant
             let local_kind = body.local_kind(local);
-            *val = local_kind == LocalKind::Temp || local_kind == LocalKind::ReturnPointer;
 
-            if !*val {
-                trace!("local {:?} can't be propagated because it's not a temporary", local);
+            if local_kind == LocalKind::Arg || local_kind == LocalKind::Var {
+                *val = ConstPropMode::OnlyPropagateInto;
+                trace!("local {:?} can't be const propagated because it's not a temporary", local);
             }
         }
         cpv.visit_body(body);
@@ -753,7 +764,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // only occur in independent execution paths
             MutatingUse(MutatingUseContext::Store) => if self.found_assignment[local] {
                 trace!("local {:?} can't be propagated because of multiple assignments", local);
-                self.can_const_prop[local] = false;
+                self.can_const_prop[local] = ConstPropMode::NoPropagation;
             } else {
                 self.found_assignment[local] = true
             },
@@ -766,7 +777,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             NonUse(_) => {},
             _ => {
                 trace!("local {:?} can't be propagaged because it's used: {:?}", local, context);
-                self.can_const_prop[local] = false;
+                self.can_const_prop[local] = ConstPropMode::NoPropagation;
             },
         }
     }
@@ -800,10 +811,10 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 if let Some(local) = place.as_local() {
                     let source = statement.source_info;
+                    let can_const_prop = self.can_const_prop[local];
                     if let Some(()) = self.const_prop(rval, place_layout, source, place) {
-                        if self.can_const_prop[local] {
-                            trace!("propagated into {:?}", local);
-
+                        if can_const_prop == ConstPropMode::FullConstProp ||
+                           can_const_prop == ConstPropMode::OnlyPropagateInto {
                             if let Some(value) = self.get_const(local) {
                                 if self.should_const_prop(value) {
                                     trace!("replacing {:?} with {:?}", rval, value);
@@ -812,13 +823,18 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                                         value,
                                         statement.source_info,
                                     );
+
+                                    if can_const_prop == ConstPropMode::FullConstProp {
+                                        trace!("propagated into {:?}", local);
+                                    }
                                 }
                             }
-                        } else {
-                            trace!("can't propagate into {:?}", local);
-                            if local != RETURN_PLACE {
-                                self.remove_const(local);
-                            }
+                        }
+                    }
+                    if self.can_const_prop[local] != ConstPropMode::FullConstProp {
+                        trace!("can't propagate into {:?}", local);
+                        if local != RETURN_PLACE {
+                            self.remove_const(local);
                         }
                     }
                 }
@@ -826,7 +842,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         } else {
             match statement.kind {
                 StatementKind::StorageLive(local) |
-                StatementKind::StorageDead(local) if self.can_const_prop[local] => {
+                StatementKind::StorageDead(local) => {
                     let frame = self.ecx.frame_mut();
                     frame.locals[local].value =
                         if let StatementKind::StorageLive(_) = statement.kind {
