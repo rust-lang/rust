@@ -59,6 +59,7 @@ export class Server {
                 useClientWatching: Server.config.useClientWatching,
                 featureFlags: Server.config.featureFlags,
                 withSysroot: Server.config.withSysroot,
+                cargoFeatures: Server.config.cargoFeatures,
             },
             traceOutputChannel,
         };

@@ -278,6 +278,21 @@
                     "type": "number",
                     "default": 20,
                     "description": "Maximum length for inlay hints"
+                },
+                "rust-analyzer.cargoFeatures.noDefaultFeatures": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Do not activate the `default` feature"
+                },
+                "rust-analyzer.cargoFeatures.allFeatures": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Activate all available features"
+                },
+                "rust-analyzer.cargoFeatures.features": {
+                    "type": "array",
+                    "default": [],
+                    "description": "List of features to activate"
                 }
             }
         },

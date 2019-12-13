@@ -22,7 +22,7 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
 
 pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, PackageRoot>)> {
     let root = std::env::current_dir()?.join(root);
-    let ws = ProjectWorkspace::discover(root.as_ref())?;
+    let ws = ProjectWorkspace::discover(root.as_ref(), &Default::default())?;
     let project_roots = ws.to_roots();
     let (sender, receiver) = unbounded();
     let sender = Box::new(move |t| sender.send(t).unwrap());

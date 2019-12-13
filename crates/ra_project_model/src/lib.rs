@@ -18,7 +18,7 @@ use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
 pub use crate::{
-    cargo_workspace::{CargoWorkspace, Package, Target, TargetKind},
+    cargo_workspace::{CargoFeatures, CargoWorkspace, Package, Target, TargetKind},
     json_project::JsonProject,
     sysroot::Sysroot,
 };
@@ -60,11 +60,15 @@ impl PackageRoot {
 }
 
 impl ProjectWorkspace {
-    pub fn discover(path: &Path) -> Result<ProjectWorkspace> {
-        ProjectWorkspace::discover_with_sysroot(path, true)
+    pub fn discover(path: &Path, cargo_features: &CargoFeatures) -> Result<ProjectWorkspace> {
+        ProjectWorkspace::discover_with_sysroot(path, true, cargo_features)
     }
 
-    pub fn discover_with_sysroot(path: &Path, with_sysroot: bool) -> Result<ProjectWorkspace> {
+    pub fn discover_with_sysroot(
+        path: &Path,
+        with_sysroot: bool,
+        cargo_features: &CargoFeatures,
+    ) -> Result<ProjectWorkspace> {
         match find_rust_project_json(path) {
             Some(json_path) => {
                 let file = File::open(json_path)?;
@@ -73,7 +77,7 @@ impl ProjectWorkspace {
             }
             None => {
                 let cargo_toml = find_cargo_toml(path)?;
-                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml)?;
+                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_features)?;
                 let sysroot =
                     if with_sysroot { Sysroot::discover(&cargo_toml)? } else { Sysroot::default() };
                 Ok(ProjectWorkspace::Cargo { cargo, sysroot })
