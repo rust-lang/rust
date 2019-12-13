@@ -140,7 +140,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let fn_sig = drop_instance.ty(*self.tcx).fn_sig(*self.tcx);
         let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig);
         // The drop function takes `*mut T` where `T` is the type being dropped, so get that.
-        let ty = fn_sig.inputs()[0].builtin_deref(true).unwrap().ty;
+        let args = fn_sig.inputs();
+        if args.len() != 1 {
+            throw_ub_format!(
+                "drop fn should have 1 argument, but signature is {:?}", fn_sig
+            );
+        }
+        let ty = args[0].builtin_deref(true)
+            .ok_or_else(|| err_ub_format!(
+                "drop fn argument type {} is not a pointer type",
+                args[0]
+            ))?
+            .ty;
         Ok((drop_instance, ty))
     }
 
