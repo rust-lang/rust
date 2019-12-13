@@ -144,11 +144,23 @@ impl<T: Clone> Clone for VecDeque<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T> Drop for VecDeque<T> {
     fn drop(&mut self) {
+        /// Runs the destructor for all items in the slice when it gets dropped (normally or
+        /// during unwinding).
+        struct Dropper<'a, T>(&'a mut [T]);
+
+        impl<'a, T> Drop for Dropper<'a, T> {
+            fn drop(&mut self) {
+                unsafe {
+                    ptr::drop_in_place(self.0);
+                }
+            }
+        }
+
         let (front, back) = self.as_mut_slices();
         unsafe {
+            let _back_dropper = Dropper(back);
             // use drop for [T]
             ptr::drop_in_place(front);
-            ptr::drop_in_place(back);
         }
         // RawVec handles deallocation
     }
