@@ -291,7 +291,7 @@ pub trait Into<T>: Sized {
 /// [`Into`].
 ///
 /// One should always prefer implementing `From` over [`Into`]
-/// because implementing `From` automatically provides one with a implementation of [`Into`]
+/// because implementing `From` automatically provides one with an implementation of [`Into`]
 /// thanks to the blanket implementation in the standard library.
 ///
 /// Only implement [`Into`] if a conversion to a type outside the current crate is required.
