@@ -114,12 +114,12 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
     }
 }
 
-fn convert_delim(d: tt::Delimiter, closing: bool) -> TtToken {
+fn convert_delim(d: Option<tt::Delimiter>, closing: bool) -> TtToken {
     let (kinds, texts) = match d {
-        tt::Delimiter::Parenthesis => ([T!['('], T![')']], "()"),
-        tt::Delimiter::Brace => ([T!['{'], T!['}']], "{}"),
-        tt::Delimiter::Bracket => ([T!['['], T![']']], "[]"),
-        tt::Delimiter::None => ([L_DOLLAR, R_DOLLAR], ""),
+        Some(tt::Delimiter::Parenthesis) => ([T!['('], T![')']], "()"),
+        Some(tt::Delimiter::Brace) => ([T!['{'], T!['}']], "{}"),
+        Some(tt::Delimiter::Bracket) => ([T!['['], T![']']], "[]"),
+        None => ([L_DOLLAR, R_DOLLAR], ""),
     };
 
     let idx = closing as usize;
