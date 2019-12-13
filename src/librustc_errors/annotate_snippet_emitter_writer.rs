@@ -32,7 +32,7 @@ impl Emitter for AnnotateSnippetEmitterWriter {
         let mut children = diag.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&diag);
 
-        self.fix_multispans_in_std_macros(
+        self.render_multispans_macro_backtrace_and_fix_extern_macros(
             &self.source_map,
             &mut primary_span,
             &mut children,
