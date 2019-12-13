@@ -156,7 +156,7 @@ fn hover_text_from_name_kind(
 
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+    let token = file.token_at_offset(position.offset).find(|it| !it.kind().is_trivia())?;
     let token = descend_into_macros(db, position.file_id, token);
 
     let mut res = HoverResult::new();
