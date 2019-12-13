@@ -923,12 +923,10 @@ where
             return self.copy_op(src, dest);
         }
         // We still require the sizes to match.
-        assert!(
-            src.layout.size == dest.layout.size,
-            "Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}",
-            src,
-            dest
-        );
+        if src.layout.size != dest.layout.size {
+            error!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
+            throw_unsup!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));
+        }
         // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
         // to avoid that here.
         assert!(

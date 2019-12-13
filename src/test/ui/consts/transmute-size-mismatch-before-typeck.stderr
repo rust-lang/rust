@@ -1,0 +1,136 @@
+[ERROR rustc_mir::interpret::place] Size mismatch when transmuting!
+    src: OpTy {
+        op: Immediate(
+            Scalar(
+                0x0000000000000001,
+            ),
+        ),
+        layout: TyLayout {
+            ty: usize,
+            details: LayoutDetails {
+                variants: Single {
+                    index: 0,
+                },
+                fields: Union(
+                    0,
+                ),
+                abi: Scalar(
+                    Scalar {
+                        value: Int(
+                            I64,
+                            false,
+                        ),
+                        valid_range: 0..=18446744073709551615,
+                    },
+                ),
+                largest_niche: None,
+                align: AbiAndPrefAlign {
+                    abi: Align {
+                        pow2: 3,
+                    },
+                    pref: Align {
+                        pow2: 3,
+                    },
+                },
+                size: Size {
+                    raw: 8,
+                },
+            },
+        },
+    }
+    dest: PlaceTy {
+        place: Ptr(
+            MemPlace {
+                ptr: AllocId(0).0x0,
+                align: Align {
+                    pow2: 3,
+                },
+                meta: None,
+            },
+        ),
+        layout: TyLayout {
+            ty: &[u8],
+            details: LayoutDetails {
+                variants: Single {
+                    index: 0,
+                },
+                fields: Arbitrary {
+                    offsets: [
+                        Size {
+                            raw: 0,
+                        },
+                        Size {
+                            raw: 8,
+                        },
+                    ],
+                    memory_index: [
+                        0,
+                        1,
+                    ],
+                },
+                abi: ScalarPair(
+                    Scalar {
+                        value: Pointer,
+                        valid_range: 1..=18446744073709551615,
+                    },
+                    Scalar {
+                        value: Int(
+                            I64,
+                            false,
+                        ),
+                        valid_range: 0..=18446744073709551615,
+                    },
+                ),
+                largest_niche: Some(
+                    Niche {
+                        offset: Size {
+                            raw: 0,
+                        },
+                        scalar: Scalar {
+                            value: Pointer,
+                            valid_range: 1..=18446744073709551615,
+                        },
+                    },
+                ),
+                align: AbiAndPrefAlign {
+                    abi: Align {
+                        pow2: 3,
+                    },
+                    pref: Align {
+                        pow2: 3,
+                    },
+                },
+                size: Size {
+                    raw: 16,
+                },
+            },
+        },
+    }
+error: any use of this value will cause an error
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:10:29
+   |
+LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
+   | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                             |
+   |                             tried to transmute from usize to &[u8], but their sizes differed
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: could not evaluate constant pattern
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:5:9
+   |
+LL |         ZST => {}
+   |         ^^^
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:10:29
+   |
+LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
+   |                             ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `usize` (64 bits)
+   = note: target type: `&'static [u8]` (128 bits)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0512`.
