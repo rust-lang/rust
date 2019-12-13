@@ -35,7 +35,6 @@ extern crate rustc_parse;
 extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate rustc_lexer;
-extern crate serialize;
 extern crate syntax;
 extern crate syntax_expand;
 extern crate syntax_pos;

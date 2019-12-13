@@ -3946,6 +3946,8 @@ dependencies = [
  "minifier",
  "pulldown-cmark 0.5.3",
  "rustc-rayon",
+ "serde",
+ "serde_json",
  "tempfile",
 ]
 

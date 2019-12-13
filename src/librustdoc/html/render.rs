@@ -31,7 +31,8 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::error;
-use std::fmt::{self, Formatter, Write as FmtWrite};
+
+use std::fmt::{self, Formatter, Write};
 use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -42,7 +43,8 @@ use std::sync::Arc;
 use std::rc::Rc;
 
 use errors;
-use serialize::json::{ToJson, Json, as_json};
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeSeq;
 use syntax::ast;
 use syntax::edition::Edition;
 use syntax::print::pprust;
@@ -303,19 +305,22 @@ struct IndexItem {
     search_type: Option<IndexItemFunctionType>,
 }
 
-impl ToJson for IndexItem {
-    fn to_json(&self) -> Json {
+impl Serialize for IndexItem {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
 
-        let mut data = Vec::with_capacity(6);
-        data.push((self.ty as usize).to_json());
-        data.push(self.name.to_json());
-        data.push(self.path.to_json());
-        data.push(self.desc.to_json());
-        data.push(self.parent_idx.to_json());
-        data.push(self.search_type.to_json());
-
-        Json::Array(data)
+        (
+            self.ty,
+            &self.name,
+            &self.path,
+            &self.desc,
+            self.parent_idx,
+            &self.search_type,
+        )
+            .serialize(serializer)
     }
 }
 
@@ -326,18 +331,20 @@ struct Type {
     generics: Option<Vec<String>>,
 }
 
-impl ToJson for Type {
-    fn to_json(&self) -> Json {
-        match self.name {
-            Some(ref name) => {
-                let mut data = Vec::with_capacity(2);
-                data.push(name.to_json());
-                if let Some(ref generics) = self.generics {
-                    data.push(generics.to_json());
-                }
-                Json::Array(data)
+impl Serialize for Type {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(name) = &self.name {
+            let mut seq = serializer.serialize_seq(None)?;
+            seq.serialize_element(&name)?;
+            if let Some(generics) = &self.generics {
+                seq.serialize_element(&generics)?;
             }
-            None => Json::Null,
+            seq.end()
+        } else {
+            serializer.serialize_none()
         }
     }
 }
@@ -349,26 +356,29 @@ struct IndexItemFunctionType {
     output: Option<Vec<Type>>,
 }
 
-impl ToJson for IndexItemFunctionType {
-    fn to_json(&self) -> Json {
+impl Serialize for IndexItemFunctionType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         // If we couldn't figure out a type, just write `null`.
         let mut iter = self.inputs.iter();
         if match self.output {
             Some(ref output) => iter.chain(output.iter()).any(|ref i| i.name.is_none()),
             None => iter.any(|ref i| i.name.is_none()),
         } {
-            Json::Null
+            serializer.serialize_none()
         } else {
-            let mut data = Vec::with_capacity(2);
-            data.push(self.inputs.to_json());
-            if let Some(ref output) = self.output {
+            let mut seq = serializer.serialize_seq(None)?;
+            seq.serialize_element(&self.inputs)?;
+            if let Some(output) = &self.output {
                 if output.len() > 1 {
-                    data.push(output.to_json());
+                    seq.serialize_element(&output)?;
                 } else {
-                    data.push(output[0].to_json());
+                    seq.serialize_element(&output[0])?;
                 }
             }
-            Json::Array(data)
+            seq.end()
         }
     }
 }
@@ -596,7 +606,7 @@ fn write_shared(
     // To avoid theme switch latencies as much as possible, we put everything theme related
     // at the beginning of the html files into another js file.
     let theme_js = format!(
-r#"var themes = document.getElementById("theme-choices");
+        r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
 
 function showThemeButtonState() {{
@@ -642,8 +652,8 @@ themePicker.onblur = handleThemeButtonsBlur;
     }};
     but.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);
-}});"#,
-                 as_json(&themes));
+}});"#, serde_json::to_string(&themes).unwrap());
+
     write_minify(&cx.shared.fs, cx.path("theme.js"),
                  &theme_js,
                  options.enable_minification)?;
@@ -932,31 +942,47 @@ themePicker.onblur = handleThemeButtonsBlur;
             }
         };
 
-        let mut have_impls = false;
-        let mut implementors = format!(r#"implementors["{}"] = ["#, krate.name);
-        for imp in imps {
-            // If the trait and implementation are in the same crate, then
-            // there's no need to emit information about it (there's inlining
-            // going on). If they're in different crates then the crate defining
-            // the trait will be interested in our implementation.
-            if imp.impl_item.def_id.krate == did.krate { continue }
-            // If the implementation is from another crate then that crate
-            // should add it.
-            if !imp.impl_item.def_id.is_local() { continue }
-            have_impls = true;
-            write!(implementors, "{{text:{},synthetic:{},types:{}}},",
-                   as_json(&imp.inner_impl().print().to_string()),
-                   imp.inner_impl().synthetic,
-                   as_json(&collect_paths_for_type(imp.inner_impl().for_.clone()))).unwrap();
+        #[derive(Serialize)]
+        struct Implementor {
+            text: String,
+            synthetic: bool,
+            types: Vec<String>,
         }
-        implementors.push_str("];");
+
+        let implementors = imps
+            .iter()
+            .filter_map(|imp| {
+                // If the trait and implementation are in the same crate, then
+                // there's no need to emit information about it (there's inlining
+                // going on). If they're in different crates then the crate defining
+                // the trait will be interested in our implementation.
+                //
+                // If the implementation is from another crate then that crate
+                // should add it.
+                if imp.impl_item.def_id.krate == did.krate || !imp.impl_item.def_id.is_local() {
+                    None
+                } else {
+                    Some(Implementor {
+                        text: imp.inner_impl().print().to_string(),
+                        synthetic: imp.inner_impl().synthetic,
+                        types: collect_paths_for_type(imp.inner_impl().for_.clone()),
+                    })
+                }
+            })
+            .collect::<Vec<_>>();
 
         // Only create a js file if we have impls to add to it. If the trait is
         // documented locally though we always create the file to avoid dead
         // links.
-        if !have_impls && !cx.cache.paths.contains_key(&did) {
+        if implementors.is_empty() && !cx.cache.paths.contains_key(&did) {
             continue;
         }
+
+        let implementors = format!(
+            r#"implementors["{}"] = {};"#,
+            krate.name,
+            serde_json::to_string(&implementors).unwrap()
+        );
 
         let mut mydst = dst.clone();
         for part in &remote_path[..remote_path.len() - 1] {
@@ -1456,7 +1482,7 @@ impl Context {
             if !self.render_redirect_pages {
                 let items = self.build_sidebar_items(&m);
                 let js_dst = self.dst.join("sidebar-items.js");
-                let v = format!("initSidebarItems({});", as_json(&items));
+                let v = format!("initSidebarItems({});", serde_json::to_string(&items).unwrap());
                 scx.fs.write(&js_dst, &v)?;
             }
 
@@ -2558,8 +2584,11 @@ fn item_trait(
             write_loading_content(w, "</div>");
         }
     }
-    write!(w, r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
-           as_json(&synthetic_types));
+    write!(
+        w,
+        r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
+        serde_json::to_string(&synthetic_types).unwrap(),
+    );
 
     write!(w, r#"<script type="text/javascript" async
                          src="{root_path}/implementors/{path}/{ty}.{name}.js">

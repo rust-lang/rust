@@ -8,7 +8,8 @@ use std::path::{Path, PathBuf};
 use std::collections::BTreeMap;
 use syntax::source_map::FileName;
 use syntax::symbol::sym;
-use serialize::json::{ToJson, Json, as_json};
+
+use serde::Serialize;
 
 use super::{ItemType, IndexItem, IndexItemFunctionType, Impl, shorten, plain_summary_line};
 use super::{Type, RenderInfo};
@@ -544,7 +545,7 @@ fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Pat
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut nodeid_to_pathid = FxHashMap::default();
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
-    let mut crate_paths = Vec::<Json>::new();
+    let mut crate_paths = vec![];
 
     let Cache { ref mut search_index,
                 ref orphan_impl_items,
@@ -581,7 +582,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 lastpathid += 1;
 
                 let &(ref fqp, short) = paths.get(&nodeid).unwrap();
-                crate_paths.push(((short as usize), fqp.last().unwrap().clone()).to_json());
+                crate_paths.push((short, fqp.last().unwrap().clone()));
                 pathid
             }
         });
@@ -592,22 +593,33 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         } else {
             lastpath = item.path.clone();
         }
-        crate_items.push(item.to_json());
+        crate_items.push(&*item);
     }
 
     let crate_doc = krate.module.as_ref().map(|module| {
         shorten(plain_summary_line(module.doc_value()))
     }).unwrap_or(String::new());
 
-    let mut crate_data = BTreeMap::new();
-    crate_data.insert("doc".to_owned(), Json::String(crate_doc));
-    crate_data.insert("i".to_owned(), Json::Array(crate_items));
-    crate_data.insert("p".to_owned(), Json::Array(crate_paths));
+    #[derive(Serialize)]
+    struct CrateData<'a> {
+        doc: String,
+        #[serde(rename = "i")]
+        items: Vec<&'a IndexItem>,
+        #[serde(rename = "p")]
+        paths: Vec<(ItemType, String)>,
+    }
 
     // Collect the index into a string
-    format!("searchIndex[{}] = {};",
-            as_json(&krate.name),
-            Json::Object(crate_data))
+    format!(
+        r#"searchIndex["{}"] = {};"#,
+        krate.name,
+        serde_json::to_string(&CrateData {
+            doc: crate_doc,
+            items: crate_items,
+            paths: crate_paths,
+        })
+        .unwrap()
+    )
 }
 
 fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
