@@ -127,6 +127,10 @@ impl<Tag> Allocation<Tag> {
             extra: (),
         }
     }
+
+    pub fn zst(align: Align) -> Self {
+        Self::undef(Size::ZERO, align)
+    }
 }
 
 impl Allocation<(), ()> {
