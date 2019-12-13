@@ -191,11 +191,12 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
             if let ty::Dynamic(..) =
                 self.ecx.tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind
             {
-                if let Ok(vtable) = mplace.meta.unwrap().to_ptr() {
-                    // explitly choose `Immutable` here, since vtables are immutable, even
-                    // if the reference of the fat pointer is mutable
-                    self.intern_shallow(vtable.alloc_id, Mutability::Not, None)?;
-                }
+                // Validation has already errored on an invalid vtable pointer so this `assert_ptr`
+                // will never panic.
+                let vtable = mplace.meta.unwrap().assert_ptr();
+                // explitly choose `Immutable` here, since vtables are immutable, even
+                // if the reference of the fat pointer is mutable
+                self.intern_shallow(vtable.alloc_id, Mutability::Not, None)?;
             }
             // Check if we have encountered this pointer+layout combination before.
             // Only recurse for allocation-backed pointers.
@@ -280,7 +281,9 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
         ecx,
         leftover_allocations,
         base_intern_mode,
-        ret.ptr.to_ptr()?.alloc_id,
+        // The outermost allocation must exist, because we allocated it with
+        // `Memory::allocate`.
+        ret.ptr.assert_ptr().alloc_id,
         base_mutability,
         Some(ret.layout.ty),
     )?;
