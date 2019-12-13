@@ -447,6 +447,22 @@ mod tests {
     }
 
     #[test]
+    fn goto_for_tuple_fields() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo(u32);
+
+            fn bar() {
+                let foo = Foo(0);
+                foo.<|>0;
+            }
+            ",
+            "TUPLE_FIELD_DEF FileId(1) [11; 14)",
+        );
+    }
+
+    #[test]
     fn goto_definition_works_for_ufcs_inherent_methods() {
         check_goto(
             "

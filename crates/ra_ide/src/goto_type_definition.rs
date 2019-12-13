@@ -104,12 +104,28 @@ mod tests {
     }
 
     #[test]
-    fn goto_type_definition_works_param() {
+    fn goto_type_definition_for_param() {
         check_goto(
             "
             //- /lib.rs
             struct Foo;
             fn foo(<|>f: Foo) {}
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+        );
+    }
+
+    #[test]
+    fn goto_type_definition_for_tuple_field() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            struct Bar(Foo);
+            fn foo() {
+                let bar = Bar(Foo);
+                bar.<|>0;
+            }
             ",
             "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
         );
