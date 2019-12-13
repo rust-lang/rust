@@ -407,15 +407,17 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     // FIXME(eddyb) maybe cache this?
     fn qualif_local<Q: qualifs::Qualif>(&self, local: Local) -> bool {
-        let per_local = &mut |l| self.qualif_local::<Q>(l);
-
         if let TempState::Defined { location: loc, .. } = self.temps[local] {
             let num_stmts = self.body[loc.block].statements.len();
 
             if loc.statement_index < num_stmts {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
-                    StatementKind::Assign(box (_, rhs)) => Q::in_rvalue(&self.item, per_local, rhs),
+                    StatementKind::Assign(box (_, rhs)) => qualifs::in_rvalue::<Q, _>(
+                        &self.item,
+                        &mut |l| self.qualif_local::<Q>(l),
+                        rhs,
+                    ),
                     _ => {
                         span_bug!(
                             statement.source_info.span,
@@ -427,9 +429,9 @@ impl<'tcx> Validator<'_, 'tcx> {
             } else {
                 let terminator = self.body[loc.block].terminator();
                 match &terminator.kind {
-                    TerminatorKind::Call { func, args, .. } => {
+                    TerminatorKind::Call { .. } => {
                         let return_ty = self.body.local_decls[local].ty;
-                        Q::in_call(&self.item, per_local, func, args, return_ty)
+                        Q::in_any_value_of_ty(&self.item, return_ty)
                     }
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);

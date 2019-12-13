@@ -1,7 +1,9 @@
-//! A copy of the `Qualif` trait in `qualify_consts.rs` that is suitable for the new validator.
+//! Structural const qualification.
+//!
+//! See the `Qualif` trait for more info.
 
 use rustc::mir::*;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 
 use super::Item as ConstCx;
@@ -14,11 +16,16 @@ pub fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> ConstQualifs 
 }
 
 /// A "qualif"(-ication) is a way to look for something "bad" in the MIR that would disqualify some
-/// code for promotion or prevent it from evaluating at compile time. So `return true` means
-/// "I found something bad, no reason to go on searching". `false` is only returned if we
-/// definitely cannot find anything bad anywhere.
+/// code for promotion or prevent it from evaluating at compile time.
 ///
-/// The default implementations proceed structurally.
+/// Normally, we would determine what qualifications apply to each type and error when an illegal
+/// operation is performed on such a type. However, this was found to be too imprecise, especially
+/// in the presence of `enum`s. If only a single variant of an enum has a certain qualification, we
+/// needn't reject code unless it actually constructs and operates on the qualifed variant.
+///
+/// To accomplish this, const-checking and promotion use a value-based analysis (as opposed to a
+/// type-based one). Qualifications propagate structurally across variables: If a local (or a
+/// projection of a local) is assigned a qualifed value, that local itself becomes qualifed.
 pub trait Qualif {
     /// The name of the file used to debug the dataflow analysis that computes this qualif.
     const ANALYSIS_NAME: &'static str;
@@ -26,157 +33,27 @@ pub trait Qualif {
     /// Whether this `Qualif` is cleared when a local is moved from.
     const IS_CLEARED_ON_MOVE: bool = false;
 
+    /// Extracts the field of `ConstQualifs` that corresponds to this `Qualif`.
     fn in_qualifs(qualifs: &ConstQualifs) -> bool;
 
-    /// Return the qualification that is (conservatively) correct for any value
-    /// of the type.
-    fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> bool;
+    /// Returns `true` if *any* value of the given type could possibly have this `Qualif`.
+    ///
+    /// This function determines `Qualif`s when we cannot do a value-based analysis. Since qualif
+    /// propagation is context-insenstive, this includes function arguments and values returned
+    /// from a call to another function.
+    ///
+    /// It also determines the `Qualif`s for primitive types.
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool;
 
-    fn in_projection_structurally(
-        cx: &ConstCx<'_, 'tcx>,
-        per_local: &mut impl FnMut(Local) -> bool,
-        place: PlaceRef<'tcx>,
-    ) -> bool {
-        if let [proj_base @ .., elem] = place.projection {
-            let base_qualif = Self::in_place(
-                cx,
-                per_local,
-                PlaceRef { local: place.local, projection: proj_base },
-            );
-            let qualif = base_qualif
-                && Self::in_any_value_of_ty(
-                    cx,
-                    Place::ty_from(place.local, proj_base, *cx.body, cx.tcx)
-                        .projection_ty(cx.tcx, elem)
-                        .ty,
-                );
-            match elem {
-                ProjectionElem::Deref
-                | ProjectionElem::Subslice { .. }
-                | ProjectionElem::Field(..)
-                | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Downcast(..) => qualif,
-
-                ProjectionElem::Index(local) => qualif || per_local(*local),
-            }
-        } else {
-            bug!("This should be called if projection is not empty");
-        }
-    }
-
-    fn in_projection(
-        cx: &ConstCx<'_, 'tcx>,
-        per_local: &mut impl FnMut(Local) -> bool,
-        place: PlaceRef<'tcx>,
-    ) -> bool {
-        Self::in_projection_structurally(cx, per_local, place)
-    }
-
-    fn in_place(
-        cx: &ConstCx<'_, 'tcx>,
-        per_local: &mut impl FnMut(Local) -> bool,
-        place: PlaceRef<'tcx>,
-    ) -> bool {
-        match place {
-            PlaceRef { local, projection: [] } => per_local(local),
-            PlaceRef { local: _, projection: [.., _] } => Self::in_projection(cx, per_local, place),
-        }
-    }
-
-    fn in_operand(
-        cx: &ConstCx<'_, 'tcx>,
-        per_local: &mut impl FnMut(Local) -> bool,
-        operand: &Operand<'tcx>,
-    ) -> bool {
-        match *operand {
-            Operand::Copy(ref place) | Operand::Move(ref place) => {
-                Self::in_place(cx, per_local, place.as_ref())
-            }
-
-            Operand::Constant(ref constant) => {
-                // Check the qualifs of the value of `const` items.
-                if let ty::ConstKind::Unevaluated(def_id, _, promoted) = constant.literal.val {
-                    assert!(promoted.is_none());
-                    // Don't peek inside trait associated constants.
-                    if cx.tcx.trait_of_item(def_id).is_none() {
-                        let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def_id);
-                        if !Self::in_qualifs(&qualifs) {
-                            return false;
-                        }
-
-                        // Just in case the type is more specific than
-                        // the definition, e.g., impl associated const
-                        // with type parameters, take it into account.
-                    }
-                }
-                // Otherwise use the qualifs of the type.
-                Self::in_any_value_of_ty(cx, constant.literal.ty)
-            }
-        }
-    }
-
-    fn in_rvalue_structurally(
-        cx: &ConstCx<'_, 'tcx>,
-        per_local: &mut impl FnMut(Local) -> bool,
-        rvalue: &Rvalue<'tcx>,
-    ) -> bool {
-        match *rvalue {
-            Rvalue::NullaryOp(..) => false,
-
-            Rvalue::Discriminant(ref place) | Rvalue::Len(ref place) => {
-                Self::in_place(cx, per_local, place.as_ref())
-            }
-
-            Rvalue::Use(ref operand)
-            | Rvalue::Repeat(ref operand, _)
-            | Rvalue::UnaryOp(_, ref operand)
-            | Rvalue::Cast(_, ref operand, _) => Self::in_operand(cx, per_local, operand),
-
-            Rvalue::BinaryOp(_, ref lhs, ref rhs)
-            | Rvalue::CheckedBinaryOp(_, ref lhs, ref rhs) => {
-                Self::in_operand(cx, per_local, lhs) || Self::in_operand(cx, per_local, rhs)
-            }
-
-            Rvalue::Ref(_, _, ref place) | Rvalue::AddressOf(_, ref place) => {
-                // Special-case reborrows to be more like a copy of the reference.
-                if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
-                    let base_ty = Place::ty_from(place.local, proj_base, *cx.body, cx.tcx).ty;
-                    if let ty::Ref(..) = base_ty.kind {
-                        return Self::in_place(
-                            cx,
-                            per_local,
-                            PlaceRef { local: place.local, projection: proj_base },
-                        );
-                    }
-                }
-
-                Self::in_place(cx, per_local, place.as_ref())
-            }
-
-            Rvalue::Aggregate(_, ref operands) => {
-                operands.iter().any(|o| Self::in_operand(cx, per_local, o))
-            }
-        }
-    }
-
-    fn in_rvalue(
-        cx: &ConstCx<'_, 'tcx>,
-        per_local: &mut impl FnMut(Local) -> bool,
-        rvalue: &Rvalue<'tcx>,
-    ) -> bool {
-        Self::in_rvalue_structurally(cx, per_local, rvalue)
-    }
-
-    fn in_call(
-        cx: &ConstCx<'_, 'tcx>,
-        _per_local: &mut impl FnMut(Local) -> bool,
-        _callee: &Operand<'tcx>,
-        _args: &[Operand<'tcx>],
-        return_ty: Ty<'tcx>,
-    ) -> bool {
-        // Be conservative about the returned value of a const fn.
-        Self::in_any_value_of_ty(cx, return_ty)
-    }
+    /// Returns `true` if this `Qualif` is inherent to the given struct or enum.
+    ///
+    /// By default, `Qualif`s propagate into ADTs in a structural way: An ADT only becomes
+    /// qualified if part of it is assigned a value with that `Qualif`. However, some ADTs *always*
+    /// have a certain `Qualif`, regardless of whether their fields have it. For example, a type
+    /// with a custom `Drop` impl is inherently `NeedsDrop`.
+    ///
+    /// Returning `true` for `in_adt_inherently` but `false` for `in_any_value_of_ty` is unsound.
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &AdtDef) -> bool;
 }
 
 /// Constant containing interior mutability (`UnsafeCell<T>`).
@@ -197,26 +74,10 @@ impl Qualif for HasMutInterior {
         !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
     }
 
-    fn in_rvalue(
-        cx: &ConstCx<'_, 'tcx>,
-        per_local: &mut impl FnMut(Local) -> bool,
-        rvalue: &Rvalue<'tcx>,
-    ) -> bool {
-        match *rvalue {
-            Rvalue::Aggregate(ref kind, _) => {
-                if let AggregateKind::Adt(def, ..) = **kind {
-                    if Some(def.did) == cx.tcx.lang_items().unsafe_cell_type() {
-                        let ty = rvalue.ty(*cx.body, cx.tcx);
-                        assert_eq!(Self::in_any_value_of_ty(cx, ty), true);
-                        return true;
-                    }
-                }
-            }
-
-            _ => {}
-        }
-
-        Self::in_rvalue_structurally(cx, per_local, rvalue)
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &AdtDef) -> bool {
+        // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
+        // It arises structurally for all other types.
+        Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()
     }
 }
 
@@ -238,19 +99,127 @@ impl Qualif for NeedsDrop {
         ty.needs_drop(cx.tcx, cx.param_env)
     }
 
-    fn in_rvalue(
-        cx: &ConstCx<'_, 'tcx>,
-        per_local: &mut impl FnMut(Local) -> bool,
-        rvalue: &Rvalue<'tcx>,
-    ) -> bool {
-        if let Rvalue::Aggregate(ref kind, _) = *rvalue {
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &AdtDef) -> bool {
+        adt.has_dtor(cx.tcx)
+    }
+}
+
+// FIXME: Use `mir::visit::Visitor` for the `in_*` functions if/when it supports early return.
+
+/// Returns `true` if this `Rvalue` contains qualif `Q`.
+pub fn in_rvalue<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, rvalue: &Rvalue<'tcx>) -> bool
+where
+    Q: Qualif,
+    F: FnMut(Local) -> bool,
+{
+    match rvalue {
+        Rvalue::NullaryOp(..) => Q::in_any_value_of_ty(cx, rvalue.ty(*cx.body, cx.tcx)),
+
+        Rvalue::Discriminant(place) | Rvalue::Len(place) => {
+            in_place::<Q, _>(cx, in_local, place.as_ref())
+        }
+
+        Rvalue::Use(operand)
+        | Rvalue::Repeat(operand, _)
+        | Rvalue::UnaryOp(_, operand)
+        | Rvalue::Cast(_, operand, _) => in_operand::<Q, _>(cx, in_local, operand),
+
+        Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
+            in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)
+        }
+
+        Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+            // Special-case reborrows to be more like a copy of the reference.
+            if let &[ref proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
+                let base_ty = Place::ty_from(place.local, proj_base, *cx.body, cx.tcx).ty;
+                if let ty::Ref(..) = base_ty.kind {
+                    return in_place::<Q, _>(
+                        cx,
+                        in_local,
+                        PlaceRef { local: place.local, projection: proj_base },
+                    );
+                }
+            }
+
+            in_place::<Q, _>(cx, in_local, place.as_ref())
+        }
+
+        Rvalue::Aggregate(kind, operands) => {
+            // Return early if we know that the struct or enum being constructed is always
+            // qualified.
             if let AggregateKind::Adt(def, ..) = **kind {
-                if def.has_dtor(cx.tcx) {
+                if Q::in_adt_inherently(cx, def) {
                     return true;
                 }
             }
+
+            // Otherwise, proceed structurally...
+            operands.iter().any(|o| in_operand::<Q, _>(cx, in_local, o))
+        }
+    }
+}
+
+/// Returns `true` if this `Place` contains qualif `Q`.
+pub fn in_place<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, place: PlaceRef<'tcx>) -> bool
+where
+    Q: Qualif,
+    F: FnMut(Local) -> bool,
+{
+    let mut projection = place.projection;
+    while let [ref proj_base @ .., proj_elem] = projection {
+        match *proj_elem {
+            ProjectionElem::Index(index) if in_local(index) => return true,
+
+            ProjectionElem::Deref
+            | ProjectionElem::Field(_, _)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::Index(_) => {}
         }
 
-        Self::in_rvalue_structurally(cx, per_local, rvalue)
+        let base_ty = Place::ty_from(place.local, proj_base, *cx.body, cx.tcx);
+        let proj_ty = base_ty.projection_ty(cx.tcx, proj_elem).ty;
+        if !Q::in_any_value_of_ty(cx, proj_ty) {
+            return false;
+        }
+
+        projection = proj_base;
     }
+
+    assert!(projection.is_empty());
+    in_local(place.local)
+}
+
+/// Returns `true` if this `Operand` contains qualif `Q`.
+pub fn in_operand<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, operand: &Operand<'tcx>) -> bool
+where
+    Q: Qualif,
+    F: FnMut(Local) -> bool,
+{
+    let constant = match operand {
+        Operand::Copy(place) | Operand::Move(place) => {
+            return in_place::<Q, _>(cx, in_local, place.as_ref());
+        }
+
+        Operand::Constant(c) => c,
+    };
+
+    // Check the qualifs of the value of `const` items.
+    if let ty::ConstKind::Unevaluated(def_id, _, promoted) = constant.literal.val {
+        assert!(promoted.is_none());
+        // Don't peek inside trait associated constants.
+        if cx.tcx.trait_of_item(def_id).is_none() {
+            let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def_id);
+            if !Q::in_qualifs(&qualifs) {
+                return false;
+            }
+
+            // Just in case the type is more specific than
+            // the definition, e.g., impl associated const
+            // with type parameters, take it into account.
+        }
+    }
+    // Otherwise use the qualifs of the type.
+    Q::in_any_value_of_ty(cx, constant.literal.ty)
 }

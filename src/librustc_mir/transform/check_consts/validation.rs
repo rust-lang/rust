@@ -344,7 +344,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             Rvalue::Ref(_, BorrowKind::Shared, ref place)
             | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
             | Rvalue::AddressOf(Mutability::Not, ref place) => {
-                let borrowed_place_has_mut_interior = HasMutInterior::in_place(
+                let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     &self.item,
                     &mut |local| self.qualifs.has_mut_interior(local, location),
                     place.as_ref(),
