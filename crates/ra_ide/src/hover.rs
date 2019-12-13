@@ -1,11 +1,13 @@
 //! FIXME: write short doc here
 
-use hir::{db::AstDatabase, Adt, HasSource, HirDisplay, InFile};
+use hir::{db::AstDatabase, Adt, HasSource, HirDisplay};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::find_covering_element,
     ast::{self, DocCommentsOwner},
-    match_ast, AstNode, SyntaxToken,
+    match_ast, AstNode,
+    SyntaxKind::*,
+    SyntaxToken, TokenAtOffset,
 };
 
 use crate::{
@@ -156,17 +158,9 @@ fn hover_text_from_name_kind(
 
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    file.token_at_offset(position.offset)
-        .filter(|token| !token.kind().is_trivia())
-        .map(|token| descend_into_macros(db, position.file_id, token))
-        .find_map(|token| hover_token(db, position, token))
-}
+    let token = pick_best(file.token_at_offset(position.offset))?;
+    let token = descend_into_macros(db, position.file_id, token);
 
-fn hover_token(
-    db: &RootDatabase,
-    position: FilePosition,
-    token: InFile<SyntaxToken>,
-) -> Option<RangeInfo<HoverResult>> {
     let mut res = HoverResult::new();
 
     let mut range = match_ast! {
@@ -224,6 +218,18 @@ fn hover_token(
         return None;
     }
     Some(RangeInfo::new(range, res))
+}
+
+fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
+    return tokens.max_by_key(priority);
+    fn priority(n: &SyntaxToken) -> usize {
+        match n.kind() {
+            IDENT | INT_NUMBER => 3,
+            L_PAREN | R_PAREN => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        }
+    }
 }
 
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {

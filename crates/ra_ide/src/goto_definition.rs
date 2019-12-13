@@ -3,7 +3,9 @@
 use hir::{db::AstDatabase, InFile};
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
-    match_ast, AstNode, SyntaxKind, SyntaxNode,
+    match_ast, AstNode,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, TokenAtOffset,
 };
 
 use crate::{
@@ -19,8 +21,7 @@ pub(crate) fn goto_definition(
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    let original_token =
-        file.token_at_offset(position.offset).find(|it| it.kind() == SyntaxKind::IDENT)?;
+    let original_token = pick_best(file.token_at_offset(position.offset))?;
     let token = descend_into_macros(db, position.file_id, original_token.clone());
 
     let nav_targets = match_ast! {
@@ -36,6 +37,17 @@ pub(crate) fn goto_definition(
     };
 
     Some(RangeInfo::new(original_token.text_range(), nav_targets))
+}
+
+fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
+    return tokens.max_by_key(priority);
+    fn priority(n: &SyntaxToken) -> usize {
+        match n.kind() {
+            IDENT | INT_NUMBER => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        }
+    }
 }
 
 #[derive(Debug)]
