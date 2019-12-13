@@ -578,12 +578,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
+                // FIXME: don't use `const_eval_raw` for regular constants, instead use `const_eval`
+                // which immediately validates the result before we continue with it here.
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId { instance, promoted: None })?));
-            }
-            ty::ConstKind::Infer(..)
-            | ty::ConstKind::Bound(..)
-            | ty::ConstKind::Placeholder(..) => {
-                bug!("eval_const_to_op: Unexpected ConstKind {:?}", val)
             }
             ty::ConstKind::Value(val_val) => val_val,
         };
