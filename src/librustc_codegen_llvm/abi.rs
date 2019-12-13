@@ -8,6 +8,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
+use rustc::bug;
 use rustc_codegen_ssa::traits::*;
 use rustc_target::abi::call::ArgAbi;
 use rustc_target::abi::{HasDataLayout, LayoutOf};

@@ -3435,7 +3435,27 @@ dependencies = [
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
+ "flate2",
+ "libc",
+ "log",
+ "rustc",
+ "rustc-demangle",
+ "rustc_codegen_ssa",
+ "rustc_codegen_utils",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_fs_util",
+ "rustc_incremental",
+ "rustc_index",
  "rustc_llvm",
+ "rustc_session",
+ "rustc_target",
+ "smallvec 0.6.10",
+ "syntax",
+ "syntax_expand",
+ "syntax_pos",
 ]
 
 [[package]]
@@ -3597,6 +3617,7 @@ dependencies = [
  "once_cell",
  "rustc",
  "rustc-rayon",
+ "rustc_codegen_llvm",
  "rustc_codegen_ssa",
  "rustc_codegen_utils",
  "rustc_data_structures",
@@ -3651,6 +3672,7 @@ version = "0.0.0"
 dependencies = [
  "build_helper",
  "cc",
+ "libc",
 ]
 
 [[package]]

@@ -16,6 +16,8 @@ use rustc::ty::{self, Ty, Instance};
 use rustc_codegen_ssa::traits::*;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
+use rustc::{bug, span_bug};
+use log::debug;
 
 use rustc::ty::layout::{self, Size, Align, LayoutOf};
 

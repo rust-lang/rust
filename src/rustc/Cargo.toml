@@ -23,3 +23,4 @@ features = ['unprefixed_malloc_on_supported_platforms']
 
 [features]
 jemalloc = ['jemalloc-sys']
+llvm = ['rustc_driver/llvm']

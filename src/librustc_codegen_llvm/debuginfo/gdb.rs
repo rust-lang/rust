@@ -7,6 +7,7 @@ use crate::builder::Builder;
 use crate::value::Value;
 use rustc::session::config::DebugInfo;
 use rustc_codegen_ssa::traits::*;
+use rustc::bug;
 
 use syntax::attr;
 use syntax::symbol::sym;

@@ -12,6 +12,7 @@ use rustc_codegen_ssa::traits::*;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc::bug;
 use rustc::mir::mono::CodegenUnit;
 use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
@@ -23,6 +24,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use crate::callee::get_fn;
+use rustc_data_structures::const_cstr;
 
 use std::ffi::CStr;
 use std::cell::{Cell, RefCell};

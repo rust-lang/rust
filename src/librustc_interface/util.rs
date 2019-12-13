@@ -16,11 +16,9 @@ use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_resolve::{self, Resolver};
 use std::env;
-use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::io::{self, Write};
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, Once};
 use std::ops::DerefMut;
 use smallvec::SmallVec;
@@ -249,7 +247,7 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
             filename if filename.contains(".") => {
                 load_backend_from_dylib(filename.as_ref())
             }
-            codegen_name => get_codegen_sysroot(codegen_name),
+            codegen_name => get_builtin_codegen_backend(codegen_name),
         };
 
         unsafe {
@@ -384,83 +382,16 @@ fn sysroot_candidates() -> Vec<PathBuf> {
     }
 }
 
-pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
-    // For now we only allow this function to be called once as it'll dlopen a
-    // few things, which seems to work best if we only do that once. In
-    // general this assertion never trips due to the once guard in `get_codegen_backend`,
-    // but there's a few manual calls to this function in this file we protect
-    // against.
-    static LOADED: AtomicBool = AtomicBool::new(false);
-    assert!(!LOADED.fetch_or(true, Ordering::SeqCst),
-            "cannot load the default codegen backend twice");
-
-    let target = session::config::host_triple();
-    let sysroot_candidates = sysroot_candidates();
-
-    let sysroot = sysroot_candidates.iter()
-        .map(|sysroot| {
-            let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
-            sysroot.join(libdir).with_file_name(
-                option_env!("CFG_CODEGEN_BACKENDS_DIR").unwrap_or("codegen-backends"))
-        })
-        .filter(|f| {
-            info!("codegen backend candidate: {}", f.display());
-            f.exists()
-        })
-        .next();
-    let sysroot = sysroot.unwrap_or_else(|| {
-        let candidates = sysroot_candidates.iter()
-            .map(|p| p.display().to_string())
-            .collect::<Vec<_>>()
-            .join("\n* ");
-        let err = format!("failed to find a `codegen-backends` folder \
-                           in the sysroot candidates:\n* {}", candidates);
-        early_error(ErrorOutputType::default(), &err);
-    });
-    info!("probing {} for a codegen backend", sysroot.display());
-
-    let d = sysroot.read_dir().unwrap_or_else(|e| {
-        let err = format!("failed to load default codegen backend, couldn't \
-                           read `{}`: {}", sysroot.display(), e);
-        early_error(ErrorOutputType::default(), &err);
-    });
-
-    let mut file: Option<PathBuf> = None;
-
-    let expected_name = format!("rustc_codegen_llvm-{}", backend_name);
-    for entry in d.filter_map(|e| e.ok()) {
-        let path = entry.path();
-        let filename = match path.file_name().and_then(|s| s.to_str()) {
-            Some(s) => s,
-            None => continue,
-        };
-        if !(filename.starts_with(DLL_PREFIX) && filename.ends_with(DLL_SUFFIX)) {
-            continue
-        }
-        let name = &filename[DLL_PREFIX.len() .. filename.len() - DLL_SUFFIX.len()];
-        if name != expected_name {
-            continue
-        }
-        if let Some(ref prev) = file {
-            let err = format!("duplicate codegen backends found\n\
-                               first:  {}\n\
-                               second: {}\n\
-            ", prev.display(), path.display());
-            early_error(ErrorOutputType::default(), &err);
-        }
-        file = Some(path.clone());
-    }
-
-    match file {
-        Some(ref s) => return load_backend_from_dylib(s),
-        None => {
-            let err = format!("failed to load default codegen backend for `{}`, \
-                               no appropriate codegen dylib found in `{}`",
-                              backend_name, sysroot.display());
-            early_error(ErrorOutputType::default(), &err);
+pub fn get_builtin_codegen_backend(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
+    #[cfg(feature = "llvm")]
+    {
+        if backend_name == "llvm" {
+            return rustc_codegen_llvm::LlvmCodegenBackend::new;
         }
     }
 
+    let err = format!("unsupported builtin codegen backend `{}`", backend_name);
+    early_error(ErrorOutputType::default(), &err);
 }
 
 pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguator {

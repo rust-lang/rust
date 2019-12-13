@@ -19,6 +19,7 @@ use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
 use rustc_target::abi::HasDataLayout;
 use syntax::ast;
+use rustc::{bug, span_bug};
 
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::traits::*;

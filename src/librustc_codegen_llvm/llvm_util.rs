@@ -8,6 +8,7 @@ use libc::c_int;
 use std::ffi::CString;
 use rustc_feature::UnstableFeatures;
 use syntax::symbol::sym;
+use rustc::bug;
 
 use std::str;
 use std::slice;

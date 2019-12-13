@@ -33,6 +33,7 @@ use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, DebugScope,
 use libc::c_uint;
 use std::cell::RefCell;
 use std::ffi::CString;
+use log::debug;
 
 use smallvec::SmallVec;
 use syntax_pos::{self, BytePos, Span, Pos};
