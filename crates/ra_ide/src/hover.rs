@@ -1,11 +1,11 @@
 //! FIXME: write short doc here
 
-use hir::{db::AstDatabase, Adt, HasSource, HirDisplay};
+use hir::{db::AstDatabase, Adt, HasSource, HirDisplay, InFile};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::find_covering_element,
     ast::{self, DocCommentsOwner},
-    match_ast, AstNode,
+    match_ast, AstNode, SyntaxToken,
 };
 
 use crate::{
@@ -156,9 +156,17 @@ fn hover_text_from_name_kind(
 
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    let token = file.token_at_offset(position.offset).find(|it| !it.kind().is_trivia())?;
-    let token = descend_into_macros(db, position.file_id, token);
+    file.token_at_offset(position.offset)
+        .filter(|token| !token.kind().is_trivia())
+        .map(|token| descend_into_macros(db, position.file_id, token))
+        .find_map(|token| hover_token(db, position, token))
+}
 
+fn hover_token(
+    db: &RootDatabase,
+    position: FilePosition,
+    token: InFile<SyntaxToken>,
+) -> Option<RangeInfo<HoverResult>> {
     let mut res = HoverResult::new();
 
     let mut range = match_ast! {
