@@ -866,6 +866,18 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
+        /// Runs the destructor for all items in the slice when it gets dropped (normally or
+        /// during unwinding).
+        struct Dropper<'a, T>(&'a mut [T]);
+
+        impl<'a, T> Drop for Dropper<'a, T> {
+            fn drop(&mut self) {
+                unsafe {
+                    ptr::drop_in_place(self.0);
+                }
+            }
+        }
+
         // Safe because:
         //
         // * Any slice passed to `drop_in_place` is valid; the second case has
@@ -888,8 +900,11 @@ impl<T> VecDeque<T> {
                 let drop_back = back as *mut _;
                 let drop_front = front.get_unchecked_mut(len..) as *mut _;
                 self.head = self.wrap_sub(self.head, num_dropped);
+
+                // Make sure the second half is dropped even when a destructor
+                // in the first one panics.
+                let _back_dropper = Dropper(&mut *drop_back);
                 ptr::drop_in_place(drop_front);
-                ptr::drop_in_place(drop_back);
             }
         }
     }

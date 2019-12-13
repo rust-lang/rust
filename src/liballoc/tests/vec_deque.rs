@@ -2,7 +2,7 @@ use std::collections::TryReserveError::*;
 use std::collections::{vec_deque::Drain, VecDeque};
 use std::fmt::Debug;
 use std::mem::size_of;
-use std::panic::catch_unwind;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::{isize, usize};
 
 use crate::hash;
@@ -1572,4 +1572,37 @@ fn test_try_rfold_moves_iter() {
     let mut iter = v.into_iter();
     assert_eq!(iter.try_rfold(0_i8, |acc, &x| acc.checked_add(x)), None);
     assert_eq!(iter.next_back(), Some(&70));
+}
+
+#[test]
+fn truncate_leak() {
+    static mut DROPS: i32 = 0;
+
+    struct D(bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.0 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut q = VecDeque::new();
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_front(D(true));
+    q.push_front(D(false));
+    q.push_front(D(false));
+
+    catch_unwind(AssertUnwindSafe(|| q.truncate(1))).ok();
+
+    assert_eq!(unsafe { DROPS }, 7);
 }
