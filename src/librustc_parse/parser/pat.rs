@@ -459,16 +459,26 @@ impl<'a> Parser<'a> {
     /// Parse `&pat` / `&mut pat`.
     fn parse_pat_deref(&mut self, expected: Expected) -> PResult<'a, PatKind> {
         self.expect_and()?;
+        self.recover_lifetime_in_deref_pat();
         let mutbl = self.parse_mutability();
-
-        if let token::Lifetime(name) = self.token.kind {
-            let mut err = self.fatal(&format!("unexpected lifetime `{}` in pattern", name));
-            err.span_label(self.token.span, "unexpected lifetime");
-            return Err(err);
-        }
-
         let subpat = self.parse_pat_with_range_pat(false, expected)?;
         Ok(PatKind::Ref(subpat, mutbl))
+    }
+
+    fn recover_lifetime_in_deref_pat(&mut self) {
+        if let token::Lifetime(name) = self.token.kind {
+            self.bump(); // `'a`
+
+            let span = self.prev_span;
+            self.struct_span_err(span, &format!("unexpected lifetime `{}` in pattern", name))
+                .span_suggestion(
+                    span,
+                    "remove the lifetime",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
     }
 
     /// Parse a tuple or parenthesis pattern.

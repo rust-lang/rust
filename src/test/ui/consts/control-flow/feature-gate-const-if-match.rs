@@ -6,6 +6,7 @@
 
 #![feature(rustc_attrs)]
 #![cfg_attr(if_match, feature(const_if_match))]
+#![feature(const_fn)]
 
 const _: i32 = if true { //[stock]~ ERROR `if` is not allowed in a `const`
     5

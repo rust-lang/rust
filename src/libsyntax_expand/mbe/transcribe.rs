@@ -299,7 +299,7 @@ fn lookup_cur_matched<'a>(
         for &(idx, _) in repeats {
             match matched {
                 MatchedNonterminal(_) => break,
-                MatchedSeq(ref ads, _) => matched = ads.get(idx).unwrap(),
+                MatchedSeq(ref ads) => matched = ads.get(idx).unwrap(),
             }
         }
 
@@ -382,7 +382,7 @@ fn lockstep_iter_size(
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
-                    MatchedSeq(ref ads, _) => LockstepIterSize::Constraint(ads.len(), name),
+                    MatchedSeq(ref ads) => LockstepIterSize::Constraint(ads.len(), name),
                 },
                 _ => LockstepIterSize::Unconstrained,
             }

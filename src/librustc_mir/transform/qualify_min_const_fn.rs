@@ -80,7 +80,7 @@ fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> Mc
     for ty in ty.walk() {
         match ty.kind {
             ty::Ref(_, _, hir::Mutability::Mutable) => {
-                if !tcx.features().const_mut_refs {
+                if !feature_allowed(tcx, fn_def_id, sym::const_mut_refs) {
                     return Err((
                         span,
                         "mutable references in const fn are unstable".into(),
@@ -220,7 +220,7 @@ fn check_statement(
         }
 
         | StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _)
-        if !tcx.features().const_if_match
+        if !feature_allowed(tcx, def_id, sym::const_if_match)
         => {
             Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
@@ -272,7 +272,7 @@ fn check_place(
     while let &[ref proj_base @ .., elem] = cursor {
         cursor = proj_base;
         match elem {
-            ProjectionElem::Downcast(..) if !tcx.features().const_if_match
+            ProjectionElem::Downcast(..) if !feature_allowed(tcx, def_id, sym::const_if_match)
                 => return Err((span, "`match` or `if let` in `const fn` is unstable".into())),
             ProjectionElem::Downcast(_symbol, _variant_index) => {}
 
@@ -329,7 +329,7 @@ fn check_terminator(
 
         | TerminatorKind::FalseEdges { .. }
         | TerminatorKind::SwitchInt { .. }
-        if !tcx.features().const_if_match
+        if !feature_allowed(tcx, def_id, sym::const_if_match)
         => Err((
             span,
             "loops and conditional expressions are not stable in const fn".into(),
@@ -341,7 +341,7 @@ fn check_terminator(
         }
 
         // FIXME(ecstaticmorse): We probably want to allow `Unreachable` unconditionally.
-        TerminatorKind::Unreachable if tcx.features().const_if_match => Ok(()),
+        TerminatorKind::Unreachable if feature_allowed(tcx, def_id, sym::const_if_match) => Ok(()),
 
         | TerminatorKind::Abort | TerminatorKind::Unreachable => {
             Err((span, "const fn with unreachable code is not stable".into()))

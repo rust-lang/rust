@@ -2,7 +2,7 @@ error: unexpected lifetime `'a` in pattern
   --> $DIR/self-vs-path-ambiguity.rs:9:11
    |
 LL |     fn i(&'a self::S: &S) {}
-   |           ^^ unexpected lifetime
+   |           ^^ help: remove the lifetime
 
 error: aborting due to previous error
 

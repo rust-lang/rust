@@ -808,7 +808,21 @@ impl<T> LinkedList<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T> Drop for LinkedList<T> {
     fn drop(&mut self) {
-        while let Some(_) = self.pop_front_node() {}
+        struct DropGuard<'a, T>(&'a mut LinkedList<T>);
+
+        impl<'a, T> Drop for DropGuard<'a, T> {
+            fn drop(&mut self) {
+                // Continue the same loop we do below. This only runs when a destructor has
+                // panicked. If another one panics this will abort.
+                while let Some(_) = self.0.pop_front_node() {}
+            }
+        }
+
+        while let Some(node) = self.pop_front_node() {
+            let guard = DropGuard(self);
+            drop(node);
+            mem::forget(guard);
+        }
     }
 }
 
