@@ -6,7 +6,7 @@ LL |     match x {}
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: pattern `UninhabitedStruct` of type `uninhabited::UninhabitedStruct` is not handled
+error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedStruct` is non-empty
   --> $DIR/match.rs:22:11
    |
 LL |     match x {}
@@ -14,7 +14,7 @@ LL |     match x {}
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: pattern `UninhabitedTupleStruct` of type `uninhabited::UninhabitedTupleStruct` is not handled
+error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedTupleStruct` is non-empty
   --> $DIR/match.rs:26:11
    |
 LL |     match x {}
@@ -22,11 +22,11 @@ LL |     match x {}
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: multiple patterns of type `uninhabited::UninhabitedVariants` are not handled
+error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covered
   --> $DIR/match.rs:30:11
    |
 LL |     match x {}
-   |           ^
+   |           ^ patterns `Tuple(_)` and `Struct { .. }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 

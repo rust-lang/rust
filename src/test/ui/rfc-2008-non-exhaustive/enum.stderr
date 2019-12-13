@@ -1,11 +1,27 @@
+error[E0004]: non-exhaustive patterns: type `enums::EmptyNonExhaustiveEnum` is non-empty
+  --> $DIR/enum.rs:7:11
+   |
+LL |     match x {}
+   |           ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/enum.rs:9:11
+  --> $DIR/enum.rs:16:11
    |
 LL |     match enum_unit {
    |           ^^^^^^^^^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to previous error
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/enum.rs:23:11
+   |
+LL |     match enum_unit {};
+   |           ^^^^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

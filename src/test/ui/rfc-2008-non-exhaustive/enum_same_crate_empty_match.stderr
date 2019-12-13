@@ -1,0 +1,45 @@
+error[E0004]: non-exhaustive patterns: `Unit`, `Tuple(_)` and `Struct { .. }` not covered
+  --> $DIR/enum_same_crate_empty_match.rs:33:11
+   |
+LL | / pub enum NonExhaustiveEnum {
+LL | |     Unit,
+   | |     ---- not covered
+LL | |
+LL | |     Tuple(u32),
+   | |     ----- not covered
+LL | |
+LL | |     Struct { field: u32 }
+   | |     ------ not covered
+LL | |
+LL | | }
+   | |_- `NonExhaustiveEnum` defined here
+...
+LL |       match NonExhaustiveEnum::Unit {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ patterns `Unit`, `Tuple(_)` and `Struct { .. }` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `Unit`, `Tuple(_)` and `Struct { .. }` not covered
+  --> $DIR/enum_same_crate_empty_match.rs:35:11
+   |
+LL | / pub enum NormalEnum {
+LL | |     Unit,
+   | |     ---- not covered
+LL | |
+LL | |     Tuple(u32),
+   | |     ----- not covered
+LL | |
+LL | |     Struct { field: u32 }
+   | |     ------ not covered
+LL | |
+LL | | }
+   | |_- `NormalEnum` defined here
+...
+LL |       match NormalEnum::Unit {}
+   |             ^^^^^^^^^^^^^^^^ patterns `Unit`, `Tuple(_)` and `Struct { .. }` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

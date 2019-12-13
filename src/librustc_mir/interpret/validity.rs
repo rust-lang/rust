@@ -22,28 +22,23 @@ use super::{
 
 macro_rules! throw_validation_failure {
     ($what:expr, $where:expr, $details:expr) => {{
-        let where_ = path_format(&$where);
-        let where_ = if where_.is_empty() {
-            String::new()
-        } else {
-            format!(" at {}", where_)
-        };
-        throw_unsup!(ValidationFailure(format!(
-            "encountered {}{}, but expected {}",
-            $what, where_, $details,
-        )))
+        let mut msg = format!("encountered {}", $what);
+        let where_ = &$where;
+        if !where_.is_empty() {
+            msg.push_str(" at ");
+            write_path(&mut msg, where_);
+        }
+        write!(&mut msg, ", but expected {}", $details).unwrap();
+        throw_unsup!(ValidationFailure(msg))
     }};
     ($what:expr, $where:expr) => {{
-        let where_ = path_format(&$where);
-        let where_ = if where_.is_empty() {
-            String::new()
-        } else {
-            format!(" at {}", where_)
-        };
-        throw_unsup!(ValidationFailure(format!(
-            "encountered {}{}",
-            $what, where_,
-        )))
+        let mut msg = format!("encountered {}", $what);
+        let where_ = &$where;
+        if !where_.is_empty() {
+            msg.push_str(" at ");
+            write_path(&mut msg, where_);
+        }
+        throw_unsup!(ValidationFailure(msg))
     }};
 }
 
@@ -60,7 +55,7 @@ macro_rules! try_validation {
             Ok(x) => x,
             Err(_) => throw_validation_failure!($what, $where),
         }
-    }}
+    }};
 }
 
 /// We want to show a nice path to the invalid field for diagnostics,
@@ -113,10 +108,9 @@ impl<T: Copy + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH> 
 }
 
 /// Format a path
-fn path_format(path: &Vec<PathElem>) -> String {
+fn write_path(out: &mut String, path: &Vec<PathElem>) {
     use self::PathElem::*;
 
-    let mut out = String::new();
     for elem in path.iter() {
         match elem {
             Field(name) => write!(out, ".{}", name),
@@ -135,7 +129,6 @@ fn path_format(path: &Vec<PathElem>) -> String {
             DynDowncast => write!(out, ".<dyn-downcast>"),
         }.unwrap()
     }
-    out
 }
 
 // Test if a range that wraps at overflow contains `test`
@@ -428,7 +421,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             err_unsup!(InvalidNullPointerUsage) =>
                                 throw_validation_failure!("NULL reference", self.path),
                             err_unsup!(AlignmentCheckFailed { required, has }) =>
-                                throw_validation_failure!(format!("unaligned reference \
+                                throw_validation_failure!(format_args!("unaligned reference \
                                     (required {} byte alignment but found {})",
                                     required.bytes(), has.bytes()), self.path),
                             err_unsup!(ReadBytesAsPointer) =>
@@ -519,7 +512,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         let value = try_validation!(value.not_undef(),
             value,
             self.path,
-            format!(
+            format_args!(
                 "something {}",
                 wrapping_range_format(&layout.valid_range, max_hi),
             )
@@ -532,7 +525,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         throw_validation_failure!(
                             "a potentially NULL pointer",
                             self.path,
-                            format!(
+                            format_args!(
                                 "something that cannot possibly fail to be {}",
                                 wrapping_range_format(&layout.valid_range, max_hi)
                             )
@@ -545,7 +538,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     throw_validation_failure!(
                         "a pointer",
                         self.path,
-                        format!(
+                        format_args!(
                             "something that cannot possibly fail to be {}",
                             wrapping_range_format(&layout.valid_range, max_hi)
                         )
@@ -562,7 +555,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             throw_validation_failure!(
                 bits,
                 self.path,
-                format!("something {}", wrapping_range_format(&layout.valid_range, max_hi))
+                format_args!("something {}", wrapping_range_format(&layout.valid_range, max_hi))
             )
         }
     }

@@ -238,7 +238,7 @@ use super::{FieldPat, Pat, PatKind, PatRange};
 use rustc::hir::def_id::DefId;
 use rustc::hir::{HirId, RangeEnd};
 use rustc::ty::layout::{Integer, IntegerExt, Size, VariantIdx};
-use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
 
 use rustc::lint;
 use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
@@ -354,7 +354,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
 }
 
 impl<'tcx> Pat<'tcx> {
-    fn is_wildcard(&self) -> bool {
+    pub(super) fn is_wildcard(&self) -> bool {
         match *self.kind {
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => true,
             _ => false,
@@ -596,9 +596,21 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_local(&self, ty: Ty<'tcx>) -> bool {
+    // Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
+    pub fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind {
-            ty::Adt(adt_def, ..) => adt_def.did.is_local(),
+            ty::Adt(def, ..) => {
+                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
+            }
+            _ => false,
+        }
+    }
+
+    // Returns whether the given variant is from another crate and has its fields declared
+    // `#[non_exhaustive]`.
+    fn is_foreign_non_exhaustive_variant(&self, ty: Ty<'tcx>, variant: &VariantDef) -> bool {
+        match ty.kind {
+            ty::Adt(def, ..) => variant.is_field_list_non_exhaustive() && !def.did.is_local(),
             _ => false,
         }
     }
@@ -758,6 +770,10 @@ impl<'tcx> Constructor<'tcx> {
     // Returns the set of constructors covered by `self` but not by
     // anything in `other_ctors`.
     fn subtract_ctors(&self, other_ctors: &Vec<Constructor<'tcx>>) -> Vec<Constructor<'tcx>> {
+        if other_ctors.is_empty() {
+            return vec![self.clone()];
+        }
+
         match self {
             // Those constructors can only match themselves.
             Single | Variant(_) | ConstantValue(..) | FloatRange(..) => {
@@ -858,8 +874,7 @@ impl<'tcx> Constructor<'tcx> {
                         vec![Pat::wildcard_from_ty(substs.type_at(0))]
                     } else {
                         let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
-                        let is_non_exhaustive =
-                            variant.is_field_list_non_exhaustive() && !cx.is_local(ty);
+                        let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(ty, variant);
                         variant
                             .fields
                             .iter()
@@ -1205,6 +1220,8 @@ impl<'tcx> Witness<'tcx> {
 ///
 /// We make sure to omit constructors that are statically impossible. E.g., for
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
+/// Invariant: this returns an empty `Vec` if and only if the type is uninhabited (as determined by
+/// `cx.is_uninhabited()`).
 fn all_constructors<'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     pcx: PatCtxt<'tcx>,
@@ -1235,47 +1252,45 @@ fn all_constructors<'a, 'tcx>(
             vec![Slice(Slice { array_len: None, kind })]
         }
         ty::Adt(def, substs) if def.is_enum() => {
-            let ctors: Vec<_> = def
-                .variants
-                .iter()
-                .filter(|v| {
-                    !cx.tcx.features().exhaustive_patterns
-                        || !v
-                            .uninhabited_from(cx.tcx, substs, def.adt_kind())
+            let ctors: Vec<_> = if cx.tcx.features().exhaustive_patterns {
+                // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                // uninhabited.
+                def.variants
+                    .iter()
+                    .filter(|v| {
+                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind())
                             .contains(cx.tcx, cx.module)
-                })
-                .map(|v| Variant(v.def_id))
-                .collect();
-
-            // If our scrutinee is *privately* an empty enum, we must treat it as though it had an
-            // "unknown" constructor (in that case, all other patterns obviously can't be variants)
-            // to avoid exposing its emptyness. See the `match_privately_empty` test for details.
-            // FIXME: currently the only way I know of something can be a privately-empty enum is
-            // when the exhaustive_patterns feature flag is not present, so this is only needed for
-            // that case.
-            let is_privately_empty = ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
-            // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
-            // additionnal "unknown" constructor.
-            let is_declared_nonexhaustive =
-                def.is_variant_list_non_exhaustive() && !cx.is_local(pcx.ty);
-
-            if is_privately_empty || is_declared_nonexhaustive {
-                // There is no point in enumerating all possible variants, because the user can't
-                // actually match against them themselves. So we return only the fictitious
-                // constructor.
-                // E.g., in an example like:
-                // ```
-                //     let err: io::ErrorKind = ...;
-                //     match err {
-                //         io::ErrorKind::NotFound => {},
-                //     }
-                // ```
-                // we don't want to show every possible IO error, but instead have only `_` as the
-                // witness.
-                vec![NonExhaustive]
+                    })
+                    .map(|v| Variant(v.def_id))
+                    .collect()
             } else {
-                ctors
-            }
+                def.variants.iter().map(|v| Variant(v.def_id)).collect()
+            };
+
+            // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
+            // additional "unknown" constructor.
+            // There is no point in enumerating all possible variants, because the user can't
+            // actually match against them all themselves. So we always return only the fictitious
+            // constructor.
+            // E.g., in an example like:
+            // ```
+            //     let err: io::ErrorKind = ...;
+            //     match err {
+            //         io::ErrorKind::NotFound => {},
+            //     }
+            // ```
+            // we don't want to show every possible IO error, but instead have only `_` as the
+            // witness.
+            let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
+
+            // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
+            // as though it had an "unknown" constructor to avoid exposing its emptyness. Note that
+            // an empty match will still be considered exhaustive because that case is handled
+            // separately in `check_match`.
+            let is_secretly_empty =
+                def.variants.is_empty() && !cx.tcx.features().exhaustive_patterns;
+
+            if is_secretly_empty || is_declared_nonexhaustive { vec![NonExhaustive] } else { ctors }
         }
         ty::Char => {
             vec![
@@ -1605,6 +1620,7 @@ pub fn is_useful<'p, 'tcx>(
     v: &PatStack<'p, 'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
+    is_top_level: bool,
 ) -> Usefulness<'tcx, 'p> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
@@ -1632,7 +1648,7 @@ pub fn is_useful<'p, 'tcx>(
         let mut unreachable_pats = Vec::new();
         let mut any_is_useful = false;
         for v in vs {
-            let res = is_useful(cx, &matrix, &v, witness_preference, hir_id);
+            let res = is_useful(cx, &matrix, &v, witness_preference, hir_id, false);
             match res {
                 Useful(pats) => {
                     any_is_useful = true;
@@ -1732,7 +1748,7 @@ pub fn is_useful<'p, 'tcx>(
         } else {
             let matrix = matrix.specialize_wildcard();
             let v = v.to_tail();
-            let usefulness = is_useful(cx, &matrix, &v, witness_preference, hir_id);
+            let usefulness = is_useful(cx, &matrix, &v, witness_preference, hir_id, false);
 
             // In this case, there's at least one "free"
             // constructor that is only matched against by
@@ -1761,7 +1777,10 @@ pub fn is_useful<'p, 'tcx>(
             // `(<direction-1>, <direction-2>, true)` - we are
             // satisfied with `(_, _, true)`. In this case,
             // `used_ctors` is empty.
-            if missing_ctors.all_ctors_are_missing() {
+            // The exception is: if we are at the top-level, for example in an empty match, we
+            // sometimes prefer reporting the list of constructors instead of just `_`.
+            let report_ctors_rather_than_wildcard = is_top_level && !IntRange::is_integral(pcx.ty);
+            if missing_ctors.all_ctors_are_missing() && !report_ctors_rather_than_wildcard {
                 // All constructors are unused. Add a wild pattern
                 // rather than each individual constructor.
                 usefulness.apply_wildcard(pcx.ty)
@@ -1793,7 +1812,7 @@ fn is_useful_specialized<'p, 'tcx>(
         cx.pattern_arena.alloc_from_iter(ctor.wildcard_subpatterns(cx, lty));
     let matrix = matrix.specialize_constructor(cx, &ctor, ctor_wild_subpatterns);
     v.specialize_constructor(cx, &ctor, ctor_wild_subpatterns)
-        .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id))
+        .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id, false))
         .map(|u| u.apply_constructor(cx, &ctor, lty))
         .unwrap_or(NotUseful)
 }
@@ -2308,7 +2327,7 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
-            let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !cx.is_local(pat.ty);
+            let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
             Some(Variant(variant.def_id))
                 .filter(|variant_constructor| variant_constructor == constructor)
                 .map(|_| {
