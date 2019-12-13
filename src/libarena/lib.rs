@@ -149,12 +149,12 @@ impl<T> ChunkBackend<T> for ZSTCurrentChunk<T> {
 
 /// Chunk used for droppable types.
 struct TypedCurrentChunk<T> {
-    /// A pointer to the next object to be allocated.
-    ptr: Cell<*mut T>,
+    /// A pointer to the start of the allocatable area.
+    /// When this pointer is reached, a new chunk is allocated.
+    start: Cell<*mut T>,
 
-    /// A pointer to the end of the allocated area. When this pointer is
-    /// reached, a new chunk is allocated.
-    end: Cell<*mut T>,
+    /// A pointer to the end of the allocated area.
+    ptr: Cell<*mut T>,
 }
 
 impl<T> ChunkBackend<T> for TypedCurrentChunk<T> {
@@ -163,8 +163,8 @@ impl<T> ChunkBackend<T> for TypedCurrentChunk<T> {
     #[inline]
     fn new() -> Self {
         TypedCurrentChunk {
+            start: Cell::new(ptr::null_mut()),
             ptr: Cell::new(ptr::null_mut()),
-            end: Cell::new(ptr::null_mut()),
         }
     }
 
@@ -177,7 +177,7 @@ impl<T> ChunkBackend<T> for TypedCurrentChunk<T> {
     fn can_allocate(&self, len: usize, align: usize) -> bool {
         assert!(mem::size_of::<T>() > 0);
         assert!(mem::align_of::<T>() == align);
-        let available_capacity = unsafe { self.end.get().offset_from(self.ptr.get()) };
+        let available_capacity = unsafe { self.ptr.get().offset_from(self.start.get()) };
         assert!(available_capacity >= 0);
         let available_capacity = available_capacity as usize;
         available_capacity >= len
@@ -189,32 +189,30 @@ impl<T> ChunkBackend<T> for TypedCurrentChunk<T> {
     fn grow(&self, len: usize, align: usize, chunks: &mut Self::ChunkVecType) {
         assert!(mem::size_of::<T>() > 0);
         assert!(mem::align_of::<T>() == align);
+        assert!(!self.can_allocate(len, align));
         unsafe {
-            let mut new_capacity;
+            let mut new_capacity: usize;
             if let Some(last_chunk) = chunks.last_mut() {
-                let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
-                let currently_used_cap = used_bytes / mem::size_of::<T>();
+                let currently_used_cap = last_chunk.end().offset_from(self.ptr.get());
+                assert!(currently_used_cap >= 0);
+                let currently_used_cap = currently_used_cap as usize;
                 last_chunk.entries = currently_used_cap;
-                if last_chunk.storage.reserve_in_place(currently_used_cap, len) {
-                    self.end.set(last_chunk.end());
-                    return;
-                } else {
-                    new_capacity = last_chunk.storage.capacity();
-                    loop {
-                        new_capacity = new_capacity.checked_mul(2).unwrap();
-                        if new_capacity >= currently_used_cap + len {
-                            break;
-                        }
+
+                new_capacity = last_chunk.storage.capacity();
+                loop {
+                    new_capacity = new_capacity.checked_mul(2).unwrap();
+                    if new_capacity >= currently_used_cap + len {
+                        break;
                     }
                 }
             } else {
-                let elem_size = cmp::max(1, mem::size_of::<T>());
+                let elem_size = mem::size_of::<T>();
                 new_capacity = cmp::max(len, PAGE / elem_size);
             }
 
             let chunk = TypedArenaChunk::new(new_capacity);
-            self.ptr.set(chunk.start());
-            self.end.set(chunk.end());
+            self.start.set(chunk.start());
+            self.ptr.set(chunk.end());
             chunks.push(chunk);
         }
     }
@@ -225,10 +223,10 @@ impl<T> ChunkBackend<T> for TypedCurrentChunk<T> {
         assert!(align == mem::align_of::<T>());
 
         let ptr = self.ptr.get();
-        let end = ptr.add(len);
-        assert!(end <= self.end.get());
+        let ptr = ptr.sub(len);
+        assert!(ptr >= self.start.get());
 
-        self.ptr.set(end);
+        self.ptr.set(ptr);
         ptr
     }
 
@@ -239,12 +237,14 @@ impl<T> ChunkBackend<T> for TypedCurrentChunk<T> {
         if let Some(last_chunk) = chunks.last_mut() {
             // Clear the last chunk, which is partially filled.
             unsafe {
-                let start = last_chunk.start();
-                let len = self.ptr.get().offset_from(start);
+                let end = last_chunk.end();
+                let len = end.offset_from(self.ptr.get());
                 assert!(len >= 0);
-                let slice = slice::from_raw_parts_mut(start, len as usize);
-                ptr::drop_in_place(slice);
-                self.ptr.set(start);
+                let len = len as usize;
+                for i in 0..len {
+                    ptr::drop_in_place(end.sub(i + 1))
+                }
+                self.ptr.set(end);
             }
 
             let len = chunks.len();
@@ -549,7 +549,7 @@ impl<T> TypedArenaChunk<T> {
         // The branch on needs_drop() is an -O1 performance optimization.
         // Without the branch, dropping TypedArena<u8> takes linear time.
         if mem::needs_drop::<T>() {
-            let mut start = self.start();
+            let mut start = self.end().sub(len);
             // Destroy all allocated objects.
             for _ in 0..len {
                 ptr::drop_in_place(start);
