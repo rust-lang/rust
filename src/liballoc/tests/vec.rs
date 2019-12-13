@@ -766,6 +766,35 @@ fn test_into_iter_clone() {
 }
 
 #[test]
+fn test_into_iter_leak() {
+    static mut DROPS: i32 = 0;
+
+    struct D(bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.0 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let v = vec![
+        D(false),
+        D(true),
+        D(false),
+    ];
+
+    catch_unwind(move || drop(v.into_iter())).ok();
+
+    assert_eq!(unsafe { DROPS }, 3);
+}
+
+#[test]
 fn test_cow_from() {
     let borrowed: &[_] = &["borrowed", "(slice)"];
     let owned = vec!["owned", "(vec)"];

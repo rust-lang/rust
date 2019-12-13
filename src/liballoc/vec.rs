@@ -2620,7 +2620,9 @@ impl<T: Clone> Clone for IntoIter<T> {
 unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
-        for _x in self.by_ref() {}
+        unsafe {
+            ptr::drop_in_place(self.as_mut_slice());
+        }
 
         // RawVec handles deallocation
         let _ = unsafe { RawVec::from_raw_parts(self.buf.as_ptr(), self.cap) };
