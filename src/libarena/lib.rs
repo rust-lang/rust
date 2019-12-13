@@ -617,89 +617,18 @@ impl<T> CurrentChunk<T> {
 
 const PAGE: usize = 4096;
 
+#[derive(Default)]
 pub struct DroplessArena {
-    /// A pointer to the next object to be allocated.
-    ptr: Cell<*mut u8>,
-
-    /// A pointer to the end of the allocated area. When this pointer is
-    /// reached, a new chunk is allocated.
-    end: Cell<*mut u8>,
-
-    /// A vector of arena chunks.
-    chunks: RefCell<Vec<TypedArenaChunk<u8>>>,
+    backend: GenericArena<u8, DroplessCurrentChunk>,
 }
 
 unsafe impl Send for DroplessArena {}
 
-impl Default for DroplessArena {
-    #[inline]
-    fn default() -> DroplessArena {
-        DroplessArena {
-            ptr: Cell::new(ptr::null_mut()),
-            end: Cell::new(ptr::null_mut()),
-            chunks: Default::default(),
-        }
-    }
-}
-
 impl DroplessArena {
-    #[inline]
-    fn align(&self, align: usize) {
-        let final_address = ((self.ptr.get() as usize) + align - 1) & !(align - 1);
-        self.ptr.set(final_address as *mut u8);
-        assert!(self.ptr <= self.end);
-    }
-
-    #[inline(never)]
-    #[cold]
-    fn grow(&self, needed_bytes: usize) {
-        unsafe {
-            let mut chunks = self.chunks.borrow_mut();
-            let (chunk, mut new_capacity);
-            if let Some(last_chunk) = chunks.last_mut() {
-                let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
-                if last_chunk
-                    .storage
-                    .reserve_in_place(used_bytes, needed_bytes)
-                {
-                    self.end.set(last_chunk.end());
-                    return;
-                } else {
-                    new_capacity = last_chunk.storage.capacity();
-                    loop {
-                        new_capacity = new_capacity.checked_mul(2).unwrap();
-                        if new_capacity >= used_bytes + needed_bytes {
-                            break;
-                        }
-                    }
-                }
-            } else {
-                new_capacity = cmp::max(needed_bytes, PAGE);
-            }
-            chunk = TypedArenaChunk::<u8>::new(new_capacity);
-            self.ptr.set(chunk.start());
-            self.end.set(chunk.end());
-            chunks.push(chunk);
-        }
-    }
-
     #[inline]
     pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
         unsafe {
-            assert!(bytes != 0);
-
-            self.align(align);
-
-            let future_end = intrinsics::arith_offset(self.ptr.get(), bytes as isize);
-            if (future_end as *mut u8) >= self.end.get() {
-                self.grow(bytes);
-            }
-
-            let ptr = self.ptr.get();
-            // Set the pointer past ourselves
-            self.ptr.set(
-                intrinsics::arith_offset(self.ptr.get(), bytes as isize) as *mut u8,
-            );
+            let ptr = self.backend.current.alloc_raw_slice(bytes, align);
             slice::from_raw_parts_mut(ptr, bytes)
         }
     }
