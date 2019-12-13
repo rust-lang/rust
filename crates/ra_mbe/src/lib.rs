@@ -159,14 +159,14 @@ impl Rule {
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
             .clone();
-        lhs.delimiter = tt::Delimiter::None;
+        lhs.delimiter = None;
         src.expect_char('=').map_err(|()| ParseError::Expected("expected `=`".to_string()))?;
         src.expect_char('>').map_err(|()| ParseError::Expected("expected `>`".to_string()))?;
         let mut rhs = src
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
             .clone();
-        rhs.delimiter = tt::Delimiter::None;
+        rhs.delimiter = None;
         Ok(crate::Rule { lhs, rhs })
     }
 }

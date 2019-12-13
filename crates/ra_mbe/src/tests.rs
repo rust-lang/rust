@@ -1463,7 +1463,7 @@ pub(crate) fn assert_expansion(
         let wrapped = ast::SourceFile::parse(&wrapped);
         let wrapped = wrapped.tree().syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
         let mut wrapped = ast_to_token_tree(&wrapped).unwrap().0;
-        wrapped.delimiter = tt::Delimiter::None;
+        wrapped.delimiter = None;
         wrapped
     };
     let (expanded_tree, expected_tree) = match kind {

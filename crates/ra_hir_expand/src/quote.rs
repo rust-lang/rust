@@ -16,7 +16,7 @@ macro_rules! __quote {
         {
             let children = $crate::__quote!($($tt)*);
             let subtree = tt::Subtree {
-                delimiter: tt::Delimiter::$delim,
+                delimiter: Some(tt::Delimiter::$delim),
                 token_trees: $crate::quote::IntoTt::to_tokens(children),
             };
             subtree
@@ -124,7 +124,7 @@ pub(crate) trait IntoTt {
 
 impl IntoTt for Vec<tt::TokenTree> {
     fn to_subtree(self) -> tt::Subtree {
-        tt::Subtree { delimiter: tt::Delimiter::None, token_trees: self }
+        tt::Subtree { delimiter: None, token_trees: self }
     }
 
     fn to_tokens(self) -> Vec<tt::TokenTree> {
@@ -254,7 +254,8 @@ mod tests {
         let fields =
             fields.iter().map(|it| quote!(#it: self.#it.clone(), ).token_trees.clone()).flatten();
 
-        let list = tt::Subtree { delimiter: tt::Delimiter::Brace, token_trees: fields.collect() };
+        let list =
+            tt::Subtree { delimiter: Some(tt::Delimiter::Brace), token_trees: fields.collect() };
 
         let quoted = quote! {
             impl Clone for #struct_name {

@@ -48,9 +48,9 @@ pub enum Leaf {
 }
 impl_froms!(Leaf: Literal, Punct, Ident);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct Subtree {
-    pub delimiter: Delimiter,
+    pub delimiter: Option<Delimiter>,
     pub token_trees: Vec<TokenTree>,
 }
 
@@ -59,7 +59,6 @@ pub enum Delimiter {
     Parenthesis,
     Brace,
     Bracket,
-    None,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -97,10 +96,10 @@ impl fmt::Display for TokenTree {
 impl fmt::Display for Subtree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (l, r) = match self.delimiter {
-            Delimiter::Parenthesis => ("(", ")"),
-            Delimiter::Brace => ("{", "}"),
-            Delimiter::Bracket => ("[", "]"),
-            Delimiter::None => ("", ""),
+            Some(Delimiter::Parenthesis) => ("(", ")"),
+            Some(Delimiter::Brace) => ("{", "}"),
+            Some(Delimiter::Bracket) => ("[", "]"),
+            None => ("", ""),
         };
         f.write_str(l)?;
         let mut needs_space = false;

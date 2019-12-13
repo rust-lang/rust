@@ -51,7 +51,7 @@ pub fn token_tree_to_syntax_node(
 ) -> Result<(Parse<SyntaxNode>, TokenMap), ExpandError> {
     let tmp;
     let tokens = match tt {
-        tt::Subtree { delimiter: tt::Delimiter::None, token_trees } => token_trees.as_slice(),
+        tt::Subtree { delimiter: None, token_trees } => token_trees.as_slice(),
         _ => {
             tmp = [tt.clone().into()];
             &tmp[..]
@@ -121,7 +121,7 @@ fn convert_doc_comment(token: &ra_syntax::SyntaxToken) -> Option<Vec<tt::TokenTr
         token_trees.push(mk_punct('!'));
     }
     token_trees.push(tt::TokenTree::from(tt::Subtree {
-        delimiter: tt::Delimiter::Bracket,
+        delimiter: Some(tt::Delimiter::Bracket),
         token_trees: meta_tkns,
     }));
 
@@ -156,7 +156,7 @@ impl Convertor {
     fn go(&mut self, tt: &SyntaxNode) -> Option<tt::Subtree> {
         // This tree is empty
         if tt.first_child_or_token().is_none() {
-            return Some(tt::Subtree { token_trees: vec![], delimiter: tt::Delimiter::None });
+            return Some(tt::Subtree { token_trees: vec![], delimiter: None });
         }
 
         let first_child = tt.first_child_or_token()?;
@@ -173,7 +173,7 @@ impl Convertor {
         .last()
         .unwrap();
         if first_child.kind().is_trivia() {
-            return Some(tt::Subtree { token_trees: vec![], delimiter: tt::Delimiter::None });
+            return Some(tt::Subtree { token_trees: vec![], delimiter: None });
         }
 
         let last_child = successors(Some(last_child), |it| {
@@ -187,10 +187,10 @@ impl Convertor {
         .unwrap();
 
         let (delimiter, skip_first) = match (first_child.kind(), last_child.kind()) {
-            (T!['('], T![')']) => (tt::Delimiter::Parenthesis, true),
-            (T!['{'], T!['}']) => (tt::Delimiter::Brace, true),
-            (T!['['], T![']']) => (tt::Delimiter::Bracket, true),
-            _ => (tt::Delimiter::None, false),
+            (T!['('], T![')']) => (Some(tt::Delimiter::Parenthesis), true),
+            (T!['{'], T!['}']) => (Some(tt::Delimiter::Brace), true),
+            (T!['['], T![']']) => (Some(tt::Delimiter::Bracket), true),
+            _ => (None, false),
         };
 
         let mut token_trees = Vec::new();
@@ -246,9 +246,7 @@ impl Convertor {
                 }
                 NodeOrToken::Node(node) => {
                     let child_subtree = self.go(&node)?;
-                    if child_subtree.delimiter == tt::Delimiter::None
-                        && node.kind() != SyntaxKind::TOKEN_TREE
-                    {
+                    if child_subtree.delimiter.is_none() && node.kind() != SyntaxKind::TOKEN_TREE {
                         token_trees.extend(child_subtree.token_trees);
                     } else {
                         token_trees.push(child_subtree.into());
@@ -299,16 +297,16 @@ impl<'a> TtTreeSink<'a> {
     }
 }
 
-fn delim_to_str(d: tt::Delimiter, closing: bool) -> SmolStr {
+fn delim_to_str(d: Option<tt::Delimiter>, closing: bool) -> SmolStr {
     let texts = match d {
-        tt::Delimiter::Parenthesis => "()",
-        tt::Delimiter::Brace => "{}",
-        tt::Delimiter::Bracket => "[]",
-        tt::Delimiter::None => "",
+        Some(tt::Delimiter::Parenthesis) => "()",
+        Some(tt::Delimiter::Brace) => "{}",
+        Some(tt::Delimiter::Bracket) => "[]",
+        None => return "".into(),
     };
 
     let idx = closing as usize;
-    let text = if !texts.is_empty() { &texts[idx..texts.len() - (1 - idx)] } else { "" };
+    let text = &texts[idx..texts.len() - (1 - idx)];
     text.into()
 }
 
@@ -497,7 +495,7 @@ mod tests {
         let token_tree = ast::TokenTree::cast(token_tree).unwrap();
         let tt = ast_to_token_tree(&token_tree).unwrap().0;
 
-        assert_eq!(tt.delimiter, tt::Delimiter::Brace);
+        assert_eq!(tt.delimiter, Some(tt::Delimiter::Brace));
     }
 
     #[test]
