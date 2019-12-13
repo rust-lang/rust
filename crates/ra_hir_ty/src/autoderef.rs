@@ -6,7 +6,7 @@
 use std::iter::successors;
 
 use hir_def::lang_item::LangItemTarget;
-use hir_expand::name;
+use hir_expand::name::N;
 use log::{info, warn};
 use ra_db::CrateId;
 
@@ -52,7 +52,7 @@ fn deref_by_trait(
         LangItemTarget::TraitId(it) => it,
         _ => return None,
     };
-    let target = db.trait_data(deref_trait).associated_type_by_name(&name::TARGET_TYPE)?;
+    let target = db.trait_data(deref_trait).associated_type_by_name(&N![Target])?;
 
     let generic_params = generics(db, target.into());
     if generic_params.len() != 1 {

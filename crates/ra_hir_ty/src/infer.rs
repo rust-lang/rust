@@ -29,7 +29,7 @@ use hir_def::{
     type_ref::{Mutability, TypeRef},
     AdtId, AssocItemId, DefWithBodyId, FunctionId, StructFieldId, TypeAliasId, VariantId,
 };
-use hir_expand::{diagnostics::DiagnosticSink, name};
+use hir_expand::{diagnostics::DiagnosticSink, name::N};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 
@@ -424,31 +424,31 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
         let path = known::std_iter_into_iterator();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::ITEM_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&N![Item])
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
         let path = known::std_ops_try();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OK_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&N![Ok])
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
         let path = known::std_ops_neg();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&N![Output])
     }
 
     fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
         let path = known::std_ops_not();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&N![Output])
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
         let path = known::std_future_future();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&N![Output])
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {

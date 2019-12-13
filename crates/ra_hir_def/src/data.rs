@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use hir_expand::{
-    name::{self, AsName, Name},
+    name::{AsName, Name, N},
     AstId,
 };
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
@@ -37,7 +37,7 @@ impl FunctionData {
                 let self_type = if let Some(type_ref) = self_param.ascribed_type() {
                     TypeRef::from_ast(type_ref)
                 } else {
-                    let self_type = TypeRef::Path(name::SELF_TYPE.into());
+                    let self_type = TypeRef::Path(N![Self].into());
                     match self_param.kind() {
                         ast::SelfParamKind::Owned => self_type,
                         ast::SelfParamKind::Ref => {

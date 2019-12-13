@@ -34,7 +34,7 @@ macro_rules! register_builtin {
             ast_id: AstId<ast::MacroCall>,
         ) -> Option<MacroDefId> {
             let kind = match ident {
-                 $( id if id == &name::$name => BuiltinFnLikeExpander::$kind, )*
+                 $( id if id == &name::N![$name] => BuiltinFnLikeExpander::$kind, )*
                  _ => return None,
             };
 
@@ -44,15 +44,15 @@ macro_rules! register_builtin {
 }
 
 register_builtin! {
-    (COLUMN_MACRO, Column) => column_expand,
-    (COMPILE_ERROR_MACRO, CompileError) => compile_error_expand,
-    (FILE_MACRO, File) => file_expand,
-    (LINE_MACRO, Line) => line_expand,
-    (STRINGIFY_MACRO, Stringify) => stringify_expand,
-    (FORMAT_ARGS_MACRO, FormatArgs) => format_args_expand,
+    (column, Column) => column_expand,
+    (compile_error, CompileError) => compile_error_expand,
+    (file, File) => file_expand,
+    (line, Line) => line_expand,
+    (stringify, Stringify) => stringify_expand,
+    (format_args, FormatArgs) => format_args_expand,
     // format_args_nl only differs in that it adds a newline in the end,
     // so we use the same stub expansion for now
-    (FORMAT_ARGS_NL_MACRO, FormatArgsNl) => format_args_expand
+    (format_args_nl, FormatArgsNl) => format_args_expand
 }
 
 fn to_line_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize {

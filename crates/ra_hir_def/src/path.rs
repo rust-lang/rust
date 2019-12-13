@@ -6,7 +6,7 @@ use std::{iter, sync::Arc};
 use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
-    name::{self, AsName, Name},
+    name::{AsName, Name, N},
 };
 use ra_db::CrateId;
 use ra_syntax::{
@@ -276,7 +276,7 @@ impl GenericArgs {
         }
         if let Some(ret_type) = ret_type {
             let type_ref = TypeRef::from_ast_opt(ret_type.type_ref());
-            bindings.push((name::OUTPUT_TYPE, type_ref))
+            bindings.push((N![Output], type_ref))
         }
         if args.is_empty() && bindings.is_empty() {
             None
@@ -297,68 +297,63 @@ impl From<Name> for Path {
 }
 
 pub mod known {
-    use hir_expand::name;
+    use hir_expand::name::N;
 
     use super::{Path, PathKind};
 
+    macro_rules! P {
+        ($start:ident $(:: $seg:ident)*) => { Path::from_simple_segments(PathKind::Abs, vec![N![$start], $(N![$seg],)*]) };
+    }
+
     pub fn std_iter_into_iterator() -> Path {
-        Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::ITER, name::INTO_ITERATOR_TYPE],
-        )
+        P![std::iter::IntoIterator]
     }
 
     pub fn std_ops_try() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::TRY_TYPE])
+        P![std::ops::Try]
     }
 
     pub fn std_ops_range() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_TYPE])
+        P![std::ops::Range]
     }
 
     pub fn std_ops_range_from() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_FROM_TYPE])
+        P![std::ops::RangeFrom]
     }
 
     pub fn std_ops_range_full() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_FULL_TYPE])
+        P![std::ops::RangeFull]
     }
 
     pub fn std_ops_range_inclusive() -> Path {
-        Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::OPS, name::RANGE_INCLUSIVE_TYPE],
-        )
+        P![std::ops::RangeInclusive]
     }
 
     pub fn std_ops_range_to() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_TO_TYPE])
+        P![std::ops::RangeTo]
     }
 
     pub fn std_ops_range_to_inclusive() -> Path {
-        Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::OPS, name::RANGE_TO_INCLUSIVE_TYPE],
-        )
+        P![std::ops::RangeToInclusive]
     }
 
     pub fn std_ops_neg() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::NEG_TYPE])
+        P![std::ops::Neg]
     }
 
     pub fn std_ops_not() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::NOT_TYPE])
+        P![std::ops::Not]
     }
 
     pub fn std_result_result() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::RESULT, name::RESULT_TYPE])
+        P![std::result::Result]
     }
 
     pub fn std_future_future() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::FUTURE, name::FUTURE_TYPE])
+        P![std::future::Future]
     }
 
     pub fn std_boxed_box() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::BOXED, name::BOX_TYPE])
+        P![std::boxed::Box]
     }
 }
