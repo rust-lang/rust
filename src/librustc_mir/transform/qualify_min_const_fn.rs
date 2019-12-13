@@ -390,10 +390,12 @@ fn check_terminator(
             cleanup: _,
         } => check_operand(tcx, cond, span, def_id, body),
 
-        TerminatorKind::FalseUnwind { .. } if !tcx.features().const_loop => {
-            Err((span, "loops are not allowed in const fn".into()))
-        },
+        | TerminatorKind::FalseUnwind { .. }
+        if feature_allowed(tcx, def_id, sym::const_loop)
+        => Ok(()),
 
-        TerminatorKind::FalseUnwind { .. } => Ok(()),
+        TerminatorKind::FalseUnwind { .. } => {
+            Err((span, "loops are not allowed in const fn".into()))
+        }
     }
 }
