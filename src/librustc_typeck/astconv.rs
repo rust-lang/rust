@@ -748,70 +748,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             },
         );
-        if !missing_type_params.is_empty() {
-            let display = missing_type_params
-                .iter()
-                .map(|n| format!("`{}`", n))
-                .collect::<Vec<_>>()
-                .join(", ");
-            let mut err = struct_span_err!(
-                tcx.sess,
-                span,
-                E0393,
-                "the type parameter{} {} must be explicitly specified",
-                pluralize!(missing_type_params.len()),
-                display,
-            );
-            err.span_label(
-                self.tcx().def_span(def_id),
-                &format!(
-                    "type parameter{} {} must be specified for this",
-                    pluralize!(missing_type_params.len()),
-                    display,
-                ),
-            );
-            let mut suggested = false;
-            if let (Ok(snippet), true) = (
-                tcx.sess.source_map().span_to_snippet(span),
-                // Don't suggest setting the type params if there are some already: the order is
-                // tricky to get right and the user will already know what the syntax is.
-                generic_args.args.is_empty(),
-            ) {
-                if snippet.ends_with('>') {
-                    // The user wrote `Trait<'a, T>` or similar. To provide an accurate suggestion
-                    // we would have to preserve the right order. For now, as clearly the user is
-                    // aware of the syntax, we do nothing.
-                } else {
-                    // The user wrote `Iterator`, so we don't have a type we can suggest, but at
-                    // least we can clue them to the correct syntax `Iterator<Type>`.
-                    err.span_suggestion(
-                        span,
-                        &format!(
-                            "set the type parameter{plural} to the desired type{plural}",
-                            plural = pluralize!(missing_type_params.len()),
-                        ),
-                        format!("{}<{}>", snippet, missing_type_params.join(", ")),
-                        Applicability::HasPlaceholders,
-                    );
-                    suggested = true;
-                }
-            }
-            if !suggested {
-                err.span_label(
-                    span,
-                    format!(
-                        "missing reference{} to {}",
-                        pluralize!(missing_type_params.len()),
-                        display,
-                    ),
-                );
-            }
-            err.note(&format!(
-                "because of the default `Self` reference, type parameters must be \
-                               specified on object types"
-            ));
-            err.emit();
-        }
+
+        self.complain_about_missing_type_params(
+            missing_type_params,
+            def_id,
+            span,
+            generic_args.args.is_empty(),
+        );
 
         // Convert associated-type bindings or constraints into a separate vector.
         // Example: Given this:
@@ -871,6 +814,77 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
     }
 
+    fn complain_about_missing_type_params(
+        &self,
+        missing_type_params: Vec<String>,
+        def_id: DefId,
+        span: Span,
+        empty_generic_args: bool,
+    ) {
+        if missing_type_params.is_empty() {
+            return;
+        }
+        let display =
+            missing_type_params.iter().map(|n| format!("`{}`", n)).collect::<Vec<_>>().join(", ");
+        let mut err = struct_span_err!(
+            self.tcx().sess,
+            span,
+            E0393,
+            "the type parameter{} {} must be explicitly specified",
+            pluralize!(missing_type_params.len()),
+            display,
+        );
+        err.span_label(
+            self.tcx().def_span(def_id),
+            &format!(
+                "type parameter{} {} must be specified for this",
+                pluralize!(missing_type_params.len()),
+                display,
+            ),
+        );
+        let mut suggested = false;
+        if let (Ok(snippet), true) = (
+            self.tcx().sess.source_map().span_to_snippet(span),
+            // Don't suggest setting the type params if there are some already: the order is
+            // tricky to get right and the user will already know what the syntax is.
+            empty_generic_args,
+        ) {
+            if snippet.ends_with('>') {
+                // The user wrote `Trait<'a, T>` or similar. To provide an accurate suggestion
+                // we would have to preserve the right order. For now, as clearly the user is
+                // aware of the syntax, we do nothing.
+            } else {
+                // The user wrote `Iterator`, so we don't have a type we can suggest, but at
+                // least we can clue them to the correct syntax `Iterator<Type>`.
+                err.span_suggestion(
+                    span,
+                    &format!(
+                        "set the type parameter{plural} to the desired type{plural}",
+                        plural = pluralize!(missing_type_params.len()),
+                    ),
+                    format!("{}<{}>", snippet, missing_type_params.join(", ")),
+                    Applicability::HasPlaceholders,
+                );
+                suggested = true;
+            }
+        }
+        if !suggested {
+            err.span_label(
+                span,
+                format!(
+                    "missing reference{} to {}",
+                    pluralize!(missing_type_params.len()),
+                    display,
+                ),
+            );
+        }
+        err.note(&format!(
+            "because of the default `Self` reference, type parameters must be \
+                            specified on object types"
+        ));
+        err.emit();
+    }
+
     /// Instantiates the path for the given trait reference, assuming that it's
     /// bound to a valid trait type. Returns the `DefId` of the defining trait.
     /// The type _cannot_ be a type other than a trait type.
@@ -907,13 +921,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
-        let path_span = if trait_ref.path.segments.len() == 1 {
+        let path_span = if let [segment] = &trait_ref.path.segments[..] {
             // FIXME: `trait_ref.path.span` can point to a full path with multiple
             // segments, even though `trait_ref.path.segments` is of length `1`. Work
             // around that bug here, even though it should be fixed elsewhere.
             // This would otherwise cause an invalid suggestion. For an example, look at
             // `src/test/ui/issues/issue-28344.rs`.
-            trait_ref.path.segments[0].ident.span
+            segment.ident.span
         } else {
             trait_ref.path.span
         };
@@ -1450,127 +1464,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             associated_types.remove(&projection_bound.projection_def_id());
         }
 
-        if !associated_types.is_empty() {
-            // Account for things like `dyn Foo + 'a` by pointing at the `TraitRef.path`
-            // `Span` instead of the `PolyTraitRef` `Span`. That way the suggestion will
-            // be valid, otherwise we would suggest `dyn Foo + 'a<A = Type>`. See tests
-            // `issue-22434.rs` and `issue-22560.rs` for examples.
-            let sugg_span = if potential_assoc_types.is_empty() && trait_bounds.len() == 1 {
-                if trait_bounds[0].trait_ref.path.segments.len() == 1
-                    && trait_bounds[0].trait_ref.path.segments[0].args.is_none()
-                {
-                    // FIXME: `trait_ref.path.span` can point to a full path with multiple
-                    // segments, even though `trait_ref.path.segments` is of length `1`. Work
-                    // around that bug here, even though it should be fixed elsewhere.
-                    // This would otherwise cause an invalid suggestion. For an example, look at
-                    // `src/test/ui/issues/issue-28344.rs`.
-                    trait_bounds[0].trait_ref.path.segments[0].ident.span
-                } else {
-                    trait_bounds[0].trait_ref.path.span
-                }
-            } else {
-                span
-            };
-            let names = associated_types
-                .iter()
-                .map(|item_def_id| {
-                    let assoc_item = tcx.associated_item(*item_def_id);
-                    let trait_def_id = assoc_item.container.id();
-                    format!(
-                        "`{}` (from trait `{}`)",
-                        assoc_item.ident,
-                        tcx.def_path_str(trait_def_id)
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let mut err = struct_span_err!(
-                tcx.sess,
-                sugg_span,
-                E0191,
-                "the value of the associated type{} {} must be specified",
-                pluralize!(associated_types.len()),
-                names,
-            );
-            let mut suggestions = Vec::new();
-            let mut applicability = Applicability::MaybeIncorrect;
-            for (i, item_def_id) in associated_types.iter().enumerate() {
-                let assoc_item = tcx.associated_item(*item_def_id);
-                if let Some(sp) = tcx.hir().span_if_local(*item_def_id) {
-                    err.span_label(sp, format!("`{}` defined here", assoc_item.ident));
-                }
-                if potential_assoc_types.len() == associated_types.len() {
-                    // Only suggest when the amount of missing associated types equals the number of
-                    // extra type arguments present, as that gives us a relatively high confidence
-                    // that the user forgot to give the associtated type's name. The canonical
-                    // example would be trying to use `Iterator<isize>` instead of
-                    // `Iterator<Item = isize>`.
-                    if let Ok(snippet) =
-                        tcx.sess.source_map().span_to_snippet(potential_assoc_types[i])
-                    {
-                        suggestions.push((
-                            potential_assoc_types[i],
-                            format!("{} = {}", assoc_item.ident, snippet),
-                        ));
-                    }
-                }
-            }
-            let mut suggestions_len = suggestions.len();
-            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(sugg_span) {
-                if potential_assoc_types.is_empty() && trait_bounds.len() == 1 &&
-                    // Do not attempt to suggest when we don't know which path segment needs the
-                    // type parameter set.
-                    trait_bounds[0].trait_ref.path.segments.len() == 1
-                {
-                    debug!("path segments {:?}", trait_bounds[0].trait_ref.path.segments);
-                    applicability = Applicability::HasPlaceholders;
-                    let assoc_types: Vec<String> = associated_types
-                        .iter()
-                        .map(|item_def_id| {
-                            let assoc_item = tcx.associated_item(*item_def_id);
-                            format!("{} = Type", assoc_item.ident)
-                        })
-                        .collect();
-                    let sugg = assoc_types.join(", ");
-                    if snippet.ends_with('>') {
-                        // The user wrote `Trait<'a>` or similar and we don't have a type we can
-                        // suggest, but at least we can clue them to the correct syntax
-                        // `Trait<'a, Item = Type>` while accounting for the `<'a>` in the
-                        // suggestion.
-                        suggestions.push((
-                            sugg_span,
-                            format!("{}, {}>", &snippet[..snippet.len() - 1], sugg,),
-                        ));
-                    } else {
-                        // The user wrote `Iterator`, so we don't have a type we can suggest, but at
-                        // least we can clue them to the correct syntax `Iterator<Item = Type>`.
-                        suggestions.push((sugg_span, format!("{}<{}>", snippet, sugg)));
-                    }
-                    suggestions_len = assoc_types.len();
-                }
-            }
-            if suggestions.len() != 1 {
-                // We don't need this label if there's an inline suggestion, show otherwise.
-                let names = associated_types
-                    .iter()
-                    .map(|t| format!("`{}`", tcx.associated_item(*t).ident))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                err.span_label(
-                    span,
-                    format!(
-                        "associated type{} {} must be specified",
-                        pluralize!(associated_types.len()),
-                        names,
-                    ),
-                );
-            }
-            if !suggestions.is_empty() {
-                let msg = format!("specify the associated type{}", pluralize!(suggestions_len));
-                err.multipart_suggestion(&msg, suggestions, applicability);
-            }
-            err.emit();
-        }
+        self.complain_about_missing_associated_types(
+            span,
+            associated_types,
+            potential_assoc_types,
+            trait_bounds,
+        );
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`.
@@ -1657,6 +1556,129 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let ty = tcx.mk_dynamic(existential_predicates, region_bound);
         debug!("trait_object_type: {:?}", ty);
         ty
+    }
+
+    fn complain_about_missing_associated_types(
+        &self,
+        span: Span,
+        associated_types: BTreeSet<DefId>,
+        potential_assoc_types: Vec<Span>,
+        trait_bounds: &[hir::PolyTraitRef],
+    ) {
+        if associated_types.is_empty() {
+            return;
+        }
+        // Account for things like `dyn Foo + 'a` by pointing at the `TraitRef.path`
+        // `Span` instead of the `PolyTraitRef` `Span`. That way the suggestion will
+        // be valid, otherwise we would suggest `dyn Foo + 'a<A = Type>`. See tests
+        // `issue-22434.rs` and `issue-22560.rs` for examples.
+        let sugg_span = match (&potential_assoc_types[..], &trait_bounds) {
+            ([], [bound]) => match &bound.trait_ref.path.segments[..] {
+                // FIXME: `trait_ref.path.span` can point to a full path with multiple
+                // segments, even though `trait_ref.path.segments` is of length `1`. Work
+                // around that bug here, even though it should be fixed elsewhere.
+                // This would otherwise cause an invalid suggestion. For an example, look at
+                // `src/test/ui/issues/issue-28344.rs`.
+                [segment] if segment.args.is_none() => segment.ident.span,
+                _ => bound.trait_ref.path.span,
+            },
+            _ => span,
+        };
+        let tcx = self.tcx();
+        let names = associated_types
+            .iter()
+            .map(|item_def_id| {
+                let assoc_item = tcx.associated_item(*item_def_id);
+                let trait_def_id = assoc_item.container.id();
+                format!("`{}` (from trait `{}`)", assoc_item.ident, tcx.def_path_str(trait_def_id))
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let mut err = struct_span_err!(
+            tcx.sess,
+            sugg_span,
+            E0191,
+            "the value of the associated type{} {} must be specified",
+            pluralize!(associated_types.len()),
+            names,
+        );
+        let mut suggestions = Vec::new();
+        let mut applicability = Applicability::MaybeIncorrect;
+        for (i, item_def_id) in associated_types.iter().enumerate() {
+            let assoc_item = tcx.associated_item(*item_def_id);
+            if let Some(sp) = tcx.hir().span_if_local(*item_def_id) {
+                err.span_label(sp, format!("`{}` defined here", assoc_item.ident));
+            }
+            if potential_assoc_types.len() == associated_types.len() {
+                // Only suggest when the amount of missing associated types equals the number of
+                // extra type arguments present, as that gives us a relatively high confidence
+                // that the user forgot to give the associtated type's name. The canonical
+                // example would be trying to use `Iterator<isize>` instead of
+                // `Iterator<Item = isize>`.
+                if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(potential_assoc_types[i])
+                {
+                    suggestions.push((
+                        potential_assoc_types[i],
+                        format!("{} = {}", assoc_item.ident, snippet),
+                    ));
+                }
+            }
+        }
+        let mut suggestions_len = suggestions.len();
+        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(sugg_span) {
+            if potential_assoc_types.is_empty() && trait_bounds.len() == 1 &&
+                // Do not attempt to suggest when we don't know which path segment needs the
+                // type parameter set.
+                trait_bounds[0].trait_ref.path.segments.len() == 1
+            {
+                debug!("path segments {:?}", trait_bounds[0].trait_ref.path.segments);
+                applicability = Applicability::HasPlaceholders;
+                let assoc_types: Vec<String> = associated_types
+                    .iter()
+                    .map(|item_def_id| {
+                        let assoc_item = tcx.associated_item(*item_def_id);
+                        format!("{} = Type", assoc_item.ident)
+                    })
+                    .collect();
+                let sugg = assoc_types.join(", ");
+                if snippet.ends_with('>') {
+                    // The user wrote `Trait<'a>` or similar and we don't have a type we can
+                    // suggest, but at least we can clue them to the correct syntax
+                    // `Trait<'a, Item = Type>` while accounting for the `<'a>` in the
+                    // suggestion.
+                    suggestions.push((
+                        sugg_span,
+                        format!("{}, {}>", &snippet[..snippet.len() - 1], sugg,),
+                    ));
+                } else {
+                    // The user wrote `Iterator`, so we don't have a type we can suggest, but at
+                    // least we can clue them to the correct syntax `Iterator<Item = Type>`.
+                    suggestions.push((sugg_span, format!("{}<{}>", snippet, sugg)));
+                }
+                suggestions_len = assoc_types.len();
+            }
+        }
+        if suggestions.len() != 1 {
+            // We don't need this label if there's an inline suggestion, show otherwise.
+            let names = associated_types
+                .iter()
+                .map(|t| format!("`{}`", tcx.associated_item(*t).ident))
+                .collect::<Vec<_>>()
+                .join(", ");
+            err.span_label(
+                span,
+                format!(
+                    "associated type{} {} must be specified",
+                    pluralize!(associated_types.len()),
+                    names,
+                ),
+            );
+        }
+        if !suggestions.is_empty() {
+            let msg = format!("specify the associated type{}", pluralize!(suggestions_len));
+            err.multipart_suggestion(&msg, suggestions, applicability);
+        }
+        err.emit();
     }
 
     fn report_ambiguous_associated_type(
