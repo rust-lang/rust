@@ -95,7 +95,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             if let Some((_, value)) =
                 lock.results.raw_entry().from_key_hashed_nocheck(key_hash, key)
             {
-                tcx.prof.query_cache_hit(Q::NAME);
+                tcx.prof.query_cache_hit(value.index.into());
                 let result = (value.value.clone(), value.index);
                 #[cfg(debug_assertions)]
                 {
@@ -347,7 +347,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(never)]
     pub(super) fn get_query<Q: QueryDescription<'tcx>>(self, span: Span, key: Q::Key) -> Q::Value {
-        debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME.as_str(), key, span);
+        debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
 
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
@@ -366,7 +366,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         if Q::ANON {
-            let prof_timer = self.prof.query_provider(Q::NAME);
+            let prof_timer = self.prof.query_provider();
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
                 self.start_query(job.job.clone(), diagnostics, |tcx| {
@@ -374,7 +374,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
             });
 
-            drop(prof_timer);
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             self.dep_graph.read_index(dep_node_index);
 
@@ -436,8 +436,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let result = if Q::cache_on_disk(self, key.clone(), None)
             && self.sess.opts.debugging_opts.incremental_queries
         {
-            let _prof_timer = self.prof.incr_cache_loading(Q::NAME);
+            let prof_timer = self.prof.incr_cache_loading();
             let result = Q::try_load_from_disk(self, prev_dep_node_index);
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             // We always expect to find a cached result for things that
             // can be forced from `DepNode`.
@@ -457,10 +458,12 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             // We could not load a result from the on-disk cache, so
             // recompute.
-            let _prof_timer = self.prof.query_provider(Q::NAME);
+            let prof_timer = self.prof.query_provider();
 
             // The dep-graph for this computation is already in-place.
             let result = self.dep_graph.with_ignore(|| Q::compute(self, key));
+
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             result
         };
@@ -523,7 +526,7 @@ impl<'tcx> TyCtxt<'tcx> {
             dep_node
         );
 
-        let prof_timer = self.prof.query_provider(Q::NAME);
+        let prof_timer = self.prof.query_provider();
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
             self.start_query(job.job.clone(), diagnostics, |tcx| {
@@ -541,7 +544,7 @@ impl<'tcx> TyCtxt<'tcx> {
             })
         });
 
-        drop(prof_timer);
+        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if unlikely!(!diagnostics.is_empty()) {
             if dep_node.kind != crate::dep_graph::DepKind::Null {
@@ -572,17 +575,19 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let dep_node = Q::to_dep_node(self, &key);
 
-        if self.dep_graph.try_mark_green_and_read(self, &dep_node).is_none() {
-            // A None return from `try_mark_green_and_read` means that this is either
-            // a new dep node or that the dep node has already been marked red.
-            // Either way, we can't call `dep_graph.read()` as we don't have the
-            // DepNodeIndex. We must invoke the query itself. The performance cost
-            // this introduces should be negligible as we'll immediately hit the
-            // in-memory cache, or another query down the line will.
-
-            let _ = self.get_query::<Q>(DUMMY_SP, key);
-        } else {
-            self.prof.query_cache_hit(Q::NAME);
+        match self.dep_graph.try_mark_green_and_read(self, &dep_node) {
+            None => {
+                // A None return from `try_mark_green_and_read` means that this is either
+                // a new dep node or that the dep node has already been marked red.
+                // Either way, we can't call `dep_graph.read()` as we don't have the
+                // DepNodeIndex. We must invoke the query itself. The performance cost
+                // this introduces should be negligible as we'll immediately hit the
+                // in-memory cache, or another query down the line will.
+                let _ = self.get_query::<Q>(DUMMY_SP, key);
+            }
+            Some((_, dep_node_index)) => {
+                self.prof.query_cache_hit(dep_node_index.into());
+            }
         }
     }
 
@@ -694,6 +699,42 @@ macro_rules! define_queries_inner {
                     on_disk_cache,
                     $($name: Default::default()),*
                 }
+            }
+
+            /// All self-profiling events generated by the query engine use a
+            /// virtual `StringId`s for their `event_id`. This method makes all
+            /// those virtual `StringId`s point to actual strings.
+            ///
+            /// If we are recording only summary data, the ids will point to
+            /// just the query names. If we are recording query keys too, we
+            /// allocate the corresponding strings here. (The latter is not yet
+            /// implemented.)
+            pub fn allocate_self_profile_query_strings(
+                &self,
+                profiler: &rustc_data_structures::profiling::SelfProfiler
+            ) {
+                // Walk the entire query cache and allocate the appropriate
+                // string representation. Each cache entry is uniquely
+                // identified by its dep_node_index.
+                $({
+                    let query_name_string_id =
+                        profiler.get_or_alloc_cached_string(stringify!($name));
+
+                    let result_cache = self.$name.lock_shards();
+
+                    for shard in result_cache.iter() {
+                        let query_invocation_ids = shard
+                            .results
+                            .values()
+                            .map(|v| v.index)
+                            .map(|dep_node_index| dep_node_index.into());
+
+                        profiler.bulk_map_query_invocation_id_to_single_string(
+                            query_invocation_ids,
+                            query_name_string_id
+                        );
+                    }
+                })*
             }
 
             #[cfg(parallel_compiler)]
@@ -814,36 +855,6 @@ macro_rules! define_queries_inner {
         }
 
         #[allow(nonstandard_style)]
-        #[derive(Clone, Copy)]
-        pub enum QueryName {
-            $($name),*
-        }
-
-        impl rustc_data_structures::profiling::QueryName for QueryName {
-            fn discriminant(self) -> std::mem::Discriminant<QueryName> {
-                std::mem::discriminant(&self)
-            }
-
-            fn as_str(self) -> &'static str {
-                QueryName::as_str(&self)
-            }
-        }
-
-        impl QueryName {
-            pub fn register_with_profiler(
-                profiler: &rustc_data_structures::profiling::SelfProfiler,
-            ) {
-                $(profiler.register_query_name(QueryName::$name);)*
-            }
-
-            pub fn as_str(&self) -> &'static str {
-                match self {
-                    $(QueryName::$name => stringify!($name),)*
-                }
-            }
-        }
-
-        #[allow(nonstandard_style)]
         #[derive(Clone, Debug)]
         pub enum Query<$tcx> {
             $($(#[$attr])* $name($K)),*
@@ -883,12 +894,6 @@ macro_rules! define_queries_inner {
                     $(Query::$name(key) => key.default_span(tcx),)*
                 }
             }
-
-            pub fn query_name(&self) -> QueryName {
-                match self {
-                    $(Query::$name(_) => QueryName::$name,)*
-                }
-            }
         }
 
         impl<'a, $tcx> HashStable<StableHashingContext<'a>> for Query<$tcx> {
@@ -923,7 +928,7 @@ macro_rules! define_queries_inner {
             type Key = $K;
             type Value = $V;
 
-            const NAME: QueryName = QueryName::$name;
+            const NAME: &'static str = stringify!($name);
             const CATEGORY: ProfileCategory = $category;
         }
 

@@ -2,8 +2,7 @@ use crate::dep_graph::SerializedDepNodeIndex;
 use crate::dep_graph::{DepKind, DepNode};
 use crate::ty::query::plumbing::CycleError;
 use crate::ty::query::queries;
-use crate::ty::query::QueryCache;
-use crate::ty::query::{Query, QueryName};
+use crate::ty::query::{Query, QueryCache};
 use crate::ty::TyCtxt;
 use rustc_data_structures::profiling::ProfileCategory;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -20,7 +19,7 @@ use std::hash::Hash;
 // FIXME(eddyb) false positive, the lifetime parameter is used for `Key`/`Value`.
 #[allow(unused_lifetimes)]
 pub trait QueryConfig<'tcx> {
-    const NAME: QueryName;
+    const NAME: &'static str;
     const CATEGORY: ProfileCategory;
 
     type Key: Eq + Hash + Clone + Debug;

@@ -85,7 +85,7 @@ pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind, signed: bool) -> IntPredicat
         }
         op => bug!(
             "comparison_op_to_icmp_predicate: expected comparison operator, \
-                  found {:?}",
+             found {:?}",
             op
         ),
     }
@@ -102,7 +102,7 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
         op => {
             bug!(
                 "comparison_op_to_fcmp_predicate: expected comparison operator, \
-                  found {:?}",
+                 found {:?}",
                 op
             );
         }
@@ -334,7 +334,11 @@ pub fn from_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
 ) -> Bx::Value {
-    if bx.cx().val_ty(val) == bx.cx().type_i1() { bx.zext(val, bx.cx().type_i8()) } else { val }
+    if bx.cx().val_ty(val) == bx.cx().type_i1() {
+        bx.zext(val, bx.cx().type_i8())
+    } else {
+        val
+    }
 }
 
 pub fn to_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -519,7 +523,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
         ongoing_codegen.codegen_finished(tcx);
 
-        assert_and_save_dep_graph(tcx);
+        finalize_tcx(tcx);
 
         ongoing_codegen.check_for_errors(tcx.sess);
 
@@ -660,7 +664,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     ongoing_codegen.check_for_errors(tcx.sess);
 
-    assert_and_save_dep_graph(tcx);
+    finalize_tcx(tcx);
+
     ongoing_codegen.into_inner()
 }
 
@@ -711,10 +716,16 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
     }
 }
 
-fn assert_and_save_dep_graph(tcx: TyCtxt<'_>) {
+fn finalize_tcx(tcx: TyCtxt<'_>) {
     tcx.sess.time("assert_dep_graph", || ::rustc_incremental::assert_dep_graph(tcx));
-
     tcx.sess.time("serialize_dep_graph", || ::rustc_incremental::save_dep_graph(tcx));
+
+    // We assume that no queries are run past here. If there are new queries
+    // after this point, they'll show up as "<unknown>" in self-profiling data.
+    tcx.prof.with_profiler(|profiler| {
+        let _prof_timer = tcx.prof.generic_activity("self_profile_alloc_query_strings");
+        tcx.queries.allocate_self_profile_query_strings(profiler);
+    });
 }
 
 impl CrateInfo {
@@ -876,7 +887,11 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
 
     if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
         // We can re-use either the pre- or the post-thinlto state
-        if tcx.sess.lto() != Lto::No { CguReuse::PreLto } else { CguReuse::PostLto }
+        if tcx.sess.lto() != Lto::No {
+            CguReuse::PreLto
+        } else {
+            CguReuse::PostLto
+        }
     } else {
         CguReuse::No
     }
