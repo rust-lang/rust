@@ -1,8 +1,10 @@
-error[E0284]: type annotations needed: cannot resolve `<_ as Foo>::A == _`
+error[E0284]: type annotations needed
   --> $DIR/associated-types-unconstrained.rs:14:20
    |
 LL |     let x: isize = Foo::bar();
-   |                    ^^^^^^^^
+   |                    ^^^^^^^^ cannot infer type
+   |
+   = note: cannot resolve `<_ as Foo>::A == _`
 
 error: aborting due to previous error
 

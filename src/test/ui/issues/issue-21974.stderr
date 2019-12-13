@@ -1,4 +1,4 @@
-error[E0283]: type annotations needed: cannot resolve `&'a T: Foo`
+error[E0283]: type annotations needed
   --> $DIR/issue-21974.rs:10:1
    |
 LL |   trait Foo {
@@ -11,7 +11,9 @@ LL | | {
 LL | |     x.foo();
 LL | |     y.foo();
 LL | | }
-   | |_^
+   | |_^ cannot infer type for reference `&'a T`
+   |
+   = note: cannot resolve `&'a T: Foo`
 
 error: aborting due to previous error
 

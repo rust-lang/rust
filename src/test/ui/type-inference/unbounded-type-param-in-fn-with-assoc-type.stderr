@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-6458-3.rs:4:5
+  --> $DIR/unbounded-type-param-in-fn-with-assoc-type.rs:8:5
    |
-LL |     mem::transmute(0);
-   |     ^^^^^^^^^^^^^^ cannot infer type for type parameter `U`
+LL |     foo();
+   |     ^^^ cannot infer type for type parameter `T`
 
 error: aborting due to previous error
 

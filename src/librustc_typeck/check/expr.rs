@@ -871,6 +871,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr) {
             Ok(method) => {
+                // We could add a "consider `foo::<params>`" suggestion here, but I wasn't able to
+                // trigger this codepath causing `structuraly_resolved_type` to emit an error.
+
                 self.write_method_call(expr.hir_id, method);
                 Ok(method)
             }

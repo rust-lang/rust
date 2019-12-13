@@ -4,14 +4,16 @@ error[E0379]: trait fns cannot be declared const
 LL |     const fn const_val<T: Sized>() -> usize {
    |     ^^^^^ trait fns cannot be const
 
-error[E0283]: type annotations needed: cannot resolve `_: Tt`
+error[E0283]: type annotations needed
   --> $DIR/issue-54954.rs:3:24
    |
 LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
 ...
 LL |     const fn const_val<T: Sized>() -> usize {
    |              --------- - required by this bound in `Tt::const_val`
+   |
+   = note: cannot resolve `_: Tt`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/issue-54954.rs:13:15

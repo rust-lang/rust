@@ -22,6 +22,7 @@ use crate::hir;
 use crate::hir::Node;
 use crate::hir::def_id::DefId;
 use crate::infer::{self, InferCtxt};
+use crate::infer::error_reporting::TypeAnnotationNeeded as ErrorCode;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::session::DiagnosticMessageId;
 use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
@@ -1952,7 +1953,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return;
         }
 
-        match predicate {
+        let mut err = match predicate {
             ty::Predicate::Trait(ref data) => {
                 let trait_ref = data.to_poly_trait_ref();
                 let self_ty = trait_ref.self_ty();
@@ -1986,59 +1987,109 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and dont add the obligations to
                 // begin with in those cases.
-                if
-                    self.tcx.lang_items().sized_trait()
+                if self.tcx.lang_items().sized_trait()
                     .map_or(false, |sized_id| sized_id == trait_ref.def_id())
                 {
-                    self.need_type_info_err(body_id, span, self_ty).emit();
-                } else {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0283,
-                        "type annotations needed: cannot resolve `{}`",
-                        predicate,
-                    );
-                    self.note_obligation_cause(&mut err, obligation);
-                    err.emit();
+                    self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0282).emit();
+                    return;
                 }
+                let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0283);
+                err.note(&format!("cannot resolve `{}`", predicate));
+                if let (Ok(ref snippet), ObligationCauseCode::BindingObligation(ref def_id, _)) = (
+                    self.tcx.sess.source_map().span_to_snippet(span),
+                    &obligation.cause.code,
+                ) {
+                    let generics = self.tcx.generics_of(*def_id);
+                    if !generics.params.is_empty() && !snippet.ends_with('>'){
+                        // FIXME: To avoid spurious suggestions in functions where type arguments
+                        // where already supplied, we check the snippet to make sure it doesn't
+                        // end with a turbofish. Ideally we would have access to a `PathSegment`
+                        // instead. Otherwise we would produce the following output:
+                        //
+                        // error[E0283]: type annotations needed
+                        //   --> $DIR/issue-54954.rs:3:24
+                        //    |
+                        // LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
+                        //    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        //    |                        |
+                        //    |                        cannot infer type
+                        //    |                        help: consider specifying the type argument
+                        //    |                        in the function call:
+                        //    |                        `Tt::const_val::<[i8; 123]>::<T>`
+                        // ...
+                        // LL |     const fn const_val<T: Sized>() -> usize {
+                        //    |              --------- - required by this bound in `Tt::const_val`
+                        //    |
+                        //    = note: cannot resolve `_: Tt`
+
+                        err.span_suggestion(
+                            span,
+                            &format!(
+                                "consider specifying the type argument{} in the function call",
+                                if generics.params.len() > 1 {
+                                    "s"
+                                } else {
+                                    ""
+                                },
+                            ),
+                            format!("{}::<{}>", snippet, generics.params.iter()
+                                .map(|p| p.name.to_string())
+                                .collect::<Vec<String>>()
+                                .join(", ")),
+                            Applicability::HasPlaceholders,
+                        );
+                    }
+                }
+                err
             }
 
             ty::Predicate::WellFormed(ty) => {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
-                if !ty.references_error() && !self.tcx.sess.has_errors() {
-                    self.need_type_info_err(body_id, span, ty).emit();
+                if ty.references_error() || self.tcx.sess.has_errors() {
+                    return;
                 }
+                self.need_type_info_err(body_id, span, ty, ErrorCode::E0282)
             }
 
             ty::Predicate::Subtype(ref data) => {
                 if data.references_error() || self.tcx.sess.has_errors() {
                     // no need to overload user in such cases
-                } else {
-                    let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
-                    // both must be type variables, or the other would've been instantiated
-                    assert!(a.is_ty_var() && b.is_ty_var());
-                    self.need_type_info_err(body_id,
-                                            obligation.cause.span,
-                                            a).emit();
+                    return
                 }
+                let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
+                // both must be type variables, or the other would've been instantiated
+                assert!(a.is_ty_var() && b.is_ty_var());
+                self.need_type_info_err(body_id, span, a, ErrorCode::E0282)
+            }
+            ty::Predicate::Projection(ref data) => {
+                let trait_ref = data.to_poly_trait_ref(self.tcx);
+                let self_ty = trait_ref.self_ty();
+                if predicate.references_error() {
+                    return;
+                }
+                let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0284);
+                err.note(&format!("cannot resolve `{}`", predicate));
+                err
             }
 
             _ => {
-                if !self.tcx.sess.has_errors() {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        obligation.cause.span,
-                        E0284,
-                        "type annotations needed: cannot resolve `{}`",
-                        predicate,
-                    );
-                    self.note_obligation_cause(&mut err, obligation);
-                    err.emit();
+                if self.tcx.sess.has_errors() {
+                    return;
                 }
+                let mut err = struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0284,
+                    "type annotations needed: cannot resolve `{}`",
+                    predicate,
+                );
+                err.span_label(span, &format!("cannot resolve `{}`", predicate));
+                err
             }
-        }
+        };
+        self.note_obligation_cause(&mut err, obligation);
+        err.emit();
     }
 
     /// Returns `true` if the trait predicate may apply for *some* assignment

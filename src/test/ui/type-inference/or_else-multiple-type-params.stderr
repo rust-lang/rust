@@ -1,0 +1,12 @@
+error[E0282]: type annotations needed
+  --> $DIR/or_else-multiple-type-params.rs:7:10
+   |
+LL |         .or_else(|err| {
+   |          ^^^^^^^
+   |          |
+   |          cannot infer type for type parameter `F`
+   |          help: consider specifying the type arguments in the method call: `or_else::<F, O>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.
