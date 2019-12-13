@@ -467,7 +467,7 @@ pub fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
                 inline::print_inlined_const(cx, def_id)
             };
             if let Some(promoted) = promoted {
-                s.push_str(&format!("{:?}", promoted))
+                s.push_str(&format!("::{:?}", promoted))
             }
             s
         }
