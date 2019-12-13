@@ -432,6 +432,7 @@ pub enum UnsupportedOpInfo<'tcx> {
     HeapAllocNonPowerOfTwoAlignment(u64),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
+    TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
 }
 
 impl fmt::Debug for UnsupportedOpInfo<'tcx> {
@@ -459,6 +460,11 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                 "tried to call a function with argument of type {:?} \
                            passing data of type {:?}",
                 callee_ty, caller_ty
+            ),
+            TransmuteSizeDiff(from_ty, to_ty) => write!(
+                f,
+                "tried to transmute from {:?} to {:?}, but their sizes differed",
+                from_ty, to_ty
             ),
             FunctionRetMismatch(caller_ty, callee_ty) => write!(
                 f,
