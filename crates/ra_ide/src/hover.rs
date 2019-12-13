@@ -505,6 +505,13 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
+    fn hover_for_param_edge() {
+        let (analysis, position) = single_file_with_position("fn func(<|>foo: i32) {}");
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+    }
+
+    #[test]
     fn test_type_of_for_function() {
         let (analysis, range) = single_file_with_range(
             "
