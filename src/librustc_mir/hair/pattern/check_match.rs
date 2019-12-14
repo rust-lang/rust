@@ -317,7 +317,7 @@ fn pat_is_catchall(pat: &Pat) -> bool {
     }
 }
 
-// Check for unreachable patterns
+/// Check for unreachable patterns.
 fn check_arms<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     arms: &[(&'p super::Pat<'tcx>, &hir::Pat, bool)],
@@ -574,7 +574,7 @@ fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> 
     covered
 }
 
-// Check the legality of legality of by-move bindings.
+/// Check the legality of legality of by-move bindings.
 fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: bool, pat: &Pat) {
     let sess = cx.tcx.sess;
     let tables = cx.tables;
@@ -630,6 +630,14 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
     }
 }
 
+/// Check that there are no borrow conflicts in `binding @ subpat` patterns.
+///
+/// For example, this would reject:
+/// - `ref x @ Some(ref mut y)`,
+/// - `ref mut x @ Some(ref y)`
+/// - `ref mut x @ Some(ref mut y)`.
+///
+/// This analysis is *not* subsumed by NLL.
 fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
     let tab = cx.tables;
     let sess = cx.tcx.sess;
