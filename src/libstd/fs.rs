@@ -936,7 +936,7 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().open("foo.txt");
+    /// let file = OpenOptions::new().read(true).open("foo.txt");
     /// ```
     ///
     /// [`ErrorKind`]: ../io/enum.ErrorKind.html
