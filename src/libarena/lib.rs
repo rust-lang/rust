@@ -653,11 +653,13 @@ impl DroplessArena {
         // slice iterators
         loop {
             let value = iter.next();
-            if i >= len || value.is_none() {
+            if value.is_none() {
                 // We only return as many items as the iterator gave us, even
                 // though it was supposed to give us `len`
                 return slice::from_raw_parts_mut(mem, i);
             }
+            // The iterator is not supposed to give us more than `len`.
+            assert!(i < len);
             ptr::write(mem.add(i), value.unwrap());
             i += 1;
         }
@@ -803,11 +805,13 @@ impl SyncDroplessArena {
         // slice iterators
         loop {
             let value = iter.next();
-            if i >= len || value.is_none() {
+            if value.is_none() {
                 // We only return as many items as the iterator gave us, even
                 // though it was supposed to give us `len`
                 return slice::from_raw_parts_mut(mem, i);
             }
+            // The iterator is not supposed to give us more than `len`.
+            assert!(i < len);
             ptr::write(mem.add(i), value.unwrap());
             i += 1;
         }
