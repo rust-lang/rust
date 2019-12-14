@@ -1,61 +1,29 @@
-<<<<<<< HEAD
 error[E0004]: non-exhaustive patterns: type `uninhabited::IndirectUninhabitedEnum` is non-empty
-  --> $DIR/indirect_match.rs:18:11
-||||||| parent of bca33d7df4a... Revert "Remove `#![feature(never_type)]` from tests."
-error[E0004]: non-exhaustive patterns: pattern `IndirectUninhabitedEnum` of type `uninhabited::IndirectUninhabitedEnum` is not handled
-  --> $DIR/indirect_match.rs:18:11
-=======
-error[E0004]: non-exhaustive patterns: pattern `IndirectUninhabitedEnum` of type `uninhabited::IndirectUninhabitedEnum` is not handled
   --> $DIR/indirect_match.rs:19:11
->>>>>>> bca33d7df4a... Revert "Remove `#![feature(never_type)]` from tests."
    |
 LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-<<<<<<< HEAD
 error[E0004]: non-exhaustive patterns: type `uninhabited::IndirectUninhabitedStruct` is non-empty
-  --> $DIR/indirect_match.rs:22:11
-||||||| parent of bca33d7df4a... Revert "Remove `#![feature(never_type)]` from tests."
-error[E0004]: non-exhaustive patterns: pattern `IndirectUninhabitedStruct` of type `uninhabited::IndirectUninhabitedStruct` is not handled
-  --> $DIR/indirect_match.rs:22:11
-=======
-error[E0004]: non-exhaustive patterns: pattern `IndirectUninhabitedStruct` of type `uninhabited::IndirectUninhabitedStruct` is not handled
   --> $DIR/indirect_match.rs:23:11
->>>>>>> bca33d7df4a... Revert "Remove `#![feature(never_type)]` from tests."
    |
 LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-<<<<<<< HEAD
 error[E0004]: non-exhaustive patterns: type `uninhabited::IndirectUninhabitedTupleStruct` is non-empty
-  --> $DIR/indirect_match.rs:26:11
-||||||| parent of bca33d7df4a... Revert "Remove `#![feature(never_type)]` from tests."
-error[E0004]: non-exhaustive patterns: pattern `IndirectUninhabitedTupleStruct` of type `uninhabited::IndirectUninhabitedTupleStruct` is not handled
-  --> $DIR/indirect_match.rs:26:11
-=======
-error[E0004]: non-exhaustive patterns: pattern `IndirectUninhabitedTupleStruct` of type `uninhabited::IndirectUninhabitedTupleStruct` is not handled
   --> $DIR/indirect_match.rs:27:11
->>>>>>> bca33d7df4a... Revert "Remove `#![feature(never_type)]` from tests."
    |
 LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-<<<<<<< HEAD
 error[E0004]: non-exhaustive patterns: type `uninhabited::IndirectUninhabitedVariants` is non-empty
-  --> $DIR/indirect_match.rs:32:11
-||||||| parent of bca33d7df4a... Revert "Remove `#![feature(never_type)]` from tests."
-error[E0004]: non-exhaustive patterns: pattern `IndirectUninhabitedVariants` of type `uninhabited::IndirectUninhabitedVariants` is not handled
-  --> $DIR/indirect_match.rs:32:11
-=======
-error[E0004]: non-exhaustive patterns: pattern `IndirectUninhabitedVariants` of type `uninhabited::IndirectUninhabitedVariants` is not handled
   --> $DIR/indirect_match.rs:33:11
->>>>>>> bca33d7df4a... Revert "Remove `#![feature(never_type)]` from tests."
    |
 LL |     match x {}
    |           ^

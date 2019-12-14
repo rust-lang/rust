@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: type `UninhabitedStruct` is non-empty
-  --> $DIR/match_same_crate.rs:28:11
+  --> $DIR/match_same_crate.rs:30:11
    |
 LL | / pub struct UninhabitedStruct {
 LL | |     _priv: !,
@@ -12,7 +12,7 @@ LL |       match x {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `UninhabitedTupleStruct` is non-empty
-  --> $DIR/match_same_crate.rs:32:11
+  --> $DIR/match_same_crate.rs:34:11
    |
 LL | pub struct UninhabitedTupleStruct(!);
    | ------------------------------------- `UninhabitedTupleStruct` defined here
@@ -23,7 +23,7 @@ LL |     match x {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covered
-  --> $DIR/match_same_crate.rs:36:11
+  --> $DIR/match_same_crate.rs:38:11
    |
 LL | / pub enum UninhabitedVariants {
 LL | |     #[non_exhaustive] Tuple(!),
