@@ -1,0 +1,22 @@
+warning: any use of this value will cause an error
+  --> $DIR/assoc_const_generic_impl.rs:9:34
+   |
+LL |     const I_AM_ZERO_SIZED: ()  = [()][std::mem::size_of::<Self>()];
+   |     -----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                  |
+   |                                  index out of bounds: the len is 1 but the index is 4
+   |
+note: lint level defined here
+  --> $DIR/assoc_const_generic_impl.rs:1:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
+
+error: erroneous constant encountered
+  --> $DIR/assoc_const_generic_impl.rs:11:18
+   |
+LL |         let () = Self::I_AM_ZERO_SIZED;
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

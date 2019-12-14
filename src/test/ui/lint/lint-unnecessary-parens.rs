@@ -25,6 +25,12 @@ fn passes_unused_parens_lint() -> &'static (dyn Trait) {
     panic!()
 }
 
+macro_rules! baz {
+    ($($foo:expr),+) => {
+        ($($foo),*)
+    }
+}
+
 fn main() {
     foo();
     bar((true)); //~ ERROR unnecessary parentheses around function argument
@@ -55,4 +61,7 @@ fn main() {
     let mut _a = (0); //~ ERROR unnecessary parentheses around assigned value
     _a = (0); //~ ERROR unnecessary parentheses around assigned value
     _a += (1); //~ ERROR unnecessary parentheses around assigned value
+
+    let _a = baz!(3, 4);
+    let _b = baz!(3);
 }

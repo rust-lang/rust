@@ -23,7 +23,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     instance,
                     promoted: None,
                 };
-                self.cx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid))
+                self.cx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid)).map_err(|err| {
+                    self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
+                    err
+                })
             },
             _ => Ok(self.monomorphize(&constant.literal)),
         }
