@@ -486,6 +486,15 @@
                 }
             },
             {
+                "id": "ralsp.type.lifetime",
+                "description": "Color for `Self` param type",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
                 "id": "ralsp.type.self",
                 "description": "Color for `Self` param type",
                 "defaults": {

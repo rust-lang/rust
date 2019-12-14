@@ -56,6 +56,7 @@ export class Highlighter {
             decoration('type.self'),
             decoration('type.generic'),
             decoration('type.param'),
+            decoration('type.lifetime'),
             decoration('builtin'),
             decoration('text'),
             decoration('attribute'),

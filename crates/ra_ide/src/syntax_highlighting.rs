@@ -118,7 +118,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             INT_NUMBER | FLOAT_NUMBER => "literal.numeric",
             BYTE => "literal.byte",
             CHAR => "literal.char",
-            LIFETIME => "lifetime",
+            LIFETIME => "type.lifetime",
             T![unsafe] => "keyword.unsafe",
             k if is_control_keyword(k) => "keyword.control",
             k if k.is_keyword() => "keyword",
@@ -218,7 +218,7 @@ fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
         Field(_) => "field",
         AssocItem(hir::AssocItem::Function(_)) => "function",
         AssocItem(hir::AssocItem::Const(_)) => "constant",
-        AssocItem(hir::AssocItem::TypeAlias(_)) => "type.alias",
+        AssocItem(hir::AssocItem::TypeAlias(_)) => "type",
         Def(hir::ModuleDef::Module(_)) => "module",
         Def(hir::ModuleDef::Function(_)) => "function",
         Def(hir::ModuleDef::Adt(_)) => "type",
@@ -259,8 +259,10 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .builtin            { color: #DD6718; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
+.type\\.param       { color: #20999D; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
+.literal\\.numeric  { color: #6A8759; }
 .macro              { color: #94BFF3; }
 .variable           { color: #DCDCCC; }
 .variable\\.mut     { color: #DCDCCC; text-decoration: underline; }
