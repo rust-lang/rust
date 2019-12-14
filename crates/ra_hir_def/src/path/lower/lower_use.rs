@@ -10,13 +10,13 @@ use hir_expand::{
 };
 use ra_syntax::ast::{self, NameOwner};
 
-use crate::path::{Path, PathKind, PathSegment};
+use crate::path::{ModPath, PathKind};
 
 pub(crate) fn lower_use_tree(
-    prefix: Option<Path>,
+    prefix: Option<ModPath>,
     tree: ast::UseTree,
     hygiene: &Hygiene,
-    cb: &mut dyn FnMut(Path, &ast::UseTree, bool, Option<Name>),
+    cb: &mut dyn FnMut(ModPath, &ast::UseTree, bool, Option<Name>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
@@ -57,7 +57,7 @@ pub(crate) fn lower_use_tree(
     }
 }
 
-fn convert_path(prefix: Option<Path>, path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
+fn convert_path(prefix: Option<ModPath>, path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
     let prefix = if let Some(qual) = path.qualifier() {
         Some(convert_path(prefix, qual, hygiene)?)
     } else {
@@ -70,18 +70,15 @@ fn convert_path(prefix: Option<Path>, path: ast::Path, hygiene: &Hygiene) -> Opt
             match hygiene.name_ref_to_name(name_ref) {
                 Either::Left(name) => {
                     // no type args in use
-                    let mut res = prefix.unwrap_or_else(|| Path {
+                    let mut res = prefix.unwrap_or_else(|| ModPath {
                         kind: PathKind::Plain,
                         segments: Vec::with_capacity(1),
                     });
-                    res.segments.push(PathSegment {
-                        name,
-                        args_and_bindings: None, // no type args in use
-                    });
+                    res.segments.push(name);
                     res
                 }
                 Either::Right(crate_id) => {
-                    return Some(Path::from_simple_segments(
+                    return Some(ModPath::from_simple_segments(
                         PathKind::DollarCrate(crate_id),
                         iter::empty(),
                     ))
@@ -92,19 +89,19 @@ fn convert_path(prefix: Option<Path>, path: ast::Path, hygiene: &Hygiene) -> Opt
             if prefix.is_some() {
                 return None;
             }
-            Path::from_simple_segments(PathKind::Crate, iter::empty())
+            ModPath::from_simple_segments(PathKind::Crate, iter::empty())
         }
         ast::PathSegmentKind::SelfKw => {
             if prefix.is_some() {
                 return None;
             }
-            Path::from_simple_segments(PathKind::Self_, iter::empty())
+            ModPath::from_simple_segments(PathKind::Self_, iter::empty())
         }
         ast::PathSegmentKind::SuperKw => {
             if prefix.is_some() {
                 return None;
             }
-            Path::from_simple_segments(PathKind::Super, iter::empty())
+            ModPath::from_simple_segments(PathKind::Super, iter::empty())
         }
         ast::PathSegmentKind::Type { .. } => {
             // not allowed in imports

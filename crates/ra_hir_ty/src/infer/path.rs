@@ -32,21 +32,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         path: &Path,
         id: ExprOrPatId,
     ) -> Option<Ty> {
-        let (value, self_subst) = if let PathKind::Type(type_ref) = &path.kind {
-            if path.segments.is_empty() {
+        let (value, self_subst) = if let PathKind::Type(type_ref) = path.kind() {
+            if path.segments().is_empty() {
                 // This can't actually happen syntax-wise
                 return None;
             }
             let ty = self.make_ty(type_ref);
-            let remaining_segments_for_ty = &path.segments[..path.segments.len() - 1];
+            let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
             let ty = Ty::from_type_relative_path(self.db, resolver, ty, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
-                &path.segments.last().expect("path had at least one segment").name,
+                &path.segments().last().expect("path had at least one segment").name,
                 id,
             )?
         } else {
-            let value_or_partial = resolver.resolve_path_in_value_ns(self.db, &path)?;
+            let value_or_partial = resolver.resolve_path_in_value_ns(self.db, path.mod_path())?;
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => (it, None),
@@ -85,13 +85,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         remaining_index: usize,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
-        assert!(remaining_index < path.segments.len());
+        assert!(remaining_index < path.segments().len());
         // there may be more intermediate segments between the resolved one and
         // the end. Only the last segment needs to be resolved to a value; from
         // the segments before that, we need to get either a type or a trait ref.
 
-        let resolved_segment = &path.segments[remaining_index - 1];
-        let remaining_segments = &path.segments[remaining_index..];
+        let resolved_segment = path.segments().get(remaining_index - 1).unwrap();
+        let remaining_segments = path.segments().skip(remaining_index);
         let is_before_last = remaining_segments.len() == 1;
 
         match (def, is_before_last) {
@@ -112,7 +112,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // trait but it's not the last segment, so the next segment
                 // should resolve to an associated type of that trait (e.g. `<T
                 // as Iterator>::Item::default`)
-                let remaining_segments_for_ty = &remaining_segments[..remaining_segments.len() - 1];
+                let remaining_segments_for_ty =
+                    remaining_segments.take(remaining_segments.len() - 1);
                 let ty = Ty::from_partly_resolved_hir_path(
                     self.db,
                     &self.resolver,
@@ -138,7 +139,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_trait_assoc_item(
         &mut self,
         trait_ref: TraitRef,
-        segment: &PathSegment,
+        segment: PathSegment<'_>,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         let trait_ = trait_ref.trait_;
@@ -150,7 +151,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             .map(|(_name, id)| (*id).into())
             .find_map(|item| match item {
                 AssocItemId::FunctionId(func) => {
-                    if segment.name == self.db.function_data(func).name {
+                    if segment.name == &self.db.function_data(func).name {
                         Some(AssocItemId::FunctionId(func))
                     } else {
                         None
@@ -158,7 +159,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 AssocItemId::ConstId(konst) => {
-                    if self.db.const_data(konst).name.as_ref().map_or(false, |n| n == &segment.name)
+                    if self.db.const_data(konst).name.as_ref().map_or(false, |n| n == segment.name)
                     {
                         Some(AssocItemId::ConstId(konst))
                     } else {

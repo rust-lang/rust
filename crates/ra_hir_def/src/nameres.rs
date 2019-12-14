@@ -74,7 +74,7 @@ use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
-    path::Path,
+    path::ModPath,
     per_ns::PerNs,
     AstId, FunctionId, ImplId, LocalImportId, LocalModuleId, ModuleDefId, ModuleId, TraitId,
 };
@@ -329,7 +329,7 @@ impl CrateDefMap {
         &self,
         db: &impl DefDatabase,
         original_module: LocalModuleId,
-        path: &Path,
+        path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> (PerNs, Option<usize>) {
         let res =

@@ -22,7 +22,7 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attrs, db::DefDatabase, path::Path, trace::Trace, FileAstId, HirFileId, InFile,
+    attr::Attrs, db::DefDatabase, path::ModPath, trace::Trace, FileAstId, HirFileId, InFile,
     LocalImportId,
 };
 
@@ -154,7 +154,7 @@ pub(super) enum ModuleData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
-    pub(super) path: Path,
+    pub(super) path: ModPath,
     pub(super) alias: Option<Name>,
     pub(super) is_glob: bool,
     pub(super) is_prelude: bool,
@@ -206,7 +206,7 @@ impl_arena_id!(Macro);
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct MacroData {
     pub(super) ast_id: FileAstId<ast::MacroCall>,
-    pub(super) path: Path,
+    pub(super) path: ModPath,
     pub(super) name: Option<Name>,
     pub(super) export: bool,
     pub(super) builtin: bool,
@@ -327,7 +327,7 @@ impl RawItemsCollector {
         let attrs = self.parse_attrs(&use_item);
 
         let mut buf = Vec::new();
-        Path::expand_use_item(
+        ModPath::expand_use_item(
             InFile { value: use_item, file_id: self.file_id },
             &self.hygiene,
             |path, use_tree, is_glob, alias| {
@@ -353,7 +353,7 @@ impl RawItemsCollector {
         extern_crate: ast::ExternCrateItem,
     ) {
         if let Some(name_ref) = extern_crate.name_ref() {
-            let path = Path::from_name_ref(&name_ref);
+            let path = ModPath::from_name_ref(&name_ref);
             let alias = extern_crate.alias().and_then(|a| a.name()).map(|it| it.as_name());
             let attrs = self.parse_attrs(&extern_crate);
             // FIXME: cfg_attr
@@ -377,7 +377,7 @@ impl RawItemsCollector {
 
     fn add_macro(&mut self, current_module: Option<Module>, m: ast::MacroCall) {
         let attrs = self.parse_attrs(&m);
-        let path = match m.path().and_then(|path| Path::from_src(path, &self.hygiene)) {
+        let path = match m.path().and_then(|path| ModPath::from_src(path, &self.hygiene)) {
             Some(it) => it,
             _ => return,
         };

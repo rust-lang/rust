@@ -6,6 +6,7 @@ use hir_def::{
     adt::VariantData,
     db::DefDatabase,
     generics::{GenericParams, TypeParamData},
+    path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
     ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId, VariantId,
@@ -22,10 +23,10 @@ fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
         .where_predicates
         .iter()
         .filter_map(|pred| match &pred.type_ref {
-            TypeRef::Path(p) if p.as_ident() == Some(&name![Self]) => pred.bound.as_path(),
+            TypeRef::Path(p) if p == &Path::from(name![Self]) => pred.bound.as_path(),
             _ => None,
         })
-        .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path) {
+        .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path.mod_path()) {
             Some(TypeNs::TraitId(t)) => Some(t),
             _ => None,
         })

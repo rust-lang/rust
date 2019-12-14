@@ -386,7 +386,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let resolver = &self.resolver;
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
-        match resolver.resolve_path_in_type_ns_fully(self.db, &path) {
+        match resolver.resolve_path_in_type_ns_fully(self.db, path.mod_path()) {
             Some(TypeNs::AdtId(AdtId::StructId(strukt))) => {
                 let substs = Ty::substs_from_path(self.db, resolver, path, strukt.into());
                 let ty = self.db.ty(strukt.into());

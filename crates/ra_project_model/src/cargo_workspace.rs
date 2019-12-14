@@ -24,7 +24,7 @@ pub struct CargoWorkspace {
     pub(crate) workspace_root: PathBuf,
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CargoFeatures {
     /// Do not activate the `default` feature.
@@ -36,6 +36,12 @@ pub struct CargoFeatures {
     /// List of features to activate.
     /// This will be ignored if `cargo_all_features` is true.
     pub features: Vec<String>,
+}
+
+impl Default for CargoFeatures {
+    fn default() -> Self {
+        CargoFeatures { no_default_features: false, all_features: true, features: Vec::new() }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

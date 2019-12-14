@@ -22,7 +22,7 @@ use crate::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
         raw, BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, Resolution, ResolveMode,
     },
-    path::{Path, PathKind},
+    path::{ModPath, PathKind},
     per_ns::PerNs,
     AdtId, AstId, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
     LocalImportId, LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitLoc,
@@ -101,7 +101,7 @@ struct ImportDirective {
 struct MacroDirective {
     module_id: LocalModuleId,
     ast_id: AstId<ast::MacroCall>,
-    path: Path,
+    path: ModPath,
     legacy: Option<MacroCallId>,
 }
 
@@ -113,7 +113,7 @@ struct DefCollector<'a, DB> {
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
     unexpanded_macros: Vec<MacroDirective>,
-    unexpanded_attribute_macros: Vec<(LocalModuleId, AstId<ast::ModuleItem>, Path)>,
+    unexpanded_attribute_macros: Vec<(LocalModuleId, AstId<ast::ModuleItem>, ModPath)>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
 }
@@ -428,7 +428,7 @@ where
         } else {
             match import.path.segments.last() {
                 Some(last_segment) => {
-                    let name = import.alias.clone().unwrap_or_else(|| last_segment.name.clone());
+                    let name = import.alias.clone().unwrap_or_else(|| last_segment.clone());
                     log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                     // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
@@ -565,7 +565,7 @@ where
         res
     }
 
-    fn resolve_attribute_macro(&self, path: &Path) -> Option<MacroDefId> {
+    fn resolve_attribute_macro(&self, path: &ModPath) -> Option<MacroDefId> {
         // FIXME this is currently super hacky, just enough to support the
         // built-in derives
         if let Some(name) = path.as_ident() {
@@ -829,7 +829,7 @@ where
                     tt::TokenTree::Leaf(tt::Leaf::Punct(_)) => continue, // , is ok
                     _ => continue, // anything else would be an error (which we currently ignore)
                 };
-                let path = Path::from_tt_ident(ident);
+                let path = ModPath::from_tt_ident(ident);
 
                 let ast_id = AstId::new(self.file_id, def.kind.ast_id());
                 self.def_collector.unexpanded_attribute_macros.push((self.module_id, ast_id, path));
@@ -917,7 +917,7 @@ where
     }
 }
 
-fn is_macro_rules(path: &Path) -> bool {
+fn is_macro_rules(path: &ModPath) -> bool {
     path.as_ident() == Some(&name![macro_rules])
 }
 

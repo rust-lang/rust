@@ -12,7 +12,7 @@ use ra_syntax::{
 use tt::Subtree;
 
 use crate::{
-    db::DefDatabase, path::Path, src::HasChildSource, src::HasSource, AdtId, AttrDefId, Lookup,
+    db::DefDatabase, path::ModPath, src::HasChildSource, src::HasSource, AdtId, AttrDefId, Lookup,
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -94,7 +94,7 @@ impl Attrs {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
-    pub(crate) path: Path,
+    pub(crate) path: ModPath,
     pub(crate) input: Option<AttrInput>,
 }
 
@@ -106,7 +106,7 @@ pub enum AttrInput {
 
 impl Attr {
     fn from_src(ast: ast::Attr, hygiene: &Hygiene) -> Option<Attr> {
-        let path = Path::from_src(ast.path()?, hygiene)?;
+        let path = ModPath::from_src(ast.path()?, hygiene)?;
         let input = match ast.input() {
             None => None,
             Some(ast::AttrInput::Literal(lit)) => {

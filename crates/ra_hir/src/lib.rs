@@ -54,7 +54,7 @@ pub use hir_def::{
     builtin_type::BuiltinType,
     docs::Documentation,
     nameres::ModuleSource,
-    path::{Path, PathKind},
+    path::{ModPath, Path, PathKind},
     type_ref::Mutability,
 };
 pub use hir_expand::{
