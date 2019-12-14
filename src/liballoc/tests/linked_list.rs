@@ -566,6 +566,41 @@ fn drain_filter_drop_panic_leak() {
 }
 
 #[test]
+fn drain_filter_pred_panic_leak() {
+    static mut DROPS: i32 = 0;
+
+    #[derive(Debug)]
+    struct D(u32);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+        }
+    }
+
+    let mut q = LinkedList::new();
+    q.push_back(D(3));
+    q.push_back(D(4));
+    q.push_back(D(5));
+    q.push_back(D(6));
+    q.push_back(D(7));
+    q.push_front(D(2));
+    q.push_front(D(1));
+    q.push_front(D(0));
+
+    catch_unwind(AssertUnwindSafe(|| drop(q.drain_filter(|item| if item.0 >= 2 {
+        panic!()
+    } else {
+        true
+    })))).ok();
+
+    assert_eq!(unsafe { DROPS }, 2);  // 0 and 1
+    assert_eq!(q.len(), 6);
+}
+
+#[test]
 fn test_drop() {
     static mut DROPS: i32 = 0;
     struct Elem;
