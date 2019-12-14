@@ -13,6 +13,7 @@
 
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
+#![feature(iter_once_with)]
 #![feature(ptr_offset_from)]
 #![feature(raw_vec_internals)]
 #![feature(untagged_unions)]

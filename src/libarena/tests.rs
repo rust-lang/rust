@@ -1,7 +1,8 @@
 extern crate test;
 use test::Bencher;
-use super::TypedArena;
+use super::{TypedArena, DroplessArena, SyncDroplessArena};
 use std::cell::Cell;
+use std::iter;
 
 #[allow(dead_code)]
 #[derive(Debug, Eq, PartialEq)]
@@ -12,7 +13,7 @@ struct Point {
 }
 
 #[test]
-fn test_arena_alloc_nested() {
+fn test_arena_alloc_nested_typed() {
     struct Inner {
         value: u8,
     }
@@ -55,10 +56,161 @@ fn test_arena_alloc_nested() {
 }
 
 #[test]
+fn test_arena_alloc_nested_dropless() {
+    struct Inner {
+        value: u8,
+    }
+    struct Outer<'a> {
+        inner: &'a Inner,
+    }
+    enum EI<'e> {
+        I(Inner),
+        O(Outer<'e>),
+    }
+
+    struct Wrap(DroplessArena);
+
+    impl Wrap {
+        fn alloc_inner<F: Fn() -> Inner>(&self, f: F) -> &Inner {
+            let r: &EI<'_> = self.0.alloc(EI::I(f()));
+            if let &EI::I(ref i) = r {
+                i
+            } else {
+                panic!("mismatch");
+            }
+        }
+        fn alloc_outer<'a, F: Fn() -> Outer<'a>>(&'a self, f: F) -> &Outer<'a> {
+            let r: &EI<'_> = self.0.alloc(EI::O(f()));
+            if let &EI::O(ref o) = r {
+                o
+            } else {
+                panic!("mismatch");
+            }
+        }
+    }
+
+    let arena = Wrap(DroplessArena::default());
+
+    let result = arena.alloc_outer(|| Outer {
+        inner: arena.alloc_inner(|| Inner { value: 10 }),
+    });
+
+    assert_eq!(result.inner.value, 10);
+}
+
+#[test]
+fn test_arena_alloc_nested_sync() {
+    struct Inner {
+        value: u8,
+    }
+    struct Outer<'a> {
+        inner: &'a Inner,
+    }
+    enum EI<'e> {
+        I(Inner),
+        O(Outer<'e>),
+    }
+
+    struct Wrap(SyncDroplessArena);
+
+    impl Wrap {
+        fn alloc_inner<F: Fn() -> Inner>(&self, f: F) -> &Inner {
+            let r: &EI<'_> = self.0.alloc(EI::I(f()));
+            if let &EI::I(ref i) = r {
+                i
+            } else {
+                panic!("mismatch");
+            }
+        }
+        fn alloc_outer<'a, F: Fn() -> Outer<'a>>(&'a self, f: F) -> &Outer<'a> {
+            let r: &EI<'_> = self.0.alloc(EI::O(f()));
+            if let &EI::O(ref o) = r {
+                o
+            } else {
+                panic!("mismatch");
+            }
+        }
+    }
+
+    let arena = Wrap(SyncDroplessArena::default());
+
+    let result = arena.alloc_outer(|| Outer {
+        inner: arena.alloc_inner(|| Inner { value: 10 }),
+    });
+
+    assert_eq!(result.inner.value, 10);
+}
+
+#[test]
+fn test_arena_alloc_nested_iter() {
+    struct Inner {
+        value: u8,
+    }
+    struct Outer<'a> {
+        inner: &'a Inner,
+    }
+    enum EI<'e> {
+        I(Inner),
+        O(Outer<'e>),
+    }
+
+    struct Wrap<'a>(TypedArena<EI<'a>>);
+
+    impl<'a> Wrap<'a> {
+        fn alloc_inner<F: Fn() -> Inner>(&self, f: F) -> &Inner {
+            let r: &[EI<'_>] = self.0.alloc_from_iter(iter::once_with(|| EI::I(f())));
+            if let &[EI::I(ref i)] = r {
+                i
+            } else {
+                panic!("mismatch");
+            }
+        }
+        fn alloc_outer<F: Fn() -> Outer<'a>>(&self, f: F) -> &Outer<'_> {
+            let r: &[EI<'_>] = self.0.alloc_from_iter(iter::once_with(|| EI::O(f())));
+            if let &[EI::O(ref o)] = r {
+                o
+            } else {
+                panic!("mismatch");
+            }
+        }
+    }
+
+    let arena = Wrap(TypedArena::default());
+
+    let result = arena.alloc_outer(|| Outer {
+        inner: arena.alloc_inner(|| Inner { value: 10 }),
+    });
+
+    assert_eq!(result.inner.value, 10);
+}
+
+#[test]
 pub fn test_copy() {
     let arena = TypedArena::default();
     for _ in 0..100000 {
         arena.alloc(Point { x: 1, y: 2, z: 3 });
+    }
+
+    let arena = DroplessArena::default();
+    for _ in 0..100000 {
+        arena.alloc(Point { x: 1, y: 2, z: 3 });
+    }
+
+    let arena = SyncDroplessArena::default();
+    for _ in 0..100000 {
+        arena.alloc(Point { x: 1, y: 2, z: 3 });
+    }
+}
+
+#[test]
+pub fn test_align() {
+    #[repr(align(32))]
+    struct AlignedPoint(Point);
+
+    let arena = TypedArena::default();
+    for _ in 0..100000 {
+        let ptr = arena.alloc(AlignedPoint(Point { x: 1, y: 2, z: 3 }));
+        assert_eq!((ptr as *const _ as usize) & 31, 0);
     }
 }
 
@@ -157,6 +309,31 @@ fn test_typed_arena_drop_on_clear() {
         arena.clear();
         assert_eq!(counter.get(), i * 100 + 100);
     }
+}
+
+struct DropOrder<'a> {
+    rank: u32,
+    count: &'a Cell<u32>,
+}
+
+impl Drop for DropOrder<'_> {
+    fn drop(&mut self) {
+        assert_eq!(self.rank, self.count.get());
+        self.count.set(self.count.get() + 1);
+    }
+}
+
+#[test]
+fn test_typed_arena_drop_order() {
+    let counter = Cell::new(0);
+    {
+        let arena: TypedArena<DropOrder<'_>> = TypedArena::default();
+        for rank in 0..100 {
+            // Allocate something with drop glue to make sure it doesn't leak.
+            arena.alloc(DropOrder { rank, count: &counter });
+        }
+    };
+    assert_eq!(counter.get(), 100);
 }
 
 thread_local! {
