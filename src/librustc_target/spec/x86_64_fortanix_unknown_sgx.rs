@@ -7,7 +7,7 @@ pub fn target() -> Result<Target, String> {
         "--as-needed",
         "--eh-frame-hdr",
         "-z" , "noexecstack",
-        "-e","sgx_entry",
+        "-e","elf_entry",
         "-Bstatic",
         "--gc-sections",
         "-z","text",
