@@ -275,6 +275,10 @@ impl<T> LinkedList<T> {
     /// let list: LinkedList<u32> = LinkedList::new();
     /// ```
     #[inline]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_linked_list_new", since = "1.32.0"),
+    )]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn new() -> Self {
         LinkedList {

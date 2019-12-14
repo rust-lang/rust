@@ -39,6 +39,7 @@ impl RawWaker {
     /// function in the `vtable` of the underlying `RawWaker` will be called.
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "futures_api", since = "1.36.0"))]
     pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
         RawWaker { data, vtable }
     }
@@ -151,6 +152,7 @@ impl RawWakerVTable {
     // FIXME: remove whenever we have a stable way to accept fn pointers from const fn
     // (see https://github.com/rust-rfcs/const-eval/issues/19#issuecomment-472799062)
     #[rustc_allow_const_fn_ptr]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "futures_api", since = "1.36.0"))]
     pub const fn new(
         clone: unsafe fn(*const ()) -> RawWaker,
         wake: unsafe fn(*const ()),

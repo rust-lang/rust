@@ -88,11 +88,11 @@ error[E0540]: multiple rustc_deprecated attributes
 LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0553]: multiple rustc_const_unstable attributes
-  --> $DIR/stability-attribute-sanity.rs:65:1
+error[E0544]: multiple stability levels
+  --> $DIR/stability-attribute-sanity.rs:64:1
    |
-LL | pub const fn multiple4() { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_const_unstable(feature = "d", issue = "0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Invalid stability or deprecation version found
   --> $DIR/stability-attribute-sanity.rs:65:1
@@ -101,7 +101,7 @@ LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0549]: rustc_deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:70:1
+  --> $DIR/stability-attribute-sanity.rs:69:1
    |
 LL | fn deprecated_without_unstable_or_stable() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

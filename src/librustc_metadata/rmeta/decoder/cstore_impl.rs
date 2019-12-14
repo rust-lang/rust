@@ -134,6 +134,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     lookup_stability => {
         cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
     }
+    lookup_const_stability => {
+        cdata.get_const_stability(def_id.index).map(|s| tcx.intern_const_stability(s))
+    }
     lookup_deprecation_entry => {
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }

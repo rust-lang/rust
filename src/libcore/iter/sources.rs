@@ -281,6 +281,7 @@ impl<T> Default for Empty<T> {
 /// assert_eq!(None, nope.next());
 /// ```
 #[stable(feature = "iter_empty", since = "1.2.0")]
+#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_iter_empty", since = "1.32.0"))]
 pub const fn empty<T>() -> Empty<T> {
     Empty(marker::PhantomData)
 }

@@ -293,7 +293,7 @@
 #![feature(raw)]
 #![feature(renamed_spin_loop)]
 #![feature(rustc_attrs)]
-#![feature(rustc_const_unstable)]
+#![cfg_attr(bootstrap, feature(rustc_const_unstable))]
 #![feature(rustc_private)]
 #![feature(shrink_to)]
 #![feature(slice_concat_ext)]

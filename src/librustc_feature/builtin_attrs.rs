@@ -344,10 +344,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         unstable, Whitelisted,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#),
     ),
-    gated!(
-        rustc_const_unstable, Normal, template!(List: r#"feature = "name""#),
-        "the `#[rustc_const_unstable]` attribute is an internal feature",
-    ),
+    // FIXME(#14407)
+    ungated!(rustc_const_unstable, Whitelisted, template!(List: r#"feature = "name""#)),
+    // FIXME(#14407)
+    ungated!(rustc_const_stable, Whitelisted, template!(List: r#"feature = "name""#)),
     gated!(
         allow_internal_unstable, Normal, template!(Word, List: "feat1, feat2, ..."),
         "allow_internal_unstable side-steps feature gating and stability checks",

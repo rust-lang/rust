@@ -1,5 +1,5 @@
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/allow_const_fn_ptr.rs:4:16
+  --> $DIR/allow_const_fn_ptr.rs:5:16
    |
 LL | const fn error(_: fn()) {}
    |                ^

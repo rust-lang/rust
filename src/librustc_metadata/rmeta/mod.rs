@@ -261,6 +261,7 @@ define_per_def_tables! {
     attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
     children: Table<DefIndex, Lazy<[DefIndex]>>,
     stability: Table<DefIndex, Lazy<attr::Stability>>,
+    const_stability: Table<DefIndex, Lazy<attr::ConstStability>>,
     deprecation: Table<DefIndex, Lazy<attr::Deprecation>>,
     ty: Table<DefIndex, Lazy!(Ty<'tcx>)>,
     fn_sig: Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>,

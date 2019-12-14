@@ -533,6 +533,7 @@ rustc_queries! {
             eval_always
         }
         query lookup_stability(_: DefId) -> Option<&'tcx attr::Stability> {}
+        query lookup_const_stability(_: DefId) -> Option<&'tcx attr::ConstStability> {}
         query lookup_deprecation_entry(_: DefId) -> Option<DeprecationEntry> {}
         query item_attrs(_: DefId) -> Lrc<[ast::Attribute]> {}
     }

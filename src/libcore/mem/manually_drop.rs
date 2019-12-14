@@ -63,6 +63,10 @@ impl<T> ManuallyDrop<T> {
     /// ManuallyDrop::new(Box::new(()));
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_manually_drop", since = "1.36.0"),
+    )]
     #[inline(always)]
     pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value }
@@ -80,6 +84,10 @@ impl<T> ManuallyDrop<T> {
     /// let _: Box<()> = ManuallyDrop::into_inner(x); // This drops the `Box`.
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_manually_drop", since = "1.36.0"),
+    )]
     #[inline(always)]
     pub const fn into_inner(slot: ManuallyDrop<T>) -> T {
         slot.value
