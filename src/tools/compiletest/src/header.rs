@@ -366,7 +366,7 @@ pub struct TestProps {
     pass_mode: Option<PassMode>,
     // Ignore `--pass` overrides from the command line for this test.
     ignore_pass: bool,
-    // How far this test should proceed while still failing.
+    // How far this test should proceed to start failing.
     pub fail_mode: Option<FailMode>,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,

@@ -264,7 +264,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         env::var_os("PYTHONPATH").hash(&mut hash);
     }
 
-    if let Ui | Incremental | Pretty = config.mode {
+    if let Ui = config.mode {
         config.force_pass_mode.hash(&mut hash);
     }
 
@@ -293,6 +293,14 @@ enum TestOutput {
     Compile,
     Run,
 }
+
+/// Will this test be executed? Should we use `make_exe_name`?
+#[derive(Copy, Clone, PartialEq)]
+enum WillExecute { Yes, No }
+
+/// Should `--emit metadata` be used?
+#[derive(Copy, Clone)]
+enum EmitMetadata { Yes, No }
 
 impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
@@ -332,26 +340,28 @@ impl<'test> TestCx<'test> {
         self.props.pass_mode(self.config)
     }
 
-    fn should_run(&self) -> bool {
+    fn should_run(&self, pm: Option<PassMode>) -> WillExecute {
         match self.config.mode {
-            Ui => self.pass_mode() == Some(PassMode::Run)
-                || self.props.fail_mode == Some(FailMode::Run),
+            Ui if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) => {
+                WillExecute::Yes
+            }
+            Ui => WillExecute::No,
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
 
-    fn should_run_successfully(&self) -> bool {
+    fn should_run_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            Ui => self.pass_mode() == Some(PassMode::Run),
+            Ui => pm == Some(PassMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
 
-    fn should_compile_successfully(&self) -> bool {
+    fn should_compile_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
             CompileFail => false,
             JsDocTest => true,
-            Ui => self.pass_mode().is_some() || self.props.fail_mode > Some(FailMode::Build),
+            Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
             Incremental => {
                 let revision = self.revision
                     .expect("incremental tests require a list of revisions");
@@ -359,7 +369,7 @@ impl<'test> TestCx<'test> {
                     true
                 } else if revision.starts_with("cfail") {
                     // FIXME: would be nice if incremental revs could start with "cpass"
-                    self.pass_mode().is_some()
+                    pm.is_some()
                 } else {
                     panic!("revision name must begin with rpass, rfail, or cfail");
                 }
@@ -368,8 +378,8 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn check_if_test_should_compile(&self, proc_res: &ProcRes) {
-        if self.should_compile_successfully() {
+    fn check_if_test_should_compile(&self, proc_res: &ProcRes, pm: Option<PassMode>) {
+        if self.should_compile_successfully(pm) {
             if !proc_res.status.success() {
                 self.fatal_proc_rec("test compilation failed although it shouldn't!", proc_res);
             }
@@ -386,8 +396,9 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_cfail_test(&self) {
-        let proc_res = self.compile_test();
-        self.check_if_test_should_compile(&proc_res);
+        let pm = self.pass_mode();
+        let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
+        self.check_if_test_should_compile(&proc_res, pm);
         self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
         let output_to_check = self.get_output(&proc_res);
@@ -398,7 +409,7 @@ impl<'test> TestCx<'test> {
             }
             self.check_expected_errors(expected_errors, &proc_res);
         } else {
-            self.check_error_patterns(&output_to_check, &proc_res);
+            self.check_error_patterns(&output_to_check, &proc_res, pm);
         }
         if self.props.should_ice {
             match proc_res.status.code() {
@@ -411,7 +422,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_rfail_test(&self) {
-        let proc_res = self.compile_test();
+        let pm = self.pass_mode();
+        let proc_res = self.compile_test(WillExecute::Yes, self.should_emit_metadata(pm));
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -427,7 +439,7 @@ impl<'test> TestCx<'test> {
 
         let output_to_check = self.get_output(&proc_res);
         self.check_correct_failure_status(&proc_res);
-        self.check_error_patterns(&output_to_check, &proc_res);
+        self.check_error_patterns(&output_to_check, &proc_res, pm);
     }
 
     fn get_output(&self, proc_res: &ProcRes) -> String {
@@ -454,7 +466,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_rpass_test(&self) {
-        let proc_res = self.compile_test();
+        let emit_metadata = self.should_emit_metadata(self.pass_mode());
+        let proc_res = self.compile_test(WillExecute::Yes, emit_metadata);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -481,7 +494,7 @@ impl<'test> TestCx<'test> {
             return self.run_rpass_test();
         }
 
-        let mut proc_res = self.compile_test();
+        let mut proc_res = self.compile_test(WillExecute::Yes, EmitMetadata::No);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -714,7 +727,7 @@ impl<'test> TestCx<'test> {
 
     fn run_debuginfo_cdb_test_no_opt(&self) {
         // compile test file (it should have 'compile-flags:-g' in the header)
-        let compile_result = self.compile_test();
+        let compile_result = self.compile_test(WillExecute::Yes, EmitMetadata::No);
         if !compile_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compile_result);
         }
@@ -822,7 +835,7 @@ impl<'test> TestCx<'test> {
         let mut cmds = commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the header)
-        let compiler_run_result = self.compile_test();
+        let compiler_run_result = self.compile_test(WillExecute::Yes, EmitMetadata::No);
         if !compiler_run_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compiler_run_result);
         }
@@ -1074,7 +1087,7 @@ impl<'test> TestCx<'test> {
 
     fn run_debuginfo_lldb_test_no_opt(&self) {
         // compile test file (it should have 'compile-flags:-g' in the header)
-        let compile_result = self.compile_test();
+        let compile_result = self.compile_test(WillExecute::Yes, EmitMetadata::No);
         if !compile_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compile_result);
         }
@@ -1373,10 +1386,16 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn check_error_patterns(&self, output_to_check: &str, proc_res: &ProcRes) {
+    fn check_error_patterns(
+        &self,
+        output_to_check: &str,
+        proc_res: &ProcRes,
+        pm: Option<PassMode>,
+    ) {
         debug!("check_error_patterns");
         if self.props.error_patterns.is_empty() {
-            if self.props.fail_mode != Some(FailMode::Run) {
+            if pm.is_some() {
+                // FIXME(#65865)
                 return;
             } else {
                 self.fatal(&format!(
@@ -1552,22 +1571,30 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn compile_test(&self) -> ProcRes {
+    fn should_emit_metadata(&self, pm: Option<PassMode>) -> EmitMetadata {
+        match (pm, self.props.fail_mode, self.config.mode) {
+            (Some(PassMode::Check), ..) | (_, Some(FailMode::Check), Ui) => EmitMetadata::Yes,
+            _ => EmitMetadata::No,
+        }
+    }
+
+    fn compile_test(&self, will_execute: WillExecute, emit_metadata: EmitMetadata) -> ProcRes {
+        self.compile_test_general(will_execute, emit_metadata, self.props.local_pass_mode())
+    }
+
+    fn compile_test_general(
+        &self,
+        will_execute: WillExecute,
+        emit_metadata: EmitMetadata,
+        local_pm: Option<PassMode>,
+    ) -> ProcRes {
         // Only use `make_exe_name` when the test ends up being executed.
-        let will_execute = match self.config.mode {
-            Ui => self.should_run(),
-            Incremental => self.revision.unwrap().starts_with("r"),
-            RunFail | RunPassValgrind | MirOpt |
-            DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb | DebugInfoLldb => true,
-            _ => false,
-        };
-        let output_file = if will_execute {
-            TargetLocation::ThisFile(self.make_exe_name())
-        } else {
-            TargetLocation::ThisDirectory(self.output_base_dir())
+        let output_file = match will_execute {
+            WillExecute::Yes => TargetLocation::ThisFile(self.make_exe_name()),
+            WillExecute::No => TargetLocation::ThisDirectory(self.output_base_dir()),
         };
 
-        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file);
+        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file, emit_metadata);
 
         rustc.arg("-L").arg(&self.aux_output_dir_name());
 
@@ -1578,11 +1605,12 @@ impl<'test> TestCx<'test> {
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
                 // can turn it back on if needed.
-                if !self.config.src_base.ends_with("rustdoc-ui") &&
-                    // Note that we don't call pass_mode() here as we don't want
+                if !self.is_rustdoc()
+                    // Note that we use the local pass mode here as we don't want
                     // to set unused to allow if we've overriden the pass mode
                     // via command line flags.
-                    self.props.local_pass_mode() != Some(PassMode::Run) {
+                    && local_pm != Some(PassMode::Run)
+                {
                     rustc.args(&["-A", "unused"]);
                 }
             }
@@ -1816,7 +1844,8 @@ impl<'test> TestCx<'test> {
         };
         // Create the directory for the stdout/stderr files.
         create_dir_all(aux_cx.output_base_dir()).unwrap();
-        let mut aux_rustc = aux_cx.make_compile_args(&aux_testpaths.file, aux_output);
+        let input_file = &aux_testpaths.file;
+        let mut aux_rustc = aux_cx.make_compile_args(input_file, aux_output, EmitMetadata::No);
 
         let (dylib, crate_type) = if aux_props.no_prefer_dynamic {
             (true, None)
@@ -1927,13 +1956,18 @@ impl<'test> TestCx<'test> {
         result
     }
 
+    fn is_rustdoc(&self) -> bool {
+        self.config.src_base.ends_with("rustdoc-ui")
+        || self.config.src_base.ends_with("rustdoc-js")
+    }
+
     fn make_compile_args(
         &self,
         input_file: &Path,
         output_file: TargetLocation,
+        emit_metadata: EmitMetadata,
     ) -> Command {
-        let is_rustdoc = self.config.src_base.ends_with("rustdoc-ui") ||
-                         self.config.src_base.ends_with("rustdoc-js");
+        let is_rustdoc = self.is_rustdoc();
         let mut rustc = if !is_rustdoc {
             Command::new(&self.config.rustc_path)
         } else {
@@ -2028,9 +2062,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        if let (Some(PassMode::Check), ..) | (_, Some(FailMode::Check), Ui)
-            = (self.pass_mode(), self.props.fail_mode, self.config.mode)
-        {
+        if let (false, EmitMetadata::Yes) = (is_rustdoc, emit_metadata) {
             rustc.args(&["--emit", "metadata"]);
         }
 
@@ -2279,7 +2311,8 @@ impl<'test> TestCx<'test> {
         let aux_dir = self.aux_output_dir_name();
 
         let output_file = TargetLocation::ThisDirectory(self.output_base_dir());
-        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file);
+        let input_file = &self.testpaths.file;
+        let mut rustc = self.make_compile_args(input_file, output_file, EmitMetadata::No);
         rustc.arg("-L").arg(aux_dir).arg("--emit=llvm-ir");
 
         self.compose_and_run_compiler(rustc, None)
@@ -2291,7 +2324,8 @@ impl<'test> TestCx<'test> {
         let output_path = self.output_base_name().with_extension("s");
 
         let output_file = TargetLocation::ThisFile(output_path.clone());
-        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file);
+        let input_file = &self.testpaths.file;
+        let mut rustc = self.make_compile_args(input_file, output_file, EmitMetadata::No);
 
         rustc.arg("-L").arg(self.aux_output_dir_name());
 
@@ -2518,7 +2552,7 @@ impl<'test> TestCx<'test> {
     fn run_codegen_units_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
-        let proc_res = self.compile_test();
+        let proc_res = self.compile_test(WillExecute::No, EmitMetadata::No);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -3034,6 +3068,19 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_ui_test(&self) {
+        if let Some(FailMode::Build) = self.props.fail_mode {
+            // Make sure a build-fail test cannot fail due to failing analysis (e.g. typeck).
+            let pm = Some(PassMode::Check);
+            let proc_res = self.compile_test_general(WillExecute::No, EmitMetadata::Yes, pm);
+            self.check_if_test_should_compile(&proc_res, pm);
+        }
+
+        let pm = self.pass_mode();
+        let should_run = self.should_run(pm);
+        let emit_metadata = self.should_emit_metadata(pm);
+        let proc_res = self.compile_test(should_run, emit_metadata);
+        self.check_if_test_should_compile(&proc_res, pm);
+
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
         // the rendered error messages from json and print them
@@ -3042,8 +3089,6 @@ impl<'test> TestCx<'test> {
             .compile_flags
             .iter()
             .any(|s| s.contains("--error-format"));
-        let proc_res = self.compile_test();
-        self.check_if_test_should_compile(&proc_res);
 
         let expected_fixed = self.load_expected_output(UI_FIXED);
 
@@ -3127,7 +3172,7 @@ impl<'test> TestCx<'test> {
 
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
 
-        if self.should_run() {
+        if let WillExecute::Yes = should_run {
             let proc_res = self.exec_compiled_test();
             let run_output_errors = if self.props.check_run_results {
                 self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
@@ -3140,7 +3185,7 @@ impl<'test> TestCx<'test> {
                     &proc_res,
                 );
             }
-            if self.should_run_successfully() {
+            if self.should_run_successfully(pm) {
                 if !proc_res.status.success() {
                     self.fatal_proc_rec("test run failed!", &proc_res);
                 }
@@ -3151,7 +3196,7 @@ impl<'test> TestCx<'test> {
             }
             if !self.props.error_patterns.is_empty() {
                 // "// error-pattern" comments
-                self.check_error_patterns(&proc_res.stderr, &proc_res);
+                self.check_error_patterns(&proc_res.stderr, &proc_res, pm);
             }
         }
 
@@ -3161,7 +3206,7 @@ impl<'test> TestCx<'test> {
                self.props.error_patterns);
         if !explicit && self.config.compare_mode.is_none() {
             let check_patterns =
-                !self.should_run() &&
+                should_run == WillExecute::No &&
                 !self.props.error_patterns.is_empty();
 
             let check_annotations =
@@ -3170,7 +3215,7 @@ impl<'test> TestCx<'test> {
 
             if check_patterns {
                 // "// error-pattern" comments
-                self.check_error_patterns(&proc_res.stderr, &proc_res);
+                self.check_error_patterns(&proc_res.stderr, &proc_res, pm);
             }
 
             if check_annotations {
@@ -3185,6 +3230,7 @@ impl<'test> TestCx<'test> {
             let mut rustc = self.make_compile_args(
                 &self.testpaths.file.with_extension(UI_FIXED),
                 TargetLocation::ThisFile(self.make_exe_name()),
+                emit_metadata,
             );
             rustc.arg("-L").arg(&self.aux_output_dir_name());
             let res = self.compose_and_run_compiler(rustc, None);
@@ -3198,7 +3244,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_mir_opt_test(&self) {
-        let proc_res = self.compile_test();
+        let proc_res = self.compile_test(WillExecute::Yes, EmitMetadata::No);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
