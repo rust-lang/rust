@@ -25,7 +25,7 @@ LL |     let ref a @ box b = Box::new(NC);
    |         ------------^
    |         |           |
    |         |           by-move pattern here
-   |         both by-ref and by-move used
+   |         by-ref pattern here
 
 error[E0382]: use of moved value
   --> $DIR/borrowck-pat-at-and-box.rs:11:18

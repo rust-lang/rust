@@ -13,7 +13,7 @@ LL |     let ref a @ b = NotCopy;
    |         --------^
    |         |       |
    |         |       by-move pattern here
-   |         both by-ref and by-move used
+   |         by-ref pattern here
 
 error[E0009]: cannot bind by-move and by-ref in the same pattern
   --> $DIR/default-binding-modes-both-sides-independent.rs:22:21
@@ -22,17 +22,18 @@ LL |     let ref mut a @ b = NotCopy;
    |         ------------^
    |         |           |
    |         |           by-move pattern here
-   |         both by-ref and by-move used
+   |         by-ref pattern here
 
 error[E0009]: cannot bind by-move and by-ref in the same pattern
   --> $DIR/default-binding-modes-both-sides-independent.rs:24:20
    |
 LL |         Ok(ref a @ b) | Err(ref a @ b) => {}
-   |                    ^        --------^
-   |                    |        |       |
-   |                    |        |       by-move pattern here
-   |                    |        both by-ref and by-move used
-   |                    by-move pattern here
+   |            --------^        --------^
+   |            |       |        |       |
+   |            |       |        |       by-move pattern here
+   |            |       |        by-ref pattern here
+   |            |       by-move pattern here
+   |            by-ref pattern here
 
 error[E0009]: cannot bind by-move and by-ref in the same pattern
   --> $DIR/default-binding-modes-both-sides-independent.rs:28:17
@@ -41,7 +42,7 @@ LL |         ref a @ b => {}
    |         --------^
    |         |       |
    |         |       by-move pattern here
-   |         both by-ref and by-move used
+   |         by-ref pattern here
 
 error: aborting due to 4 previous errors
 

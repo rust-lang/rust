@@ -13,7 +13,7 @@ LL |         ref op_string_ref @ Some(s) => {},
    |         -------------------------^-
    |         |                        |
    |         |                        by-move pattern here
-   |         both by-ref and by-move used
+   |         by-ref pattern here
 
 error: aborting due to previous error
 

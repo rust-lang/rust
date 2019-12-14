@@ -579,18 +579,20 @@ fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> 
 
 // Check the legality of legality of by-move bindings.
 fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: bool, pat: &Pat) {
-    let mut by_ref_span = None;
+    // Find all by-ref spans.
+    let mut by_ref_spans = Vec::new();
     pat.each_binding(|_, hir_id, span, _| {
         if let Some(&bm) = cx.tables.pat_binding_modes().get(hir_id) {
             if let ty::BindByReference(..) = bm {
-                by_ref_span = Some(span);
+                by_ref_spans.push(span);
             }
         } else {
             cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
         }
     });
 
-    let span_vec = &mut Vec::new();
+    // Find bad by-move spans:
+    let by_move_spans = &mut Vec::new();
     let mut check_move = |p: &Pat, sub: Option<&Pat>| {
         // Check legality of moving out of the enum.
         //
@@ -599,11 +601,10 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
             struct_span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings")
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
-        } else if !has_guard && by_ref_span.is_some() {
-            span_vec.push(p.span);
+        } else if !has_guard && !by_ref_spans.is_empty() {
+            by_move_spans.push(p.span);
         }
     };
-
     pat.walk(|p| {
         if let hir::PatKind::Binding(.., sub) = &p.kind {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
@@ -620,17 +621,18 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
         true
     });
 
-    if !span_vec.is_empty() {
+    // Found some bad by-move spans, error!
+    if !by_move_spans.is_empty() {
         let mut err = struct_span_err!(
             cx.tcx.sess,
-            MultiSpan::from_spans(span_vec.clone()),
+            MultiSpan::from_spans(by_move_spans.clone()),
             E0009,
             "cannot bind by-move and by-ref in the same pattern",
         );
-        if let Some(by_ref_span) = by_ref_span {
-            err.span_label(by_ref_span, "both by-ref and by-move used");
+        for span in by_ref_spans.iter() {
+            err.span_label(*span, "by-ref pattern here");
         }
-        for span in span_vec.iter() {
+        for span in by_move_spans.iter() {
             err.span_label(*span, "by-move pattern here");
         }
         err.emit();
