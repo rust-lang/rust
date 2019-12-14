@@ -58,6 +58,8 @@ trait ChunkBackend<T>: Sized {
     fn clear(&self, chunks: &mut Self::ChunkVecType);
 }
 
+/// Chunk used for zero-sized dropless types.
+/// These don't require work, hence the trivial implementation.
 struct NOPCurrentChunk<T> {
     phantom: PhantomData<*mut T>,
 }
@@ -93,6 +95,9 @@ impl<T> ChunkBackend<T> for NOPCurrentChunk<T> {
     {}
 }
 
+/// Chunk used for zero-sized droppable types.
+/// The only thing to do is counting the number of allocated items
+/// in order to drop them at the end.
 struct ZSTCurrentChunk<T> {
     counter: Cell<usize>,
     phantom: PhantomData<*mut T>,
@@ -142,6 +147,7 @@ impl<T> ChunkBackend<T> for ZSTCurrentChunk<T> {
     }
 }
 
+/// Chunk used for droppable types.
 struct TypedCurrentChunk<T> {
     /// A pointer to the next object to be allocated.
     ptr: Cell<*mut T>,
@@ -250,6 +256,8 @@ impl<T> ChunkBackend<T> for TypedCurrentChunk<T> {
     }
 }
 
+/// Chunk used for types with trivial drop.
+/// It is spearated from `TypedCurrentChunk` for code reuse in `DroplessArena`.
 struct DroplessCurrentChunk<T> {
     /// A pointer to the next object to be allocated.
     ptr: Cell<*mut u8>,
@@ -434,6 +442,8 @@ unsafe impl<#[may_dangle] T, Chunk: ChunkBackend<T>> Drop for GenericArena<T, Ch
     }
 }
 
+// The implementation relies on switching between the different `GenericArena` backends.
+// The switch is done using the `needs_drop` and `size_of` information.
 pub union TypedArena<T> {
     nop: mem::ManuallyDrop<GenericArena<T, NOPCurrentChunk<T>>>,
     zst: mem::ManuallyDrop<GenericArena<T, ZSTCurrentChunk<T>>>,
