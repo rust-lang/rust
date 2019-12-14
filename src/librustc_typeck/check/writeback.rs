@@ -284,10 +284,9 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
         match p.kind {
             hir::PatKind::Binding(..) => {
-                if let Some(&bm) = self.fcx.tables.borrow().pat_binding_modes().get(p.hir_id) {
+                let tables = self.fcx.tables.borrow();
+                if let Some(bm) = tables.extract_binding_mode(self.tcx().sess, p.hir_id, p.span) {
                     self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);
-                } else {
-                    self.tcx().sess.delay_span_bug(p.span, "missing binding mode");
                 }
             }
             hir::PatKind::Struct(_, ref fields, _) => {

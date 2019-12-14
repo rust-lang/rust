@@ -816,15 +816,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if let Some(Node::Binding(pat)) = tcx_hir.find(var_id) {
                     if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                         name = ident.name;
-
-                        if let Some(&bm) = hir_tables.pat_binding_modes().get(pat.hir_id) {
-                            if bm == ty::BindByValue(hir::Mutability::Mut) {
+                        match hir_tables.extract_binding_mode(tcx.sess, pat.hir_id, pat.span) {
+                            Some(ty::BindByValue(hir::Mutability::Mut)) => {
                                 mutability = Mutability::Mut;
-                            } else {
-                                mutability = Mutability::Not;
                             }
-                        } else {
-                            tcx.sess.delay_span_bug(pat.span, "missing binding mode");
+                            Some(_) => mutability = Mutability::Not,
+                            _ => {}
                         }
                     }
                 }

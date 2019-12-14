@@ -648,6 +648,13 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
+    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
+        self.pat_binding_modes().get(id).copied().or_else(|| {
+            s.delay_span_bug(sp, "missing binding mode");
+            None
+        })
+    }
+
     pub fn pat_binding_modes(&self) -> LocalTableInContext<'_, BindingMode> {
         LocalTableInContext {
             local_id_root: self.local_id_root,

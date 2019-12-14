@@ -1007,20 +1007,13 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn link_pattern(&self, discr_cmt: mc::Place<'tcx>, root_pat: &hir::Pat) {
         debug!("link_pattern(discr_cmt={:?}, root_pat={:?})", discr_cmt, root_pat);
         ignore_err!(self.with_mc(|mc| {
-            mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, sub_pat| {
+            mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, hir::Pat { kind, span, hir_id }| {
                 // `ref x` pattern
-                if let PatKind::Binding(..) = sub_pat.kind {
-                    if let Some(&bm) = mc.tables.pat_binding_modes().get(sub_pat.hir_id) {
-                        if let ty::BindByReference(mutbl) = bm {
-                            self.link_region_from_node_type(
-                                sub_pat.span,
-                                sub_pat.hir_id,
-                                mutbl,
-                                &sub_cmt,
-                            );
-                        }
-                    } else {
-                        self.tcx.sess.delay_span_bug(sub_pat.span, "missing binding mode");
+                if let PatKind::Binding(..) = kind {
+                    if let Some(ty::BindByReference(mutbl)) =
+                        mc.tables.extract_binding_mode(self.tcx.sess, *hir_id, *span)
+                    {
+                        self.link_region_from_node_type(*span, *hir_id, mutbl, &sub_cmt);
                     }
                 }
             })
