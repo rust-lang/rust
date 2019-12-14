@@ -15,6 +15,12 @@ export interface CargoWatchOptions {
     ignore: string[];
 }
 
+export interface CargoFeatures {
+    noDefaultFeatures: boolean;
+    allFeatures: boolean;
+    features: string[];
+}
+
 export class Config {
     public highlightingOn = true;
     public rainbowHighlightingOn = false;
@@ -35,8 +41,14 @@ export class Config {
         command: '',
         ignore: [],
     };
+    public cargoFeatures: CargoFeatures = {
+        noDefaultFeatures: false,
+        allFeatures: true,
+        features: [],
+    };
 
     private prevEnhancedTyping: null | boolean = null;
+    private prevCargoFeatures: null | CargoFeatures = null;
 
     constructor() {
         vscode.workspace.onDidChangeConfiguration(_ =>
@@ -47,6 +59,8 @@ export class Config {
 
     public userConfigChanged() {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
+        let requireReloadMessage = null;
+
         if (config.has('highlightingOn')) {
             this.highlightingOn = config.get('highlightingOn') as boolean;
         }
@@ -74,19 +88,8 @@ export class Config {
         }
 
         if (this.prevEnhancedTyping !== this.enableEnhancedTyping) {
-            const reloadAction = 'Reload now';
-            vscode.window
-                .showInformationMessage(
-                    'Changing enhanced typing setting requires a reload',
-                    reloadAction,
-                )
-                .then(selectedAction => {
-                    if (selectedAction === reloadAction) {
-                        vscode.commands.executeCommand(
-                            'workbench.action.reloadWindow',
-                        );
-                    }
-                });
+            requireReloadMessage =
+                'Changing enhanced typing setting requires a reload';
             this.prevEnhancedTyping = this.enableEnhancedTyping;
         }
 
@@ -152,6 +155,54 @@ export class Config {
         }
         if (config.has('withSysroot')) {
             this.withSysroot = config.get('withSysroot') || false;
+        }
+
+        if (config.has('cargoFeatures.noDefaultFeatures')) {
+            this.cargoFeatures.noDefaultFeatures = config.get(
+                'cargoFeatures.noDefaultFeatures',
+                false,
+            );
+        }
+        if (config.has('cargoFeatures.allFeatures')) {
+            this.cargoFeatures.allFeatures = config.get(
+                'cargoFeatures.allFeatures',
+                true,
+            );
+        }
+        if (config.has('cargoFeatures.features')) {
+            this.cargoFeatures.features = config.get(
+                'cargoFeatures.features',
+                [],
+            );
+        }
+
+        if (
+            this.prevCargoFeatures !== null &&
+            (this.cargoFeatures.allFeatures !==
+                this.prevCargoFeatures.allFeatures ||
+                this.cargoFeatures.noDefaultFeatures !==
+                    this.prevCargoFeatures.noDefaultFeatures ||
+                this.cargoFeatures.features.length !==
+                    this.prevCargoFeatures.features.length ||
+                this.cargoFeatures.features.some(
+                    (v, i) => v !== this.prevCargoFeatures!.features[i],
+                ))
+        ) {
+            requireReloadMessage = 'Changing cargo features requires a reload';
+        }
+        this.prevCargoFeatures = { ...this.cargoFeatures };
+
+        if (requireReloadMessage !== null) {
+            const reloadAction = 'Reload now';
+            vscode.window
+                .showInformationMessage(requireReloadMessage, reloadAction)
+                .then(selectedAction => {
+                    if (selectedAction === reloadAction) {
+                        vscode.commands.executeCommand(
+                            'workbench.action.reloadWindow',
+                        );
+                    }
+                });
         }
     }
 }
