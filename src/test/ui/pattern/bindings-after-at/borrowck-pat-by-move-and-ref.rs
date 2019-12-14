@@ -4,7 +4,7 @@
 fn main() {
     match Some("hi".to_string()) {
         ref op_string_ref @ Some(s) => {},
-        //~^ ERROR E0009
+        //~^ ERROR cannot bind by-move and by-ref in the same pattern [E0009]
         None => {},
     }
 }

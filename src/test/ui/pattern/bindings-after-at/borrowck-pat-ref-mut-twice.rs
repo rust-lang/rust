@@ -6,6 +6,8 @@
 fn main() {
     struct U;
 
+    fn u() -> U { U }
+
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow `a` as mutable more than once at a time
     //~| ERROR cannot borrow `_` as mutable more than once at a time
@@ -33,6 +35,16 @@ fn main() {
             ref e,
         ]
     ) = (U, [U, U, U]);
+
+    let ref mut a @ (
+        //~^ ERROR cannot borrow `a` as mutable more than once at a time
+            ref mut b,
+            [
+                ref mut c,
+                ref mut d,
+                ref e,
+            ]
+        ) = (u(), [u(), u(), u()]);
 
     let a @ (ref mut b, ref mut c) = (U, U);
     //~^ ERROR cannot bind by-move with sub-bindings

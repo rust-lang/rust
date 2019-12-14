@@ -19,6 +19,9 @@ fn main() {
 
     struct U;
 
+    // Prevent promotion:
+    fn u() -> U { U }
+
     let ref a @ ref mut b = U;
     //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
     let ref mut a @ ref b = U;
@@ -27,6 +30,17 @@ fn main() {
     //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
     let ref mut a @ (ref b, ref c) = (U, U);
     //~^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable
+
+    let ref mut a @ ref b = u();
+    //~^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable
+    //~| ERROR cannot borrow `_` as immutable because it is also borrowed as mutable
+    *a = u();
+    drop(b);
+    let ref a @ ref mut b = u();
+    //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
+    //~| ERROR cannot borrow `_` as mutable because it is also borrowed as immutable
+    *b = u();
+    drop(a);
 
     let ref mut a @ ref b = U;
     //~^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable

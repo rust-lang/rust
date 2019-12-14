@@ -7,6 +7,8 @@
 #[derive(Copy, Clone)]
 struct C;
 
+fn c() -> C { C }
+
 fn main() {
     let a @ box &b = Box::new(&C);
     //~^ ERROR cannot bind by-move with sub-bindings
@@ -21,7 +23,14 @@ fn main() {
     drop(b);
     drop(a);
 
+    let ref a @ box b = Box::new(c()); // OK; the type is `Copy`.
+    drop(b);
+    drop(b);
+    drop(a);
+
     struct NC;
+
+    fn nc() -> NC { NC }
 
     let ref a @ box b = Box::new(NC); //~ ERROR cannot bind by-move and by-ref in the same pattern
 
@@ -29,6 +38,8 @@ fn main() {
     drop(a);
     drop(b);
 
+    let ref a @ box ref mut b = Box::new(nc());
+    //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
     let ref a @ box ref mut b = Box::new(NC);
     //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
     let ref a @ box ref mut b = Box::new(NC);

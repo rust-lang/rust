@@ -6,11 +6,18 @@
 fn main() {
     struct U; // Not copy!
 
+    // Prevent promotion:
+    fn u() -> U { U }
+
     let a @ b = U;
     //~^ ERROR cannot bind by-move with sub-bindings
     //~| ERROR use of moved value
 
     let a @ (b, c) = (U, U);
+    //~^ ERROR cannot bind by-move with sub-bindings
+    //~| ERROR use of moved value
+
+    let a @ (b, c) = (u(), u());
     //~^ ERROR cannot bind by-move with sub-bindings
     //~| ERROR use of moved value
 

@@ -9,6 +9,8 @@
 #[derive(Copy, Clone)]
 struct C;
 
+fn mk_c() -> C { C }
+
 #[derive(Copy, Clone)]
 struct P<A, B>(A, B);
 
@@ -16,12 +18,12 @@ enum E<A, B> { L(A), R(B) }
 
 fn main() {
     let a @ b @ c @ d = C;
-    let a @ (b, c) = (C, C);
-    let a @ P(b, P(c, d)) = P(C, P(C, C));
+    let a @ (b, c) = (C, mk_c());
+    let a @ P(b, P(c, d)) = P(mk_c(), P(C, C));
     let a @ [b, c] = [C, C];
-    let a @ [b, .., c] = [C, C, C];
+    let a @ [b, .., c] = [C, mk_c(), C];
     let a @ &(b, c) = &(C, C);
-    let a @ &(b, &P(c, d)) = &(C, &P(C, C));
+    let a @ &(b, &P(c, d)) = &(mk_c(), &P(C, C));
 
     use self::E::*;
     match L(C) {
@@ -31,7 +33,7 @@ fn main() {
             drop(a);
         }
     }
-    match R(&L(&C)) {
+    match R(&L(&mk_c())) {
         L(L(&a)) | L(R(&a)) | R(L(&a)) | R(R(&a)) => {
             let a: C = a;
             drop(a);
