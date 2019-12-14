@@ -281,6 +281,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                             variant.ident == ident && variant.ctor_kind == CtorKind::Const
                         })
                     {
+                        // FIXME(Centril): Should be a lint?
                         let ty_path = cx.tcx.def_path_str(edef.did);
                         let mut err = struct_span_warn!(
                             cx.tcx.sess,
