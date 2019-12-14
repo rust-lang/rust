@@ -413,19 +413,11 @@ impl<T, Chunk: ChunkBackend<T>> GenericArena<T, Chunk> {
 
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        assert!(mem::size_of::<T>() != 0);
-        let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
-        if vec.is_empty() {
-            return &mut [];
-        }
-        // Move the content to the arena by copying it and then forgetting
-        // the content of the SmallVec
         unsafe {
-            let len = vec.len();
-            let start_ptr = self.alloc_raw_slice(len);
-            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            vec.set_len(0);
-            slice::from_raw_parts_mut(start_ptr, len)
+            alloc_from_iter_buffer(
+                move |len| self.alloc_raw_slice(len),
+                iter.into_iter(),
+            )
         }
     }
 
@@ -642,71 +634,18 @@ impl DroplessArena {
     }
 
     #[inline]
-    unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
-        &self,
-        mut iter: I,
-        len: usize,
-        mem: *mut T,
-    ) -> &mut [T] {
-        let mut i = 0;
-        // Use a manual loop since LLVM manages to optimize it better for
-        // slice iterators
-        loop {
-            let value = iter.next();
-            if value.is_none() {
-                // We only return as many items as the iterator gave us, even
-                // though it was supposed to give us `len`
-                return slice::from_raw_parts_mut(mem, i);
-            }
-            // The iterator is not supposed to give us more than `len`.
-            assert!(i < len);
-            ptr::write(mem.add(i), value.unwrap());
-            i += 1;
-        }
-    }
-
-    #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        let iter = iter.into_iter();
         assert!(mem::size_of::<T>() != 0);
         assert!(!mem::needs_drop::<T>());
 
-        let size_hint = iter.size_hint();
-
-        match size_hint {
-            (min, Some(max)) if min == max => {
-                // We know the exact number of elements the iterator will produce here
-                let len = min;
-
-                if len == 0 {
-                    return &mut []
-                }
-                let size = len.checked_mul(mem::size_of::<T>()).unwrap();
-                let mem = self.alloc_raw(size, mem::align_of::<T>()) as *mut _ as *mut T;
-                unsafe {
-                    self.write_from_iter(iter, len, mem)
-                }
-            }
-            (_, _) => {
-                cold_path(move || -> &mut [T] {
-                    let mut vec: SmallVec<[_; 8]> = iter.collect();
-                    if vec.is_empty() {
-                        return &mut [];
-                    }
-                    // Move the content to the arena by copying it and then forgetting
-                    // the content of the SmallVec
-                    unsafe {
-                        let len = vec.len();
-                        let start_ptr = self.alloc_raw(
-                            len * mem::size_of::<T>(),
-                            mem::align_of::<T>()
-                        ) as *mut _ as *mut T;
-                        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        vec.set_len(0);
-                        slice::from_raw_parts_mut(start_ptr, len)
-                    }
-                })
-            }
+        unsafe {
+            alloc_from_iter_dropless(
+                move |len| self.alloc_raw(
+                    len * mem::size_of::<T>(),
+                    mem::align_of::<T>(),
+                ) as *mut _ as *mut T,
+                iter.into_iter(),
+            )
         }
     }
 }
@@ -794,71 +733,18 @@ impl SyncDroplessArena {
     }
 
     #[inline]
-    unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
-        &self,
-        mut iter: I,
-        len: usize,
-        mem: *mut T,
-    ) -> &mut [T] {
-        let mut i = 0;
-        // Use a manual loop since LLVM manages to optimize it better for
-        // slice iterators
-        loop {
-            let value = iter.next();
-            if value.is_none() {
-                // We only return as many items as the iterator gave us, even
-                // though it was supposed to give us `len`
-                return slice::from_raw_parts_mut(mem, i);
-            }
-            // The iterator is not supposed to give us more than `len`.
-            assert!(i < len);
-            ptr::write(mem.add(i), value.unwrap());
-            i += 1;
-        }
-    }
-
-    #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        let iter = iter.into_iter();
         assert!(mem::size_of::<T>() != 0);
         assert!(!mem::needs_drop::<T>());
 
-        let size_hint = iter.size_hint();
-
-        match size_hint {
-            (min, Some(max)) if min == max => {
-                // We know the exact number of elements the iterator will produce here
-                let len = min;
-
-                if len == 0 {
-                    return &mut []
-                }
-                let size = len.checked_mul(mem::size_of::<T>()).unwrap();
-                let mem = self.alloc_raw(size, mem::align_of::<T>()) as *mut _ as *mut T;
-                unsafe {
-                    self.write_from_iter(iter, len, mem)
-                }
-            }
-            (_, _) => {
-                cold_path(move || -> &mut [T] {
-                    let mut vec: SmallVec<[_; 8]> = iter.collect();
-                    if vec.is_empty() {
-                        return &mut [];
-                    }
-                    // Move the content to the arena by copying it and then forgetting
-                    // the content of the SmallVec
-                    unsafe {
-                        let len = vec.len();
-                        let start_ptr = self.alloc_raw(
-                            len * mem::size_of::<T>(),
-                            mem::align_of::<T>()
-                        ) as *mut _ as *mut T;
-                        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        vec.set_len(0);
-                        slice::from_raw_parts_mut(start_ptr, len)
-                    }
-                })
-            }
+        unsafe {
+            alloc_from_iter_dropless(
+                move |len| self.alloc_raw(
+                    len * mem::size_of::<T>(),
+                    mem::align_of::<T>(),
+                ) as *mut _ as *mut T,
+                iter.into_iter(),
+            )
         }
     }
 
@@ -873,6 +759,95 @@ impl Drop for SyncDroplessArena {
         self.clear()
         // RawVec handles deallocation of `last_chunk` and `self.chunks`.
     }
+}
+
+/// Helper method for slice allocation from iterators.
+unsafe fn alloc_from_iter_buffer<'a, T, F, I>(alloc: F, iter: I) -> &'a mut [T]
+    where F: 'a + FnOnce(usize) -> *mut T,
+          I: Iterator<Item=T>,
+{
+    assert!(mem::size_of::<T>() != 0);
+    let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
+    if vec.is_empty() {
+        return &mut [];
+    }
+
+    // Move the content to the arena by copying it and then forgetting
+    // the content of the SmallVec
+    let len = vec.len();
+    let start_ptr = alloc(len);
+    vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+    vec.set_len(0);
+    slice::from_raw_parts_mut(start_ptr, len)
+}
+
+/// Helper method for slice allocation from iterators.
+/// Dropless case, optimized for known-length iterators.
+unsafe fn alloc_from_iter_dropless<'a, T, F, I>(alloc: F, iter: I) -> &'a mut [T]
+    where F: 'a + Fn(usize) -> *mut T,
+          I: Iterator<Item=T>,
+{
+    assert!(!mem::needs_drop::<T>());
+
+    let size_hint = iter.size_hint();
+    let mut vec: SmallVec<[T; 8]> = match size_hint {
+        (min, Some(max)) if min == max => {
+            // We know the exact number of elements the iterator will produce here
+            let len = min;
+
+            let mut iter = iter.peekable();
+            if iter.peek().is_none() {
+                return &mut []
+            }
+
+            let mem = alloc(len);
+
+            // Use a manual loop since LLVM manages to optimize it better for
+            // slice iterators
+            for i in 0..len {
+                let value = iter.next();
+                if value.is_none() {
+                    // We only return as many items as the iterator gave us, even
+                    // though it was supposed to give us `len`
+                    return slice::from_raw_parts_mut(mem, i);
+                }
+                // The iterator is not supposed to give us more than `len`.
+                assert!(i < len);
+                ptr::write(mem.add(i), value.unwrap());
+            }
+
+            if iter.peek().is_none() {
+                return slice::from_raw_parts_mut(mem, len)
+            }
+
+            // The iterator has lied to us, and produces more elements than advertised.
+            // In order to handle the rest, we create a buffer, move what we already have inside,
+            // and extend it with the rest of the items.
+            cold_path(move || {
+                let mut vec = SmallVec::with_capacity(len + iter.size_hint().0);
+
+                mem.copy_to_nonoverlapping(vec.as_mut_ptr(), len);
+                vec.set_len(len);
+                vec.extend(iter);
+                vec
+            })
+        }
+        (_, _) => iter.collect()
+    };
+
+    cold_path(move || -> &mut [T] {
+        if vec.is_empty() {
+            return &mut [];
+        }
+
+        // Move the content to the arena by copying it and then forgetting
+        // the content of the SmallVec
+        let len = vec.len();
+        let start_ptr = alloc(len);
+        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+        vec.set_len(0);
+        slice::from_raw_parts_mut(start_ptr, len)
+    })
 }
 
 #[cfg(test)]
