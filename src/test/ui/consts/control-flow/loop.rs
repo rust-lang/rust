@@ -1,9 +1,11 @@
-// Ensure that all loops are forbidden in a const context, even if `#![feature(const_if_match)]` is
-// enabled.
+// Ensure that loops are forbidden in a const context unless `#![feature(const_loop)]` is enabled.
+// `while` loops require `#![feature(const_if_match)]` to be enabled as well.
 
-// revisions: stock if_match
+// gate-test-const_loop
+// revisions: stock if_match loop_ both
 
-#![cfg_attr(if_match, feature(const_if_match))]
+#![cfg_attr(any(both, if_match), feature(const_if_match))]
+#![cfg_attr(any(both, loop_), feature(const_loop))]
 
 const _: () = loop {}; //[stock,if_match]~ ERROR `loop` is not allowed in a `const`
 
@@ -36,7 +38,7 @@ const fn const_outside() {
 fn main() {
     let x = [0; {
         while false {}
-        //[stock,if_match]~^ ERROR `while` is not allowed in a `const`
+        //[stock,if_match,loop_]~^ ERROR `while` is not allowed in a `const`
         4
     }];
 }
@@ -44,11 +46,11 @@ fn main() {
 const _: i32 = {
     let mut x = 0;
 
-    while x < 4 { //[stock,if_match]~ ERROR `while` is not allowed in a `const`
+    while x < 4 { //[stock,if_match,loop_]~ ERROR `while` is not allowed in a `const`
         x += 1;
     }
 
-    while x < 8 { //[stock,if_match]~ ERROR `while` is not allowed in a `const`
+    while x < 8 { //[stock,if_match,loop_]~ ERROR `while` is not allowed in a `const`
         x += 1;
     }
 
@@ -58,11 +60,11 @@ const _: i32 = {
 const _: i32 = {
     let mut x = 0;
 
-    for i in 0..4 { //[stock,if_match]~ ERROR `for` is not allowed in a `const`
+    for i in 0..4 { //[stock,if_match,loop_,both]~ ERROR `for` is not allowed in a `const`
         x += i;
     }
 
-    for i in 0..4 { //[stock,if_match]~ ERROR `for` is not allowed in a `const`
+    for i in 0..4 { //[stock,if_match,loop_,both]~ ERROR `for` is not allowed in a `const`
         x += i;
     }
 
@@ -74,14 +76,14 @@ const _: i32 = {
 
     loop { //[stock,if_match]~ ERROR `loop` is not allowed in a `const`
         x += 1;
-        if x == 4 { //[stock]~ ERROR `if` is not allowed in a `const`
+        if x == 4 { //[stock,loop_]~ ERROR `if` is not allowed in a `const`
             break;
         }
     }
 
     loop { //[stock,if_match]~ ERROR `loop` is not allowed in a `const`
         x += 1;
-        if x == 8 { //[stock]~ ERROR `if` is not allowed in a `const`
+        if x == 8 { //[stock,loop_]~ ERROR `if` is not allowed in a `const`
             break;
         }
     }
@@ -91,7 +93,7 @@ const _: i32 = {
 
 const _: i32 = {
     let mut x = 0;
-    while let None = Some(x) { } //[stock,if_match]~ ERROR `while` is not allowed in a `const`
-    while let None = Some(x) { } //[stock,if_match]~ ERROR `while` is not allowed in a `const`
+    while let None = Some(x) { } //[stock,if_match,loop_]~ ERROR `while` is not allowed in a `const`
+    while let None = Some(x) { } //[stock,if_match,loop_]~ ERROR `while` is not allowed in a `const`
     x
 };

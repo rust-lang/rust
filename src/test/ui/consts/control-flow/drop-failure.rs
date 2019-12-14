@@ -1,4 +1,5 @@
 #![feature(const_if_match)]
+#![feature(const_loop)]
 
 // `x` is *not* always moved into the final value may be dropped inside the initializer.
 const _: Option<Vec<i32>> = {
@@ -30,6 +31,31 @@ const _: Vec<i32> = {
     match x {
         Ok(x) | Err(x) => x,
     }
+};
+
+const _: Option<Vec<i32>> = {
+    let mut some = Some(Vec::new());
+    let mut tmp = None;
+    //~^ ERROR destructors cannot be evaluated at compile-time
+
+    let mut i = 0;
+    while i < 10 {
+        tmp = some;
+        some = None;
+
+        // We can escape the loop with `Some` still in `tmp`,
+        // which would require that it be dropped at the end of the block.
+        if i > 100 {
+            break;
+        }
+
+        some = tmp;
+        tmp = None;
+
+        i += 1;
+    }
+
+    some
 };
 
 fn main() {}
