@@ -6,6 +6,8 @@ use ra_syntax::{
     algo::find_covering_element,
     ast::{self, DocCommentsOwner},
     match_ast, AstNode,
+    SyntaxKind::*,
+    SyntaxToken, TokenAtOffset,
 };
 
 use crate::{
@@ -156,7 +158,7 @@ fn hover_text_from_name_kind(
 
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+    let token = pick_best(file.token_at_offset(position.offset))?;
     let token = descend_into_macros(db, position.file_id, token);
 
     let mut res = HoverResult::new();
@@ -216,6 +218,18 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         return None;
     }
     Some(RangeInfo::new(range, res))
+}
+
+fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
+    return tokens.max_by_key(priority);
+    fn priority(n: &SyntaxToken) -> usize {
+        match n.kind() {
+            IDENT | INT_NUMBER => 3,
+            L_PAREN | R_PAREN => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        }
+    }
 }
 
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
@@ -500,6 +514,13 @@ The Some variant
 fn func(foo: i32) { if true { <|>foo; }; }
 ",
         );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+    }
+
+    #[test]
+    fn hover_for_param_edge() {
+        let (analysis, position) = single_file_with_position("fn func(<|>foo: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
     }

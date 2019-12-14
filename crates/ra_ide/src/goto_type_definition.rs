@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::db::AstDatabase;
-use ra_syntax::{ast, AstNode};
+use ra_syntax::{ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
 use crate::{
     db::RootDatabase, display::ToNav, expand::descend_into_macros, FilePosition, NavigationTarget,
@@ -13,7 +13,7 @@ pub(crate) fn goto_type_definition(
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+    let token = pick_best(file.token_at_offset(position.offset))?;
     let token = descend_into_macros(db, position.file_id, token);
 
     let node = token.value.ancestors().find_map(|token| {
@@ -39,6 +39,17 @@ pub(crate) fn goto_type_definition(
 
     let nav = adt_def.to_nav(db);
     Some(RangeInfo::new(node.text_range(), vec![nav]))
+}
+
+fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
+    return tokens.max_by_key(priority);
+    fn priority(n: &SyntaxToken) -> usize {
+        match n.kind() {
+            IDENT | INT_NUMBER => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -100,6 +111,34 @@ mod tests {
             }
             ",
             "Foo STRUCT_DEF FileId(1) [52; 65) [59; 62)",
+        );
+    }
+
+    #[test]
+    fn goto_type_definition_for_param() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            fn foo(<|>f: Foo) {}
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+        );
+    }
+
+    #[test]
+    fn goto_type_definition_for_tuple_field() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            struct Bar(Foo);
+            fn foo() {
+                let bar = Bar(Foo);
+                bar.<|>0;
+            }
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
         );
     }
 }

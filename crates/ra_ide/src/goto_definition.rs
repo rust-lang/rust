@@ -3,7 +3,9 @@
 use hir::{db::AstDatabase, InFile};
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
-    match_ast, AstNode, SyntaxNode,
+    match_ast, AstNode,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, TokenAtOffset,
 };
 
 use crate::{
@@ -19,8 +21,7 @@ pub(crate) fn goto_definition(
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    let original_token =
-        file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+    let original_token = pick_best(file.token_at_offset(position.offset))?;
     let token = descend_into_macros(db, position.file_id, original_token.clone());
 
     let nav_targets = match_ast! {
@@ -36,6 +37,17 @@ pub(crate) fn goto_definition(
     };
 
     Some(RangeInfo::new(original_token.text_range(), nav_targets))
+}
+
+fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
+    return tokens.max_by_key(priority);
+    fn priority(n: &SyntaxToken) -> usize {
+        match n.kind() {
+            IDENT | INT_NUMBER => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -229,6 +241,18 @@ mod tests {
             //- /lib.rs
             struct Foo;
             enum E { X(Foo<|>) }
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_at_start_of_item() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            enum E { X(<|>Foo) }
             ",
             "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
         );
@@ -431,6 +455,22 @@ mod tests {
             }
             ",
             "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+        );
+    }
+
+    #[test]
+    fn goto_for_tuple_fields() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo(u32);
+
+            fn bar() {
+                let foo = Foo(0);
+                foo.<|>0;
+            }
+            ",
+            "TUPLE_FIELD_DEF FileId(1) [11; 14)",
         );
     }
 
