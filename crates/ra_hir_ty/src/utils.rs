@@ -10,10 +10,8 @@ use hir_def::{
     type_ref::TypeRef,
     ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId, VariantId,
 };
-use hir_expand::name::{self, Name};
+use hir_expand::name::{name, Name};
 
-// FIXME: this is wrong, b/c it can't express `trait T: PartialEq<()>`.
-// We should return a `TraitREf` here.
 fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
     // returning the iterator directly doesn't easily work because of
@@ -24,7 +22,7 @@ fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
         .where_predicates
         .iter()
         .filter_map(|pred| match &pred.type_ref {
-            TypeRef::Path(p) if p.as_ident() == Some(&name::SELF_TYPE) => pred.bound.as_path(),
+            TypeRef::Path(p) if p.as_ident() == Some(&name![Self]) => pred.bound.as_path(),
             _ => None,
         })
         .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path) {

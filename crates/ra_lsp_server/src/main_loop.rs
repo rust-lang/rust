@@ -67,6 +67,7 @@ pub fn main_loop(
                 let workspace = ra_project_model::ProjectWorkspace::discover_with_sysroot(
                     ws_root.as_path(),
                     config.with_sysroot,
+                    &config.cargo_features,
                 );
                 match workspace {
                     Ok(workspace) => loaded_workspaces.push(workspace),

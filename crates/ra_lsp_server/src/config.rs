@@ -9,6 +9,7 @@
 
 use rustc_hash::FxHashMap;
 
+use ra_project_model::CargoFeatures;
 use serde::{Deserialize, Deserializer};
 
 /// Client provided initialization options
@@ -37,6 +38,9 @@ pub struct ServerConfig {
 
     /// Fine grained feature flags to disable specific features.
     pub feature_flags: FxHashMap<String, bool>,
+
+    /// Cargo feature configurations.
+    pub cargo_features: CargoFeatures,
 }
 
 impl Default for ServerConfig {
@@ -49,6 +53,7 @@ impl Default for ServerConfig {
             max_inlay_hint_length: None,
             with_sysroot: true,
             feature_flags: FxHashMap::default(),
+            cargo_features: Default::default(),
         }
     }
 }

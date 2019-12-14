@@ -1,7 +1,7 @@
 //! This module provides the built-in trait implementations, e.g. to make
 //! closures implement `Fn`.
 use hir_def::{expr::Expr, lang_item::LangItemTarget, TraitId, TypeAliasId};
-use hir_expand::name;
+use hir_expand::name::name;
 use ra_db::CrateId;
 
 use super::{AssocTyValue, Impl};
@@ -79,7 +79,7 @@ fn closure_fn_trait_impl_datum(
     // and don't want to return a valid value only to find out later that FnOnce
     // is broken
     let fn_once_trait = get_fn_trait(db, krate, super::FnTrait::FnOnce)?;
-    let _output = db.trait_data(fn_once_trait).associated_type_by_name(&name::OUTPUT_TYPE)?;
+    let _output = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
 
     let num_args: u16 = match &db.body(data.def.into())[data.expr] {
         Expr::Lambda { args, .. } => args.len() as u16,
@@ -137,7 +137,7 @@ fn closure_fn_trait_output_assoc_ty_value(
 
     let output_ty_id = db
         .trait_data(fn_once_trait)
-        .associated_type_by_name(&name::OUTPUT_TYPE)
+        .associated_type_by_name(&name![Output])
         .expect("assoc ty value should not exist");
 
     BuiltinImplAssocTyValueData {

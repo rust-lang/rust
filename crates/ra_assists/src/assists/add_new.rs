@@ -139,43 +139,40 @@ fn find_struct_impl(
 
     let struct_ty = {
         let src = InFile { file_id: ctx.frange.file_id.into(), value: strukt.clone() };
-        hir::Struct::from_source(db, src).unwrap().ty(db)
+        hir::Struct::from_source(db, src)?.ty(db)
     };
 
-    let mut found_new_fn = false;
-
-    let block = module.descendants().filter_map(ast::ImplBlock::cast).find(|impl_blk| {
-        if found_new_fn {
-            return false;
-        }
-
+    let block = module.descendants().filter_map(ast::ImplBlock::cast).find_map(|impl_blk| {
         let src = InFile { file_id: ctx.frange.file_id.into(), value: impl_blk.clone() };
-        let blk = hir::ImplBlock::from_source(db, src).unwrap();
+        let blk = hir::ImplBlock::from_source(db, src)?;
 
         let same_ty = blk.target_ty(db) == struct_ty;
         let not_trait_impl = blk.target_trait(db).is_none();
 
         if !(same_ty && not_trait_impl) {
-            return false;
+            None
+        } else {
+            Some(impl_blk)
         }
-
-        found_new_fn = has_new_fn(impl_blk);
-        true
     });
 
-    if found_new_fn {
-        None
-    } else {
-        Some(block)
+    if let Some(ref impl_blk) = block {
+        if has_new_fn(impl_blk) {
+            return None;
+        }
     }
+
+    Some(block)
 }
 
 fn has_new_fn(imp: &ast::ImplBlock) -> bool {
     if let Some(il) = imp.item_list() {
         for item in il.impl_items() {
             if let ast::ImplItem::FnDef(f) = item {
-                if f.name().unwrap().text().eq_ignore_ascii_case("new") {
-                    return true;
+                if let Some(name) = f.name() {
+                    if name.text().eq_ignore_ascii_case("new") {
+                        return true;
+                    }
                 }
             }
         }

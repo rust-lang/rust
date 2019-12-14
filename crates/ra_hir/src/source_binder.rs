@@ -15,7 +15,7 @@ use hir_def::{
     },
     expr::{ExprId, PatId},
     nameres::ModuleSource,
-    path::known,
+    path::path,
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
     AssocItemId, DefWithBodyId,
 };
@@ -418,7 +418,7 @@ impl SourceAnalyzer {
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
     pub fn impls_future(&self, db: &impl HirDatabase, ty: Type) -> bool {
-        let std_future_path = known::std_future_future();
+        let std_future_path = path![std::future::Future];
 
         let std_future_trait = match self.resolver.resolve_known_trait(db, &std_future_path) {
             Some(it) => it.into(),
