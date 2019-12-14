@@ -191,12 +191,18 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
             if let ty::Dynamic(..) =
                 self.ecx.tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind
             {
-                // Validation has already errored on an invalid vtable pointer so this `assert_ptr`
-                // will never panic.
-                let vtable = mplace.meta.unwrap().assert_ptr();
-                // explitly choose `Immutable` here, since vtables are immutable, even
-                // if the reference of the fat pointer is mutable
-                self.intern_shallow(vtable.alloc_id, Mutability::Not, None)?;
+                // Validation has already errored on an invalid vtable pointer so we can safely not
+                // do anything if this is not a real pointer
+                if let Scalar::Ptr(vtable) = mplace.meta.unwrap() {
+                    // explitly choose `Immutable` here, since vtables are immutable, even
+                    // if the reference of the fat pointer is mutable
+                    self.intern_shallow(vtable.alloc_id, Mutability::Not, None)?;
+                } else {
+                    self.ecx().tcx.sess.delay_span_bug(
+                        syntax_pos::DUMMY_SP,
+                        "vtables pointers cannot be integer pointers",
+                    );
+                }
             }
             // Check if we have encountered this pointer+layout combination before.
             // Only recurse for allocation-backed pointers.
