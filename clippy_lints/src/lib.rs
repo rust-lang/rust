@@ -1000,6 +1000,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
     let array_size_threshold = conf.array_size_threshold;
     store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
+    store.register_late_pass(move || box floating_point_arithmetic::FloatingPointArithmetic);
     store.register_early_pass(|| box as_conversions::AsConversions);
     store.register_early_pass(|| box utils::internal_lints::ProduceIce);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
@@ -1648,6 +1649,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(&attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
+        LintId::of(&floating_point_arithmetic::INACCURATE_FLOATING_POINT_COMPUTATION),
+        LintId::of(&floating_point_arithmetic::SLOW_FLOATING_POINT_COMPUTATION),
         LintId::of(&missing_const_for_fn::MISSING_CONST_FOR_FN),
         LintId::of(&mul_add::MANUAL_MUL_ADD),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
