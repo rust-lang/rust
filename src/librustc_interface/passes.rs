@@ -189,7 +189,7 @@ pub fn register_plugins<'a>(
     }
 
     sess.time("recursion_limit", || {
-        middle::recursion_limit::update_limits(sess, &krate);
+        middle::limits::update_limits(sess, &krate);
     });
 
     let mut lint_store = rustc_lint::new_lint_store(

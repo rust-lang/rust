@@ -1,6 +1,5 @@
-// run-pass
-#![feature(const_limit)]
-#![const_limit="18_446_744_073_709_551_615"]
+#![const_eval_limit="42"]
+//~^ ERROR the `#[const_eval_limit]` attribute is an experimental feature [E0658]
 
 const CONSTANT: usize = limit();
 

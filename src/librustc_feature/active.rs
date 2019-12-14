@@ -533,7 +533,7 @@ declare_features! (
     (active, const_mut_refs, "1.41.0", Some(57349), None),
 
     // Allows limiting the evaluation steps of const expressions
-    (active, const_limit, "1.41.0", Some(67217), None),
+    (active, const_eval_limit, "1.41.0", Some(67217), None),
 
     /// Allows the use of `loop` and `while` in constants.
     (active, const_loop, "1.41.0", Some(52000), None),

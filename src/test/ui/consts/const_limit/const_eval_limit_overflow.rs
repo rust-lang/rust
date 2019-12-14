@@ -1,6 +1,6 @@
-// run-pass
-#![feature(const_limit)]
-#![const_limit="1000"]
+// check-pass
+#![feature(const_eval_limit)]
+#![const_eval_limit="18_446_744_073_709_551_615"]
 
 const CONSTANT: usize = limit();
 

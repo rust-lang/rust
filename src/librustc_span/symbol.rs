@@ -208,7 +208,7 @@ symbols! {
         console,
         const_compare_raw_pointers,
         const_constructor,
-        const_limit,
+        const_eval_limit,
         const_extern_fn,
         const_fn,
         const_fn_union,

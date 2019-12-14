@@ -89,7 +89,7 @@ pub struct Session {
     pub type_length_limit: Once<usize>,
 
     /// The maximum blocks a const expression can evaluate.
-    pub const_limit: Once<usize>,
+    pub const_eval_limit: Once<usize>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -1056,7 +1056,7 @@ fn build_session_(
         features: Once::new(),
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
-        const_limit: Once::new(),
+        const_eval_limit: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,

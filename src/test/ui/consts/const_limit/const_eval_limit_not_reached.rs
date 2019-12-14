@@ -1,5 +1,6 @@
-#![const_limit="1"]
-//~^ ERROR the `#[const_limit]` attribute is an experimental feature [E0658]
+// check-pass
+#![feature(const_eval_limit)]
+#![const_eval_limit="1000"]
 
 const CONSTANT: usize = limit();
 
