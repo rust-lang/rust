@@ -423,6 +423,33 @@
                 }
             },
             {
+                "id": "ralsp.literal.numeric",
+                "description": "Color for numeric literals",
+                "defaults": {
+                    "dark": "#BECEA8",
+                    "light": "#09885A",
+                    "highContrast": "#B5CEA8"
+                }
+            },
+            {
+                "id": "ralsp.literal.char",
+                "description": "Color for character literals",
+                "defaults": {
+                    "dark": "#BECEA8",
+                    "light": "#09885A",
+                    "highContrast": "#B5CEA8"
+                }
+            },
+            {
+                "id": "ralsp.literal.byte",
+                "description": "Color for byte literals",
+                "defaults": {
+                    "dark": "#BECEA8",
+                    "light": "#09885A",
+                    "highContrast": "#B5CEA8"
+                }
+            },
+            {
                 "id": "ralsp.macro",
                 "description": "Color for macros",
                 "defaults": {
@@ -442,7 +469,34 @@
             },
             {
                 "id": "ralsp.type",
-                "description": "Color for types",
+                "description": "Color for other types (traits, aliases..)",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.type.builtin",
+                "description": "Color for built-in types (&str, bool, u16, u32)",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.type.self",
+                "description": "Color for `Self` param type",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.type.param",
+                "description": "Color for type parameters",
                 "defaults": {
                     "dark": "#4EC9B0",
                     "light": "#267F99",
