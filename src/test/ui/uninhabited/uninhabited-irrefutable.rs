@@ -1,3 +1,4 @@
+#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 
 mod foo {

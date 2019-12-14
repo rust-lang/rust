@@ -4,6 +4,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::convert::Infallible;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
@@ -5032,8 +5033,18 @@ impl fmt::Display for TryFromIntError {
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
+impl From<Infallible> for TryFromIntError {
+    fn from(x: Infallible) -> TryFromIntError {
+        match x {}
+    }
+}
+
+#[unstable(feature = "never_type", issue = "35121")]
 impl From<!> for TryFromIntError {
     fn from(never: !) -> TryFromIntError {
+        // Match rather than coerce to make sure that code like
+        // `From<Infallible> for TryFromIntError` above will keep working
+        // when `Infallible` becomes an alias to `!`.
         match never {}
     }
 }

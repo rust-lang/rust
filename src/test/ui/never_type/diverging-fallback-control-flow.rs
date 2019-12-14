@@ -11,7 +11,7 @@
 // These represent current behavior, but are pretty dubious.  I would
 // like to revisit these and potentially change them. --nmatsakis
 
-#![feature(never_type_fallback)]
+#![feature(never_type, never_type_fallback)]
 
 trait BadDefault {
     fn default() -> Self;

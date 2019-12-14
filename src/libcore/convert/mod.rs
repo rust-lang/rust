@@ -40,6 +40,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::fmt;
+
 mod num;
 
 #[unstable(feature = "convert_float_to_int", issue = "67057")]
@@ -430,7 +432,9 @@ pub trait TryInto<T>: Sized {
 /// - `TryFrom<T> for U` implies [`TryInto`]`<U> for T`
 /// - [`try_from`] is reflexive, which means that `TryFrom<T> for T`
 /// is implemented and cannot fail -- the associated `Error` type for
-/// calling `T::try_from()` on a value of type `T` is [`!`].
+/// calling `T::try_from()` on a value of type `T` is [`Infallible`].
+/// When the [`!`] type is stabilized [`Infallible`] and [`!`] will be
+/// equivalent.
 ///
 /// `TryFrom<T>` can be implemented as follows:
 ///
@@ -479,6 +483,7 @@ pub trait TryInto<T>: Sized {
 /// [`TryInto`]: trait.TryInto.html
 /// [`i32::MAX`]: ../../std/i32/constant.MAX.html
 /// [`!`]: ../../std/primitive.never.html
+/// [`Infallible`]: enum.Infallible.html
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
@@ -634,9 +639,9 @@ impl AsRef<str> for str {
 // THE NO-ERROR ERROR TYPE
 ////////////////////////////////////////////////////////////////////////////////
 
-/// A type alias for [the `!` “never” type][never].
+/// The error type for errors that can never happen.
 ///
-/// `Infallible` represents types of errors that can never happen since `!` has no valid values.
+/// Since this enum has no variant, a value of this type can never actually exist.
 /// This can be useful for generic APIs that use [`Result`] and parameterize the error type,
 /// to indicate that the result is always [`Ok`].
 ///
@@ -653,10 +658,33 @@ impl AsRef<str> for str {
 /// }
 /// ```
 ///
-/// # Eventual deprecation
+/// # Future compatibility
 ///
-/// Previously, `Infallible` was defined as `enum Infallible {}`.
-/// Now that it is merely a type alias to `!`, we will eventually deprecate `Infallible`.
+/// This enum has the same role as [the `!` “never” type][never],
+/// which is unstable in this version of Rust.
+/// When `!` is stabilized, we plan to make `Infallible` a type alias to it:
+///
+/// ```ignore (illustrates future std change)
+/// pub type Infallible = !;
+/// ```
+///
+/// … and eventually deprecate `Infallible`.
+///
+///
+/// However there is one case where `!` syntax can be used
+/// before `!` is stabilized as a full-fleged type: in the position of a function’s return type.
+/// Specifically, it is possible implementations for two different function pointer types:
+///
+/// ```
+/// trait MyTrait {}
+/// impl MyTrait for fn() -> ! {}
+/// impl MyTrait for fn() -> std::convert::Infallible {}
+/// ```
+///
+/// With `Infallible` being an enum, this code is valid.
+/// However when `Infallible` becomes an alias for the never type,
+/// the two `impl`s will start to overlap
+/// and therefore will be disallowed by the language’s trait coherence rules.
 ///
 /// [`Ok`]: ../result/enum.Result.html#variant.Ok
 /// [`Result`]: ../result/enum.Result.html
@@ -664,4 +692,57 @@ impl AsRef<str> for str {
 /// [`Into`]: trait.Into.html
 /// [never]: ../../std/primitive.never.html
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-pub type Infallible = !;
+#[derive(Copy)]
+pub enum Infallible {}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl Clone for Infallible {
+    fn clone(&self) -> Infallible {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl fmt::Debug for Infallible {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl fmt::Display for Infallible {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl PartialEq for Infallible {
+    fn eq(&self, _: &Infallible) -> bool {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl Eq for Infallible {}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl PartialOrd for Infallible {
+    fn partial_cmp(&self, _other: &Self) -> Option<crate::cmp::Ordering> {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl Ord for Infallible {
+    fn cmp(&self, _other: &Self) -> crate::cmp::Ordering {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl From<!> for Infallible {
+    fn from(x: !) -> Self {
+        x
+    }
+}

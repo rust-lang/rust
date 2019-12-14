@@ -1,6 +1,7 @@
 // run-pass
 
 #![allow(unreachable_code)]
+#![feature(never_type)]
 
 #[allow(unused)]
 fn never_returns() {

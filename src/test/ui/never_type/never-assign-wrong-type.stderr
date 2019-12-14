@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/never-assign-wrong-type.rs:6:16
+  --> $DIR/never-assign-wrong-type.rs:7:16
    |
 LL |     let x: ! = "hello";
    |            -   ^^^^^^^ expected `!`, found `&str`

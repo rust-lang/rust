@@ -3,6 +3,7 @@
 // This test checks that instantiating an uninhabited type via `mem::{uninitialized,zeroed}` results
 // in a runtime panic.
 
+#![feature(never_type)]
 #![allow(deprecated, invalid_value)]
 
 use std::{mem, panic};

@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedEnum` is non-empty
-  --> $DIR/indirect_match_same_crate.rs:32:11
+  --> $DIR/indirect_match_same_crate.rs:34:11
    |
 LL | pub struct IndirectUninhabitedEnum(UninhabitedEnum);
    | ---------------------------------------------------- `IndirectUninhabitedEnum` defined here
@@ -10,7 +10,7 @@ LL |     match x {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedStruct` is non-empty
-  --> $DIR/indirect_match_same_crate.rs:36:11
+  --> $DIR/indirect_match_same_crate.rs:38:11
    |
 LL | pub struct IndirectUninhabitedStruct(UninhabitedStruct);
    | -------------------------------------------------------- `IndirectUninhabitedStruct` defined here
@@ -21,7 +21,7 @@ LL |     match x {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedTupleStruct` is non-empty
-  --> $DIR/indirect_match_same_crate.rs:40:11
+  --> $DIR/indirect_match_same_crate.rs:42:11
    |
 LL | pub struct IndirectUninhabitedTupleStruct(UninhabitedTupleStruct);
    | ------------------------------------------------------------------ `IndirectUninhabitedTupleStruct` defined here
@@ -32,7 +32,7 @@ LL |     match x {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedVariants` is non-empty
-  --> $DIR/indirect_match_same_crate.rs:46:11
+  --> $DIR/indirect_match_same_crate.rs:48:11
    |
 LL | pub struct IndirectUninhabitedVariants(UninhabitedVariants);
    | ------------------------------------------------------------ `IndirectUninhabitedVariants` defined here

@@ -303,6 +303,9 @@ declare_features! (
     /// Allows `X..Y` patterns.
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
 
+    /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
+    (active, never_type, "1.13.0", Some(35121), None),
+
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", Some(51085), None),
 

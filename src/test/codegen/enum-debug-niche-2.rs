@@ -12,6 +12,8 @@
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "Placeholder",{{.*}}extraData: i64 4294967295{{[,)].*}}
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "Error",{{.*}}extraData: i64 0{{[,)].*}}
 
+#![feature(never_type)]
+
 #[derive(Copy, Clone)]
 pub struct Entity {
     private: std::num::NonZeroU32,
