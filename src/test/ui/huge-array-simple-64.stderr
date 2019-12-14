@@ -1,5 +1,5 @@
 error: the type `[u8; 2305843011361177600]` is too big for the current architecture
-  --> $DIR/huge-array-simple-64.rs:9:9
+  --> $DIR/huge-array-simple-64.rs:10:9
    |
 LL |     let _fat: [u8; (1<<61)+(1<<31)] =
    |         ^^^^

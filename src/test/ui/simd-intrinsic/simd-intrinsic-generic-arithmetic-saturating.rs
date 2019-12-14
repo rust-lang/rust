@@ -1,3 +1,4 @@
+// build-fail
 // ignore-emscripten
 // ignore-tidy-linelength
 #![feature(repr_simd, platform_intrinsics)]

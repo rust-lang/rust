@@ -1,3 +1,5 @@
+// build-fail
+
 #![feature(repr_simd, platform_intrinsics)]
 #![allow(non_camel_case_types)]
 #[repr(simd)]

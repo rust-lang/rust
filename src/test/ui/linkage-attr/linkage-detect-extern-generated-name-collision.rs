@@ -2,6 +2,7 @@
 // collision on the symbol generated for the external linkage item in
 // an extern crate.
 
+// build-fail
 // aux-build:def_colliding_external.rs
 
 extern crate def_colliding_external as dep1;

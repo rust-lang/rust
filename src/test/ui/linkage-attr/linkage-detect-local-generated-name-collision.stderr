@@ -1,5 +1,5 @@
 error: symbol `collision` is already defined
-  --> $DIR/linkage-detect-local-generated-name-collision.rs:7:9
+  --> $DIR/linkage-detect-local-generated-name-collision.rs:9:9
    |
 LL |         pub static collision: *const i32;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,6 +1,6 @@
 // ignore-tidy-filelength
 
-use crate::common::{CompareMode, PassMode};
+use crate::common::{CompareMode, PassMode, FailMode};
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
@@ -333,17 +333,16 @@ impl<'test> TestCx<'test> {
     }
 
     fn should_run(&self) -> bool {
-        let pass_mode = self.pass_mode();
         match self.config.mode {
-            Ui => pass_mode == Some(PassMode::Run) || pass_mode == Some(PassMode::RunFail),
+            Ui => self.pass_mode() == Some(PassMode::Run)
+                || self.props.fail_mode == Some(FailMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
 
     fn should_run_successfully(&self) -> bool {
-        let pass_mode = self.pass_mode();
         match self.config.mode {
-            Ui => pass_mode == Some(PassMode::Run),
+            Ui => self.pass_mode() == Some(PassMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
@@ -352,7 +351,7 @@ impl<'test> TestCx<'test> {
         match self.config.mode {
             CompileFail => false,
             JsDocTest => true,
-            Ui => self.pass_mode().is_some(),
+            Ui => self.pass_mode().is_some() || self.props.fail_mode > Some(FailMode::Build),
             Incremental => {
                 let revision = self.revision
                     .expect("incremental tests require a list of revisions");
@@ -1377,7 +1376,7 @@ impl<'test> TestCx<'test> {
     fn check_error_patterns(&self, output_to_check: &str, proc_res: &ProcRes) {
         debug!("check_error_patterns");
         if self.props.error_patterns.is_empty() {
-            if self.pass_mode().is_some() {
+            if self.props.fail_mode != Some(FailMode::Run) {
                 return;
             } else {
                 self.fatal(&format!(
@@ -2029,7 +2028,9 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        if let Some(PassMode::Check) = self.pass_mode() {
+        if let (Some(PassMode::Check), ..) | (_, Some(FailMode::Check), Ui)
+            = (self.pass_mode(), self.props.fail_mode, self.config.mode)
+        {
             rustc.args(&["--emit", "metadata"]);
         }
 

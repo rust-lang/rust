@@ -1,3 +1,5 @@
+// build-fail
+
 trait Mirror {
     type Image;
 }

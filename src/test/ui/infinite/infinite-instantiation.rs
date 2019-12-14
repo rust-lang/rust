@@ -4,6 +4,8 @@
 // so for now just live with it.
 // This test case was originally for issue #2258.
 
+// build-fail
+
 trait ToOpt: Sized {
     fn to_option(&self) -> Option<Self>;
 }

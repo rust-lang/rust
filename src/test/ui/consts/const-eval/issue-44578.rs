@@ -1,3 +1,5 @@
+// build-fail
+
 #![allow(const_err)]
 
 trait Foo {

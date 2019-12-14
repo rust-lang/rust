@@ -1,3 +1,5 @@
+// build-fail
+
 #![feature(core_intrinsics)]
 #![allow(warnings)]
 #![crate_type = "rlib"]

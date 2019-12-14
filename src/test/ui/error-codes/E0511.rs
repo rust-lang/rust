@@ -1,3 +1,5 @@
+// build-fail
+
 #![feature(platform_intrinsics)]
 
 extern "platform-intrinsic" {

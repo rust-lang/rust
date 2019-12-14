@@ -1,3 +1,4 @@
+// build-fail
 // ignore-x86 FIXME: missing sysroot spans (#53081)
 // error-pattern: reached the type-length limit while instantiating
 

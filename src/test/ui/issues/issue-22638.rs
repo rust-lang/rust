@@ -1,3 +1,4 @@
+// build-fail
 // normalize-stderr-test: "<\[closure@.+`" -> "$$CLOSURE`"
 
 #![allow(unused)]
