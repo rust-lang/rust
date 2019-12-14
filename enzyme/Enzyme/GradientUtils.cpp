@@ -233,7 +233,16 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, T
     //    llvm::errs() <<"   + " << *a << "\n";
     //}
     //llvm::errs() <<  "end returnvals:\n";
-    auto res = new GradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, returnvals, originalToNew);
+    SmallPtrSet<Value*,4> constant_values;
+    SmallPtrSet<Value*,4> nonconstant_values;
+    for(auto a : returnvals) {
+        if (differentialReturn) {
+            nonconstant_values.insert(a);
+        } else {
+            constant_values.insert(a);
+        }
+    }
+    auto res = new GradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
     return res;
 }
 
@@ -245,7 +254,16 @@ DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(Function *todiff, AAResu
   SmallPtrSet<Value*,2> returnvals;
   ValueToValueMapTy originalToNew;
   auto newFunc = CloneFunctionWithReturns(todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, returnValue, differentialReturn, "diffe"+todiff->getName(), &originalToNew, /*diffeReturnArg*/true, additionalArg);
-  auto res = new DiffeGradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, returnvals, originalToNew);
+    SmallPtrSet<Value*,4> constant_values;
+    SmallPtrSet<Value*,4> nonconstant_values;
+    for(auto a : returnvals) {
+        if (differentialReturn) {
+            nonconstant_values.insert(a);
+        } else {
+            constant_values.insert(a);
+        }
+    }
+  auto res = new DiffeGradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
   return res;
 }
 
@@ -323,6 +341,27 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     } else if (auto arg = dyn_cast<InsertValueInst>(val)) {
       IRBuilder<> bb(arg);
       auto result = bb.CreateInsertValue(invertPointerM(arg->getOperand(0), bb), invertPointerM(arg->getOperand(1), bb), arg->getIndices(), arg->getName()+"'ipiv");
+      invertedPointers[arg] = result;
+      return lookupM(invertedPointers[arg], BuilderM);
+    } else if (auto arg = dyn_cast<ExtractElementInst>(val)) {
+      IRBuilder<> bb(arg);
+      auto result = bb.CreateExtractElement(invertPointerM(arg->getVectorOperand(), bb), arg->getIndexOperand(), arg->getName()+"'ipee");
+      invertedPointers[arg] = result;
+      return lookupM(invertedPointers[arg], BuilderM);
+    } else if (auto arg = dyn_cast<InsertElementInst>(val)) {
+      IRBuilder<> bb(arg);
+      if (isConstantValue(arg->getOperand(0)) && isConstantValue(arg->getOperand(1))) {
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *arg->getOperand(0) << "\n";
+        llvm::errs() << *arg->getOperand(1) << "\n";
+        llvm::errs() << *arg << "\n";
+      }
+
+      assert(!isConstantValue(arg->getOperand(0)) || !isConstantValue(arg->getOperand(1)));
+      Value* insertinto = isConstantValue(arg->getOperand(0)) ? arg->getOperand(0) : invertPointerM(arg->getOperand(0), bb);
+      Value* toinsert = isConstantValue(arg->getOperand(1)) ? arg->getOperand(1) : invertPointerM(arg->getOperand(1), bb);
+      auto result = bb.CreateInsertElement(insertinto, toinsert, arg->getOperand(2), arg->getName()+"'ipie");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<SelectInst>(val)) {

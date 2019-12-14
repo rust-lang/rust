@@ -58,7 +58,11 @@ bool isKnownIntegerTBAA(Instruction* inst) {
             llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
           //llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
 		  return true; 
-	    }
+	    } else {
+          //if (printconst)
+          //  llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
+
+        }
 	  }
 	}
   }
@@ -666,6 +670,7 @@ Type* isIntPointerASecretFloat(Value* val) {
     if (!pointerUse && (floatingUse != nullptr)) return floatingUse;
 
     if (auto inst = dyn_cast<Instruction>(val)) {
+        llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
         llvm::errs() << *inst->getParent()->getParent() << "\n";
     }
     if (floatingUse)
@@ -722,7 +727,7 @@ std::size_t operator()(const tuple<A, B, C, D>& k) const
 }
 */
 
-bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, const SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, int directions) {
+bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, const SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, int directions) {
     Function* F = CI->getCalledFunction();
     if (F == nullptr) return false;
     
@@ -750,9 +755,9 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     assert(retvals.find(val) == retvals.end());
 
     //static std::unordered_map<std::tuple<Function*, Value*, SmallPtrSet<Value*,20>, std::set<Value*> >, bool> metacache;
-    static std::map<std::tuple<CallInst*, Value*, std::set<Value*>, std::set<Value*>, std::set<Value*> >, bool> metacache;
+    static std::map<std::tuple<CallInst*, Value*, std::set<Value*>, std::set<Value*>, std::set<Value*>, std::set<Value*> >, bool> metacache;
     //auto metatuple = std::make_tuple(F, val, SmallPtrSet<Value*,20>(constants.begin(), constants.end()), std::set<Value*>(nonconstant.begin(), nonconstant.end()));
-    auto metatuple = std::make_tuple(CI, val, std::set<Value*>(constants.begin(), constants.end()), std::set<Value*>(nonconstant.begin(), nonconstant.end()), std::set<Value*>(retvals.begin(), retvals.end()));
+    auto metatuple = std::make_tuple(CI, val, std::set<Value*>(constants.begin(), constants.end()), std::set<Value*>(nonconstant.begin(), nonconstant.end()), std::set<Value*>(constantvals.begin(), constantvals.end()), std::set<Value*>(retvals.begin(), retvals.end()));
     if (metacache.find(metatuple) != metacache.end()) {
 		if (printconst)
         llvm::errs() << " < SUBFN metacache const " << F->getName() << "> arg: " << *val << " ci:" << *CI << "\n";
@@ -770,6 +775,8 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     constants2.insert(constants.begin(), constants.end());
     SmallPtrSet<Value*, 20> nonconstant2;
     nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+    SmallPtrSet<Value*, 20> constantvals2;
+    constantvals2.insert(constantvals.begin(), constantvals.end());
     SmallPtrSet<Value*, 20> retvals2;
     retvals2.insert(retvals.begin(), retvals.end());
 
@@ -802,7 +809,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
             continue;
         }
 
-        if (isconstantValueM(CI->getArgOperand(i), constants2, nonconstant2, retvals2, originalInstructions), directions) {
+        if (isconstantValueM(CI->getArgOperand(i), constants2, nonconstant2, constantvals2, retvals2, originalInstructions), directions) {
             newconstants.insert(a);
             arg_constants.insert(i);
         } else {
@@ -815,7 +822,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     
     //allow return index as valid entry as well
     if (CI != val) {
-        constret = isconstantValueM(CI, constants2, nonconstant2, retvals2, originalInstructions, directions);
+        constret = isconstantValueM(CI, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions);
         if (constret) arg_constants.insert(-1);
     } else {
         constret = false;
@@ -843,14 +850,21 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     //cache[tuple] = false;
     
     SmallPtrSet<Instruction*,4> newinsts;
+    
+    SmallPtrSet<Value*,4> newconstantvals;
+	newconstantvals.insert(constantvals2.begin(), constantvals2.end());
+    
     SmallPtrSet<Value*,4> newretvals;
 	newretvals.insert(retvals2.begin(), retvals2.end());
+
     for (llvm::inst_iterator I = llvm::inst_begin(F), E = llvm::inst_end(F); I != E; ++I) {
         newinsts.insert(&*I);
-        if (!constret) {
-            if (auto ri = dyn_cast<ReturnInst>(&*I)) {
+        if (auto ri = dyn_cast<ReturnInst>(&*I)) {
+            if (!constret) {
                 newretvals.insert(ri->getReturnValue());
                 if (CI == val) arg_findifactive.insert(ri->getReturnValue());
+            } else {
+                //newconstantvals.insert(ri->getReturnValue());
             }
         }
     }
@@ -860,7 +874,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
         for(auto user : specialarg->users()) {
 			if (printconst)
 			llvm::errs() << " going to consider user " << *user << "\n";
-            if (!isconstantValueM(user, newconstants, newnonconstant, newretvals, newinsts, 3)) {
+            if (!isconstantValueM(user, newconstants, newnonconstant, newconstantvals, newretvals, newinsts, 3)) {
                 if (printconst)
                     llvm::errs() << " < SUBFN nonconst " << F->getName() << "> arg: " << *val << " ci:" << *CI << "  from sf: " << *user << "\n";
 				metacache.erase(metatuple);
@@ -881,7 +895,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
 
 // TODO separate if the instruction is constant (i.e. could change things)
 //    from if the value is constant (the value is something that could be differentiated)
-bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, uint8_t directions) {
+bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, uint8_t directions) {
     assert(inst);
 	constexpr uint8_t UP = 1;
 	constexpr uint8_t DOWN = 2;
@@ -985,14 +999,36 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
     if (printconst)
 	  llvm::errs() << "checking if is constant[" << (int)directions << "] " << *inst << "\n";
     
+    // For specific instructions, if for some reason or another we know that the value is a constant, this pointer instruction must be constant, indepedent of whether it could be memory or not
+    if (constantvals.find(inst) != constantvals.end() && UP) {
+        if (isa<CastInst>(inst) || isa<PHINode>(inst) || isa<SelectInst>(inst)) {
+            if (printconst)
+              llvm::errs() << "constant value becomes constant instruction " << *inst << "\n";
+            constants.insert(inst);
+            return true;
+        }
+    }
+    
 	SmallPtrSet<Value*, 20> constants_tmp;
+	SmallPtrSet<Value*, 20> constantvals_tmp;
 
-    if (inst->getType()->isPointerTy() || (inst->getType()->isIntegerTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer) == IntType::Pointer) ) {
+    //Handle types that could contain pointers
+    //  Consider all types except
+    //   * floating point types (since those are assumed not pointers)
+    //   * integers that we know are not pointers
+    bool containsPointer = true;
+    if (inst->getType()->isFPOrFPVectorTy()) containsPointer = false;
+    if (inst->getType()->isIntegerTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer) != IntType::Pointer) containsPointer = false;
+
+    if (containsPointer) {
+
 		//Proceed assuming this is constant, can we prove this should be constant otherwise
 		SmallPtrSet<Value*, 20> constants2;
 		constants2.insert(constants.begin(), constants.end());
 		SmallPtrSet<Value*, 20> nonconstant2;
 		nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+		SmallPtrSet<Value*, 20> constantvals2;
+		constantvals2.insert(constantvals.begin(), constantvals.end());
 		SmallPtrSet<Value*, 20> retvals2;
 		retvals2.insert(retvals.begin(), retvals.end());
 		constants2.insert(inst);
@@ -1000,17 +1036,30 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		if (printconst)
 			llvm::errs() << " < MEMSEARCH" << (int)directions << ">" << *inst << "\n";
 
+
+        //This pointer is returned (or value is nonconstant other places) and nonconstant, be conservative and assume it is used in a nonconstant instruction
+        //  This check is only necessary when considering a pointer returned as this should be deduced as nonconstant elsewhere otherwise
+        if (retvals.find(inst) != retvals.end()) {
+            if (directions == 3)
+              nonconstant.insert(inst);
+            if (printconst)
+              llvm::errs() << "memory(" << (int)directions << ")  ret: " << *inst << "\n";
+            return false;
+        }
+
         {
 		SmallPtrSet<Value*, 20> constants2;
 		constants2.insert(constants.begin(), constants.end());
 		SmallPtrSet<Value*, 20> nonconstant2;
 		nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+		SmallPtrSet<Value*, 20> constantvals2;
+		constantvals2.insert(constantvals.begin(), constantvals.end());
 		SmallPtrSet<Value*, 20> retvals2;
 		retvals2.insert(retvals.begin(), retvals.end());
 		nonconstant2.insert(inst);
 		for (const auto &a:inst->users()) {
 		  if (isa<LoadInst>(a)) {
-		      if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+		      if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1026,14 +1075,14 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		for (const auto &a:inst->users()) {
 		  if(auto store = dyn_cast<StoreInst>(a)) {
 
-			if (inst == store->getPointerOperand() && !isconstantValueM(store->getValueOperand(), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+			if (inst == store->getPointerOperand() && !isconstantValueM(store->getValueOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
 				  llvm::errs() << "memory(" << (int)directions << ")  erase 1: " << *inst << "\n";
 				return false;
 			}
-			if (inst == store->getValueOperand() && !isconstantValueM(store->getPointerOperand(), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+			if (inst == store->getValueOperand() && !isconstantValueM(store->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1042,7 +1091,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 			}
 		  } else if (isa<LoadInst>(a)) {
               /*
-		      if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+		      if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1052,7 +1101,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
               */
               continue;
           } else if (auto ci = dyn_cast<CallInst>(a)) {
-			if (!isconstantM(ci, constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+			if (!isconstantM(ci, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1060,7 +1109,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 				return false;
 			}
           } else {
-			if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+			if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1075,6 +1124,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 			llvm::errs() << " </MEMSEARCH" << (int)directions << ">" << *inst << "\n";
 		
         constants_tmp.insert(constants2.begin(), constants2.end());
+        constantvals_tmp.insert(constantvals2.begin(), constantvals2.end());
 	}
     
     {
@@ -1082,6 +1132,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 	constants2.insert(constants.begin(), constants.end());
 	SmallPtrSet<Value*, 20> nonconstant2;
 	nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+	SmallPtrSet<Value*, 20> constantvals2;
+	constantvals2.insert(constantvals.begin(), constantvals.end());
 	SmallPtrSet<Value*, 20> retvals2;
 	retvals2.insert(retvals.begin(), retvals.end());
 	constants2.insert(inst);
@@ -1091,10 +1143,12 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		    llvm::errs() << " < UPSEARCH" << (int)directions << ">" << *inst << "\n";
 
         if (auto gep = dyn_cast<GetElementPtrInst>(inst)) {
-            if (isconstantValueM(gep->getPointerOperand(), constants2, nonconstant2, retvals2, originalInstructions, UP)) {
+            if (isconstantValueM(gep->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, UP)) {
                 constants.insert(inst);
                 constants.insert(constants2.begin(), constants2.end());
                 constants.insert(constants_tmp.begin(), constants_tmp.end());
+                constantvals.insert(constantvals2.begin(), constantvals2.end());
+                constantvals.insert(constantvals_tmp.begin(), constantvals_tmp.end());
                 if (printconst)
                   llvm::errs() << "constant(" << (int)directions << ") up-gep " << *inst << "\n";
                 return true;
@@ -1105,7 +1159,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
              
             if (!seenuse) {
             for(auto& a: ci->arg_operands()) {
-                if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, UP)) {
+                if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, UP)) {
                     seenuse = true;
                     if (printconst)
                       llvm::errs() << "nonconstant(" << (int)directions << ")  up-call " << *inst << " op " << *a << "\n";
@@ -1130,6 +1184,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                 constants.insert(inst);
                 constants.insert(constants2.begin(), constants2.end());
                 constants.insert(constants_tmp.begin(), constants_tmp.end());
+                constantvals.insert(constantvals2.begin(), constantvals2.end());
+                constantvals.insert(constantvals_tmp.begin(), constantvals_tmp.end());
                 //constants.insert(constants_tmp.begin(), constants_tmp.end());
                 //if (directions == 3)
                 //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
@@ -1142,14 +1198,18 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
             constants2.insert(constants.begin(), constants.end());
             SmallPtrSet<Value*, 20> nonconstant2;
             nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+            SmallPtrSet<Value*, 20> constantvals2;
+            constantvals2.insert(constantvals.begin(), constantvals.end());
             SmallPtrSet<Value*, 20> retvals2;
             retvals2.insert(retvals.begin(), retvals.end());
             constants2.insert(inst);
 
-            if (isconstantValueM(si->getPointerOperand(), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+            if (isconstantValueM(si->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
                 constants.insert(inst);
                 constants.insert(constants2.begin(), constants2.end());
                 constants.insert(constants_tmp.begin(), constants_tmp.end());
+                constantvals.insert(constantvals2.begin(), constantvals2.end());
+                constantvals.insert(constantvals_tmp.begin(), constantvals_tmp.end());
                 // Note: not adding nonconstant here since if had full updown might not have been nonconstant
 
                 if (printconst)
@@ -1159,7 +1219,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
             }
 
             /* TODO consider stores of constant values 
-            if (isconstantValueM(si->getValueOperand(), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+            if (isconstantValueM(si->getValueOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
                 constants.insert(inst);
                 constants.insert(constants2.begin(), constants2.end());
                 constants.insert(constants_tmp.begin(), constants_tmp.end());
@@ -1175,7 +1235,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
             bool seenuse = false;
 
             for(auto& a: inst->operands()) {
-                if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, UP)) {
+                if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, UP)) {
                     //if (directions == 3)
                     //  nonconstant.insert(inst);
                     if (printconst)
@@ -1191,6 +1251,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                 constants.insert(inst);
                 constants.insert(constants2.begin(), constants2.end());
                 constants.insert(constants_tmp.begin(), constants_tmp.end());
+                constantvals.insert(constantvals2.begin(), constantvals2.end());
+                constantvals.insert(constantvals_tmp.begin(), constantvals_tmp.end());
                 //constants.insert(constants_tmp.begin(), constants_tmp.end());
                 //if (directions == 3)
                 //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
@@ -1211,6 +1273,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		constants2.insert(constants.begin(), constants.end());
 		SmallPtrSet<Value*, 20> nonconstant2;
 		nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+		SmallPtrSet<Value*, 20> constantvals2;
+		constantvals2.insert(constantvals.begin(), constantvals.end());
 		SmallPtrSet<Value*, 20> retvals2;
 		retvals2.insert(retvals.begin(), retvals.end());
 		constants2.insert(inst);
@@ -1233,7 +1297,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
             }
 
 			if (auto call = dyn_cast<CallInst>(a)) {
-                if (isFunctionArgumentConstant(call, inst, constants2, nonconstant2, retvals2, originalInstructions, DOWN)) {
+                if (isFunctionArgumentConstant(call, inst, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
                     if (printconst)
 			          llvm::errs() << "found constant(" << (int)directions << ")  callinst use:" << *inst << " user " << *a << "\n";
                     continue;
@@ -1245,7 +1309,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                 }
 			}
 
-		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, retvals2, originalInstructions, DOWN)) {
+		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
     			if (printconst)
 			      llvm::errs() << "nonconstant(" << (int)directions << ") inst (uses):" << *inst << " user " << *a << " " << &seenuse << "\n";
 				seenuse = true;
@@ -1281,7 +1345,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 
 // TODO separate if the instruction is constant (i.e. could change things)
 //    from if the value is constant (the value is something that could be differentiated)
-bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, uint8_t directions) {
+bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, uint8_t directions) {
     assert(val);
 	//constexpr uint8_t UP = 1;
 	constexpr uint8_t DOWN = 2;
@@ -1302,6 +1366,12 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
     if((constants.find(val) != constants.end())) {
         return true;
     }
+    
+    if((constantvals.find(val) != constantvals.end())) {
+        if (printconst)
+		    llvm::errs() << " VALUE const from precomputation " << *val << "\n";
+        return true;
+    }
 
     //All arguments should be marked constant/nonconstant ahead of time
     if (isa<Argument>(val)) {
@@ -1317,45 +1387,50 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
 
     if (auto gi = dyn_cast<GlobalVariable>(val)) {
         if (!hasMetadata(gi, "enzyme_shadow") && nonmarkedglobals_inactive) {
-            constants.insert(val);
+            constantvals.insert(val);
             return true;
         }
         //TODO consider this more
-        if (gi->isConstant() && isconstantValueM(gi->getInitializer(), constants, nonconstant, retvals, originalInstructions, directions)) {
-            constants.insert(val);
+        if (gi->isConstant() && isconstantValueM(gi->getInitializer(), constants, nonconstant, constantvals, retvals, originalInstructions, directions)) {
+            constantvals.insert(val);
             return true;
         }
     }
 
     if (auto ce = dyn_cast<ConstantExpr>(val)) {
         if (ce->isCast()) {
-            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, retvals, originalInstructions, directions)) {
-                constants.insert(val);
+            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, constantvals, retvals, originalInstructions, directions)) {
+                constantvals.insert(val);
                 return true;
             }
         }
         if (ce->isGEPWithNoNotionalOverIndexing()) {
-            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, retvals, originalInstructions, directions)) {
-                constants.insert(val);
+            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, constantvals, retvals, originalInstructions, directions)) {
+                constantvals.insert(val);
                 return true;
             }
         }
     }
     
     if (auto inst = dyn_cast<Instruction>(val)) {
-        if (isconstantM(inst, constants, nonconstant, retvals, originalInstructions, directions)) return true;
+        if (isconstantM(inst, constants, nonconstant, constantvals, retvals, originalInstructions, directions)) {
+            constantvals.insert(val);
+            return true;
+        }
     }
     
     //! This instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
     if (val->getType()->isIntegerTy() && isIntASecretFloat(val, /*default*/IntType::Pointer)==IntType::Integer) {
 		if (printconst)
 			llvm::errs() << " Value const as integral " << (int)directions << " " << *val << "\n";
+        constantvals.insert(val);
         return true;
     }
    
     if ( val->getType()->isFPOrFPVectorTy() && (directions & DOWN) && (retvals.find(val) == retvals.end()) ) { 
 		auto &constants2 = constants;
 		auto &nonconstant2 = nonconstant;
+		auto &constantvals2 = constantvals;
 		auto &retvals2 = retvals;
 
 		if (printconst)
@@ -1375,10 +1450,11 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
                 if (printconst) {
 			        llvm::errs() << "Value found constant gep use:" << *val << " user " << *gep << "\n";
                 }
+                constantvals.insert(val);
 				return true;
 			}
 			if (auto call = dyn_cast<CallInst>(a)) {
-                if (isFunctionArgumentConstant(call, val, constants2, nonconstant2, retvals2, originalInstructions, DOWN)) {
+                if (isFunctionArgumentConstant(call, val, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
                     if (printconst) {
 			          llvm::errs() << "Value found constant callinst use:" << *val << " user " << *call << "\n";
                     }
@@ -1390,11 +1466,12 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
 			     llvm::errs() << "Value found constant allocainst use:" << *val << " user " << *a << "\n";
                }
                assert(val->getType()->isIntegerTy());
+               constantvals.insert(val);
 			   return true;
                //continue;
             }
             
-		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, retvals2, originalInstructions, DOWN)) {
+		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
     			if (printconst)
 			      llvm::errs() << "Value nonconstant inst (uses):" << *val << " user " << *a << "\n";
 				seenuse = true;

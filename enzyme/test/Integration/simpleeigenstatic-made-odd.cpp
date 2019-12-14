@@ -1,7 +1,7 @@
 // RUN: %clang++ -mllvm -force-vector-width=1 -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
 // RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
 // RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
-// RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 -disable-llvm-passes %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+
 // RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
 // RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
 // RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
@@ -11,13 +11,13 @@
 #include "test_utils.h"
 
 using Eigen::MatrixXd;
-using Eigen::VectorXd;
 
-//constexpr size_t IN = 3, OUT = 7;
-constexpr size_t IN = 2, OUT = 2;
+//constexpr size_t IN = 2, OUT = 2;
+constexpr size_t IN = 3, OUT = 2;
+//constexpr size_t IN = 3, OUT = 5;
 
 __attribute__((noinline))
-static void matvec(const MatrixXd* __restrict W, const VectorXd* __restrict b, VectorXd* __restrict output) {
+static void matvec(const Eigen::Matrix<double, IN, OUT> * __restrict W, const Eigen::Matrix<double, OUT, 1> * __restrict b, Eigen::Matrix<double, IN, 1> * __restrict output) {
   *output = *W * *b;
   /*
   for (int r = 0; r < W->rows(); r++) {
@@ -36,15 +36,15 @@ double __enzyme_autodiff(void*, void*, void*, void*, void*, void*, void*);
 
 int main(int argc, char** argv) {
 
-    MatrixXd W = Eigen::MatrixXd::Constant(IN, OUT, 3.0);
-    VectorXd M = Eigen::VectorXd::Constant(OUT, 2.0);
-    VectorXd O = Eigen::VectorXd::Constant(IN, 0.0);
+    Eigen::Matrix<double, IN, OUT> W = Eigen::Matrix<double, IN, OUT>::Constant(IN, OUT, 3.0);
+    Eigen::Matrix<double, OUT, 1> M = Eigen::Matrix<double, OUT, 1>::Constant(OUT, 2.0);
+    Eigen::Matrix<double, IN, 1> O = Eigen::Matrix<double, IN, 1>::Constant(IN, 0.0);
     
-    MatrixXd Wp = Eigen::MatrixXd::Constant(IN, OUT, 0.0);
-    VectorXd Mp = Eigen::VectorXd::Constant(OUT, 0.0);
-    VectorXd Op = Eigen::VectorXd::Constant(IN, 1.0);
-    VectorXd Op_orig = Op;
-    
+    Eigen::Matrix<double, IN, OUT> Wp = Eigen::Matrix<double, IN, OUT>::Constant(IN, OUT, 0.0);
+    Eigen::Matrix<double, OUT, 1> Mp = Eigen::Matrix<double, OUT, 1>::Constant(OUT, 0.0);
+    Eigen::Matrix<double, IN, 1> Op = Eigen::Matrix<double, IN, 1>::Constant(IN, 1.0);
+    Eigen::Matrix<double, IN, 1> Op_orig = Op;
+     
     __enzyme_autodiff((void*)matvec, &W, &Wp, &M, &Mp, &O, &Op);
     
     for(int o=0; o<OUT; o++)

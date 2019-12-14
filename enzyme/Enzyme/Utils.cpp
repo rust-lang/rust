@@ -40,10 +40,10 @@ static inline std::string tofltstr(Type* T) {
 
 //! Create function for type that is equivalent to memcpy but adds to destination rather 
 //! than a direct copy; dst, src, numelems
-Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T) {
+Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T, unsigned dstalign, unsigned srcalign) {
     Type* elementType = T->getElementType();
     assert(elementType->isFloatingPointTy());
-    std::string name = "__enzyme_memcpyadd_" + tofltstr(elementType);
+    std::string name = "__enzyme_memcpyadd_" + tofltstr(elementType) + "da" + std::to_string(dstalign) + "sa" + std::to_string(srcalign);
     FunctionType* FT = FunctionType::get(Type::getVoidTy(M.getContext()), { T, T, Type::getInt64Ty(M.getContext()) }, false);
 
     Function* F = cast<Function>(M.getOrInsertFunction(name, FT));
@@ -79,12 +79,16 @@ Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T) {
     idx->addIncoming(ConstantInt::get(num->getType(), 0), entry);
 
     Value* dsti = B.CreateGEP(dst, { idx }, "dst.i");
-    Value* dstl = B.CreateLoad(dsti, "dst.i.l");
-    B.CreateStore(Constant::getNullValue(elementType), dsti);
+    LoadInst* dstl = B.CreateLoad(dsti, "dst.i.l");
+    dstl->setAlignment(dstalign);
+    StoreInst* dsts = B.CreateStore(Constant::getNullValue(elementType), dsti);
+    dsts->setAlignment(dstalign);
     
     Value* srci = B.CreateGEP(src, { idx }, "src.i");
-    Value* srcl = B.CreateLoad(srci, "src.i.l");
-    B.CreateStore(B.CreateFAdd(srcl, dstl), srci);
+    LoadInst* srcl = B.CreateLoad(srci, "src.i.l");
+    srcl->setAlignment(srcalign);
+    StoreInst* srcs = B.CreateStore(B.CreateFAdd(srcl, dstl), srci);
+    srcs->setAlignment(srcalign);
 
     Value* next = B.CreateNUWAdd(idx, ConstantInt::get(num->getType(), 1), "idx.next");
     idx->addIncoming(next,  body);
@@ -99,7 +103,7 @@ Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T) {
 }
 
 //TODO implement differential memmove
-Function* getOrInsertDifferentialFloatMemmove(Module& M, PointerType* T) {
+Function* getOrInsertDifferentialFloatMemmove(Module& M, PointerType* T, unsigned dstalign, unsigned srcalign) {
     llvm::errs() << "warning: didn't implement memmove, using memcpy as fallback which can result in errors\n";
-    return getOrInsertDifferentialFloatMemcpy(M, T);
+    return getOrInsertDifferentialFloatMemcpy(M, T, dstalign, srcalign);
 }

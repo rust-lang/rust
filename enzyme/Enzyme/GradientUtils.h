@@ -80,6 +80,7 @@ public:
   DominatorTree OrigDT;
   SmallPtrSet<Value*,4> constants;
   SmallPtrSet<Value*,20> nonconstant;
+  SmallPtrSet<Value*,4> constant_values;
   SmallPtrSet<Value*,2> nonconstant_values;
   LoopInfo LI;
   AssumptionCache AC;
@@ -167,6 +168,7 @@ public:
     assert(I);
     invertedPointers.erase(I);
     constants.erase(I);
+    constant_values.erase(I);
     nonconstant.erase(I);
     nonconstant_values.erase(I);
     originalInstructions.erase(I);
@@ -716,8 +718,8 @@ public:
 protected:
   AAResults &AA;
   TargetLibraryInfo &TLI;
-  GradientUtils(Function* newFunc_, Function* oldFunc_, AAResults &AA_, TargetLibraryInfo &TLI_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
-      newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), AA(AA_), TLI(TLI_) {
+  GradientUtils(Function* newFunc_, Function* oldFunc_, AAResults &AA_, TargetLibraryInfo &TLI_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
+      newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), constant_values(constantvalues_.begin(), constantvalues_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), AA(AA_), TLI(TLI_) {
         invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
         originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
           for (BasicBlock &BB: *newFunc) {
@@ -776,12 +778,12 @@ public:
 
   bool isConstantValueInternal(Value* val) {
 	cast<Value>(val);
-    return isconstantValueM(val, constants, nonconstant, nonconstant_values, originalInstructions);
+    return isconstantValueM(val, constants, nonconstant, constant_values, nonconstant_values, originalInstructions);
   };
 
   bool isConstantInstructionInternal(Instruction* val) {
 	cast<Instruction>(val);
-    return isconstantM(val, constants, nonconstant, nonconstant_values, originalInstructions);
+    return isconstantM(val, constants, nonconstant, constant_values, nonconstant_values, originalInstructions);
   }
 
   SmallPtrSet<Instruction*,4> replaceableCalls;
@@ -1661,8 +1663,8 @@ endCheck:
 };
 
 class DiffeGradientUtils : public GradientUtils {
-  DiffeGradientUtils(Function* newFunc_, Function* oldFunc_, AAResults &AA, TargetLibraryInfo &TLI, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy &origToNew_)
-      : GradientUtils(newFunc_, oldFunc_, AA, TLI, invertedPointers_, constants_, nonconstant_, returnvals_, origToNew_) {
+  DiffeGradientUtils(Function* newFunc_, Function* oldFunc_, AAResults &AA, TargetLibraryInfo &TLI, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy &origToNew_)
+      : GradientUtils(newFunc_, oldFunc_, AA, TLI, invertedPointers_, constants_, nonconstant_, constantvalues_, returnvals_, origToNew_) {
         prepareForReverse();
     }
 
@@ -1788,12 +1790,12 @@ public:
         } else {
             res = BuilderM.CreateBitCast(res, val->getType());
         }
-        auto store = BuilderM.CreateStore(res, getDifferential(val));
+        BuilderM.CreateStore(res, getDifferential(val));
         //store->setAlignment(align);
         return addedSelects;
       } else if (val->getType()->isFPOrFPVectorTy()) {
         res = faddForSelect(old, dif);
-        auto store = BuilderM.CreateStore(res, getDifferential(val));
+        BuilderM.CreateStore(res, getDifferential(val));
         //store->setAlignment(align);
         return addedSelects;
       } else if (val->getType()->isStructTy()) {

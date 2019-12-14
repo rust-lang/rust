@@ -819,7 +819,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
               
               //We check uses of the original function as that includes potential uses in the return, 
               //  specifically consider case where the value returned isn't necessary but the subdifferentialreturn is
-              bool subdifferentialreturn = (!gutils->isConstantValue(op)) && (gutils->getOriginal(op)->getNumUses() != 0);
+              bool subdifferentialreturn = (!gutils->isConstantValue(op));// && (gutils->getOriginal(op)->getNumUses() != 0);
                 
               //! We only need to cache something if it is used in a non return setting (since the backard pass doesnt need to use it if just returned)
                 bool hasNonReturnUse = false;//outermostAugmentation;
@@ -1425,7 +1425,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
   bool subretused = op->getNumUses() != 0;
   bool augmentedsubretused = subretused;
-  bool augmentedsubdifferet = subretused;
   // double check for uses that may have been removed by loads from a cache (specifically if this returns a pointer)
   // Note this is not true: we can safely ignore (and should ignore) return instances, since those are already taken into account by a store if we do need to return them
   if (!subretused) {
@@ -1437,13 +1436,11 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         break;
     }
     augmentedsubretused = subretused;
-    augmentedsubdifferet = subretused;
     for( auto user : gutils->getOriginal(op)->users()) {
         if (isa<ReturnInst>(user)) {
             if (metaretused) {
                 augmentedsubretused = true;
             }
-            augmentedsubdifferet = true;
             continue;
         }
     }
@@ -1464,10 +1461,17 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     //TODO enable this if we need to free the memory
     // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE TO FREE'ing
       Instruction* inst = op;
-      if (!topLevel && subretused) {
-        IRBuilder<> BuilderZ(op);
-        inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
-        inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), constval ? "const" : "active")}));
+      if (!topLevel) {
+        if (is_value_needed_in_reverse(gutils, gutils->getOriginal(op), /*topLevel*/topLevel)) {
+            IRBuilder<> BuilderZ(op);
+            inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
+            inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), constval ? "const" : "active")}));
+        } else {
+            inst->replaceAllUsesWith(ConstantPointerNull::get(cast<PointerType>(op->getType())));
+            gutils->erase(inst);
+            inst = nullptr;
+            op = nullptr;
+        }
       }
     
     if (topLevel) {
@@ -1837,7 +1841,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   //llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>> sub_index_map;
   
   if (modifyPrimal && called) {
-    bool subdifferentialreturn = (!gutils->isConstantValue(op)) && augmentedsubdifferet;
+    bool subdifferentialreturn = (!gutils->isConstantValue(op));// && augmentedsubdifferet;
     if (topLevel) 
         subdata = &CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args);
     if (!subdata) {
@@ -1960,7 +1964,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   Value* newcalled = nullptr;
 
   //bool subdiffereturn = (!gutils->isConstantValue(op)) && !( op->getType()->isPointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
-  bool subdiffereturn = (!gutils->isConstantValue(op)) &&op->getType()->isFPOrFPVectorTy(); //PointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
+  bool subdiffereturn = (!gutils->isConstantValue(op));// &&op->getType()->isFPOrFPVectorTy(); //PointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
   bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && replaceFunction;
   //llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   if (called) {
@@ -1974,7 +1978,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     newcalled = Builder2.CreatePointerCast(newcalled, PointerType::getUnqual(FunctionType::get(StructType::get(newcalled->getContext(), res.second), res.first, ft->isVarArg())));
   }
 
-  if (subdiffereturn) {
+  if (subdiffereturn && op->getType()->isFPOrFPVectorTy()) {
     args.push_back(gutils->diffe(op, Builder2));
   }
 
@@ -1998,6 +2002,7 @@ badfn:;
 
         for(unsigned i=0; i<args.size(); i++) {
             assert(args[i]);
+            assert(args[i]->getType());
             llvm::errs() << "args[" << i << "] = " << *args[i] << " FT:" << *FT->getParamType(i) << "\n";
         }
         assert(0 && "calling with wrong number of arguments");
@@ -2139,12 +2144,6 @@ badfn:;
 }
 
 Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, AAResults &global_AA, bool returnUsed, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg, std::map<Argument*, bool> _uncacheable_args, const AugmentedReturn* augmenteddata) {
-  if (differentialReturn) {
-      if(!todiff->getReturnType()->isFPOrFPVectorTy()) {
-         llvm::errs() << *todiff << "\n";
-      }
-      assert(todiff->getReturnType()->isFPOrFPVectorTy());
-  }
   if (additionalArg && !additionalArg->isStructTy()) {
       llvm::errs() << *todiff << "\n";
       llvm::errs() << "addl arg: " << *additionalArg << "\n";
@@ -2313,7 +2312,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   }
 
   Argument* differetval = nullptr;
-  if (differentialReturn) {
+  if (differentialReturn && todiff->getReturnType()->isFPOrFPVectorTy()) {
     auto endarg = gutils->newFunc->arg_end();
     endarg--;
     if (additionalArg) endarg--;
@@ -2373,7 +2372,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (retval != nullptr) {
 
           //differential float return
-          if (differentialReturn && !gutils->isConstantValue(retval)) {
+          if (differentialReturn && todiff->getReturnType()->isFPOrFPVectorTy() && !gutils->isConstantValue(retval)) {
             IRBuilder <>reverseB(gutils->reverseBlocks[BB]);
             gutils->setDiffe(retval, differetval, reverseB);
           }
@@ -2516,7 +2515,16 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
                         ConstantInt::get(op->getOperand(2)->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
                     ));
-                    auto dmemcpy = getOrInsertDifferentialFloatMemcpy(*M, secretpt);
+                    unsigned dstalign = 0;
+                    if (op->paramHasAttr(0, Attribute::Alignment)) {
+                        dstalign = op->getParamAttr(0, Attribute::Alignment).getValueAsInt();
+                    }
+                    unsigned srcalign = 0;
+                    if (op->paramHasAttr(1, Attribute::Alignment)) {
+                        srcalign = op->getParamAttr(1, Attribute::Alignment).getValueAsInt();
+                    }
+
+                    auto dmemcpy = getOrInsertDifferentialFloatMemcpy(*M, secretpt, dstalign, srcalign);
                     Builder2.CreateCall(dmemcpy, args);
                 } else {
                     if (topLevel) {
@@ -2548,7 +2556,15 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
                         ConstantInt::get(op->getOperand(2)->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
                     ));
-                    auto dmemmove = getOrInsertDifferentialFloatMemmove(*M, secretpt);
+                    unsigned dstalign = 0;
+                    if (op->paramHasAttr(0, Attribute::Alignment)) {
+                        dstalign = op->getParamAttr(0, Attribute::Alignment).getValueAsInt();
+                    }
+                    unsigned srcalign = 0;
+                    if (op->paramHasAttr(1, Attribute::Alignment)) {
+                        srcalign = op->getParamAttr(1, Attribute::Alignment).getValueAsInt();
+                    }
+                    auto dmemmove = getOrInsertDifferentialFloatMemmove(*M, secretpt, dstalign, srcalign);
                     Builder2.CreateCall(dmemmove, args);
                 } else {
                     if (topLevel) {
@@ -2883,10 +2899,8 @@ realcall:
       Value* tostore = op->getValueOperand();
       Type* tostoreType = tostore->getType();
       bool constantValue = gutils->isConstantValue(tostore);
-      //llvm::errs() << "considering store " << *op << " constantvalue " << constantValue << "\n";
-      if (constantValue && tostoreType->isIntegerTy()) {
-        //llvm::errs() << "secretfloat is pointer: " << (isIntASecretFloat(tostore) == IntType::Pointer) << "\n";
-      }
+
+      //TODO allow recognition of other types that could contain pointers [e.g. {void*, void*} or <2 x i64> ]
       if (! ( tostoreType->isPointerTy() || (tostoreType->isIntegerTy() && !constantValue && isIntASecretFloat(tostore) == IntType::Pointer ) ) ) {
           StoreInst* ts;
           //llvm::errs() << "  considering adding to value:" << *op->getValueOperand() << " " << *op << " " << gutils->isConstantValue(op->getValueOperand()) << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
@@ -2909,7 +2923,6 @@ realcall:
         
         Value* valueop = nullptr;
         
-        //Fallback mechanism, TODO check
         if (gutils->isConstantValue(op->getValueOperand())) {
             valueop = Constant::getNullValue(op->getValueOperand()->getType());
         } else {
@@ -2922,6 +2935,7 @@ realcall:
         ts->setOrdering(op->getOrdering());
         ts->setSyncScopeID(op->getSyncScopeID());
       }
+
     } else if(auto op = dyn_cast<ExtractValueInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;
@@ -3024,7 +3038,7 @@ realcall:
     }
   }
 
-    createInvertedTerminator(gutils, BB, retAlloca, dretAlloca, 0 + (additionalArg ? 1 : 0) + (differentialReturn ? 1 : 0));
+    createInvertedTerminator(gutils, BB, retAlloca, dretAlloca, 0 + (additionalArg ? 1 : 0) + (differentialReturn && todiff->getReturnType()->isFPOrFPVectorTy() ? 1 : 0));
 
   }
 

@@ -13,11 +13,11 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-//constexpr size_t IN = 3, OUT = 7;
-constexpr size_t IN = 2, OUT = 2;
+//constexpr size_t IN = 4, OUT = 4, NUM = 4;
+constexpr size_t IN = 3, OUT = 5, NUM = 7;
 
 __attribute__((noinline))
-static void matvec(const MatrixXd* __restrict W, const VectorXd* __restrict b, VectorXd* __restrict output) {
+static void matvec(const Eigen::Matrix<double, IN, OUT> * __restrict W, const VectorXd* __restrict b, VectorXd* __restrict output) {
   *output = *W * *b;
   /*
   for (int r = 0; r < W->rows(); r++) {
@@ -36,11 +36,11 @@ double __enzyme_autodiff(void*, void*, void*, void*, void*, void*, void*);
 
 int main(int argc, char** argv) {
 
-    MatrixXd W = Eigen::MatrixXd::Constant(IN, OUT, 3.0);
+    Eigen::Matrix<double, IN, OUT> W = Eigen::Matrix<double, IN, OUT>::Constant(IN, OUT, 3.0);
     VectorXd M = Eigen::VectorXd::Constant(OUT, 2.0);
     VectorXd O = Eigen::VectorXd::Constant(IN, 0.0);
     
-    MatrixXd Wp = Eigen::MatrixXd::Constant(IN, OUT, 0.0);
+    Eigen::Matrix<double, IN, OUT> Wp = Eigen::Matrix<double, IN, OUT>::Constant(IN, OUT, 0.0);
     VectorXd Mp = Eigen::VectorXd::Constant(OUT, 0.0);
     VectorXd Op = Eigen::VectorXd::Constant(IN, 1.0);
     VectorXd Op_orig = Op;

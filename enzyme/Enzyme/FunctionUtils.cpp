@@ -491,6 +491,17 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
                 for(auto a : gep->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
                 continue;
             }
+            if (auto sel = dyn_cast<SelectInst>(use)) {
+                for(auto a : sel->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
+                continue;
+            }
+
+            //Be conservative and assume comparisons need the alloca for reverse pass (likely unnecessary but shrug)
+            //  If both comparison operators originate from the same alloca, then this isn't necessary (future optimization)
+            if (auto sel = dyn_cast<CmpInst>(use)) {
+                needToConvert = true;
+                goto end;
+            }
 
             if (auto ci = dyn_cast<CallInst>(use)) {
                 for(unsigned i = 0; i<ci->getNumArgOperands(); i++) {
@@ -517,18 +528,15 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
     }
   }
 
-  Instruction* insertBefore = nullptr;
-  for(auto &inst : NewF->getEntryBlock()) {
-    if (!isa<AllocaInst>(&inst)) {
-        insertBefore = &inst;
-		break;
-    }
-  }
-  assert(insertBefore);
-
   for(auto ai : toconvert) {
 	  std::string nam = ai->getName().str();
       ai->setName("");
+  
+      Instruction* insertBefore = ai;
+      while (isa<AllocaInst>(insertBefore->getNextNode())) {
+        insertBefore = insertBefore->getNextNode();
+        assert(insertBefore);
+      }
 	
       auto i64 = Type::getInt64Ty(NewF->getContext());
 	  auto rep = CallInst::CreateMalloc(insertBefore,
@@ -700,11 +708,9 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
  NewF->setLinkage(Function::LinkageTypes::InternalLinkage);
  assert(NewF->hasLocalLinkage());
 
- if (differentialReturn) {
-   for(auto& r : Returns) {
-     if (auto a = r->getReturnValue()) {
+ for(auto& r : Returns) {
+   if (auto a = r->getReturnValue()) {
        returnvals.insert(a);
-     }
    }
  }
 
