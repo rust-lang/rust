@@ -269,7 +269,7 @@ fn const_not_var(err: &mut DiagnosticBuilder<'_>, tcx: TyCtxt<'_>, pat: &Pat, pa
 }
 
 fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
-    pat.walk(|p| {
+    pat.walk_always(|p| {
         if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
             if let Some(ty::BindByValue(hir::Mutability::Not)) =
                 cx.tables.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
@@ -303,7 +303,6 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                 }
             }
         }
-        true
     });
 }
 
@@ -602,7 +601,7 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
             by_move_spans.push(p.span);
         }
     };
-    pat.walk(|p| {
+    pat.walk_always(|p| {
         if let hir::PatKind::Binding(.., sub) = &p.kind {
             if let Some(ty::BindByValue(_)) = tables.extract_binding_mode(sess, p.hir_id, p.span) {
                 let pat_ty = tables.node_type(p.hir_id);
@@ -611,7 +610,6 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
                 }
             }
         }
-        true
     });
 
     // Found some bad by-move spans, error!
@@ -640,16 +638,16 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
         ty::BindByValue(_) => None,
         ty::BindByReference(m) => Some(m),
     };
-    pat.walk(|pat| {
+    pat.walk_always(|pat| {
         // Extract `sub` in `binding @ sub`.
         let (name, sub) = match &pat.kind {
             hir::PatKind::Binding(.., name, Some(sub)) => (*name, sub),
-            _ => return true,
+            _ => return,
         };
 
         // Extract the mutability.
         let mut_outer = match extract_binding_mut(pat.hir_id, pat.span) {
-            None => return true,
+            None => return,
             Some(m) => m,
         };
 
@@ -698,8 +696,6 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
             }
             err.emit();
         }
-
-        true
     });
 }
 
