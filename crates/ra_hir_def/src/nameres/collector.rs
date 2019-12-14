@@ -6,7 +6,7 @@
 use hir_expand::{
     builtin_derive::find_builtin_derive,
     builtin_macro::find_builtin_macro,
-    name::{self, AsName, Name},
+    name::{name, AsName, Name},
     HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use ra_cfg::CfgOptions;
@@ -918,7 +918,7 @@ where
 }
 
 fn is_macro_rules(path: &Path) -> bool {
-    path.as_ident() == Some(&name::MACRO_RULES)
+    path.as_ident() == Some(&name![macro_rules])
 }
 
 #[cfg(test)]

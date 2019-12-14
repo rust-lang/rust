@@ -17,7 +17,7 @@ use hir_def::{
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
-    name::{self, AsName},
+    name::{name, AsName},
     MacroDefId,
 };
 use hir_ty::{
@@ -723,7 +723,7 @@ impl Local {
     }
 
     pub fn is_self(self, db: &impl HirDatabase) -> bool {
-        self.name(db) == Some(name::SELF_PARAM)
+        self.name(db) == Some(name![self])
     }
 
     pub fn is_mut(self, db: &impl HirDatabase) -> bool {

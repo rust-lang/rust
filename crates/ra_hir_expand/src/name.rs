@@ -104,73 +104,99 @@ impl AsName for ra_db::Dependency {
     }
 }
 
-// Primitives
-pub const ISIZE: Name = Name::new_inline_ascii(b"isize");
-pub const I8: Name = Name::new_inline_ascii(b"i8");
-pub const I16: Name = Name::new_inline_ascii(b"i16");
-pub const I32: Name = Name::new_inline_ascii(b"i32");
-pub const I64: Name = Name::new_inline_ascii(b"i64");
-pub const I128: Name = Name::new_inline_ascii(b"i128");
-pub const USIZE: Name = Name::new_inline_ascii(b"usize");
-pub const U8: Name = Name::new_inline_ascii(b"u8");
-pub const U16: Name = Name::new_inline_ascii(b"u16");
-pub const U32: Name = Name::new_inline_ascii(b"u32");
-pub const U64: Name = Name::new_inline_ascii(b"u64");
-pub const U128: Name = Name::new_inline_ascii(b"u128");
-pub const F32: Name = Name::new_inline_ascii(b"f32");
-pub const F64: Name = Name::new_inline_ascii(b"f64");
-pub const BOOL: Name = Name::new_inline_ascii(b"bool");
-pub const CHAR: Name = Name::new_inline_ascii(b"char");
-pub const STR: Name = Name::new_inline_ascii(b"str");
+pub mod known {
+    macro_rules! known_names {
+        ($($ident:ident),* $(,)?) => {
+            $(
+                #[allow(bad_style)]
+                pub const $ident: super::Name =
+                    super::Name::new_inline_ascii(stringify!($ident).as_bytes());
+            )*
+        };
+    }
 
-// Special names
-pub const SELF_PARAM: Name = Name::new_inline_ascii(b"self");
-pub const SELF_TYPE: Name = Name::new_inline_ascii(b"Self");
-pub const MACRO_RULES: Name = Name::new_inline_ascii(b"macro_rules");
+    known_names!(
+        // Primitives
+        isize,
+        i8,
+        i16,
+        i32,
+        i64,
+        i128,
+        usize,
+        u8,
+        u16,
+        u32,
+        u64,
+        u128,
+        f32,
+        f64,
+        bool,
+        char,
+        str,
+        // Special names
+        macro_rules,
+        // Components of known path (value or mod name)
+        std,
+        iter,
+        ops,
+        future,
+        result,
+        boxed,
+        // Components of known path (type name)
+        IntoIterator,
+        Item,
+        Try,
+        Ok,
+        Future,
+        Result,
+        Output,
+        Target,
+        Box,
+        RangeFrom,
+        RangeFull,
+        RangeInclusive,
+        RangeToInclusive,
+        RangeTo,
+        Range,
+        Neg,
+        Not,
+        // Builtin macros
+        file,
+        column,
+        compile_error,
+        line,
+        stringify,
+        format_args,
+        format_args_nl,
+        // Builtin derives
+        Copy,
+        Clone,
+        Default,
+        Debug,
+        Hash,
+        Ord,
+        PartialOrd,
+        Eq,
+        PartialEq,
+    );
 
-// Components of known path (value or mod name)
-pub const STD: Name = Name::new_inline_ascii(b"std");
-pub const ITER: Name = Name::new_inline_ascii(b"iter");
-pub const OPS: Name = Name::new_inline_ascii(b"ops");
-pub const FUTURE: Name = Name::new_inline_ascii(b"future");
-pub const RESULT: Name = Name::new_inline_ascii(b"result");
-pub const BOXED: Name = Name::new_inline_ascii(b"boxed");
+    // self/Self cannot be used as an identifier
+    pub const SELF_PARAM: super::Name = super::Name::new_inline_ascii(b"self");
+    pub const SELF_TYPE: super::Name = super::Name::new_inline_ascii(b"Self");
 
-// Components of known path (type name)
-pub const INTO_ITERATOR_TYPE: Name = Name::new_inline_ascii(b"IntoIterator");
-pub const ITEM_TYPE: Name = Name::new_inline_ascii(b"Item");
-pub const TRY_TYPE: Name = Name::new_inline_ascii(b"Try");
-pub const OK_TYPE: Name = Name::new_inline_ascii(b"Ok");
-pub const FUTURE_TYPE: Name = Name::new_inline_ascii(b"Future");
-pub const RESULT_TYPE: Name = Name::new_inline_ascii(b"Result");
-pub const OUTPUT_TYPE: Name = Name::new_inline_ascii(b"Output");
-pub const TARGET_TYPE: Name = Name::new_inline_ascii(b"Target");
-pub const BOX_TYPE: Name = Name::new_inline_ascii(b"Box");
-pub const RANGE_FROM_TYPE: Name = Name::new_inline_ascii(b"RangeFrom");
-pub const RANGE_FULL_TYPE: Name = Name::new_inline_ascii(b"RangeFull");
-pub const RANGE_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(b"RangeInclusive");
-pub const RANGE_TO_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(b"RangeToInclusive");
-pub const RANGE_TO_TYPE: Name = Name::new_inline_ascii(b"RangeTo");
-pub const RANGE_TYPE: Name = Name::new_inline_ascii(b"Range");
-pub const NEG_TYPE: Name = Name::new_inline_ascii(b"Neg");
-pub const NOT_TYPE: Name = Name::new_inline_ascii(b"Not");
+    #[macro_export]
+    macro_rules! name {
+        (self) => {
+            $crate::name::known::SELF_PARAM
+        };
+        (Self) => {
+            $crate::name::known::SELF_TYPE
+        };
+        ($ident:ident) => {
+            $crate::name::known::$ident
+        };
+    }
+}
 
-// Builtin Macros
-pub const FILE_MACRO: Name = Name::new_inline_ascii(b"file");
-pub const COLUMN_MACRO: Name = Name::new_inline_ascii(b"column");
-pub const COMPILE_ERROR_MACRO: Name = Name::new_inline_ascii(b"compile_error");
-pub const LINE_MACRO: Name = Name::new_inline_ascii(b"line");
-pub const STRINGIFY_MACRO: Name = Name::new_inline_ascii(b"stringify");
-pub const FORMAT_ARGS_MACRO: Name = Name::new_inline_ascii(b"format_args");
-pub const FORMAT_ARGS_NL_MACRO: Name = Name::new_inline_ascii(b"format_args_nl");
-
-// Builtin derives
-pub const COPY_TRAIT: Name = Name::new_inline_ascii(b"Copy");
-pub const CLONE_TRAIT: Name = Name::new_inline_ascii(b"Clone");
-pub const DEFAULT_TRAIT: Name = Name::new_inline_ascii(b"Default");
-pub const DEBUG_TRAIT: Name = Name::new_inline_ascii(b"Debug");
-pub const HASH_TRAIT: Name = Name::new_inline_ascii(b"Hash");
-pub const ORD_TRAIT: Name = Name::new_inline_ascii(b"Ord");
-pub const PARTIAL_ORD_TRAIT: Name = Name::new_inline_ascii(b"PartialOrd");
-pub const EQ_TRAIT: Name = Name::new_inline_ascii(b"Eq");
-pub const PARTIAL_EQ_TRAIT: Name = Name::new_inline_ascii(b"PartialEq");
+pub use crate::name;

@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use hir_def::{
-    path::{known, Path},
+    path::{path, Path},
     resolver::HasResolver,
     AdtId, FunctionId,
 };
@@ -124,7 +124,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             None => return,
         };
 
-        let std_result_path = known::std_result_result();
+        let std_result_path = path![std::result::Result];
 
         let resolver = self.func.resolver(db);
         let std_result_enum = match resolver.resolve_known_enum(db, &std_result_path) {

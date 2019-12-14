@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use hir_expand::{
-    name::{self, Name},
+    name::{name, Name},
     MacroDefId,
 };
 use ra_db::CrateId;
@@ -163,13 +163,13 @@ impl Resolver {
                     }
                 }
                 Scope::ImplBlockScope(impl_) => {
-                    if first_name == &name::SELF_TYPE {
+                    if first_name == &name![Self] {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::SelfType(*impl_), idx));
                     }
                 }
                 Scope::AdtScope(adt) => {
-                    if first_name == &name::SELF_TYPE {
+                    if first_name == &name![Self] {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::AdtSelfType(*adt), idx));
                     }
@@ -223,7 +223,7 @@ impl Resolver {
             return None;
         }
         let n_segments = path.segments.len();
-        let tmp = name::SELF_PARAM;
+        let tmp = name![self];
         let first_name = if path.is_self() { &tmp } else { &path.segments.first()?.name };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         for scope in self.scopes.iter().rev() {
@@ -259,13 +259,13 @@ impl Resolver {
                 Scope::GenericParams { .. } => continue,
 
                 Scope::ImplBlockScope(impl_) if n_segments > 1 => {
-                    if first_name == &name::SELF_TYPE {
+                    if first_name == &name![Self] {
                         let ty = TypeNs::SelfType(*impl_);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
                 Scope::AdtScope(adt) if n_segments > 1 => {
-                    if first_name == &name::SELF_TYPE {
+                    if first_name == &name![Self] {
                         let ty = TypeNs::AdtSelfType(*adt);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
@@ -439,10 +439,10 @@ impl Scope {
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(name::SELF_TYPE, ScopeDef::ImplSelfType((*i).into()));
+                f(name![Self], ScopeDef::ImplSelfType((*i).into()));
             }
             Scope::AdtScope(i) => {
-                f(name::SELF_TYPE, ScopeDef::AdtSelfType((*i).into()));
+                f(name![Self], ScopeDef::AdtSelfType((*i).into()));
             }
             Scope::ExprScope(scope) => {
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {

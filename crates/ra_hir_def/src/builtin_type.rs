@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-use hir_expand::name::{self, Name};
+use hir_expand::name::{name, Name};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Signedness {
@@ -52,26 +52,26 @@ pub enum BuiltinType {
 impl BuiltinType {
     #[rustfmt::skip]
     pub const ALL: &'static [(Name, BuiltinType)] = &[
-        (name::CHAR, BuiltinType::Char),
-        (name::BOOL, BuiltinType::Bool),
-        (name::STR,  BuiltinType::Str ),
+        (name![char], BuiltinType::Char),
+        (name![bool], BuiltinType::Bool),
+        (name![str],  BuiltinType::Str),
 
-        (name::ISIZE, BuiltinType::Int(BuiltinInt::ISIZE)),
-        (name::I8,    BuiltinType::Int(BuiltinInt::I8)),
-        (name::I16,   BuiltinType::Int(BuiltinInt::I16)),
-        (name::I32,   BuiltinType::Int(BuiltinInt::I32)),
-        (name::I64,   BuiltinType::Int(BuiltinInt::I64)),
-        (name::I128,  BuiltinType::Int(BuiltinInt::I128)),
+        (name![isize], BuiltinType::Int(BuiltinInt::ISIZE)),
+        (name![i8],    BuiltinType::Int(BuiltinInt::I8)),
+        (name![i16],   BuiltinType::Int(BuiltinInt::I16)),
+        (name![i32],   BuiltinType::Int(BuiltinInt::I32)),
+        (name![i64],   BuiltinType::Int(BuiltinInt::I64)),
+        (name![i128],  BuiltinType::Int(BuiltinInt::I128)),
 
-        (name::USIZE, BuiltinType::Int(BuiltinInt::USIZE)),
-        (name::U8,    BuiltinType::Int(BuiltinInt::U8)),
-        (name::U16,   BuiltinType::Int(BuiltinInt::U16)),
-        (name::U32,   BuiltinType::Int(BuiltinInt::U32)),
-        (name::U64,   BuiltinType::Int(BuiltinInt::U64)),
-        (name::U128,  BuiltinType::Int(BuiltinInt::U128)),
+        (name![usize], BuiltinType::Int(BuiltinInt::USIZE)),
+        (name![u8],    BuiltinType::Int(BuiltinInt::U8)),
+        (name![u16],   BuiltinType::Int(BuiltinInt::U16)),
+        (name![u32],   BuiltinType::Int(BuiltinInt::U32)),
+        (name![u64],   BuiltinType::Int(BuiltinInt::U64)),
+        (name![u128],  BuiltinType::Int(BuiltinInt::U128)),
 
-        (name::F32, BuiltinType::Float(BuiltinFloat::F32)),
-        (name::F64, BuiltinType::Float(BuiltinFloat::F64)),
+        (name![f32], BuiltinType::Float(BuiltinFloat::F32)),
+        (name![f64], BuiltinType::Float(BuiltinFloat::F64)),
     ];
 }
 

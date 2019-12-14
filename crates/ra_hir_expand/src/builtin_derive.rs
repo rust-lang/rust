@@ -12,10 +12,10 @@ use crate::db::AstDatabase;
 use crate::{name, quote, MacroCallId, MacroDefId, MacroDefKind};
 
 macro_rules! register_builtin {
-    ( $(($name:ident, $kind: ident) => $expand:ident),* ) => {
+    ( $($trait:ident => $expand:ident),* ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum BuiltinDeriveExpander {
-            $($kind),*
+            $($trait),*
         }
 
         impl BuiltinDeriveExpander {
@@ -26,7 +26,7 @@ macro_rules! register_builtin {
                 tt: &tt::Subtree,
             ) -> Result<tt::Subtree, mbe::ExpandError> {
                 let expander = match *self {
-                    $( BuiltinDeriveExpander::$kind => $expand, )*
+                    $( BuiltinDeriveExpander::$trait => $expand, )*
                 };
                 expander(db, id, tt)
             }
@@ -34,7 +34,7 @@ macro_rules! register_builtin {
 
         pub fn find_builtin_derive(ident: &name::Name) -> Option<MacroDefId> {
             let kind = match ident {
-                 $( id if id == &name::$name => BuiltinDeriveExpander::$kind, )*
+                $( id if id == &name::name![$trait] => BuiltinDeriveExpander::$trait, )*
                  _ => return None,
             };
 
@@ -44,15 +44,15 @@ macro_rules! register_builtin {
 }
 
 register_builtin! {
-    (COPY_TRAIT, Copy) => copy_expand,
-    (CLONE_TRAIT, Clone) => clone_expand,
-    (DEFAULT_TRAIT, Default) => default_expand,
-    (DEBUG_TRAIT, Debug) => debug_expand,
-    (HASH_TRAIT, Hash) => hash_expand,
-    (ORD_TRAIT, Ord) => ord_expand,
-    (PARTIAL_ORD_TRAIT, PartialOrd) => partial_ord_expand,
-    (EQ_TRAIT, Eq) => eq_expand,
-    (PARTIAL_EQ_TRAIT, PartialEq) => partial_eq_expand
+    Copy => copy_expand,
+    Clone => clone_expand,
+    Default => default_expand,
+    Debug => debug_expand,
+    Hash => hash_expand,
+    Ord => ord_expand,
+    PartialOrd => partial_ord_expand,
+    Eq => eq_expand,
+    PartialEq => partial_eq_expand
 }
 
 struct BasicAdtInfo {

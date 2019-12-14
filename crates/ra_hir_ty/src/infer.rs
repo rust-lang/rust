@@ -24,12 +24,12 @@ use hir_def::{
     body::Body,
     data::{ConstData, FunctionData},
     expr::{BindingAnnotation, ExprId, PatId},
-    path::{known, Path},
+    path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
     AdtId, AssocItemId, DefWithBodyId, FunctionId, StructFieldId, TypeAliasId, VariantId,
 };
-use hir_expand::{diagnostics::DiagnosticSink, name};
+use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 
@@ -422,73 +422,73 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
-        let path = known::std_iter_into_iterator();
+        let path = path![std::iter::IntoIterator];
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::ITEM_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
-        let path = known::std_ops_try();
+        let path = path![std::ops::Try];
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OK_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&name![Ok])
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
-        let path = known::std_ops_neg();
+        let path = path![std::ops::Neg];
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
-        let path = known::std_ops_not();
+        let path = path![std::ops::Not];
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
-        let path = known::std_future_future();
+        let path = path![std::future::Future];
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let path = known::std_boxed_box();
+        let path = path![std::boxed::Box];
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_full(&self) -> Option<AdtId> {
-        let path = known::std_ops_range_full();
+        let path = path![std::ops::RangeFull];
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range(&self) -> Option<AdtId> {
-        let path = known::std_ops_range();
+        let path = path![std::ops::Range];
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_inclusive(&self) -> Option<AdtId> {
-        let path = known::std_ops_range_inclusive();
+        let path = path![std::ops::RangeInclusive];
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_from(&self) -> Option<AdtId> {
-        let path = known::std_ops_range_from();
+        let path = path![std::ops::RangeFrom];
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_to(&self) -> Option<AdtId> {
-        let path = known::std_ops_range_to();
+        let path = path![std::ops::RangeTo];
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
-        let path = known::std_ops_range_to_inclusive();
+        let path = path![std::ops::RangeToInclusive];
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
     }

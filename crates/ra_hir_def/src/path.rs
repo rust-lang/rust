@@ -6,7 +6,7 @@ use std::{iter, sync::Arc};
 use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
-    name::{self, AsName, Name},
+    name::{name, AsName, Name},
 };
 use ra_db::CrateId;
 use ra_syntax::{
@@ -76,10 +76,7 @@ impl Path {
         }
     }
 
-    pub(crate) fn from_simple_segments(
-        kind: PathKind,
-        segments: impl IntoIterator<Item = Name>,
-    ) -> Path {
+    pub fn from_simple_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> Path {
         Path {
             kind,
             segments: segments
@@ -276,7 +273,7 @@ impl GenericArgs {
         }
         if let Some(ret_type) = ret_type {
             let type_ref = TypeRef::from_ast_opt(ret_type.type_ref());
-            bindings.push((name::OUTPUT_TYPE, type_ref))
+            bindings.push((name![Output], type_ref))
         }
         if args.is_empty() && bindings.is_empty() {
             None
@@ -296,69 +293,36 @@ impl From<Name> for Path {
     }
 }
 
-pub mod known {
-    use hir_expand::name;
+pub use hir_expand::name as __name;
 
-    use super::{Path, PathKind};
-
-    pub fn std_iter_into_iterator() -> Path {
-        Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::ITER, name::INTO_ITERATOR_TYPE],
-        )
-    }
-
-    pub fn std_ops_try() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::TRY_TYPE])
-    }
-
-    pub fn std_ops_range() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_TYPE])
-    }
-
-    pub fn std_ops_range_from() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_FROM_TYPE])
-    }
-
-    pub fn std_ops_range_full() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_FULL_TYPE])
-    }
-
-    pub fn std_ops_range_inclusive() -> Path {
-        Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::OPS, name::RANGE_INCLUSIVE_TYPE],
-        )
-    }
-
-    pub fn std_ops_range_to() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_TO_TYPE])
-    }
-
-    pub fn std_ops_range_to_inclusive() -> Path {
-        Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::OPS, name::RANGE_TO_INCLUSIVE_TYPE],
-        )
-    }
-
-    pub fn std_ops_neg() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::NEG_TYPE])
-    }
-
-    pub fn std_ops_not() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::NOT_TYPE])
-    }
-
-    pub fn std_result_result() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::RESULT, name::RESULT_TYPE])
-    }
-
-    pub fn std_future_future() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::FUTURE, name::FUTURE_TYPE])
-    }
-
-    pub fn std_boxed_box() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::BOXED, name::BOX_TYPE])
-    }
+#[macro_export]
+macro_rules! __known_path {
+    (std::iter::IntoIterator) => {};
+    (std::result::Result) => {};
+    (std::ops::Range) => {};
+    (std::ops::RangeFrom) => {};
+    (std::ops::RangeFull) => {};
+    (std::ops::RangeTo) => {};
+    (std::ops::RangeToInclusive) => {};
+    (std::ops::RangeInclusive) => {};
+    (std::boxed::Box) => {};
+    (std::future::Future) => {};
+    (std::ops::Try) => {};
+    (std::ops::Neg) => {};
+    (std::ops::Not) => {};
+    ($path:path) => {
+        compile_error!("Please register your known path in the path module")
+    };
 }
+
+#[macro_export]
+macro_rules! __path {
+    ($start:ident $(:: $seg:ident)*) => ({
+        $crate::__known_path!($start $(:: $seg)*);
+        $crate::path::Path::from_simple_segments($crate::path::PathKind::Abs, vec![
+            $crate::path::__name![$start], $($crate::path::__name![$seg],)*
+        ])
+    });
+}
+
+pub use crate::__path as path;
