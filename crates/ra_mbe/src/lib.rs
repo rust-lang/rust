@@ -104,6 +104,7 @@ impl Shift {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Origin {
     Def,
     Call,

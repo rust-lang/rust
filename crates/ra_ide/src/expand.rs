@@ -1,7 +1,7 @@
 //! Utilities to work with files, produced by macros.
 use std::iter::successors;
 
-use hir::{ExpansionOrigin, InFile};
+use hir::{InFile, Origin};
 use ra_db::FileId;
 use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxToken, TextRange};
 
@@ -45,7 +45,7 @@ pub(crate) fn original_range_by_kind(
 
             if first.file_id != last.file_id
                 || first_origin != last_origin
-                || (kind == OriginalRangeKind::CallToken && first_origin != ExpansionOrigin::Call)
+                || (kind == OriginalRangeKind::CallToken && first_origin != Origin::Call)
             {
                 return None;
             }

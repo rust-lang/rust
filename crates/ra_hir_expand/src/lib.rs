@@ -214,11 +214,7 @@ pub struct ExpansionInfo {
     exp_map: Arc<mbe::TokenMap>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ExpansionOrigin {
-    Call,
-    Def,
-}
+pub use mbe::Origin;
 
 impl ExpansionInfo {
     pub fn call_node(&self) -> Option<InFile<SyntaxNode>> {
@@ -241,17 +237,15 @@ impl ExpansionInfo {
     pub fn map_token_up(
         &self,
         token: InFile<&SyntaxToken>,
-    ) -> Option<(InFile<SyntaxToken>, ExpansionOrigin)> {
+    ) -> Option<(InFile<SyntaxToken>, Origin)> {
         let token_id = self.exp_map.token_by_range(token.value.text_range())?;
 
         let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
-        let (token_map, tt, origin) = match origin {
-            mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone(), ExpansionOrigin::Call),
-            mbe::Origin::Def => (
-                &self.macro_def.1,
-                self.def.as_ref().map(|tt| tt.syntax().clone()),
-                ExpansionOrigin::Def,
-            ),
+        let (token_map, tt) = match origin {
+            mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone()),
+            mbe::Origin::Def => {
+                (&self.macro_def.1, self.def.as_ref().map(|tt| tt.syntax().clone()))
+            }
         };
 
         let range = token_map.range_by_token(token_id)?;
