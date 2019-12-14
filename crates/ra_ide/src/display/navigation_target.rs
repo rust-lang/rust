@@ -7,14 +7,10 @@ use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
     SyntaxKind::{self, BIND_PAT, TYPE_PARAM},
-    SyntaxNode, TextRange,
+    TextRange,
 };
 
-use crate::{
-    db::RootDatabase,
-    expand::{original_range_by_kind, OriginalRangeKind},
-    FileRange, FileSymbol,
-};
+use crate::{db::RootDatabase, expand::original_range, FileSymbol};
 
 use super::short_label::ShortLabel;
 
@@ -419,15 +415,4 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
             _ => None,
         }
     }
-}
-
-fn original_range(db: &RootDatabase, node: InFile<&SyntaxNode>) -> FileRange {
-    if let Some(range) = original_range_by_kind(db, node, OriginalRangeKind::CallToken) {
-        return range;
-    }
-    if let Some(range) = original_range_by_kind(db, node, OriginalRangeKind::WholeCall) {
-        return range;
-    }
-
-    FileRange { file_id: node.file_id.original_file(db), range: node.value.text_range() }
 }
