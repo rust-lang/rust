@@ -16,6 +16,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_error_codes::*;
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
+    attr.is_doc_comment() ||
     attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
 }
 
