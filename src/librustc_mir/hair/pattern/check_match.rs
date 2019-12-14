@@ -695,7 +695,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
             };
             let msg = &format!(
                 "cannot borrow `{}` as {} because it is also borrowed as {}",
-                name, primary, also,
+                name, also, primary,
             );
             let mut err = sess.struct_span_err(pat.span, msg);
             err.span_label(binding_span, &format!("{} borrow occurs here", primary));

@@ -7,20 +7,32 @@ fn main() {
     struct U;
 
     let ref mut a @ ref mut b = U;
-    //~^ ERROR cannot borrow `_` as mutable more than once at a time
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~| ERROR cannot borrow `_` as mutable more than once at a time
     drop(a);
-    let ref mut a @ ref mut b = U; // FIXME: This should not compile.
+    let ref mut a @ ref mut b = U;
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
     drop(b);
-    let ref mut a @ ref mut b = U; // FIXME: This should not compile.
+    let ref mut a @ ref mut b = U;
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
 
     let ref mut a @ ref mut b = U;
-    //~^ ERROR cannot borrow `_` as mutable more than once at a time
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~| ERROR cannot borrow `_` as mutable more than once at a time
     *a = U;
-    let ref mut a @ ref mut b = U; // FIXME: This should not compile.
+    let ref mut a @ ref mut b = U;
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
     *b = U;
 
-    let ref mut a @ (ref mut b, [ref mut c, ref mut d]) = (U, [U, U]);
-    // FIXME: This should not compile.
+    let ref mut a @ (
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+        ref mut b,
+        [
+            ref mut c,
+            ref mut d,
+            ref e,
+        ]
+    ) = (U, [U, U, U]);
 
     let a @ (ref mut b, ref mut c) = (U, U);
     //~^ ERROR cannot bind by-move with sub-bindings
@@ -39,18 +51,22 @@ fn main() {
 
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-            // FIXME: This should not compile.
+            //~^ ERROR cannot borrow `a` as mutable more than once at a time
+            //~| ERROR cannot borrow `a` as mutable more than once at a time
         }
     }
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
+            //~^ ERROR cannot borrow `a` as mutable more than once at a time
+            //~| ERROR cannot borrow `a` as mutable more than once at a time
             *b = U;
-            // FIXME: This should not compile.
         }
     }
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-            //~^ ERROR cannot borrow `_` as mutable more than once at a time
+            //~^ ERROR cannot borrow `a` as mutable more than once at a time
+            //~| ERROR cannot borrow `a` as mutable more than once at a time
+            //~| ERROR cannot borrow `_` as mutable more than once at a time
             //~| ERROR cannot borrow `_` as mutable more than once at a time
             *a = Err(U);
 
@@ -60,7 +76,9 @@ fn main() {
     }
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-            //~^ ERROR cannot borrow `_` as mutable more than once at a time
+            //~^ ERROR cannot borrow `a` as mutable more than once at a time
+            //~| ERROR cannot borrow `a` as mutable more than once at a time
+            //~| ERROR cannot borrow `_` as mutable more than once at a time
             //~| ERROR cannot borrow `_` as mutable more than once at a time
             drop(a);
         }

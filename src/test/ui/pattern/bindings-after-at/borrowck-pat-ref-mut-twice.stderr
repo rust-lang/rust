@@ -6,29 +6,168 @@ LL | #![feature(bindings_after_at)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:9:9
+   |
+LL |     let ref mut a @ ref mut b = U;
+   |         ---------^^^---------
+   |         |           |
+   |         |           another mutable borrow occurs here
+   |         first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:13:9
+   |
+LL |     let ref mut a @ ref mut b = U;
+   |         ---------^^^---------
+   |         |           |
+   |         |           another mutable borrow occurs here
+   |         first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:16:9
+   |
+LL |     let ref mut a @ ref mut b = U;
+   |         ---------^^^---------
+   |         |           |
+   |         |           another mutable borrow occurs here
+   |         first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:19:9
+   |
+LL |     let ref mut a @ ref mut b = U;
+   |         ---------^^^---------
+   |         |           |
+   |         |           another mutable borrow occurs here
+   |         first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:23:9
+   |
+LL |     let ref mut a @ ref mut b = U;
+   |         ---------^^^---------
+   |         |           |
+   |         |           another mutable borrow occurs here
+   |         first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:27:9
+   |
+LL |       let ref mut a @ (
+   |           ^--------
+   |           |
+   |  _________first mutable borrow occurs here
+   | |
+LL | |
+LL | |         ref mut b,
+   | |         --------- another mutable borrow occurs here
+LL | |         [
+LL | |             ref mut c,
+   | |             --------- another mutable borrow occurs here
+LL | |             ref mut d,
+   | |             --------- another mutable borrow occurs here
+LL | |             ref e,
+   | |             ----- also borrowed as immutable here
+LL | |         ]
+LL | |     ) = (U, [U, U, U]);
+   | |_____^
+
 error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:25:9
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:37:9
    |
 LL |     let a @ (ref mut b, ref mut c) = (U, U);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
 
 error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:29:9
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:41:9
    |
 LL |     let a @ (b, [c, d]) = &mut val; // Same as ^--
    |         ^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
 
 error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:33:9
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:45:9
    |
 LL |     let a @ &mut ref mut b = &mut U;
    |         ^^^^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
 
 error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:36:9
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:48:9
    |
 LL |     let a @ &mut (ref mut b, ref mut c) = &mut (U, U);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:53:9
+   |
+LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
+   |         ---------^^^^^^---------^
+   |         |              |
+   |         |              another mutable borrow occurs here
+   |         first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:53:37
+   |
+LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
+   |                                     ---------^^^^^^^---------^
+   |                                     |               |
+   |                                     |               another mutable borrow occurs here
+   |                                     first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:59:9
+   |
+LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
+   |         ---------^^^^^^---------^
+   |         |              |
+   |         |              another mutable borrow occurs here
+   |         first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:59:37
+   |
+LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
+   |                                     ---------^^^^^^^---------^
+   |                                     |               |
+   |                                     |               another mutable borrow occurs here
+   |                                     first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:66:9
+   |
+LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
+   |         ---------^^^^^^---------^
+   |         |              |
+   |         |              another mutable borrow occurs here
+   |         first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:66:37
+   |
+LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
+   |                                     ---------^^^^^^^---------^
+   |                                     |               |
+   |                                     |               another mutable borrow occurs here
+   |                                     first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:78:9
+   |
+LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
+   |         ---------^^^^^^---------^
+   |         |              |
+   |         |              another mutable borrow occurs here
+   |         first mutable borrow occurs here
+
+error: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:78:37
+   |
+LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
+   |                                     ---------^^^^^^^---------^
+   |                                     |               |
+   |                                     |               another mutable borrow occurs here
+   |                                     first mutable borrow occurs here
 
 error[E0499]: cannot borrow `_` as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:9:21
@@ -38,24 +177,24 @@ LL |     let ref mut a @ ref mut b = U;
    |         |           |
    |         |           second mutable borrow occurs here
    |         first mutable borrow occurs here
-LL |
+...
 LL |     drop(a);
    |          - first borrow later used here
 
 error[E0499]: cannot borrow `_` as mutable more than once at a time
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:16:21
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:19:21
    |
 LL |     let ref mut a @ ref mut b = U;
    |         ------------^^^^^^^^^
    |         |           |
    |         |           second mutable borrow occurs here
    |         first mutable borrow occurs here
-LL |
+...
 LL |     *a = U;
    |     ------ first borrow later used here
 
 error[E0382]: borrow of moved value
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:25:25
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:37:25
    |
 LL |     let a @ (ref mut b, ref mut c) = (U, U);
    |         ----------------^^^^^^^^^-   ------ move occurs because value has type `(main::U, main::U)`, which does not implement the `Copy` trait
@@ -64,7 +203,7 @@ LL |     let a @ (ref mut b, ref mut c) = (U, U);
    |         value moved here
 
 error[E0382]: borrow of moved value
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:29:21
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:41:21
    |
 LL |     let a @ (b, [c, d]) = &mut val; // Same as ^--
    |         ------------^--   -------- move occurs because value has type `&mut (main::U, [main::U; 2])`, which does not implement the `Copy` trait
@@ -73,7 +212,7 @@ LL |     let a @ (b, [c, d]) = &mut val; // Same as ^--
    |         value moved here
 
 error[E0382]: borrow of moved value
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:33:18
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:45:18
    |
 LL |     let a @ &mut ref mut b = &mut U;
    |         ---------^^^^^^^^^   ------ move occurs because value has type `&mut main::U`, which does not implement the `Copy` trait
@@ -82,7 +221,7 @@ LL |     let a @ &mut ref mut b = &mut U;
    |         value moved here
 
 error[E0382]: borrow of moved value
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:36:30
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:48:30
    |
 LL |     let a @ &mut (ref mut b, ref mut c) = &mut (U, U);
    |         ---------------------^^^^^^^^^-   ----------- move occurs because value has type `&mut (main::U, main::U)`, which does not implement the `Copy` trait
@@ -91,7 +230,7 @@ LL |     let a @ &mut (ref mut b, ref mut c) = &mut (U, U);
    |         value moved here
 
 error[E0499]: cannot borrow `_` as mutable more than once at a time
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:52:24
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:66:24
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |         ---------------^^^^^^^^^-
@@ -103,7 +242,7 @@ LL |             *a = Err(U);
    |             ----------- first borrow later used here
 
 error[E0499]: cannot borrow `_` as mutable more than once at a time
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:52:53
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:66:53
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |                                     ----------------^^^^^^^^^-
@@ -115,7 +254,7 @@ LL |             *a = Err(U);
    |             ----------- first borrow later used here
 
 error[E0499]: cannot borrow `_` as mutable more than once at a time
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:62:24
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:78:24
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |         ---------------^^^^^^^^^-
@@ -127,7 +266,7 @@ LL |             drop(a);
    |                  - first borrow later used here
 
 error[E0499]: cannot borrow `_` as mutable more than once at a time
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:62:53
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:78:53
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |                                     ----------------^^^^^^^^^-
@@ -138,7 +277,7 @@ LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
 LL |             drop(a);
    |                  - first borrow later used here
 
-error: aborting due to 14 previous errors
+error: aborting due to 28 previous errors
 
 Some errors have detailed explanations: E0007, E0382, E0499.
 For more information about an error, try `rustc --explain E0007`.

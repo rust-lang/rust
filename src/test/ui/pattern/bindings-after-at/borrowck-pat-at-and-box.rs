@@ -29,16 +29,20 @@ fn main() {
     drop(a);
     drop(b);
 
-    let ref a @ box ref mut b = Box::new(NC); // FIXME: This should not compile.
-    let ref a @ box ref mut b = Box::new(NC); // FIXME: This should not compile.
+    let ref a @ box ref mut b = Box::new(NC);
+    //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
+    let ref a @ box ref mut b = Box::new(NC);
+    //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
     *b = NC;
     let ref a @ box ref mut b = Box::new(NC);
-    //~^ ERROR cannot borrow `_` as mutable because it is also borrowed as immutable
+    //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
+    //~| ERROR cannot borrow `_` as mutable because it is also borrowed as immutable
     *b = NC;
     drop(a);
 
     let ref mut a @ box ref b = Box::new(NC);
-    //~^ ERROR cannot borrow `_` as immutable because it is also borrowed as mutable
+    //~^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable
+    //~| ERROR cannot borrow `_` as immutable because it is also borrowed as mutable
     *a = Box::new(NC);
     drop(b);
 }
