@@ -33,10 +33,7 @@ error: `$x:expr` may be followed by `=`, which is not allowed for `expr` fragmen
   --> $DIR/same-sequence-span.rs:19:1
    |
 LL | proc_macro_sequence::make_foo!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | not allowed after `expr` fragments
-   | in this macro invocation
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed after `expr` fragments
    |
    = note: allowed there are: `=>`, `,` or `;`
 

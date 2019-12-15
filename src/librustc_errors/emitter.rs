@@ -271,7 +271,7 @@ pub trait Emitter {
         }
     }
 
-    fn render_multispans_macro_backtrace_and_fix_extern_macros(
+    fn fix_multispans_in_extern_macros_and_render_macro_backtrace(
         &self,
         source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
@@ -279,10 +279,16 @@ pub trait Emitter {
         level: &Level,
         backtrace: bool,
     ) {
-        self.render_multispans_macro_backtrace(source_map, span, children, backtrace);
+        let mut external_spans_updated = false;
+        if !backtrace {
+            external_spans_updated =
+                self.fix_multispans_in_extern_macros(source_map, span, children);
+        }
+
+        self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            if self.fix_multispans_in_extern_macros(source_map, span, children) {
+            if external_spans_updated {
                 let msg = format!(
                     "this {} originates in a macro outside of the current crate \
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
@@ -301,42 +307,33 @@ pub trait Emitter {
 
     fn render_multispans_macro_backtrace(
         &self,
-        source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
         children: &mut Vec<SubDiagnostic>,
         backtrace: bool,
     ) {
-        self.render_multispan_macro_backtrace(source_map, span, backtrace);
+        self.render_multispan_macro_backtrace(span, backtrace);
         for child in children.iter_mut() {
-            self.render_multispan_macro_backtrace(source_map, &mut child.span, backtrace);
+            self.render_multispan_macro_backtrace(&mut child.span, backtrace);
         }
     }
 
-    fn render_multispan_macro_backtrace(
-        &self,
-        source_map: &Option<Lrc<SourceMap>>,
-        span: &mut MultiSpan,
-        always_backtrace: bool,
-    ) {
-        let sm = match source_map {
-            Some(ref sm) => sm,
-            None => return,
-        };
-
+    fn render_multispan_macro_backtrace(&self, span: &mut MultiSpan, always_backtrace: bool) {
         let mut new_labels: Vec<(Span, String)> = vec![];
 
-        // First, find all the spans in <*macros> and point instead at their use site
         for &sp in span.primary_spans() {
             if sp.is_dummy() {
                 continue;
             }
+
+            // FIXME(eddyb) use `retain` on `macro_backtrace` to remove all the
+            // entries we don't want to print, to make sure the indices being
+            // printed are contiguous (or omitted if there's only one entry).
             let macro_backtrace: Vec<_> = sp.macro_backtrace().collect();
             for (i, trace) in macro_backtrace.iter().rev().enumerate() {
-                // Only show macro locations that are local
-                // and display them like a span_note
                 if trace.def_site.is_dummy() {
                     continue;
                 }
+
                 if always_backtrace {
                     new_labels.push((
                         trace.def_site,
@@ -353,9 +350,21 @@ pub trait Emitter {
                         ),
                     ));
                 }
-                // Check to make sure we're not in any <*macros>
-                if !sm.span_to_filename(trace.def_site).is_macros()
-                    && matches!(trace.kind, ExpnKind::Macro(MacroKind::Bang, _))
+
+                // Don't add a label on the call site if the diagnostic itself
+                // already points to (a part of) that call site, as the label
+                // is meant for showing the relevant invocation when the actual
+                // diagnostic is pointing to some part of macro definition.
+                //
+                // This also handles the case where an external span got replaced
+                // with the call site span by `fix_multispans_in_extern_macros`.
+                //
+                // NB: `-Zmacro-backtrace` overrides this, for uniformity, as the
+                // "in this expansion of" label above is always added in that mode,
+                // and it needs an "in this macro invocation" label to match that.
+                let redundant_span = trace.call_site.contains(sp);
+
+                if !redundant_span && matches!(trace.kind, ExpnKind::Macro(MacroKind::Bang, _))
                     || always_backtrace
                 {
                     new_labels.push((
@@ -371,9 +380,9 @@ pub trait Emitter {
                             },
                         ),
                     ));
-                    if !always_backtrace {
-                        break;
-                    }
+                }
+                if !always_backtrace {
+                    break;
                 }
             }
         }
@@ -447,7 +456,7 @@ impl Emitter for EmitterWriter {
         let mut children = diag.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&diag);
 
-        self.render_multispans_macro_backtrace_and_fix_extern_macros(
+        self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
             &self.sm,
             &mut primary_span,
             &mut children,
