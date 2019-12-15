@@ -1,6 +1,6 @@
 // ignore-windows: Unwind panicking does not currently work on Windows
+#![feature(never_type)]
 #![allow(const_err)]
-
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::cell::Cell;
 

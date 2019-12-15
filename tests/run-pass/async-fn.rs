@@ -1,3 +1,5 @@
+#![feature(never_type)]
+
 use std::{future::Future, pin::Pin, task::Poll, ptr};
 use std::task::{Waker, RawWaker, RawWakerVTable, Context};
 

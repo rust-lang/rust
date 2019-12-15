@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait)]
+#![feature(generators, generator_trait, never_type)]
 
 use std::ops::{GeneratorState, Generator};
 use std::pin::Pin;
