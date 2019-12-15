@@ -867,6 +867,7 @@ impl Config {
                 .unwrap();
 
             if name == "test" ||
+                &self.target == name ||                             // triple
                 util::matches_os(&self.target, name) ||             // target
                 util::matches_env(&self.target, name) ||            // env
                 name == util::get_arch(&self.target) ||             // architecture
