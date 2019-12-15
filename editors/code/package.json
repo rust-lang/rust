@@ -313,6 +313,18 @@
                         "column": 3
                     }
                 ]
+            },
+            {
+                "name": "rustc-json",
+                "patterns": [{
+                    "regexp": "^.*\"message\":{\"message\":\"([^\"]*).*?\"file_name\":\"([^\"]+).*?\"line_start\":(\\d+).*?\"line_end\":(\\d+).*?\"column_start\":(\\d+).*?\"column_end\":(\\d+).*}$",
+                    "message": 1,
+                    "file": 2,
+                    "line": 3,
+                    "endLine": 4,
+                    "column": 5,
+                    "endColumn": 6
+                }]
             }
         ],
         "problemMatchers": [
@@ -323,6 +335,14 @@
                     "${workspaceRoot}"
                 ],
                 "pattern": "$rustc"
+            },
+            {
+                "name": "rustc-json",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceRoot}"
+                ],
+                "pattern": "$rustc-json"
             },
             {
                 "name": "rustc-watch",
