@@ -32,6 +32,7 @@ use hir_def::{
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
+use test_utils::tested_by;
 
 use super::{
     primitive::{FloatTy, IntTy},
@@ -282,6 +283,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn insert_vars_for_impl_trait(&mut self, ty: Ty) -> Ty {
         ty.fold(&mut |ty| match ty {
             Ty::Opaque(preds) => {
+                tested_by!(insert_vars_for_impl_trait);
                 let var = self.table.new_type_var();
                 let var_subst = Substs::builder(1).push(var.clone()).build();
                 self.obligations.extend(

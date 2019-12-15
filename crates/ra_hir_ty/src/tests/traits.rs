@@ -1,7 +1,10 @@
+use insta::assert_snapshot;
+
+use ra_db::fixture::WithFixture;
+use test_utils::covers;
+
 use super::{infer, infer_with_mismatches, type_at, type_at_pos};
 use crate::test_db::TestDB;
-use insta::assert_snapshot;
-use ra_db::fixture::WithFixture;
 
 #[test]
 fn infer_await() {
@@ -1489,6 +1492,7 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 
 #[test]
 fn unify_impl_trait() {
+    covers!(insert_vars_for_impl_trait);
     assert_snapshot!(
         infer_with_mismatches(r#"
 trait Trait<T> {}
