@@ -108,14 +108,17 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 match name_kind {
                     Some(name_kind) => highlight_name(db, name_kind),
                     None => name.syntax().parent().map_or("function", |x| match x.kind() {
-                        TYPE_PARAM | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => "type",
+                        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => "type",
+                        TYPE_PARAM => "type.param",
                         RECORD_FIELD_DEF => "field",
                         _ => "function",
                     }),
                 }
             }
-            INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
-            LIFETIME => "parameter",
+            INT_NUMBER | FLOAT_NUMBER => "literal.numeric",
+            BYTE => "literal.byte",
+            CHAR => "literal.char",
+            LIFETIME => "type.lifetime",
             T![unsafe] => "keyword.unsafe",
             k if is_control_keyword(k) => "keyword.control",
             k if k.is_keyword() => "keyword",
@@ -224,8 +227,9 @@ fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
         Def(hir::ModuleDef::Static(_)) => "constant",
         Def(hir::ModuleDef::Trait(_)) => "type",
         Def(hir::ModuleDef::TypeAlias(_)) => "type",
-        Def(hir::ModuleDef::BuiltinType(_)) => "type",
-        SelfType(_) | TypeParam(_) => "type",
+        Def(hir::ModuleDef::BuiltinType(_)) => "type.builtin",
+        SelfType(_) => "type.self",
+        TypeParam(_) => "type.param",
         Local(local) => {
             if local.is_mut(db) {
                 "variable.mut"
@@ -255,8 +259,10 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .builtin            { color: #DD6718; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
+.type\\.param       { color: #20999D; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
+.literal\\.numeric  { color: #6A8759; }
 .macro              { color: #94BFF3; }
 .variable           { color: #DCDCCC; }
 .variable\\.mut     { color: #DCDCCC; text-decoration: underline; }
