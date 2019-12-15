@@ -122,7 +122,7 @@ fn op_to_const<'tcx>(
 /// Extracts a field of a (variant of a) const.
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
-pub fn const_field<'tcx>(
+pub(crate) fn const_field<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     variant: Option<VariantIdx>,
@@ -145,7 +145,7 @@ pub fn const_field<'tcx>(
     op_to_const(&ecx, field)
 }
 
-pub fn const_caller_location<'tcx>(
+pub(crate) fn const_caller_location<'tcx>(
     tcx: TyCtxt<'tcx>,
     (file, line, col): (Symbol, u32, u32),
 ) -> &'tcx ty::Const<'tcx> {
@@ -165,7 +165,7 @@ pub fn const_caller_location<'tcx>(
 
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
-pub fn const_variant_index<'tcx>(
+pub(crate) fn const_variant_index<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     val: &'tcx ty::Const<'tcx>,
