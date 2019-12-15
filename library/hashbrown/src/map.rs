@@ -956,6 +956,40 @@ where
             }
         }
     }
+    /// Retains only the elements specified by the predicate, and returns an iterator over the
+    /// removed items.
+    ///
+    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `false` out
+    /// into another iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
+    /// let drained = map.drain_filter(|&k, _| k % 2 == 0);
+    /// assert_eq!(drained.count(), 4);
+    /// assert_eq!(map.len(), 4);
+    /// ```
+    pub fn drain_filter<'a, F>(&'a mut self, mut f: F) -> impl Iterator<Item=(K,V)> + '_
+    where
+        F: 'a + FnMut(&K, &mut V) -> bool,
+    {
+        // Here we only use `iter` as a temporary, preventing use-after-free
+        unsafe {
+            self.table.iter().filter_map(move |item| {
+                let &mut (ref key, ref mut value) = item.as_mut();
+                if !f(key, value) {
+                    // Erase the element from the table first since drop might panic.
+                    self.table.erase_no_drop(&item);
+                    Some(item.read())
+                } else {
+                    None
+                }
+            })
+        }
+    }
 }
 
 impl<K, V, S> HashMap<K, V, S> {
@@ -3486,6 +3520,14 @@ mod test_map {
         assert_eq!(map[&2], 20);
         assert_eq!(map[&4], 40);
         assert_eq!(map[&6], 60);
+    }
+
+    #[test]
+    fn test_drain_filter() {
+      let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
+      let drained = map.drain_filter(|&k, _| k % 2 == 0);
+      assert_eq!(drained.count(), 4);
+      assert_eq!(map.len(), 4);
     }
 
     #[test]
