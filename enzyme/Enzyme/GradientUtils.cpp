@@ -500,11 +500,28 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
          IRBuilder <> bb(phi);
          auto which = bb.CreatePHI(phi->getType(), phi->getNumIncomingValues());
          invertedPointers[val] = which;
+         bool hasnonconst = false;
 
          for(unsigned int i=0; i<phi->getNumIncomingValues(); i++) {
             IRBuilder <>pre(phi->getIncomingBlock(i)->getTerminator());
-            which->addIncoming(invertPointerM(phi->getIncomingValue(i), pre), phi->getIncomingBlock(i));
+            Value* val;
+            if (isConstantValue(phi->getIncomingValue(i))) {
+                val = lookupM(phi->getIncomingValue(i), pre);
+            } else {
+                val = invertPointerM(phi->getIncomingValue(i), pre);
+                hasnonconst = true;
+            }
+            which->addIncoming(val, phi->getIncomingBlock(i));
          }
+         if (!hasnonconst) {
+            llvm::errs() << *oldFunc << "\n";
+            llvm::errs() << *newFunc << "\n";
+            llvm::errs() << *phi << "\n"; 
+            llvm::errs() << "WARNING: this should assert, but currently doesn't as we wait for interprocedural constant detection\n";
+         }
+         //This is okay to not assert as it isn't necessary (since we could return any undefined value if a value we wish to find the inverted pointer of is inactive
+         //  However, this usually is indicative of a bug elsewhere in the code, and thus this _should_ be turned on once activity analysis is able to handle returns interprocedurally
+         //assert(hasnonconst);
 
          return lookupM(which, BuilderM);
      }
@@ -733,10 +750,10 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         loopContexts[L].latchMerge = nullptr;
     
         fake::SCEVExpander::getExitBlocks(L, loopContexts[L].exitBlocks);
-        if (loopContexts[L].exitBlocks.size() == 0) {
-            llvm::errs() << "newFunc: " << *BB->getParent() << "\n";
-            llvm::errs() << "L: " << *L << "\n";
-        }
+        //if (loopContexts[L].exitBlocks.size() == 0) {
+        //    llvm::errs() << "newFunc: " << *BB->getParent() << "\n";
+        //    llvm::errs() << "L: " << *L << "\n";
+        //}
         //assert(loopContexts[L].exitBlocks.size() > 0);
 
         auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
@@ -746,6 +763,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         loopContexts[L].incvar = pair.second;
         removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second, fake::SCEVExpander::getLatches(L, loopContexts[L].exitBlocks));
         loopContexts[L].antivaralloc = IRBuilder<>(gutils.inversionAllocs).CreateAlloca(CanonicalIV->getType(), nullptr, CanonicalIV->getName()+"'ac");
+        loopContexts[L].antivaralloc->setAlignment(cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8);
       
         PredicatedScalarEvolution PSE(SE, *L);
         //predicate.addPredicate(SE.getWrapPredicate(SE.getSCEV(CanonicalIV), SCEVWrapPredicate::IncrementNoWrapMask));

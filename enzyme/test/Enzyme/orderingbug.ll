@@ -1,5 +1,5 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -instsimplify -simplifycfg -S | FileCheck %s
-
+; XFAIL: *
 declare double @__enzyme_autodiff(i8*, ...)
 
 ; Function Attrs: norecurse nounwind uwtable

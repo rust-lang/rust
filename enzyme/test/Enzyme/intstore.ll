@@ -20,8 +20,8 @@ define dso_local void @store(double* nocapture readonly %x, double* nocapture %y
 entry:
   %0 = bitcast double* %x to i64*
   %1 = bitcast double* %y to i64*
-  %2 = load i64, i64* %0, align 8, !tbaa !2
-  store i64 %2, i64* %1, align 8, !tbaa !2
+  %2 = load i64, i64* %0, align 8
+  store i64 %2, i64* %1, align 8
   ret void
 }
 

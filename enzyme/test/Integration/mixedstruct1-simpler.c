@@ -18,40 +18,50 @@
 double __enzyme_autodiff(void*, ...);
 
 
-typedef float* WINDOW_FRAME;
+typedef struct {
+  int i;
+  float value1;
+  float value2;
+} structtest2;
 
 
-float tile_multiply(WINDOW_FRAME* frame, int C_start, int C_end) {
-    if ( C_end - C_start > 3) {
-      int C_midpoint = C_start + (C_end-C_start)/2;
-      WINDOW_FRAME* frame1 = malloc(sizeof(WINDOW_FRAME));
-      *frame1 = *frame;
+typedef struct {
+  int R_start;
+  int R_end;
+  int C_start;
+  int C_end;
+  float* data;
+} WINDOW_FRAME;
 
-      float sum1 = tile_multiply(frame1, C_start, C_midpoint);
-      float sum2 = tile_multiply(frame1, C_midpoint, C_end);
-      free(frame1);
+float tile_multiply(float* data, int R_start, int R_end, int C_start, int C_end) {
+  int R_midpoint = (R_start) + (R_end-R_start)/2;
+  int C_midpoint = (C_start) + (C_end-C_start)/2;
+
+  if (R_end - R_start > 2) {
+      float sum1 = tile_multiply(data, R_start, R_midpoint, C_start, C_end);
+      float sum2 = tile_multiply(data, R_midpoint, R_end, C_start, C_end);
+      return sum1 + sum2;
+  } else if (C_end - C_start > 2) {
+      float sum1 = tile_multiply(data, R_start, R_end, C_start, C_midpoint);
+      float sum2 = tile_multiply(data, R_start, R_end, C_midpoint, C_end);
       return sum1 + sum2;
   } else {
     float sum = 0.0;
-    long long int c = C_start;
-    if (c < C_end)
-    do{
-        sum += (*frame)[c];//*window[(r+c)%10];
-        c++;
-      }while(c < C_end);
+    for (int r = R_start; r < R_end; r++) {
+      for (int c = C_start; c < C_end; c++) {
+        printf("data[%d*10 + %d]\n", r, c);
+        sum += data[r*10 + c];//*window[(r+c)%10];
+      }
+    }
     return sum;
   }
 }
 
-void tile_multiply_helper(WINDOW_FRAME* frame, float* loss) {
-  *loss = tile_multiply(frame, 0, 10);
-}
-
 int main(int argc, char** argv) {
 
-  float* data = (float*) malloc(sizeof(float) * 10);
-  float* d_data = (float*) malloc(sizeof(float) * 10);
-  for (int i = 0; i < 10; i++) {
+  float* data = (float*) malloc(sizeof(float) * 10*10);
+  float* d_data = (float*) malloc(sizeof(float) * 10*10);
+  for (int i = 0; i < 10*10; i++) {
     data[i] = 1.0;
     d_data[i] = 0.0;
   }
@@ -60,19 +70,16 @@ int main(int argc, char** argv) {
   float d_loss = 1.0;
 
 
+  int R_start = 0;
+  int R_end = 10;
   int C_start = 0;
-
-  WINDOW_FRAME* frame = (WINDOW_FRAME*) malloc(sizeof(WINDOW_FRAME));
-  WINDOW_FRAME* d_frame = (WINDOW_FRAME*) malloc(sizeof(WINDOW_FRAME));
-  *frame = data;
-
-  *d_frame = d_data; 
+  int C_end = 10;
 
   //tile_multiply_helper(window, frame, &loss);
 
-  __enzyme_autodiff(tile_multiply_helper, frame, d_frame, &loss, &d_loss);
+  __enzyme_autodiff(tile_multiply, data, d_data, R_start, R_end, C_start, C_end); //frame, d_frame, &loss, &d_loss);
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 100; i++) {
     printf("gradient for %d is %f\n", i, d_data[i]);
     APPROX_EQ(d_data[i], 1.0, 1e-10);
   }

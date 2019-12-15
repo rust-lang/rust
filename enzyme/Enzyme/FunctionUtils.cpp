@@ -498,7 +498,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 
             //Be conservative and assume comparisons need the alloca for reverse pass (likely unnecessary but shrug)
             //  If both comparison operators originate from the same alloca, then this isn't necessary (future optimization)
-            if (auto sel = dyn_cast<CmpInst>(use)) {
+            if (isa<CmpInst>(use)) {
                 needToConvert = true;
                 goto end;
             }

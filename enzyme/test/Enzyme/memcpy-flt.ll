@@ -56,11 +56,11 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %1 = bitcast double* %src to i8*
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 %1, i64 %num, i1 false)
 ; CHECK-NEXT:   %2 = lshr i64 %num, 3
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_double(double* %"dst'", double* %"src'", i64 %2)
+; CHECK-NEXT:   call void @__enzyme_memcpyadd_doubleda1sa1(double* %"dst'", double* %"src'", i64 %2)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}void @__enzyme_memcpyadd_double(double* nocapture %dst, double* nocapture %src, i64 %num) #[[mymemattrs:.+]] {
+; CHECK: define internal {{(dso_local )?}}void @__enzyme_memcpyadd_doubleda1sa1(double* nocapture %dst, double* nocapture %src, i64 %num) #[[mymemattrs:.+]] {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = icmp eq i64 %num, 0
 ; CHECK-NEXT:   br i1 %0, label %for.end, label %for.body
@@ -68,12 +68,12 @@ attributes #3 = { nounwind }
 ; CHECK: for.body:                                        
 ; CHECK-NEXT:   %idx = phi i64 [ 0, %entry ], [ %idx.next, %for.body ]
 ; CHECK-NEXT:   %dst.i = getelementptr double, double* %dst, i64 %idx
-; CHECK-NEXT:   %dst.i.l = load double, double* %dst.i, align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %dst.i, align 8
+; CHECK-NEXT:   %dst.i.l = load double, double* %dst.i, align 1
+; CHECK-NEXT:   store double 0.000000e+00, double* %dst.i, align 1
 ; CHECK-NEXT:   %src.i = getelementptr double, double* %src, i64 %idx
-; CHECK-NEXT:   %src.i.l = load double, double* %src.i, align 8
+; CHECK-NEXT:   %src.i.l = load double, double* %src.i, align 1
 ; CHECK-NEXT:   %1 = fadd fast double %src.i.l, %dst.i.l
-; CHECK-NEXT:   store double %1, double* %src.i, align 8
+; CHECK-NEXT:   store double %1, double* %src.i, align 1
 ; CHECK-NEXT:   %idx.next = add nuw i64 %idx, 1
 ; CHECK-NEXT:   %2 = icmp eq i64 %idx.next, %num
 ; CHECK-NEXT:   br i1 %2, label %for.end, label %for.body
@@ -102,7 +102,7 @@ attributes #3 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}{} @diffesubmemcpy_float(double* nocapture %dst, double* %"dst'", double* nocapture readonly %src, double* %"src'", i64 %num, {} %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = lshr i64 %num, 3
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_double(double* %"dst'", double* %"src'", i64 %0)
+; CHECK-NEXT:   call void @__enzyme_memcpyadd_doubleda1sa1(double* %"dst'", double* %"src'", i64 %0)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

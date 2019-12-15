@@ -55,9 +55,9 @@ entry:
 ; CHECK-NEXT:   %call_augmented = call { { double }, double } @augmented_loader(double* %a, double* %"a'")
 ; CHECK-NEXT:   %subcache = extractvalue { { double }, double } %call_augmented, 0
 ; CHECK-NEXT:   %subcache.fca.0.extract = extractvalue { double } %subcache, 0
-; CHECK-NEXT:   %0 = extractvalue { { double }, double } %call_augmented, 1
+; CHECK-NEXT:   %call = extractvalue { { double }, double } %call_augmented, 1
 ; CHECK-NEXT:   %.fca.0.0.0.insert = insertvalue { { { double } }, double } undef, double %subcache.fca.0.extract, 0, 0, 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { { { double } }, double } %.fca.0.0.0.insert, double %0, 1
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { { double } }, double } %.fca.0.0.0.insert, double %call, 1
 ; CHECK-NEXT:   ret { { { double } }, double } %.fca.1.insert
 ; CHECK-NEXT: }
 

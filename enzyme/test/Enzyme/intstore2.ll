@@ -3,6 +3,7 @@
 ; #include <math.h>
 ; #include <stdio.h>
 ; 
+; NOTE THIS C CODE IS NOW ILLEGAL [as will send down TBAA for pointer]
 ; __attribute__((noinline))
 ; void store(double **x, double **y) {
 ;   unsigned long long xl = (unsigned long long)*x;
@@ -18,9 +19,9 @@
 define dso_local void @store(double** nocapture readonly %x, double** nocapture %y) #0 {
 entry:
   %0 = bitcast double** %x to i64*
-  %1 = load i64, i64* %0, align 8, !tbaa !2
+  %1 = load i64, i64* %0, align 8
   %2 = bitcast double** %y to i64*
-  store i64 %1, i64* %2, align 8, !tbaa !6
+  store i64 %1, i64* %2, align 8
   ret void
 }
 

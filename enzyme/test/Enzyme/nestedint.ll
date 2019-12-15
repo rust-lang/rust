@@ -1,3 +1,5 @@
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+
 ; ModuleID = 'seg.ll'
 source_filename = "/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigen-made.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -805,3 +807,110 @@ attributes #11 = { cold }
 !14 = !{!4, !4, i64 0}
 !15 = !{!16, !16, i64 0}
 !16 = !{!"double", !5, i64 0}
+
+
+; CHECK: define internal {} @diffematvec(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'")
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %m_rows.i19 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 1
+; CHECK-NEXT:   %a8 = load i64, i64* %m_rows.i19, align 8, !tbaa !2
+; CHECK-NEXT:   %"m_data.i17'ipge" = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %"W'", i64 0, i32 0, i32 0, i32 0
+; CHECK-NEXT:   %m_data.i17 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 0
+; CHECK-NEXT:   %"a9'ipl" = load double*, double** %"m_data.i17'ipge", align 8
+; CHECK-NEXT:   %a9 = load double*, double** %m_data.i17, align 8, !tbaa !9
+; CHECK-NEXT:   %subcall_augmented = call { { { {} }, i64, i64 }, i64 } @augmented_sub(double* %a9, double* %"a9'ipl", i64 %a8) #9
+; CHECK-NEXT:   %0 = extractvalue { { { {} }, i64, i64 }, i64 } %subcall_augmented, 0
+; CHECK-NEXT:   %1 = extractvalue { { { {} }, i64, i64 }, i64 } %subcall_augmented, 1
+; CHECK-NEXT:   %mvcond = icmp slt i64 %1, 0
+; CHECK-NEXT:   br i1 %mvcond, label %one, label %invertentry
+
+; CHECK: one:                                              ; preds = %entry
+; CHECK-NEXT:   store double 1.000000e+00, double* %a9, align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %"a9'ipl", align 8
+; CHECK-NEXT:   br label %invertentry
+
+; CHECK: invertentry:                                      ; preds = %entry, %one
+; CHECK-NEXT:   %2 = call {} @diffesub(double* %a9, double* %"a9'ipl", i64 %a8, { { {} }, i64, i64 } %0) #9
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal { {}, i64, i64 } @augmented_final(double* %array, double* %"array'", i64 %finalsize)
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = ptrtoint double* %array to i64
+; CHECK-NEXT:   %and = and i64 %0, 7
+; CHECK-NEXT:   %tobool = icmp eq i64 %and, 0
+; CHECK-NEXT:   br i1 %tobool, label %if.else, label %cleanup
+
+; CHECK: if.else:                                          ; preds = %entry
+; CHECK-NEXT:   %div = lshr i64 %0, 3
+; CHECK-NEXT:   %and2 = and i64 %div, 1
+; CHECK-NEXT:   %cmp = icmp slt i64 %and2, %finalsize
+; CHECK-NEXT:   %cond = select i1 %cmp, i64 %and2, i64 %finalsize
+; CHECK-NEXT:   br label %cleanup
+
+; CHECK: cleanup:                                          ; preds = %if.else, %entry
+; CHECK-NEXT:   %1 = phi i64 [ %cond, %if.else ], [ %finalsize, %entry ]
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, i64, i64 } undef, i64 %1, 1
+; CHECK-NEXT:   %.fca.2.insert = insertvalue { {}, i64, i64 } %.fca.1.insert, i64 %1, 2
+; CHECK-NEXT:   ret { {}, i64, i64 } %.fca.2.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { { {} }, i64, i64 } @augmented_metasub(double* %array, double* %"array'", i64 %metasize)
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %finalcall_augmented = call { {}, i64, i64 } @augmented_final(double* %array, double* %"array'", i64 %metasize)
+; CHECK-NEXT:   %antiptr_finalcall = extractvalue { {}, i64, i64 } %finalcall_augmented, 2
+; CHECK-NEXT:   %finalcall = extractvalue { {}, i64, i64 } %finalcall_augmented, 1
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { {} }, i64, i64 } undef, i64 %finalcall, 1
+; CHECK-NEXT:   %.fca.2.insert = insertvalue { { {} }, i64, i64 } %.fca.1.insert, i64 %antiptr_finalcall, 2
+; CHECK-NEXT:   ret { { {} }, i64, i64 } %.fca.2.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { { { {} }, i64, i64 }, i64 } @augmented_sub(double*, double* %"'", i64 %subsize)
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %tobool = icmp eq double* %0, null
+; CHECK-NEXT:   br i1 %tobool, label %if.end, label %return
+
+; CHECK: if.end:                                           ; preds = %entry
+; CHECK-NEXT:   %metacall_augmented = call { { {} }, i64, i64 } @augmented_metasub(double* %0, double* %"'", i64 %subsize)
+; CHECK-NEXT:   %antiptr_metacall = extractvalue { { {} }, i64, i64 } %metacall_augmented, 2
+; CHECK-NEXT:   %metacall = extractvalue { { {} }, i64, i64 } %metacall_augmented, 1
+; CHECK-NEXT:   br label %return
+
+; CHECK: return:                                           ; preds = %if.end, %entry
+; CHECK-NEXT:   %.sroa.2.0 = phi i64 [ %metacall, %if.end ], [ undef, %entry ]
+; CHECK-NEXT:   %.sroa.0.0 = phi i64 [ %antiptr_metacall, %if.end ], [ undef, %entry ]
+; CHECK-NEXT:   %subret = phi i64 [ %metacall, %if.end ], [ -1, %entry ]
+; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { { {} }, i64, i64 }, i64 } undef, i64 %.sroa.0.0, 0, 1
+; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { { {} }, i64, i64 }, i64 } %.fca.0.1.insert, i64 %.sroa.2.0, 0, 2
+; CHECK:   %.fca.1.insert = insertvalue { { { {} }, i64, i64 }, i64 } %.fca.0.2.insert, i64 %subret, 1
+; CHECK-NEXT:   ret { { { {} }, i64, i64 }, i64 } %.fca.1.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffesub(double*, double* %"'", i64 %subsize, { { {} }, i64, i64 } %tapeArg)
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %tobool = icmp eq double* %0, null
+; CHECK-NEXT:   br i1 %tobool, label %if.end, label %invertentry
+
+; CHECK: if.end:                                           ; preds = %entry
+; CHECK-NEXT:   %1 = call {} @diffemetasub(double* %0, double* %"'", i64 %subsize, { {} } undef)
+; CHECK-NEXT:   br label %invertentry
+
+; CHECK: invertentry:                                      ; preds = %entry, %if.end
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffemetasub(double* %array, double* %"array'", i64 %metasize, { {} } %tapeArg)
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = call {} @diffefinal(double* %array, double* %"array'", i64 %metasize, {} undef)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffefinal(double* %array, double* %"array'", i64 %finalsize, {} %tapeArg)
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   br label %invertentry
+
+; CHECK: if.else:                                          ; No predecessors!
+; CHECK-NEXT:   br label %invertentry
+
+; CHECK: invertentry:                                      ; preds = %entry, %if.else
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }

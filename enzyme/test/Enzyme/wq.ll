@@ -467,8 +467,6 @@ entry:
 
 define linkonce_odr dso_local void @nothing(%"class.Eigen::internal::redux_evaluator"* %this) {
 entry:
-  ; %0 = bitcast %"class.Eigen::internal::redux_evaluator"* %this to %"class.Eigen::internal::noncopyable"*
-  ; tail call void @_ZN5Eigen8internal11noncopyableD2Ev(%"class.Eigen::internal::noncopyable"* %0) #12
   ret void
 }
 
@@ -1345,15 +1343,14 @@ attributes #14 = { noreturn nounwind }
 ; CHECK-NEXT:   %0 = extractvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %_augmented, 0
 ; CHECK-NEXT:   %"thisEval'ipc3" = bitcast i8* %"malloccall1'mi" to %"class.Eigen::internal::redux_evaluator"*
 ; CHECK-NEXT:   %"func'ipc4" = bitcast i8* %"malloccall'mi" to %"struct.Eigen::internal::scalar_sum_op"*
-; CHECK-NEXT:   %call5_augmented = call { { <2 x double>*, <2 x double>* } } @augmented__ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc3", %"struct.Eigen::internal::scalar_sum_op"* %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'ipc4")
-; CHECK-NEXT:   %1 = extractvalue { { <2 x double>*, <2 x double>* } } %call5_augmented, 0
+; CHECK-NEXT:   %call5_augmented = call { {} } @augmented__ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc3", %"struct.Eigen::internal::scalar_sum_op"* %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'ipc4")
 ; CHECK-NEXT:   %"thisEval'ipc" = bitcast i8* %"malloccall1'mi" to %"class.Eigen::internal::redux_evaluator"*
-; CHECK-NEXT:   %2 = call {} @diffenothing(%"class.Eigen::internal::redux_evaluator"* nonnull %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc") #12
+; CHECK-NEXT:   %1 = call {} @diffenothing(%"class.Eigen::internal::redux_evaluator"* nonnull %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc") #12
 ; CHECK-NEXT:   %"thisEval'ipc2" = bitcast i8* %"malloccall1'mi" to %"class.Eigen::internal::redux_evaluator"*
 ; CHECK-NEXT:   %"func'ipc" = bitcast i8* %"malloccall'mi" to %"struct.Eigen::internal::scalar_sum_op"*
-; CHECK-NEXT:   %3 = call {} @diffe_ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* nonnull %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc2", %"struct.Eigen::internal::scalar_sum_op"* nonnull %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'ipc", double %differeturn, { <2 x double>*, <2 x double>* } %1)
+; CHECK-NEXT:   %2 = call {} @diffe_ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* nonnull %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc2", %"struct.Eigen::internal::scalar_sum_op"* nonnull %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'ipc", double %differeturn, {} undef)
 ; CHECK-NEXT:   %"thisEval'ipc5" = bitcast i8* %"malloccall1'mi" to %"class.Eigen::internal::redux_evaluator"*
-; CHECK-NEXT:   %4 = call {} @diffe_ZN5Eigen8internal15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"class.Eigen::internal::redux_evaluator"* nonnull %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc5", %"class.Eigen::Matrix"* nonnull %W, %"class.Eigen::Matrix"* %"W'", { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %0)
+; CHECK-NEXT:   %3 = call {} @diffe_ZN5Eigen8internal15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"class.Eigen::internal::redux_evaluator"* nonnull %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc5", %"class.Eigen::Matrix"* nonnull %W, %"class.Eigen::Matrix"* %"W'", { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %0)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall1'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %malloccall1)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
@@ -1366,25 +1363,20 @@ attributes #14 = { noreturn nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { <2 x double>*, <2 x double>* } } @augmented__ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* dereferenceable(24) %mat, %"class.Eigen::internal::redux_evaluator"* %"mat'", %"struct.Eigen::internal::scalar_sum_op"* dereferenceable(1) %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'") local_unnamed_addr #3 align 2 {
+; CHECK: define internal { {} } @augmented__ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* dereferenceable(24) %mat, %"class.Eigen::internal::redux_evaluator"* %"mat'", %"struct.Eigen::internal::scalar_sum_op"* dereferenceable(1) %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'") local_unnamed_addr #3 align 2 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %m_data = bitcast %"class.Eigen::internal::redux_evaluator"* %mat to <2 x double>**
-; CHECK-NEXT:   %"m_data'ipc" = bitcast %"class.Eigen::internal::redux_evaluator"* %"mat'" to <2 x double>**
-; CHECK-NEXT:   %"from'ipl" = load <2 x double>*, <2 x double>** %"m_data'ipc", align 8
-; CHECK-NEXT:   %from = load <2 x double>*, <2 x double>** %m_data, align 8, !tbaa !8
-; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { <2 x double>*, <2 x double>* } } undef, <2 x double>* %from, 0, 0
-; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { <2 x double>*, <2 x double>* } } %.fca.0.0.insert, <2 x double>* %"from'ipl", 0, 1
-; CHECK-NEXT:   ret { { <2 x double>*, <2 x double>* } } %.fca.0.1.insert
+; CHECK-NEXT:   ret { {} } undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffe_ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* dereferenceable(24) %mat, %"class.Eigen::internal::redux_evaluator"* %"mat'", %"struct.Eigen::internal::scalar_sum_op"* dereferenceable(1) %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'", double %differeturn, { <2 x double>*, <2 x double>* } %tapeArg) local_unnamed_addr #3 align 2 {
+; CHECK: define internal {} @diffe_ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* dereferenceable(24) %mat, %"class.Eigen::internal::redux_evaluator"* %"mat'", %"struct.Eigen::internal::scalar_sum_op"* dereferenceable(1) %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'", double %differeturn, {} %tapeArg) local_unnamed_addr #3 align 2 {
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"m_data'ipc" = bitcast %"class.Eigen::internal::redux_evaluator"* %"mat'" to <2 x double>**
+; CHECK-NEXT:   %"from'ipl" = load <2 x double>*, <2 x double>** %"m_data'ipc", align 8
 ; CHECK-NEXT:   %"call3'de.0.vec.insert" = insertelement <2 x double> undef, double %differeturn, i32 0
 ; CHECK-NEXT:   %"call3'de.8.vec.insert" = shufflevector <2 x double> %"call3'de.0.vec.insert", <2 x double> undef, <2 x i32> zeroinitializer
-; CHECK-NEXT:   %"from'il_phi_fromtape_unwrap" = extractvalue { <2 x double>*, <2 x double>* } %tapeArg, 1
-; CHECK-NEXT:   %0 = load <2 x double>, <2 x double>* %"from'il_phi_fromtape_unwrap", align 16
+; CHECK-NEXT:   %0 = load <2 x double>, <2 x double>* %"from'ipl", align 16
 ; CHECK-NEXT:   %1 = fadd fast <2 x double> %0, %"call3'de.8.vec.insert"
-; CHECK-NEXT:   store <2 x double> %1, <2 x double>* %"from'il_phi_fromtape_unwrap", align 16
+; CHECK-NEXT:   store <2 x double> %1, <2 x double>* %"from'ipl", align 16
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

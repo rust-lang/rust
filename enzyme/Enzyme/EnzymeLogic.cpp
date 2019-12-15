@@ -338,7 +338,7 @@ std::string to_string(const std::set<unsigned>& us) {
 
 std::string to_string(const std::map<Argument*, bool>& us) {
     std::string s = "{";
-    for(auto y : us) s += y.first->getName().str() + ":" + std::to_string(y.second) + ",";
+    for(auto y : us) s += y.first->getName().str() + "@" + y.first->getParent()->getName().str() + ":" + std::to_string(y.second) + ",";
     return s + "}";
 }
 
@@ -346,17 +346,17 @@ std::string to_string(const std::map<Argument*, bool>& us) {
 bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLevel, std::map<Value*, bool> seen = {}) {
   if (seen.find(inst) != seen.end()) return seen[inst];
 
-  //return seen[inst] = true;
-
   //Inductively claim we aren't needed (and try to find contradiction)
   seen[inst] = false;
 
+  //Consider all users of this value, do any of them need this in the reverse?
   for (auto use : inst->users()) {
     if (use == inst) continue;
 
     Instruction* user = dyn_cast<Instruction>(use);
 
-    // One may need to this load in the computation of loop bounds/comparisons/etc (which even though not active -- will be used for the reverse pass)
+    // One may need to this value in the computation of loop bounds/comparisons/etc (which even though not active -- will be used for the reverse pass)
+    //   We only need this if we're not doing the combined forward/reverse since otherwise it will use the local cache (rather than save for a separate backwards cache)
     if (!topLevel) {
         //Proving that none of the uses (or uses' uses) are used in control flow allows us to safely not do this load
         
@@ -392,10 +392,26 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
                 if (si->getPointerOperand() == inst)
                     continue;
             }
-            if (auto ci = dyn_cast<CallInst>(zu)) {
+            if (isa<CallInst>(zu)) {
                 //llvm::errs() << " had to use in reverse since call use " << *zu << " of " << *inst << "\n";
                 return seen[inst] = true;
             }
+            
+            /*
+            if (auto gep = dyn_cast<GetElementPtrInst>(zu)) {
+                for(auto &idx : gep->indices()) {
+                    if (idx == inst) {
+                        return seen[inst] = true;
+                    }
+                }
+                if (gep->getPointerOperand() == inst && is_value_needed_in_reverse(gutils, gep, topLevel, seen)) {
+                    //llvm::errs() << " had to use in reverse since sub gep use " << *zu << " of " << *inst << "\n";
+                    return seen[inst] = true;
+                }
+                continue;
+            }
+            */
+            
             //TODO add handling of call and allow interprocedural
             //llvm::errs() << " unknown pointer use " << *zu << " of " << *inst << "\n";
             unknown = true;
@@ -403,6 +419,12 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
         if (!unknown)
           continue;
           //return seen[inst] = false;
+    }    
+    
+    if (isa<LoadInst>(user) || isa<CastInst>(user) || isa<PHINode>(user)) {
+        if (!is_value_needed_in_reverse(gutils, user, topLevel, seen)) {
+            continue;
+        }
     }
 
     if (auto op = dyn_cast<BinaryOperator>(user)) {
@@ -410,6 +432,23 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
         continue;
       }
     }
+
+    //We don't need only the indices of a GEP to compute the adjoint of a GEP
+    if (auto gep = dyn_cast<GetElementPtrInst>(user)) {
+        bool indexuse = false;
+        for(auto &idx : gep->indices()) {
+            if (idx == inst) {
+                indexuse = true;
+            }
+        }
+        if (!indexuse) continue;
+    }
+
+    //We don't need any of the input operands to compute the adjoint of a store instance
+    if (isa<StoreInst>(use)) {
+        continue;
+    }
+
     if (isa<CmpInst>(use) || isa<BranchInst>(use) || isa<CastInst>(use) || isa<PHINode>(use) || isa<ReturnInst>(use) || isa<FPExtInst>(use) ||
         (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst) || 
         (isa<InsertElementInst>(use) && cast<InsertElementInst>(use)->getOperand(2) != inst) || 
@@ -438,8 +477,8 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, AugmentedReturn> cachedfunctions;
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, bool> cachedfinished;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), differentialReturn, returnUsed);
-  //llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << "\n";
   auto found = cachedfunctions.find(tup);
+  llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << " found==" << (found != cachedfunctions.end()) << "\n";
   if (found != cachedfunctions.end()) {
     return found->second;
   }
@@ -750,9 +789,12 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                 continue;
             }
 
+            //Remove free's in forward pass so the memory can be used in the reverse pass
             if (called && (called->getName()=="free" ||
-                called->getName()=="_ZdlPv" || called->getName()=="_ZdlPvm"))
+                called->getName()=="_ZdlPv" || called->getName()=="_ZdlPvm")) {
+                gutils->erase(op);
                 continue;
+            }
 
             if (gutils->isConstantInstruction(op)) {
                 if (op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
@@ -2882,7 +2924,7 @@ realcall:
           }
       }
 
-      if (!op_type->isPointerTy()) {
+      if (op_type->isFPOrFPVectorTy() || (op_type->isIntegerTy() && isIntASecretFloat(op_orig) == IntType::Float)) {
         auto prediff = diffe(inst);
         setDiffe(inst, Constant::getNullValue(op_type));
         //llvm::errs() << "  + doing load propagation: op_orig:" << *op_orig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";

@@ -1826,7 +1826,7 @@ public:
         llvm::errs() << "tostore:" << *tostore << "\n";
       }
       assert(toset->getType() == cast<PointerType>(tostore->getType())->getElementType());
-      auto store = BuilderM.CreateStore(toset, tostore);
+      BuilderM.CreateStore(toset, tostore);
   }
 
   SelectInst* addToDiffeIndexed(Value* val, Value* dif, ArrayRef<Value*> idxs, IRBuilder<> &BuilderM) {
@@ -1849,6 +1849,7 @@ public:
         assert(old);
         assert(dif);
         llvm::errs() << *newFunc << "\n" << "cannot handle type " << *old << "\n" << *dif;
+        assert(0 && "cannot handle type");
         report_fatal_error("cannot handle type");
       }
 
@@ -1908,6 +1909,7 @@ public:
         assert(old);
         assert(dif);
         llvm::errs() << *newFunc << "\n" << "cannot handle type " << *old << "\n" << *dif;
+        assert(0 && "cannot handle type");
         report_fatal_error("cannot handle type");
       }
       StoreInst* st = BuilderM.CreateStore(res, ptr);

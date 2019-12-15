@@ -13,7 +13,7 @@ OPT=../../build/bin/opt
 
 %-unopt.ll: %.cpp
 	#$(CLANG)++ -fno-exceptions -fno-use-cxa-atexit -fno-unroll-loops $^ -O0 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include #-ggdb 
-	$(CLANG)++ -fno-exceptions -fno-use-cxa-atexit -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include -march=x86-64 #-ggdb 
+	$(CLANG)++ -fno-exceptions -fno-use-cxa-atexit -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include -march=atom #-ggdb 
 	#$(CLANG)++ -fno-exceptions -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include -ggdb 
 
 %-preopt.ll: %-unopt.ll

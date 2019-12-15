@@ -53,7 +53,7 @@ bool isKnownIntegerTBAA(Instruction* inst) {
 	  Metadata* metadata2 = mda->getOperand(0).get();
 	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
 	    auto typeNameStringRef = typeName->getString();
-	    if (typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
+	    if (typeNameStringRef == "long long" || typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
           if (printconst)
             llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
           //llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
