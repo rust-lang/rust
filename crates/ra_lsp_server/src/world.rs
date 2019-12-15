@@ -22,6 +22,7 @@ use crate::{
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     LspError, Result,
 };
+use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct Options {
@@ -235,6 +236,9 @@ impl WorldSnapshot {
         let path = self.vfs.read().file2path(VfsFile(id.0));
         let url = Url::from_file_path(&path)
             .map_err(|_| format!("can't convert path to url: {}", path.display()))?;
+
+        #[cfg(target_os = "windows")]
+        let url = lowercase_drive_letter(&url);
         Ok(url)
     }
 
@@ -278,4 +282,34 @@ impl WorldSnapshot {
     pub fn feature_flags(&self) -> &FeatureFlags {
         self.analysis.feature_flags()
     }
+}
+
+#[cfg(target_os = "windows")]
+fn lowercase_drive_letter(url: &Url) -> Url {
+    let s = url.to_string();
+    let drive_partition: Vec<&str> = s.rsplitn(2, ':').collect::<Vec<&str>>();
+
+    if drive_partition.len() == 1 {
+        return url.clone();
+    }
+
+    let joined = drive_partition[1].to_ascii_lowercase() + ":" + drive_partition[0];
+    let url = Url::from_str(&joined).expect("This came from a valid `Url`");
+    url
+}
+
+#[test]
+fn test_lowercase_drive_letter_with_drive() {
+    let url = Url::from_file_path("C:\\Test").unwrap();
+    let url = lowercase_drive_letter(&url);
+
+    assert_eq!(url.to_string(), "file:///c:/Test");
+}
+
+#[test]
+fn test_drive_without_colon_passthrough() {
+    let url = Url::from_file_path(r#"\\localhost\C$\my_dir"#).expect("Should work");
+    let url = lowercase_drive_letter(&url);
+
+    assert_eq!(url.to_string(), "file:///C$/my_dir");
 }
