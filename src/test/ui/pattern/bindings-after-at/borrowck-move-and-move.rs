@@ -2,6 +2,7 @@
 
 #![feature(bindings_after_at)]
 //~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
+#![feature(slice_patterns)]
 
 fn main() {
     struct U; // Not copy!
@@ -26,6 +27,22 @@ fn main() {
         //~^ ERROR cannot bind by-move with sub-bindings
         //~| ERROR use of moved value
         //~| ERROR cannot bind by-move with sub-bindings
+        //~| ERROR use of moved value
+    }
+
+    fn fun(a @ b: U) {}
+    //~^ ERROR cannot bind by-move with sub-bindings
+    //~| ERROR use of moved value
+
+    match [u(), u(), u(), u()] {
+        xs @ [a, .., b] => {}
+        //~^ ERROR cannot bind by-move with sub-bindings
+        //~| ERROR use of moved value
+    }
+
+    match [u(), u(), u(), u()] {
+        xs @ [_, ys @ .., _] => {}
+        //~^ ERROR cannot bind by-move with sub-bindings
         //~| ERROR use of moved value
     }
 }

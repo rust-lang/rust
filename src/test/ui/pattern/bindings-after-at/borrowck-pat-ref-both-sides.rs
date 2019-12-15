@@ -5,6 +5,7 @@
 
 #![feature(bindings_after_at)]
 //~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
+#![feature(slice_patterns)]
 
 fn main() {
     struct U; // Not copy!
@@ -26,6 +27,8 @@ fn main() {
     let _: &U = b;
     let _: &U = c;
     let _: &U = d;
+
+    fn f1(ref a @ (ref b, [ref c, ref mid @ .., ref d]): (U, [U; 4])) {}
 
     let a @ (b, [c, d]) = &(u(), [u(), u()]);
     let _: &(U, [U; 2]) = a;

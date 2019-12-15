@@ -22,8 +22,11 @@ fn main() {
     let a @ P(b, P(c, d)) = P(mk_c(), P(C, C));
     let a @ [b, c] = [C, C];
     let a @ [b, .., c] = [C, mk_c(), C];
+    let a @ [b, mid @ .., c] = [C, mk_c(), C];
     let a @ &(b, c) = &(C, C);
     let a @ &(b, &P(c, d)) = &(mk_c(), &P(C, C));
+
+    fn foo(a @ [b, mid @ .., c]: [C; 3]) {}
 
     use self::E::*;
     match L(C) {

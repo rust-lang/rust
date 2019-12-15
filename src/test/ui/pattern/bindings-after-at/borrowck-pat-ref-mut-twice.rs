@@ -2,11 +2,26 @@
 
 #![feature(bindings_after_at)]
 //~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
+#![feature(slice_patterns)]
 
 fn main() {
     struct U;
 
     fn u() -> U { U }
+
+    fn f1(ref mut a @ ref mut b: U) {}
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    fn f2(ref mut a @ ref mut b: U) {}
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    fn f3(
+        ref mut a @ [
+        //~^ ERROR cannot borrow `a` as mutable more than once at a time
+            [ref b @ .., _],
+            [_, ref mut mid @ ..],
+            ..,
+            [..],
+        ] : [[U; 4]; 5]
+    ) {}
 
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow `a` as mutable more than once at a time

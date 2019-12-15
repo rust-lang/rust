@@ -1,5 +1,6 @@
 #![feature(bindings_after_at)]
 //~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
+#![feature(slice_patterns)]
 
 enum Option<T> {
     None,
@@ -21,6 +22,17 @@ fn main() {
 
     // Prevent promotion:
     fn u() -> U { U }
+
+    fn f1(ref a @ ref mut b: U) {}
+    //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
+    fn f2(ref mut a @ ref b: U) {}
+    //~^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable
+    fn f3(ref a @ [ref b, ref mut mid @ .., ref c]: [U; 4]) {}
+    //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
+
+    let ref mut a @ (ref b @ ref mut c) = u(); // sub-in-sub
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~| ERROR cannot borrow `b` as mutable because it is also borrowed as immutable
 
     let ref a @ ref mut b = U;
     //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable

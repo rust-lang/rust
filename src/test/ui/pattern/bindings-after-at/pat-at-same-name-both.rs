@@ -7,6 +7,18 @@
 //~^ WARN the feature `or_patterns` is incomplete and may cause the compiler to crash
 
 fn main() {
+    fn f(a @ a @ a: ()) {}
+    //~^ ERROR identifier `a` is bound more than once in this parameter list
+    //~| ERROR identifier `a` is bound more than once in this parameter list
+
+    match Ok(0) {
+        Ok(a @ b @ a)
+        //~^ ERROR identifier `a` is bound more than once in the same pattern
+        | Err(a @ b @ a)
+        //~^ ERROR identifier `a` is bound more than once in the same pattern
+        => {}
+    }
+
     let a @ a @ a = ();
     //~^ ERROR identifier `a` is bound more than once in the same pattern
     //~| ERROR identifier `a` is bound more than once in the same pattern

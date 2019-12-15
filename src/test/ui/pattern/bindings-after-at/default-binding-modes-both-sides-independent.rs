@@ -13,6 +13,13 @@
 fn main() {
     struct NotCopy;
 
+    fn f1(a @ b: &NotCopy) { // OK
+        let _: &NotCopy = a;
+    }
+    fn f2(ref a @ b: &NotCopy) {
+        let _: &&NotCopy = a; // Ok
+    }
+
     let a @ b = &NotCopy; // OK
     let _: &NotCopy = a;
     let ref a @ b = &NotCopy; // OK
