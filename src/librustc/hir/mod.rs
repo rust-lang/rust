@@ -1048,8 +1048,15 @@ pub enum PatKind {
     /// A range pattern (e.g., `1..=2` or `1..2`).
     Range(P<Expr>, P<Expr>, RangeEnd),
 
-    /// `[a, b, ..i, y, z]` is represented as:
-    ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`.
+    /// A slice pattern, `[before_0, ..., before_n, (slice, after_0, ..., after_n)?]`.
+    ///
+    /// Here, `slice` is lowered from the syntax `($binding_mode $ident @)? ..`.
+    /// If `slice` exists, then `after` can be non-empty.
+    ///
+    /// The representation for e.g., `[a, b, .., c, d]` is:
+    /// ```
+    /// PatKind::Slice([Binding(a), Binding(b)], Some(Wild), [Binding(c), Binding(d)])
+    /// ```
     Slice(HirVec<P<Pat>>, Option<P<Pat>>, HirVec<P<Pat>>),
 }
 
