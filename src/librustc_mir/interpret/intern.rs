@@ -24,9 +24,9 @@ pub trait CompileTimeMachine<'mir, 'tcx> = Machine<
     MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
 >;
 
-struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
+struct InternVisitor<'rt, 'infcx, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
     /// The ectx from which we intern.
-    ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
+    ecx: &'rt mut InterpCx<'infcx, 'mir, 'tcx, M>,
     /// Previously encountered safe references.
     ref_tracking: &'rt mut RefTracking<(MPlaceTy<'tcx>, Mutability, InternMode)>,
     /// A list of all encountered allocations. After type-based interning, we traverse this list to
@@ -67,7 +67,7 @@ struct IsStaticOrFn;
 /// `ty` can be `None` if there is no potential interior mutability
 /// to account for (e.g. for vtables).
 fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
-    ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
+    ecx: &'rt mut InterpCx<'_, 'mir, 'tcx, M>,
     leftover_allocations: &'rt mut FxHashSet<AllocId>,
     mode: InternMode,
     alloc_id: AllocId,
@@ -132,7 +132,9 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     Ok(None)
 }
 
-impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir, 'tcx, M> {
+impl<'rt, 'infcx, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>
+    InternVisitor<'rt, 'infcx, 'mir, 'tcx, M>
+{
     fn intern_shallow(
         &mut self,
         alloc_id: AllocId,
@@ -143,13 +145,13 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir
     }
 }
 
-impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
-    for InternVisitor<'rt, 'mir, 'tcx, M>
+impl<'rt, 'infcx, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'infcx, 'mir, 'tcx, M>
+    for InternVisitor<'rt, 'infcx, 'mir, 'tcx, M>
 {
     type V = MPlaceTy<'tcx>;
 
     #[inline(always)]
-    fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
+    fn ecx(&self) -> &InterpCx<'infcx, 'mir, 'tcx, M> {
         &self.ecx
     }
 
@@ -261,7 +263,7 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
 }
 
 pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
-    ecx: &mut InterpCx<'mir, 'tcx, M>,
+    ecx: &mut InterpCx<'_, 'mir, 'tcx, M>,
     // The `mutability` of the place, ignoring the type.
     place_mut: Option<hir::Mutability>,
     ret: MPlaceTy<'tcx>,

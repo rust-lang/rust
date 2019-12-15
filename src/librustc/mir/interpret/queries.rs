@@ -1,5 +1,7 @@
 use super::{ConstEvalResult, ErrorHandled, GlobalId};
 
+use crate::infer::canonical::{Canonical, OriginalQueryValues};
+use crate::infer::InferCtxt;
 use crate::mir;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::{self, TyCtxt};
@@ -19,7 +21,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let instance = ty::Instance::new(def_id, substs);
         let cid = GlobalId { instance, promoted: None };
         let param_env = self.param_env(def_id).with_reveal_all();
-        self.const_eval_validated(param_env.and(cid))
+        self.const_eval_validated(Canonical::empty(param_env.and(cid)))
     }
 
     /// Resolves and evaluates a constant.
@@ -38,12 +40,8 @@ impl<'tcx> TyCtxt<'tcx> {
         substs: SubstsRef<'tcx>,
         span: Option<Span>,
     ) -> ConstEvalResult<'tcx> {
-        let instance = ty::Instance::resolve(self, param_env, def_id, substs);
-        if let Some(instance) = instance {
-            self.const_eval_instance(param_env, instance, span)
-        } else {
-            Err(ErrorHandled::TooGeneric)
-        }
+        self.infer_ctxt()
+            .enter(|ref infcx| infcx.const_eval_resolve(param_env, def_id, substs, span))
     }
 
     pub fn const_eval_instance(
@@ -53,10 +51,11 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Option<Span>,
     ) -> ConstEvalResult<'tcx> {
         let cid = GlobalId { instance, promoted: None };
+        let canonical = Canonical::empty(param_env.and(cid));
         if let Some(span) = span {
-            self.at(span).const_eval_validated(param_env.and(cid))
+            self.at(span).const_eval_validated(canonical)
         } else {
-            self.const_eval_validated(param_env.and(cid))
+            self.const_eval_validated(canonical)
         }
     }
 
@@ -68,6 +67,39 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> ConstEvalResult<'tcx> {
         let cid = GlobalId { instance, promoted: Some(promoted) };
         let param_env = ty::ParamEnv::reveal_all();
-        self.const_eval_validated(param_env.and(cid))
+        self.const_eval_validated(Canonical::empty(param_env.and(cid)))
+    }
+}
+
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn const_eval_instance(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        instance: ty::Instance<'tcx>,
+        span: Option<Span>,
+    ) -> ConstEvalResult<'tcx> {
+        let cid = GlobalId { instance, promoted: None };
+        let mut orig_values = OriginalQueryValues::default();
+        let canonical = self.canonicalize_query(&param_env.and(cid), &mut orig_values);
+        if let Some(span) = span {
+            self.tcx.at(span).const_eval_validated(canonical)
+        } else {
+            self.tcx.const_eval_validated(canonical)
+        }
+    }
+
+    pub fn const_eval_resolve(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+        span: Option<Span>,
+    ) -> ConstEvalResult<'tcx> {
+        let instance = ty::Instance::resolve(self, param_env, def_id, substs);
+        if let Some(instance) = instance {
+            self.const_eval_instance(param_env, instance, span)
+        } else {
+            Err(ErrorHandled::TooGeneric)
+        }
     }
 }

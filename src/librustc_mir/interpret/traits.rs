@@ -4,7 +4,7 @@ use rustc::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
 use rustc::ty::layout::{Align, HasDataLayout, LayoutOf, Size};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
     /// objects.
     ///

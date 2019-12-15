@@ -161,17 +161,17 @@ fn wrapping_range_format(r: &RangeInclusive<u128>, max_hi: u128) -> String {
     }
 }
 
-struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+struct ValidityVisitor<'rt, 'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// The `path` may be pushed to, but the part that is present when a function
     /// starts must not be changed!  `visit_fields` and `visit_array` rely on
     /// this stack discipline.
     path: Vec<PathElem>,
     ref_tracking_for_consts:
         Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>>,
-    ecx: &'rt InterpCx<'mir, 'tcx, M>,
+    ecx: &'rt InterpCx<'infcx, 'mir, 'tcx, M>,
 }
 
-impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M> {
+impl<'rt, 'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'infcx, 'mir, 'tcx, M> {
     fn aggregate_field_path_elem(&mut self, layout: TyLayout<'tcx>, field: usize) -> PathElem {
         match layout.ty.kind {
             // generators and closures.
@@ -294,13 +294,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
     }
 }
 
-impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
-    for ValidityVisitor<'rt, 'mir, 'tcx, M>
+impl<'rt, 'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'infcx, 'mir, 'tcx, M>
+    for ValidityVisitor<'rt, 'infcx, 'mir, 'tcx, M>
 {
     type V = OpTy<'tcx, M::PointerTag>;
 
     #[inline(always)]
-    fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
+    fn ecx(&self) -> &InterpCx<'infcx, 'mir, 'tcx, M> {
         &self.ecx
     }
 
@@ -663,7 +663,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
     /// This function checks the data at `op`. `op` is assumed to cover valid memory if it
     /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.

@@ -32,6 +32,7 @@ use super::{
 use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::{CombinedSnapshot, InferCtxt, InferOk, PlaceholderMap, TypeFreshener};
 use crate::middle::lang_items;
+use crate::mir::interpret::ErrorHandled;
 use crate::ty::fast_reject;
 use crate::ty::relate::TypeRelation;
 use crate::ty::subst::{Subst, SubstsRef};
@@ -799,15 +800,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                if !(obligation.param_env, substs).has_local_value() {
-                    match self.tcx().const_eval_resolve(obligation.param_env, def_id, substs, None)
-                    {
-                        Ok(_) => Ok(EvaluatedToOk),
-                        Err(_) => Ok(EvaluatedToErr),
-                    }
-                } else {
-                    // Inference variables still left in param_env or substs.
-                    Ok(EvaluatedToAmbig)
+                match self.infcx.const_eval_resolve(
+                    obligation.param_env,
+                    def_id,
+                    substs,
+                    Some(obligation.cause.span),
+                ) {
+                    Ok(_) => Ok(EvaluatedToOk),
+                    Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
+                    Err(_) => Ok(EvaluatedToErr),
                 }
             }
         }

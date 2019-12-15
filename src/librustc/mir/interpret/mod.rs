@@ -115,6 +115,7 @@ pub use self::allocation::{Allocation, AllocationExtra, Relocations, UndefMask};
 
 pub use self::pointer::{CheckInAllocMsg, Pointer, PointerArithmetic};
 
+use crate::infer::canonical::Canonical;
 use crate::mir;
 use crate::ty::codec::TyDecoder;
 use crate::ty::layout::{self, Size};
@@ -146,6 +147,8 @@ pub struct GlobalId<'tcx> {
     /// The index for promoted globals within their function's `mir::Body`.
     pub promoted: Option<mir::Promoted>,
 }
+
+pub type ConstEvalInput<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>>;
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);

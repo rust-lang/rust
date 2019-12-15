@@ -8,7 +8,7 @@ use crate::interpret::{
     MPlaceTy, MemoryKind, Scalar,
 };
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
     /// frame which is not `#[track_caller]`. If the first frame found lacks `#[track_caller]`, then
     /// `None` is returned and the callsite of the function invocation itself should be used.

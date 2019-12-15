@@ -247,7 +247,7 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
 }
 
 // separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385
-impl<'mir, 'tcx, Tag, M> InterpCx<'mir, 'tcx, M>
+impl<'infcx, 'mir, 'tcx, Tag, M> InterpCx<'infcx, 'mir, 'tcx, M>
 where
     // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
     Tag: ::std::fmt::Debug + Copy + Eq + Hash + 'static,

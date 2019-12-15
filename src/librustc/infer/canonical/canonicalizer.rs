@@ -13,12 +13,12 @@ use crate::infer::InferCtxt;
 use crate::ty::flags::FlagComputation;
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::GenericArg;
-use crate::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
-use std::sync::atomic::Ordering;
+use crate::ty::{self, BoundVar, InferConst, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 use smallvec::SmallVec;
+use std::sync::atomic::Ordering;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Canonicalizes a query value `V`. When we canonicalize a query,
@@ -496,12 +496,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
 
         // Fast path: nothing that needs to be canonicalized.
         if !value.has_type_flags(needs_canonical_flags) {
-            let canon_value = Canonical {
-                max_universe: ty::UniverseIndex::ROOT,
-                variables: List::empty(),
-                value: value.clone(),
-            };
-            return canon_value;
+            return Canonical::empty(value.clone());
         }
 
         let mut canonicalizer = Canonicalizer {

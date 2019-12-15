@@ -266,6 +266,17 @@ impl<'tcx, R> Canonical<'tcx, QueryResponse<'tcx, R>> {
     }
 }
 
+impl<'tcx, V: TypeFoldable<'tcx>> Canonical<'tcx, V> {
+    pub fn empty(value: V) -> Canonical<'tcx, V> {
+        assert!(!value.has_local_value() && !value.has_placeholders());
+        Canonical {
+            max_universe: ty::UniverseIndex::ROOT,
+            variables: List::empty(),
+            value: value.clone(),
+        }
+    }
+}
+
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Allows you to map the `value` of a canonical while keeping the
     /// same set of bound variables.

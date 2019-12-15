@@ -121,11 +121,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     const CHECK_ALIGN: bool;
 
     /// Whether to enforce the validity invariant
-    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    fn enforce_validity(ecx: &InterpCx<'_, 'mir, 'tcx, Self>) -> bool;
 
     /// Called before a basic block terminator is executed.
     /// You can use this to detect endlessly running programs.
-    fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>;
+    fn before_terminator(ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>) -> InterpResult<'tcx>;
 
     /// Entry point to all function calls.
     ///
@@ -138,7 +138,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
     /// was used.
     fn find_mir_or_eval_fn(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
@@ -149,7 +149,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Execute `fn_val`.  It is the hook's responsibility to advance the instruction
     /// pointer as appropriate.
     fn call_extra_fn(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
@@ -159,7 +159,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Directly process an intrinsic without pushing a stack frame. It is the hook's
     /// responsibility to advance the instruction pointer as appropriate.
     fn call_intrinsic(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
@@ -169,7 +169,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
     fn assert_panic(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         span: Span,
         msg: &AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
@@ -191,7 +191,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
     fn binary_ptr_op(
-        ecx: &InterpCx<'mir, 'tcx, Self>,
+        ecx: &InterpCx<'_, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Self::PointerTag>,
         right: ImmTy<'tcx, Self::PointerTag>,
@@ -199,13 +199,13 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Heap allocations via the `box` keyword.
     fn box_alloc(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx>;
 
     /// Called to read the specified `local` from the `frame`.
     fn access_local(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _ecx: &InterpCx<'_, 'mir, 'tcx, Self>,
         frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
         local: mir::Local,
     ) -> InterpResult<'tcx, Operand<Self::PointerTag>> {
@@ -252,7 +252,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Executes a retagging operation
     #[inline]
     fn retag(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         _kind: mir::RetagKind,
         _place: PlaceTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx> {
@@ -260,11 +260,12 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Called immediately before a new stack frame got pushed
-    fn stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, Self::FrameExtra>;
+    fn stack_push(ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>)
+    -> InterpResult<'tcx, Self::FrameExtra>;
 
     /// Called immediately after a stack frame gets popped
     fn stack_pop(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         _extra: Self::FrameExtra,
         _unwinding: bool,
     ) -> InterpResult<'tcx, StackPopInfo> {

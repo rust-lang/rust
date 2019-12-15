@@ -10,7 +10,7 @@ use super::{
     FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, StackPopCleanup,
 };
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
     pub(super) fn eval_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,

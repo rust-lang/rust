@@ -35,6 +35,7 @@ use crate::interpret::{
 };
 use crate::rustc::ty::subst::Subst;
 use crate::transform::{MirPass, MirSource};
+use rustc::infer::InferCtxt;
 
 /// The maximum number of bytes that we'll allocate space for a return value.
 const MAX_ALLOC_LIMIT: u64 = 1024;
@@ -89,13 +90,15 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             body.generator_kind,
         );
 
-        // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
-        // constants, instead of just checking for const-folding succeeding.
-        // That would require an uniform one-def no-mutation analysis
-        // and RPO (or recursing when needing the value of a local).
-        let mut optimization_finder =
-            ConstPropagator::new(read_only!(body), dummy_body, tcx, source);
-        optimization_finder.visit_body(body);
+        tcx.infer_ctxt().enter(|ref infcx| {
+            // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
+            // constants, instead of just checking for const-folding succeeding.
+            // That would require an uniform one-def no-mutation analysis
+            // and RPO (or recursing when needing the value of a local).
+            let mut optimization_finder =
+                ConstPropagator::new(read_only!(body), dummy_body, infcx, source);
+            optimization_finder.visit_body(body);
+        });
 
         trace!("ConstProp done for {:?}", source.def_id());
     }
@@ -119,12 +122,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     const CHECK_ALIGN: bool = false;
 
     #[inline(always)]
-    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_ecx: &InterpCx<'_, 'mir, 'tcx, Self>) -> bool {
         false
     }
 
     fn find_mir_or_eval_fn(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
@@ -135,7 +138,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     fn call_extra_fn(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         fn_val: !,
         _args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
@@ -145,7 +148,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     fn call_intrinsic(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
@@ -156,7 +159,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     fn assert_panic(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         _span: Span,
         _msg: &rustc::mir::interpret::AssertMessage<'tcx>,
         _unwind: Option<rustc::mir::BasicBlock>,
@@ -169,7 +172,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     fn binary_ptr_op(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _ecx: &InterpCx<'_, 'mir, 'tcx, Self>,
         _bin_op: BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
@@ -205,14 +208,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     fn box_alloc(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         throw_unsup!(ConstPropUnsupported("can't const prop `box` keyword"));
     }
 
     fn access_local(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _ecx: &InterpCx<'_, 'mir, 'tcx, Self>,
         frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
         local: Local,
     ) -> InterpResult<'tcx, InterpOperand<Self::PointerTag>> {
@@ -238,12 +241,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         Ok(())
     }
 
-    fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn before_terminator(_ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
     #[inline(always)]
-    fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn stack_push(_ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 }
@@ -251,8 +254,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 type Const<'tcx> = OpTy<'tcx>;
 
 /// Finds optimization opportunities on the MIR.
-struct ConstPropagator<'mir, 'tcx> {
-    ecx: InterpCx<'mir, 'tcx, ConstPropMachine>,
+struct ConstPropagator<'infcx, 'mir, 'tcx> {
+    ecx: InterpCx<'infcx, 'mir, 'tcx, ConstPropMachine>,
     tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
     can_const_prop: IndexVec<Local, ConstPropMode>,
@@ -267,7 +270,7 @@ struct ConstPropagator<'mir, 'tcx> {
     source_info: Option<SourceInfo>,
 }
 
-impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
+impl<'infcx, 'mir, 'tcx> LayoutOf for ConstPropagator<'infcx, 'mir, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
@@ -276,27 +279,28 @@ impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> HasDataLayout for ConstPropagator<'mir, 'tcx> {
+impl<'infcx, 'mir, 'tcx> HasDataLayout for ConstPropagator<'infcx, 'mir, 'tcx> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
+impl<'infcx, 'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'infcx, 'mir, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
+impl<'infcx, 'mir, 'tcx> ConstPropagator<'infcx, 'mir, 'tcx> {
     fn new(
         body: ReadOnlyBodyAndCache<'_, 'tcx>,
         dummy_body: &'mir Body<'tcx>,
-        tcx: TyCtxt<'tcx>,
+        infcx: &'infcx InferCtxt<'infcx, 'tcx>,
         source: MirSource<'tcx>,
-    ) -> ConstPropagator<'mir, 'tcx> {
+    ) -> ConstPropagator<'infcx, 'mir, 'tcx> {
+        let tcx = infcx.tcx;
         let def_id = source.def_id();
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
         let mut param_env = tcx.param_env(def_id);
@@ -309,7 +313,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         let span = tcx.def_span(def_id);
-        let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine, ());
+        let mut ecx = InterpCx::new(tcx.at(span), infcx, param_env, ConstPropMachine, ());
         let can_const_prop = CanConstProp::check(body);
 
         let ret = ecx
@@ -788,7 +792,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
     }
 }
 
-impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
+impl<'infcx, 'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'infcx, 'mir, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

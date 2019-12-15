@@ -29,7 +29,7 @@ fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
     pub fn run(&mut self) -> InterpResult<'tcx> {
         while self.step()? {}
         Ok(())

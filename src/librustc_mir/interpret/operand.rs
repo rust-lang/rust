@@ -11,7 +11,7 @@ use rustc::{mir, ty};
 use super::{InterpCx, MPlaceTy, Machine, MemPlace, Place, PlaceTy};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 use rustc::mir::interpret::{
-    sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpResult, Pointer, Scalar,
+    sign_extend, truncate, AllocId, ConstValue, InterpResult, Pointer, Scalar,
 };
 use rustc_macros::HashStable;
 use syntax::ast;
@@ -259,7 +259,7 @@ pub(super) fn from_known_layout<'tcx>(
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
     /// Normalice `place.ptr` to a `Pointer` if this is a place and not a ZST.
     /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
     #[inline]
@@ -586,7 +586,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // happening.
                 // FIXME(oli-obk): eliminate all the `const_eval_raw` usages when we get rid of
                 // `StaticKind` once and for all.
-                return self.const_eval(GlobalId { instance, promoted: None });
+                return self.const_eval(instance);
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)

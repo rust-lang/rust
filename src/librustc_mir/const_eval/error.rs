@@ -33,7 +33,7 @@ impl Error for ConstEvalError {}
 /// As a side-effect, if RUSTC_CTFE_BACKTRACE is set, this prints the backtrace.
 /// Should be called only if the error is actually going to to be reported!
 pub fn error_to_const_error<'mir, 'tcx, M: Machine<'mir, 'tcx>>(
-    ecx: &InterpCx<'mir, 'tcx, M>,
+    ecx: &InterpCx<'_, 'mir, 'tcx, M>,
     mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();

@@ -15,6 +15,7 @@ use super::CodeSelectionError;
 use super::{ConstEvalFailure, Unimplemented};
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
+use crate::mir::interpret::ErrorHandled;
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     type Predicate = ty::Predicate<'tcx>;
@@ -506,26 +507,19 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                if obligation.param_env.has_local_value() {
-                    ProcessResult::Unchanged
-                } else {
-                    if !substs.has_local_value() {
-                        match self.selcx.tcx().const_eval_resolve(
-                            obligation.param_env,
-                            def_id,
-                            substs,
-                            Some(obligation.cause.span),
-                        ) {
-                            Ok(_) => ProcessResult::Changed(vec![]),
-                            Err(err) => {
-                                ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err)))
-                            }
-                        }
-                    } else {
+                match self.selcx.infcx().const_eval_resolve(
+                    obligation.param_env,
+                    def_id,
+                    substs,
+                    Some(obligation.cause.span),
+                ) {
+                    Ok(_) => ProcessResult::Changed(vec![]),
+                    Err(ErrorHandled::TooGeneric) => {
                         pending_obligation.stalled_on =
                             substs.types().map(|ty| infer_ty(ty)).collect();
                         ProcessResult::Unchanged
                     }
+                    Err(err) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))),
                 }
             }
         }

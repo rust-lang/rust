@@ -17,7 +17,7 @@ use crate::interpret::{
 
 use super::error::*;
 
-impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
+impl<'infcx, 'mir, 'tcx> InterpCx<'infcx, 'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
     /// Evaluate a const function where all arguments (if any) are zero-sized types.
     /// The evaluation is memoized thanks to the query system.
     ///
@@ -142,8 +142,8 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     }
 }
 
-crate type CompileTimeEvalContext<'mir, 'tcx> =
-    InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
+crate type CompileTimeEvalContext<'infcx, 'mir, 'tcx> =
+    InterpCx<'infcx, 'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
 
 impl interpret::MayLeak for ! {
     #[inline(always)]
@@ -171,12 +171,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     const CHECK_ALIGN: bool = false;
 
     #[inline(always)]
-    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_ecx: &InterpCx<'_, 'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
     }
 
     fn find_mir_or_eval_fn(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
@@ -224,7 +224,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn call_extra_fn(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         fn_val: !,
         _args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
@@ -234,7 +234,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn call_intrinsic(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
@@ -250,7 +250,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn assert_panic(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         _span: Span,
         msg: &AssertMessage<'tcx>,
         _unwind: Option<mir::BasicBlock>,
@@ -286,7 +286,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn binary_ptr_op(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _ecx: &InterpCx<'_, 'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
@@ -318,13 +318,13 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn box_alloc(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         Err(ConstEvalError::NeedsRfc("heap allocations via `box` keyword".to_string()).into())
     }
 
-    fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn before_terminator(ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         {
             let steps = &mut ecx.machine.steps_since_detector_enabled;
 
@@ -344,7 +344,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn stack_push(_ecx: &mut InterpCx<'_, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 

@@ -4,7 +4,7 @@
 
 use rustc::mir::{
     self,
-    interpret::{ConstValue, GlobalId, InterpResult, Scalar},
+    interpret::{ConstValue, InterpResult, Scalar},
     BinOp,
 };
 use rustc::ty;
@@ -81,7 +81,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
     })
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
         &mut self,
@@ -118,8 +118,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::size_of
             | sym::type_id
             | sym::type_name => {
-                let gid = GlobalId { instance, promoted: None };
-                let val = self.const_eval(gid)?;
+                let val = self.const_eval(instance)?;
                 self.copy_op(val, dest)?;
             }
 

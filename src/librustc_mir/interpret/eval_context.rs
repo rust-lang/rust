@@ -10,7 +10,7 @@ use rustc::mir::interpret::{
 use rustc::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyLayout};
 use rustc::ty::query::TyCtxtAt;
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
@@ -23,13 +23,17 @@ use super::{
     Immediate, MPlaceTy, Machine, MemPlace, Memory, OpTy, Operand, Place, PlaceTy,
     ScalarMaybeUndef, StackPopInfo,
 };
+use rustc::infer::canonical::OriginalQueryValues;
+use rustc::infer::InferCtxt;
 
-pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+pub struct InterpCx<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
     pub machine: M,
 
     /// The results of the type checker, from rustc.
     pub tcx: TyCtxtAt<'tcx>,
+
+    pub(super) infcx: &'infcx InferCtxt<'infcx, 'tcx>,
 
     /// Bounds in scope for polymorphic evaluations.
     pub(crate) param_env: ty::ParamEnv<'tcx>,
@@ -174,14 +178,14 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'infcx, 'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'mir, 'tcx, M>
+impl<'infcx, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'infcx, 'mir, 'tcx, M>
 where
     M: Machine<'mir, 'tcx>,
 {
@@ -191,7 +195,7 @@ where
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'mir, 'tcx, M>
+impl<'infcx, 'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'infcx, 'mir, 'tcx, M>
 where
     M: Machine<'mir, 'tcx>,
 {
@@ -200,7 +204,7 @@ where
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'infcx, 'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyLayout = InterpResult<'tcx, TyLayout<'tcx>>;
 
@@ -212,9 +216,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxtAt<'tcx>,
+        infcx: &'infcx InferCtxt<'infcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
         memory_extra: M::MemoryExtra,
@@ -222,6 +227,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         InterpCx {
             machine,
             tcx,
+            infcx,
             param_env,
             memory: Memory::new(tcx, memory_extra),
             stack: Vec::new(),
@@ -339,9 +345,24 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         value: T,
     ) -> T {
+        let mut param_env = self.param_env;
+        param_env.caller_bounds =
+            self.tcx.mk_predicates(param_env.caller_bounds.iter().filter(|predicate| {
+                match *predicate {
+                    ty::Predicate::Trait(..)
+                    | ty::Predicate::Subtype(..)
+                    | ty::Predicate::Projection(..)
+                    | ty::Predicate::WellFormed(..)
+                    | ty::Predicate::ObjectSafe(..)
+                    | ty::Predicate::ClosureKind(..)
+                    | ty::Predicate::ConstEvaluatable(..) => true,
+                    ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => false,
+                }
+            }));
+
         self.tcx.subst_and_normalize_erasing_regions(
             self.frame().instance.substs,
-            self.param_env,
+            param_env,
             &value,
         )
     }
@@ -756,14 +777,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub(super) fn const_eval(
         &self,
-        gid: GlobalId<'tcx>,
+        instance: Instance<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let val = if self.tcx.is_static(gid.instance.def_id()) {
-            self.tcx.const_eval_poly(gid.instance.def_id())?
-        } else if let Some(promoted) = gid.promoted {
-            self.tcx.const_eval_promoted(gid.instance, promoted)?
+        let val = if self.tcx.is_static(instance.def_id()) {
+            self.tcx.const_eval_poly(instance.def_id())?
         } else {
-            self.tcx.const_eval_instance(self.param_env, gid.instance, Some(self.tcx.span))?
+            self.infcx.const_eval_instance(self.param_env, instance, Some(self.tcx.span))?
         };
         // Even though `ecx.const_eval` is called from `eval_const_to_op` we can never have a
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
@@ -786,11 +805,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
+        let mut orig_values = OriginalQueryValues::default();
+        let canonical = self.infcx.canonicalize_query(&param_env.and(gid), &mut orig_values);
         // We use `const_eval_raw` here, and get an unvalidated result.  That is okay:
         // Our result will later be validated anyway, and there seems no good reason
         // to have to fail early here.  This is also more consistent with
         // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
-        let val = self.tcx.const_eval_raw(param_env.and(gid))?;
+        let val = self.tcx.const_eval_raw(canonical)?;
         self.raw_const_to_mplace(val)
     }
 

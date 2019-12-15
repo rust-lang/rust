@@ -20,6 +20,7 @@ use super::{
     AllocId, AllocMap, Allocation, AllocationExtra, CheckInAllocMsg, ErrorHandled, GlobalAlloc,
     GlobalId, InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Scalar,
 };
+use rustc::infer::canonical::Canonical;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
@@ -442,16 +443,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     let gid = GlobalId { instance, promoted: None };
                     // use the raw query here to break validation cycles. Later uses of the static
                     // will call the full query anyway
-                    let raw_const =
-                        tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
-                            // no need to report anything, the const_eval call takes care of that
-                            // for statics
-                            assert!(tcx.is_static(def_id));
-                            match err {
-                                ErrorHandled::Reported => err_inval!(ReferencedConstant),
-                                ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-                            }
-                        })?;
+
+                    let canonical = Canonical::empty(ty::ParamEnv::reveal_all().and(gid));
+                    let raw_const = tcx.const_eval_raw(canonical).map_err(|err| {
+                        // no need to report anything, the const_eval call takes care of that
+                        // for statics
+                        assert!(tcx.is_static(def_id));
+                        match err {
+                            ErrorHandled::Reported => err_inval!(ReferencedConstant),
+                            ErrorHandled::TooGeneric => err_inval!(TooGeneric),
+                        }
+                    })?;
                     // Make sure we use the ID of the resolved memory, not the lazy one!
                     let id = raw_const.alloc_id;
                     let allocation = tcx.alloc_map.lock().unwrap_memory(id);

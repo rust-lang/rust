@@ -199,12 +199,22 @@ impl Key for Symbol {
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
 impl<'tcx, T> Key for Canonical<'tcx, T> {
-    fn query_crate(&self) -> CrateNum {
+    default fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
 
-    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+    default fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP
+    }
+}
+
+impl<'tcx, T: Key> Key for Canonical<'tcx, T> {
+    fn query_crate(&self) -> CrateNum {
+        self.value.query_crate()
+    }
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.value.default_span(tcx)
     }
 }
 
