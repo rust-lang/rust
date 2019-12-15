@@ -16,31 +16,33 @@ use crate::{
     FileId,
 };
 
-const HIGHLIGHT_TAG_FIELD: &'static str = "field";
-const HIGHLIGHT_TAG_FUNCTION: &'static str = "function";
-const HIGHLIGHT_TAG_MODULE: &'static str = "module";
-const HIGHLIGHT_TAG_TYPE: &'static str = "type";
-const HIGHLIGHT_TAG_CONSTANT: &'static str = "constant";
-const HIGHLIGHT_TAG_MACRO: &'static str = "macro";
-const HIGHLIGHT_TAG_VARIABLE: &'static str = "variable";
-const HIGHLIGHT_TAG_VARIABLE_MUT: &'static str = "variable.mut";
-const HIGHLIGHT_TAG_TEXT: &'static str = "text";
+pub mod tags {
+    pub(crate) const FIELD: &'static str = "field";
+    pub(crate) const FUNCTION: &'static str = "function";
+    pub(crate) const MODULE: &'static str = "module";
+    pub(crate) const TYPE: &'static str = "type";
+    pub(crate) const CONSTANT: &'static str = "constant";
+    pub(crate) const MACRO: &'static str = "macro";
+    pub(crate) const VARIABLE: &'static str = "variable";
+    pub(crate) const VARIABLE_MUT: &'static str = "variable.mut";
+    pub(crate) const TEXT: &'static str = "text";
 
-const HIGHLIGHT_TAG_TYPE_BUILTIN: &'static str = "type.builtin";
-const HIGHLIGHT_TAG_TYPE_SELF: &'static str = "type.self";
-const HIGHLIGHT_TAG_TYPE_PARAM: &'static str = "type.param";
-const HIGHLIGHT_TAG_TYPE_LIFETIME: &'static str = "type.lifetime";
+    pub(crate) const TYPE_BUILTIN: &'static str = "type.builtin";
+    pub(crate) const TYPE_SELF: &'static str = "type.self";
+    pub(crate) const TYPE_PARAM: &'static str = "type.param";
+    pub(crate) const TYPE_LIFETIME: &'static str = "type.lifetime";
 
-const HIGHLIGHT_TAG_LITERAL_BYTE: &'static str = "literal.byte";
-const HIGHLIGHT_TAG_LITERAL_NUMERIC: &'static str = "literal.numeric";
-const HIGHLIGHT_TAG_LITERAL_CHAR: &'static str = "literal.char";
-const HIGHLIGHT_TAG_LITERAL_COMMENT: &'static str = "comment";
-const HIGHLIGHT_TAG_LITERAL_STRING: &'static str = "string";
-const HIGHLIGHT_TAG_LITERAL_ATTRIBUTE: &'static str = "attribute";
+    pub(crate) const LITERAL_BYTE: &'static str = "literal.byte";
+    pub(crate) const LITERAL_NUMERIC: &'static str = "literal.numeric";
+    pub(crate) const LITERAL_CHAR: &'static str = "literal.char";
+    pub(crate) const LITERAL_COMMENT: &'static str = "comment";
+    pub(crate) const LITERAL_STRING: &'static str = "string";
+    pub(crate) const LITERAL_ATTRIBUTE: &'static str = "attribute";
 
-const HIGHLIGHT_TAG_KEYWORD_UNSAFE: &'static str = "keyword.unsafe";
-const HIGHLIGHT_TAG_KEYWORD_CONTROL: &'static str = "keyword.control";
-const HIGHLIGHT_TAG_KEYWORD: &'static str = "keyword";
+    pub(crate) const KEYWORD_UNSAFE: &'static str = "keyword.unsafe";
+    pub(crate) const KEYWORD_CONTROL: &'static str = "keyword.control";
+    pub(crate) const KEYWORD: &'static str = "keyword";
+}
 
 #[derive(Debug)]
 pub struct HighlightedRange {
@@ -97,9 +99,9 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 bindings_shadow_count.clear();
                 continue;
             }
-            COMMENT => HIGHLIGHT_TAG_LITERAL_COMMENT,
-            STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HIGHLIGHT_TAG_LITERAL_STRING,
-            ATTR => HIGHLIGHT_TAG_LITERAL_ATTRIBUTE,
+            COMMENT => tags::LITERAL_COMMENT,
+            STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => tags::LITERAL_STRING,
+            ATTR => tags::LITERAL_ATTRIBUTE,
             NAME_REF => {
                 if node.ancestors().any(|it| it.kind() == ATTR) {
                     continue;
@@ -116,7 +118,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                     }
                 };
 
-                name_kind.map_or(HIGHLIGHT_TAG_TEXT, |it| highlight_name(db, it))
+                name_kind.map_or(tags::TEXT, |it| highlight_name(db, it))
             }
             NAME => {
                 let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
@@ -133,25 +135,21 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
 
                 match name_kind {
                     Some(name_kind) => highlight_name(db, name_kind),
-                    None => {
-                        name.syntax().parent().map_or(HIGHLIGHT_TAG_FUNCTION, |x| match x.kind() {
-                            STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => {
-                                HIGHLIGHT_TAG_TYPE
-                            }
-                            TYPE_PARAM => HIGHLIGHT_TAG_TYPE_PARAM,
-                            RECORD_FIELD_DEF => HIGHLIGHT_TAG_FIELD,
-                            _ => HIGHLIGHT_TAG_FUNCTION,
-                        })
-                    }
+                    None => name.syntax().parent().map_or(tags::FUNCTION, |x| match x.kind() {
+                        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => tags::TYPE,
+                        TYPE_PARAM => tags::TYPE_PARAM,
+                        RECORD_FIELD_DEF => tags::FIELD,
+                        _ => tags::FUNCTION,
+                    }),
                 }
             }
-            INT_NUMBER | FLOAT_NUMBER => HIGHLIGHT_TAG_LITERAL_NUMERIC,
-            BYTE => HIGHLIGHT_TAG_LITERAL_BYTE,
-            CHAR => HIGHLIGHT_TAG_LITERAL_CHAR,
-            LIFETIME => HIGHLIGHT_TAG_TYPE_LIFETIME,
-            T![unsafe] => HIGHLIGHT_TAG_KEYWORD_UNSAFE,
-            k if is_control_keyword(k) => HIGHLIGHT_TAG_KEYWORD_CONTROL,
-            k if k.is_keyword() => HIGHLIGHT_TAG_KEYWORD,
+            INT_NUMBER | FLOAT_NUMBER => tags::LITERAL_NUMERIC,
+            BYTE => tags::LITERAL_BYTE,
+            CHAR => tags::LITERAL_CHAR,
+            LIFETIME => tags::TYPE_LIFETIME,
+            T![unsafe] => tags::KEYWORD_UNSAFE,
+            k if is_control_keyword(k) => tags::KEYWORD_CONTROL,
+            k if k.is_keyword() => tags::KEYWORD,
             _ => {
                 if let Some(macro_call) = node.as_node().cloned().and_then(ast::MacroCall::cast) {
                     if let Some(path) = macro_call.path() {
@@ -168,7 +166,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                                 }
                                 res.push(HighlightedRange {
                                     range: TextRange::from_to(range_start, range_end),
-                                    tag: HIGHLIGHT_TAG_MACRO,
+                                    tag: tags::MACRO,
                                     binding_hash: None,
                                 })
                             }
@@ -244,29 +242,29 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
 
 fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
     match name_kind {
-        Macro(_) => HIGHLIGHT_TAG_MACRO,
-        Field(_) => HIGHLIGHT_TAG_FIELD,
-        AssocItem(hir::AssocItem::Function(_)) => HIGHLIGHT_TAG_FUNCTION,
-        AssocItem(hir::AssocItem::Const(_)) => HIGHLIGHT_TAG_CONSTANT,
-        AssocItem(hir::AssocItem::TypeAlias(_)) => HIGHLIGHT_TAG_TYPE,
-        Def(hir::ModuleDef::Module(_)) => HIGHLIGHT_TAG_MODULE,
-        Def(hir::ModuleDef::Function(_)) => HIGHLIGHT_TAG_FUNCTION,
-        Def(hir::ModuleDef::Adt(_)) => HIGHLIGHT_TAG_TYPE,
-        Def(hir::ModuleDef::EnumVariant(_)) => HIGHLIGHT_TAG_CONSTANT,
-        Def(hir::ModuleDef::Const(_)) => HIGHLIGHT_TAG_CONSTANT,
-        Def(hir::ModuleDef::Static(_)) => HIGHLIGHT_TAG_CONSTANT,
-        Def(hir::ModuleDef::Trait(_)) => HIGHLIGHT_TAG_TYPE,
-        Def(hir::ModuleDef::TypeAlias(_)) => HIGHLIGHT_TAG_TYPE,
-        Def(hir::ModuleDef::BuiltinType(_)) => HIGHLIGHT_TAG_TYPE_BUILTIN,
-        SelfType(_) => HIGHLIGHT_TAG_TYPE_SELF,
-        TypeParam(_) => HIGHLIGHT_TAG_TYPE_PARAM,
+        Macro(_) => tags::MACRO,
+        Field(_) => tags::FIELD,
+        AssocItem(hir::AssocItem::Function(_)) => tags::FUNCTION,
+        AssocItem(hir::AssocItem::Const(_)) => tags::CONSTANT,
+        AssocItem(hir::AssocItem::TypeAlias(_)) => tags::TYPE,
+        Def(hir::ModuleDef::Module(_)) => tags::MODULE,
+        Def(hir::ModuleDef::Function(_)) => tags::FUNCTION,
+        Def(hir::ModuleDef::Adt(_)) => tags::TYPE,
+        Def(hir::ModuleDef::EnumVariant(_)) => tags::CONSTANT,
+        Def(hir::ModuleDef::Const(_)) => tags::CONSTANT,
+        Def(hir::ModuleDef::Static(_)) => tags::CONSTANT,
+        Def(hir::ModuleDef::Trait(_)) => tags::TYPE,
+        Def(hir::ModuleDef::TypeAlias(_)) => tags::TYPE,
+        Def(hir::ModuleDef::BuiltinType(_)) => tags::TYPE_BUILTIN,
+        SelfType(_) => tags::TYPE_SELF,
+        TypeParam(_) => tags::TYPE_PARAM,
         Local(local) => {
             if local.is_mut(db) {
-                HIGHLIGHT_TAG_VARIABLE_MUT
+                tags::VARIABLE_MUT
             } else if local.ty(db).is_mutable_reference() {
-                HIGHLIGHT_TAG_VARIABLE_MUT
+                tags::VARIABLE_MUT
             } else {
-                HIGHLIGHT_TAG_VARIABLE
+                tags::VARIABLE
             }
         }
     }
