@@ -1263,7 +1263,7 @@ let atomic_forty_two = ", stringify!($atomic_type), "::new(42);
                 #[$stable]
                 #[cfg_attr(not(bootstrap), $const_stable)]
                 pub const fn new(v: $int_type) -> Self {
-                    $atomic_type {v: UnsafeCell::new(v)}
+                    Self {v: UnsafeCell::new(v)}
                 }
             }
 
