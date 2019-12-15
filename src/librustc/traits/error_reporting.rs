@@ -2113,7 +2113,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.var_map.entry(ty).or_insert_with(||
                         infcx.next_ty_var(
                             TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::TypeParameterDefinition(name),
+                                kind: TypeVariableOriginKind::TypeParameterDefinition(name, None),
                                 span: DUMMY_SP,
                             }
                         )

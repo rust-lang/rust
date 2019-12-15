@@ -30,7 +30,7 @@ error[E0282]: type annotations needed
   --> $DIR/fn-const-param-infer.rs:22:23
    |
 LL |     let _ = Checked::<generic>;
-   |                       ^^^^^^^ cannot infer type for type parameter `T`
+   |                       ^^^^^^^ cannot infer type for type parameter `T` declared on the function `generic`
 
 error[E0308]: mismatched types
   --> $DIR/fn-const-param-infer.rs:25:40
