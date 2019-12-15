@@ -1,0 +1,51 @@
+error[E0508]: cannot move out of type `[A]`, a non-copy slice
+  --> $DIR/move-out-of-slice-2.rs:9:11
+   |
+LL |     match *a {
+   |           ^^ cannot move out of here
+LL |
+LL |         [a @ ..] => {},
+   |          ------
+   |          |
+   |          data moved here
+   |          move occurs because `a` has type `[A]`, which does not implement the `Copy` trait
+
+error[E0508]: cannot move out of type `[A]`, a non-copy slice
+  --> $DIR/move-out-of-slice-2.rs:15:11
+   |
+LL |     match *b {
+   |           ^^ cannot move out of here
+LL |
+LL |         [_, _, b @ .., _] => {},
+   |                ------
+   |                |
+   |                data moved here
+   |                move occurs because `b` has type `[A]`, which does not implement the `Copy` trait
+
+error[E0508]: cannot move out of type `[C]`, a non-copy slice
+  --> $DIR/move-out-of-slice-2.rs:23:11
+   |
+LL |     match *c {
+   |           ^^ cannot move out of here
+LL |
+LL |         [c @ ..] => {},
+   |          ------
+   |          |
+   |          data moved here
+   |          move occurs because `c` has type `[C]`, which does not implement the `Copy` trait
+
+error[E0508]: cannot move out of type `[C]`, a non-copy slice
+  --> $DIR/move-out-of-slice-2.rs:29:11
+   |
+LL |     match *d {
+   |           ^^ cannot move out of here
+LL |
+LL |         [_, _, d @ .., _] => {},
+   |                ------
+   |                |
+   |                data moved here
+   |                move occurs because `d` has type `[C]`, which does not implement the `Copy` trait
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0508`.
