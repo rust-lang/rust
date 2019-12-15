@@ -476,7 +476,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 ///
 /// This is intended for diagnostic use. The exact contents and format of the
 /// string are not specified, other than being a best-effort description of the
-/// type. For example, `type_name_of::<Option<String>>(None)` could return the
+/// type. For example, `type_name_of::<Option<String>>(None)` could return
 /// `"Option<String>"` or `"std::option::Option<std::string::String>"`, but not
 /// `"foobar"`. In addition, the output may change between versions of the
 /// compiler.
