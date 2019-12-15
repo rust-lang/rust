@@ -325,16 +325,22 @@ fn url_from_path_with_drive_lowercasing(path: impl AsRef<Path>) -> Result<Url> {
     }
 }
 
-#[test]
-fn test_lowercase_drive_letter_with_drive() {
-    let url = url_from_path_with_drive_lowercasing("C:\\Test").unwrap();
+// `Url` is not able to parse windows paths on unix machines.
+#[cfg(target_os = "windows")]
+#[cfg(test)]
+mod path_conversion_windows_tests {
+    use super::url_from_path_with_drive_lowercasing;
+    #[test]
+    fn test_lowercase_drive_letter_with_drive() {
+        let url = url_from_path_with_drive_lowercasing("C:\\Test").unwrap();
 
-    assert_eq!(url.to_string(), "file:///c:/Test");
-}
+        assert_eq!(url.to_string(), "file:///c:/Test");
+    }
 
-#[test]
-fn test_drive_without_colon_passthrough() {
-    let url = url_from_path_with_drive_lowercasing(r#"\\localhost\C$\my_dir"#).unwrap();
+    #[test]
+    fn test_drive_without_colon_passthrough() {
+        let url = url_from_path_with_drive_lowercasing(r#"\\localhost\C$\my_dir"#).unwrap();
 
-    assert_eq!(url.to_string(), "file://localhost/C$/my_dir");
+        assert_eq!(url.to_string(), "file://localhost/C$/my_dir");
+    }
 }
