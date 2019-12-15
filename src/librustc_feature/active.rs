@@ -52,6 +52,17 @@ macro_rules! declare_features {
             pub fn walk_feature_fields(&self, mut f: impl FnMut(&str, bool)) {
                 $(f(stringify!($feature), self.$feature);)+
             }
+
+            /// Is the given feature enabled?
+            ///
+            /// Panics if the symbol doesn't correspond to a declared feature.
+            pub fn enabled(&self, feature: Symbol) -> bool {
+                match feature {
+                    $( sym::$feature => self.$feature, )*
+
+                    _ => panic!("`{}` was not listed in `declare_features`", feature),
+                }
+            }
         }
     };
 }
@@ -524,6 +535,9 @@ declare_features! (
 
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
+
+    /// Allows the use of `loop` and `while` in constants.
+    (active, const_loop, "1.41.0", Some(52000), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

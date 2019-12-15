@@ -1,0 +1,19 @@
+error[E0744]: `for` is not allowed in a `const`
+  --> $DIR/loop.rs:63:5
+   |
+LL | /     for i in 0..4 {
+LL | |         x += i;
+LL | |     }
+   | |_____^
+
+error[E0744]: `for` is not allowed in a `const`
+  --> $DIR/loop.rs:67:5
+   |
+LL | /     for i in 0..4 {
+LL | |         x += i;
+LL | |     }
+   | |_____^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0744`.

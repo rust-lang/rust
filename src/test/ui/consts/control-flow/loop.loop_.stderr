@@ -1,0 +1,96 @@
+error[E0658]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:40:9
+   |
+LL |         while false {}
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+   = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
+
+error[E0658]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:49:5
+   |
+LL | /     while x < 4 {
+LL | |         x += 1;
+LL | |     }
+   | |_____^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+   = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
+
+error[E0658]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:53:5
+   |
+LL | /     while x < 8 {
+LL | |         x += 1;
+LL | |     }
+   | |_____^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+   = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
+
+error[E0744]: `for` is not allowed in a `const`
+  --> $DIR/loop.rs:63:5
+   |
+LL | /     for i in 0..4 {
+LL | |         x += i;
+LL | |     }
+   | |_____^
+
+error[E0744]: `for` is not allowed in a `const`
+  --> $DIR/loop.rs:67:5
+   |
+LL | /     for i in 0..4 {
+LL | |         x += i;
+LL | |     }
+   | |_____^
+
+error[E0658]: `if` is not allowed in a `const`
+  --> $DIR/loop.rs:79:9
+   |
+LL | /         if x == 4 {
+LL | |             break;
+LL | |         }
+   | |_________^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0658]: `if` is not allowed in a `const`
+  --> $DIR/loop.rs:86:9
+   |
+LL | /         if x == 8 {
+LL | |             break;
+LL | |         }
+   | |_________^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0658]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:96:5
+   |
+LL |     while let None = Some(x) { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+   = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
+
+error[E0658]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:97:5
+   |
+LL |     while let None = Some(x) { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+   = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0658, E0744.
+For more information about an error, try `rustc --explain E0658`.
