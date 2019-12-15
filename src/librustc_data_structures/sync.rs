@@ -428,6 +428,7 @@ cfg_if! {
         pub use rayon_core::WorkerLocal;
         pub use rayon_core::Registry;
         use rayon_core::current_thread_index;
+        use rayon_core::current_num_threads;
 
         #[derive(Debug)]
         pub struct SharedWorkerLocal<T>(Vec<T>);
@@ -437,7 +438,7 @@ cfg_if! {
             /// value this worker local should take for each thread in the thread pool.
             #[inline]
             pub fn new<F: FnMut(usize) -> T>(mut f: F) -> SharedWorkerLocal<T> {
-                SharedWorkerLocal((0..Registry::current_num_threads()).map(|i| f(i)).collect())
+                SharedWorkerLocal((0..current_num_threads()).map(|i| f(i)).collect())
             }
 
             #[inline]
