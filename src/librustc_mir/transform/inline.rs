@@ -663,9 +663,9 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
 
     fn make_integrate_local(&self, local: &Local) -> Local {
         if *local == RETURN_PLACE {
-            match self.destination.as_local() {
-                Some(l) => return l,
-                ref place => bug!("Return place is {:?}, not local", place),
+            match self.destination.base {
+                PlaceBase::Local(l) => return l,
+                PlaceBase::Static(ref s) => bug!("Return place is {:?}, not local", s),
             }
         }
 
@@ -695,14 +695,24 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     fn visit_place(
         &mut self,
         place: &mut Place<'tcx>,
-        context: PlaceContext,
-        location: Location,
+        _context: PlaceContext,
+        _location: Location,
     ) {
-        if let Some(RETURN_PLACE) = place.as_local() {
-            // Return pointer; update the place itself
-            *place = self.destination.clone();
-        } else {
-            self.super_place(place, context, location);
+        match &mut place.base {
+            PlaceBase::Static(_) => {},
+            PlaceBase::Local(l) => {
+                // If this is the `RETURN_PLACE`, we need to rebase any projections onto it.
+                let dest_proj_len = self.destination.projection.len();
+                if *l == RETURN_PLACE && dest_proj_len > 0 {
+                    let mut projs = Vec::with_capacity(dest_proj_len + place.projection.len());
+                    projs.extend(self.destination.projection);
+                    projs.extend(place.projection);
+
+                    place.projection = self.tcx.intern_place_elems(&*projs);
+                }
+
+                *l = self.make_integrate_local(l);
+            }
         }
     }
 
