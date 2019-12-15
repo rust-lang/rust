@@ -1,8 +1,5 @@
 #![allow(dead_code)]
-#![warn(
-    clippy::inaccurate_floating_point_computation,
-    clippy::slow_floating_point_computation
-)]
+#![warn(clippy::floating_point_improvements)]
 
 const TWO: f32 = 2.0;
 const E: f32 = std::f32::consts::E;

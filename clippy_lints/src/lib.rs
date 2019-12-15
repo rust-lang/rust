@@ -1649,8 +1649,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(&attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
-        LintId::of(&floating_point_arithmetic::INACCURATE_FLOATING_POINT_COMPUTATION),
-        LintId::of(&floating_point_arithmetic::SLOW_FLOATING_POINT_COMPUTATION),
+        LintId::of(&floating_point_arithmetic::FLOATING_POINT_IMPROVEMENTS),
         LintId::of(&missing_const_for_fn::MISSING_CONST_FOR_FN),
         LintId::of(&mul_add::MANUAL_MUL_ADD),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),

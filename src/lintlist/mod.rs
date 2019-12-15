@@ -750,13 +750,6 @@ pub const ALL_LINTS: [Lint; 357] = [
         module: "implicit_return",
     },
     Lint {
-        name: "inaccurate_floating_point_computation",
-        group: "nursery",
-        desc: "checks for numerically unstable floating point computations",
-        deprecation: None,
-        module: "floating_point_arithmetic",
-    },
-    Lint {
         name: "inconsistent_digit_grouping",
         group: "style",
         desc: "integer literals with digits grouped inconsistently",

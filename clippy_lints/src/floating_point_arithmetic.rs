@@ -13,41 +13,12 @@ use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
 
 declare_clippy_lint! {
-    /// **What it does:** Looks for numerically unstable floating point
-    /// computations and suggests better alternatives.
+    /// **What it does:** Looks for floating-point expressions that
+    /// can be expressed using built-in methods to improve accuracy,
+    /// performance and/or succinctness.
     ///
-    /// **Why is this bad?** Numerically unstable floating point computations
-    /// cause rounding errors to magnify and distorts the results strongly.
-    ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
-    ///
-    /// ```rust
-    /// use std::f32::consts::E;
-    ///
-    /// let a = 1f32.log(2.0);
-    /// let b = 1f32.log(10.0);
-    /// let c = 1f32.log(E);
-    /// ```
-    ///
-    /// is better expressed as
-    ///
-    /// ```rust
-    /// let a = 1f32.log2();
-    /// let b = 1f32.log10();
-    /// let c = 1f32.ln();
-    /// ```
-    pub INACCURATE_FLOATING_POINT_COMPUTATION,
-    nursery,
-    "checks for numerically unstable floating point computations"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Looks for inefficient floating point computations
-    /// and suggests faster alternatives.
-    ///
-    /// **Why is this bad?** Lower performance.
+    /// **Why is this bad?** Negatively affects accuracy, performance
+    /// and/or readability.
     ///
     /// **Known problems:** None
     ///
@@ -56,29 +27,43 @@ declare_clippy_lint! {
     /// ```rust
     /// use std::f32::consts::E;
     ///
-    /// let a = (2f32).powf(3.0);
-    /// let c = E.powf(3.0);
+    /// let a = 3f32;
+    /// let _ = (2f32).powf(a);
+    /// let _ = E.powf(a);
+    /// let _ = a.powf(1.0 / 2.0);
+    /// let _ = a.powf(1.0 / 3.0);
+    /// let _ = a.log(2.0);
+    /// let _ = a.log(10.0);
+    /// let _ = a.log(E);
+    /// let _ = (1.0 + a).ln();
+    /// let _ = a.exp() - 1.0;
     /// ```
     ///
     /// is better expressed as
     ///
     /// ```rust
-    /// let a = (3f32).exp2();
-    /// let b = (3f32).exp();
+    /// use std::f32::consts::E;
+    ///
+    /// let a = 3f32;
+    /// let _ = a.exp2();
+    /// let _ = a.exp();
+    /// let _ = a.sqrt();
+    /// let _ = a.cbrt();
+    /// let _ = a.log2();
+    /// let _ = a.log10();
+    /// let _ = a.ln();
+    /// let _ = a.ln_1p();
+    /// let _ = a.exp_m1();
     /// ```
-    pub SLOW_FLOATING_POINT_COMPUTATION,
+    pub FLOATING_POINT_IMPROVEMENTS,
     nursery,
-    "checks for inefficient floating point computations"
+    "looks for improvements to floating-point expressions"
 }
 
-declare_lint_pass!(FloatingPointArithmetic => [
-    INACCURATE_FLOATING_POINT_COMPUTATION,
-    SLOW_FLOATING_POINT_COMPUTATION
-]);
+declare_lint_pass!(FloatingPointArithmetic => [FLOATING_POINT_IMPROVEMENTS]);
 
 fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
-    let recv = &args[0];
-    let arg = sugg::Sugg::hir(cx, recv, "..").maybe_par();
+    let arg = sugg::Sugg::hir(cx, &args[0], "..").maybe_par();
 
     if let Some((value, _)) = constant(cx, cx.tables, &args[1]) {
         let method;
@@ -95,7 +80,7 @@ fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
 
         span_lint_and_sugg(
             cx,
-            INACCURATE_FLOATING_POINT_COMPUTATION,
+            FLOATING_POINT_IMPROVEMENTS,
             expr.span,
             "logarithm for bases 2, 10 and e can be computed more accurately",
             "consider using",
@@ -118,7 +103,7 @@ fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
 
             span_lint_and_sugg(
                 cx,
-                INACCURATE_FLOATING_POINT_COMPUTATION,
+                FLOATING_POINT_IMPROVEMENTS,
                 expr.span,
                 "ln(1 + x) can be computed more accurately",
                 "consider using",
@@ -144,9 +129,9 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
 
         span_lint_and_sugg(
             cx,
-            SLOW_FLOATING_POINT_COMPUTATION,
+            FLOATING_POINT_IMPROVEMENTS,
             expr.span,
-            "exponent for bases 2 and e can be computed more efficiently",
+            "exponent for bases 2 and e can be computed more accurately",
             "consider using",
             format!("{}.{}()", sugg::Sugg::hir(cx, &args[1], "..").maybe_par(), method),
             Applicability::MachineApplicable,
@@ -159,10 +144,10 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
         let method;
 
         if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
-            help = "square-root of a number can be computer more efficiently";
+            help = "square-root of a number can be computed more efficiently and accurately";
             method = "sqrt";
         } else if F32(1.0 / 3.0) == value || F64(1.0 / 3.0) == value {
-            help = "cube-root of a number can be computer more efficiently";
+            help = "cube-root of a number can be computed more accurately";
             method = "cbrt";
         } else {
             return;
@@ -170,7 +155,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
 
         span_lint_and_sugg(
             cx,
-            SLOW_FLOATING_POINT_COMPUTATION,
+            FLOATING_POINT_IMPROVEMENTS,
             expr.span,
             help,
             "consider using",
@@ -194,7 +179,7 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr) {
         then {
             span_lint_and_sugg(
                 cx,
-                INACCURATE_FLOATING_POINT_COMPUTATION,
+                FLOATING_POINT_IMPROVEMENTS,
                 expr.span,
                 "(e.pow(x) - 1) can be computed more accurately",
                 "consider using",
