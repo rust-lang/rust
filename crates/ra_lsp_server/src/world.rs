@@ -22,7 +22,6 @@ use crate::{
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     LspError, Result,
 };
-use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct Options {
@@ -286,6 +285,8 @@ impl WorldSnapshot {
 
 #[cfg(target_os = "windows")]
 fn lowercase_drive_letter(url: &Url) -> Url {
+    use std::str::FromStr;
+
     let s = url.to_string();
     let drive_partition: Vec<&str> = s.rsplitn(2, ':').collect::<Vec<&str>>();
 
