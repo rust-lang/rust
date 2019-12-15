@@ -520,7 +520,6 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_map_or)]
     /// let x: Result<_, &str> = Ok("foo");
     /// assert_eq!(x.map_or(42, |v| v.len()), 3);
     ///
@@ -528,7 +527,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.map_or(42, |v| v.len()), 42);
     /// ```
     #[inline]
-    #[unstable(feature = "result_map_or", issue = "66293")]
+    #[stable(feature = "result_map_or", since = "1.41.0")]
     pub fn map_or<U, F: FnOnce(T) -> U>(self, default: U, f: F) -> U {
         match self {
             Ok(t) => f(t),

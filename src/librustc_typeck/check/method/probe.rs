@@ -1456,7 +1456,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
                     pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
-                        .ok().map_or(None, |_| {
+                        .map_or(None, |_| {
                             pcx.pick_core()
                                 .and_then(|pick| pick.ok())
                                 .and_then(|pick| Some(pick.item))

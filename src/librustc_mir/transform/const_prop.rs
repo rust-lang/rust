@@ -517,7 +517,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let left_bits = place_layout.size.bits();
                     let right_size = r.layout.size;
                     let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
-                    if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
+                    if r_bits.map_or(false, |b| b >= left_bits as u128) {
                         let lint_root = match &self.source_scopes[source_info.scope].local_data {
                             ClearCrossCrate::Set(data) => data.lint_root,
                             ClearCrossCrate::Clear => return None,
