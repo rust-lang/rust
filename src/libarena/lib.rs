@@ -446,6 +446,7 @@ pub union TypedArena<T> {
     zst: mem::ManuallyDrop<GenericArena<T, ZSTCurrentChunk<T>>>,
     dropless: mem::ManuallyDrop<GenericArena<T, DroplessCurrentChunk<T>>>,
     typed: mem::ManuallyDrop<GenericArena<T, TypedCurrentChunk<T>>>,
+    _own: PhantomData<T>,
 }
 
 impl<T> Default for TypedArena<T> {
