@@ -2852,19 +2852,23 @@ impl<'a> LoweringContext<'a> {
         let mut rest = None;
 
         let mut iter = pats.iter().enumerate();
-        while let Some((idx, pat)) = iter.next() {
-            // Interpret the first `..` pattern as a subtuple pattern.
+        for (idx, pat) in iter.by_ref() {
+            // Interpret the first `..` pattern as a sub-tuple pattern.
+            // Note that unlike for slice patterns,
+            // where `xs @ ..` is a legal sub-slice pattern,
+            // it is not a legal sub-tuple pattern.
             if pat.is_rest() {
                 rest = Some((idx, pat.span));
                 break;
             }
-            // It was not a subslice pattern so lower it normally.
+            // It was not a sub-tuple pattern so lower it normally.
             elems.push(self.lower_pat(pat));
         }
 
-        while let Some((_, pat)) = iter.next() {
-            // There was a previous subtuple pattern; make sure we don't allow more.
+        for (_, pat) in iter {
+            // There was a previous sub-tuple pattern; make sure we don't allow more...
             if pat.is_rest() {
+                // ...but there was one again, so error.
                 self.ban_extra_rest_pat(pat.span, rest.unwrap().1, ctx);
             } else {
                 elems.push(self.lower_pat(pat));
@@ -2874,6 +2878,12 @@ impl<'a> LoweringContext<'a> {
         (elems.into(), rest.map(|(ddpos, _)| ddpos))
     }
 
+    /// Lower a slice pattern of form `[pat_0, ..., pat_n]` into
+    /// `hir::PatKind::Slice(before, slice, after)`.
+    ///
+    /// When encountering `($binding_mode $ident @)? ..` (`slice`),
+    /// this is interpreted as a sub-slice pattern semantically.
+    /// Patterns that follow, which are not like `slice` -- or an error occurs, are in `after`.
     fn lower_pat_slice(&mut self, pats: &[AstP<Pat>]) -> hir::PatKind {
         let mut before = Vec::new();
         let mut after = Vec::new();
@@ -2881,14 +2891,17 @@ impl<'a> LoweringContext<'a> {
         let mut prev_rest_span = None;
 
         let mut iter = pats.iter();
-        while let Some(pat) = iter.next() {
-            // Interpret the first `((ref mut?)? x @)? ..` pattern as a subslice pattern.
+        // Lower all the patterns until the first occurence of a sub-slice pattern.
+        for pat in iter.by_ref() {
             match pat.kind {
+                // Found a sub-slice pattern `..`. Record, lower it to `_`, and stop here.
                 PatKind::Rest => {
                     prev_rest_span = Some(pat.span);
                     slice = Some(self.pat_wild_with_node_id_of(pat));
                     break;
                 },
+                // Found a sub-slice pattern `$binding_mode $ident @ ..`.
+                // Record, lower it to `$binding_mode $ident @ _`, and stop here.
                 PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
                     prev_rest_span = Some(sub.span);
                     let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
@@ -2896,14 +2909,13 @@ impl<'a> LoweringContext<'a> {
                     slice = Some(self.pat_with_node_id_of(pat, node));
                     break;
                 },
-                _ => {}
+                // It was not a subslice pattern so lower it normally.
+                _ => before.push(self.lower_pat(pat)),
             }
-
-            // It was not a subslice pattern so lower it normally.
-            before.push(self.lower_pat(pat));
         }
 
-        while let Some(pat) = iter.next() {
+        // Lower all the patterns after the first sub-slice pattern.
+        for pat in iter {
             // There was a previous subslice pattern; make sure we don't allow more.
             let rest_span = match pat.kind {
                 PatKind::Rest => Some(pat.span),
@@ -2915,8 +2927,10 @@ impl<'a> LoweringContext<'a> {
                 _ => None,
             };
             if let Some(rest_span) = rest_span {
+                // We have e.g., `[a, .., b, ..]`. That's no good, error!
                 self.ban_extra_rest_pat(rest_span, prev_rest_span.unwrap(), "slice");
             } else {
+                // Lower the pattern normally.
                 after.push(self.lower_pat(pat));
             }
         }
