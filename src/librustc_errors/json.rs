@@ -36,7 +36,7 @@ pub struct JsonEmitter {
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
-    external_macro_backtrace: bool,
+    macro_backtrace: bool,
 }
 
 impl JsonEmitter {
@@ -45,7 +45,7 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
@@ -54,14 +54,14 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
     pub fn basic(
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(
@@ -69,7 +69,7 @@ impl JsonEmitter {
             Lrc::new(SourceMap::new(file_path_mapping)),
             pretty,
             json_rendered,
-            external_macro_backtrace,
+            macro_backtrace,
         )
     }
 
@@ -79,7 +79,7 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst,
@@ -88,7 +88,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
@@ -245,13 +245,7 @@ impl Diagnostic {
         let buf = BufWriter::default();
         let output = buf.clone();
         je.json_rendered
-            .new_emitter(
-                Box::new(buf),
-                Some(je.sm.clone()),
-                false,
-                None,
-                je.external_macro_backtrace,
-            )
+            .new_emitter(Box::new(buf), Some(je.sm.clone()), false, None, je.macro_backtrace)
             .ui_testing(je.ui_testing)
             .emit_diagnostic(diag);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();

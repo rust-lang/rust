@@ -847,7 +847,13 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zforce-unstable-if-unmarked");
         }
 
-        rustflags.arg("-Zexternal-macro-backtrace");
+        // cfg(bootstrap): the flag was renamed from `-Zexternal-macro-backtrace`
+        // to `-Zmacro-backtrace`, keep only the latter after beta promotion.
+        if stage == 0 {
+            rustflags.arg("-Zexternal-macro-backtrace");
+        } else {
+            rustflags.arg("-Zmacro-backtrace");
+        }
 
         let want_rustdoc = self.doc_tests != DocTests::No;
 
