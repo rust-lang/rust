@@ -1339,16 +1339,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             err.span_label(
                                 *sp,
                                 format!(
-                                    "{}this is {}the {} {}{}",
-                                    if sp.is_desugaring(DesugaringKind::Async) {
-                                        "in the desugared `async fn`, "
-                                    } else {
-                                        ""
-                                    },
-                                    if count > 1 { "one of" } else { "" },
+                                    "{}the {} {}{}{}",
+                                    if count > 1 { "one of " } else { "" },
                                     target,
                                     key,
                                     pluralize!(count),
+                                    if sp.is_desugaring(DesugaringKind::Async) {
+                                        " in the `Output` of this `async fn`"
+                                    } else {
+                                        ""
+                                    },
                                 ),
                             );
                         }
@@ -1364,18 +1364,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ty::Opaque(..) => "opaque type",
                     _ => "",
                 };
-                match t.kind {
-                    ty::Closure(def_id, _) | ty::Opaque(def_id, _) => {
-                        let span = self.tcx.def_span(def_id);
-                        debug!("note_type_err visit_ty {:?}", span.macro_backtrace());
-                        if !self.ignore_span.overlaps(span)
-                            && !self.expected.values().any(|exp| exp.iter().any(|sp| *sp == span))
-                        {
-                            let entry = self.types.entry(kind).or_default();
-                            entry.insert(span);
-                        }
+                if let ty::Closure(def_id, _) | ty::Opaque(def_id, _) = t.kind {
+                    let span = self.tcx.def_span(def_id);
+                    // Avoid cluttering the output when the "found" and error span overlap:
+                    //
+                    // error[E0308]: mismatched types
+                    //   --> $DIR/issue-20862.rs:2:5
+                    //    |
+                    // LL |     |y| x + y
+                    //    |     ^^^^^^^^^
+                    //    |     |
+                    //    |     the found closure
+                    //    |     expected `()`, found closure
+                    //    |
+                    //    = note: expected unit type `()`
+                    //                 found closure `[closure@$DIR/issue-20862.rs:2:5: 2:14 x:_]`
+                    if !self.ignore_span.overlaps(span) {
+                        self.types.entry(kind).or_default().insert(span);
                     }
-                    _ => {}
                 }
                 t.super_visit_with(self)
             }

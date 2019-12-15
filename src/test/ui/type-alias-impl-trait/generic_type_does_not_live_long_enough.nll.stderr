@@ -13,7 +13,7 @@ LL |     let z: i32 = x;
    |            expected due to this
 ...
 LL | type WrongGeneric<T> = impl 'static;
-   | ------------------------------------ this is the found opaque type
+   | ------------------------------------ the found opaque type
    |
    = note:     expected type `i32`
            found opaque type `WrongGeneric::<&{integer}>`

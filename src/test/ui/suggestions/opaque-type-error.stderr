@@ -2,7 +2,7 @@ error[E0308]: `if` and `else` have incompatible types
   --> $DIR/opaque-type-error.rs:20:9
    |
 LL |   fn thing_two() -> impl Future<Output = Result<(), ()>> {
-   |                     ------------------------------------ this is the found opaque type
+   |                     ------------------------------------ the found opaque type
 ...
 LL | /     if true {
 LL | |         thing_one()
