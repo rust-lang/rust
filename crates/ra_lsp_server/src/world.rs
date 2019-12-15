@@ -306,8 +306,7 @@ fn url_from_path_with_drive_lowercasing(path: impl AsRef<Path>) -> Result<Url> {
         let url_original = Url::from_file_path(&path)
             .map_err(|_| format!("can't convert path to url: {}", path.as_ref().display()))?;
 
-        let drive_partition: Vec<&str> =
-            url_original.as_str().rsplitn(2, ':').collect::<Vec<&str>>();
+        let drive_partition: Vec<&str> = url_original.as_str().rsplitn(2, ':').collect();
 
         // There is a drive partition, but we never found a colon.
         // This should not happen, but in this case we just pass it through.
