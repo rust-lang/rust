@@ -364,7 +364,7 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let (dir, file) = open_parent(path, wasi::RIGHTS_PATH_OPEN)?;
+        let (dir, file) = open_parent(path)?;
         open_at(&dir, &file, opts)
     }
 
@@ -452,7 +452,7 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_CREATE_DIRECTORY)?;
+        let (dir, file) = open_parent(p)?;
         dir.create_directory(osstr2str(file.as_ref())?)
     }
 }
@@ -478,13 +478,13 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_UNLINK_FILE)?;
+    let (dir, file) = open_parent(p)?;
     dir.unlink_file(osstr2str(file.as_ref())?)
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let (old, old_file) = open_parent(old, wasi::RIGHTS_PATH_RENAME_SOURCE)?;
-    let (new, new_file) = open_parent(new, wasi::RIGHTS_PATH_RENAME_TARGET)?;
+    let (old, old_file) = open_parent(old)?;
+    let (new, new_file) = open_parent(new)?;
     old.rename(osstr2str(old_file.as_ref())?, &new, osstr2str(new_file.as_ref())?)
 }
 
@@ -495,12 +495,12 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_REMOVE_DIRECTORY)?;
+    let (dir, file) = open_parent(p)?;
     dir.remove_directory(osstr2str(file.as_ref())?)
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_READLINK)?;
+    let (dir, file) = open_parent(p)?;
     read_link(&dir, &file)
 }
 
@@ -536,13 +536,13 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let (dst, dst_file) = open_parent(dst, wasi::RIGHTS_PATH_SYMLINK)?;
+    let (dst, dst_file) = open_parent(dst)?;
     dst.symlink(osstr2str(src.as_ref())?, osstr2str(dst_file.as_ref())?)
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let (src, src_file) = open_parent(src, wasi::RIGHTS_PATH_LINK_SOURCE)?;
-    let (dst, dst_file) = open_parent(dst, wasi::RIGHTS_PATH_LINK_TARGET)?;
+    let (src, src_file) = open_parent(src)?;
+    let (dst, dst_file) = open_parent(dst)?;
     src.link(
         wasi::LOOKUPFLAGS_SYMLINK_FOLLOW,
         osstr2str(src_file.as_ref())?,
@@ -552,12 +552,12 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_FILESTAT_GET)?;
+    let (dir, file) = open_parent(p)?;
     metadata_at(&dir, wasi::LOOKUPFLAGS_SYMLINK_FOLLOW, &file)
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_FILESTAT_GET)?;
+    let (dir, file) = open_parent(p)?;
     metadata_at(&dir, 0, &file)
 }
 
@@ -611,11 +611,11 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 ///
 /// Note that this can fail if `p` doesn't look like it can be opened relative
 /// to any preopened file descriptor.
-fn open_parent(p: &Path, rights: wasi::Rights) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
+fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
     let p = CString::new(p.as_os_str().as_bytes())?;
     unsafe {
         let mut ret = ptr::null();
-        let fd = libc::__wasilibc_find_relpath(p.as_ptr(), rights, 0, &mut ret);
+        let fd = __wasilibc_find_relpath(p.as_ptr(), &mut ret);
         if fd == -1 {
             let msg = format!(
                 "failed to find a preopened file descriptor \
@@ -634,6 +634,13 @@ fn open_parent(p: &Path, rights: wasi::Rights) -> io::Result<(ManuallyDrop<WasiF
         let path = path.to_path_buf();
 
         return Ok((ManuallyDrop::new(WasiFd::from_raw(fd as u32)), path));
+    }
+
+    extern "C" {
+        pub fn __wasilibc_find_relpath(
+            path: *const libc::c_char,
+            relative_path: *mut *const libc::c_char,
+        ) -> libc::c_int;
     }
 }
 
