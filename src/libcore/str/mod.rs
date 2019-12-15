@@ -3810,7 +3810,7 @@ impl str {
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "str_strip", reason = "newly added", issue = "0")]
+    #[unstable(feature = "str_strip", reason = "newly added", issue = "67302")]
     pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a str> {
         let mut matcher = prefix.into_searcher(self);
         if let SearchStep::Match(start, len) = matcher.next() {
@@ -3843,7 +3843,7 @@ impl str {
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "str_strip", reason = "newly added", issue = "0")]
+    #[unstable(feature = "str_strip", reason = "newly added", issue = "67302")]
     pub fn strip_suffix<'a, P>(&'a self, suffix: P) -> Option<&'a str>
     where
         P: Pattern<'a>,
