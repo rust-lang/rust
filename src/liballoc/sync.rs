@@ -12,7 +12,7 @@ use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
-use core::cmp::{self, Ordering};
+use core::cmp::Ordering;
 use core::iter;
 use core::intrinsics::abort;
 use core::mem::{self, align_of, align_of_val, size_of_val};
@@ -1529,7 +1529,7 @@ impl<T: ?Sized> Weak<T> {
     /// If `self` was created using [`Weak::new`], this will return 0.
     ///
     /// [`Weak::new`]: #method.new
-    #[unstable(feature = "weak_counts", issue = "57977")]
+    #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
         if let Some(inner) = self.inner() {
             inner.strong.load(SeqCst)
@@ -1541,9 +1541,8 @@ impl<T: ?Sized> Weak<T> {
     /// Gets an approximation of the number of `Weak` pointers pointing to this
     /// allocation.
     ///
-    /// If `self` was created using [`Weak::new`], this will return 0. If not,
-    /// the returned value is at least 1, since `self` still points to the
-    /// allocation.
+    /// If `self` was created using [`Weak::new`], or if there are no remaining
+    /// strong pointers, this will return 0.
     ///
     /// # Accuracy
     ///
@@ -1552,31 +1551,22 @@ impl<T: ?Sized> Weak<T> {
     /// `Weak`s pointing to the same allocation.
     ///
     /// [`Weak::new`]: #method.new
-    #[unstable(feature = "weak_counts", issue = "57977")]
-    pub fn weak_count(&self) -> Option<usize> {
-        // Due to the implicit weak pointer added when any strong pointers are
-        // around, we cannot implement `weak_count` correctly since it
-        // necessarily requires accessing the strong count and weak count in an
-        // unsynchronized fashion. So this version is a bit racy.
+    #[stable(feature = "weak_counts", since = "1.41.0")]
+    pub fn weak_count(&self) -> usize {
         self.inner().map(|inner| {
-            let strong = inner.strong.load(SeqCst);
             let weak = inner.weak.load(SeqCst);
+            let strong = inner.strong.load(SeqCst);
             if strong == 0 {
-                // If the last `Arc` has *just* been dropped, it might not yet
-                // have removed the implicit weak count, so the value we get
-                // here might be 1 too high.
-                weak
+                0
             } else {
-                // As long as there's still at least 1 `Arc` around, subtract
-                // the implicit weak pointer.
-                // Note that the last `Arc` might get dropped between the 2
-                // loads we do above, removing the implicit weak pointer. This
-                // means that the value might be 1 too low here. In order to not
-                // return 0 here (which would happen if we're the only weak
-                // pointer), we guard against that specifically.
-                cmp::max(1, weak - 1)
+                // Since we observed that there was at least one strong pointer
+                // after reading the weak count, we know that the implicit weak
+                // reference (present whenever any strong references are alive)
+                // was still around when we observed the weak count, and can
+                // therefore safely subtract it.
+                weak - 1
             }
-        })
+        }).unwrap_or(0)
     }
 
     /// Returns `None` when the pointer is dangling and there is no allocated `ArcInner`,
