@@ -43,4 +43,11 @@ fn main() {
             drop(a);
         }
     }
+
+    match Ok(mk_c()) {
+        Ok(ref a @ b) | Err(b @ ref a) => {
+            let _: &C = a;
+            let _: C = b;
+        }
+    }
 }
