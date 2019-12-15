@@ -1,7 +1,10 @@
-use super::{infer, type_at, type_at_pos};
-use crate::test_db::TestDB;
 use insta::assert_snapshot;
+
 use ra_db::fixture::WithFixture;
+use test_utils::covers;
+
+use super::{infer, infer_with_mismatches, type_at, type_at_pos};
+use crate::test_db::TestDB;
 
 #[test]
 fn infer_await() {
@@ -1485,4 +1488,62 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
     );
     // this is a legitimate cycle
     assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn unify_impl_trait() {
+    covers!(insert_vars_for_impl_trait);
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Trait<T> {}
+
+fn foo(x: impl Trait<u32>) { loop {} }
+fn bar<T>(x: impl Trait<T>) -> T { loop {} }
+
+struct S<T>(T);
+impl<T> Trait<T> for S<T> {}
+
+fn default<T>() -> T { loop {} }
+
+fn test() -> impl Trait<i32> {
+    let s1 = S(default());
+    foo(s1);
+    let x: i32 = bar(S(default()));
+    S(default())
+}
+"#, true),
+        @r###"
+    [27; 28) 'x': impl Trait<u32>
+    [47; 58) '{ loop {} }': ()
+    [49; 56) 'loop {}': !
+    [54; 56) '{}': ()
+    [69; 70) 'x': impl Trait<T>
+    [92; 103) '{ loop {} }': T
+    [94; 101) 'loop {}': !
+    [99; 101) '{}': ()
+    [172; 183) '{ loop {} }': T
+    [174; 181) 'loop {}': !
+    [179; 181) '{}': ()
+    [214; 310) '{     ...t()) }': S<i32>
+    [224; 226) 's1': S<u32>
+    [229; 230) 'S': S<u32>(T) -> S<T>
+    [229; 241) 'S(default())': S<u32>
+    [231; 238) 'default': fn default<u32>() -> T
+    [231; 240) 'default()': u32
+    [247; 250) 'foo': fn foo(impl Trait<u32>) -> ()
+    [247; 254) 'foo(s1)': ()
+    [251; 253) 's1': S<u32>
+    [264; 265) 'x': i32
+    [273; 276) 'bar': fn bar<i32>(impl Trait<T>) -> T
+    [273; 290) 'bar(S(...lt()))': i32
+    [277; 278) 'S': S<i32>(T) -> S<T>
+    [277; 289) 'S(default())': S<i32>
+    [279; 286) 'default': fn default<i32>() -> T
+    [279; 288) 'default()': i32
+    [296; 297) 'S': S<i32>(T) -> S<T>
+    [296; 308) 'S(default())': S<i32>
+    [298; 305) 'default': fn default<i32>() -> T
+    [298; 307) 'default()': i32
+    "###
+    );
 }

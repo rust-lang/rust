@@ -32,6 +32,7 @@ use hir_def::{
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
+use test_utils::tested_by;
 
 use super::{
     primitive::{FloatTy, IntTy},
@@ -274,6 +275,29 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.normalize_associated_types_in(ty)
     }
 
+    /// Replaces `impl Trait` in `ty` by type variables and obligations for
+    /// those variables. This is done for function arguments when calling a
+    /// function, and for return types when inside the function body, i.e. in
+    /// the cases where the `impl Trait` is 'transparent'. In other cases, `impl
+    /// Trait` is represented by `Ty::Opaque`.
+    fn insert_vars_for_impl_trait(&mut self, ty: Ty) -> Ty {
+        ty.fold(&mut |ty| match ty {
+            Ty::Opaque(preds) => {
+                tested_by!(insert_vars_for_impl_trait);
+                let var = self.table.new_type_var();
+                let var_subst = Substs::builder(1).push(var.clone()).build();
+                self.obligations.extend(
+                    preds
+                        .iter()
+                        .map(|pred| pred.clone().subst_bound_vars(&var_subst))
+                        .filter_map(Obligation::from_predicate),
+                );
+                var
+            }
+            _ => ty,
+        })
+    }
+
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty {
@@ -414,7 +438,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
-        self.return_ty = self.make_ty(&data.ret_type);
+        let return_ty = self.make_ty(&data.ret_type);
+        self.return_ty = self.insert_vars_for_impl_trait(return_ty);
     }
 
     fn infer_body(&mut self) {
