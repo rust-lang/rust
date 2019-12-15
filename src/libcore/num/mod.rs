@@ -144,7 +144,7 @@ NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
-/// Operations like `+` on `u32` values is intended to never overflow,
+/// Operations like `+` on `u32` values are intended to never overflow,
 /// and in some debug configurations overflow is detected and results
 /// in a panic. While most arithmetic falls into this category, some
 /// code explicitly expects and relies upon modular arithmetic (e.g.,

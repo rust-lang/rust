@@ -2404,7 +2404,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let message = if let Some(name) = last_generator
                 .and_then(|generator_did| self.tcx.parent(generator_did))
                 .and_then(|parent_did| self.tcx.hir().as_local_hir_id(parent_did))
-                .map(|parent_hir_id| self.tcx.hir().name(parent_hir_id))
+                .and_then(|parent_hir_id| self.tcx.hir().opt_name(parent_hir_id))
             {
                 format!("future returned by `{}` is not {}", name, trait_name)
             } else {
