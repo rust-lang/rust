@@ -1248,6 +1248,24 @@ fn test_split_char_iterator_no_trailing() {
 }
 
 #[test]
+fn test_split_char_iterator_inclusive() {
+    let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+    let split: Vec<&str> = data.split_inclusive('\n').collect();
+    assert_eq!(split, ["\n", "Märy häd ä little lämb\n", "Little lämb\n", ""]);
+
+    let uppercase_separated = "SheePSharKTurtlECaT";
+    let mut first_char = true;
+    let split: Vec<&str> = uppercase_separated.split_inclusive(|c: char| {
+        let split = !first_char && c.is_uppercase();
+        first_char = split;
+        split
+    }).collect();
+    assert_eq!(split, ["SheeP", "SharK", "TurtlE", "CaT", ""]);
+}
+
+
+#[test]
 fn test_rsplit() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 

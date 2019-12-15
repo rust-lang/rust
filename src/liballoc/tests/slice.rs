@@ -852,6 +852,26 @@ fn test_splitator() {
 }
 
 #[test]
+fn test_splitator_inclusive() {
+    let xs = &[1, 2, 3, 4, 5];
+
+    let splits: &[&[_]] = &[&[1, 2], &[3, 4], &[5]];
+    assert_eq!(xs.split_inclusive(|x| *x % 2 == 0).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[1], &[2, 3, 4, 5]];
+    assert_eq!(xs.split_inclusive(|x| *x == 1).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[1, 2, 3, 4, 5], &[]];
+    assert_eq!(xs.split_inclusive(|x| *x == 5).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[1, 2, 3, 4, 5]];
+    assert_eq!(xs.split_inclusive(|x| *x == 10).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[1], &[2], &[3], &[4], &[5], &[]];
+    assert_eq!(xs.split_inclusive(|_| true).collect::<Vec<&[i32]>>(), splits);
+
+    let xs: &[i32] = &[];
+    let splits: &[&[i32]] = &[&[]];
+    assert_eq!(xs.split_inclusive(|x| *x == 5).collect::<Vec<&[i32]>>(), splits);
+}
+
+#[test]
 fn test_splitnator() {
     let xs = &[1, 2, 3, 4, 5];
 
