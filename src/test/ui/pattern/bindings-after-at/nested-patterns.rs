@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(bindings_after_at)]
-//~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 
 struct A { a: u8, b: u8 }
 

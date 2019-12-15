@@ -2,7 +2,6 @@
 // not in the top position of a ascribing a let binding or function parameter.
 
 #![feature(bindings_after_at)]
-//~^ WARN the feature `bindings_after_at` is incomplete
 
 // This has no effect.
 // We include it to demonstrate that this is the case:

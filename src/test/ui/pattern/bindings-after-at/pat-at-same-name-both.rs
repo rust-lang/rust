@@ -2,7 +2,6 @@
 // The code that is tested here lives in resolve (see `resolve_pattern_inner`).
 
 #![feature(bindings_after_at)]
-//~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 #![feature(or_patterns)]
 //~^ WARN the feature `or_patterns` is incomplete and may cause the compiler to crash
 

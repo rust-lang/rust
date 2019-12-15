@@ -1,19 +1,11 @@
-warning: the feature `bindings_after_at` is incomplete and may cause the compiler to crash
-  --> $DIR/E0007.rs:1:12
-   |
-LL | #![feature(bindings_after_at)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/E0007.rs:7:9
+  --> $DIR/E0007.rs:6:9
    |
 LL |         op_string @ Some(s) => {},
    |         ^^^^^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
 
 error[E0382]: use of moved value
-  --> $DIR/E0007.rs:7:26
+  --> $DIR/E0007.rs:6:26
    |
 LL |     let x = Some("s".to_string());
    |         - move occurs because `x` has type `std::option::Option<std::string::String>`, which does not implement the `Copy` trait

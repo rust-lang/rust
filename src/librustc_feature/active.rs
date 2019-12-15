@@ -558,5 +558,4 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::or_patterns,
     sym::let_chains,
     sym::raw_dylib,
-    sym::bindings_after_at,
 ];

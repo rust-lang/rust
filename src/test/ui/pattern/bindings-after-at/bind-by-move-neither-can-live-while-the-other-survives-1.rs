@@ -3,7 +3,6 @@
 // where one side is by-ref and the other is by-move.
 
 #![feature(bindings_after_at)]
-//~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 
 struct X { x: () }
 

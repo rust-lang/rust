@@ -1,13 +1,5 @@
-warning: the feature `bindings_after_at` is incomplete and may cause the compiler to crash
-  --> $DIR/default-binding-modes-both-sides-independent.rs:10:12
-   |
-LL | #![feature(bindings_after_at)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/default-binding-modes-both-sides-independent.rs:28:17
+  --> $DIR/default-binding-modes-both-sides-independent.rs:27:17
    |
 LL |     let ref a @ b = NotCopy;
    |         --------^
@@ -16,7 +8,7 @@ LL |     let ref a @ b = NotCopy;
    |         by-ref pattern here
 
 error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/default-binding-modes-both-sides-independent.rs:29:21
+  --> $DIR/default-binding-modes-both-sides-independent.rs:28:21
    |
 LL |     let ref mut a @ b = NotCopy;
    |         ------------^
@@ -25,7 +17,7 @@ LL |     let ref mut a @ b = NotCopy;
    |         by-ref pattern here
 
 error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/default-binding-modes-both-sides-independent.rs:31:20
+  --> $DIR/default-binding-modes-both-sides-independent.rs:30:20
    |
 LL |         Ok(ref a @ b) | Err(ref a @ b) => {}
    |            --------^        --------^
@@ -36,7 +28,7 @@ LL |         Ok(ref a @ b) | Err(ref a @ b) => {}
    |            by-ref pattern here
 
 error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/default-binding-modes-both-sides-independent.rs:35:17
+  --> $DIR/default-binding-modes-both-sides-independent.rs:34:17
    |
 LL |         ref a @ b => {}
    |         --------^

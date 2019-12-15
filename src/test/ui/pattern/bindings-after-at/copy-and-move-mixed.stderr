@@ -1,31 +1,23 @@
-warning: the feature `bindings_after_at` is incomplete and may cause the compiler to crash
-  --> $DIR/copy-and-move-mixed.rs:3:12
-   |
-LL | #![feature(bindings_after_at)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/copy-and-move-mixed.rs:12:9
+  --> $DIR/copy-and-move-mixed.rs:11:9
    |
 LL |     let a @ NC(b, c) = NC(C, C);
    |         ^^^^^^^^^^^^ binds an already bound by-move value by moving it
 
 error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/copy-and-move-mixed.rs:16:9
+  --> $DIR/copy-and-move-mixed.rs:15:9
    |
 LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |         ^^^^^^^^^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
 
 error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/copy-and-move-mixed.rs:16:19
+  --> $DIR/copy-and-move-mixed.rs:15:19
    |
 LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |                   ^^^^^^^^^^^^ binds an already bound by-move value by moving it
 
 error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:12:19
+  --> $DIR/copy-and-move-mixed.rs:11:19
    |
 LL |     let a @ NC(b, c) = NC(C, C);
    |         ----------^-   -------- move occurs because value has type `NC<C, C>`, which does not implement the `Copy` trait
@@ -34,7 +26,7 @@ LL |     let a @ NC(b, c) = NC(C, C);
    |         value moved here
 
 error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:16:19
+  --> $DIR/copy-and-move-mixed.rs:15:19
    |
 LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |         ----------^^^^^^^^^^^^-   --------------- move occurs because value has type `NC<C, NC<C, C>>`, which does not implement the `Copy` trait
@@ -43,7 +35,7 @@ LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |         value moved here
 
 error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:16:29
+  --> $DIR/copy-and-move-mixed.rs:15:29
    |
 LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |                   ----------^-

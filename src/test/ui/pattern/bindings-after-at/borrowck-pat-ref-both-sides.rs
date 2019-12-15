@@ -4,7 +4,6 @@
 // of an `@` pattern according to NLL borrowck.
 
 #![feature(bindings_after_at)]
-//~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 #![feature(slice_patterns)]
 
 fn main() {

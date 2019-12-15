@@ -1,7 +1,6 @@
 // See issue #12534.
 
 #![feature(bindings_after_at)]
-//~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 
 fn main() {}
 

@@ -1,34 +1,26 @@
 error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `@`
-  --> $DIR/nested-type-ascription-syntactically-invalid.rs:20:15
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:19:15
    |
 LL |     let a: u8 @ b = 0;
    |               ^ expected one of 7 possible tokens
 
 error: expected one of `)`, `,`, `@`, or `|`, found `:`
-  --> $DIR/nested-type-ascription-syntactically-invalid.rs:26:15
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:25:15
    |
 LL |     let a @ (b: u8);
    |               ^ expected one of `)`, `,`, `@`, or `|`
 
 error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `)`
-  --> $DIR/nested-type-ascription-syntactically-invalid.rs:26:19
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:25:19
    |
 LL |     let a @ (b: u8);
    |                   ^ expected one of 7 possible tokens
 
 error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `@`
-  --> $DIR/nested-type-ascription-syntactically-invalid.rs:33:15
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:32:15
    |
 LL |     let a: T1 @ Outer(b: T2);
    |               ^ expected one of 7 possible tokens
-
-warning: the feature `bindings_after_at` is incomplete and may cause the compiler to crash
-  --> $DIR/nested-type-ascription-syntactically-invalid.rs:4:12
-   |
-LL | #![feature(bindings_after_at)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
 
 error: aborting due to 4 previous errors
 

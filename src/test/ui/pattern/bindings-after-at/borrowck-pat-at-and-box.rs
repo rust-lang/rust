@@ -1,7 +1,6 @@
 // Test `@` patterns combined with `box` patterns.
 
 #![feature(bindings_after_at)]
-//~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 #![feature(box_patterns)]
 #![feature(slice_patterns)]
 

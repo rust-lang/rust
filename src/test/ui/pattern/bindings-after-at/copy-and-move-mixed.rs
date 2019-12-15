@@ -1,7 +1,6 @@
 // Test that mixing `Copy` and non-`Copy` types in `@` patterns is forbidden.
 
 #![feature(bindings_after_at)]
-//~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 
 #[derive(Copy, Clone)]
 struct C;

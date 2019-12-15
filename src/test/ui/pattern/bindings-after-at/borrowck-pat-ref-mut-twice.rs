@@ -1,7 +1,6 @@
 // Test that `ref mut x @ ref mut y` and varieties of that are not allowed.
 
 #![feature(bindings_after_at)]
-//~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 #![feature(slice_patterns)]
 
 fn main() {
