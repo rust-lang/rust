@@ -103,6 +103,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
         };
 
+        // The move path index of the first union that we find. Once this is
+        // some we stop creating child move paths, since moves from unions
+        // move the whole thing.
+        // We continue looking for other move errors though so that moving
+        // from `*(u.f: &_)` isn't allowed.
+        let mut union_path = None;
+
         for (i, elem) in place.projection.iter().enumerate() {
             let proj_base = &place.projection[..i];
             let body = self.builder.body;
@@ -127,9 +134,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         InteriorOfTypeWithDestructor { container_ty: place_ty },
                     ));
                 }
-                // move out of union - always move the entire union
                 ty::Adt(adt, _) if adt.is_union() => {
-                    return Err(MoveError::UnionMove { path: base });
+                    union_path.get_or_insert(base);
                 }
                 ty::Slice(_) => {
                     return Err(MoveError::cannot_move_out_of(
@@ -155,15 +161,22 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 _ => {}
             };
 
-            base = self.add_move_path(base, elem, |tcx| {
-                Place {
-                    base: place.base.clone(),
-                    projection: tcx.intern_place_elems(&place.projection[..i+1]),
-                }
-            });
+            if union_path.is_none() {
+                base = self.add_move_path(base, elem, |tcx| {
+                    Place {
+                        base: place.base.clone(),
+                        projection: tcx.intern_place_elems(&place.projection[..i+1]),
+                    }
+                });
+            }
         }
 
-        Ok(base)
+        if let Some(base) = union_path {
+            // Move out of union - always move the entire union.
+            Err(MoveError::UnionMove { path: base })
+        } else {
+            Ok(base)
+        }
     }
 
     fn add_move_path(
