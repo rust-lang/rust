@@ -83,7 +83,10 @@ export class CargoWatchProvider implements vscode.Disposable {
 
         let args =
             Server.config.cargoWatchOptions.command +
-            ' --all-targets --message-format json';
+            ' --message-format json';
+        if (Server.config.cargoWatchOptions.allTargets) {
+            args += ' --all-targets';
+        }
         if (Server.config.cargoWatchOptions.command.length > 0) {
             // Excape the double quote string:
             args += ' ' + Server.config.cargoWatchOptions.arguments;

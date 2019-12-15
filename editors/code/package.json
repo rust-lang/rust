@@ -237,6 +237,11 @@
                     "description": "A list of patterns for cargo-watch to ignore (will be passed as `--ignore`)",
                     "default": []
                 },
+                "rust-analyzer.cargo-watch.allTargets": {
+                    "type": "boolean",
+                    "description": "Check all targets and tests (will be passed as `--all-targets`)",
+                    "default": true
+                },
                 "rust-analyzer.trace.server": {
                     "type": "string",
                     "scope": "window",
