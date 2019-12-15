@@ -155,21 +155,23 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::c_str::{CString, CStr, NulError, IntoStringError};
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-pub use self::c_str::{FromBytesWithNulError};
+pub use self::c_str::FromBytesWithNulError;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::c_str::{CStr, CString, IntoStringError, NulError};
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::os_str::{OsString, OsStr};
+pub use self::os_str::{OsStr, OsString};
 
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
 
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 pub use core::ffi::{VaList, VaListImpl};
 
 mod c_str;

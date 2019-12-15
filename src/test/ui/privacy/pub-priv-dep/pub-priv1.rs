@@ -1,11 +1,10 @@
- // aux-build:priv_dep.rs
+ // aux-crate:priv:priv_dep=priv_dep.rs
  // aux-build:pub_dep.rs
- // extern-private:priv_dep
 #![deny(exported_private_dependencies)]
 
 // This crate is a private dependency
 extern crate priv_dep;
-// This crate is a public dependenct
+// This crate is a public dependency
 extern crate pub_dep;
 
 use priv_dep::{OtherType, OtherTrait};

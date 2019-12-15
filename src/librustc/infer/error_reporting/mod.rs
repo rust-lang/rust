@@ -63,13 +63,14 @@ use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TypeFoldabl
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_error_codes::*;
+use rustc_target::spec::abi;
 use syntax_pos::{Pos, Span};
-
 use std::{cmp, fmt};
 
 mod note;
 
 mod need_type_info;
+pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
 
@@ -463,7 +464,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         terr: &TypeError<'tcx>,
-        sp: Span,
     ) {
         use hir::def_id::CrateNum;
         use hir::map::DisambiguatedDefPathData;
@@ -577,14 +577,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 };
                 if same_path().unwrap_or(false) {
                     let crate_name = self.tcx.crate_name(did1.krate);
-                    err.span_note(
-                        sp,
-                        &format!(
-                            "Perhaps two different versions \
-                             of crate `{}` are being used?",
-                            crate_name
-                        ),
-                    );
+                    err.note(&format!(
+                        "perhaps two different versions of crate `{}` are being used?",
+                        crate_name
+                    ));
                 }
             }
         };
@@ -766,7 +762,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             if len > 0 && i != len - 1 {
                 value.push_normal(", ");
             }
-            //self.push_comma(&mut value, &mut other_value, len, i);
         }
         if len > 0 {
             value.push_highlighted(">");
@@ -866,6 +861,120 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let mut generics = generics.clone();
         generics.params.truncate(len - num_supplied_defaults);
         substs.truncate_to(self.tcx, &generics)
+    }
+
+    /// Given two `fn` signatures highlight only sub-parts that are different.
+    fn cmp_fn_sig(
+        &self,
+        sig1: &ty::PolyFnSig<'tcx>,
+        sig2: &ty::PolyFnSig<'tcx>,
+    ) -> (DiagnosticStyledString, DiagnosticStyledString) {
+        let get_lifetimes = |sig| {
+            use crate::hir::def::Namespace;
+            let mut s = String::new();
+            let (_, (sig, reg)) = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS)
+                .name_all_regions(sig)
+                .unwrap();
+            let lts: Vec<String> = reg.into_iter().map(|(_, kind)| kind.to_string()).collect();
+            (if lts.is_empty() {
+                String::new()
+            } else {
+                format!("for<{}> ", lts.join(", "))
+            }, sig)
+        };
+
+        let (lt1, sig1) = get_lifetimes(sig1);
+        let (lt2, sig2) = get_lifetimes(sig2);
+
+        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        let mut values = (
+            DiagnosticStyledString::normal("".to_string()),
+            DiagnosticStyledString::normal("".to_string()),
+        );
+
+        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        // ^^^^^^
+        values.0.push(sig1.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
+        values.1.push(sig2.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
+
+        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //        ^^^^^^^^^^
+        if sig1.abi != abi::Abi::Rust {
+            values.0.push(format!("extern {} ", sig1.abi), sig1.abi != sig2.abi);
+        }
+        if sig2.abi != abi::Abi::Rust {
+            values.1.push(format!("extern {} ", sig2.abi), sig1.abi != sig2.abi);
+        }
+
+        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                   ^^^^^^^^
+        let lifetime_diff = lt1 != lt2;
+        values.0.push(lt1, lifetime_diff);
+        values.1.push(lt2, lifetime_diff);
+
+        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                           ^^^
+        values.0.push_normal("fn(");
+        values.1.push_normal("fn(");
+
+        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                              ^^^^^
+        let len1 = sig1.inputs().len();
+        let len2 = sig2.inputs().len();
+        if len1 == len2 {
+            for (i, (l, r)) in sig1.inputs().iter().zip(sig2.inputs().iter()).enumerate() {
+                let (x1, x2) = self.cmp(l, r);
+                (values.0).0.extend(x1.0);
+                (values.1).0.extend(x2.0);
+                self.push_comma(&mut values.0, &mut values.1, len1, i);
+            }
+        } else {
+            for (i, l) in sig1.inputs().iter().enumerate() {
+                values.0.push_highlighted(l.to_string());
+                if i != len1 - 1 {
+                    values.0.push_highlighted(", ");
+                }
+            }
+            for (i, r) in sig2.inputs().iter().enumerate() {
+                values.1.push_highlighted(r.to_string());
+                if i != len2 - 1 {
+                    values.1.push_highlighted(", ");
+                }
+            }
+        }
+
+        if sig1.c_variadic {
+            if len1 > 0 {
+                values.0.push_normal(", ");
+            }
+            values.0.push("...", !sig2.c_variadic);
+        }
+        if sig2.c_variadic {
+            if len2 > 0 {
+                values.1.push_normal(", ");
+            }
+            values.1.push("...", !sig1.c_variadic);
+        }
+
+        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                                   ^
+        values.0.push_normal(")");
+        values.1.push_normal(")");
+
+        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                                     ^^^^^^^^
+        let output1 = sig1.output();
+        let output2 = sig2.output();
+        let (x1, x2) = self.cmp(output1, output2);
+        if !output1.is_unit() {
+            values.0.push_normal(" -> ");
+            (values.0).0.extend(x1.0);
+        }
+        if !output2.is_unit() {
+            values.1.push_normal(" -> ");
+            (values.1).0.extend(x2.0);
+        }
+        values
     }
 
     /// Compares two given types, eliding parts that are the same between them and highlighting
@@ -968,7 +1077,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     for (i, lifetimes) in lifetimes.enumerate() {
                         let l1 = lifetime_display(lifetimes.0);
                         let l2 = lifetime_display(lifetimes.1);
-                        if l1 == l2 {
+                        if lifetimes.0 == lifetimes.1 {
                             values.0.push_normal("'_");
                             values.1.push_normal("'_");
                         } else {
@@ -1124,6 +1233,64 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values
             }
 
+            // When encountering tuples of the same size, highlight only the differing types
+            (&ty::Tuple(substs1), &ty::Tuple(substs2)) if substs1.len() == substs2.len() => {
+                let mut values = (
+                    DiagnosticStyledString::normal("("),
+                    DiagnosticStyledString::normal("("),
+                );
+                let len = substs1.len();
+                for (i, (left, right)) in substs1.types().zip(substs2.types()).enumerate() {
+                    let (x1, x2) = self.cmp(left, right);
+                    (values.0).0.extend(x1.0);
+                    (values.1).0.extend(x2.0);
+                    self.push_comma(&mut values.0, &mut values.1, len, i);
+                }
+                if len == 1 { // Keep the output for single element tuples as `(ty,)`.
+                    values.0.push_normal(",");
+                    values.1.push_normal(",");
+                }
+                values.0.push_normal(")");
+                values.1.push_normal(")");
+                values
+            }
+
+            (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
+                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
+                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+                let mut values = self.cmp_fn_sig(&sig1, &sig2);
+                let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did1, substs1));
+                let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did2, substs2));
+                let same_path = path1 == path2;
+                values.0.push(path1, !same_path);
+                values.1.push(path2, !same_path);
+                values
+            }
+
+            (ty::FnDef(did1, substs1), ty::FnPtr(sig2)) => {
+                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
+                let mut values = self.cmp_fn_sig(&sig1, sig2);
+                values.0.push_normal(format!(
+                    " {{{}}}",
+                    self.tcx.def_path_str_with_substs(*did1, substs1)),
+                );
+                values
+            }
+
+            (ty::FnPtr(sig1), ty::FnDef(did2, substs2)) => {
+                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+                let mut values = self.cmp_fn_sig(sig1, &sig2);
+                values.1.push_normal(format!(
+                    " {{{}}}",
+                    self.tcx.def_path_str_with_substs(*did2, substs2)),
+                );
+                values
+            }
+
+            (ty::FnPtr(sig1), ty::FnPtr(sig2)) => {
+                self.cmp_fn_sig(sig1, sig2)
+            }
+
             _ => {
                 if t1 == t2 {
                     // The two types are the same, elide and don't highlight.
@@ -1263,7 +1430,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .unwrap_or_else(|| {
                 self.tcx.hir().body_owner_def_id(hir::BodyId { hir_id: cause.body_id })
             });
-        self.check_and_note_conflicting_crates(diag, terr, span);
+        self.check_and_note_conflicting_crates(diag, terr);
         self.tcx.note_and_explain_type_err(diag, terr, span, body_owner_def_id);
 
         // It reads better to have the error origin as the final
@@ -1379,8 +1546,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Types(ref exp_found) => self.expected_found_str_ty(exp_found),
             infer::Regions(ref exp_found) => self.expected_found_str(exp_found),
             infer::Consts(ref exp_found) => self.expected_found_str(exp_found),
-            infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
-            infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found),
+            infer::TraitRefs(ref exp_found) => {
+                let pretty_exp_found = ty::error::ExpectedFound {
+                    expected: exp_found.expected.print_only_trait_path(),
+                    found: exp_found.found.print_only_trait_path()
+                };
+                self.expected_found_str(&pretty_exp_found)
+            },
+            infer::PolyTraitRefs(ref exp_found) => {
+                let pretty_exp_found = ty::error::ExpectedFound {
+                    expected: exp_found.expected.print_only_trait_path(),
+                    found: exp_found.found.print_only_trait_path()
+                };
+                self.expected_found_str(&pretty_exp_found)
+            },
         }
     }
 
@@ -1631,12 +1810,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             sub_region,
                             "...",
                         );
-                        err.note(&format!(
-                            "...so that the {}:\nexpected {}\n   found {}",
-                            sup_trace.cause.as_requirement_str(),
-                            sup_expected.content(),
-                            sup_found.content()
+                        err.span_note(sup_trace.cause.span, &format!(
+                            "...so that the {}",
+                            sup_trace.cause.as_requirement_str()
                         ));
+
+                        err.note_expected_found(
+                            &"",
+                            sup_expected,
+                            &"",
+                            sup_found
+                        );
                         err.emit();
                         return;
                     }

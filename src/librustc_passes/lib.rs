@@ -8,6 +8,7 @@
 
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(slice_patterns)]
 
 #![recursion_limit="256"]
 

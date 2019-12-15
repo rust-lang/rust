@@ -333,6 +333,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         variant_index: VariantIdx
     ) {
         if self.layout.for_variant(bx.cx(), variant_index).abi.is_uninhabited() {
+            // We play it safe by using a well-defined `abort`, but we could go for immediate UB
+            // if that turns out to be helpful.
+            bx.abort();
             return;
         }
         match self.layout.variants {
@@ -488,10 +491,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     },
                     Err(_) => {
                         // This is unreachable as long as runtime
-                        // and compile-time agree on values
+                        // and compile-time agree perfectly.
                         // With floats that won't always be true,
-                        // so we generate an abort.
+                        // so we generate a (safe) abort.
                         bx.abort();
+                        // We still have to return a place but it doesn't matter,
+                        // this code is unreachable.
                         let llval = bx.cx().const_undef(
                             bx.cx().type_ptr_to(bx.cx().backend_type(layout))
                         );
@@ -560,7 +565,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let llindex = bx.sub(lllen, lloffset);
                         cg_base.project_index(bx, llindex)
                     }
-                    mir::ProjectionElem::Subslice { from, to } => {
+                    mir::ProjectionElem::Subslice { from, to, from_end } => {
                         let mut subslice = cg_base.project_index(bx,
                             bx.cx().const_usize(*from as u64));
                         let projected_ty = PlaceTy::from_ty(cg_base.layout.ty)
@@ -568,6 +573,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         subslice.layout = bx.cx().layout_of(self.monomorphize(&projected_ty));
 
                         if subslice.layout.is_unsized() {
+                            assert!(from_end, "slice subslices should be `from_end`");
                             subslice.llextra = Some(bx.sub(cg_base.llextra.unwrap(),
                                 bx.cx().const_usize((*from as u64) + (*to as u64))));
                         }
@@ -591,7 +597,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     pub fn monomorphized_place_ty(&self, place_ref: &mir::PlaceRef<'_, 'tcx>) -> Ty<'tcx> {
         let tcx = self.cx.tcx();
-        let place_ty = mir::Place::ty_from(place_ref.base, place_ref.projection, self.mir, tcx);
+        let place_ty = mir::Place::ty_from(
+            place_ref.base,
+            place_ref.projection,
+            *self.mir,
+            tcx,
+        );
         self.monomorphize(&place_ty.ty)
     }
 }

@@ -5,6 +5,26 @@
 
 // NOTE: This crate only exists to allow linking on mingw targets.
 
+use std::cell::RefCell;
+use std::slice;
+use libc::{c_char, size_t};
+
+
+#[repr(C)]
+pub struct RustString {
+    pub bytes: RefCell<Vec<u8>>,
+}
+
+/// Appending to a Rust string -- used by RawRustStringOstream.
+#[no_mangle]
+pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: &RustString,
+                                                 ptr: *const c_char,
+                                                 size: size_t) {
+    let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
+
+    sr.bytes.borrow_mut().extend_from_slice(slice);
+}
+
 /// Initialize targets enabled by the build script via `cfg(llvm_component = "...")`.
 /// N.B., this function can't be moved to `rustc_codegen_llvm` because of the `cfg`s.
 pub fn initialize_available_targets() {

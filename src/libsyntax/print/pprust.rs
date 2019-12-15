@@ -1,6 +1,6 @@
 use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
-use crate::ast::{Attribute, MacDelimiter, GenericArg};
+use crate::ast::{Attribute, GenericArg, MacArgs};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::util::comments;
 use crate::attr;
@@ -317,7 +317,7 @@ pub fn token_to_string(token: &Token) -> String {
 }
 
 fn token_to_string_ext(token: &Token, convert_dollar_crate: bool) -> String {
-    let convert_dollar_crate = if convert_dollar_crate { Some(token.span) } else { None };
+    let convert_dollar_crate = convert_dollar_crate.then_some(token.span);
     token_kind_to_string_ext(&token.kind, convert_dollar_crate)
 }
 
@@ -639,17 +639,22 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
         self.ibox(0);
-        match item.tokens.trees().next() {
-            Some(TokenTree::Delimited(_, delim, tts)) => {
-                self.print_mac_common(
-                    Some(MacHeader::Path(&item.path)), false, None, delim, tts, true, span
-                );
-            }
-            tree => {
+        match &item.args {
+            MacArgs::Delimited(_, delim, tokens) => self.print_mac_common(
+                Some(MacHeader::Path(&item.path)),
+                false,
+                None,
+                delim.to_token(),
+                tokens.clone(),
+                true,
+                span,
+            ),
+            MacArgs::Empty | MacArgs::Eq(..) => {
                 self.print_path(&item.path, false, 0);
-                if tree.is_some() {
+                if let MacArgs::Eq(_, tokens) = &item.args {
                     self.space();
-                    self.print_tts(item.tokens.clone(), true);
+                    self.word_space("=");
+                    self.print_tts(tokens.clone(), true);
                 }
             }
         }
@@ -984,16 +989,12 @@ impl<'a> State<'a> {
             }
             ast::TyKind::Ptr(ref mt) => {
                 self.s.word("*");
-                match mt.mutbl {
-                    ast::Mutability::Mutable => self.word_nbsp("mut"),
-                    ast::Mutability::Immutable => self.word_nbsp("const"),
-                }
-                self.print_type(&mt.ty);
+                self.print_mt(mt, true);
             }
             ast::TyKind::Rptr(ref lifetime, ref mt) => {
                 self.s.word("&");
                 self.print_opt_lifetime(lifetime);
-                self.print_mt(mt);
+                self.print_mt(mt, false);
             }
             ast::TyKind::Never => {
                 self.s.word("!");
@@ -1101,9 +1102,8 @@ impl<'a> State<'a> {
             }
             ast::ForeignItemKind::Macro(ref m) => {
                 self.print_mac(m);
-                match m.delim {
-                    MacDelimiter::Brace => {},
-                    _ => self.s.word(";")
+                if m.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
         }
@@ -1365,9 +1365,8 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.print_mac(mac);
-                match mac.delim {
-                    MacDelimiter::Brace => {}
-                    _ => self.s.word(";"),
+                if mac.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
@@ -1381,8 +1380,8 @@ impl<'a> State<'a> {
                     Some(MacHeader::Keyword(kw)),
                     has_bang,
                     Some(item.ident),
-                    DelimToken::Brace,
-                    macro_def.stream(),
+                    macro_def.body.delim(),
+                    macro_def.body.inner_tokens(),
                     true,
                     item.span,
                 );
@@ -1519,6 +1518,7 @@ impl<'a> State<'a> {
 
     crate fn print_variant(&mut self, v: &ast::Variant) {
         self.head("");
+        self.print_visibility(&v.vis);
         let generics = ast::Generics::default();
         self.print_struct(&v.data, &generics, v.ident, v.span, false);
         match v.disr_expr {
@@ -1582,9 +1582,8 @@ impl<'a> State<'a> {
             }
             ast::TraitItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.delim {
-                    MacDelimiter::Brace => {}
-                    _ => self.s.word(";"),
+                if mac.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
         }
@@ -1612,9 +1611,8 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.delim {
-                    MacDelimiter::Brace => {}
-                    _ => self.s.word(";"),
+                if mac.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
         }
@@ -1779,10 +1777,10 @@ impl<'a> State<'a> {
             Some(MacHeader::Path(&m.path)),
             true,
             None,
-            m.delim.to_token(),
-            m.stream(),
+            m.args.delim(),
+            m.args.inner_tokens(),
             true,
-            m.span,
+            m.span(),
         );
     }
 
@@ -1974,10 +1972,17 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_addr_of(&mut self,
+                          kind: ast::BorrowKind,
                           mutability: ast::Mutability,
                           expr: &ast::Expr) {
         self.s.word("&");
-        self.print_mutability(mutability);
+        match kind {
+            ast::BorrowKind::Ref => self.print_mutability(mutability, false),
+            ast::BorrowKind::Raw => {
+                self.word_nbsp("raw");
+                self.print_mutability(mutability, true);
+            }
+        }
         self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
@@ -2028,8 +2033,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Unary(op, ref expr) => {
                 self.print_expr_unary(op, expr);
             }
-            ast::ExprKind::AddrOf(m, ref expr) => {
-                self.print_expr_addr_of(m, expr);
+            ast::ExprKind::AddrOf(k, m, ref expr) => {
+                self.print_expr_addr_of(k, m, expr);
             }
             ast::ExprKind::Lit(ref lit) => {
                 self.print_literal(lit);
@@ -2361,7 +2366,7 @@ impl<'a> State<'a> {
                 match binding_mode {
                     ast::BindingMode::ByRef(mutbl) => {
                         self.word_nbsp("ref");
-                        self.print_mutability(mutbl);
+                        self.print_mutability(mutbl, false);
                     }
                     ast::BindingMode::ByValue(ast::Mutability::Immutable) => {}
                     ast::BindingMode::ByValue(ast::Mutability::Mutable) => {
@@ -2504,17 +2509,17 @@ impl<'a> State<'a> {
     fn print_explicit_self(&mut self, explicit_self: &ast::ExplicitSelf) {
         match explicit_self.node {
             SelfKind::Value(m) => {
-                self.print_mutability(m);
+                self.print_mutability(m, false);
                 self.s.word("self")
             }
             SelfKind::Region(ref lt, m) => {
                 self.s.word("&");
                 self.print_opt_lifetime(lt);
-                self.print_mutability(m);
+                self.print_mutability(m, false);
                 self.s.word("self")
             }
             SelfKind::Explicit(ref typ, m) => {
-                self.print_mutability(m);
+                self.print_mutability(m, false);
                 self.s.word("self");
                 self.word_space(":");
                 self.print_type(typ)
@@ -2746,15 +2751,15 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_mutability(&mut self, mutbl: ast::Mutability) {
+    pub fn print_mutability(&mut self, mutbl: ast::Mutability, print_const: bool) {
         match mutbl {
             ast::Mutability::Mutable => self.word_nbsp("mut"),
-            ast::Mutability::Immutable => {},
+            ast::Mutability::Immutable => if print_const { self.word_nbsp("const"); },
         }
     }
 
-    crate fn print_mt(&mut self, mt: &ast::MutTy) {
-        self.print_mutability(mt.mutbl);
+    crate fn print_mt(&mut self, mt: &ast::MutTy, print_const: bool) {
+        self.print_mutability(mt.mutbl, print_const);
         self.print_type(&mt.ty)
     }
 

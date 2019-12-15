@@ -8,7 +8,6 @@ use rustc::traits::{self, TraitEngine};
 use rustc::ty::cast::CastTy;
 use rustc::ty::{self, TyCtxt};
 use rustc_index::bit_set::BitSet;
-use rustc_target::spec::abi::Abi;
 use rustc_error_codes::*;
 use syntax::symbol::sym;
 use syntax_pos::Span;
@@ -22,13 +21,6 @@ use super::ops::{self, NonConstOp};
 use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstKind, Item, Qualif, is_lang_panic_fn};
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum CheckOpResult {
-    Forbidden,
-    Unleashed,
-    Allowed,
-}
 
 pub type IndirectlyMutableResults<'mir, 'tcx> =
     old_dataflow::DataflowResultsCursor<'mir, 'tcx, IndirectlyMutableLocals<'mir, 'tcx>>;
@@ -46,9 +38,9 @@ impl<Q: Qualif> QualifCursor<'a, 'mir, 'tcx, Q> {
     ) -> Self {
         let analysis = FlowSensitiveAnalysis::new(q, item);
         let results =
-            dataflow::Engine::new(item.tcx, item.body, item.def_id, dead_unwinds, analysis)
+            dataflow::Engine::new(item.tcx, &item.body, item.def_id, dead_unwinds, analysis)
                 .iterate_to_fixpoint();
-        let cursor = dataflow::ResultsCursor::new(item.body, results);
+        let cursor = dataflow::ResultsCursor::new(*item.body, results);
 
         let mut in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
         for (local, decl) in item.body.local_decls.iter_enumerated() {
@@ -149,17 +141,6 @@ pub struct Validator<'a, 'mir, 'tcx> {
 
     /// The span of the current statement.
     span: Span,
-
-    /// True if the local was assigned the result of an illegal borrow (`ops::MutBorrow`).
-    ///
-    /// This is used to hide errors from {re,}borrowing the newly-assigned local, instead pointing
-    /// the user to the place where the illegal borrow occurred. This set is only populated once an
-    /// error has been emitted, so it will never cause an erroneous `mir::Body` to pass validation.
-    ///
-    /// FIXME(ecstaticmorse): assert at the end of checking that if `tcx.has_errors() == false`,
-    /// this set is empty. Note that if we start removing locals from
-    /// `derived_from_illegal_borrow`, just checking at the end won't be enough.
-    derived_from_illegal_borrow: BitSet<Local>,
 }
 
 impl Deref for Validator<'_, 'mir, 'tcx> {
@@ -190,17 +171,17 @@ impl Validator<'a, 'mir, 'tcx> {
 
         let indirectly_mutable = old_dataflow::do_dataflow(
             item.tcx,
-            item.body,
+            &*item.body,
             item.def_id,
             &item.tcx.get_attrs(item.def_id),
             &dead_unwinds,
-            old_dataflow::IndirectlyMutableLocals::new(item.tcx, item.body, item.param_env),
+            old_dataflow::IndirectlyMutableLocals::new(item.tcx, *item.body, item.param_env),
             |_, local| old_dataflow::DebugFormatted::new(&local),
         );
 
         let indirectly_mutable = old_dataflow::DataflowResultsCursor::new(
             indirectly_mutable,
-            item.body,
+            *item.body,
         );
 
         let qualifs = Qualifs {
@@ -213,7 +194,6 @@ impl Validator<'a, 'mir, 'tcx> {
             span: item.body.span,
             item,
             qualifs,
-            derived_from_illegal_borrow: BitSet::new_empty(item.body.local_decls.len()),
         }
     }
 
@@ -221,13 +201,13 @@ impl Validator<'a, 'mir, 'tcx> {
         let Item { tcx, body, def_id, const_kind, ..  } = *self.item;
 
         let use_min_const_fn_checks =
-            tcx.is_min_const_fn(def_id)
+            (const_kind == Some(ConstKind::ConstFn) && tcx.is_min_const_fn(def_id))
             && !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
 
         if use_min_const_fn_checks {
             // Enforce `min_const_fn` for stable `const fn`s.
             use crate::transform::qualify_min_const_fn::is_min_const_fn;
-            if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
+            if let Err((span, err)) = is_min_const_fn(tcx, def_id, &body) {
                 error_min_const_fn_violation(tcx, span, err);
                 return;
             }
@@ -249,7 +229,7 @@ impl Validator<'a, 'mir, 'tcx> {
 
         if should_check_for_sync {
             let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-            check_return_ty_is_sync(tcx, body, hir_id);
+            check_return_ty_is_sync(tcx, &body, hir_id);
         }
     }
 
@@ -258,15 +238,15 @@ impl Validator<'a, 'mir, 'tcx> {
     }
 
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
-    /// context. Returns `Forbidden` if an error was emitted.
-    pub fn check_op_spanned<O>(&mut self, op: O, span: Span) -> CheckOpResult
+    /// context.
+    pub fn check_op_spanned<O>(&mut self, op: O, span: Span)
     where
         O: NonConstOp
     {
         trace!("check_op: op={:?}", op);
 
         if op.is_allowed_in_item(self) {
-            return CheckOpResult::Allowed;
+            return;
         }
 
         // If an operation is supported in miri (and is not already controlled by a feature gate) it
@@ -276,20 +256,19 @@ impl Validator<'a, 'mir, 'tcx> {
 
         if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.span_warn(span, "skipping const checks");
-            return CheckOpResult::Unleashed;
+            return;
         }
 
         op.emit_error(self, span);
-        CheckOpResult::Forbidden
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
-    pub fn check_op(&mut self, op: impl NonConstOp) -> CheckOpResult {
+    pub fn check_op(&mut self, op: impl NonConstOp) {
         let span = self.span;
         self.check_op_spanned(op, span)
     }
 
-    fn check_static(&mut self, def_id: DefId, span: Span) -> CheckOpResult {
+    fn check_static(&mut self, def_id: DefId, span: Span) {
         let is_thread_local = self.tcx.has_attr(def_id, sym::thread_local);
         if is_thread_local {
             self.check_op_spanned(ops::ThreadLocalAccess, span)
@@ -322,20 +301,9 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         trace!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
-        // Check nested operands and places.
+        // Special-case reborrows to be more like a copy of a reference.
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
-            // Special-case reborrows to be more like a copy of a reference.
-            let mut reborrow_place = None;
-            if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
-                if elem == ProjectionElem::Deref {
-                    let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
-                    if let ty::Ref(..) = base_ty.kind {
-                        reborrow_place = Some(proj_base);
-                    }
-                }
-            }
-
-            if let Some(proj) = reborrow_place {
+            if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
                 let ctx = match kind {
                     BorrowKind::Shared => PlaceContext::NonMutatingUse(
                         NonMutatingUseContext::SharedBorrow,
@@ -351,13 +319,12 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                     ),
                 };
                 self.visit_place_base(&place.base, ctx, location);
-                self.visit_projection(&place.base, proj, ctx, location);
-            } else {
-                self.super_rvalue(rvalue, location);
+                self.visit_projection(&place.base, reborrowed_proj, ctx, location);
+                return;
             }
-        } else {
-            self.super_rvalue(rvalue, location);
         }
+
+        self.super_rvalue(rvalue, location);
 
         match *rvalue {
             Rvalue::Use(_) |
@@ -369,11 +336,68 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             Rvalue::Cast(CastKind::Pointer(_), ..) |
             Rvalue::Discriminant(..) |
             Rvalue::Len(_) |
-            Rvalue::Ref(..) |
             Rvalue::Aggregate(..) => {}
 
+            | Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
+            | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place)
+            => {
+                let ty = place.ty(*self.body, self.tcx).ty;
+                let is_allowed = match ty.kind {
+                    // Inside a `static mut`, `&mut [...]` is allowed.
+                    ty::Array(..) | ty::Slice(_) if self.const_kind() == ConstKind::StaticMut
+                        => true,
+
+                    // FIXME(ecstaticmorse): We could allow `&mut []` inside a const context given
+                    // that this is merely a ZST and it is already eligible for promotion.
+                    // This may require an RFC?
+                    /*
+                    ty::Array(_, len) if len.try_eval_usize(cx.tcx, cx.param_env) == Some(0)
+                        => true,
+                    */
+
+                    _ => false,
+                };
+
+                if !is_allowed {
+                    if let BorrowKind::Mut{ .. } = kind {
+                        self.check_op(ops::MutBorrow);
+                    } else {
+                        self.check_op(ops::CellBorrow);
+                    }
+                }
+            }
+
+            // At the moment, `PlaceBase::Static` is only used for promoted MIR.
+            | Rvalue::Ref(_, BorrowKind::Shared, ref place)
+            | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
+            if matches!(place.base, PlaceBase::Static(_))
+            => bug!("Saw a promoted during const-checking, which must run before promotion"),
+
+            | Rvalue::Ref(_, kind @ BorrowKind::Shared, ref place)
+            | Rvalue::Ref(_, kind @ BorrowKind::Shallow, ref place)
+            => {
+                // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually
+                // seek the cursors beforehand.
+                self.qualifs.has_mut_interior.cursor.seek_before(location);
+                self.qualifs.indirectly_mutable.seek(location);
+
+                let borrowed_place_has_mut_interior = HasMutInterior::in_place(
+                    &self.item,
+                    &|local| self.qualifs.has_mut_interior_eager_seek(local),
+                    place.as_ref(),
+                );
+
+                if borrowed_place_has_mut_interior {
+                    if let BorrowKind::Mut{ .. } = kind {
+                        self.check_op(ops::MutBorrow);
+                    } else {
+                        self.check_op(ops::CellBorrow);
+                    }
+                }
+            }
+
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.body, self.tcx);
+                let operand_ty = operand.ty(*self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
 
@@ -384,7 +408,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(*self.body, self.tcx).kind {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -435,59 +459,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             }
         }
     }
-
-    fn visit_assign(&mut self, dest: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
-        trace!("visit_assign: dest={:?} rvalue={:?} location={:?}", dest, rvalue, location);
-
-        // Error on mutable borrows or shared borrows of values with interior mutability.
-        //
-        // This replicates the logic at the start of `assign` in the old const checker.  Note that
-        // it depends on `HasMutInterior` being set for mutable borrows as well as values with
-        // interior mutability.
-        if let Rvalue::Ref(_, kind, ref borrowed_place) = *rvalue {
-            // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually seek
-            // the cursors beforehand.
-            self.qualifs.has_mut_interior.cursor.seek_before(location);
-            self.qualifs.indirectly_mutable.seek(location);
-
-            let rvalue_has_mut_interior = HasMutInterior::in_rvalue(
-                &self.item,
-                &|local| self.qualifs.has_mut_interior_eager_seek(local),
-                rvalue,
-            );
-
-            if rvalue_has_mut_interior {
-                let is_derived_from_illegal_borrow = match borrowed_place.as_local() {
-                    // If an unprojected local was borrowed and its value was the result of an
-                    // illegal borrow, suppress this error and mark the result of this borrow as
-                    // illegal as well.
-                    Some(borrowed_local)
-                        if self.derived_from_illegal_borrow.contains(borrowed_local) =>
-                    {
-                        true
-                    }
-
-                    // Otherwise proceed normally: check the legality of a mutable borrow in this
-                    // context.
-                    _ => self.check_op(ops::MutBorrow(kind)) == CheckOpResult::Forbidden,
-                };
-
-                // When the target of the assignment is a local with no projections, mark it as
-                // derived from an illegal borrow if necessary.
-                //
-                // FIXME: should we also clear `derived_from_illegal_borrow` when a local is
-                // assigned a new value?
-                if is_derived_from_illegal_borrow {
-                    if let Some(dest) = dest.as_local() {
-                        self.derived_from_illegal_borrow.insert(dest);
-                    }
-                }
-            }
-        }
-
-        self.super_assign(dest, rvalue, location);
-    }
-
     fn visit_projection_elem(
         &mut self,
         place_base: &PlaceBase<'tcx>,
@@ -510,7 +481,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match elem {
             ProjectionElem::Deref => {
-                let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(place_base, proj_base, *self.body, self.tcx).ty;
                 if let ty::RawPtr(_) = base_ty.kind {
                     if proj_base.is_empty() {
                         if let (PlaceBase::Local(local), []) = (place_base, proj_base) {
@@ -534,7 +505,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             ProjectionElem::Subslice {..} |
             ProjectionElem::Field(..) |
             ProjectionElem::Index(_) => {
-                let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(place_base, proj_base, *self.body, self.tcx).ty;
                 match base_ty.ty_adt_def() {
                     Some(def) if def.is_union() => {
                         self.check_op(ops::UnionAccess);
@@ -560,7 +531,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         trace!("visit_statement: statement={:?} location={:?}", statement, location);
 
         match statement.kind {
-            StatementKind::Assign(..) => {
+            StatementKind::Assign(..) | StatementKind::SetDiscriminant { .. } => {
                 self.super_statement(statement, location);
             }
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
@@ -568,7 +539,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |
-            StatementKind::SetDiscriminant { .. } |
             StatementKind::StorageLive(_) |
             StatementKind::StorageDead(_) |
             StatementKind::InlineAsm {..} |
@@ -584,7 +554,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match kind {
             TerminatorKind::Call { func, .. } => {
-                let fn_ty = func.ty(self.body, self.tcx);
+                let fn_ty = func.ty(*self.body, self.tcx);
 
                 let def_id = match fn_ty.kind {
                     ty::FnDef(def_id, _) => def_id,
@@ -600,23 +570,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 };
 
                 // At this point, we are calling a function whose `DefId` is known...
-
-                if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = self.tcx.fn_sig(def_id).abi() {
-                    assert!(!self.tcx.is_const_fn(def_id));
-
-                    if self.tcx.item_name(def_id) == sym::transmute {
-                        self.check_op(ops::Transmute);
-                        return;
-                    }
-
-                    // To preserve the current semantics, we return early, allowing all
-                    // intrinsics (except `transmute`) to pass unchecked to miri.
-                    //
-                    // FIXME: We should keep a whitelist of allowed intrinsics (or at least a
-                    // blacklist of unimplemented ones) and fail here instead.
-                    return;
-                }
-
                 if self.tcx.is_const_fn(def_id) {
                     return;
                 }
@@ -645,7 +598,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 // Check to see if the type of this place can ever have a drop impl. If not, this
                 // `Drop` terminator is frivolous.
                 let ty_needs_drop = dropped_place
-                    .ty(self.body, self.tcx)
+                    .ty(*self.body, self.tcx)
                     .ty
                     .needs_drop(self.tcx, self.param_env);
 
@@ -724,4 +677,37 @@ fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) 
             infcx.report_fulfillment_errors(&err, None, false);
         }
     });
+}
+
+fn place_as_reborrow(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    place: &'a Place<'tcx>,
+) -> Option<&'a [PlaceElem<'tcx>]> {
+    place
+        .projection
+        .split_last()
+        .and_then(|(outermost, inner)| {
+            if outermost != &ProjectionElem::Deref {
+                return None;
+            }
+
+            // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
+            // that points to the allocation for the static. Don't treat these as reborrows.
+            if let PlaceBase::Local(local) = place.base {
+                if body.local_decls[local].is_ref_to_static() {
+                    return None;
+                }
+            }
+
+            // Ensure the type being derefed is a reference and not a raw pointer.
+            //
+            // This is sufficient to prevent an access to a `static mut` from being marked as a
+            // reborrow, even if the check above were to disappear.
+            let inner_ty = Place::ty_from(&place.base, inner, body, tcx).ty;
+            match inner_ty.kind {
+                ty::Ref(..) => Some(inner),
+                _ => None,
+            }
+        })
 }

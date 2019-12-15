@@ -1,12 +1,12 @@
+use std::collections::BTreeMap;
 use std::iter::Iterator;
 use std::vec::Vec;
-use std::collections::BTreeMap;
 
-use rand::{Rng, seq::SliceRandom, thread_rng};
-use test::{Bencher, black_box};
+use rand::{seq::SliceRandom, thread_rng, Rng};
+use test::{black_box, Bencher};
 
 macro_rules! map_insert_rand_bench {
-    ($name: ident, $n: expr, $map: ident) => (
+    ($name: ident, $n: expr, $map: ident) => {
         #[bench]
         pub fn $name(b: &mut Bencher) {
             let n: usize = $n;
@@ -27,11 +27,11 @@ macro_rules! map_insert_rand_bench {
             });
             black_box(map);
         }
-    )
+    };
 }
 
 macro_rules! map_insert_seq_bench {
-    ($name: ident, $n: expr, $map: ident) => (
+    ($name: ident, $n: expr, $map: ident) => {
         #[bench]
         pub fn $name(b: &mut Bencher) {
             let mut map = $map::new();
@@ -50,11 +50,11 @@ macro_rules! map_insert_seq_bench {
             });
             black_box(map);
         }
-    )
+    };
 }
 
 macro_rules! map_find_rand_bench {
-    ($name: ident, $n: expr, $map: ident) => (
+    ($name: ident, $n: expr, $map: ident) => {
         #[bench]
         pub fn $name(b: &mut Bencher) {
             let mut map = $map::new();
@@ -78,11 +78,11 @@ macro_rules! map_find_rand_bench {
                 black_box(t);
             })
         }
-    )
+    };
 }
 
 macro_rules! map_find_seq_bench {
-    ($name: ident, $n: expr, $map: ident) => (
+    ($name: ident, $n: expr, $map: ident) => {
         #[bench]
         pub fn $name(b: &mut Bencher) {
             let mut map = $map::new();
@@ -101,20 +101,20 @@ macro_rules! map_find_seq_bench {
                 black_box(x);
             })
         }
-    )
+    };
 }
 
-map_insert_rand_bench!{insert_rand_100,    100,    BTreeMap}
-map_insert_rand_bench!{insert_rand_10_000, 10_000, BTreeMap}
+map_insert_rand_bench! {insert_rand_100,    100,    BTreeMap}
+map_insert_rand_bench! {insert_rand_10_000, 10_000, BTreeMap}
 
-map_insert_seq_bench!{insert_seq_100,    100,    BTreeMap}
-map_insert_seq_bench!{insert_seq_10_000, 10_000, BTreeMap}
+map_insert_seq_bench! {insert_seq_100,    100,    BTreeMap}
+map_insert_seq_bench! {insert_seq_10_000, 10_000, BTreeMap}
 
-map_find_rand_bench!{find_rand_100,    100,    BTreeMap}
-map_find_rand_bench!{find_rand_10_000, 10_000, BTreeMap}
+map_find_rand_bench! {find_rand_100,    100,    BTreeMap}
+map_find_rand_bench! {find_rand_10_000, 10_000, BTreeMap}
 
-map_find_seq_bench!{find_seq_100,    100,    BTreeMap}
-map_find_seq_bench!{find_seq_10_000, 10_000, BTreeMap}
+map_find_seq_bench! {find_seq_100,    100,    BTreeMap}
+map_find_seq_bench! {find_seq_10_000, 10_000, BTreeMap}
 
 fn bench_iter(b: &mut Bencher, size: i32) {
     let mut map = BTreeMap::<i32, i32>::new();

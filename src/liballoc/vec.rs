@@ -92,7 +92,7 @@ use crate::raw_vec::RawVec;
 /// vec[0] = 7;
 /// assert_eq!(vec[0], 7);
 ///
-/// vec.extend([1, 2, 3].iter().cloned());
+/// vec.extend([1, 2, 3].iter().copied());
 ///
 /// for x in &vec {
 ///     println!("{}", x);
@@ -315,6 +315,10 @@ impl<T> Vec<T> {
     /// let mut vec: Vec<i32> = Vec::new();
     /// ```
     #[inline]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_vec_new", since = "1.32.0"),
+    )]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn new() -> Vec<T> {
         Vec {
@@ -628,6 +632,8 @@ impl<T> Vec<T> {
     ///
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
+    ///
+    /// # Panics
     ///
     /// Panics if the current capacity is smaller than the supplied
     /// minimum capacity.
@@ -1073,7 +1079,22 @@ impl<T> Vec<T> {
     pub fn retain<F>(&mut self, mut f: F)
         where F: FnMut(&T) -> bool
     {
-        self.drain_filter(|x| !f(x));
+        let len = self.len();
+        let mut del = 0;
+        {
+            let v = &mut **self;
+
+            for i in 0..len {
+                if !f(&v[i]) {
+                    del += 1;
+                } else if del > 0 {
+                    v.swap(i - del, i);
+                }
+            }
+        }
+        if del > 0 {
+            self.truncate(len - del);
+        }
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
@@ -2701,6 +2722,9 @@ impl<T> ExactSizeIterator for Drain<'_, T> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for Drain<'_, T> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Drain<'_, T> {}
 
@@ -2837,7 +2861,7 @@ pub struct DrainFilter<'a, T, F>
     old_len: usize,
     /// The filter test predicate.
     pred: F,
-    /// A flag that indicates a panic has occured in the filter test prodicate.
+    /// A flag that indicates a panic has occurred in the filter test prodicate.
     /// This is used as a hint in the drop implmentation to prevent consumption
     /// of the remainder of the `DrainFilter`. Any unprocessed items will be
     /// backshifted in the `vec`, but no further items will be dropped or

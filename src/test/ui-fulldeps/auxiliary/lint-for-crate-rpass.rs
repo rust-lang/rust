@@ -2,8 +2,8 @@
 
 #![feature(plugin_registrar, rustc_private)]
 #![feature(box_syntax)]
-
 #[macro_use] extern crate rustc;
+#[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
 extern crate syntax;
 

@@ -88,11 +88,7 @@ extern "C" char *LLVMRustGetLastError(void) {
 }
 
 extern "C" unsigned int LLVMRustGetInstructionCount(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(7, 0)
   return unwrap(M)->getInstructionCount();
-#else
-  report_fatal_error("Module::getInstructionCount not available before LLVM 7");
-#endif
 }
 
 extern "C" void LLVMRustSetLastError(const char *Err) {
@@ -133,8 +129,9 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
 }
 
 extern "C" LLVMValueRef
-LLVMRustGetOrInsertGlobal(LLVMModuleRef M, const char *Name, LLVMTypeRef Ty) {
-  return wrap(unwrap(M)->getOrInsertGlobal(Name, unwrap(Ty)));
+LLVMRustGetOrInsertGlobal(LLVMModuleRef M, const char *Name, size_t NameLen, LLVMTypeRef Ty) {
+  StringRef NameRef(Name, NameLen);
+  return wrap(unwrap(M)->getOrInsertGlobal(NameRef, unwrap(Ty)));
 }
 
 extern "C" LLVMValueRef
@@ -761,14 +758,10 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
     uint32_t AlignInBits, LLVMRustDIFlags Flags, LLVMMetadataRef Discriminator,
     LLVMMetadataRef Elements, const char *UniqueId) {
-#if LLVM_VERSION_GE(7, 0)
   return wrap(Builder->createVariantPart(
       unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
       SizeInBits, AlignInBits, fromRust(Flags), unwrapDI<DIDerivedType>(Discriminator),
       DINodeArray(unwrapDI<MDTuple>(Elements)), UniqueId));
-#else
-  abort();
-#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMemberType(
@@ -787,7 +780,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
     const char *Name, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
     uint32_t AlignInBits, uint64_t OffsetInBits, LLVMValueRef Discriminant,
     LLVMRustDIFlags Flags, LLVMMetadataRef Ty) {
-#if LLVM_VERSION_GE(7, 0)
   llvm::ConstantInt* D = nullptr;
   if (Discriminant) {
     D = unwrap<llvm::ConstantInt>(Discriminant);
@@ -796,12 +788,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
                                                unwrapDI<DIFile>(File), LineNo,
                                                SizeInBits, AlignInBits, OffsetInBits, D,
                                                fromRust(Flags), unwrapDI<DIType>(Ty)));
-#else
-  return wrap(Builder->createMemberType(unwrapDI<DIDescriptor>(Scope), Name,
-                                        unwrapDI<DIFile>(File), LineNo,
-                                        SizeInBits, AlignInBits, OffsetInBits,
-                                        fromRust(Flags), unwrapDI<DIType>(Ty)));
-#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateLexicalBlock(
@@ -911,18 +897,10 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
     LLVMMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
     uint32_t AlignInBits, LLVMMetadataRef Elements,
     LLVMMetadataRef ClassTy, bool IsScoped) {
-#if LLVM_VERSION_GE(7, 0)
   return wrap(Builder->createEnumerationType(
       unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
       SizeInBits, AlignInBits, DINodeArray(unwrapDI<MDTuple>(Elements)),
       unwrapDI<DIType>(ClassTy), "", IsScoped));
-#else
-  // Ignore IsScoped on older LLVM.
-  return wrap(Builder->createEnumerationType(
-      unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
-      SizeInBits, AlignInBits, DINodeArray(unwrapDI<MDTuple>(Elements)),
-      unwrapDI<DIType>(ClassTy), ""));
-#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
@@ -1275,34 +1253,20 @@ extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Src, unsigned SrcAlign,
                                             LLVMValueRef Size, bool IsVolatile) {
-#if LLVM_VERSION_GE(7, 0)
   return wrap(unwrap(B)->CreateMemCpy(
       unwrap(Dst), DstAlign,
       unwrap(Src), SrcAlign,
       unwrap(Size), IsVolatile));
-#else
-  unsigned Align = std::min(DstAlign, SrcAlign);
-  return wrap(unwrap(B)->CreateMemCpy(
-      unwrap(Dst), unwrap(Src),
-      unwrap(Size), Align, IsVolatile));
-#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemMove(LLVMBuilderRef B,
                                              LLVMValueRef Dst, unsigned DstAlign,
                                              LLVMValueRef Src, unsigned SrcAlign,
                                              LLVMValueRef Size, bool IsVolatile) {
-#if LLVM_VERSION_GE(7, 0)
   return wrap(unwrap(B)->CreateMemMove(
       unwrap(Dst), DstAlign,
       unwrap(Src), SrcAlign,
       unwrap(Size), IsVolatile));
-#else
-  unsigned Align = std::min(DstAlign, SrcAlign);
-  return wrap(unwrap(B)->CreateMemMove(
-      unwrap(Dst), unwrap(Src),
-      unwrap(Size), Align, IsVolatile));
-#endif
 }
 
 extern "C" LLVMValueRef
@@ -1324,11 +1288,12 @@ extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
 }
 
 extern "C" void LLVMRustSetComdat(LLVMModuleRef M, LLVMValueRef V,
-                                  const char *Name) {
+                                  const char *Name, size_t NameLen) {
   Triple TargetTriple(unwrap(M)->getTargetTriple());
   GlobalObject *GV = unwrap<GlobalObject>(V);
   if (!TargetTriple.isOSBinFormatMachO()) {
-    GV->setComdat(unwrap(M)->getOrInsertComdat(Name));
+    StringRef NameRef(Name, NameLen);
+    GV->setComdat(unwrap(M)->getOrInsertComdat(NameRef));
   }
 }
 

@@ -14,7 +14,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
-#![cfg_attr(bootstrap, feature(never_type))]
+#![feature(never_type)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
@@ -24,6 +24,7 @@ extern crate env_logger;
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
+extern crate rustc_feature;
 extern crate rustc_error_codes;
 extern crate rustc_index;
 extern crate rustc_resolve;
@@ -34,7 +35,6 @@ extern crate rustc_parse;
 extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate rustc_lexer;
-extern crate serialize;
 extern crate syntax;
 extern crate syntax_expand;
 extern crate syntax_pos;
@@ -143,10 +143,6 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
         stable("extern", |o| {
             o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")
-        }),
-        unstable("extern-private", |o| {
-            o.optmulti("", "extern-private",
-                       "pass an --extern to rustc (compatibility only)", "NAME=PATH")
         }),
         unstable("extern-html-root-url", |o| {
             o.optmulti("", "extern-html-root-url",

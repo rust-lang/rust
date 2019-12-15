@@ -15,7 +15,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    /// Whether the type is succinctly representable as a type instead of just refered to with a
+    /// Whether the type is succinctly representable as a type instead of just referred to with a
     /// description in error messages. This is used in the main error message.
     pub fn is_simple_ty(&self) -> bool {
         match self.kind {
@@ -28,7 +28,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    /// Whether the type is succinctly representable as a type instead of just refered to with a
+    /// Whether the type is succinctly representable as a type instead of just referred to with a
     /// description in error messages. This is used in the primary span label. Beyond what
     /// `is_simple_ty` includes, it also accepts ADTs with no type arguments and references to
     /// ADTs with no type arguments.

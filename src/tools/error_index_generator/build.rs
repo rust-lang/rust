@@ -13,7 +13,6 @@ fn main() {
 
     println!("cargo:rerun-if-changed={}", error_codes_path);
     let file = fs::read_to_string(error_codes_path).unwrap()
-                  .replace("crate::register_diagnostics!", "register_diagnostics!")
                   .replace(": include_str!(\"./error_codes/", ": include_str!(\"./");
     let contents = format!("(|| {{\n{}\n}})()", file);
     fs::write(&out_dir.join("all_error_codes.rs"), &contents).unwrap();

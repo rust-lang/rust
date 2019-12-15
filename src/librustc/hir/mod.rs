@@ -21,7 +21,8 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
-pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy, IsAuto, ImplPolarity};
+pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy};
+pub use syntax::ast::{IsAuto, ImplPolarity, BorrowKind};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -1493,8 +1494,20 @@ impl Expr {
         }
     }
 
-    pub fn is_place_expr(&self) -> bool {
-         match self.kind {
+    // Whether this looks like a place expr, without checking for deref
+    // adjustments.
+    // This will return `true` in some potentially surprising cases such as
+    // `CONSTANT.field`.
+    pub fn is_syntactic_place_expr(&self) -> bool {
+        self.is_place_expr(|_| true)
+    }
+
+    // Whether this is a place expression.
+    // `allow_projections_from` should return `true` if indexing a field or
+    // index expression based on the given expression should be considered a
+    // place expression.
+    pub fn is_place_expr(&self, mut allow_projections_from: impl FnMut(&Self) -> bool) -> bool {
+        match self.kind {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
                 match path.res {
                     Res::Local(..)
@@ -1504,14 +1517,19 @@ impl Expr {
                 }
             }
 
+            // Type ascription inherits its place expression kind from its
+            // operand. See:
+            // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
             ExprKind::Type(ref e, _) => {
-                e.is_place_expr()
+                e.is_place_expr(allow_projections_from)
             }
 
-            ExprKind::Unary(UnDeref, _) |
-            ExprKind::Field(..) |
-            ExprKind::Index(..) => {
-                true
+            ExprKind::Unary(UnDeref, _) => true,
+
+            ExprKind::Field(ref base, _) |
+            ExprKind::Index(ref base, _) => {
+                allow_projections_from(base)
+                    || base.is_place_expr(allow_projections_from)
             }
 
             // Partially qualified paths in expressions can only legally
@@ -1646,8 +1664,8 @@ pub enum ExprKind {
     /// Path to a definition, possibly containing lifetime or type parameters.
     Path(QPath),
 
-    /// A referencing operation (i.e., `&a` or `&mut a`).
-    AddrOf(Mutability, P<Expr>),
+    /// A referencing operation (i.e., `&a`, `&mut a`, `&raw const a`, or `&raw mut a`).
+    AddrOf(BorrowKind, Mutability, P<Expr>),
     /// A `break`, with an optional label to break.
     Break(Destination, Option<P<Expr>>),
     /// A `continue`, with an optional label.

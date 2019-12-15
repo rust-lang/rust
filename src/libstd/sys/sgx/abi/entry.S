@@ -104,6 +104,36 @@ IMAGE_BASE:
         and %gs:tcsls_flags,%\reg
 .endm
 
+/* We place the ELF entry point in a separate section so it can be removed by
+   elf2sgxs */
+.section .text_no_sgx, "ax"
+.Lelf_entry_error_msg:
+    .ascii "Error: This file is an SGX enclave which cannot be executed as a standard Linux binary.\nSee the installation guide at https://edp.fortanix.com/docs/installation/guide/ on how to use 'cargo run' or follow the steps at https://edp.fortanix.com/docs/tasks/deployment/ for manual deployment.\n"
+.Lelf_entry_error_msg_end:
+
+.global elf_entry
+.type elf_entry,function
+elf_entry:
+/* print error message */
+    movq $2,%rdi                      /* write to stderr (fd 2) */
+    lea .Lelf_entry_error_msg(%rip),%rsi
+    movq $.Lelf_entry_error_msg_end-.Lelf_entry_error_msg,%rdx
+.Lelf_entry_call:
+    movq $1,%rax                      /* write() syscall        */
+    syscall
+    test %rax,%rax
+    jle .Lelf_exit                    /* exit on error          */
+    add %rax,%rsi
+    sub %rax,%rdx                     /* all chars written?     */
+    jnz .Lelf_entry_call
+
+.Lelf_exit:    
+    movq $60,%rax                     /* exit() syscall         */
+    movq $1,%rdi                      /* exit code 1            */
+    syscall
+    ud2                               /* should not be reached  */
+/*  end elf_entry */
+
 .text
 .global sgx_entry
 .type sgx_entry,function

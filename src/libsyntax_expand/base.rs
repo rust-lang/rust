@@ -775,6 +775,10 @@ impl SyntaxExtension {
         }
 
         let is_builtin = attr::contains_name(attrs, sym::rustc_builtin_macro);
+        let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
+        if const_stability.is_some() {
+            sess.span_diagnostic.span_err(span, "macros cannot have const stability attributes");
+        }
 
         SyntaxExtension {
             kind,
@@ -782,7 +786,7 @@ impl SyntaxExtension {
             allow_internal_unstable,
             allow_internal_unsafe: attr::contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
-            stability: attr::find_stability(&sess, attrs, span),
+            stability,
             deprecation: attr::find_deprecation(&sess, attrs, span),
             helper_attrs,
             edition,
@@ -824,8 +828,6 @@ impl SyntaxExtension {
         }
     }
 }
-
-pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
 /// Result of resolving a macro invocation.
 pub enum InvocationRes {
@@ -926,7 +928,6 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn source_map(&self) -> &'a SourceMap { self.parse_sess.source_map() }
     pub fn parse_sess(&self) -> &'a ParseSess { self.parse_sess }
-    pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {
         self.current_expansion.id.expn_data().call_site
     }

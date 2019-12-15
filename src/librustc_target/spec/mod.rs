@@ -398,7 +398,6 @@ supported_targets! {
     ("powerpc64-unknown-freebsd", powerpc64_unknown_freebsd),
     ("x86_64-unknown-freebsd", x86_64_unknown_freebsd),
 
-    ("i686-unknown-dragonfly", i686_unknown_dragonfly),
     ("x86_64-unknown-dragonfly", x86_64_unknown_dragonfly),
 
     ("aarch64-unknown-openbsd", aarch64_unknown_openbsd),
@@ -489,6 +488,7 @@ supported_targets! {
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv64imac-unknown-none-elf", riscv64imac_unknown_none_elf),
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
+    ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
@@ -802,6 +802,9 @@ pub struct TargetOptions {
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
     pub llvm_abiname: String,
+
+    /// Whether or not RelaxElfRelocation flag will be passed to the linker
+    pub relax_elf_relocations: bool,
 }
 
 impl Default for TargetOptions {
@@ -889,6 +892,7 @@ impl Default for TargetOptions {
             merge_functions: MergeFunctions::Aliases,
             target_mcount: "mcount".to_string(),
             llvm_abiname: "".to_string(),
+            relax_elf_relocations: false,
         }
     }
 }
@@ -1206,6 +1210,7 @@ impl Target {
         key!(merge_functions, MergeFunctions)?;
         key!(target_mcount);
         key!(llvm_abiname);
+        key!(relax_elf_relocations, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1425,6 +1430,7 @@ impl ToJson for Target {
         target_option_val!(merge_functions);
         target_option_val!(target_mcount);
         target_option_val!(llvm_abiname);
+        target_option_val!(relax_elf_relocations);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

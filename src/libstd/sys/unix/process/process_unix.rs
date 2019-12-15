@@ -248,7 +248,7 @@ impl Command {
             *sys::os::environ() = envp.as_ptr();
         }
 
-        libc::execvp(self.get_argv()[0], self.get_argv().as_ptr());
+        libc::execvp(self.get_program().as_ptr(), self.get_argv().as_ptr());
         Err(io::Error::last_os_error())
     }
 
@@ -373,7 +373,7 @@ impl Command {
                 .unwrap_or_else(|| *sys::os::environ() as *const _);
             let ret = libc::posix_spawnp(
                 &mut p.pid,
-                self.get_argv()[0],
+                self.get_program().as_ptr(),
                 file_actions.0.as_ptr(),
                 attrs.0.as_ptr(),
                 self.get_argv().as_ptr() as *const _,

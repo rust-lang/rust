@@ -105,7 +105,6 @@ pub struct Config {
     pub rust_optimize_tests: bool,
     pub rust_dist_src: bool,
     pub rust_codegen_backends: Vec<Interned<String>>,
-    pub rust_codegen_backends_dir: String,
     pub rust_verify_llvm_ir: bool,
     pub rust_remap_debuginfo: bool,
 
@@ -316,7 +315,6 @@ struct Rust {
     dist_src: Option<bool>,
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
-    codegen_backends_dir: Option<String>,
     lld: Option<bool>,
     llvm_tools: Option<bool>,
     lldb: Option<bool>,
@@ -372,7 +370,6 @@ impl Config {
         config.ignore_git = false;
         config.rust_dist_src = true;
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
-        config.rust_codegen_backends_dir = "codegen-backends".to_owned();
         config.deny_warnings = true;
         config.missing_tools = false;
 
@@ -574,8 +571,6 @@ impl Config {
                     .map(|s| INTERNER.intern_str(s))
                     .collect();
             }
-
-            set(&mut config.rust_codegen_backends_dir, rust.codegen_backends_dir.clone());
 
             config.rust_codegen_units = rust.codegen_units.map(threads_from_config);
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);

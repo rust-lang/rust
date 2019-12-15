@@ -909,14 +909,12 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             let parent_id = tcx.hir().get_parent_item(hir_id);
             Some(tcx.hir().local_def_id(parent_id))
         }
-        // FIXME(#43408) enable this in all cases when we get lazy normalization.
-        Node::AnonConst(&anon_const) => {
-            // HACK(eddyb) this provides the correct generics when the workaround
-            // for a const parameter `AnonConst` is being used elsewhere, as then
-            // there won't be the kind of cyclic dependency blocking #43408.
-            let expr = &tcx.hir().body(anon_const.body).value;
-            let icx = ItemCtxt::new(tcx, def_id);
-            if AstConv::const_param_def_id(&icx, expr).is_some() {
+        // FIXME(#43408) enable this always when we get lazy normalization.
+        Node::AnonConst(_) => {
+            // HACK(eddyb) this provides the correct generics when
+            // `feature(const_generics)` is enabled, so that const expressions
+            // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
+            if tcx.features().const_generics {
                 let parent_id = tcx.hir().get_parent_item(hir_id);
                 Some(tcx.hir().local_def_id(parent_id))
             } else {
@@ -1494,16 +1492,16 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         _ => None,
                     };
                     if let Some(unsupported_type) = err {
-                        feature_gate::emit_feature_err(
+                        feature_gate::feature_err(
                             &tcx.sess.parse_sess,
                             sym::const_compare_raw_pointers,
                             hir_ty.span,
-                            feature_gate::GateIssue::Language,
                             &format!(
                                 "using {} as const generic parameters is unstable",
                                 unsupported_type
                             ),
-                        );
+                        )
+                        .emit();
                     };
                 }
                 if ty::search_for_structural_match_violation(
@@ -1617,11 +1615,18 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     ty::Param(_) => true,
                     _ => false,
                 };
-                if !substs.types().all(is_param) {
-                    self.tcx.sess.span_err(
-                        span,
-                        "defining opaque type use does not fully define opaque type",
-                    );
+                let bad_substs: Vec<_> = substs.types().enumerate()
+                    .filter(|(_, ty)| !is_param(ty)).collect();
+                if !bad_substs.is_empty() {
+                    let identity_substs = InternalSubsts::identity_for_item(self.tcx, self.def_id);
+                    for (i, bad_subst) in bad_substs {
+                        self.tcx.sess.span_err(
+                            span,
+                            &format!("defining opaque type use does not fully define opaque type: \
+                            generic parameter `{}` is specified as concrete type `{}`",
+                            identity_substs.type_at(i), bad_subst)
+                        );
+                    }
                 } else if let Some((prev_span, prev_ty, ref prev_indices)) = self.found {
                     let mut ty = concrete_type.walk().fuse();
                     let mut p_ty = prev_ty.walk().fuse();
@@ -2059,6 +2064,9 @@ fn explicit_predicates_of(
                 ty::print::with_no_queries(|| {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let opaque_ty = tcx.mk_opaque(def_id, substs);
+                    debug!("explicit_predicates_of({:?}): created opaque type {:?}",
+                        def_id, opaque_ty);
+
 
                     // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
                     let bounds = AstConv::compute_bounds(
@@ -2512,13 +2520,13 @@ fn from_target_feature(
                 None => true,
             };
             if !allowed && id.is_local() {
-                feature_gate::emit_feature_err(
+                feature_gate::feature_err(
                     &tcx.sess.parse_sess,
                     feature_gate.unwrap(),
                     item.span(),
-                    feature_gate::GateIssue::Language,
                     &format!("the target feature `{}` is currently unstable", feature),
-                );
+                )
+                .emit();
             }
             Some(Symbol::intern(feature))
         }));
@@ -2608,7 +2616,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     tcx.sess,
                     attr.span,
                     E0737,
-                    "Rust ABI is required to use `#[track_caller]`"
+                    "`#[track_caller]` requires Rust ABI"
                 ).emit();
             }
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;

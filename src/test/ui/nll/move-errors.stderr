@@ -83,13 +83,7 @@ LL |         B::U(d) => (),
 LL |         B::V(s) => (),
    |              - ...and here
    |
-note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/move-errors.rs:76:14
-   |
-LL |         B::U(d) => (),
-   |              ^
-LL |         B::V(s) => (),
-   |              ^
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
   --> $DIR/move-errors.rs:83:11
@@ -138,11 +132,7 @@ LL |         F(s, mut t) => (),
    |           |
    |           data moved here
    |
-note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/move-errors.rs:104:11
-   |
-LL |         F(s, mut t) => (),
-   |           ^  ^^^^^
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error[E0507]: cannot move out of `x.0` which is behind a shared reference
   --> $DIR/move-errors.rs:110:11

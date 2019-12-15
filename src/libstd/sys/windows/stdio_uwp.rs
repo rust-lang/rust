@@ -1,12 +1,11 @@
 #![unstable(issue = "0", feature = "windows_stdio")]
 
 use crate::io;
+use crate::mem::ManuallyDrop;
 use crate::sys::c;
 use crate::sys::handle::Handle;
-use crate::mem::ManuallyDrop;
 
-pub struct Stdin {
-}
+pub struct Stdin {}
 pub struct Stdout;
 pub struct Stderr;
 
@@ -32,7 +31,7 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
 
 impl Stdin {
     pub fn new() -> io::Result<Stdin> {
-        Ok(Stdin { })
+        Ok(Stdin {})
     }
 }
 

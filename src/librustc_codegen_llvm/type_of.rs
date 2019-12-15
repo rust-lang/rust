@@ -6,6 +6,8 @@ use rustc::ty::layout::{self, Align, LayoutOf, FnAbiExt, PointeeInfo, Size, TyLa
 use rustc_target::abi::TyLayoutMethods;
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc_codegen_ssa::traits::*;
+use log::debug;
+use rustc::bug;
 
 use std::fmt::Write;
 
@@ -235,11 +237,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                     cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
                 }
                 ty::FnPtr(sig) => {
-                    let sig = cx.tcx.normalize_erasing_late_bound_regions(
-                        ty::ParamEnv::reveal_all(),
-                        &sig,
-                    );
-                    cx.fn_ptr_backend_type(&FnAbi::new(cx, sig, &[]))
+                    cx.fn_ptr_backend_type(&FnAbi::of_fn_ptr(cx, sig, &[]))
                 }
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO)
             };

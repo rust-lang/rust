@@ -7,7 +7,7 @@ use rustc::util::nodemap::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::source_map::Span;
-use syntax::feature_gate::{self, GateIssue};
+use syntax::feature_gate::feature_err;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::{span_err, struct_span_err};
 
@@ -158,27 +158,29 @@ impl Collector<'tcx> {
             }
         }
         if lib.cfg.is_some() && !self.tcx.features().link_cfg {
-            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
-                                           sym::link_cfg,
-                                           span.unwrap(),
-                                           GateIssue::Language,
-                                           "is unstable");
+            feature_err(&self.tcx.sess.parse_sess, sym::link_cfg, span.unwrap(), "is unstable")
+                .emit();
         }
         if lib.kind == cstore::NativeStaticNobundle &&
-           !self.tcx.features().static_nobundle {
-            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
-                                           sym::static_nobundle,
-                                           span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
-                                           GateIssue::Language,
-                                           "kind=\"static-nobundle\" is unstable");
+           !self.tcx.features().static_nobundle
+        {
+            feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::static_nobundle,
+                span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
+                "kind=\"static-nobundle\" is unstable"
+            )
+            .emit();
         }
         if lib.kind == cstore::NativeRawDylib &&
            !self.tcx.features().raw_dylib {
-            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
-                                           sym::raw_dylib,
-                                           span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
-                                           GateIssue::Language,
-                                           "kind=\"raw-dylib\" is unstable");
+            feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::raw_dylib,
+                span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
+                "kind=\"raw-dylib\" is unstable"
+            )
+            .emit();
         }
         self.libs.push(lib);
     }

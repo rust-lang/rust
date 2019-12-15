@@ -5,7 +5,7 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
-use syntax::early_buffered_lints::BufferedEarlyLintId;
+use syntax::early_buffered_lints::INCOMPLETE_INCLUDE;
 use syntax_expand::panictry;
 use syntax_expand::base::{self, *};
 
@@ -101,7 +101,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
             let r = panictry!(self.p.parse_expr());
             if self.p.token != token::Eof {
                 self.p.sess.buffer_lint(
-                    BufferedEarlyLintId::IncompleteInclude,
+                    &INCOMPLETE_INCLUDE,
                     self.p.token.span,
                     ast::CRATE_NODE_ID,
                     "include macro expected single expression in source",

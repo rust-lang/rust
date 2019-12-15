@@ -4,13 +4,12 @@ use super::diagnostics::Error;
 
 use crate::{new_sub_parser_from_file, DirectoryOwnership};
 
+use rustc_errors::PResult;
 use syntax::attr;
 use syntax::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
 use syntax::token::{self, TokenKind};
-use syntax::source_map::{SourceMap, Span, DUMMY_SP, FileName};
-
+use syntax_pos::source_map::{SourceMap, Span, DUMMY_SP, FileName};
 use syntax_pos::symbol::sym;
-use errors::PResult;
 
 use std::path::{self, Path, PathBuf};
 
@@ -212,13 +211,13 @@ impl<'a> Parser<'a> {
         // `./<id>.rs` and `./<id>/mod.rs`.
         let relative_prefix_string;
         let relative_prefix = if let Some(ident) = relative {
-            relative_prefix_string = format!("{}{}", ident, path::MAIN_SEPARATOR);
+            relative_prefix_string = format!("{}{}", ident.name, path::MAIN_SEPARATOR);
             &relative_prefix_string
         } else {
             ""
         };
 
-        let mod_name = id.to_string();
+        let mod_name = id.name.to_string();
         let default_path_str = format!("{}{}.rs", relative_prefix, mod_name);
         let secondary_path_str = format!("{}{}{}mod.rs",
                                          relative_prefix, mod_name, path::MAIN_SEPARATOR);

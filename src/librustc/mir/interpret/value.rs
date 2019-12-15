@@ -458,7 +458,7 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable, HashStable, Hash)]
 pub enum ScalarMaybeUndef<Tag = (), Id = AllocId> {
     Scalar(Scalar<Tag, Id>),
     Undef,
@@ -468,6 +468,13 @@ impl<Tag> From<Scalar<Tag>> for ScalarMaybeUndef<Tag> {
     #[inline(always)]
     fn from(s: Scalar<Tag>) -> Self {
         ScalarMaybeUndef::Scalar(s)
+    }
+}
+
+impl<Tag> From<Pointer<Tag>> for ScalarMaybeUndef<Tag> {
+    #[inline(always)]
+    fn from(s: Pointer<Tag>) -> Self {
+        ScalarMaybeUndef::Scalar(s.into())
     }
 }
 

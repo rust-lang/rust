@@ -21,9 +21,6 @@ fn main() {
 //         _0 = move (_1.0: u32);
 //         return;
 //     }
-//     bb2 (cleanup): {
-//         resume;
-//     }
 // }
 // END rustc.add.ConstProp.before.mir
 // START rustc.add.ConstProp.after.mir
@@ -37,9 +34,6 @@ fn main() {
 //     bb1: {
 //         _0 = const 4u32;
 //         return;
-//     }
-//     bb2 (cleanup): {
-//         resume;
 //     }
 // }
 // END rustc.add.ConstProp.after.mir

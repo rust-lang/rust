@@ -1,4 +1,3 @@
-use std::prelude::v1::*;
 use super::super::*;
 use core::num::bignum::Big32x40 as Big;
 use core::num::flt2dec::strategy::dragon::*;
@@ -23,7 +22,7 @@ fn shortest_sanity_test() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn exact_sanity_test() {
     // This test ends up running what I can only assume is some corner-ish case
     // of the `exp2` library function, defined in whatever C runtime we're

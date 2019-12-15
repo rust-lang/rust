@@ -22,15 +22,15 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     // CLOEXEC flag is to use the `pipe2` syscall on Linux. This was added in
     // 2.6.27, however, and because we support 2.6.18 we must detect this
     // support dynamically.
-    if cfg!(any(target_os = "dragonfly",
-                target_os = "freebsd",
-                target_os = "linux",
-                target_os = "netbsd",
-                target_os = "openbsd",
-                target_os = "redox")) &&
-       !INVALID.load(Ordering::SeqCst)
+    if cfg!(any(
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "redox"
+    )) && !INVALID.load(Ordering::SeqCst)
     {
-
         // Note that despite calling a glibc function here we may still
         // get ENOSYS. Glibc has `pipe2` since 2.9 and doesn't try to
         // emulate on older kernels, so if you happen to be running on
@@ -38,8 +38,7 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
         // see the syscall.
         match cvt(unsafe { pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) }) {
             Ok(_) => {
-                return Ok((AnonPipe(FileDesc::new(fds[0])),
-                            AnonPipe(FileDesc::new(fds[1]))));
+                return Ok((AnonPipe(FileDesc::new(fds[0])), AnonPipe(FileDesc::new(fds[1]))));
             }
             Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {
                 INVALID.store(true, Ordering::SeqCst);
@@ -73,15 +72,15 @@ impl AnonPipe {
         self.0.write_vectored(bufs)
     }
 
-    pub fn fd(&self) -> &FileDesc { &self.0 }
-    pub fn into_fd(self) -> FileDesc { self.0 }
+    pub fn fd(&self) -> &FileDesc {
+        &self.0
+    }
+    pub fn into_fd(self) -> FileDesc {
+        self.0
+    }
 }
 
-pub fn read2(p1: AnonPipe,
-             v1: &mut Vec<u8>,
-             p2: AnonPipe,
-             v2: &mut Vec<u8>) -> io::Result<()> {
-
+pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> io::Result<()> {
     // Set both pipes into nonblocking mode as we're gonna be reading from both
     // in the `select` loop below, and we wouldn't want one to block the other!
     let p1 = p1.into_fd();
@@ -117,8 +116,9 @@ pub fn read2(p1: AnonPipe,
         match fd.read_to_end(dst) {
             Ok(_) => Ok(true),
             Err(e) => {
-                if e.raw_os_error() == Some(libc::EWOULDBLOCK) ||
-                   e.raw_os_error() == Some(libc::EAGAIN) {
+                if e.raw_os_error() == Some(libc::EWOULDBLOCK)
+                    || e.raw_os_error() == Some(libc::EAGAIN)
+                {
                     Ok(false)
                 } else {
                     Err(e)

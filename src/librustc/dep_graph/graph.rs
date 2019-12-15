@@ -710,14 +710,25 @@ impl DepGraph {
                                 return None
                             }
                             None => {
-                                if !tcx.sess.has_errors() {
+                                if !tcx.sess.has_errors_or_delayed_span_bugs() {
                                     bug!("try_mark_previous_green() - Forcing the DepNode \
                                           should have set its color")
                                 } else {
-                                    // If the query we just forced has resulted
-                                    // in some kind of compilation error, we
-                                    // don't expect that the corresponding
-                                    // dep-node color has been updated.
+                                    // If the query we just forced has resulted in
+                                    // some kind of compilation error, we cannot rely on
+                                    // the dep-node color having been properly updated.
+                                    // This means that the query system has reached an
+                                    // invalid state. We let the compiler continue (by
+                                    // returning `None`) so it can emit error messages
+                                    // and wind down, but rely on the fact that this
+                                    // invalid state will not be persisted to the
+                                    // incremental compilation cache because of
+                                    // compilation errors being present.
+                                    debug!("try_mark_previous_green({:?}) - END - \
+                                            dependency {:?} resulted in compilation error",
+                                           dep_node,
+                                           dep_dep_node);
+                                    return None
                                 }
                             }
                         }

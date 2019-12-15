@@ -1,4 +1,4 @@
-use jobserver_crate::Client;
+pub use jobserver_crate::Client;
 use lazy_static::lazy_static;
 
 lazy_static! {

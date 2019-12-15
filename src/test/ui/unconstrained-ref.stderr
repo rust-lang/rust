@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/unconstrained-ref.rs:6:5
    |
 LL |     S { o: &None };
-   |     ^ cannot infer type for `T`
+   |     ^ cannot infer type for type parameter `T`
 
 error: aborting due to previous error
 

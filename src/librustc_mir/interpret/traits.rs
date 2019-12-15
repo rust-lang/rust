@@ -67,7 +67,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
         // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
         let vtable_alloc = self.memory.get_raw_mut(vtable.alloc_id)?;
-        vtable_alloc.write_ptr_sized(tcx, vtable, Scalar::Ptr(drop).into())?;
+        vtable_alloc.write_ptr_sized(tcx, vtable, drop.into())?;
 
         let size_ptr = vtable.offset(ptr_size, tcx)?;
         vtable_alloc.write_ptr_sized(tcx, size_ptr, Scalar::from_uint(size, ptr_size).into())?;
@@ -87,7 +87,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), tcx)?;
                 self.memory.get_raw_mut(vtable.alloc_id)?
-                    .write_ptr_sized(tcx, method_ptr, Scalar::Ptr(fn_ptr).into())?;
+                    .write_ptr_sized(tcx, method_ptr, fn_ptr.into())?;
             }
         }
 
@@ -140,7 +140,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let fn_sig = drop_instance.ty(*self.tcx).fn_sig(*self.tcx);
         let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig);
         // The drop function takes `*mut T` where `T` is the type being dropped, so get that.
-        let ty = fn_sig.inputs()[0].builtin_deref(true).unwrap().ty;
+        let args = fn_sig.inputs();
+        if args.len() != 1 {
+            throw_ub_format!(
+                "drop fn should have 1 argument, but signature is {:?}", fn_sig
+            );
+        }
+        let ty = args[0].builtin_deref(true)
+            .ok_or_else(|| err_ub_format!(
+                "drop fn argument type {} is not a pointer type",
+                args[0]
+            ))?
+            .ty;
         Ok((drop_instance, ty))
     }
 

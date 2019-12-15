@@ -25,8 +25,13 @@ fn bench_to_digit_radix_36(b: &mut Bencher) {
 
 #[bench]
 fn bench_to_digit_radix_var(b: &mut Bencher) {
-    b.iter(|| CHARS.iter().cycle()
-        .zip(RADIX.iter().cycle())
-        .take(10_000)
-        .map(|(c, radix)| c.to_digit(*radix)).min())
+    b.iter(|| {
+        CHARS
+            .iter()
+            .cycle()
+            .zip(RADIX.iter().cycle())
+            .take(10_000)
+            .map(|(c, radix)| c.to_digit(*radix))
+            .min()
+    })
 }

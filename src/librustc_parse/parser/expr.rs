@@ -4,23 +4,20 @@ use super::pat::{GateOr, PARAM_EXPECTED};
 use super::diagnostics::Error;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
-use syntax::ast::{
-    self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode,
-    Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind,
-    FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit,
-};
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_errors::{PResult, Applicability};
+use syntax::ast::{self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode};
+use syntax::ast::{Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind};
+use syntax::ast::{FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit};
 use syntax::token::{self, Token, TokenKind};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::source_map::{self, Span};
 use syntax::util::classify;
 use syntax::util::literal::LitError;
 use syntax::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
-use syntax_pos::symbol::{kw, sym};
-use syntax_pos::Symbol;
-use errors::{PResult, Applicability};
+use syntax_pos::source_map::{self, Span};
+use syntax_pos::symbol::{kw, sym, Symbol};
 use std::mem;
-use rustc_data_structures::thin_vec::ThinVec;
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
@@ -442,11 +439,7 @@ impl<'a> Parser<'a> {
                 (lo.to(span), self.mk_unary(UnOp::Deref, e))
             }
             token::BinOp(token::And) | token::AndAnd => {
-                self.expect_and()?;
-                let m = self.parse_mutability();
-                let e = self.parse_prefix_expr(None);
-                let (span, e) = self.interpolated_or_expr_span(e)?;
-                (lo.to(span), ExprKind::AddrOf(m, e))
+                self.parse_address_of(lo)?
             }
             token::Ident(..) if self.token.is_keyword(kw::Box) => {
                 self.bump();
@@ -594,6 +587,25 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    /// Parse `& mut? <expr>` or `& raw [ const | mut ] <expr>`.
+    fn parse_address_of(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
+        self.expect_and()?;
+        let (k, m) = if self.check_keyword(kw::Raw)
+            && self.look_ahead(1, Token::is_mutability)
+        {
+            let found_raw = self.eat_keyword(kw::Raw);
+            assert!(found_raw);
+            let mutability = self.parse_const_or_mut().unwrap();
+            self.sess.gated_spans.gate(sym::raw_ref_op, lo.to(self.prev_span));
+            (ast::BorrowKind::Raw, mutability)
+        } else {
+            (ast::BorrowKind::Ref, self.parse_mutability())
+        };
+        let e = self.parse_prefix_expr(None);
+        let (span, e) = self.interpolated_or_expr_span(e)?;
+        Ok((lo.to(span), ExprKind::AddrOf(k, m, e)))
     }
 
     /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.
@@ -907,13 +919,11 @@ impl<'a> Parser<'a> {
                     // `!`, as an operator, is prefix, so we know this isn't that.
                     if self.eat(&token::Not) {
                         // MACRO INVOCATION expression
-                        let (delim, tts) = self.expect_delimited_token_tree()?;
+                        let args = self.parse_mac_args()?;
                         hi = self.prev_span;
                         ex = ExprKind::Mac(Mac {
                             path,
-                            tts,
-                            delim,
-                            span: lo.to(hi),
+                            args,
                             prior_type_ascription: self.last_type_ascription,
                         });
                     } else if self.check(&token::OpenDelim(token::Brace)) {

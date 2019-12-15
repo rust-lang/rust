@@ -339,7 +339,6 @@ impl<'a> Builder<'a> {
             Kind::Build => describe!(
                 compile::Std,
                 compile::Rustc,
-                compile::CodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
                 tool::Rustbook,
@@ -364,10 +363,10 @@ impl<'a> Builder<'a> {
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
                 check::Rustc,
-                check::CodegenBackend,
                 check::Rustdoc
             ),
             Kind::Test => describe!(
+                crate::toolstate::ToolStateCheck,
                 test::Tidy,
                 test::Ui,
                 test::CompileFail,
@@ -631,11 +630,6 @@ impl<'a> Builder<'a> {
         self.ensure(Libdir { compiler, target })
     }
 
-    pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
-        self.sysroot_libdir(compiler, compiler.host)
-            .with_file_name(self.config.rust_codegen_backends_dir.clone())
-    }
-
     /// Returns the compiler's libdir where it stores the dynamic libraries that
     /// it itself links against.
     ///
@@ -706,15 +700,6 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /// Gets the paths to all of the compiler's codegen backends.
-    fn codegen_backends(&self, compiler: Compiler) -> impl Iterator<Item = PathBuf> {
-        fs::read_dir(self.sysroot_codegen_backends(compiler))
-            .into_iter()
-            .flatten()
-            .filter_map(Result::ok)
-            .map(|entry| entry.path())
-    }
-
     pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
         self.ensure(tool::Rustdoc { compiler })
     }
@@ -757,12 +742,6 @@ impl<'a> Builder<'a> {
     ) -> Cargo {
         let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
-
-        // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
-        // so we need to explicitly clear out if they've been updated.
-        for backend in self.codegen_backends(compiler) {
-            self.clear_if_dirty(&out_dir, &backend);
-        }
 
         if cmd == "doc" || cmd == "rustdoc" {
             let my_out = match mode {
@@ -980,7 +959,7 @@ impl<'a> Builder<'a> {
         // argument manually via `-C link-args=-Wl,-rpath,...`. Plus isn't it
         // fun to pass a flag to a tool to pass a flag to pass a flag to a tool
         // to change a flag in a binary?
-        if self.config.rust_rpath {
+        if self.config.rust_rpath && util::use_host_linker(&target) {
             let rpath = if target.contains("apple") {
 
                 // Note that we need to take one extra step on macOS to also pass
@@ -990,10 +969,7 @@ impl<'a> Builder<'a> {
                 // flesh out rpath support more fully in the future.
                 rustflags.arg("-Zosx-rpath-install-name");
                 Some("-Wl,-rpath,@loader_path/../lib")
-            } else if !target.contains("windows") &&
-                      !target.contains("wasm32") &&
-                      !target.contains("emscripten") &&
-                      !target.contains("fuchsia") {
+            } else if !target.contains("windows") {
                 Some("-Wl,-rpath,$ORIGIN/../lib")
             } else {
                 None

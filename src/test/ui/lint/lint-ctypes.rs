@@ -65,6 +65,10 @@ extern {
     pub fn transparent_i128(p: TransparentI128); //~ ERROR: uses type `i128`
     pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `str`
     pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `std::boxed::Box<u32>`
+    pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
+
+    pub static static_u128_type: u128; //~ ERROR: uses type `u128`
+    pub static static_u128_array_type: [u128; 16]; //~ ERROR: uses type `u128`
 
     pub fn good3(fptr: Option<extern fn()>);
     pub fn good4(aptr: &[u8; 4 as usize]);
@@ -83,6 +87,9 @@ extern {
     pub fn good17(p: TransparentCustomZst);
     #[allow(improper_ctypes)]
     pub fn good18(_: &String);
+    pub fn good20(arr: *const [u8; 8]);
+    pub static good21: [u8; 8];
+
 }
 
 #[allow(improper_ctypes)]

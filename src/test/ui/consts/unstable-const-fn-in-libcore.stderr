@@ -1,0 +1,22 @@
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/unstable-const-fn-in-libcore.rs:24:26
+   |
+LL |             Opt::None => f(),
+   |                          ^^^
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:53
+   |
+LL |     const fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
+   |                                                     ^ constant functions cannot evaluate destructors
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:47
+   |
+LL |     const fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
+   |                                               ^^^^ constant functions cannot evaluate destructors
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0015, E0493.
+For more information about an error, try `rustc --explain E0015`.

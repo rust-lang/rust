@@ -9,6 +9,9 @@ LL |     let _ = match x {
 error[E0004]: non-exhaustive patterns: type `&Void` is non-empty
   --> $DIR/uninhabited-matches-feature-gated.rs:12:19
    |
+LL | enum Void {}
+   | ------------ `Void` defined here
+...
 LL |     let _ = match x {};
    |                   ^
    |

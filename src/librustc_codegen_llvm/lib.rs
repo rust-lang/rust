@@ -6,6 +6,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_cstr_unchecked)]
@@ -23,31 +24,11 @@
 use back::write::{create_target_machine, create_informational_target_machine};
 use syntax_pos::symbol::Symbol;
 
-extern crate rustc_demangle;
-extern crate flate2;
-#[macro_use] extern crate bitflags;
-extern crate libc;
-#[macro_use] extern crate rustc;
-extern crate rustc_target;
-#[macro_use] extern crate rustc_data_structures;
-extern crate rustc_index;
-extern crate rustc_incremental;
-extern crate rustc_codegen_utils;
-extern crate rustc_codegen_ssa;
-extern crate rustc_fs_util;
-extern crate rustc_driver as _;
-
-#[macro_use] extern crate log;
-extern crate smallvec;
-extern crate syntax;
-extern crate syntax_pos;
-extern crate rustc_errors as errors;
-
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, FatLTOInput};
 use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModule};
 use rustc_codegen_ssa::CompiledModule;
-use errors::{FatalError, Handler};
+use rustc_errors::{FatalError, Handler};
 use rustc::dep_graph::WorkProduct;
 use syntax::expand::allocator::AllocatorKind;
 pub use llvm_util::target_features;
@@ -334,12 +315,6 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         Ok(())
     }
-}
-
-/// This is the entrypoint for a hot plugged rustc_codegen_llvm
-#[no_mangle]
-pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    LlvmCodegenBackend::new()
 }
 
 pub struct ModuleLlvm {

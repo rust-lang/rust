@@ -5,7 +5,7 @@ use crate::hair::{LintLevel, BindingMode, PatKind};
 use crate::transform::MirSource;
 use crate::util as mir_util;
 use rustc::hir;
-use rustc::hir::Node;
+use rustc::hir::{Node, GeneratorKind};
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items;
 use rustc::middle::region;
@@ -24,7 +24,7 @@ use syntax_pos::Span;
 use super::lints;
 
 /// Construct the MIR for a given `DefId`.
-pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
+pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
@@ -161,8 +161,18 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
                 (None, fn_sig.output())
             };
 
-            build::construct_fn(cx, id, arguments, safety, abi,
-                                return_ty, yield_ty, return_ty_span, body)
+            let mut mir = build::construct_fn(
+                cx,
+                id,
+                arguments,
+                safety,
+                abi,
+                return_ty,
+                return_ty_span,
+                body,
+            );
+            mir.yield_ty = yield_ty;
+            mir
         } else {
             // Get the revealed type of this const. This is *not* the adjusted
             // type of its body, which may be a subtype of this type. For
@@ -186,6 +196,8 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
 
         lints::check(tcx, &body, def_id);
 
+        let mut body = BodyAndCache::new(body);
+        body.ensure_predecessors();
         body
     })
 }
@@ -269,7 +281,7 @@ struct Builder<'a, 'tcx> {
 
     fn_span: Span,
     arg_count: usize,
-    is_generator: bool,
+    generator_kind: Option<GeneratorKind>,
 
     /// The current set of scopes, updated as we traverse;
     /// see the `scope` module for more details.
@@ -299,7 +311,6 @@ struct Builder<'a, 'tcx> {
     /// The vector of all scopes that we have created thus far;
     /// we track this for debuginfo later.
     source_scopes: IndexVec<SourceScope, SourceScopeData>,
-    source_scope_local_data: IndexVec<SourceScope, SourceScopeLocalData>,
     source_scope: SourceScope,
 
     /// The guard-context: each time we build the guard expression for
@@ -312,9 +323,10 @@ struct Builder<'a, 'tcx> {
     var_indices: HirIdMap<LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     canonical_user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
-    __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
     upvar_mutbls: Vec<Mutability>,
     unit_temp: Option<Place<'tcx>>,
+
+    var_debug_info: Vec<VarDebugInfo<'tcx>>,
 
     /// Cached block with the `RESUME` terminator; this is created
     /// when first set of cleanups are built.
@@ -539,7 +551,6 @@ fn construct_fn<'a, 'tcx, A>(
     safety: Safety,
     abi: Abi,
     return_ty: Ty<'tcx>,
-    yield_ty: Option<Ty<'tcx>>,
     return_ty_span: Span,
     body: &'tcx hir::Body,
 ) -> Body<'tcx>
@@ -552,49 +563,7 @@ where
     let tcx_hir = tcx.hir();
     let span = tcx_hir.span(fn_id);
 
-    let hir_tables = hir.tables();
     let fn_def_id = tcx_hir.local_def_id(fn_id);
-
-    // Gather the upvars of a closure, if any.
-    let mut upvar_mutbls = vec![];
-    // In analyze_closure() in upvar.rs we gathered a list of upvars used by a
-    // closure and we stored in a map called upvar_list in TypeckTables indexed
-    // with the closure's DefId. Here, we run through that vec of UpvarIds for
-    // the given closure and use the necessary information to create UpvarDecl.
-    let upvar_debuginfo: Vec<_> = hir_tables
-        .upvar_list
-        .get(&fn_def_id)
-        .into_iter()
-        .flatten()
-        .map(|(&var_hir_id, &upvar_id)| {
-            let capture = hir_tables.upvar_capture(upvar_id);
-            let by_ref = match capture {
-                ty::UpvarCapture::ByValue => false,
-                ty::UpvarCapture::ByRef(..) => true,
-            };
-            let mut debuginfo = UpvarDebuginfo {
-                debug_name: kw::Invalid,
-                by_ref,
-            };
-            let mut mutability = Mutability::Not;
-            if let Some(Node::Binding(pat)) = tcx_hir.find(var_hir_id) {
-                if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
-                    debuginfo.debug_name = ident.name;
-                    if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
-                        if bm == ty::BindByValue(hir::Mutability::Mutable) {
-                            mutability = Mutability::Mut;
-                        } else {
-                            mutability = Mutability::Not;
-                        }
-                    } else {
-                        tcx.sess.delay_span_bug(pat.span, "missing binding mode");
-                    }
-                }
-            }
-            upvar_mutbls.push(mutability);
-            debuginfo
-        })
-        .collect();
 
     let mut builder = Builder::new(hir,
         span,
@@ -602,9 +571,7 @@ where
         safety,
         return_ty,
         return_ty_span,
-        upvar_debuginfo,
-        upvar_mutbls,
-        body.generator_kind.is_some());
+        body.generator_kind);
 
     let call_site_scope = region::Scope {
         id: body.value.hir_id.local_id,
@@ -631,7 +598,7 @@ where
             Place::return_place(),
             |builder| {
                 builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
-                    builder.args_and_body(block, &arguments, arg_scope, &body.value)
+                    builder.args_and_body(block, fn_def_id, &arguments, arg_scope, &body.value)
                 })
             },
         ));
@@ -660,7 +627,7 @@ where
     info!("fn_id {:?} has attrs {:?}", fn_def_id,
           tcx.get_attrs(fn_def_id));
 
-    let mut body = builder.finish(yield_ty);
+    let mut body = builder.finish();
     body.spread_arg = spread_arg;
     body
 }
@@ -681,9 +648,7 @@ fn construct_const<'a, 'tcx>(
         Safety::Safe,
         const_ty,
         const_ty_span,
-        vec![],
-        vec![],
-        false,
+        None,
     );
 
     let mut block = START_BLOCK;
@@ -704,7 +669,7 @@ fn construct_const<'a, 'tcx>(
                               TerminatorKind::Unreachable);
     }
 
-    builder.finish(None)
+    builder.finish()
 }
 
 fn construct_error<'a, 'tcx>(
@@ -714,10 +679,10 @@ fn construct_error<'a, 'tcx>(
     let owner_id = hir.tcx().hir().body_owner(body_id);
     let span = hir.tcx().hir().span(owner_id);
     let ty = hir.tcx().types.err;
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, vec![], vec![], false);
+    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, None);
     let source_info = builder.source_info(span);
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
-    builder.finish(None)
+    builder.finish()
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -727,9 +692,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
            safety: Safety,
            return_ty: Ty<'tcx>,
            return_span: Span,
-           __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
-           upvar_mutbls: Vec<Mutability>,
-           is_generator: bool)
+           generator_kind: Option<GeneratorKind>)
            -> Builder<'a, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
         let mut builder = Builder {
@@ -737,12 +700,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
             arg_count,
-            is_generator,
+            generator_kind,
             scopes: Default::default(),
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
-            source_scope_local_data: IndexVec::new(),
             guard_context: vec![],
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
@@ -751,10 +713,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 1,
             ),
             canonical_user_type_annotations: IndexVec::new(),
-            __upvar_debuginfo_codegen_only_do_not_use,
-            upvar_mutbls,
+            upvar_mutbls: vec![],
             var_indices: Default::default(),
             unit_temp: None,
+            var_debug_info: vec![],
             cached_resume_block: None,
             cached_return_block: None,
             cached_unreachable_block: None,
@@ -769,9 +731,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         builder
     }
 
-    fn finish(self,
-              yield_ty: Option<Ty<'tcx>>)
-              -> Body<'tcx> {
+    fn finish(self) -> Body<'tcx> {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
                 span_bug!(self.fn_span, "no terminator on block {:?}", index);
@@ -781,19 +741,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Body::new(
             self.cfg.basic_blocks,
             self.source_scopes,
-            ClearCrossCrate::Set(self.source_scope_local_data),
-            yield_ty,
             self.local_decls,
             self.canonical_user_type_annotations,
             self.arg_count,
-            self.__upvar_debuginfo_codegen_only_do_not_use,
+            self.var_debug_info,
             self.fn_span,
             self.hir.control_flow_destroyed(),
+            self.generator_kind
         )
     }
 
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
+                     fn_def_id: DefId,
                      arguments: &[ArgInfo<'tcx>],
                      argument_scope: region::Scope,
                      ast_body: &'tcx hir::Expr)
@@ -801,28 +761,100 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
-            // If this is a simple binding pattern, give the local a name for
-            // debuginfo and so that error reporting knows that this is a user
-            // variable. For any other pattern the pattern introduces new
-            // variables which will be named instead.
-            let (name, span) = if let Some(arg) = arg_opt {
-                (arg.pat.simple_ident().map(|ident| ident.name), arg.pat.span)
-            } else {
-                (None, self.fn_span)
+            let source_info = SourceInfo {
+                scope: OUTERMOST_SOURCE_SCOPE,
+                span: arg_opt.map_or(self.fn_span, |arg| arg.pat.span)
             };
-
-            let source_info = SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span, };
-            self.local_decls.push(LocalDecl {
+            let arg_local = self.local_decls.push(LocalDecl {
                 mutability: Mutability::Mut,
                 ty,
                 user_ty: UserTypeProjections::none(),
                 source_info,
-                visibility_scope: source_info.scope,
-                name,
                 internal: false,
                 local_info: LocalInfo::Other,
                 is_block_tail: None,
             });
+
+            // If this is a simple binding pattern, give debuginfo a nice name.
+            if let Some(arg) = arg_opt {
+                if let Some(ident) = arg.pat.simple_ident() {
+                    self.var_debug_info.push(VarDebugInfo {
+                        name: ident.name,
+                        source_info,
+                        place: arg_local.into(),
+                    });
+                }
+            }
+        }
+
+        let tcx = self.hir.tcx();
+        let tcx_hir = tcx.hir();
+        let hir_tables = self.hir.tables();
+
+        // In analyze_closure() in upvar.rs we gathered a list of upvars used by a
+        // closure and we stored in a map called upvar_list in TypeckTables indexed
+        // with the closure's DefId. Here, we run through that vec of UpvarIds for
+        // the given closure and use the necessary information to create upvar
+        // debuginfo and to fill `self.upvar_mutbls`.
+        if let Some(upvars) = hir_tables.upvar_list.get(&fn_def_id) {
+            let closure_env_arg = Local::new(1);
+            let mut closure_env_projs = vec![];
+            let mut closure_ty = self.local_decls[closure_env_arg].ty;
+            if let ty::Ref(_, ty, _) = closure_ty.kind {
+                closure_env_projs.push(ProjectionElem::Deref);
+                closure_ty = ty;
+            }
+            let (def_id, upvar_substs) = match closure_ty.kind {
+                ty::Closure(def_id, substs) => (def_id, ty::UpvarSubsts::Closure(substs)),
+                ty::Generator(def_id, substs, _) => (def_id, ty::UpvarSubsts::Generator(substs)),
+                _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty)
+            };
+            let upvar_tys = upvar_substs.upvar_tys(def_id, tcx);
+            let upvars_with_tys = upvars.iter().zip(upvar_tys);
+            self.upvar_mutbls = upvars_with_tys.enumerate().map(|(i, ((&var_id, &upvar_id), ty))| {
+                let capture = hir_tables.upvar_capture(upvar_id);
+
+                let mut mutability = Mutability::Not;
+                let mut name = kw::Invalid;
+                if let Some(Node::Binding(pat)) = tcx_hir.find(var_id) {
+                    if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
+                        name = ident.name;
+
+                        if let Some(&bm) = hir_tables.pat_binding_modes().get(pat.hir_id) {
+                            if bm == ty::BindByValue(hir::Mutability::Mutable) {
+                                mutability = Mutability::Mut;
+                            } else {
+                                mutability = Mutability::Not;
+                            }
+                        } else {
+                            tcx.sess.delay_span_bug(pat.span, "missing binding mode");
+                        }
+                    }
+                }
+
+                let mut projs = closure_env_projs.clone();
+                projs.push(ProjectionElem::Field(Field::new(i), ty));
+                match capture {
+                    ty::UpvarCapture::ByValue => {}
+                    ty::UpvarCapture::ByRef(..) => {
+                        projs.push(ProjectionElem::Deref);
+                    }
+                };
+
+                self.var_debug_info.push(VarDebugInfo {
+                    name,
+                    source_info: SourceInfo {
+                        scope: OUTERMOST_SOURCE_SCOPE,
+                        span: tcx_hir.span(var_id),
+                    },
+                    place: Place {
+                        base: closure_env_arg.into(),
+                        projection: tcx.intern_place_elems(&projs),
+                    },
+                });
+
+                mutability
+            }).collect();
         }
 
         let mut scope = None;
@@ -909,7 +941,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.hir.root_lint_level
         );
         let parent_root = tcx.maybe_lint_level_root_bounded(
-            self.source_scope_local_data[original_source_scope].lint_root,
+            self.source_scopes[original_source_scope]
+                .local_data
+                .as_ref()
+                .assert_crate_local()
+                .lint_root,
             self.hir.root_lint_level,
         );
         if current_root != parent_root {

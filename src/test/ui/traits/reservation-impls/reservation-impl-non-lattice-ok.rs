@@ -30,7 +30,7 @@
 //
 // [ii]: http://smallcultfollowing.com/babysteps/blog/2016/09/24/intersection-impls/
 
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, never_type)]
 
 trait MyTrait {}
 

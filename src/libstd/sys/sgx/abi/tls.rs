@@ -1,11 +1,11 @@
-use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::ptr;
-use crate::mem;
-use crate::cell::Cell;
-use crate::num::NonZeroUsize;
 use self::sync_bitset::*;
+use crate::cell::Cell;
+use crate::mem;
+use crate::num::NonZeroUsize;
+use crate::ptr;
+use crate::sync::atomic::{AtomicUsize, Ordering};
 
-#[cfg(target_pointer_width="64")]
+#[cfg(target_pointer_width = "64")]
 const USIZE_BITS: usize = 64;
 const TLS_KEYS: usize = 128; // Same as POSIX minimum
 const TLS_KEYS_BITSET_SIZE: usize = (TLS_KEYS + (USIZE_BITS - 1)) / USIZE_BITS;
@@ -50,18 +50,18 @@ impl Key {
 
 #[repr(C)]
 pub struct Tls {
-    data: [Cell<*mut u8>; TLS_KEYS]
+    data: [Cell<*mut u8>; TLS_KEYS],
 }
 
 pub struct ActiveTls<'a> {
-    tls: &'a Tls
+    tls: &'a Tls,
 }
 
 impl<'a> Drop for ActiveTls<'a> {
     fn drop(&mut self) {
         let value_with_destructor = |key: usize| {
             let ptr = TLS_DESTRUCTOR[key].load(Ordering::Relaxed);
-            unsafe { mem::transmute::<_,Option<unsafe extern fn(*mut u8)>>(ptr) }
+            unsafe { mem::transmute::<_, Option<unsafe extern "C" fn(*mut u8)>>(ptr) }
                 .map(|dtor| (&self.tls.data[key], dtor))
         };
 
@@ -99,7 +99,7 @@ impl Tls {
         &*(get_tls_ptr() as *const Tls)
     }
 
-    pub fn create(dtor: Option<unsafe extern fn(*mut u8)>) -> Key {
+    pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
         let index = if let Some(index) = TLS_KEY_IN_USE.set() {
             index
         } else {
@@ -127,10 +127,10 @@ impl Tls {
 }
 
 mod sync_bitset {
-    use crate::sync::atomic::{AtomicUsize, Ordering};
+    use super::{TLS_KEYS_BITSET_SIZE, USIZE_BITS};
     use crate::iter::{Enumerate, Peekable};
     use crate::slice::Iter;
-    use super::{TLS_KEYS_BITSET_SIZE, USIZE_BITS};
+    use crate::sync::atomic::{AtomicUsize, Ordering};
 
     /// A bitset that can be used synchronously.
     pub(super) struct SyncBitset([AtomicUsize; TLS_KEYS_BITSET_SIZE]);
@@ -146,10 +146,7 @@ mod sync_bitset {
 
         /// Not atomic.
         pub fn iter(&self) -> SyncBitsetIter<'_> {
-            SyncBitsetIter {
-                iter: self.0.iter().enumerate().peekable(),
-                elem_idx: 0,
-            }
+            SyncBitsetIter { iter: self.0.iter().enumerate().peekable(), elem_idx: 0 }
         }
 
         pub fn clear(&self, index: usize) {
@@ -171,7 +168,7 @@ mod sync_bitset {
                         current,
                         current | (1 << trailing_ones),
                         Ordering::AcqRel,
-                        Ordering::Relaxed
+                        Ordering::Relaxed,
                     ) {
                         Ok(_) => return Some(idx * USIZE_BITS + trailing_ones),
                         Err(previous) => current = previous,

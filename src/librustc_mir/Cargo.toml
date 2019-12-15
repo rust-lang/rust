@@ -16,7 +16,7 @@ dot = { path = "../libgraphviz", package = "graphviz" }
 itertools = "0.8"
 log = "0.4"
 log_settings = "0.1.1"
-polonius-engine  = "0.10.0"
+polonius-engine = "0.11.0"
 rustc = { path = "../librustc" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }

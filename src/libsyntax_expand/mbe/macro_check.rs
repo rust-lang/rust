@@ -107,7 +107,7 @@
 use crate::mbe::{KleeneToken, TokenTree};
 
 use syntax::ast::NodeId;
-use syntax::early_buffered_lints::BufferedEarlyLintId;
+use syntax::early_buffered_lints::META_VARIABLE_MISUSE;
 use syntax::token::{DelimToken, Token, TokenKind};
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym};
@@ -269,7 +269,8 @@ fn check_binders(
                 // for nested macro definitions.
                 sess.span_diagnostic
                     .struct_span_err(span, "duplicate matcher binding")
-                    .span_note(prev_info.span, "previous declaration was here")
+                    .span_label(span, "duplicate binding")
+                    .span_label(prev_info.span, "previous binding")
                     .emit();
                 *valid = false;
             } else {
@@ -622,5 +623,5 @@ fn ops_is_prefix(
 }
 
 fn buffer_lint(sess: &ParseSess, span: MultiSpan, node_id: NodeId, message: &str) {
-    sess.buffer_lint(BufferedEarlyLintId::MetaVariableMisuse, span, node_id, message);
+    sess.buffer_lint(&META_VARIABLE_MISUSE, span, node_id, message);
 }

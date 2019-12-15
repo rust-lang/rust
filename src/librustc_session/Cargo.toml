@@ -1,0 +1,21 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_session"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+name = "rustc_session"
+path = "lib.rs"
+
+[dependencies]
+log = "0.4"
+rustc_errors = { path = "../librustc_errors" }
+rustc_feature = { path = "../librustc_feature" }
+rustc_target = { path = "../librustc_target" }
+rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+syntax_pos = { path = "../libsyntax_pos" }
+rustc_index = { path = "../librustc_index" }
+rustc_fs_util = { path = "../librustc_fs_util" }
+num_cpus = "1.0"

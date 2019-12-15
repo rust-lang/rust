@@ -144,8 +144,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                             "`continue` pointing to a labeled block")
                                 .span_label(e.span,
                                             "labeled blocks cannot be `continue`'d")
-                                .span_note(block.span,
-                                            "labeled block the continue points to")
+                                .span_label(block.span,
+                                            "labeled block the `continue` points to")
                                 .emit();
                         }
                     }

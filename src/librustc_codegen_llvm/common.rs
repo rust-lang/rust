@@ -8,6 +8,8 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
+use rustc::bug;
+use log::debug;
 
 use crate::consts::const_alloc_to_llvm;
 use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
@@ -245,11 +247,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let (mut lo, mut hi) = (0u64, 0u64);
             let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
                                                         &mut hi, &mut lo);
-            if success {
-                Some(hi_lo_to_u128(lo, hi))
-            } else {
-                None
-            }
+            success.then_some(hi_lo_to_u128(lo, hi))
         })
     }
 

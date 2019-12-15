@@ -376,7 +376,7 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock-short code {
+.docblock code, .docblock-short code {
 	white-space: pre-wrap;
 }
 

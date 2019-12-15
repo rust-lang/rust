@@ -6,7 +6,7 @@ const fn f(x: usize) -> usize {
     let mut sum = 0;
     for i in 0..x {
         //~^ ERROR E0015
-        //~| ERROR E0017
+        //~| ERROR E0658
         //~| ERROR E0080
         //~| ERROR E0744
         //~| ERROR E0019

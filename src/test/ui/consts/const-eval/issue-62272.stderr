@@ -1,15 +1,21 @@
-error[E0744]: `loop` is not allowed in a `const`
+error[E0658]: `loop` is not allowed in a `const`
   --> $DIR/issue-62272.rs:7:17
    |
 LL | const FOO: () = loop { break; };
    |                 ^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
-error[E0744]: `loop` is not allowed in a `const`
+error[E0658]: `loop` is not allowed in a `const`
   --> $DIR/issue-62272.rs:10:20
    |
 LL |     [FOO; { let x; loop { x = 5; break; } x }];
    |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0744`.
+For more information about this error, try `rustc --explain E0658`.

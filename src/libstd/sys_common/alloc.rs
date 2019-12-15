@@ -6,20 +6,24 @@ use crate::ptr;
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.
-#[cfg(all(any(target_arch = "x86",
-              target_arch = "arm",
-              target_arch = "mips",
-              target_arch = "powerpc",
-              target_arch = "powerpc64",
-              target_arch = "asmjs",
-              target_arch = "wasm32",
-              target_arch = "hexagon")))]
+#[cfg(all(any(
+    target_arch = "x86",
+    target_arch = "arm",
+    target_arch = "mips",
+    target_arch = "powerpc",
+    target_arch = "powerpc64",
+    target_arch = "asmjs",
+    target_arch = "wasm32",
+    target_arch = "hexagon"
+)))]
 pub const MIN_ALIGN: usize = 8;
-#[cfg(all(any(target_arch = "x86_64",
-              target_arch = "aarch64",
-              target_arch = "mips64",
-              target_arch = "s390x",
-              target_arch = "sparc64")))]
+#[cfg(all(any(
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "mips64",
+    target_arch = "s390x",
+    target_arch = "sparc64"
+)))]
 pub const MIN_ALIGN: usize = 16;
 
 pub unsafe fn realloc_fallback(

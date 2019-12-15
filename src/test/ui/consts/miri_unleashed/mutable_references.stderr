@@ -1,35 +1,11 @@
 warning: skipping const checks
-  --> $DIR/mutable_references.rs:8:26
-   |
-LL | static FOO: &&mut u32 = &&mut 42;
-   |                          ^^^^^^^
-
-warning: skipping const checks
-  --> $DIR/mutable_references.rs:11:23
-   |
-LL | static BAR: &mut () = &mut ();
-   |                       ^^^^^^^
-
-warning: skipping const checks
-  --> $DIR/mutable_references.rs:16:28
-   |
-LL | static BOO: &mut Foo<()> = &mut Foo(());
-   |                            ^^^^^^^^^^^^
-
-warning: skipping const checks
-  --> $DIR/mutable_references.rs:26:8
+  --> $DIR/mutable_references.rs:28:8
    |
 LL |     x: &UnsafeCell::new(42),
    |        ^^^^^^^^^^^^^^^^^^^^
 
-warning: skipping const checks
-  --> $DIR/mutable_references.rs:30:27
-   |
-LL | static OH_YES: &mut i32 = &mut 42;
-   |                           ^^^^^^^
-
 error[E0594]: cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
-  --> $DIR/mutable_references.rs:37:5
+  --> $DIR/mutable_references.rs:39:5
    |
 LL |     *OH_YES = 99;
    |     ^^^^^^^^^^^^ cannot assign

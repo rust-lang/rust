@@ -30,13 +30,6 @@ impl MutVisitor for Marker {
     }
 }
 
-impl Marker {
-    fn visit_delim_span(&mut self, dspan: &mut DelimSpan) {
-        self.visit_span(&mut dspan.open);
-        self.visit_span(&mut dspan.close);
-    }
-}
-
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame {
     Delimited { forest: Lrc<mbe::Delimited>, idx: usize, span: DelimSpan },
@@ -271,7 +264,7 @@ pub(super) fn transcribe(
             // jump back out of the Delimited, pop the result_stack and add the new results back to
             // the previous results (from outside the Delimited).
             mbe::TokenTree::Delimited(mut span, delimited) => {
-                marker.visit_delim_span(&mut span);
+                mut_visit::visit_delim_span(&mut span, &mut marker);
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span });
                 result_stack.push(mem::take(&mut result));
             }
@@ -306,7 +299,7 @@ fn lookup_cur_matched<'a>(
         for &(idx, _) in repeats {
             match matched {
                 MatchedNonterminal(_) => break,
-                MatchedSeq(ref ads, _) => matched = ads.get(idx).unwrap(),
+                MatchedSeq(ref ads) => matched = ads.get(idx).unwrap(),
             }
         }
 
@@ -389,7 +382,7 @@ fn lockstep_iter_size(
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
-                    MatchedSeq(ref ads, _) => LockstepIterSize::Constraint(ads.len(), name),
+                    MatchedSeq(ref ads) => LockstepIterSize::Constraint(ads.len(), name),
                 },
                 _ => LockstepIterSize::Unconstrained,
             }

@@ -11,9 +11,9 @@ macro_rules! foo{
 pub fn main() {
     foo!();
 
-    assert!({one! two()}); //~ ERROR expected open delimiter
+    assert!({one! two()}); //~ ERROR expected one of `(`, `[`, or `{`, found `two`
 
     // regardless of whether nested macro_rules works, the following should at
     // least throw a conventional error.
-    assert!({one! two}); //~ ERROR expected open delimiter
+    assert!({one! two}); //~ ERROR expected one of `(`, `[`, or `{`, found `two`
 }

@@ -53,6 +53,7 @@ const EXCEPTIONS: &[&str] = &[
     "utf8parse",          // Apache-2.0 OR MIT, cargo via strip-ansi-escapes
     "vte",                // Apache-2.0 OR MIT, cargo via strip-ansi-escapes
     "sized-chunks",       // MPL-2.0+, cargo via im-rc
+    "bitmaps",            // MPL-2.0+, cargo via im-rc
     // FIXME: this dependency violates the documentation comment above:
     "fortanix-sgx-abi",   // MPL-2.0+, libstd but only for `sgx` target
     "dunce",              // CC0-1.0 mdbook-linkcheck
@@ -134,6 +135,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("polonius-engine"),
     Crate("ppv-lite86"),
     Crate("proc-macro2"),
+    Crate("punycode"),
     Crate("quick-error"),
     Crate("quote"),
     Crate("rand"),

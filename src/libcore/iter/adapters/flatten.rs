@@ -1,7 +1,7 @@
 use crate::fmt;
 use crate::ops::Try;
 
-use super::super::{Iterator, DoubleEndedIterator, FusedIterator};
+use super::super::{DoubleEndedIterator, FusedIterator, Iterator};
 use super::Map;
 
 /// An iterator that maps each element to an iterator, and yields the elements
@@ -15,7 +15,7 @@ use super::Map;
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct FlatMap<I, U: IntoIterator, F> {
-    inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>
+    inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>,
 }
 impl<I: Iterator, U: IntoIterator, F: FnMut(I::Item) -> U> FlatMap<I, U, F> {
     pub(in super::super) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
@@ -28,7 +28,9 @@ impl<I: Clone, U, F: Clone> Clone for FlatMap<I, U, F>
 where
     U: Clone + IntoIterator<IntoIter: Clone>,
 {
-    fn clone(&self) -> Self { FlatMap { inner: self.inner.clone() } }
+    fn clone(&self) -> Self {
+        FlatMap { inner: self.inner.clone() }
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -43,26 +45,35 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
-    where F: FnMut(I::Item) -> U,
+where
+    F: FnMut(I::Item) -> U,
 {
     type Item = U::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<U::Item> { self.inner.next() }
+    fn next(&mut self) -> Option<U::Item> {
+        self.inner.next()
+    }
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
-        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
     {
         self.inner.try_fold(init, fold)
     }
 
     #[inline]
     fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         self.inner.fold(init, fold)
     }
@@ -75,18 +86,24 @@ where
     U: IntoIterator<IntoIter: DoubleEndedIterator>,
 {
     #[inline]
-    fn next_back(&mut self) -> Option<U::Item> { self.inner.next_back() }
+    fn next_back(&mut self) -> Option<U::Item> {
+        self.inner.next_back()
+    }
 
     #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
-        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
     {
         self.inner.try_rfold(init, fold)
     }
 
     #[inline]
     fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         self.inner.rfold(init, fold)
     }
@@ -94,7 +111,12 @@ where
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I, U, F> FusedIterator for FlatMap<I, U, F>
-    where I: FusedIterator, U: IntoIterator, F: FnMut(I::Item) -> U {}
+where
+    I: FusedIterator,
+    U: IntoIterator,
+    F: FnMut(I::Item) -> U,
+{
+}
 
 /// An iterator that flattens one level of nesting in an iterator of things
 /// that can be turned into iterators.
@@ -133,7 +155,9 @@ where
     I: Clone + Iterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
     U: Clone + Iterator,
 {
-    fn clone(&self) -> Self { Flatten { inner: self.inner.clone() } }
+    fn clone(&self) -> Self {
+        Flatten { inner: self.inner.clone() }
+    }
 }
 
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
@@ -145,21 +169,29 @@ where
     type Item = U::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<U::Item> { self.inner.next() }
+    fn next(&mut self) -> Option<U::Item> {
+        self.inner.next()
+    }
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
-        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
     {
         self.inner.try_fold(init, fold)
     }
 
     #[inline]
     fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         self.inner.fold(init, fold)
     }
@@ -172,18 +204,24 @@ where
     U: DoubleEndedIterator,
 {
     #[inline]
-    fn next_back(&mut self) -> Option<U::Item> { self.inner.next_back() }
+    fn next_back(&mut self) -> Option<U::Item> {
+        self.inner.next_back()
+    }
 
     #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
-        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
     {
         self.inner.try_rfold(init, fold)
     }
 
     #[inline]
     fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         self.inner.rfold(init, fold)
     }
@@ -194,7 +232,8 @@ impl<I, U> FusedIterator for Flatten<I>
 where
     I: FusedIterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
     U: Iterator,
-{}
+{
+}
 
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
 /// this type.
@@ -222,7 +261,9 @@ where
     fn next(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.frontiter {
-                if let elt@Some(_) = inner.next() { return elt }
+                if let elt @ Some(_) = inner.next() {
+                    return elt;
+                }
             }
             match self.iter.next() {
                 None => return self.backiter.as_mut()?.next(),
@@ -238,13 +279,16 @@ where
         let lo = flo.saturating_add(blo);
         match (self.iter.size_hint(), fhi, bhi) {
             ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
-            _ => (lo, None)
+            _ => (lo, None),
         }
     }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R where
-        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    fn try_fold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
     {
         #[inline]
         fn flatten<'a, T: IntoIterator, Acc, R: Try<Ok = Acc>>(
@@ -277,7 +321,8 @@ where
 
     #[inline]
     fn fold<Acc, Fold>(self, init: Acc, ref mut fold: Fold) -> Acc
-        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         #[inline]
         fn flatten<U: Iterator, Acc>(
@@ -286,7 +331,8 @@ where
             move |acc, iter| iter.fold(acc, &mut *fold)
         }
 
-        self.frontiter.into_iter()
+        self.frontiter
+            .into_iter()
             .chain(self.iter.map(IntoIterator::into_iter))
             .chain(self.backiter)
             .fold(init, flatten(fold))
@@ -302,7 +348,9 @@ where
     fn next_back(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.backiter {
-                if let elt@Some(_) = inner.next_back() { return elt }
+                if let elt @ Some(_) = inner.next_back() {
+                    return elt;
+                }
             }
             match self.iter.next_back() {
                 None => return self.frontiter.as_mut()?.next_back(),
@@ -312,14 +360,18 @@ where
     }
 
     #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R where
-        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    fn try_rfold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
     {
         #[inline]
         fn flatten<'a, T: IntoIterator, Acc, R: Try<Ok = Acc>>(
             backiter: &'a mut Option<T::IntoIter>,
             fold: &'a mut impl FnMut(Acc, T::Item) -> R,
-        ) -> impl FnMut(Acc, T) -> R + 'a where
+        ) -> impl FnMut(Acc, T) -> R + 'a
+        where
             T::IntoIter: DoubleEndedIterator,
         {
             move |acc, x| {
@@ -348,7 +400,8 @@ where
 
     #[inline]
     fn rfold<Acc, Fold>(self, init: Acc, ref mut fold: Fold) -> Acc
-        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         #[inline]
         fn flatten<U: DoubleEndedIterator, Acc>(
@@ -357,7 +410,8 @@ where
             move |acc, iter| iter.rfold(acc, &mut *fold)
         }
 
-        self.frontiter.into_iter()
+        self.frontiter
+            .into_iter()
             .chain(self.iter.map(IntoIterator::into_iter))
             .chain(self.backiter)
             .rfold(init, flatten(fold))

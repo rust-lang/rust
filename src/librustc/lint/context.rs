@@ -47,8 +47,7 @@ use rustc_error_codes::*;
 /// This is basically the subset of `Context` that we can
 /// build early in the compile pipeline.
 pub struct LintStore {
-    /// Registered lints. The bool is true if the lint was
-    /// added by a plugin.
+    /// Registered lints.
     lints: Vec<&'static Lint>,
 
     /// Constructor functions for each variety of lint pass.
@@ -800,8 +799,13 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 // This shouldn't ever be needed, but just in case:
                 path.push(match trait_ref {
                     Some(trait_ref) => {
-                        Symbol::intern(&format!("<impl {} for {}>", trait_ref,
-                                                    self_ty))
+                        Symbol::intern(
+                            &format!(
+                                "<impl {} for {}>",
+                                trait_ref.print_only_trait_path(),
+                                self_ty
+                            )
+                        )
                     },
                     None => Symbol::intern(&format!("<impl {}>", self_ty)),
                 });

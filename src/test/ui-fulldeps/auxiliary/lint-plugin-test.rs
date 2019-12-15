@@ -6,8 +6,8 @@
 extern crate syntax;
 
 // Load rustc as a plugin to get macros
-#[macro_use]
-extern crate rustc;
+#[macro_use] extern crate rustc;
+#[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
 
 use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass, LintArray};

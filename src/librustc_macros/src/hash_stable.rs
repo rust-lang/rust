@@ -51,6 +51,7 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
     let generic: syn::GenericParam = parse_quote!(__CTX);
     s.add_bounds(synstructure::AddBounds::Generics);
     s.add_impl_generic(generic);
+    s.add_where_predicate(parse_quote!{ __CTX: crate::HashStableContext });
     let body = s.each(|bi| {
         let attrs = parse_attributes(bi.ast());
         if attrs.ignore {

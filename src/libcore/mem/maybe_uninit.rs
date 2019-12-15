@@ -1,3 +1,5 @@
+use crate::any::type_name;
+use crate::fmt;
 use crate::intrinsics;
 use crate::mem::ManuallyDrop;
 
@@ -232,6 +234,13 @@ impl<T: Copy> Clone for MaybeUninit<T> {
     }
 }
 
+#[stable(feature = "maybe_uninit_debug", since = "1.41.0")]
+impl<T> fmt::Debug for MaybeUninit<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad(type_name::<Self>())
+    }
+}
+
 impl<T> MaybeUninit<T> {
     /// Creates a new `MaybeUninit<T>` initialized with the given value.
     /// It is safe to call [`assume_init`] on the return value of this function.
@@ -241,6 +250,10 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: #method.assume_init
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0"),
+    )]
     #[inline(always)]
     pub const fn new(val: T) -> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
@@ -255,6 +268,10 @@ impl<T> MaybeUninit<T> {
     ///
     /// [type]: union.MaybeUninit.html
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0"),
+    )]
     #[inline(always)]
     #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "maybe_uninit_uninit")]
     pub const fn uninit() -> MaybeUninit<T> {

@@ -1,7 +1,11 @@
 //! Item types.
 
 use std::fmt;
+
+use serde::{Serialize, Serializer};
+
 use syntax_pos::hygiene::MacroKind;
+
 use crate::clean;
 
 /// Item type. Corresponds to `clean::ItemEnum` variants.
@@ -45,6 +49,14 @@ pub enum ItemType {
     TraitAlias      = 25,
 }
 
+impl Serialize for ItemType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        (*self as u8).serialize(serializer)
+    }
+}
 
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {

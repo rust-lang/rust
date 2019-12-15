@@ -52,6 +52,13 @@ impl DiagnosticStyledString {
     pub fn push_highlighted<S: Into<String>>(&mut self, t: S) {
         self.0.push(StringPart::Highlighted(t.into()));
     }
+    pub fn push<S: Into<String>>(&mut self, t: S, highlight: bool) {
+        if highlight {
+            self.push_highlighted(t);
+        } else {
+            self.push_normal(t);
+        }
+    }
     pub fn normal<S: Into<String>>(t: S) -> DiagnosticStyledString {
         DiagnosticStyledString(vec![StringPart::Normal(t.into())])
     }
@@ -491,8 +498,18 @@ impl Diagnostic {
         self
     }
 
+    pub fn clear_code(&mut self) -> &mut Self {
+        self.code = None;
+        self
+    }
+
     pub fn get_code(&self) -> Option<DiagnosticId> {
         self.code.clone()
+    }
+
+    pub fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self {
+        self.message[0] = (msg.into(), Style::NoStyle);
+        self
     }
 
     pub fn message(&self) -> String {

@@ -12,4 +12,6 @@ path = "lib.rs"
 pulldown-cmark = { version = "0.5.3", default-features = false }
 minifier = "0.0.33"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 tempfile = "3"

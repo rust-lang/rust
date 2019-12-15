@@ -835,7 +835,7 @@ impl EmitterWriter {
             return vec![];
         }
 
-        // Write the colunmn separator.
+        // Write the column separator.
         //
         // After this we will have:
         //
@@ -906,7 +906,7 @@ impl EmitterWriter {
         //   |  __________
         //   | |    |
         //   | |
-        // 3 |
+        // 3 | |
         // 4 | | }
         //   | |_
         for &(pos, annotation) in &annotations_position {
@@ -920,7 +920,7 @@ impl EmitterWriter {
             if pos > 1 && (annotation.has_label() || annotation.takes_space()) {
                 for p in line_offset + 1..=line_offset + pos {
                     buffer.putc(p,
-                                code_offset + annotation.start_col - margin.computed_left,
+                                (code_offset + annotation.start_col).saturating_sub(left),
                                 '|',
                                 style);
                 }

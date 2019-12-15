@@ -7,7 +7,7 @@
 /// ## For example:
 ///
 /// （arr[i]）
-//~^ ERROR `[i]` cannot be resolved, ignoring it...
+//~^ ERROR `[i]` cannot be resolved, ignoring it.
 pub fn test_ice() {
     unimplemented!();
 }

@@ -138,8 +138,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
-use crate::{convert, fmt, hint, mem, ops::{self, Deref, DerefMut}};
 use crate::pin::Pin;
+use crate::{
+    convert, fmt, hint, mem,
+    ops::{self, Deref, DerefMut},
+};
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -230,7 +233,10 @@ impl<T> Option<T> {
     #[must_use]
     #[inline]
     #[unstable(feature = "option_result_contains", issue = "62358")]
-    pub fn contains<U>(&self, x: &U) -> bool where U: PartialEq<T> {
+    pub fn contains<U>(&self, x: &U) -> bool
+    where
+        U: PartialEq<T>,
+    {
         match self {
             Some(y) => x == y,
             None => false,
@@ -291,16 +297,13 @@ impl<T> Option<T> {
         }
     }
 
-
     /// Converts from [`Pin`]`<&Option<T>>` to `Option<`[`Pin`]`<&T>>`.
     ///
     /// [`Pin`]: ../pin/struct.Pin.html
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
-        unsafe {
-            Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x))
-        }
+        unsafe { Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x)) }
     }
 
     /// Converts from [`Pin`]`<&mut Option<T>>` to `Option<`[`Pin`]`<&mut T>>`.
@@ -309,9 +312,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
-        unsafe {
-            Pin::get_unchecked_mut(self).as_mut().map(|x| Pin::new_unchecked(x))
-        }
+        unsafe { Pin::get_unchecked_mut(self).as_mut().map(|x| Pin::new_unchecked(x)) }
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -690,7 +691,7 @@ impl<T> Option<T> {
     pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
         if let Some(x) = self {
             if predicate(&x) {
-                return Some(x)
+                return Some(x);
             }
         }
         None
@@ -1228,7 +1229,9 @@ impl<T> Default for Option<T> {
     /// assert!(opt.is_none());
     /// ```
     #[inline]
-    fn default() -> Option<T> { None }
+    fn default() -> Option<T> {
+        None
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1302,7 +1305,7 @@ impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
 
 #[derive(Clone, Debug)]
 struct Item<A> {
-    opt: Option<A>
+    opt: Option<A>,
 }
 
 impl<A> Iterator for Item<A> {
@@ -1344,22 +1347,30 @@ unsafe impl<A> TrustedLen for Item<A> {}
 /// [`Option::iter`]: enum.Option.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
-pub struct Iter<'a, A: 'a> { inner: Item<&'a A> }
+pub struct Iter<'a, A: 'a> {
+    inner: Item<&'a A>,
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> Iterator for Iter<'a, A> {
     type Item = &'a A;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a A> { self.inner.next() }
+    fn next(&mut self) -> Option<&'a A> {
+        self.inner.next()
+    }
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a A> { self.inner.next_back() }
+    fn next_back(&mut self) -> Option<&'a A> {
+        self.inner.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1390,22 +1401,30 @@ impl<A> Clone for Iter<'_, A> {
 /// [`Option::iter_mut`]: enum.Option.html#method.iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
-pub struct IterMut<'a, A: 'a> { inner: Item<&'a mut A> }
+pub struct IterMut<'a, A: 'a> {
+    inner: Item<&'a mut A>,
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> Iterator for IterMut<'a, A> {
     type Item = &'a mut A;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a mut A> { self.inner.next() }
+    fn next(&mut self) -> Option<&'a mut A> {
+        self.inner.next()
+    }
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a mut A> { self.inner.next_back() }
+    fn next_back(&mut self) -> Option<&'a mut A> {
+        self.inner.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1427,22 +1446,30 @@ unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 /// [`Option::into_iter`]: enum.Option.html#method.into_iter
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct IntoIter<A> { inner: Item<A> }
+pub struct IntoIter<A> {
+    inner: Item<A>,
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Iterator for IntoIter<A> {
     type Item = A;
 
     #[inline]
-    fn next(&mut self) -> Option<A> { self.inner.next() }
+    fn next(&mut self) -> Option<A> {
+        self.inner.next()
+    }
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> DoubleEndedIterator for IntoIter<A> {
     #[inline]
-    fn next_back(&mut self) -> Option<A> { self.inner.next_back() }
+    fn next_back(&mut self) -> Option<A> {
+        self.inner.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1523,14 +1550,11 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     ///
     /// [`Iterator`]: ../iter/trait.Iterator.html
     #[inline]
-    fn from_iter<I: IntoIterator<Item=Option<A>>>(iter: I) -> Option<V> {
+    fn from_iter<I: IntoIterator<Item = Option<A>>>(iter: I) -> Option<V> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
-        iter.into_iter()
-            .map(|x| x.ok_or(()))
-            .collect::<Result<_, _>>()
-            .ok()
+        iter.into_iter().map(|x| x.ok_or(())).collect::<Result<_, _>>().ok()
     }
 }
 

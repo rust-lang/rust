@@ -1,3 +1,4 @@
+use rustc::hir;
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::lint;
@@ -7,18 +8,16 @@ use rustc::ty::adjustment;
 use rustc_data_structures::fx::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
+use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 
 use syntax::ast;
 use syntax::attr;
 use syntax::errors::{Applicability, pluralize};
-use syntax::feature_gate::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
 use syntax::symbol::Symbol;
 use syntax::util::parser;
 use syntax_pos::{Span, BytePos};
-
-use rustc::hir;
 
 use log::debug;
 
@@ -356,7 +355,9 @@ impl UnusedParens {
         match value.kind {
             ast::ExprKind::Paren(ref inner) => {
                 if !Self::is_expr_parens_necessary(inner, followed_by_block) &&
-                    value.attrs.is_empty() {
+                    value.attrs.is_empty() &&
+                    !value.span.from_expansion()
+                {
                     let expr_text = if let Ok(snippet) = cx.sess().source_map()
                         .span_to_snippet(value.span) {
                             snippet

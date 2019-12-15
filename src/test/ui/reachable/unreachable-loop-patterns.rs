@@ -1,4 +1,4 @@
-#![feature(never_type_fallback)]
+#![feature(never_type, never_type_fallback)]
 #![feature(exhaustive_patterns)]
 
 #![allow(unreachable_code)]

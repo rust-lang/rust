@@ -34,17 +34,25 @@ note: first, the lifetime cannot outlive the lifetime `'a` as defined on the fun
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |      ^^
-   = note: ...so that the expression is assignable:
-           expected &[u8]
-              found &'a [u8]
+note: ...so that the expression is assignable
+  --> $DIR/region-object-lifetime-in-coercion.rs:26:14
+   |
+LL |     Box::new(v)
+   |              ^
+   = note: expected  `&[u8]`
+              found  `&'a [u8]`
 note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 25:9...
   --> $DIR/region-object-lifetime-in-coercion.rs:25:9
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |         ^^
-   = note: ...so that the expression is assignable:
-           expected std::boxed::Box<(dyn Foo + 'b)>
-              found std::boxed::Box<dyn Foo>
+note: ...so that the expression is assignable
+  --> $DIR/region-object-lifetime-in-coercion.rs:26:5
+   |
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^
+   = note: expected  `std::boxed::Box<(dyn Foo + 'b)>`
+              found  `std::boxed::Box<dyn Foo>`
 
 error: aborting due to 4 previous errors
 

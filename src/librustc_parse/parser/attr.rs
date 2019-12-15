@@ -1,11 +1,10 @@
 use super::{SeqSep, Parser, TokenType, PathStyle};
+use rustc_errors::PResult;
 use syntax::attr;
 use syntax::ast;
 use syntax::util::comments;
-use syntax::token::{self, Nonterminal, DelimToken};
-use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax::token::{self, Nonterminal};
 use syntax_pos::{Span, Symbol};
-use errors::PResult;
 
 use log::debug;
 
@@ -181,31 +180,8 @@ impl<'a> Parser<'a> {
             item
         } else {
             let path = self.parse_path(PathStyle::Mod)?;
-            let tokens = if self.check(&token::OpenDelim(DelimToken::Paren)) ||
-               self.check(&token::OpenDelim(DelimToken::Bracket)) ||
-               self.check(&token::OpenDelim(DelimToken::Brace)) {
-                   self.parse_token_tree().into()
-            } else if self.eat(&token::Eq) {
-                let eq = TokenTree::token(token::Eq, self.prev_span);
-                let mut is_interpolated_expr = false;
-                if let token::Interpolated(nt) = &self.token.kind {
-                    if let token::NtExpr(..) = **nt {
-                        is_interpolated_expr = true;
-                    }
-                }
-                let token_tree = if is_interpolated_expr {
-                    // We need to accept arbitrary interpolated expressions to continue
-                    // supporting things like `doc = $expr` that work on stable.
-                    // Non-literal interpolated expressions are rejected after expansion.
-                    self.parse_token_tree()
-                } else {
-                    self.parse_unsuffixed_lit()?.token_tree()
-                };
-                TokenStream::new(vec![eq.into(), token_tree.into()])
-            } else {
-                TokenStream::default()
-            };
-            ast::AttrItem { path, tokens }
+            let args = self.parse_attr_args()?;
+            ast::AttrItem { path, args }
         })
     }
 
@@ -244,7 +220,7 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
+    crate fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
         let lit = self.parse_lit()?;
         debug!("checking if {:?} is unusuffixed", lit);
 
@@ -262,23 +238,34 @@ impl<'a> Parser<'a> {
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
     pub fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
-        self.expect(&token::OpenDelim(token::Paren))?;
-
         let cfg_predicate = self.parse_meta_item()?;
         self.expect(&token::Comma)?;
 
         // Presumably, the majority of the time there will only be one attr.
         let mut expanded_attrs = Vec::with_capacity(1);
-
-        while !self.check(&token::CloseDelim(token::Paren)) {
-            let lo = self.token.span.lo();
+        while self.token.kind != token::Eof {
+            let lo = self.token.span;
             let item = self.parse_attr_item()?;
-            expanded_attrs.push((item, self.prev_span.with_lo(lo)));
-            self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Paren)])?;
+            expanded_attrs.push((item, lo.to(self.prev_span)));
+            if !self.eat(&token::Comma) {
+                break;
+            }
         }
 
-        self.expect(&token::CloseDelim(token::Paren))?;
         Ok((cfg_predicate, expanded_attrs))
+    }
+
+    /// Matches `COMMASEP(meta_item_inner)`.
+    crate fn parse_meta_seq_top(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
+        // Presumably, the majority of the time there will only be one attr.
+        let mut nmis = Vec::with_capacity(1);
+        while self.token.kind != token::Eof {
+            nmis.push(self.parse_meta_item_inner()?);
+            if !self.eat(&token::Comma) {
+                break;
+            }
+        }
+        Ok(nmis)
     }
 
     /// Matches the following grammar (per RFC 1559).

@@ -644,11 +644,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
-            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
-                                           sym::unsized_tuple_coercion,
-                                           self.cause.span,
-                                           feature_gate::GateIssue::Language,
-                                           feature_gate::EXPLAIN_UNSIZED_TUPLE_COERCION);
+            feature_gate::feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::unsized_tuple_coercion,
+                self.cause.span,
+                "unsized tuple coercion is not stable enough for use and is subject to change",
+            )
+            .emit();
         }
 
         Ok(coercion)
@@ -1282,9 +1284,25 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     augment_error(&mut err);
                 }
 
+                if let Some(expr) = expression {
+                    fcx.emit_coerce_suggestions(&mut err, expr, found, expected);
+                }
+
                 // Error possibly reported in `check_assign` so avoid emitting error again.
-                err.emit_unless(expression.filter(|e| fcx.is_assign_to_bool(e, expected))
-                    .is_some());
+                let assign_to_bool = expression
+                    // #67273: Use initial expected type as opposed to `expected`.
+                    // Otherwise we end up using prior coercions in e.g. a `match` expression:
+                    // ```
+                    // match i {
+                    //     0 => true, // Because of this...
+                    //     1 => i = 1, // ...`expected == bool` now, but not when checking `i = 1`.
+                    //     _ => (),
+                    // };
+                    // ```
+                    .filter(|e| fcx.is_assign_to_bool(e, self.expected_ty()))
+                    .is_some();
+
+                err.emit_unless(assign_to_bool);
 
                 self.final_ty = Some(fcx.tcx.types.err);
             }

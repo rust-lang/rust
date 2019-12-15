@@ -1,4 +1,4 @@
-use std::cmp::Ordering::{Equal, Less, Greater};
+use std::cmp::Ordering::{Equal, Greater, Less};
 use std::f64::NAN;
 
 #[test]

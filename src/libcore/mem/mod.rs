@@ -271,6 +271,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
+#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_size_of", since = "1.32.0"))]
 pub const fn size_of<T>() -> usize {
     intrinsics::size_of::<T>()
 }
@@ -371,6 +372,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
+#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_align_of", since = "1.32.0"))]
 pub const fn align_of<T>() -> usize {
     intrinsics::min_align_of::<T>()
 }
@@ -453,6 +455,7 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "needs_drop", since = "1.21.0")]
+#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_needs_drop", since = "1.36.0"))]
 pub const fn needs_drop<T>() -> bool {
     intrinsics::needs_drop::<T>()
 }
@@ -510,7 +513,9 @@ pub unsafe fn zeroed<T>() -> T {
 /// **This function is deprecated.** Use [`MaybeUninit<T>`] instead.
 ///
 /// The reason for deprecation is that the function basically cannot be used
-/// correctly: [the Rust compiler assumes][inv] that values are properly initialized.
+/// correctly: it has the same effect as [`MaybeUninit::uninit().assume_init()`][uninit].
+/// As the [`assume_init` documentation][assume_init] explains,
+/// [the Rust compiler assumes][inv] that values are properly initialized.
 /// As a consequence, calling e.g. `mem::uninitialized::<bool>()` causes immediate
 /// undefined behavior for returning a `bool` that is not definitely either `true`
 /// or `false`. Worse, truly uninitialized memory like what gets returned here
@@ -521,6 +526,8 @@ pub unsafe fn zeroed<T>() -> T {
 /// until they are, it is advisable to avoid them.)
 ///
 /// [`MaybeUninit<T>`]: union.MaybeUninit.html
+/// [uninit]: union.MaybeUninit.html#method.uninit
+/// [assume_init]: union.MaybeUninit.html#method.assume_init
 /// [inv]: union.MaybeUninit.html#initialization-invariant
 #[inline]
 #[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]

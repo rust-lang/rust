@@ -944,10 +944,9 @@ fn drain_filter_complex() {
     }
 }
 
-// Miri does not support catching panics
 // FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(any(miri, target_os = "emscripten")))]
+#[cfg(not(target_os = "emscripten"))]
 fn drain_filter_consumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
@@ -985,7 +984,7 @@ fn drain_filter_consumed_panic() {
         };
         let drain = data.drain_filter(filter);
 
-        // NOTE: The DrainFilter is explictly consumed
+        // NOTE: The DrainFilter is explicitly consumed
         drain.for_each(drop);
     });
 
@@ -999,7 +998,7 @@ fn drain_filter_consumed_panic() {
 
 // FIXME: Re-enable emscripten once it can catch panics
 #[test]
-#[cfg(not(any(miri, target_os = "emscripten")))] // Miri does not support catching panics
+#[cfg(not(target_os = "emscripten"))]
 fn drain_filter_unconsumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
@@ -1081,7 +1080,7 @@ fn test_reserve_exact() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri does not support signalling OOM
+#[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
 fn test_try_reserve() {
 
     // These are the interesting cases:
@@ -1184,7 +1183,7 @@ fn test_try_reserve() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri does not support signalling OOM
+#[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
 fn test_try_reserve_exact() {
 
     // This is exactly the same as test_try_reserve with the method changed.

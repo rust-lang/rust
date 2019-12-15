@@ -1,9 +1,13 @@
-error[E0744]: `while` is not allowed in a `const`
+error[E0658]: `while` is not allowed in a `const`
   --> $DIR/const-labeled-break.rs:10:19
    |
 LL | const CRASH: () = 'a: while break 'a {};
    |                   ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = help: add `#![feature(const_loop)]` to the crate attributes to enable
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0744`.
+For more information about this error, try `rustc --explain E0658`.

@@ -31,7 +31,8 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::error;
-use std::fmt::{self, Formatter, Write as FmtWrite};
+
+use std::fmt::{self, Formatter, Write};
 use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -42,10 +43,10 @@ use std::sync::Arc;
 use std::rc::Rc;
 
 use errors;
-use serialize::json::{ToJson, Json, as_json};
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeSeq;
 use syntax::ast;
 use syntax::edition::Edition;
-use syntax::feature_gate::UnstableFeatures;
 use syntax::print::pprust;
 use syntax::source_map::FileName;
 use syntax::symbol::{Symbol, sym};
@@ -56,6 +57,7 @@ use rustc::middle::stability;
 use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
+use rustc_feature::UnstableFeatures;
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, Mutability};
 use crate::config::RenderOptions;
@@ -303,19 +305,22 @@ struct IndexItem {
     search_type: Option<IndexItemFunctionType>,
 }
 
-impl ToJson for IndexItem {
-    fn to_json(&self) -> Json {
+impl Serialize for IndexItem {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
 
-        let mut data = Vec::with_capacity(6);
-        data.push((self.ty as usize).to_json());
-        data.push(self.name.to_json());
-        data.push(self.path.to_json());
-        data.push(self.desc.to_json());
-        data.push(self.parent_idx.to_json());
-        data.push(self.search_type.to_json());
-
-        Json::Array(data)
+        (
+            self.ty,
+            &self.name,
+            &self.path,
+            &self.desc,
+            self.parent_idx,
+            &self.search_type,
+        )
+            .serialize(serializer)
     }
 }
 
@@ -326,18 +331,20 @@ struct Type {
     generics: Option<Vec<String>>,
 }
 
-impl ToJson for Type {
-    fn to_json(&self) -> Json {
-        match self.name {
-            Some(ref name) => {
-                let mut data = Vec::with_capacity(2);
-                data.push(name.to_json());
-                if let Some(ref generics) = self.generics {
-                    data.push(generics.to_json());
-                }
-                Json::Array(data)
+impl Serialize for Type {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(name) = &self.name {
+            let mut seq = serializer.serialize_seq(None)?;
+            seq.serialize_element(&name)?;
+            if let Some(generics) = &self.generics {
+                seq.serialize_element(&generics)?;
             }
-            None => Json::Null,
+            seq.end()
+        } else {
+            serializer.serialize_none()
         }
     }
 }
@@ -349,26 +356,29 @@ struct IndexItemFunctionType {
     output: Option<Vec<Type>>,
 }
 
-impl ToJson for IndexItemFunctionType {
-    fn to_json(&self) -> Json {
+impl Serialize for IndexItemFunctionType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         // If we couldn't figure out a type, just write `null`.
         let mut iter = self.inputs.iter();
         if match self.output {
             Some(ref output) => iter.chain(output.iter()).any(|ref i| i.name.is_none()),
             None => iter.any(|ref i| i.name.is_none()),
         } {
-            Json::Null
+            serializer.serialize_none()
         } else {
-            let mut data = Vec::with_capacity(2);
-            data.push(self.inputs.to_json());
-            if let Some(ref output) = self.output {
+            let mut seq = serializer.serialize_seq(None)?;
+            seq.serialize_element(&self.inputs)?;
+            if let Some(output) = &self.output {
                 if output.len() > 1 {
-                    data.push(output.to_json());
+                    seq.serialize_element(&output)?;
                 } else {
-                    data.push(output[0].to_json());
+                    seq.serialize_element(&output[0])?;
                 }
             }
-            Json::Array(data)
+            seq.end()
         }
     }
 }
@@ -596,7 +606,7 @@ fn write_shared(
     // To avoid theme switch latencies as much as possible, we put everything theme related
     // at the beginning of the html files into another js file.
     let theme_js = format!(
-r#"var themes = document.getElementById("theme-choices");
+        r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
 
 function showThemeButtonState() {{
@@ -642,12 +652,11 @@ themePicker.onblur = handleThemeButtonsBlur;
     }};
     but.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);
-}});"#,
-                 as_json(&themes));
-    write(cx.dst.join(&format!("theme{}.js", cx.shared.resource_suffix)),
-          theme_js.as_bytes()
-    )?;
+}});"#, serde_json::to_string(&themes).unwrap());
 
+    write_minify(&cx.shared.fs, cx.path("theme.js"),
+                 &theme_js,
+                 options.enable_minification)?;
     write_minify(&cx.shared.fs, cx.path("main.js"),
                  static_files::MAIN_JS,
                  options.enable_minification)?;
@@ -715,19 +724,13 @@ themePicker.onblur = handleThemeButtonsBlur;
         path: &Path,
         krate: &str,
         key: &str,
-        for_search_index: bool,
-    ) -> io::Result<(Vec<String>, Vec<String>, Vec<String>)> {
+    ) -> io::Result<(Vec<String>, Vec<String>)> {
         let mut ret = Vec::new();
         let mut krates = Vec::new();
-        let mut variables = Vec::new();
 
         if path.exists() {
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
-                if for_search_index && line.starts_with("var R") {
-                    variables.push(line.clone());
-                    continue;
-                }
                 if !line.starts_with(key) {
                     continue;
                 }
@@ -741,7 +744,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                                  .unwrap_or_else(|| String::new()));
             }
         }
-        Ok((ret, krates, variables))
+        Ok((ret, krates))
     }
 
     fn show_item(item: &IndexItem, krate: &str) -> String {
@@ -756,7 +759,7 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     let dst = cx.dst.join(&format!("aliases{}.js", cx.shared.resource_suffix));
     {
-        let (mut all_aliases, _, _) = try_err!(collect(&dst, &krate.name, "ALIASES", false), &dst);
+        let (mut all_aliases, _) = try_err!(collect(&dst, &krate.name, "ALIASES"), &dst);
         let mut output = String::with_capacity(100);
         for (alias, items) in &cx.cache.aliases {
             if items.is_empty() {
@@ -853,9 +856,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
 
         let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
-        let (mut all_sources, _krates, _) = try_err!(collect(&dst, &krate.name, "sourcesIndex",
-                                                             false),
-                                                     &dst);
+        let (mut all_sources, _krates) = try_err!(collect(&dst, &krate.name, "sourcesIndex"), &dst);
         all_sources.push(format!("sourcesIndex[\"{}\"] = {};",
                                  &krate.name,
                                  hierarchy.to_json_string()));
@@ -867,23 +868,18 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     // Update the search index
     let dst = cx.dst.join(&format!("search-index{}.js", cx.shared.resource_suffix));
-    let (mut all_indexes, mut krates, variables) = try_err!(collect(&dst,
-                                                                    &krate.name,
-                                                                    "searchIndex",
-                                                                    true), &dst);
+    let (mut all_indexes, mut krates) = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
     all_indexes.push(search_index);
 
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
     {
-        let mut v = String::from("var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={};\n");
-        v.push_str(&minify_replacer(
-            &format!("{}\n{}", variables.join(""), all_indexes.join("\n")),
-            options.enable_minification));
+        let mut v = String::from("var searchIndex={};\n");
+        v.push_str(&all_indexes.join("\n"));
         // "addSearchOptions" has to be called first so the crate filtering can be set before the
         // search might start (if it's set into the URL for example).
-        v.push_str("addSearchOptions(searchIndex);initSearch(searchIndex);");
+        v.push_str("\naddSearchOptions(searchIndex);initSearch(searchIndex);");
         cx.shared.fs.write(&dst, &v)?;
     }
     if options.enable_index_page {
@@ -946,31 +942,47 @@ themePicker.onblur = handleThemeButtonsBlur;
             }
         };
 
-        let mut have_impls = false;
-        let mut implementors = format!(r#"implementors["{}"] = ["#, krate.name);
-        for imp in imps {
-            // If the trait and implementation are in the same crate, then
-            // there's no need to emit information about it (there's inlining
-            // going on). If they're in different crates then the crate defining
-            // the trait will be interested in our implementation.
-            if imp.impl_item.def_id.krate == did.krate { continue }
-            // If the implementation is from another crate then that crate
-            // should add it.
-            if !imp.impl_item.def_id.is_local() { continue }
-            have_impls = true;
-            write!(implementors, "{{text:{},synthetic:{},types:{}}},",
-                   as_json(&imp.inner_impl().print().to_string()),
-                   imp.inner_impl().synthetic,
-                   as_json(&collect_paths_for_type(imp.inner_impl().for_.clone()))).unwrap();
+        #[derive(Serialize)]
+        struct Implementor {
+            text: String,
+            synthetic: bool,
+            types: Vec<String>,
         }
-        implementors.push_str("];");
+
+        let implementors = imps
+            .iter()
+            .filter_map(|imp| {
+                // If the trait and implementation are in the same crate, then
+                // there's no need to emit information about it (there's inlining
+                // going on). If they're in different crates then the crate defining
+                // the trait will be interested in our implementation.
+                //
+                // If the implementation is from another crate then that crate
+                // should add it.
+                if imp.impl_item.def_id.krate == did.krate || !imp.impl_item.def_id.is_local() {
+                    None
+                } else {
+                    Some(Implementor {
+                        text: imp.inner_impl().print().to_string(),
+                        synthetic: imp.inner_impl().synthetic,
+                        types: collect_paths_for_type(imp.inner_impl().for_.clone()),
+                    })
+                }
+            })
+            .collect::<Vec<_>>();
 
         // Only create a js file if we have impls to add to it. If the trait is
         // documented locally though we always create the file to avoid dead
         // links.
-        if !have_impls && !cx.cache.paths.contains_key(&did) {
+        if implementors.is_empty() && !cx.cache.paths.contains_key(&did) {
             continue;
         }
+
+        let implementors = format!(
+            r#"implementors["{}"] = {};"#,
+            krate.name,
+            serde_json::to_string(&implementors).unwrap()
+        );
 
         let mut mydst = dst.clone();
         for part in &remote_path[..remote_path.len() - 1] {
@@ -981,9 +993,8 @@ themePicker.onblur = handleThemeButtonsBlur;
                             remote_item_type,
                             remote_path[remote_path.len() - 1]));
 
-        let (mut all_implementors, _, _) = try_err!(collect(&mydst, &krate.name, "implementors",
-                                                            false),
-                                                    &mydst);
+        let (mut all_implementors, _) = try_err!(collect(&mydst, &krate.name, "implementors"),
+                                                 &mydst);
         all_implementors.push(implementors);
         // Sort the implementors by crate so the file will be generated
         // identically even with rustdoc running in parallel.
@@ -1017,68 +1028,6 @@ fn write_minify(fs:&DocFS, dst: PathBuf, contents: &str, enable_minification: bo
         }
     } else {
         fs.write(dst, contents.as_bytes())
-    }
-}
-
-fn minify_replacer(
-    contents: &str,
-    enable_minification: bool,
-) -> String {
-    use minifier::js::{simple_minify, Keyword, ReservedChar, Token, Tokens};
-
-    if enable_minification {
-        let tokens: Tokens<'_> = simple_minify(contents)
-            .into_iter()
-            .filter(|(f, next)| {
-                // We keep backlines.
-                minifier::js::clean_token_except(f, next, &|c: &Token<'_>| {
-                    c.get_char() != Some(ReservedChar::Backline)
-                })
-            })
-            .map(|(f, _)| {
-                minifier::js::replace_token_with(f, &|t: &Token<'_>| {
-                    match *t {
-                        Token::Keyword(Keyword::Null) => Some(Token::Other("N")),
-                        Token::String(s) => {
-                            let s = &s[1..s.len() -1]; // The quotes are included
-                            if s.is_empty() {
-                                Some(Token::Other("E"))
-                            } else if s == "t" {
-                                Some(Token::Other("T"))
-                            } else if s == "u" {
-                                Some(Token::Other("U"))
-                            } else {
-                                None
-                            }
-                        }
-                        _ => None,
-                    }
-                })
-            })
-            .collect::<Vec<_>>()
-            .into();
-        let o = tokens.apply(|f| {
-            // We add a backline after the newly created variables.
-            minifier::js::aggregate_strings_into_array_with_separation_filter(
-                f,
-                "R",
-                Token::Char(ReservedChar::Backline),
-                // This closure prevents crates' names from being aggregated.
-                //
-                // The point here is to check if the string is preceded by '[' and
-                // "searchIndex". If so, it means this is a crate name and that it
-                // shouldn't be aggregated.
-                |tokens, pos| {
-                    pos < 2 ||
-                    !tokens[pos - 1].eq_char(ReservedChar::OpenBracket) ||
-                    tokens[pos - 2].get_other() != Some("searchIndex")
-                }
-            )
-        })
-        .to_string();
-        format!("{}\n", o)
-    } else {
-        format!("{}\n", contents)
     }
 }
 
@@ -1533,7 +1482,7 @@ impl Context {
             if !self.render_redirect_pages {
                 let items = self.build_sidebar_items(&m);
                 let js_dst = self.dst.join("sidebar-items.js");
-                let v = format!("initSidebarItems({});", as_json(&items));
+                let v = format!("initSidebarItems({});", serde_json::to_string(&items).unwrap());
                 scx.fs.write(&js_dst, &v)?;
             }
 
@@ -2359,12 +2308,23 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut Buffer,
 fn render_impls(cx: &Context, w: &mut Buffer,
                 traits: &[&&Impl],
                 containing_item: &clean::Item) {
-    for i in traits {
-        let did = i.trait_did().unwrap();
-        let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
-        render_impl(w, cx, i, assoc_link,
-                    RenderMode::Normal, containing_item.stable_since(), true, None, false, true);
-    }
+    let mut impls = traits.iter()
+        .map(|i| {
+            let did = i.trait_did().unwrap();
+            let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
+            let mut buffer = if w.is_for_html() {
+                Buffer::html()
+            } else {
+                Buffer::new()
+            };
+            render_impl(&mut buffer, cx, i, assoc_link,
+                        RenderMode::Normal, containing_item.stable_since(),
+                        true, None, false, true);
+            buffer.into_inner()
+        })
+        .collect::<Vec<_>>();
+    impls.sort();
+    w.write_str(&impls.join(""));
 }
 
 fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool) -> String {
@@ -2624,8 +2584,11 @@ fn item_trait(
             write_loading_content(w, "</div>");
         }
     }
-    write!(w, r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
-           as_json(&synthetic_types));
+    write!(
+        w,
+        r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
+        serde_json::to_string(&synthetic_types).unwrap(),
+    );
 
     write!(w, r#"<script type="text/javascript" async
                          src="{root_path}/implementors/{path}/{ty}.{name}.js">

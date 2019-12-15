@@ -319,6 +319,7 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_ipv4", since = "1.32.0"))]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         // FIXME: should just be u32::from_be_bytes([a, b, c, d]),
         // once that method is no longer rustc_const_unstable
@@ -406,6 +407,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_unspecified(), false);
     /// ```
     #[stable(feature = "ip_shared", since = "1.12.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_ipv4", since = "1.32.0"))]
     pub const fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
     }
@@ -1015,6 +1017,7 @@ impl Ipv6Addr {
     /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_ipv6", since = "1.32.0"))]
     pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16,
                      g: u16, h: u16) -> Ipv6Addr {
         Ipv6Addr {
@@ -1480,6 +1483,7 @@ impl Ipv6Addr {
     ///            [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     /// ```
     #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
+    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_ipv6", since = "1.32.0"))]
     pub const fn octets(&self) -> [u8; 16] {
         self.inner.s6_addr
     }

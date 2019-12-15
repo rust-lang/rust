@@ -9,8 +9,8 @@ LL | |         Some(&mut self.0)
 LL | |     }
    | |_____^ lifetime mismatch
    |
-   = note: expected fn pointer `fn(&mut RepeatMut<'a, T>) -> std::option::Option<&mut T>`
-              found fn pointer `fn(&'a mut RepeatMut<'a, T>) -> std::option::Option<&mut T>`
+   = note: expected fn pointer `fn(&mut RepeatMut<'a, T>) -> std::option::Option<_>`
+              found fn pointer `fn(&'a mut RepeatMut<'a, T>) -> std::option::Option<_>`
 note: the anonymous lifetime #1 defined on the method body at 6:5...
   --> $DIR/issue-37884.rs:6:5
    |

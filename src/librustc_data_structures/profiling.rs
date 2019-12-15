@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::thread::ThreadId;
 use std::u32;
 
-use measureme::{StringId, TimestampKind};
+use measureme::{StringId};
 
 /// MmapSerializatioSink is faster on macOS and Linux
 /// but FileSerializationSink is faster on Windows
@@ -63,8 +63,8 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("incr-cache-load", EventFilter::INCR_CACHE_LOADS),
 ];
 
-fn thread_id_to_u64(tid: ThreadId) -> u64 {
-    unsafe { mem::transmute::<ThreadId, u64>(tid) }
+fn thread_id_to_u32(tid: ThreadId) -> u32 {
+    unsafe { mem::transmute::<ThreadId, u64>(tid) as u32 }
 }
 
 
@@ -149,11 +149,10 @@ impl SelfProfilerRef {
     /// Record a query in-memory cache hit.
     #[inline(always)]
     pub fn query_cache_hit(&self, query_name: impl QueryName) {
-        self.non_guard_query_event(
+        self.instant_query_event(
             |profiler| profiler.query_cache_hit_event_kind,
             query_name,
             EventFilter::QUERY_CACHE_HITS,
-            TimestampKind::Instant,
         );
     }
 
@@ -184,22 +183,20 @@ impl SelfProfilerRef {
     }
 
     #[inline(always)]
-    fn non_guard_query_event(
+    fn instant_query_event(
         &self,
         event_kind: fn(&SelfProfiler) -> StringId,
         query_name: impl QueryName,
         event_filter: EventFilter,
-        timestamp_kind: TimestampKind
     ) {
         drop(self.exec(event_filter, |profiler| {
             let event_id = SelfProfiler::get_query_name_string_id(query_name);
-            let thread_id = thread_id_to_u64(std::thread::current().id());
+            let thread_id = thread_id_to_u32(std::thread::current().id());
 
-            profiler.profiler.record_event(
+            profiler.profiler.record_instant_event(
                 event_kind(profiler),
                 event_id,
                 thread_id,
-                timestamp_kind,
             );
 
             TimingGuard::none()
@@ -306,7 +303,7 @@ impl<'a> TimingGuard<'a> {
         event_kind: StringId,
         event_id: StringId,
     ) -> TimingGuard<'a> {
-        let thread_id = thread_id_to_u64(std::thread::current().id());
+        let thread_id = thread_id_to_u32(std::thread::current().id());
         let raw_profiler = &profiler.profiler;
         let timing_guard = raw_profiler.start_recording_interval_event(event_kind,
                                                                        event_id,

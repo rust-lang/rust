@@ -51,6 +51,8 @@
 //! Additionally, the algorithm is geared towards finding *any* solution rather
 //! than finding a number of solutions (there are normally quite a few).
 
+use crate::creader::CStore;
+
 use rustc::hir::def_id::CrateNum;
 use rustc::middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use rustc::middle::cstore::{self, DepKind};
@@ -184,7 +186,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
     //
     // Things like allocators and panic runtimes may not have been activated
     // quite yet, so do so here.
-    activate_injected_dep(tcx.injected_panic_runtime(), &mut ret,
+    activate_injected_dep(CStore::from_tcx(tcx).injected_panic_runtime(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
 
     // When dylib B links to dylib A, then when using B we must also link to A.
@@ -263,7 +265,7 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
     // Our allocator/panic runtime may not have been linked above if it wasn't
     // explicitly linked, which is the case for any injected dependency. Handle
     // that here and activate them.
-    activate_injected_dep(tcx.injected_panic_runtime(), &mut ret,
+    activate_injected_dep(CStore::from_tcx(tcx).injected_panic_runtime(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
 
     Some(ret)

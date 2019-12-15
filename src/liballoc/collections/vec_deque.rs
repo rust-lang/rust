@@ -144,11 +144,23 @@ impl<T: Clone> Clone for VecDeque<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T> Drop for VecDeque<T> {
     fn drop(&mut self) {
+        /// Runs the destructor for all items in the slice when it gets dropped (normally or
+        /// during unwinding).
+        struct Dropper<'a, T>(&'a mut [T]);
+
+        impl<'a, T> Drop for Dropper<'a, T> {
+            fn drop(&mut self) {
+                unsafe {
+                    ptr::drop_in_place(self.0);
+                }
+            }
+        }
+
         let (front, back) = self.as_mut_slices();
         unsafe {
+            let _back_dropper = Dropper(back);
             // use drop for [T]
             ptr::drop_in_place(front);
-            ptr::drop_in_place(back);
         }
         // RawVec handles deallocation
     }
@@ -2809,7 +2821,22 @@ impl<'a, T> IntoIterator for &'a mut VecDeque<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Extend<A> for VecDeque<A> {
     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T) {
-        iter.into_iter().for_each(move |elt| self.push_back(elt));
+        // This function should be the moral equivalent of:
+        //
+        //      for item in iter.into_iter() {
+        //          self.push_back(item);
+        //      }
+        let mut iter = iter.into_iter();
+        while let Some(element) = iter.next() {
+            if self.len() == self.capacity() {
+                let (lower, _) = iter.size_hint();
+                self.reserve(lower.saturating_add(1));
+            }
+
+            let head = self.head;
+            self.head = self.wrap_add(self.head, 1);
+            unsafe { self.buffer_write(head, element); }
+        }
     }
 }
 

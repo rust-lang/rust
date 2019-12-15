@@ -34,11 +34,5 @@ error: index out of bounds: the len is 1 but the index is 1
 LL |     let _e = [5u8][1];
    |              ^^^^^^^^
 
-error: this expression will panic at runtime
-  --> $DIR/const-err3.rs:24:14
-   |
-LL |     let _e = [5u8][1];
-   |              ^^^^^^^^ index out of bounds: the len is 1 but the index is 1
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 

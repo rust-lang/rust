@@ -433,7 +433,7 @@ impl Step for Std {
         builder.info(&format!("Documenting stage{} std ({})", stage, target));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler_for(stage, builder.config.build, target);
+        let compiler = builder.compiler(stage, builder.config.build);
 
         builder.ensure(compile::Std { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Std)
@@ -541,7 +541,7 @@ impl Step for Rustc {
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
         cargo.env("RUSTDOCFLAGS", "--document-private-items --passes strip-hidden");
-        compile::rustc_cargo(builder, &mut cargo);
+        compile::rustc_cargo(builder, &mut cargo, target);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
         cargo.arg("--no-deps");

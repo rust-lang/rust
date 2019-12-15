@@ -1,5 +1,4 @@
 #![stable(feature = "", since = "1.30.0")]
-
 #![allow(non_camel_case_types)]
 
 //! Utilities related to FFI bindings.
@@ -36,12 +35,20 @@ use crate::ops::{Deref, DerefMut};
 #[repr(u8)]
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub enum c_void {
-    #[unstable(feature = "c_void_variant", reason = "temporary implementation detail",
-               issue = "0")]
-    #[doc(hidden)] __variant1,
-    #[unstable(feature = "c_void_variant", reason = "temporary implementation detail",
-               issue = "0")]
-    #[doc(hidden)] __variant2,
+    #[unstable(
+        feature = "c_void_variant",
+        reason = "temporary implementation detail",
+        issue = "0"
+    )]
+    #[doc(hidden)]
+    __variant1,
+    #[unstable(
+        feature = "c_void_variant",
+        reason = "temporary implementation detail",
+        issue = "0"
+    )]
+    #[doc(hidden)]
+    __variant2,
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -53,17 +60,20 @@ impl fmt::Debug for c_void {
 
 /// Basic implementation of a `va_list`.
 // The name is WIP, using `VaListImpl` for now.
-#[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-              not(target_arch = "x86_64")),
-          all(target_arch = "aarch64", target_os = "ios"),
-          target_arch = "wasm32",
-          target_arch = "asmjs",
-          windows))]
+#[cfg(any(
+    all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
+    all(target_arch = "aarch64", target_os = "ios"),
+    target_arch = "wasm32",
+    target_arch = "asmjs",
+    windows
+))]
 #[repr(transparent)]
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 #[lang = "va_list"]
 pub struct VaListImpl<'f> {
     ptr: *mut c_void,
@@ -73,16 +83,19 @@ pub struct VaListImpl<'f> {
     _marker: PhantomData<&'f mut &'f c_void>,
 }
 
-#[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-              not(target_arch = "x86_64")),
-          all(target_arch = "aarch64", target_os = "ios"),
-          target_arch = "wasm32",
-          target_arch = "asmjs",
-          windows))]
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[cfg(any(
+    all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
+    all(target_arch = "aarch64", target_os = "ios"),
+    target_arch = "wasm32",
+    target_arch = "asmjs",
+    windows
+))]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<'f> fmt::Debug for VaListImpl<'f> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "va_list* {:p}", self.ptr)
@@ -97,10 +110,12 @@ impl<'f> fmt::Debug for VaListImpl<'f> {
 #[cfg(all(target_arch = "aarch64", not(target_os = "ios"), not(windows)))]
 #[repr(C)]
 #[derive(Debug)]
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 #[lang = "va_list"]
 pub struct VaListImpl<'f> {
     stack: *mut c_void,
@@ -115,10 +130,12 @@ pub struct VaListImpl<'f> {
 #[cfg(all(target_arch = "powerpc", not(windows)))]
 #[repr(C)]
 #[derive(Debug)]
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 #[lang = "va_list"]
 pub struct VaListImpl<'f> {
     gpr: u8,
@@ -133,10 +150,12 @@ pub struct VaListImpl<'f> {
 #[cfg(all(target_arch = "x86_64", not(windows)))]
 #[repr(C)]
 #[derive(Debug)]
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 #[lang = "va_list"]
 pub struct VaListImpl<'f> {
     gp_offset: i32,
@@ -149,76 +168,86 @@ pub struct VaListImpl<'f> {
 /// A wrapper for a `va_list`
 #[repr(transparent)]
 #[derive(Debug)]
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 pub struct VaList<'a, 'f: 'a> {
-    #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-                  not(target_arch = "x86_64")),
-              all(target_arch = "aarch64", target_os = "ios"),
-              target_arch = "wasm32",
-              target_arch = "asmjs",
-              windows))]
+    #[cfg(any(
+        all(
+            not(target_arch = "aarch64"),
+            not(target_arch = "powerpc"),
+            not(target_arch = "x86_64")
+        ),
+        all(target_arch = "aarch64", target_os = "ios"),
+        target_arch = "wasm32",
+        target_arch = "asmjs",
+        windows
+    ))]
     inner: VaListImpl<'f>,
 
-    #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc",
-                  target_arch = "x86_64"),
-              any(not(target_arch = "aarch64"), not(target_os = "ios")),
-              not(target_arch = "wasm32"),
-              not(target_arch = "asmjs"),
-              not(windows)))]
+    #[cfg(all(
+        any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
+        any(not(target_arch = "aarch64"), not(target_os = "ios")),
+        not(target_arch = "wasm32"),
+        not(target_arch = "asmjs"),
+        not(windows)
+    ))]
     inner: &'a mut VaListImpl<'f>,
 
     _marker: PhantomData<&'a mut VaListImpl<'f>>,
 }
 
-#[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-              not(target_arch = "x86_64")),
-          all(target_arch = "aarch64", target_os = "ios"),
-          target_arch = "wasm32",
-          target_arch = "asmjs",
-          windows))]
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[cfg(any(
+    all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
+    all(target_arch = "aarch64", target_os = "ios"),
+    target_arch = "wasm32",
+    target_arch = "asmjs",
+    windows
+))]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<'f> VaListImpl<'f> {
     /// Convert a `VaListImpl` into a `VaList` that is binary-compatible with C's `va_list`.
     #[inline]
     pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
-        VaList {
-            inner: VaListImpl { ..*self },
-            _marker: PhantomData,
-        }
+        VaList { inner: VaListImpl { ..*self }, _marker: PhantomData }
     }
 }
 
-#[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc",
-              target_arch = "x86_64"),
-          any(not(target_arch = "aarch64"), not(target_os = "ios")),
-          not(target_arch = "wasm32"),
-          not(target_arch = "asmjs"),
-          not(windows)))]
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[cfg(all(
+    any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
+    any(not(target_arch = "aarch64"), not(target_os = "ios")),
+    not(target_arch = "wasm32"),
+    not(target_arch = "asmjs"),
+    not(windows)
+))]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<'f> VaListImpl<'f> {
     /// Convert a `VaListImpl` into a `VaList` that is binary-compatible with C's `va_list`.
     #[inline]
     pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
-        VaList {
-            inner: self,
-            _marker: PhantomData,
-        }
+        VaList { inner: self, _marker: PhantomData }
     }
 }
 
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<'a, 'f: 'a> Deref for VaList<'a, 'f> {
     type Target = VaListImpl<'f>;
 
@@ -228,10 +257,12 @@ impl<'a, 'f: 'a> Deref for VaList<'a, 'f> {
     }
 }
 
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
     #[inline]
     fn deref_mut(&mut self) -> &mut VaListImpl<'f> {
@@ -252,10 +283,12 @@ mod sealed_trait {
     /// Trait which whitelists the allowed types to be used with [VaList::arg]
     ///
     /// [VaList::va_arg]: struct.VaList.html#method.arg
-    #[unstable(feature = "c_variadic",
-               reason = "the `c_variadic` feature has not been properly tested on \
-                         all supported platforms",
-               issue = "44930")]
+    #[unstable(
+        feature = "c_variadic",
+        reason = "the `c_variadic` feature has not been properly tested on \
+                  all supported platforms",
+        issue = "44930"
+    )]
     pub trait VaArgSafe {}
 }
 
@@ -271,25 +304,31 @@ macro_rules! impl_va_arg_safe {
     }
 }
 
-impl_va_arg_safe!{i8, i16, i32, i64, usize}
-impl_va_arg_safe!{u8, u16, u32, u64, isize}
-impl_va_arg_safe!{f64}
+impl_va_arg_safe! {i8, i16, i32, i64, usize}
+impl_va_arg_safe! {u8, u16, u32, u64, isize}
+impl_va_arg_safe! {f64}
 
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<T> sealed_trait::VaArgSafe for *mut T {}
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<T> sealed_trait::VaArgSafe for *const T {}
 
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<'f> VaListImpl<'f> {
     /// Advance to the next arg.
     #[inline]
@@ -299,7 +338,9 @@ impl<'f> VaListImpl<'f> {
 
     /// Copies the `va_list` at the current location.
     pub unsafe fn with_copy<F, R>(&self, f: F) -> R
-            where F: for<'copy> FnOnce(VaList<'copy, 'f>) -> R {
+    where
+        F: for<'copy> FnOnce(VaList<'copy, 'f>) -> R,
+    {
         let mut ap = self.clone();
         let ret = f(ap.as_va_list());
         va_end(&mut ap);
@@ -307,10 +348,12 @@ impl<'f> VaListImpl<'f> {
     }
 }
 
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<'f> Clone for VaListImpl<'f> {
     #[inline]
     fn clone(&self) -> Self {
@@ -323,10 +366,12 @@ impl<'f> Clone for VaListImpl<'f> {
     }
 }
 
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
 impl<'f> Drop for VaListImpl<'f> {
     fn drop(&mut self) {
         // FIXME: this should call `va_end`, but there's no clean way to

@@ -16,13 +16,13 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |     r#union Test;
    |             ^^^^ expected one of 8 possible tokens
 
-error[E0425]: cannot find value `if` in this scope
+error[E0425]: cannot find value `r#if` in this scope
   --> $DIR/raw-literal-keywords.rs:14:13
    |
 LL |     let _ = r#if;
    |             ^^^^ not found in this scope
 
-error[E0425]: cannot find value `struct` in this scope
+error[E0425]: cannot find value `r#struct` in this scope
   --> $DIR/raw-literal-keywords.rs:18:13
    |
 LL |     let _ = r#struct;

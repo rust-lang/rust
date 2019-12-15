@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::str;
 use errors;
-use crate::syntax::feature_gate::UnstableFeatures;
+use rustc_feature::UnstableFeatures;
 use crate::syntax::edition::Edition;
 use crate::html::markdown::{IdMap, ErrorCodes, Markdown, Playground};
 

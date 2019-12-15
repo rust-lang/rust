@@ -1,8 +1,8 @@
 error[E0658]: compiler plugins are deprecated
   --> $DIR/gated-plugin.rs:3:1
    |
-LL | #![plugin(attr_plugin_test)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![plugin(empty_plugin)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29597
    = help: add `#![feature(plugin)]` to the crate attributes to enable
@@ -10,8 +10,8 @@ LL | #![plugin(attr_plugin_test)]
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/gated-plugin.rs:3:1
    |
-LL | #![plugin(attr_plugin_test)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
+LL | #![plugin(empty_plugin)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
    |
    = note: `#[warn(deprecated)]` on by default
 

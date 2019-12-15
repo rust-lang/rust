@@ -13,3 +13,4 @@ LL |     with_closure(|x: u32, y: i32| {
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0631`.

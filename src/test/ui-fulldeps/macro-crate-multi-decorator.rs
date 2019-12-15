@@ -1,9 +1,4 @@
-// run-pass
-
-#![allow(plugin_as_library)]
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
+// check-pass
 // aux-build:macro-crate-test.rs
 // ignore-stage1
 

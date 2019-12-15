@@ -65,7 +65,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => false,
                 };
 
-                unpack!(block = this.as_local_rvalue(block, source));
+                // (#66975) Source could be a const of type `!`, so has to
+                // exist in the generated MIR.
+                unpack!(block = this.as_temp(
+                    block,
+                    this.local_scope(),
+                    source,
+                    Mutability::Mut,
+                ));
 
                 // This is an optimization. If the expression was a call then we already have an
                 // unreachable block. Don't bother to terminate it and create a new one.
@@ -227,9 +234,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         mutability: Mutability::Mut,
                         ty: ptr_ty,
                         user_ty: UserTypeProjections::none(),
-                        name: None,
                         source_info,
-                        visibility_scope: source_info.scope,
                         internal: true,
                         local_info: LocalInfo::Other,
                         is_block_tail: None,

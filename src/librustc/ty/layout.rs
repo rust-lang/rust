@@ -2339,6 +2339,76 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
     }
 }
 
+
+impl<'tcx> ty::Instance<'tcx> {
+    // NOTE(eddyb) this is private to avoid using it from outside of
+    // `FnAbi::of_instance` - any other uses are either too high-level
+    // for `Instance` (e.g. typeck would use `Ty::fn_sig` instead),
+    // or should go through `FnAbi` instead, to avoid losing any
+    // adjustments `FnAbi::of_instance` might be performing.
+    fn fn_sig_for_fn_abi(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
+        let ty = self.ty(tcx);
+        match ty.kind {
+            ty::FnDef(..) |
+            // Shims currently have type FnPtr. Not sure this should remain.
+            ty::FnPtr(_) => {
+                let mut sig = ty.fn_sig(tcx);
+                if let ty::InstanceDef::VtableShim(..) = self.def {
+                    // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
+                    sig = sig.map_bound(|mut sig| {
+                        let mut inputs_and_output = sig.inputs_and_output.to_vec();
+                        inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
+                        sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+                        sig
+                    });
+                }
+                sig
+            }
+            ty::Closure(def_id, substs) => {
+                let sig = substs.as_closure().sig(def_id, tcx);
+
+                let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
+                sig.map_bound(|sig| tcx.mk_fn_sig(
+                    iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                    sig.output(),
+                    sig.c_variadic,
+                    sig.unsafety,
+                    sig.abi
+                ))
+            }
+            ty::Generator(def_id, substs, _) => {
+                let sig = substs.as_generator().poly_sig(def_id, tcx);
+
+                let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+                let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+
+                let pin_did = tcx.lang_items().pin_type().unwrap();
+                let pin_adt_ref = tcx.adt_def(pin_did);
+                let pin_substs = tcx.intern_substs(&[env_ty.into()]);
+                let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
+
+                sig.map_bound(|sig| {
+                    let state_did = tcx.lang_items().gen_state().unwrap();
+                    let state_adt_ref = tcx.adt_def(state_did);
+                    let state_substs = tcx.intern_substs(&[
+                        sig.yield_ty.into(),
+                        sig.return_ty.into(),
+                    ]);
+                    let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+
+                    tcx.mk_fn_sig(iter::once(env_ty),
+                        ret_ty,
+                        false,
+                        hir::Unsafety::Normal,
+                        rustc_target::spec::abi::Abi::Rust
+                    )
+                })
+            }
+            _ => bug!("unexpected type {:?} in Instance::fn_sig", ty)
+        }
+    }
+}
+
 pub trait FnAbiExt<'tcx, C>
 where
     C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
@@ -2347,13 +2417,24 @@ where
         + HasTyCtxt<'tcx>
         + HasParamEnv<'tcx>,
 {
-    fn of_instance(cx: &C, instance: ty::Instance<'tcx>) -> Self;
-    fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
-    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+    /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
+    ///
+    /// NB: this doesn't handle virtual calls - those should use `FnAbi::of_instance`
+    /// instead, where the instance is a `InstanceDef::Virtual`.
+    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
+    /// direct calls to an `fn`.
+    ///
+    /// NB: that includes virtual calls, which are represented by "direct calls"
+    /// to a `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+
     fn new_internal(
         cx: &C,
-        sig: ty::FnSig<'tcx>,
+        sig: ty::PolyFnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
+        caller_location: Option<Ty<'tcx>>,
         mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgAbi<'tcx, Ty<'tcx>>,
     ) -> Self;
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
@@ -2367,25 +2448,25 @@ where
         + HasTyCtxt<'tcx>
         + HasParamEnv<'tcx>,
 {
-    fn of_instance(cx: &C, instance: ty::Instance<'tcx>) -> Self {
-        let sig = instance.fn_sig(cx.tcx());
-        let sig = cx
-            .tcx()
-            .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        call::FnAbi::new(cx, sig, &[])
+    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
+        call::FnAbi::new_internal(cx, sig, extra_args, None, |ty, _| ArgAbi::new(cx.layout_of(ty)))
     }
 
-    fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        call::FnAbi::new_internal(cx, sig, extra_args, |ty, _| ArgAbi::new(cx.layout_of(ty)))
-    }
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
+        let sig = instance.fn_sig_for_fn_abi(cx.tcx());
 
-    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        FnAbiExt::new_internal(cx, sig, extra_args, |ty, arg_idx| {
+        let caller_location = if instance.def.requires_caller_location(cx.tcx()) {
+            Some(cx.tcx().caller_location_ty())
+        } else {
+            None
+        };
+
+        call::FnAbi::new_internal(cx, sig, extra_args, caller_location, |ty, arg_idx| {
             let mut layout = cx.layout_of(ty);
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
             // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
-            if arg_idx == Some(0) {
+            if let (ty::InstanceDef::Virtual(..), Some(0)) = (&instance.def, arg_idx) {
                 let fat_pointer_ty = if layout.is_unsized() {
                     // unsized `self` is passed as a pointer to `self`
                     // FIXME (mikeyhew) change this to use &own if it is ever added to the language
@@ -2405,7 +2486,7 @@ where
                     'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
                         && !fat_pointer_layout.ty.is_region_ptr()
                     {
-                        'iter_fields: for i in 0..fat_pointer_layout.fields.count() {
+                        for i in 0..fat_pointer_layout.fields.count() {
                             let field_layout = fat_pointer_layout.field(cx, i);
 
                             if !field_layout.is_zst() {
@@ -2436,15 +2517,20 @@ where
 
     fn new_internal(
         cx: &C,
-        sig: ty::FnSig<'tcx>,
+        sig: ty::PolyFnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
+        caller_location: Option<Ty<'tcx>>,
         mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgAbi<'tcx, Ty<'tcx>>,
     ) -> Self {
         debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
 
+        let sig = cx
+            .tcx()
+            .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+
         use rustc_target::spec::abi::Abi::*;
         let conv = match cx.tcx().sess.target.target.adjust_abi(sig.abi) {
-            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::C,
+            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
 
             // It's the ABI's job to select this, not ours.
             System => bug!("system abi should be selected elsewhere"),
@@ -2526,8 +2612,15 @@ where
 
             if let Some(pointee) = layout.pointee_info_at(cx, offset) {
                 if let Some(kind) = pointee.safe {
-                    attrs.pointee_size = pointee.size;
                     attrs.pointee_align = Some(pointee.align);
+
+                    // `Box` (`UniqueBorrowed`) are not necessarily dereferencable
+                    // for the entire duration of the function as they can be deallocated
+                    // any time. Set their valid size to 0.
+                    attrs.pointee_size = match kind {
+                        PointerKind::UniqueOwned => Size::ZERO,
+                        _ => pointee.size
+                    };
 
                     // `Box` pointer parameters never alias because ownership is transferred
                     // `&mut` pointer parameters never alias other parameters,
@@ -2599,6 +2692,7 @@ where
                 .iter()
                 .cloned()
                 .chain(extra_args)
+                .chain(caller_location)
                 .enumerate()
                 .map(|(i, ty)| arg_of(ty, Some(i)))
                 .collect(),

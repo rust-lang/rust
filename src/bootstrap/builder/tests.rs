@@ -363,6 +363,10 @@ fn dist_with_same_targets_and_hosts() {
                 compiler: Compiler { host: a, stage: 1 },
                 target: b,
             },
+            compile::Std {
+                compiler: Compiler { host: a, stage: 2 },
+                target: b,
+            },
         ]
     );
     assert_eq!(

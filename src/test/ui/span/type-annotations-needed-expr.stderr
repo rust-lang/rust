@@ -2,7 +2,10 @@ error[E0282]: type annotations needed
   --> $DIR/type-annotations-needed-expr.rs:2:39
    |
 LL |     let _ = (vec![1,2,3]).into_iter().sum() as f64;
-   |                                       ^^^ cannot infer type for `S`
+   |                                       ^^^
+   |                                       |
+   |                                       cannot infer type for type parameter `S`
+   |                                       help: consider specifying the type argument in the method call: `sum::<S>`
    |
    = note: type must be known at this point
 

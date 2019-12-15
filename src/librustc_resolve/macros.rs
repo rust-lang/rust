@@ -12,18 +12,18 @@ use rustc::middle::stability;
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{ty, lint, span_bug};
+use rustc_feature::is_builtin_attr_name;
 use syntax::ast::{self, NodeId, Ident};
 use syntax::attr::{self, StabilityLevel};
 use syntax::edition::Edition;
-use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
-use syntax::feature_gate::GateIssue;
+use syntax::feature_gate::feature_err;
 use syntax::print::pprust;
-use syntax::symbol::{Symbol, kw, sym};
 use syntax_expand::base::{self, InvocationRes, Indeterminate};
 use syntax_expand::base::SyntaxExtension;
 use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use syntax_expand::compile_declarative_macro;
 use syntax_pos::hygiene::{self, ExpnId, ExpnData, ExpnKind};
+use syntax_pos::symbol::{Symbol, kw, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::{mem, ptr};
@@ -346,13 +346,8 @@ impl<'a> Resolver<'a> {
                segment.ident.as_str().starts_with("rustc") {
                 let msg =
                     "attributes starting with `rustc` are reserved for use by the `rustc` compiler";
-                emit_feature_err(
-                    &self.session.parse_sess,
-                    sym::rustc_attrs,
-                    segment.ident.span,
-                    GateIssue::Language,
-                    msg,
-                );
+                feature_err(&self.session.parse_sess, sym::rustc_attrs, segment.ident.span, msg)
+                    .emit();
             }
         }
 
@@ -880,8 +875,8 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Compile the macro into a `SyntaxExtension` and possibly replace it with a pre-defined
-    /// extension partially or entirely for built-in macros and legacy plugin macros.
+    /// Compile the macro into a `SyntaxExtension` and possibly replace
+    /// its expander to a pre-defined one for built-in macros.
     crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> SyntaxExtension {
         let mut result = compile_declarative_macro(
             &self.session.parse_sess, self.session.features_untracked(), item, edition
@@ -890,14 +885,9 @@ impl<'a> Resolver<'a> {
         if result.is_builtin {
             // The macro was marked with `#[rustc_builtin_macro]`.
             if let Some(ext) = self.builtin_macros.remove(&item.ident.name) {
-                if ext.is_builtin {
-                    // The macro is a built-in, replace only the expander function.
-                    result.kind = ext.kind;
-                } else {
-                    // The macro is from a plugin, the in-source definition is dummy,
-                    // take all the data from the resolver.
-                    result = ext;
-                }
+                // The macro is a built-in, replace its expander function
+                // while still taking everything else from the source code.
+                result.kind = ext.kind;
             } else {
                 let msg = format!("cannot find a built-in macro with name `{}`", item.ident);
                 self.session.span_err(item.span, &msg);

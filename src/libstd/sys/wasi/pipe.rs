@@ -25,9 +25,6 @@ impl AnonPipe {
     }
 }
 
-pub fn read2(p1: AnonPipe,
-             _v1: &mut Vec<u8>,
-             _p2: AnonPipe,
-             _v2: &mut Vec<u8>) -> io::Result<()> {
+pub fn read2(p1: AnonPipe, _v1: &mut Vec<u8>, _p2: AnonPipe, _v2: &mut Vec<u8>) -> io::Result<()> {
     match p1.0 {}
 }

@@ -9,13 +9,7 @@ LL |                 &[Foo { string: a },
 LL |                   Foo { string: b }] => {
    |                                 - ...and here
    |
-note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/borrowck-move-out-of-vec-tail.rs:21:33
-   |
-LL |                 &[Foo { string: a },
-   |                                 ^
-LL |                   Foo { string: b }] => {
-   |                                 ^
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 help: consider removing the `&`
    |
 LL |                 [Foo { string: a },

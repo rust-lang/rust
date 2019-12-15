@@ -12,6 +12,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![cfg_attr(test, feature(test))]
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(nll)]
@@ -21,6 +22,8 @@
 
 #[macro_use]
 extern crate rustc;
+#[macro_use]
+extern crate rustc_session;
 
 mod array_into_iter;
 mod nonstandard_style;
@@ -156,8 +159,6 @@ macro_rules! late_lint_mod_passes {
 
             // Depends on types used in type definitions
             MissingCopyImplementations: MissingCopyImplementations,
-
-            PluginAsLibrary: PluginAsLibrary,
 
             // Depends on referenced function signatures in expressions
             MutableTransmutes: MutableTransmutes,
@@ -340,7 +341,7 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
     store.register_removed("legacy_constructor_visibility",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/39207");
-    store.register_removed("legacy_disrectory_ownership",
+    store.register_removed("legacy_directory_ownership",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/37872");
     store.register_removed("safe_extern_statics",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36247");
@@ -350,6 +351,7 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/35896");
     store.register_removed("nested_impl_trait",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/59014");
+    store.register_removed("plugin_as_library", "plugins have been deprecated and retired");
 }
 
 fn register_internals(store: &mut lint::LintStore) {

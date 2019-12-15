@@ -1,5 +1,6 @@
 //! The main parser interface.
 
+#![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 
 use syntax::ast;
@@ -8,7 +9,7 @@ use syntax::sess::ParseSess;
 use syntax::token::{self, Nonterminal};
 use syntax::tokenstream::{self, TokenStream, TokenTree};
 
-use errors::{PResult, FatalError, Level, Diagnostic};
+use rustc_errors::{PResult, FatalError, Level, Diagnostic};
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::{Span, SourceFile, FileName};
 
@@ -53,7 +54,7 @@ pub enum DirectoryOwnership {
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use errors::FatalError;
+        use rustc_errors::FatalError;
         match $e {
             Ok(e) => e,
             Err(errs) => {
@@ -270,19 +271,13 @@ pub fn stream_to_parser_with_base_dir<'a>(
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
-pub fn parse_in_attr<'a, T>(
+pub fn parse_in<'a, T>(
     sess: &'a ParseSess,
-    attr: &ast::Attribute,
+    tts: TokenStream,
+    name: &'static str,
     mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
 ) -> PResult<'a, T> {
-    let mut parser = Parser::new(
-        sess,
-        attr.get_normal_item().tokens.clone(),
-        None,
-        false,
-        false,
-        Some("attribute"),
-    );
+    let mut parser = Parser::new(sess, tts, None, false, false, Some(name));
     let result = f(&mut parser)?;
     if parser.token != token::Eof {
         parser.unexpected()?;
@@ -409,7 +404,7 @@ fn prepend_attrs(
             brackets.push(stream);
         }
 
-        brackets.push(item.tokens.clone());
+        brackets.push(item.args.outer_tokens());
 
         // The span we list here for `#` and for `[ ... ]` are both wrong in
         // that it encompasses more than each token, but it hopefully is "good

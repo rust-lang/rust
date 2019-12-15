@@ -23,6 +23,8 @@ use std::ffi::CStr;
 use std::ops::{Deref, Range};
 use std::ptr;
 use std::iter::TrustedLen;
+use rustc_data_structures::const_cstr;
+use log::debug;
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -325,8 +327,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         use rustc::ty::{Int, Uint};
 
         let new_kind = match ty.kind {
-            Int(Isize) => Int(self.tcx.sess.target.isize_ty),
-            Uint(Usize) => Uint(self.tcx.sess.target.usize_ty),
+            Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.ptr_width)),
+            Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.ptr_width)),
             ref t @ Uint(_) | ref t @ Int(_) => t.clone(),
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type")
         };

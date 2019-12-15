@@ -464,9 +464,9 @@ impl<T: PartialOrd> PartialOrd for Reverse<T> {
     #[inline]
     fn le(&self, other: &Self) -> bool { other.0 <= self.0 }
     #[inline]
-    fn ge(&self, other: &Self) -> bool { other.0 >= self.0 }
-    #[inline]
     fn gt(&self, other: &Self) -> bool { other.0 > self.0 }
+    #[inline]
+    fn ge(&self, other: &Self) -> bool { other.0 >= self.0 }
 }
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
@@ -534,7 +534,6 @@ impl<T: Ord> Ord for Reverse<T> {
 ///     }
 /// }
 /// ```
-#[lang = "ord"]
 #[doc(alias = "<")]
 #[doc(alias = ">")]
 #[doc(alias = "<=")]
@@ -1006,6 +1005,7 @@ pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
 mod impls {
+    use crate::hint::unreachable_unchecked;
     use crate::cmp::Ordering::{self, Less, Greater, Equal};
 
     macro_rules! partial_eq_impl {
@@ -1126,30 +1126,39 @@ mod impls {
     impl Ord for bool {
         #[inline]
         fn cmp(&self, other: &bool) -> Ordering {
-            (*self as u8).cmp(&(*other as u8))
+            // Casting to i8's and converting the difference to an Ordering generates
+            // more optimal assembly.
+            // See <https://github.com/rust-lang/rust/issues/66780> for more info.
+            match (*self as i8) - (*other as i8) {
+                -1 => Less,
+                0 => Equal,
+                1 => Greater,
+                // SAFETY: bool as i8 returns 0 or 1, so the difference can't be anything else
+                _ => unsafe { unreachable_unchecked() },
+            }
         }
     }
 
     ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-    #[stable(feature = "never_type", since = "1.41.0")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl PartialEq for ! {
         fn eq(&self, _: &!) -> bool {
             *self
         }
     }
 
-    #[stable(feature = "never_type", since = "1.41.0")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl Eq for ! {}
 
-    #[stable(feature = "never_type", since = "1.41.0")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl PartialOrd for ! {
         fn partial_cmp(&self, _: &!) -> Option<Ordering> {
             *self
         }
     }
 
-    #[stable(feature = "never_type", since = "1.41.0")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl Ord for ! {
         fn cmp(&self, _: &!) -> Ordering {
             *self
@@ -1176,9 +1185,9 @@ mod impls {
         #[inline]
         fn le(&self, other: & &B) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: & &B) -> bool { PartialOrd::ge(*self, *other) }
-        #[inline]
         fn gt(&self, other: & &B) -> bool { PartialOrd::gt(*self, *other) }
+        #[inline]
+        fn ge(&self, other: & &B) -> bool { PartialOrd::ge(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &A where A: Ord {
@@ -1208,9 +1217,9 @@ mod impls {
         #[inline]
         fn le(&self, other: &&mut B) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: &&mut B) -> bool { PartialOrd::ge(*self, *other) }
-        #[inline]
         fn gt(&self, other: &&mut B) -> bool { PartialOrd::gt(*self, *other) }
+        #[inline]
+        fn ge(&self, other: &&mut B) -> bool { PartialOrd::ge(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &mut A where A: Ord {

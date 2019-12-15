@@ -13,12 +13,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match *origin {
             infer::Subtype(ref trace) => {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
-                    let expected = expected.content();
-                    let found = found.content();
-                    err.note(&format!("...so that the {}:\nexpected {}\n   found {}",
-                                      trace.cause.as_requirement_str(),
-                                      expected,
-                                      found));
+                    err.span_note(
+                        trace.cause.span,
+                        &format!(
+                            "...so that the {}",
+                            trace.cause.as_requirement_str()
+                        )
+                    );
+
+                    err.note_expected_found(
+                        &"",
+                        expected,
+                        &"",
+                        found
+                    );
                 } else {
                     // FIXME: this really should be handled at some earlier stage. Our
                     // handling of region checking when type errors are present is

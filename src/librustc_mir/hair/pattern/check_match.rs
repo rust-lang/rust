@@ -139,39 +139,22 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
-            let inlined_arms: Vec<(Vec<_>, _)> = arms
+            let inlined_arms: Vec<_> = arms
                 .iter()
                 .map(|arm| {
-                    (
-                        // HACK(or_patterns; Centril | dlrobertson): Remove this and
-                        // correctly handle exhaustiveness checking for nested or-patterns.
-                        match &arm.pat.kind {
-                            hir::PatKind::Or(pats) => pats,
-                            _ => std::slice::from_ref(&arm.pat),
-                        }
-                        .iter()
-                        .map(|pat| {
-                            let mut patcx = PatCtxt::new(
-                                self.tcx,
-                                self.param_env.and(self.identity_substs),
-                                self.tables,
-                            );
-                            patcx.include_lint_checks();
-                            let pattern = cx
-                                .pattern_arena
-                                .alloc(expand_pattern(cx, patcx.lower_pattern(&pat)))
-                                as &_;
-                            if !patcx.errors.is_empty() {
-                                patcx.report_inlining_errors(pat.span);
-                                have_errors = true;
-                            }
-                            (pattern, &**pat)
-                        })
-                        .collect(),
-                        arm.guard.as_ref().map(|g| match g {
-                            hir::Guard::If(ref e) => &**e,
-                        }),
-                    )
+                    let mut patcx = PatCtxt::new(
+                        self.tcx,
+                        self.param_env.and(self.identity_substs),
+                        self.tables,
+                    );
+                    patcx.include_lint_checks();
+                    let pattern = patcx.lower_pattern(&arm.pat);
+                    let pattern: &_ = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
+                    if !patcx.errors.is_empty() {
+                        patcx.report_inlining_errors(arm.pat.span);
+                        have_errors = true;
+                    }
+                    (pattern, &*arm.pat, arm.guard.is_some())
                 })
                 .collect();
 
@@ -181,81 +164,14 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             }
 
             // Fourth, check for unreachable arms.
-            check_arms(cx, &inlined_arms, source);
+            let matrix = check_arms(cx, &inlined_arms, source);
 
-            // Then, if the match has no arms, check whether the scrutinee
-            // is uninhabited.
-            let pat_ty = self.tables.node_type(scrut.hir_id);
-            let module = self.tcx.hir().get_module_parent(scrut.hir_id);
-            let mut def_span = None;
-            let mut missing_variants = vec![];
-            if inlined_arms.is_empty() {
-                let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
-                    self.tcx.is_ty_uninhabited_from(module, pat_ty)
-                } else {
-                    match pat_ty.kind {
-                        ty::Never => true,
-                        ty::Adt(def, _) => {
-                            def_span = self.tcx.hir().span_if_local(def.did);
-                            if def.variants.len() < 4 && !def.variants.is_empty() {
-                                // keep around to point at the definition of non-covered variants
-                                missing_variants =
-                                    def.variants.iter().map(|variant| variant.ident).collect();
-                            }
-
-                            let is_non_exhaustive_and_non_local =
-                                def.is_variant_list_non_exhaustive() && !def.did.is_local();
-
-                            !(is_non_exhaustive_and_non_local) && def.variants.is_empty()
-                        }
-                        _ => false,
-                    }
-                };
-                if !scrutinee_is_uninhabited {
-                    // We know the type is inhabited, so this must be wrong
-                    let mut err = create_e0004(
-                        self.tcx.sess,
-                        scrut.span,
-                        format!(
-                            "non-exhaustive patterns: {}",
-                            match missing_variants.len() {
-                                0 => format!("type `{}` is non-empty", pat_ty),
-                                1 => format!(
-                                    "pattern `{}` of type `{}` is not handled",
-                                    missing_variants[0].name, pat_ty,
-                                ),
-                                _ => format!(
-                                    "multiple patterns of type `{}` are not handled",
-                                    pat_ty
-                                ),
-                            }
-                        ),
-                    );
-                    err.help(
-                        "ensure that all possible cases are being handled, \
-                         possibly by adding wildcards or more match arms",
-                    );
-                    if let Some(sp) = def_span {
-                        err.span_label(sp, format!("`{}` defined here", pat_ty));
-                    }
-                    // point at the definition of non-covered enum variants
-                    for variant in &missing_variants {
-                        err.span_label(variant.span, "variant not covered");
-                    }
-                    err.emit();
-                }
-                // If the type *is* uninhabited, it's vacuously exhaustive
-                return;
-            }
-
-            let matrix: Matrix<'_, '_> = inlined_arms
-                .iter()
-                .filter(|&&(_, guard)| guard.is_none())
-                .flat_map(|arm| &arm.0)
-                .map(|pat| PatStack::from_pattern(pat.0))
-                .collect();
+            // Fifth, check if the match is exhaustive.
             let scrut_ty = self.tables.node_type(scrut.hir_id);
-            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id);
+            // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
+            // since an empty matrix can occur when there are arms, if those arms all have guards.
+            let is_empty_match = inlined_arms.is_empty();
+            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
         })
     }
 
@@ -267,8 +183,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             patcx.include_lint_checks();
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
-            let pattern = expand_pattern(cx, pattern);
-            let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(&pattern)].into_iter().collect();
+            let pattern = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
+            let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(pattern)].into_iter().collect();
 
             let witnesses = match check_not_useful(cx, pattern_ty, &pats, pat.hir_id) {
                 Ok(_) => return,
@@ -403,133 +319,176 @@ fn pat_is_catchall(pat: &Pat) -> bool {
 }
 
 // Check for unreachable patterns
-fn check_arms<'tcx>(
-    cx: &mut MatchCheckCtxt<'_, 'tcx>,
-    arms: &[(Vec<(&super::Pat<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
+fn check_arms<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+    arms: &[(&'p super::Pat<'tcx>, &hir::Pat, bool)],
     source: hir::MatchSource,
-) {
+) -> Matrix<'p, 'tcx> {
     let mut seen = Matrix::empty();
     let mut catchall = None;
-    for (arm_index, &(ref pats, guard)) in arms.iter().enumerate() {
-        for &(pat, hir_pat) in pats {
-            let v = PatStack::from_pattern(pat);
+    for (arm_index, (pat, hir_pat, has_guard)) in arms.iter().enumerate() {
+        let v = PatStack::from_pattern(pat);
 
-            match is_useful(cx, &seen, &v, LeaveOutWitness, hir_pat.hir_id) {
-                NotUseful => {
-                    match source {
-                        hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => {
-                            bug!()
-                        }
-                        hir::MatchSource::IfLetDesugar { .. } => {
-                            cx.tcx.lint_hir(
-                                lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                hir_pat.hir_id,
-                                pat.span,
-                                "irrefutable if-let pattern",
-                            );
-                        }
+        match is_useful(cx, &seen, &v, LeaveOutWitness, hir_pat.hir_id, true) {
+            NotUseful => {
+                match source {
+                    hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => bug!(),
 
-                        hir::MatchSource::WhileLetDesugar => {
-                            // check which arm we're on.
-                            match arm_index {
-                                // The arm with the user-specified pattern.
-                                0 => {
-                                    cx.tcx.lint_hir(
-                                        lint::builtin::UNREACHABLE_PATTERNS,
-                                        hir_pat.hir_id,
-                                        pat.span,
-                                        "unreachable pattern",
-                                    );
-                                }
-                                // The arm with the wildcard pattern.
-                                1 => {
-                                    cx.tcx.lint_hir(
-                                        lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                        hir_pat.hir_id,
-                                        pat.span,
-                                        "irrefutable while-let pattern",
-                                    );
-                                }
-                                _ => bug!(),
+                    hir::MatchSource::IfLetDesugar { .. } | hir::MatchSource::WhileLetDesugar => {
+                        // check which arm we're on.
+                        match arm_index {
+                            // The arm with the user-specified pattern.
+                            0 => {
+                                cx.tcx.lint_hir(
+                                    lint::builtin::UNREACHABLE_PATTERNS,
+                                    hir_pat.hir_id,
+                                    pat.span,
+                                    "unreachable pattern",
+                                );
                             }
-                        }
-
-                        hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
-                            let mut err = cx.tcx.struct_span_lint_hir(
-                                lint::builtin::UNREACHABLE_PATTERNS,
-                                hir_pat.hir_id,
-                                pat.span,
-                                "unreachable pattern",
-                            );
-                            // if we had a catchall pattern, hint at that
-                            if let Some(catchall) = catchall {
-                                err.span_label(pat.span, "unreachable pattern");
-                                err.span_label(catchall, "matches any value");
+                            // The arm with the wildcard pattern.
+                            1 => {
+                                let msg = match source {
+                                    hir::MatchSource::IfLetDesugar { .. } => {
+                                        "irrefutable if-let pattern"
+                                    }
+                                    hir::MatchSource::WhileLetDesugar => {
+                                        "irrefutable while-let pattern"
+                                    }
+                                    _ => bug!(),
+                                };
+                                cx.tcx.lint_hir(
+                                    lint::builtin::IRREFUTABLE_LET_PATTERNS,
+                                    hir_pat.hir_id,
+                                    pat.span,
+                                    msg,
+                                );
                             }
-                            err.emit();
+                            _ => bug!(),
                         }
-
-                        // Unreachable patterns in try and await expressions occur when one of
-                        // the arms are an uninhabited type. Which is OK.
-                        hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                     }
+
+                    hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
+                        let mut err = cx.tcx.struct_span_lint_hir(
+                            lint::builtin::UNREACHABLE_PATTERNS,
+                            hir_pat.hir_id,
+                            pat.span,
+                            "unreachable pattern",
+                        );
+                        // if we had a catchall pattern, hint at that
+                        if let Some(catchall) = catchall {
+                            err.span_label(pat.span, "unreachable pattern");
+                            err.span_label(catchall, "matches any value");
+                        }
+                        err.emit();
+                    }
+
+                    // Unreachable patterns in try and await expressions occur when one of
+                    // the arms are an uninhabited type. Which is OK.
+                    hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                 }
-                Useful => (),
-                UsefulWithWitness(_) => bug!(),
             }
-            if guard.is_none() {
-                seen.push(v);
-                if catchall.is_none() && pat_is_catchall(hir_pat) {
-                    catchall = Some(pat.span);
+            Useful(unreachable_subpatterns) => {
+                for pat in unreachable_subpatterns {
+                    cx.tcx.lint_hir(
+                        lint::builtin::UNREACHABLE_PATTERNS,
+                        hir_pat.hir_id,
+                        pat.span,
+                        "unreachable pattern",
+                    );
                 }
+            }
+            UsefulWithWitness(_) => bug!(),
+        }
+        if !has_guard {
+            seen.push(v);
+            if catchall.is_none() && pat_is_catchall(hir_pat) {
+                catchall = Some(pat.span);
             }
         }
     }
+    seen
 }
 
-fn check_not_useful(
-    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+fn check_not_useful<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     ty: Ty<'tcx>,
-    matrix: &Matrix<'_, 'tcx>,
+    matrix: &Matrix<'p, 'tcx>,
     hir_id: HirId,
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
-    let wild_pattern = super::Pat::wildcard_from_ty(ty);
-    match is_useful(cx, matrix, &PatStack::from_pattern(&wild_pattern), ConstructWitness, hir_id) {
+    let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(ty));
+    let v = PatStack::from_pattern(wild_pattern);
+    match is_useful(cx, matrix, &v, ConstructWitness, hir_id, true) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
-            vec![wild_pattern]
+            bug!("Exhaustiveness check returned no witnesses")
         } else {
             pats.into_iter().map(|w| w.single_pattern()).collect()
         }),
-        Useful => bug!(),
+        Useful(_) => bug!(),
     }
 }
 
-fn check_exhaustive<'tcx>(
-    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+fn check_exhaustive<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     scrut_ty: Ty<'tcx>,
     sp: Span,
-    matrix: &Matrix<'_, 'tcx>,
+    matrix: &Matrix<'p, 'tcx>,
     hir_id: HirId,
+    is_empty_match: bool,
 ) {
+    // In the absence of the `exhaustive_patterns` feature, empty matches are not detected by
+    // `is_useful` to exhaustively match uninhabited types, so we manually check here.
+    if is_empty_match && !cx.tcx.features().exhaustive_patterns {
+        let scrutinee_is_visibly_uninhabited = match scrut_ty.kind {
+            ty::Never => true,
+            ty::Adt(def, _) => {
+                def.is_enum()
+                    && def.variants.is_empty()
+                    && !cx.is_foreign_non_exhaustive_enum(scrut_ty)
+            }
+            _ => false,
+        };
+        if scrutinee_is_visibly_uninhabited {
+            // If the type *is* uninhabited, an empty match is vacuously exhaustive.
+            return;
+        }
+    }
+
     let witnesses = match check_not_useful(cx, scrut_ty, matrix, hir_id) {
         Ok(_) => return,
         Err(err) => err,
     };
 
-    let joined_patterns = joined_uncovered_patterns(&witnesses);
-    let mut err = create_e0004(
-        cx.tcx.sess,
-        sp,
-        format!("non-exhaustive patterns: {} not covered", joined_patterns),
-    );
-    err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+    let non_empty_enum = match scrut_ty.kind {
+        ty::Adt(def, _) => def.is_enum() && !def.variants.is_empty(),
+        _ => false,
+    };
+    // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
+    // informative.
+    let mut err;
+    if is_empty_match && !non_empty_enum {
+        err = create_e0004(
+            cx.tcx.sess,
+            sp,
+            format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
+        );
+    } else {
+        let joined_patterns = joined_uncovered_patterns(&witnesses);
+        err = create_e0004(
+            cx.tcx.sess,
+            sp,
+            format!("non-exhaustive patterns: {} not covered", joined_patterns),
+        );
+        err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+    };
+
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.help(
         "ensure that all possible cases are being handled, \
          possibly by adding wildcards or more match arms",
-    )
-    .emit();
+    );
+    err.emit();
 }
 
 fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {

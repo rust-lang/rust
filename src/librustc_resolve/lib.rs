@@ -9,6 +9,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]
@@ -32,8 +33,7 @@ use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::span_bug;
 
-use rustc_metadata::creader::CrateLoader;
-use rustc_metadata::cstore::CStore;
+use rustc_metadata::creader::{CrateLoader, CStore};
 
 use syntax::{struct_span_err, unwrap_or};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
@@ -216,6 +216,15 @@ enum ResolutionError<'a> {
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
+}
+
+enum VisResolutionError<'a> {
+    Relative2018(Span, &'a ast::Path),
+    AncestorOnly(Span),
+    FailedToResolve(Span, String, Option<Suggestion>),
+    ExpectedFound(Span, String, Res),
+    Indeterminate(Span),
+    ModuleOnly(Span),
 }
 
 // A minimal representation of a path segment. We use this in resolve because
@@ -1127,8 +1136,10 @@ impl<'a> Resolver<'a> {
         definitions.create_root_def(crate_name, session.local_crate_disambiguator());
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> =
-            session.opts.externs.iter().map(|kv| (Ident::from_str(kv.0), Default::default()))
-                                       .collect();
+            session.opts.externs.iter()
+                .filter(|(_, entry)| entry.add_prelude)
+                .map(|(name, _)| (Ident::from_str(name), Default::default()))
+                .collect();
 
         if !attr::contains_name(&krate.attrs, sym::no_core) {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
@@ -2894,15 +2905,16 @@ fn names_to_string(names: &[Name]) -> String {
         if i > 0 {
             result.push_str("::");
         }
+        if Ident::with_dummy_span(*name).is_raw_guess() {
+            result.push_str("r#");
+        }
         result.push_str(&name.as_str());
     }
     result
 }
 
 fn path_names_to_string(path: &Path) -> String {
-    names_to_string(&path.segments.iter()
-                        .map(|seg| seg.ident.name)
-                        .collect::<Vec<_>>())
+    names_to_string(&path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>())
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.

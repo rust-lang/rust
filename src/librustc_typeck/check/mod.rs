@@ -103,6 +103,7 @@ use rustc_index::vec::Idx;
 use rustc_target::spec::abi::Abi;
 use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
@@ -114,7 +115,7 @@ use rustc::ty::{
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
 };
-use rustc::ty::fold::TypeFoldable;
+use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{
     GenericArgKind, Subst, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts,
@@ -125,7 +126,7 @@ use syntax_pos::{self, BytePos, Span, MultiSpan};
 use syntax_pos::hygiene::DesugaringKind;
 use syntax::ast;
 use syntax::attr;
-use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::feature_gate::feature_err;
 use syntax::source_map::{DUMMY_SP, original_sp};
 use syntax::symbol::{kw, sym, Ident};
 use syntax::util::parser::ExprPrecedence;
@@ -872,6 +873,111 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: DefId) -> &DefIdSet {
     &*tcx.typeck_tables_of(def_id).used_trait_imports
 }
 
+/// Inspects the substs of opaque types, replacing any inference variables
+/// with proper generic parameter from the identity substs.
+///
+/// This is run after we normalize the function signature, to fix any inference
+/// variables introduced by the projection of associated types. This ensures that
+/// any opaque types used in the signature continue to refer to generic parameters,
+/// allowing them to be considered for defining uses in the function body
+///
+/// For example, consider this code.
+///
+/// ```rust
+/// trait MyTrait {
+///     type MyItem;
+///     fn use_it(self) -> Self::MyItem
+/// }
+/// impl<T, I> MyTrait for T where T: Iterator<Item = I> {
+///     type MyItem = impl Iterator<Item = I>;
+///     fn use_it(self) -> Self::MyItem {
+///         self
+///     }
+/// }
+/// ```
+///
+/// When we normalize the signature of `use_it` from the impl block,
+/// we will normalize `Self::MyItem` to the opaque type `impl Iterator<Item = I>`
+/// However, this projection result may contain inference variables, due
+/// to the way that projection works. We didn't have any inference variables
+/// in the signature to begin with - leaving them in will cause us to incorrectly
+/// conclude that we don't have a defining use of `MyItem`. By mapping inference
+/// variables back to the actual generic parameters, we will correctly see that
+/// we have a defining use of `MyItem`
+fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T where T: TypeFoldable<'tcx> {
+    struct FixupFolder<'tcx> {
+        tcx: TyCtxt<'tcx>
+    }
+
+    impl<'tcx> TypeFolder<'tcx> for FixupFolder<'tcx> {
+        fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            match ty.kind {
+                ty::Opaque(def_id, substs) => {
+                    debug!("fixup_opaque_types: found type {:?}", ty);
+                    // Here, we replace any inference variables that occur within
+                    // the substs of an opaque type. By definition, any type occuring
+                    // in the substs has a corresponding generic parameter, which is what
+                    // we replace it with.
+                    // This replacement is only run on the function signature, so any
+                    // inference variables that we come across must be the rust of projection
+                    // (there's no other way for a user to get inference variables into
+                    // a function signature).
+                    if ty.needs_infer() {
+                        let new_substs = InternalSubsts::for_item(self.tcx, def_id, |param, _| {
+                            let old_param = substs[param.index as usize];
+                            match old_param.unpack() {
+                                GenericArgKind::Type(old_ty) => {
+                                    if let ty::Infer(_) = old_ty.kind {
+                                        // Replace inference type with a generic parameter
+                                        self.tcx.mk_param_from_def(param)
+                                    } else {
+                                        old_param.fold_with(self)
+                                    }
+                                },
+                                GenericArgKind::Const(old_const) => {
+                                    if let ty::ConstKind::Infer(_) = old_const.val {
+                        // This should never happen - we currently do not support
+                        // 'const projections', e.g.:
+                        // `impl<T: SomeTrait> MyTrait for T where <T as SomeTrait>::MyConst == 25`
+                        // which should be the only way for us to end up with a const inference
+                        // variable after projection. If Rust ever gains support for this kind
+                        // of projection, this should *probably* be changed to
+                        // `self.tcx.mk_param_from_def(param)`
+                                        bug!("Found infer const: `{:?}` in opaque type: {:?}",
+                                             old_const, ty);
+                                    } else {
+                                        old_param.fold_with(self)
+                                    }
+                                }
+                                GenericArgKind::Lifetime(old_region) => {
+                                    if let RegionKind::ReVar(_) = old_region {
+                                        self.tcx.mk_param_from_def(param)
+                                    } else {
+                                        old_param.fold_with(self)
+                                    }
+                                }
+                            }
+                        });
+                        let new_ty = self.tcx.mk_opaque(def_id, new_substs);
+                        debug!("fixup_opaque_types: new type: {:?}", new_ty);
+                        new_ty
+                    } else {
+                        ty
+                    }
+                },
+                _ => ty.super_fold_with(self)
+            }
+        }
+    }
+
+    debug!("fixup_opaque_types({:?})", val);
+    val.fold_with(&mut FixupFolder { tcx })
+}
+
 fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
@@ -910,6 +1016,8 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
                                                   body_id.hir_id,
                                                   param_env,
                                                   &fn_sig);
+
+            let fn_sig = fixup_opaque_types(tcx, &fn_sig);
 
             let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None).0;
             fcx
@@ -1895,7 +2003,7 @@ fn check_impl_items_against_trait<'tcx>(
                              "item `{}` is an associated const, \
                               which doesn't match its trait `{}`",
                              ty_impl_item.ident,
-                             impl_trait_ref);
+                             impl_trait_ref.print_only_trait_path());
                          err.span_label(impl_item.span, "does not match trait");
                          // We can only get the spans from local trait definition
                          // Same for E0324 and E0325
@@ -1919,7 +2027,7 @@ fn check_impl_items_against_trait<'tcx>(
                             "item `{}` is an associated method, \
                              which doesn't match its trait `{}`",
                             ty_impl_item.ident,
-                            impl_trait_ref);
+                            impl_trait_ref.print_only_trait_path());
                          err.span_label(impl_item.span, "does not match trait");
                          if let Some(trait_span) = tcx.hir().span_if_local(ty_trait_item.def_id) {
                             err.span_label(trait_span, "item in trait");
@@ -1938,7 +2046,7 @@ fn check_impl_items_against_trait<'tcx>(
                             "item `{}` is an associated type, \
                              which doesn't match its trait `{}`",
                             ty_impl_item.ident,
-                            impl_trait_ref);
+                            impl_trait_ref.print_only_trait_path());
                          err.span_label(impl_item.span, "does not match trait");
                          if let Some(trait_span) = tcx.hir().span_if_local(ty_trait_item.def_id) {
                             err.span_label(trait_span, "item in trait");
@@ -2266,13 +2374,13 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
 
     if adt.is_enum() {
         if !tcx.features().transparent_enums {
-            emit_feature_err(
+            feature_err(
                 &tcx.sess.parse_sess,
                 sym::transparent_enums,
                 sp,
-                GateIssue::Language,
                 "transparent enums are unstable",
-            );
+            )
+            .emit();
         }
         if adt.variants.len() != 1 {
             bad_variant_count(tcx, adt, sp, def_id);
@@ -2284,11 +2392,13 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
     }
 
     if adt.is_union() && !tcx.features().transparent_unions {
-        emit_feature_err(&tcx.sess.parse_sess,
-                         sym::transparent_unions,
-                         sp,
-                         GateIssue::Language,
-                         "transparent unions are unstable");
+        feature_err(
+            &tcx.sess.parse_sess,
+            sym::transparent_unions,
+            sp,
+            "transparent unions are unstable",
+        )
+        .emit();
     }
 
     // For each field, figure out if it's known to be a ZST and align(1)
@@ -2345,11 +2455,13 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
     let repr_type_ty = def.repr.discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
         if !tcx.features().repr128 {
-            emit_feature_err(&tcx.sess.parse_sess,
-                             sym::repr128,
-                             sp,
-                             GateIssue::Language,
-                             "repr with 128-bit type is unstable");
+            feature_err(
+                &tcx.sess.parse_sess,
+                sym::repr128,
+                sp,
+                "repr with 128-bit type is unstable",
+            )
+            .emit();
         }
     }
 
@@ -3641,7 +3753,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             formal_tys.clone()
         };
 
-        let mut final_arg_types: Vec<(usize, Ty<'_>)> = vec![];
+        let mut final_arg_types: Vec<(usize, Ty<'_>, Ty<'_>)> = vec![];
 
         // Check the arguments.
         // We do this in a pretty awful way: first we type-check any arguments
@@ -3709,7 +3821,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We're processing function arguments so we definitely want to use
                 // two-phase borrows.
                 self.demand_coerce(&arg, checked_ty, coerce_ty, AllowTwoPhase::Yes);
-                final_arg_types.push((i, coerce_ty));
+                final_arg_types.push((i, checked_ty, coerce_ty));
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
@@ -3756,14 +3868,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         vec![self.tcx.types.err; len]
     }
 
-    /// Given a vec of evaluated `FullfillmentError`s and an `fn` call argument expressions, we
-    /// walk the resolved types for each argument to see if any of the `FullfillmentError`s
-    /// reference a type argument. If they do, and there's only *one* argument that does, we point
-    /// at the corresponding argument's expression span instead of the `fn` call path span.
+    /// Given a vec of evaluated `FulfillmentError`s and an `fn` call argument expressions, we walk
+    /// the checked and coerced types for each argument to see if any of the `FulfillmentError`s
+    /// reference a type argument. The reason to walk also the checked type is that the coerced type
+    /// can be not easily comparable with predicate type (because of coercion). If the types match
+    /// for either checked or coerced type, and there's only *one* argument that does, we point at
+    /// the corresponding argument's expression span instead of the `fn` call path span.
     fn point_at_arg_instead_of_call_if_possible(
         &self,
         errors: &mut Vec<traits::FulfillmentError<'_>>,
-        final_arg_types: &[(usize, Ty<'tcx>)],
+        final_arg_types: &[(usize, Ty<'tcx>, Ty<'tcx>)],
         call_sp: Span,
         args: &'tcx [hir::Expr],
     ) {
@@ -3773,19 +3887,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for error in errors {
                 if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
                     // Collect the argument position for all arguments that could have caused this
-                    // `FullfillmentError`.
+                    // `FulfillmentError`.
                     let mut referenced_in = final_arg_types.iter()
+                        .map(|(i, checked_ty, _)| (i, checked_ty))
+                        .chain(final_arg_types.iter().map(|(i, _, coerced_ty)| (i, coerced_ty)))
                         .flat_map(|(i, ty)| {
                             let ty = self.resolve_vars_if_possible(ty);
                             // We walk the argument type because the argument's type could have
-                            // been `Option<T>`, but the `FullfillmentError` references `T`.
+                            // been `Option<T>`, but the `FulfillmentError` references `T`.
                             ty.walk()
                                 .filter(|&ty| ty == predicate.skip_binder().self_ty())
                                 .map(move |_| *i)
-                        });
-                    if let (Some(ref_in), None) = (referenced_in.next(), referenced_in.next()) {
+                        })
+                        .collect::<Vec<_>>();
+
+                    // Both checked and coerced types could have matched, thus we need to remove
+                    // duplicates.
+                    referenced_in.dedup();
+
+                    if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
                         // We make sure that only *one* argument matches the obligation failure
-                        // and thet the obligation's span to its expression's.
+                        // and we assign the obligation's span to its expression's.
                         error.obligation.cause.span = args[ref_in].span;
                         error.points_at_arg_span = true;
                     }
@@ -3794,8 +3916,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Given a vec of evaluated `FullfillmentError`s and an `fn` call expression, we walk the
-    /// `PathSegment`s and resolve their type parameters to see if any of the `FullfillmentError`s
+    /// Given a vec of evaluated `FulfillmentError`s and an `fn` call expression, we walk the
+    /// `PathSegment`s and resolve their type parameters to see if any of the `FulfillmentError`s
     /// were caused by them. If they were, we point at the corresponding type argument's span
     /// instead of the `fn` call path span.
     fn point_at_type_arg_instead_of_call_if_possible(
@@ -4463,8 +4585,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pointing_at_return_type = self.suggest_missing_return_type(
                 err, &fn_decl, expected, found, can_suggest);
         }
-        self.suggest_ref_or_into(err, expr, expected, found);
-        self.suggest_boxing_when_appropriate(err, expr, expected, found);
         pointing_at_return_type
     }
 
@@ -4836,7 +4956,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty: expected,
                 }));
                 let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
+                debug!("suggest_missing_await: trying obligation {:?}", obligation);
                 if self.infcx.predicate_may_hold(&obligation) {
+                    debug!("suggest_missing_await: obligation held: {:?}", obligation);
                     if let Ok(code) = self.sess().source_map().span_to_snippet(sp) {
                         err.span_suggestion(
                             sp,
@@ -4844,7 +4966,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("{}.await", code),
                             Applicability::MaybeIncorrect,
                         );
+                    } else {
+                        debug!("suggest_missing_await: no snippet for {:?}", sp);
                     }
+                } else {
+                    debug!("suggest_missing_await: obligation did not hold: {:?}", obligation)
                 }
             }
         }
@@ -5234,7 +5360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                self.need_type_info_err((**self).body_id, sp, ty)
+                self.need_type_info_err((**self).body_id, sp, ty, E0282)
                     .note("type must be known at this point")
                     .emit();
             }

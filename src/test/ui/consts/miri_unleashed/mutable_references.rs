@@ -1,20 +1,22 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
+#![feature(const_mut_refs)]
 #![allow(const_err)]
 
 use std::cell::UnsafeCell;
 
 // a test demonstrating what things we could allow with a smarter const qualification
 
+// this is fine because is not possible to mutate through an immutable reference.
 static FOO: &&mut u32 = &&mut 42;
-//~^ WARN: skipping const checks
 
+// this is fine because accessing an immutable static `BAR` is equivalent to accessing `*&BAR`
+// which puts the mutable reference behind an immutable one.
 static BAR: &mut () = &mut ();
-//~^ WARN: skipping const checks
 
 struct Foo<T>(T);
 
+// this is fine for the same reason as `BAR`.
 static BOO: &mut Foo<()> = &mut Foo(());
-//~^ WARN: skipping const checks
 
 struct Meh {
     x: &'static UnsafeCell<i32>,
@@ -27,8 +29,8 @@ static MEH: Meh = Meh {
     //~^ WARN: skipping const checks
 };
 
+// this is fine for the same reason as `BAR`.
 static OH_YES: &mut i32 = &mut 42;
-//~^ WARN: skipping const checks
 
 fn main() {
     unsafe {

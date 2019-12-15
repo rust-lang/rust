@@ -4,9 +4,9 @@ use std::ops::Add;
 
 struct Foo<T, U: FromIterator<T>>(T, U);
 struct WellFormed<Z = Foo<i32, i32>>(Z);
-//~^ ERROR a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+//~^ ERROR a value of type `i32` cannot be built from an iterator over elements of type `i32`
 struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
-//~^ ERROR a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+//~^ ERROR a value of type `i32` cannot be built from an iterator over elements of type `i32`
 
 struct Bounds<T:Copy=String>(T);
 //~^ ERROR the trait bound `std::string::String: std::marker::Copy` is not satisfied [E0277]

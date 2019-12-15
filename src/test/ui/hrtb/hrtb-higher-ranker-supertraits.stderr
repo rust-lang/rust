@@ -2,7 +2,7 @@ error[E0277]: the trait bound `for<'tcx> F: Foo<'tcx>` is not satisfied
   --> $DIR/hrtb-higher-ranker-supertraits.rs:18:26
    |
 LL |     where F : Foo<'x>
-   |                      - help: consider further restricting type parameter `F`: `, for<'tcx> F: Foo<'tcx>`
+   |                      - help: consider further restricting type parameter `F`: `, F: for<'tcx> Foo<'tcx>`
 ...
 LL |     want_foo_for_any_tcx(f);
    |                          ^ the trait `for<'tcx> Foo<'tcx>` is not implemented for `F`
@@ -16,7 +16,7 @@ error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
   --> $DIR/hrtb-higher-ranker-supertraits.rs:35:26
    |
 LL |     where B : Bar<'x>
-   |                      - help: consider further restricting type parameter `B`: `, for<'ccx> B: Bar<'ccx>`
+   |                      - help: consider further restricting type parameter `B`: `, B: for<'ccx> Bar<'ccx>`
 ...
 LL |     want_bar_for_any_ccx(b);
    |                          ^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`

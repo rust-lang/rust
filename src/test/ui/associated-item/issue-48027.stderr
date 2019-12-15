@@ -7,13 +7,15 @@ LL |     const X: usize;
 LL | impl dyn Bar {}
    |      ^^^^^^^ the trait `Bar` cannot be made into an object
 
-error[E0283]: type annotations needed: cannot resolve `_: Bar`
+error[E0283]: type annotations needed
   --> $DIR/issue-48027.rs:3:32
    |
 LL |     const X: usize;
    |     --------------- required by `Bar::X`
 LL |     fn return_n(&self) -> [u8; Bar::X];
-   |                                ^^^^^^
+   |                                ^^^^^^ cannot infer type
+   |
+   = note: cannot resolve `_: Bar`
 
 error: aborting due to 2 previous errors
 

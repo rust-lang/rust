@@ -4,11 +4,14 @@ error: invalid label name `'static`
 LL |     [(); &(&'static: loop { |x| {}; }) as *const _ as usize]
    |             ^^^^^^^
 
-error[E0744]: `loop` is not allowed in a `const`
+error[E0658]: `loop` is not allowed in a `const`
   --> $DIR/issue-52437.rs:2:13
    |
 LL |     [(); &(&'static: loop { |x| {}; }) as *const _ as usize]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error[E0282]: type annotations needed
   --> $DIR/issue-52437.rs:2:30
@@ -18,5 +21,5 @@ LL |     [(); &(&'static: loop { |x| {}; }) as *const _ as usize]
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0282, E0744.
+Some errors have detailed explanations: E0282, E0658.
 For more information about an error, try `rustc --explain E0282`.

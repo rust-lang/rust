@@ -1,24 +1,21 @@
 use super::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType, SeqSep, Parser};
 
-use syntax::ast::{
-    self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
-    Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
-};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{self, PResult, Applicability, DiagnosticBuilder, Handler, pluralize};
+use rustc_error_codes::*;
+use syntax::ast::{self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item};
+use syntax::ast::{ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use syntax::token::{self, TokenKind, token_can_begin_expr};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::symbol::{kw, sym};
 use syntax::ThinVec;
 use syntax::util::parser::AssocOp;
 use syntax::struct_span_err;
-
-use errors::{PResult, Applicability, DiagnosticBuilder, pluralize};
-use rustc_data_structures::fx::FxHashSet;
+use syntax_pos::symbol::{kw, sym};
 use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
+
 use log::{debug, trace};
 use std::mem;
-
-use rustc_error_codes::*;
 
 const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify type arguments";
 
@@ -61,10 +58,10 @@ pub enum Error {
 }
 
 impl Error {
-    fn span_err<S: Into<MultiSpan>>(
+    fn span_err(
         self,
-        sp: S,
-        handler: &errors::Handler,
+        sp: impl Into<MultiSpan>,
+        handler: &Handler,
     ) -> DiagnosticBuilder<'_> {
         match self {
             Error::FileNotFoundForModule {
@@ -212,7 +209,7 @@ impl<'a> Parser<'a> {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 
-    pub(super) fn diagnostic(&self) -> &'a errors::Handler {
+    pub(super) fn diagnostic(&self) -> &'a Handler {
         &self.sess.span_diagnostic
     }
 
@@ -225,8 +222,21 @@ impl<'a> Parser<'a> {
             self.token.span,
             &format!("expected identifier, found {}", self.this_token_descr()),
         );
+        let valid_follow = &[
+            TokenKind::Eq,
+            TokenKind::Colon,
+            TokenKind::Comma,
+            TokenKind::Semi,
+            TokenKind::ModSep,
+            TokenKind::OpenDelim(token::DelimToken::Brace),
+            TokenKind::OpenDelim(token::DelimToken::Paren),
+            TokenKind::CloseDelim(token::DelimToken::Brace),
+            TokenKind::CloseDelim(token::DelimToken::Paren),
+        ];
         if let token::Ident(name, false) = self.token.kind {
-            if Ident::new(name, self.token.span).is_raw_guess() {
+            if Ident::new(name, self.token.span).is_raw_guess() &&
+                self.look_ahead(1, |t| valid_follow.contains(&t.kind))
+            {
                 err.span_suggestion(
                     self.token.span,
                     "you can escape reserved keywords to use them as identifiers",
@@ -726,7 +736,7 @@ impl<'a> Parser<'a> {
                 let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
-                    s.print_mutability(mut_ty.mutbl);
+                    s.print_mutability(mut_ty.mutbl, false);
                     s.popen();
                     s.print_type(&mut_ty.ty);
                     s.print_type_bounds(" +", &bounds);
@@ -1502,11 +1512,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Replace duplicated recovered parameters with `_` pattern to avoid unecessary errors.
+    /// Replace duplicated recovered parameters with `_` pattern to avoid unnecessary errors.
     ///
     /// This is necessary because at this point we don't know whether we parsed a function with
     /// anonymous parameters or a function with names but no types. In order to minimize
-    /// unecessary errors, we assume the parameters are in the shape of `fn foo(a, b, c)` where
+    /// unnecessary errors, we assume the parameters are in the shape of `fn foo(a, b, c)` where
     /// the parameters are *names* (so we don't emit errors about not being able to find `b` in
     /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
     /// we deduplicate them to not complain about duplicated parameter names.

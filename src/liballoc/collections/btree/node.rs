@@ -596,7 +596,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
             // (We might be one-past-the-end, but that is allowed by LLVM.)
             // Getting the pointer is tricky though.  `NodeHeader` does not have a `keys`
             // field because we want its size to not depend on the alignment of `K`
-            // (needed becuase `as_header` should be safe).  We cannot call `as_leaf`
+            // (needed because `as_header` should be safe).  We cannot call `as_leaf`
             // because we might be the shared root.
             // For this reason, `NodeHeader` has this `K2` parameter (that's usually `()`
             // and hence just adds a size-0-align-1 field, not affecting layout).
