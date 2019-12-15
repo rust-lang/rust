@@ -2,19 +2,13 @@ error[E0426]: use of undeclared label `'label_use`
   --> $DIR/mixed-site-span.rs:15:9
    |
 LL |         proc_macro_rules!();
-   |         ^^^^^^^^^^^^^^^^^^^^
-   |         |
-   |         undeclared label `'label_use`
-   |         in this macro invocation
+   |         ^^^^^^^^^^^^^^^^^^^^ undeclared label `'label_use`
 
 error[E0425]: cannot find value `local_use` in this scope
   --> $DIR/mixed-site-span.rs:15:9
    |
 LL |         proc_macro_rules!();
-   |         ^^^^^^^^^^^^^^^^^^^^
-   |         |
-   |         not found in this scope
-   |         in this macro invocation
+   |         ^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `local_def` in this scope
   --> $DIR/mixed-site-span.rs:19:9
