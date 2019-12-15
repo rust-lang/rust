@@ -5,7 +5,7 @@ LL |     let (tx, rx) = channel();
    |         -------- consider giving this pattern the explicit type `(std::sync::mpsc::Sender<Foo<T>>, std::sync::mpsc::Receiver<Foo<T>>)`, where the type parameter `T` is specified
 ...
 LL |         tx.send(Foo{ foo: PhantomData });
-   |                 ^^^ cannot infer type for type parameter `T`
+   |                 ^^^ cannot infer type for type parameter `T` declared on the struct `Foo`
 
 error: aborting due to previous error
 

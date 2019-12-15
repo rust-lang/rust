@@ -3,7 +3,7 @@ use crate::hir::{self, Body, FunctionRetTy, Expr, ExprKind, HirId, Local, Pat};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::infer::InferCtxt;
 use crate::infer::type_variable::TypeVariableOriginKind;
-use crate::ty::{self, Ty, Infer, TyVar};
+use crate::ty::{self, Ty, Infer, TyVar, DefIdTree};
 use crate::ty::print::Print;
 use syntax::source_map::DesugaringKind;
 use syntax::symbol::kw;
@@ -117,6 +117,8 @@ fn closure_return_type_suggestion(
     descr: &str,
     name: &str,
     ret: &str,
+    parent_name: Option<String>,
+    parent_descr: Option<&str>,
 ) {
     let (arrow, post) = match output {
         FunctionRetTy::DefaultReturn(_) => ("-> ", " "),
@@ -138,7 +140,12 @@ fn closure_return_type_suggestion(
         suggestion,
         Applicability::HasPlaceholders,
     );
-    err.span_label(span, InferCtxt::missing_type_msg(&name, &descr));
+    err.span_label(span, InferCtxt::missing_type_msg(
+        &name,
+        &descr,
+        parent_name,
+        parent_descr
+    ));
 }
 
 /// Given a closure signature, return a `String` containing a list of all its argument types.
@@ -177,16 +184,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         highlight: Option<ty::print::RegionHighlightMode>,
-    ) -> (String, Option<Span>, Cow<'static, str>) {
+    ) -> (String, Option<Span>, Cow<'static, str>, Option<String>, Option<&'static str>) {
         if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind {
             let ty_vars = self.type_variables.borrow();
             let var_origin = ty_vars.var_origin(ty_vid);
-            if let TypeVariableOriginKind::TypeParameterDefinition(name) = var_origin.kind {
+            if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind {
+                let parent_def_id = def_id.and_then(|def_id| self.tcx.parent(def_id));
+                let (parent_name, parent_desc) = if let Some(parent_def_id) = parent_def_id {
+                    let parent_name = self.tcx.def_key(parent_def_id).disambiguated_data.data
+                        .get_opt_name().map(|parent_symbol| parent_symbol.to_string());
+
+                    let type_parent_desc = self.tcx.def_kind(parent_def_id)
+                        .map(|parent_def_kind| parent_def_kind.descr(parent_def_id));
+
+                    (parent_name, type_parent_desc)
+                } else {
+                    (None, None)
+                };
+
                 if name != kw::SelfUpper {
                     return (
                         name.to_string(),
                         Some(var_origin.span),
                         "type parameter".into(),
+                        parent_name,
+                        parent_desc,
                     );
                 }
             }
@@ -198,7 +220,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             printer.region_highlight_mode = highlight;
         }
         let _ = ty.print(printer);
-        (s, None, ty.prefix_string())
+        (s, None, ty.prefix_string(), None, None)
     }
 
     pub fn need_type_info_err(
@@ -209,7 +231,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         error_code: TypeAnnotationNeeded,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
-        let (name, name_sp, descr) = self.extract_type_name(&ty, None);
+        let (name, name_sp, descr, parent_name, parent_descr) = self.extract_type_name(&ty, None);
+
 
         let mut local_visitor = FindLocalByTypeVisitor::new(&self, ty, &self.tcx.hir());
         let ty_to_string = |ty: Ty<'tcx>| -> String {
@@ -218,7 +241,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let ty_vars = self.type_variables.borrow();
             let getter = move |ty_vid| {
                 let var_origin = ty_vars.var_origin(ty_vid);
-                if let TypeVariableOriginKind::TypeParameterDefinition(name) = var_origin.kind {
+                if let TypeVariableOriginKind::TypeParameterDefinition(name, _) = var_origin.kind {
                     return Some(name.to_string());
                 }
                 None
@@ -317,6 +340,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             &descr,
                             &name,
                             &ret,
+                            parent_name,
+                            parent_descr,
                         );
                         // We don't want to give the other suggestions when the problem is the
                         // closure return type.
@@ -433,8 +458,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if !err.span.span_labels().iter().any(|span_label| {
                 span_label.label.is_some() && span_label.span == span
             }) && local_visitor.found_arg_pattern.is_none()
-        { // Avoid multiple labels pointing at `span`.
-            err.span_label(span, InferCtxt::missing_type_msg(&name, &descr));
+        {
+            // Avoid multiple labels pointing at `span`.
+            err.span_label(
+                span,
+                InferCtxt::missing_type_msg(&name, &descr, parent_name, parent_descr)
+            );
         }
 
         err
@@ -496,19 +525,42 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
-        let (name, _, descr) = self.extract_type_name(&ty, None);
+        let (name, _, descr, parent_name, parent_descr) = self.extract_type_name(&ty, None);
+
         let mut err = struct_span_err!(
             self.tcx.sess, span, E0698, "type inside {} must be known in this context", kind,
         );
-        err.span_label(span, InferCtxt::missing_type_msg(&name, &descr));
+        err.span_label(span, InferCtxt::missing_type_msg(
+            &name,
+            &descr,
+            parent_name,
+            parent_descr
+        ));
         err
     }
 
-    fn missing_type_msg(type_name: &str, descr: &str) -> Cow<'static, str>{
+    fn missing_type_msg(
+        type_name: &str,
+        descr: &str,
+        parent_name: Option<String>,
+        parent_descr: Option<&str>,
+    ) -> Cow<'static, str> {
         if type_name == "_" {
             "cannot infer type".into()
         } else {
-            format!("cannot infer type for {} `{}`", descr, type_name).into()
+            let parent_desc = if let Some(parent_name) = parent_name {
+                let parent_type_descr = if let Some(parent_descr) = parent_descr {
+                    format!(" the {}", parent_descr)
+                } else {
+                    "".into()
+                };
+
+                format!(" declared on{} `{}`", parent_type_descr, parent_name)
+            } else {
+                "".to_string()
+            };
+
+            format!("cannot infer type for {} `{}`{}", descr, type_name, parent_desc).into()
         }
     }
 }
