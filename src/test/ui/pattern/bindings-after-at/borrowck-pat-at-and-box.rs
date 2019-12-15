@@ -3,6 +3,7 @@
 #![feature(bindings_after_at)]
 //~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 #![feature(box_patterns)]
+#![feature(slice_patterns)]
 
 #[derive(Copy, Clone)]
 struct C;
@@ -34,46 +35,7 @@ fn main() {
     //~^ ERROR cannot bind by-move with sub-bindings
     //~| ERROR use of moved value
 
-    let ref a @ box b = Box::new(C); // OK; the type is `Copy`.
-    drop(b);
-    drop(b);
-    drop(a);
-
-    let ref a @ box b = Box::new(c()); // OK; the type is `Copy`.
-    drop(b);
-    drop(b);
-    drop(a);
-
-    fn f3(ref a @ box b: Box<C>) { // OK; the type is `Copy`.
-        drop(b);
-        drop(b);
-        drop(a);
-    }
-    match Box::new(c()) {
-        ref a @ box b => { // OK; the type is `Copy`.
-            drop(b);
-            drop(b);
-            drop(a);
-        }
-    }
-
     let ref a @ box b = Box::new(NC); //~ ERROR cannot bind by-move and by-ref in the same pattern
-
-    let ref a @ box ref b = Box::new(NC); // OK.
-    drop(a);
-    drop(b);
-
-    fn f4(ref a @ box ref b: Box<NC>) { // OK.
-        drop(a);
-        drop(b)
-    }
-
-    match Box::new(nc()) {
-        ref a @ box ref b => { // OK.
-            drop(a);
-            drop(b);
-        }
-    }
 
     let ref a @ box ref mut b = Box::new(nc());
     //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
@@ -108,5 +70,17 @@ fn main() {
             *a = Box::new(NC);
             drop(b);
         }
+    }
+
+    match Box::new([Ok(c()), Err(nc()), Ok(c())]) {
+        box [Ok(a), ref xs @ .., Err(b)] => {}
+        //~^ ERROR cannot bind by-move and by-ref in the same pattern
+        _ => {}
+    }
+
+    match [Ok(Box::new(c())), Err(Box::new(nc())), Ok(Box::new(c())), Ok(Box::new(c()))] {
+        [Ok(box ref a), ref xs @ .., Err(box b), Err(box ref mut c)] => {}
+        //~^ ERROR cannot bind by-move and by-ref in the same pattern
+        _ => {}
     }
 }
