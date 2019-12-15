@@ -54,19 +54,11 @@ impl HumanReadableErrorType {
         source_map: Option<Lrc<SourceMap>>,
         teach: bool,
         terminal_width: Option<usize>,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
-        EmitterWriter::new(
-            dst,
-            source_map,
-            short,
-            teach,
-            color,
-            terminal_width,
-            external_macro_backtrace,
-        )
+        EmitterWriter::new(dst, source_map, short, teach, color, terminal_width, macro_backtrace)
     }
 }
 
@@ -294,12 +286,12 @@ pub trait Emitter {
             if self.fix_multispans_in_extern_macros(source_map, span, children) {
                 let msg = if level == &Error {
                     "this error originates in a macro outside of the current crate \
-                    (in Nightly builds, run with -Z external-macro-backtrace \
+                    (in Nightly builds, run with -Z macro-backtrace \
                     for more info)"
                         .to_string()
                 } else {
                     "this warning originates in a macro outside of the current crate \
-                    (in Nightly builds, run with -Z external-macro-backtrace \
+                    (in Nightly builds, run with -Z macro-backtrace \
                     for more info)"
                         .to_string()
                 };
@@ -467,7 +459,7 @@ impl Emitter for EmitterWriter {
             &mut primary_span,
             &mut children,
             &diag.level,
-            self.external_macro_backtrace,
+            self.macro_backtrace,
         );
 
         self.emit_messages_default(
@@ -546,7 +538,7 @@ pub struct EmitterWriter {
     ui_testing: bool,
     terminal_width: Option<usize>,
 
-    external_macro_backtrace: bool,
+    macro_backtrace: bool,
 }
 
 #[derive(Debug)]
@@ -563,7 +555,7 @@ impl EmitterWriter {
         short_message: bool,
         teach: bool,
         terminal_width: Option<usize>,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
@@ -573,7 +565,7 @@ impl EmitterWriter {
             teach,
             ui_testing: false,
             terminal_width,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
@@ -584,7 +576,7 @@ impl EmitterWriter {
         teach: bool,
         colored: bool,
         terminal_width: Option<usize>,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
@@ -593,7 +585,7 @@ impl EmitterWriter {
             teach,
             ui_testing: false,
             terminal_width,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
