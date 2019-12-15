@@ -12,9 +12,8 @@ export function handle(params: PublishDecorationsParams) {
     const targetEditor = vscode.window.visibleTextEditors.find(
         editor => {
             const unescapedUri = unescape(editor.document.uri.toString());
-            // Unescaped URI should be something like:
+            // Unescaped URI looks like:
             // file:///c:/Workspace/ra-test/src/main.rs
-            // RA server might send it with the drive letter uppercased, so we force only the drive letter to lowercase.
             return unescapedUri === params.uri
         }
     );
