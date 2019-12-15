@@ -1,5 +1,5 @@
 error[E0277]: `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
-  --> $DIR/closure-move-sync.rs:7:13
+  --> $DIR/closure-move-sync.rs:10:13
    |
 LL |     let t = thread::spawn(|| {
    |             ^^^^^^^^^^^^^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
@@ -11,10 +11,10 @@ LL |     F: Send + 'static,
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&std::sync::mpsc::Receiver<()>`
-   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:7:27: 10:6 recv:&std::sync::mpsc::Receiver<()>]`
+   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:10:27: 13:6 recv:&std::sync::mpsc::Receiver<()>]`
 
 error[E0277]: `std::sync::mpsc::Sender<()>` cannot be shared between threads safely
-  --> $DIR/closure-move-sync.rs:19:5
+  --> $DIR/closure-move-sync.rs:22:5
    |
 LL |     thread::spawn(|| tx.send(()).unwrap());
    |     ^^^^^^^^^^^^^ `std::sync::mpsc::Sender<()>` cannot be shared between threads safely
@@ -26,7 +26,7 @@ LL |     F: Send + 'static,
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Sender<()>`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&std::sync::mpsc::Sender<()>`
-   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:19:19: 19:42 tx:&std::sync::mpsc::Sender<()>]`
+   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:22:19: 22:42 tx:&std::sync::mpsc::Sender<()>]`
 
 error: aborting due to 2 previous errors
 

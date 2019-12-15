@@ -1,16 +1,16 @@
 error[E0391]: cycle detected when const-evaluating + checking `Foo::bytes::{{constant}}#0`
-  --> $DIR/const-size_of-cycle.rs:5:17
+  --> $DIR/const-size_of-cycle.rs:8:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating + checking `Foo::bytes::{{constant}}#0`...
-  --> $DIR/const-size_of-cycle.rs:5:17
+  --> $DIR/const-size_of-cycle.rs:8:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating `Foo::bytes::{{constant}}#0`...
-  --> $DIR/const-size_of-cycle.rs:5:17
+  --> $DIR/const-size_of-cycle.rs:8:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |     pub fn size_of<T>() -> usize;
    = note: ...which requires normalizing `ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: All, def_id: None }, value: [u8; _] }`...
    = note: ...which again requires const-evaluating + checking `Foo::bytes::{{constant}}#0`, completing the cycle
 note: cycle used when processing `Foo`
-  --> $DIR/const-size_of-cycle.rs:4:1
+  --> $DIR/const-size_of-cycle.rs:7:1
    |
 LL | struct Foo {
    | ^^^^^^^^^^

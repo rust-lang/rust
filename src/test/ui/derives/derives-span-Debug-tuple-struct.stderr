@@ -1,5 +1,5 @@
 error[E0277]: `Error` doesn't implement `std::fmt::Debug`
-  --> $DIR/derives-span-Debug-tuple-struct.rs:9:5
+  --> $DIR/derives-span-Debug-tuple-struct.rs:12:5
    |
 LL |     Error
    |     ^^^^^ `Error` cannot be formatted using `{:?}`

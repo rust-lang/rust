@@ -1,5 +1,5 @@
 warning: skipping const checks
-  --> $DIR/drop.rs:18:9
+  --> $DIR/drop.rs:21:9
    |
 LL |     let _v: Vec<i32> = Vec::new();
    |         ^^
@@ -14,10 +14,10 @@ LL | |     real_drop_in_place(to_drop)
 LL | | }
    | |_^ calling non-const function `<std::vec::Vec<i32> as std::ops::Drop>::drop`
    | 
-  ::: $DIR/drop.rs:20:1
+  ::: $DIR/drop.rs:23:1
    |
 LL |   };
-   |   - inside call to `std::ptr::real_drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $DIR/drop.rs:20:1
+   |   - inside call to `std::ptr::real_drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $DIR/drop.rs:23:1
 
 error: aborting due to previous error
 

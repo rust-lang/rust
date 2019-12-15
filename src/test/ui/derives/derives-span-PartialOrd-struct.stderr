@@ -1,5 +1,5 @@
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-struct.rs:9:5
+  --> $DIR/derives-span-PartialOrd-struct.rs:12:5
    |
 LL |     x: Error
    |     ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
