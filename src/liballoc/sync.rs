@@ -1496,7 +1496,7 @@ impl<T: ?Sized> Weak<T> {
     /// If `self` was created using [`Weak::new`], this will return 0.
     ///
     /// [`Weak::new`]: #method.new
-    #[stable(feature = "weak_counts", since = "1.40.0")]
+    #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
         if let Some(inner) = self.inner() {
             inner.strong.load(SeqCst)
@@ -1518,7 +1518,7 @@ impl<T: ?Sized> Weak<T> {
     /// `Weak`s pointing to the same allocation.
     ///
     /// [`Weak::new`]: #method.new
-    #[stable(feature = "weak_counts", since = "1.40.0")]
+    #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn weak_count(&self) -> usize {
         self.inner().map(|inner| {
             let weak = inner.weak.load(SeqCst);
