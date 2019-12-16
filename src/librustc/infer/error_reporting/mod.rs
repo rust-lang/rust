@@ -71,6 +71,7 @@ use rustc_hir::Node;
 use errors::{
     pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticStyledString,
 };
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_error_codes::*;
 use rustc_span::{DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
@@ -1362,9 +1363,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let kind = match t.kind {
                     ty::Closure(..) => "closure",
                     ty::Opaque(..) => "opaque type",
+                    ty::Generator(..) => "generator",
+                    ty::Foreign(..) => "foreign type",
                     _ => "",
                 };
-                if let ty::Closure(def_id, _) | ty::Opaque(def_id, _) = t.kind {
+                if let ty::Closure(def_id, _)
+                | ty::Opaque(def_id, _)
+                | ty::Generator(def_id, ..)
+                | ty::Foreign(def_id) = t.kind
+                {
                     let span = self.tcx.def_span(def_id);
                     // Avoid cluttering the output when the "found" and error span overlap:
                     //
