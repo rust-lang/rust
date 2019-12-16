@@ -1340,16 +1340,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             err.span_label(
                                 *sp,
                                 format!(
-                                    "{}the {} {}{}{}",
-                                    if count > 1 { "one of " } else { "" },
-                                    target,
-                                    key,
-                                    pluralize!(count),
+                                    "{}{}{} {}{}",
                                     if sp.is_desugaring(DesugaringKind::Async) {
-                                        " in the `Output` of this `async fn`"
+                                        "the `Output` of this `async fn`'s "
+                                    } else if count == 1 {
+                                        "the "
                                     } else {
                                         ""
                                     },
+                                    if count > 1 { "one of the " } else { "" },
+                                    target,
+                                    key,
+                                    pluralize!(count),
                                 ),
                             );
                         }
