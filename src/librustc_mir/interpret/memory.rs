@@ -116,7 +116,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M>
 // carefully copy only the reachable parts.
 impl<'mir, 'tcx, M> Clone for Memory<'mir, 'tcx, M>
 where
-    M: Machine<'mir, 'tcx, PointerTag = (), AllocExtra = (), MemoryExtra = ()>,
+    M: Machine<'mir, 'tcx, PointerTag = (), AllocExtra = ()>,
+    M::MemoryExtra: Copy,
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     fn clone(&self) -> Self {
@@ -124,7 +125,7 @@ where
             alloc_map: self.alloc_map.clone(),
             extra_fn_ptr_map: self.extra_fn_ptr_map.clone(),
             dead_alloc_map: self.dead_alloc_map.clone(),
-            extra: (),
+            extra: self.extra,
             tcx: self.tcx,
         }
     }
@@ -455,7 +456,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     let id = raw_const.alloc_id;
                     let allocation = tcx.alloc_map.lock().unwrap_memory(id);
 
-                    M::before_access_static(allocation)?;
+                    M::before_access_static(memory_extra, allocation)?;
                     Cow::Borrowed(allocation)
                 }
             }

@@ -20,7 +20,6 @@ pub trait CompileTimeMachine<'mir, 'tcx> = Machine<
     PointerTag = (),
     ExtraFnVal = !,
     FrameExtra = (),
-    MemoryExtra = (),
     AllocExtra = (),
     MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
 >;

@@ -212,7 +212,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Called before a `StaticKind::Static` value is accessed.
-    fn before_access_static(_allocation: &Allocation) -> InterpResult<'tcx> {
+    fn before_access_static(
+        _memory_extra: &Self::MemoryExtra,
+        _allocation: &Allocation,
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
