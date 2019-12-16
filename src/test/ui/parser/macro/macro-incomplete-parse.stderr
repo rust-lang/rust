@@ -17,6 +17,8 @@ LL |     () => ( 1,
 ...
 LL |     ignored_expr!();
    |     ---------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: macro expansion ignores token `,` and any following
   --> $DIR/macro-incomplete-parse.rs:16:14

@@ -175,4 +175,5 @@ LL | f!("Foo\nbar [BarF] bar\nbaz");
            bar [BarF] bar
                 ^^^^
    = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

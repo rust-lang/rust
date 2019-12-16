@@ -26,6 +26,7 @@ use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
 use std::io;
 use std::io::prelude::*;
+use std::iter;
 use std::path::Path;
 use termcolor::{Ansi, BufferWriter, ColorChoice, ColorSpec, StandardStream};
 use termcolor::{Buffer, Color, WriteColor};
@@ -279,20 +280,41 @@ pub trait Emitter {
         level: &Level,
         backtrace: bool,
     ) {
-        let mut external_spans_updated = false;
+        // Check for spans in macros, before `fix_multispans_in_extern_macros`
+        // has a chance to replace them.
+        let has_macro_spans = iter::once(&*span)
+            .chain(children.iter().map(|child| &child.span))
+            .flat_map(|span| span.primary_spans())
+            .copied()
+            .flat_map(|sp| {
+                sp.macro_backtrace().filter_map(|expn_data| {
+                    match expn_data.kind {
+                        ExpnKind::Root => None,
+
+                        // Skip past non-macro entries, just in case there
+                        // are some which do actually involve macros.
+                        ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
+
+                        ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
+                    }
+                })
+            })
+            .next();
+
         if !backtrace {
-            external_spans_updated =
-                self.fix_multispans_in_extern_macros(source_map, span, children);
+            self.fix_multispans_in_extern_macros(source_map, span, children);
         }
 
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            if external_spans_updated {
+            if let Some(macro_kind) = has_macro_spans {
                 let msg = format!(
-                    "this {} originates in a macro outside of the current crate \
+                    "this {} originates in {} {} \
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
                     level,
+                    macro_kind.article(),
+                    macro_kind.descr(),
                 );
 
                 children.push(SubDiagnostic {
@@ -311,9 +333,8 @@ pub trait Emitter {
         children: &mut Vec<SubDiagnostic>,
         backtrace: bool,
     ) {
-        self.render_multispan_macro_backtrace(span, backtrace);
-        for child in children.iter_mut() {
-            self.render_multispan_macro_backtrace(&mut child.span, backtrace);
+        for span in iter::once(span).chain(children.iter_mut().map(|child| &mut child.span)) {
+            self.render_multispan_macro_backtrace(span, backtrace);
         }
     }
 
@@ -386,6 +407,7 @@ pub trait Emitter {
                 }
             }
         }
+
         for (label_span, label_text) in new_labels {
             span.push_span_label(label_span, label_text);
         }
@@ -399,12 +421,10 @@ pub trait Emitter {
         source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
         children: &mut Vec<SubDiagnostic>,
-    ) -> bool {
-        let mut spans_updated = self.fix_multispan_in_extern_macros(source_map, span);
-        for child in children.iter_mut() {
-            spans_updated |= self.fix_multispan_in_extern_macros(source_map, &mut child.span);
+    ) {
+        for span in iter::once(span).chain(children.iter_mut().map(|child| &mut child.span)) {
+            self.fix_multispan_in_extern_macros(source_map, span);
         }
-        spans_updated
     }
 
     // This "fixes" MultiSpans that contain Spans that are pointing to locations inside of
@@ -414,10 +434,10 @@ pub trait Emitter {
         &self,
         source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
-    ) -> bool {
+    ) {
         let sm = match source_map {
             Some(ref sm) => sm,
-            None => return false,
+            None => return,
         };
 
         // First, find all the spans in <*macros> and point instead at their use site
@@ -438,12 +458,9 @@ pub trait Emitter {
             .collect();
 
         // After we have them, make sure we replace these 'bad' def sites with their use sites
-        let spans_updated = !replacements.is_empty();
         for (from, to) in replacements {
             span.replace(from, to);
         }
-
-        spans_updated
     }
 }
 

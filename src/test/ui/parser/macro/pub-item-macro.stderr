@@ -8,6 +8,7 @@ LL |     pub_x!();
    |     --------- in this macro invocation
    |
    = help: try adjusting the macro to put `pub` inside the invocation
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0603]: static `x` is private
   --> $DIR/pub-item-macro.rs:17:23
@@ -23,6 +24,7 @@ LL |     static x: u32 = 0;
 ...
 LL |     pub_x!();
    |     --------- in this macro invocation
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -6,6 +6,8 @@ LL |     three!($a, $b);
 ...
 LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: second final: "world"
   --> $DIR/parent-source-spans.rs:19:16
@@ -15,6 +17,8 @@ LL |     three!($a, $b);
 ...
 LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: first parent: "hello"
   --> $DIR/parent-source-spans.rs:13:5
@@ -24,6 +28,8 @@ LL |     two!($a, $b);
 ...
 LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: second parent: "world"
   --> $DIR/parent-source-spans.rs:13:5
@@ -33,6 +39,8 @@ LL |     two!($a, $b);
 ...
 LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: first grandparent: "hello"
   --> $DIR/parent-source-spans.rs:39:5
@@ -66,6 +74,8 @@ LL |     three!($a, $b);
 ...
 LL |     two!("yay", "rust");
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: second final: "rust"
   --> $DIR/parent-source-spans.rs:19:16
@@ -75,6 +85,8 @@ LL |     three!($a, $b);
 ...
 LL |     two!("yay", "rust");
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: first parent: "yay"
   --> $DIR/parent-source-spans.rs:45:5
@@ -137,6 +149,8 @@ LL |     one!("hello", "world");
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:32:5
@@ -151,6 +165,8 @@ LL |     two!("yay", "rust");
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:32:5
@@ -165,6 +181,8 @@ LL |     three!("hip", "hop");
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 21 previous errors
 

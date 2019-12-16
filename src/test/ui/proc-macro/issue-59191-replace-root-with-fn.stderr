@@ -3,6 +3,8 @@ error: expected crate top-level item to be a module after macro expansion, found
    |
 LL | #![issue_59191::no_main]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0601]: `main` function not found in crate `issue_59191_replace_root_with_fn`
   --> $DIR/issue-59191-replace-root-with-fn.rs:5:1

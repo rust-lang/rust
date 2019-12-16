@@ -40,6 +40,7 @@ LL |     mac!(0);
    |     -------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:21:19
@@ -51,6 +52,7 @@ LL |     mac!(0);
    |     -------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 

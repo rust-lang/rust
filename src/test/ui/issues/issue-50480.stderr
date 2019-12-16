@@ -29,6 +29,8 @@ LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |                                                 --------  ------ this field does not implement `Copy`
    |                                                 |
    |                                                 this field does not implement `Copy`
+   |
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

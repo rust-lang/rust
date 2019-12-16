@@ -42,6 +42,7 @@ LL | #[derive(HashStable)]
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/27812
    = help: add `#![feature(rustc_private)]` to the crate attributes to enable
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

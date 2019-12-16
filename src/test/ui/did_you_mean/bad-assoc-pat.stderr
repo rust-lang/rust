@@ -36,6 +36,8 @@ LL |     ($ty: ty) => ($ty::AssocItem)
 ...
 LL |         pat!(u8) => {}
    |         -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0599]: no associated item named `AssocItem` found for slice `[u8]` in the current scope
   --> $DIR/bad-assoc-pat.rs:3:15
@@ -69,6 +71,8 @@ LL |     ($ty: ty) => ($ty::AssocItem)
 ...
 LL |         pat!(u8) => {}
    |         -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0599]: no associated item named `AssocItem` found for type `u8` in the current scope
   --> $DIR/bad-assoc-pat.rs:32:16

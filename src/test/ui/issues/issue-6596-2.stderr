@@ -6,6 +6,8 @@ LL |         { $inp $nonexistent }
 ...
 LL |     g!(foo);
    |     -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
