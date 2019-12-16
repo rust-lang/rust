@@ -1313,21 +1313,6 @@ mod tests {
     }
 
     #[test]
-    fn fast_rebind() {
-        each_ip(&mut |addr| {
-            let acceptor = t!(TcpListener::bind(&addr));
-
-            let _t = thread::spawn(move || {
-                t!(TcpStream::connect(&addr));
-            });
-
-            t!(acceptor.accept());
-            drop(acceptor);
-            t!(TcpListener::bind(&addr));
-        });
-    }
-
-    #[test]
     fn tcp_clone_smoke() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));

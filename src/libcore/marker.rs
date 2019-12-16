@@ -97,7 +97,7 @@ pub trait Sized {
 /// Types that can be "unsized" to a dynamically-sized type.
 ///
 /// For example, the sized array type `[i8; 2]` implements `Unsize<[i8]>` and
-/// `Unsize<fmt::Debug>`.
+/// `Unsize<dyn fmt::Debug>`.
 ///
 /// All implementations of `Unsize` are provided automatically by the compiler.
 ///

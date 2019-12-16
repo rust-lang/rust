@@ -2330,7 +2330,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, d
     );
     let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
     err.span_label(sp, &msg);
-    if let &[ref start @ .., ref end] = &variant_spans[..] {
+    if let [start @ .., end] = &*variant_spans {
         for variant_span in start {
             err.span_label(*variant_span, "");
         }
@@ -2372,23 +2372,14 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
     }
     let sp = tcx.sess.source_map().def_span(sp);
 
-    if adt.is_enum() {
-        if !tcx.features().transparent_enums {
-            feature_err(
-                &tcx.sess.parse_sess,
-                sym::transparent_enums,
-                sp,
-                "transparent enums are unstable",
-            )
-            .emit();
-        }
-        if adt.variants.len() != 1 {
-            bad_variant_count(tcx, adt, sp, def_id);
-            if adt.variants.is_empty() {
-                // Don't bother checking the fields. No variants (and thus no fields) exist.
-                return;
-            }
-        }
+    if adt.is_enum() && !tcx.features().transparent_enums {
+        feature_err(
+            &tcx.sess.parse_sess,
+            sym::transparent_enums,
+            sp,
+            "transparent enums are unstable",
+        )
+        .emit();
     }
 
     if adt.is_union() && !tcx.features().transparent_unions {
@@ -2399,6 +2390,14 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
             "transparent unions are unstable",
         )
         .emit();
+    }
+
+    if adt.variants.len() != 1 {
+        bad_variant_count(tcx, adt, sp, def_id);
+        if adt.variants.is_empty() {
+            // Don't bother checking the fields. No variants (and thus no fields) exist.
+            return;
+        }
     }
 
     // For each field, figure out if it's known to be a ZST and align(1)
@@ -5351,9 +5350,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       directly, not through a function pointer");
     }
 
-    // Resolves `typ` by a single level if `typ` is a type variable.
-    // If no resolution is possible, then an error is reported.
-    // Numeric inference variables may be left unresolved.
+    /// Resolves `typ` by a single level if `typ` is a type variable.
+    /// If no resolution is possible, then an error is reported.
+    /// Numeric inference variables may be left unresolved.
     pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.resolve_vars_with_obligations(ty);
         if !ty.is_ty_var() {
