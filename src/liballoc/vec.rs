@@ -2702,13 +2702,14 @@ impl<T> DoubleEndedIterator for Drain<'_, T> {
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> Drop for Drain<'_, T> {
     fn drop(&mut self) {
-        /// Continues dropping the remaining elements when a destructor unwinds.
+        /// Continues dropping the remaining elements in the `Drain`, then moves back the
+        /// un-`Drain`ed elements to restore the original `Vec`.
         struct DropGuard<'r, 'a, T>(&'r mut Drain<'a, T>);
 
         impl<'r, 'a, T> Drop for DropGuard<'r, 'a, T> {
             fn drop(&mut self) {
-                // Continue the same loop we do below. This only runs when a destructor has
-                // panicked. If another one panics this will abort.
+                // Continue the same loop we have below. If the loop already finished, this does
+                // nothing.
                 self.0.for_each(drop);
 
                 if self.0.tail_len > 0 {
@@ -2735,6 +2736,7 @@ impl<T> Drop for Drain<'_, T> {
             mem::forget(guard);
         }
 
+        // Drop a `DropGuard` to move back the non-drained tail of `self`.
         DropGuard(self);
     }
 }
