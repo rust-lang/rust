@@ -1281,19 +1281,27 @@ where
     table: &'a mut RawTable<(K, V)>,
 }
 
-impl<K, V, F> Drop for DrainFilter<'_, K, V, F>
+impl<'a, K, V, F> Drop for DrainFilter<'a, K, V, F>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
     fn drop(&mut self) {
-        unsafe {
-            while let Some(item) = self.iter.next() {
-                let &mut (ref key, ref mut value) = item.as_mut();
-                if !(self.f)(key, value) {
-                    self.table.erase_no_drop(&item);
-                    item.drop();
-                }
+        struct DropGuard<'r, 'a, K, V, F>(&'r mut DrainFilter<'a, K, V, F>)
+        where
+            F: FnMut(&K, &mut V) -> bool;
+
+        impl<'r, 'a, K, V, F> Drop for DropGuard<'r, 'a, K, V, F>
+        where
+            F: FnMut(&K, &mut V) -> bool,
+        {
+            fn drop(&mut self) {
+                while let Some(_) = self.0.next() {}
             }
+        }
+        while let Some(item) = self.next() {
+            let guard = DropGuard(self);
+            drop(item);
+            mem::forget(guard);
         }
     }
 }
