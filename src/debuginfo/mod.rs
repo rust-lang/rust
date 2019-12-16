@@ -202,7 +202,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         func_id: FuncId,
         name: &str,
     ) -> Self {
-        let mir = debug_context.tcx.instance_mir(instance.def);
+        let mir = *debug_context.tcx.instance_mir(instance.def);
 
         let (symbol, _) = debug_context.symbols.insert_full(func_id, name.to_string());
 
