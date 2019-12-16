@@ -1,0 +1,29 @@
+From eaa0c3eac2067c7c08913653ebef10c103c1255f Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Mon, 16 Dec 2019 11:46:10 +0100
+Subject: [PATCH] [libstd] Revert arg initialization on linux to not require
+ #[link_section]
+
+---
+ src/libstd/sys/unix/args.rs | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/src/libstd/sys/unix/args.rs b/src/libstd/sys/unix/args.rs
+index 2ed1585..b4b021a 100644
+--- a/src/libstd/sys/unix/args.rs
++++ b/src/libstd/sys/unix/args.rs
+@@ -83,10 +83,7 @@ mod imp {
+         // On Linux-GNU, we rely on `ARGV_INIT_ARRAY` below to initialize
+         // `ARGC` and `ARGV`. But in Miri that does not actually happen so we
+         // still initialize here.
+-        #[cfg(any(
+-            miri,
+-            not(all(target_os = "linux", target_env = "gnu"))
+-        ))]
++        // `#[link_section]` is not yet supported by cg_clif
+         really_init(_argc, _argv);
+     }
+ 
+-- 
+2.20.1
+
