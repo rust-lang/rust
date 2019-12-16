@@ -5351,9 +5351,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       directly, not through a function pointer");
     }
 
-    // Resolves `typ` by a single level if `typ` is a type variable.
-    // If no resolution is possible, then an error is reported.
-    // Numeric inference variables may be left unresolved.
+    /// Resolves `typ` by a single level if `typ` is a type variable.
+    /// If no resolution is possible, then an error is reported.
+    /// Numeric inference variables may be left unresolved.
     pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.resolve_vars_with_obligations(ty);
         if !ty.is_ty_var() {
