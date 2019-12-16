@@ -67,7 +67,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 )]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
-                    $Ty(n)
+                    Self(n)
                 }
 
                 /// Creates a non-zero if the given value is not zero.
@@ -76,7 +76,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 pub fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
                         // SAFETY: we just checked that there's no `0`
-                        Some(unsafe { $Ty(n) })
+                        Some(unsafe { Self(n) })
                     } else {
                         None
                     }
