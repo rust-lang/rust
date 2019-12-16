@@ -9,6 +9,7 @@ note: here
    |
 LL | subspan!("hi");
    |           ^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: found 'hi's
   --> $DIR/subspan.rs:14:1
@@ -21,6 +22,7 @@ note: here
    |
 LL | subspan!("hihi");
    |           ^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: found 'hi's
   --> $DIR/subspan.rs:17:1
@@ -33,6 +35,7 @@ note: here
    |
 LL | subspan!("hihihi");
    |           ^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: found 'hi's
   --> $DIR/subspan.rs:20:1
@@ -45,6 +48,7 @@ note: here
    |
 LL | subspan!("why I hide? hi!");
    |                 ^^    ^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: found 'hi's
   --> $DIR/subspan.rs:21:1
@@ -57,6 +61,7 @@ note: here
    |
 LL | subspan!("hey, hi, hidy, hidy, hi hi");
    |                ^^  ^^    ^^    ^^ ^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: found 'hi's
   --> $DIR/subspan.rs:22:1
@@ -69,6 +74,7 @@ note: here
    |
 LL | subspan!("this is a hi, and this is another hi");
    |            ^^       ^^       ^^             ^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: found 'hi's
   --> $DIR/subspan.rs:23:1
@@ -81,6 +87,7 @@ note: here
    |
 LL | subspan!("how are you this evening");
    |                        ^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: found 'hi's
   --> $DIR/subspan.rs:24:1
@@ -93,6 +100,7 @@ note: here
    |
 LL | subspan!("this is highly eradic");
    |            ^^     ^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 8 previous errors
 

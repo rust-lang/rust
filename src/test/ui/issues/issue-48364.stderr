@@ -6,6 +6,7 @@ LL |     b"".starts_with(stringify!(foo))
    |
    = note: expected reference `&[u8]`
               found reference `&'static str`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

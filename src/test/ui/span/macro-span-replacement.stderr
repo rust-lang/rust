@@ -13,4 +13,5 @@ note: the lint level is defined here
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

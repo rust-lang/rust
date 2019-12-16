@@ -6,6 +6,8 @@ LL |         extern crate std as non_existent;
 ...
 LL | define_std_as_non_existent!();
    | ------------------------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: use of undeclared type or module `two_macros`
   --> $DIR/extern-prelude-extern-crate-fail.rs:10:9

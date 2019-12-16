@@ -3,6 +3,8 @@ error[E0184]: the trait `Copy` may not be implemented for this type; the type ha
    |
 LL | #[derive(Copy)]
    |          ^^^^ Copy not allowed on types with destructors
+   |
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

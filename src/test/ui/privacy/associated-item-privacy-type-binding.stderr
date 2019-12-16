@@ -6,6 +6,8 @@ LL |         let _: Box<PubTr<AssocTy = u8>>;
 ...
 LL |     priv_trait::mac1!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:11:16
@@ -15,6 +17,8 @@ LL |         let _: Box<PubTr<AssocTy = u8>>;
 ...
 LL |     priv_trait::mac1!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:14:31
@@ -24,6 +28,8 @@ LL |         type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
 ...
 LL |     priv_trait::mac1!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:16:31
@@ -33,6 +39,8 @@ LL |         trait InSignatureTr2: PubTr<AssocTy = u8> {}
 ...
 LL |     priv_trait::mac1!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:20:13
@@ -42,6 +50,8 @@ LL |         let _: Box<PrivTr<AssocTy = u8>>;
 ...
 LL |     priv_trait::mac2!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:20:16
@@ -51,6 +61,8 @@ LL |         let _: Box<PrivTr<AssocTy = u8>>;
 ...
 LL |     priv_trait::mac2!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:23:31
@@ -60,6 +72,8 @@ LL |         type InSignatureTy1 = Box<PrivTr<AssocTy = u8>>;
 ...
 LL |     priv_trait::mac2!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:25:31
@@ -69,6 +83,8 @@ LL |         trait InSignatureTr1: PrivTr<AssocTy = u8> {}
 ...
 LL |     priv_trait::mac2!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-type-binding.rs:44:13
@@ -78,6 +94,8 @@ LL |         let _: Box<PubTrWithParam<AssocTy = u8>>;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-type-binding.rs:44:16
@@ -87,6 +105,8 @@ LL |         let _: Box<PubTrWithParam<AssocTy = u8>>;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-type-binding.rs:47:13
@@ -96,6 +116,8 @@ LL |         let _: Box<PubTr<AssocTy = u8>>;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-type-binding.rs:47:16
@@ -105,6 +127,8 @@ LL |         let _: Box<PubTr<AssocTy = u8>>;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-type-binding.rs:50:35
@@ -114,6 +138,8 @@ LL |         pub type InSignatureTy1 = Box<PubTrWithParam<AssocTy = u8>>;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-type-binding.rs:52:35
@@ -123,6 +149,8 @@ LL |         pub type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-type-binding.rs:54:31
@@ -132,6 +160,8 @@ LL |         trait InSignatureTr1: PubTrWithParam<AssocTy = u8> {}
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-type-binding.rs:56:31
@@ -141,6 +171,8 @@ LL |         trait InSignatureTr2: PubTr<AssocTy = u8> {}
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 16 previous errors
 

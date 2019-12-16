@@ -9,12 +9,16 @@ error[E0616]: field `field` of struct `Restricted` is private
    |
 LL | #[derive(Derive)]
    |          ^^^^^^
+   |
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0616]: field `field` of struct `Restricted` is private
   --> $DIR/issue-50493.rs:6:10
    |
 LL | #[derive(Derive)]
    |          ^^^^^^
+   |
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

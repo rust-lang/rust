@@ -36,6 +36,8 @@ LL |         fn $fn_name(gift: &str) -> $type_name {
 ...
 LL | autowrapper!(Autowrapped, autowrap_gift, 'a);
    | --------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hidden lifetime parameters in types are deprecated
   --> $DIR/elided-lifetimes.rs:78:18
@@ -51,6 +53,8 @@ LL |         Ref<($($types),*)>
 ...
 LL |     let yellow: anytuple_ref_ty!(bool, &str) = laughter.borrow();
    |                 ---------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 7 previous errors
 
