@@ -1154,6 +1154,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.mk_ref(region, mt)
     }
 
+    /// Type check a slice pattern.
+    ///
+    /// Syntactically, these look like `[pat_0, ..., pat_n]`.
+    /// Semantically, we are type checking a pattern with structure:
+    /// ```
+    /// [before_0, ..., before_n, (slice, after_0, ... after_n)?]
+    /// ```
+    /// The type of `slice`, if it is present, depends on the `expected` type.
+    /// If `slice` is missing, then so is `after_i`.
+    /// If `slice` is present, it can still represent 0 elements.
     fn check_pat_slice(
         &self,
         span: Span,
@@ -1167,27 +1177,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let expected_ty = self.structurally_resolved_type(span, expected);
         let (inner_ty, slice_ty) = match expected_ty.kind {
+            // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(inner_ty, size) => {
                 let slice_ty = if let Some(size) = size.try_eval_usize(tcx, self.param_env) {
+                    // Now we know the length...
                     let min_len = before.len() as u64 + after.len() as u64;
                     if slice.is_none() {
+                        // ...and since there is no variable-length pattern,
+                        // we require an exact match between the number of elements
+                        // in the array pattern and as provided by the matched type.
                         if min_len != size {
                             self.error_scrutinee_inconsistent_length(span, min_len, size)
                         }
                         tcx.types.err
                     } else if let Some(rest) = size.checked_sub(min_len) {
+                        // The variable-length pattern was there,
+                        // so it has an array type with the remaining elements left as its size...
                         tcx.mk_array(inner_ty, rest)
                     } else {
+                        // ...however, in this case, there were no remaining elements.
+                        // That is, the slice pattern requires more than the array type offers.
                         self.error_scrutinee_with_rest_inconsistent_length(span, min_len, size);
                         tcx.types.err
                     }
                 } else {
+                    // No idea what the length is, which happens if we have e.g.,
+                    // `let [a, b] = arr` where `arr: [T; N]` where `const N: usize`.
                     self.error_scrutinee_unfixed_length(span);
                     tcx.types.err
                 };
                 (inner_ty, slice_ty)
             }
             ty::Slice(inner_ty) => (inner_ty, expected_ty),
+            // The expected type must be an array or slice, but was neither, so error.
             _ => {
                 if !expected_ty.references_error() {
                     self.error_expected_array_or_slice(span, expected_ty);
@@ -1196,12 +1218,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
+        // Type check all the patterns before `slice`.
         for elt in before {
             self.check_pat(&elt, inner_ty, def_bm, discrim_span);
         }
+        // Type check the `slice`, if present, against its expected type.
         if let Some(slice) = slice {
             self.check_pat(&slice, slice_ty, def_bm, discrim_span);
         }
+        // Type check the elements after `slice`, if present.
         for elt in after {
             self.check_pat(&elt, inner_ty, def_bm, discrim_span);
         }
