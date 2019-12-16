@@ -248,7 +248,7 @@ impl<'tcx> ty::TyS<'tcx> {
                     format!("`&{}`", tymut_string).into()
                 } else { // Unknown type name, it's long or has type arguments
                     match mutbl {
-                        hir::Mutability::Mutable => "mutable reference",
+                        hir::Mutability::Mut => "mutable reference",
                         _ => "reference",
                     }.into()
                 }
@@ -293,7 +293,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "raw pointer".into(),
             ty::Ref(.., mutbl) => match mutbl {
-                hir::Mutability::Mutable => "mutable reference",
+                hir::Mutability::Mut => "mutable reference",
                 _ => "reference"
             }.into(),
             ty::FnDef(..) => "fn item".into(),

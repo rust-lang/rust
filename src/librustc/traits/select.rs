@@ -2622,7 +2622,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Char
             | ty::RawPtr(..)
             | ty::Never
-            | ty::Ref(_, _, hir::Mutability::Immutable) => {
+            | ty::Ref(_, _, hir::Mutability::Not) => {
                 // Implementations provided in libcore
                 None
             }
@@ -2633,7 +2633,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
             | ty::Foreign(..)
-            | ty::Ref(_, _, hir::Mutability::Mutable) => None,
+            | ty::Ref(_, _, hir::Mutability::Mut) => None,
 
             ty::Array(element_ty, _) => {
                 // (*) binder moved here

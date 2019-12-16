@@ -353,7 +353,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
                     // borrowed pointer implies that the
                     // pointer itself must be unique, but not
                     // necessarily *mutable*
-                    ty::Ref(.., hir::Mutability::Mutable) => borrow_kind = ty::UniqueImmBorrow,
+                    ty::Ref(.., hir::Mutability::Mut) => borrow_kind = ty::UniqueImmBorrow,
                     _ => (),
                 }
             }

@@ -365,8 +365,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let method = self.register_infer_ok_obligations(ok);
                         if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
                             let mutbl = match mutbl {
-                                hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
-                                hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
+                                hir::Mutability::Not => AutoBorrowMutability::Not,
+                                hir::Mutability::Mut => AutoBorrowMutability::Mut {
                                     // (It shouldn't actually matter for unary ops whether
                                     // we enable two-phase borrows or not, since a unary
                                     // op has no additional operands.)

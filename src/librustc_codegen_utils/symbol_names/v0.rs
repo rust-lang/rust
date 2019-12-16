@@ -373,8 +373,8 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
             ty::Ref(r, ty, mutbl) => {
                 self.push(match mutbl {
-                    hir::Mutability::Immutable => "R",
-                    hir::Mutability::Mutable => "Q",
+                    hir::Mutability::Not => "R",
+                    hir::Mutability::Mut => "Q",
                 });
                 if *r != ty::ReErased {
                     self = r.print(self)?;
@@ -384,8 +384,8 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
             ty::RawPtr(mt) => {
                 self.push(match mt.mutbl {
-                    hir::Mutability::Immutable => "P",
-                    hir::Mutability::Mutable => "O",
+                    hir::Mutability::Not => "P",
+                    hir::Mutability::Mut => "O",
                 });
                 self = mt.ty.print(self)?;
             }

@@ -109,7 +109,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                                           "[T]",
                                           item.span);
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Immutable }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Not }) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.const_ptr_impl(),
                                           None,
@@ -117,7 +117,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                                           "*const T",
                                           item.span);
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Mutable }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Mut }) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.mut_ptr_impl(),
                                           None,

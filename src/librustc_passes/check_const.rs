@@ -81,8 +81,8 @@ impl ConstKind {
         let owner = hir_map.body_owner(body.id());
         let const_kind = match hir_map.body_owner_kind(owner) {
             hir::BodyOwnerKind::Const => Self::Const,
-            hir::BodyOwnerKind::Static(Mutability::Mutable) => Self::StaticMut,
-            hir::BodyOwnerKind::Static(Mutability::Immutable) => Self::Static,
+            hir::BodyOwnerKind::Static(Mutability::Mut) => Self::StaticMut,
+            hir::BodyOwnerKind::Static(Mutability::Not) => Self::Static,
 
             hir::BodyOwnerKind::Fn if is_const_fn(owner) => Self::ConstFn,
             hir::BodyOwnerKind::Fn | hir::BodyOwnerKind::Closure => return None,

@@ -301,11 +301,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 arg,
             } => {
                 let address_of = match mutability {
-                    hir::Mutability::Immutable => Rvalue::AddressOf(
+                    hir::Mutability::Not => Rvalue::AddressOf(
                         Mutability::Not,
                         unpack!(block = this.as_read_only_place(block, arg)),
                     ),
-                    hir::Mutability::Mutable => Rvalue::AddressOf(
+                    hir::Mutability::Mut => Rvalue::AddressOf(
                         Mutability::Mut,
                         unpack!(block = this.as_place(block, arg)),
                     ),

@@ -415,8 +415,8 @@ fn mk_decls(
             cx.ty(span, ast::TyKind::Slice(
                 cx.ty_path(cx.path(span,
                     vec![proc_macro, bridge, client, proc_macro_ty])))),
-            None, ast::Mutability::Immutable),
-        ast::Mutability::Immutable,
+            None, ast::Mutability::Not),
+        ast::Mutability::Not,
         cx.expr_vec_slice(span, decls),
     ).map(|mut i| {
         let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);

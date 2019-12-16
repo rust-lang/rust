@@ -386,7 +386,7 @@ impl<'a> State<'a> {
             }
             hir::ForeignItemKind::Static(ref t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::Mutability::Mutable {
+                if m == hir::Mutability::Mut {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -502,7 +502,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Static(ref ty, m, expr) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::Mutability::Mutable {
+                if m == hir::Mutability::Mut {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -1632,11 +1632,11 @@ impl<'a> State<'a> {
                 match binding_mode {
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Immutable, false);
+                        self.print_mutability(hir::Mutability::Not, false);
                     }
                     hir::BindingAnnotation::RefMut => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Mutable, false);
+                        self.print_mutability(hir::Mutability::Mut, false);
                     }
                     hir::BindingAnnotation::Unannotated => {}
                     hir::BindingAnnotation::Mutable => {
@@ -2065,8 +2065,8 @@ impl<'a> State<'a> {
 
     pub fn print_mutability(&mut self, mutbl: hir::Mutability, print_const: bool) {
         match mutbl {
-            hir::Mutability::Mutable => self.word_nbsp("mut"),
-            hir::Mutability::Immutable => if print_const { self.word_nbsp("const") },
+            hir::Mutability::Mut => self.word_nbsp("mut"),
+            hir::Mutability::Not => if print_const { self.word_nbsp("const") },
         }
     }
 

@@ -2657,8 +2657,8 @@ impl<'tcx> TyS<'tcx> {
 impl BorrowKind {
     pub fn from_mutbl(m: hir::Mutability) -> BorrowKind {
         match m {
-            hir::Mutability::Mutable => MutBorrow,
-            hir::Mutability::Immutable => ImmBorrow,
+            hir::Mutability::Mut => MutBorrow,
+            hir::Mutability::Not => ImmBorrow,
         }
     }
 
@@ -2668,13 +2668,13 @@ impl BorrowKind {
     /// question.
     pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
-            MutBorrow => hir::Mutability::Mutable,
-            ImmBorrow => hir::Mutability::Immutable,
+            MutBorrow => hir::Mutability::Mut,
+            ImmBorrow => hir::Mutability::Not,
 
             // We have no type corresponding to a unique imm borrow, so
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
-            UniqueImmBorrow => hir::Mutability::Mutable,
+            UniqueImmBorrow => hir::Mutability::Mut,
         }
     }
 

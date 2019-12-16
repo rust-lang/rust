@@ -169,11 +169,10 @@ impl hir::Pat {
         self.each_binding(|annotation, _, _, _| {
             match annotation {
                 hir::BindingAnnotation::Ref => match result {
-                    None | Some(hir::Mutability::Immutable) =>
-                        result = Some(hir::Mutability::Immutable),
+                    None | Some(hir::Mutability::Not) => result = Some(hir::Mutability::Not),
                     _ => {}
                 }
-                hir::BindingAnnotation::RefMut => result = Some(hir::Mutability::Mutable),
+                hir::BindingAnnotation::RefMut => result = Some(hir::Mutability::Mut),
                 _ => {}
             }
         });

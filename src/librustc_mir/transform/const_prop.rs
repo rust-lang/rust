@@ -238,7 +238,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     ) -> InterpResult<'tcx> {
         // if the static allocation is mutable or if it has relocations (it may be legal to mutate
         // the memory behind that in the future), then we can't const prop it
-        if allocation.mutability == Mutability::Mutable || allocation.relocations().len() > 0 {
+        if allocation.mutability == Mutability::Mut || allocation.relocations().len() > 0 {
             throw_unsup!(ConstPropUnsupported("can't eval mutable statics in ConstProp"));
         }
 

@@ -62,8 +62,8 @@ pub fn push_debuginfo_type_name<'tcx>(
                 output.push('*');
             }
             match mutbl {
-                hir::Mutability::Immutable => output.push_str("const "),
-                hir::Mutability::Mutable => output.push_str("mut "),
+                hir::Mutability::Not => output.push_str("const "),
+                hir::Mutability::Mut => output.push_str("mut "),
             }
 
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);

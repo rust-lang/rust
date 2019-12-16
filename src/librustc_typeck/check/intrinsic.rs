@@ -165,7 +165,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             "prefetch_read_instruction" | "prefetch_write_instruction" => {
                 (1, vec![tcx.mk_ptr(ty::TypeAndMut {
                           ty: param(0),
-                          mutbl: hir::Mutability::Immutable
+                          mutbl: hir::Mutability::Not
                          }), tcx.types.i32],
                     tcx.mk_unit())
             }
@@ -181,13 +181,13 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::Mutability::Immutable
+                      mutbl: hir::Mutability::Not
                   }),
                   tcx.types.isize
                ],
                tcx.mk_ptr(ty::TypeAndMut {
                    ty: param(0),
-                   mutbl: hir::Mutability::Immutable
+                   mutbl: hir::Mutability::Not
                }))
             }
             "copy" | "copy_nonoverlapping" => {
@@ -195,11 +195,11 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::Mutability::Immutable
+                      mutbl: hir::Mutability::Not
                   }),
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::Mutability::Mutable
+                      mutbl: hir::Mutability::Mut
                   }),
                   tcx.types.usize,
                ],
@@ -210,11 +210,11 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::Mutability::Mutable
+                      mutbl: hir::Mutability::Mut
                   }),
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::Mutability::Immutable
+                      mutbl: hir::Mutability::Not
                   }),
                   tcx.types.usize,
                ],
@@ -225,7 +225,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::Mutability::Mutable
+                      mutbl: hir::Mutability::Mut
                   }),
                   tcx.types.u8,
                   tcx.types.usize,
@@ -351,14 +351,14 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             }
 
             "va_start" | "va_end" => {
-                match mk_va_list_ty(hir::Mutability::Mutable) {
+                match mk_va_list_ty(hir::Mutability::Mut) {
                     Some((va_list_ref_ty, _)) => (0, vec![va_list_ref_ty], tcx.mk_unit()),
                     None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }
             }
 
             "va_copy" => {
-                match mk_va_list_ty(hir::Mutability::Immutable) {
+                match mk_va_list_ty(hir::Mutability::Not) {
                     Some((va_list_ref_ty, va_list_ty)) => {
                         let va_list_ptr_ty = tcx.mk_mut_ptr(va_list_ty);
                         (0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.mk_unit())
@@ -368,7 +368,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             }
 
             "va_arg" => {
-                match mk_va_list_ty(hir::Mutability::Mutable) {
+                match mk_va_list_ty(hir::Mutability::Mut) {
                     Some((va_list_ref_ty, _)) => (1, vec![va_list_ref_ty], param(0)),
                     None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }

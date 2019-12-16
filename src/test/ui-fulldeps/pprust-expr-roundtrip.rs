@@ -141,7 +141,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             15 => {
                 iter_exprs(
                     depth - 1,
-                    &mut |e| g(ExprKind::AddrOf(BorrowKind::Ref, Mutability::Immutable, e)),
+                    &mut |e| g(ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, e)),
                 );
             },
             16 => {

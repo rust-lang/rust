@@ -79,7 +79,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
 fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
     for ty in ty.walk() {
         match ty.kind {
-            ty::Ref(_, _, hir::Mutability::Mutable) => {
+            ty::Ref(_, _, hir::Mutability::Mut) => {
                 if !feature_allowed(tcx, fn_def_id, sym::const_mut_refs) {
                     return Err((
                         span,

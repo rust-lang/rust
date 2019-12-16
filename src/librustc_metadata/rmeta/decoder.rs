@@ -1401,9 +1401,9 @@ impl<'a, 'tcx> CrateMetadata {
     fn static_mutability(&self, id: DefIndex) -> Option<hir::Mutability> {
         match self.kind(id) {
             EntryKind::ImmStatic |
-            EntryKind::ForeignImmStatic => Some(hir::Mutability::Immutable),
+            EntryKind::ForeignImmStatic => Some(hir::Mutability::Not),
             EntryKind::MutStatic |
-            EntryKind::ForeignMutStatic => Some(hir::Mutability::Mutable),
+            EntryKind::ForeignMutStatic => Some(hir::Mutability::Mut),
             _ => None,
         }
     }

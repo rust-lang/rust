@@ -261,7 +261,7 @@ impl<'a> Parser<'a> {
                 .span_label(span, msg)
                 .help("use `*mut T` or `*const T` as appropriate")
                 .emit();
-            Mutability::Immutable
+            Mutability::Not
         });
         let t = self.parse_ty_no_plus()?;
         Ok(MutTy { ty: t, mutbl })

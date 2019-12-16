@@ -1054,8 +1054,8 @@ impl EncodeContext<'tcx> {
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
 
         record!(self.per_def.kind[def_id] <- match item.kind {
-            hir::ItemKind::Static(_, hir::Mutability::Mutable, _) => EntryKind::MutStatic,
-            hir::ItemKind::Static(_, hir::Mutability::Immutable, _) => EntryKind::ImmStatic,
+            hir::ItemKind::Static(_, hir::Mutability::Mut, _) => EntryKind::MutStatic,
+            hir::ItemKind::Static(_, hir::Mutability::Not, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
                 let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
                 EntryKind::Const(
@@ -1544,10 +1544,8 @@ impl EncodeContext<'tcx> {
                 };
                 EntryKind::ForeignFn(self.lazy(data))
             }
-            hir::ForeignItemKind::Static(_, hir::Mutability::Mutable) =>
-                EntryKind::ForeignMutStatic,
-            hir::ForeignItemKind::Static(_, hir::Mutability::Immutable) =>
-                EntryKind::ForeignImmStatic,
+            hir::ForeignItemKind::Static(_, hir::Mutability::Mut) => EntryKind::ForeignMutStatic,
+            hir::ForeignItemKind::Static(_, hir::Mutability::Not) => EntryKind::ForeignImmStatic,
             hir::ForeignItemKind::Type => EntryKind::ForeignType,
         });
         record!(self.per_def.visibility[def_id] <-

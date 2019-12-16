@@ -180,6 +180,6 @@ impl AllocFnFactory<'_, '_> {
     fn ptr_u8(&self) -> P<Ty> {
         let u8 = self.cx.path_ident(self.span, Ident::new(sym::u8, self.span));
         let ty_u8 = self.cx.ty_path(u8);
-        self.cx.ty_ptr(self.span, ty_u8, Mutability::Mutable)
+        self.cx.ty_ptr(self.span, ty_u8, Mutability::Mut)
     }
 }

@@ -175,8 +175,8 @@ impl Sig for ast::Ty {
             }
             ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
-                    ast::Mutability::Mutable => "*mut ",
-                    ast::Mutability::Immutable => "*const ",
+                    ast::Mutability::Mut => "*mut ",
+                    ast::Mutability::Not => "*const ",
                 };
                 let nested = mt.ty.make(offset + prefix.len(), id, scx)?;
                 let text = format!("{}{}", prefix, nested.text);
@@ -188,7 +188,7 @@ impl Sig for ast::Ty {
                     prefix.push_str(&l.ident.to_string());
                     prefix.push(' ');
                 }
-                if let ast::Mutability::Mutable = mt.mutbl {
+                if let ast::Mutability::Mut = mt.mutbl {
                     prefix.push_str("mut ");
                 };
 
@@ -330,7 +330,7 @@ impl Sig for ast::Item {
         match self.kind {
             ast::ItemKind::Static(ref ty, m, ref expr) => {
                 let mut text = "static ".to_owned();
-                if m == ast::Mutability::Mutable {
+                if m == ast::Mutability::Mut {
                     text.push_str("mut ");
                 }
                 let name = self.ident.to_string();
@@ -787,7 +787,7 @@ impl Sig for ast::ForeignItem {
             }
             ast::ForeignItemKind::Static(ref ty, m) => {
                 let mut text = "static ".to_owned();
-                if m == ast::Mutability::Mutable {
+                if m == ast::Mutability::Mut {
                     text.push_str("mut ");
                 }
                 let name = self.ident.to_string();

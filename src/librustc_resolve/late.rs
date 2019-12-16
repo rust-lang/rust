@@ -1472,7 +1472,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         // An immutable (no `mut`) by-value (no `ref`) binding pattern without
         // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
         // also be interpreted as a path to e.g. a constant, variant, etc.
-        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Immutable);
+        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
         match res {
             Res::Def(DefKind::Ctor(_, CtorKind::Const), _) |
