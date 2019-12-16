@@ -69,8 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// 3. Create the decision tree and record the places that we bind or test.
     /// 4. Determine the fake borrows that are needed from the above places.
     ///    Create the required temporaries for them.
-    /// 5. Create everything else: Create everything else: the guards and the
-    ///    arms.
+    /// 5. Create everything else: the guards and the arms.
     ///
     /// ## Fake Reads and borrows
     ///
