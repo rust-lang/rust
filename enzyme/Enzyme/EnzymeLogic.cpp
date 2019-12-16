@@ -472,10 +472,61 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
   return false;
 }
 
+//! assuming not top level
+std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForAugmentation(FunctionType* called, bool returnUsed, bool differentialReturn) {
+    SmallVector<Type*, 4> args;
+    SmallVector<Type*, 4> outs;
+    for(auto &argType : called->params()) {
+        args.push_back(argType);
+
+        if (!argType->isFPOrFPVectorTy()) {
+            args.push_back(argType);
+        } 
+    }
+
+    auto ret = called->getReturnType();
+    outs.push_back(Type::getInt8PtrTy(called->getContext()));
+    if (!ret->isVoidTy() && !ret->isEmptyTy()) {
+        if (returnUsed) {
+            outs.push_back(ret);
+        }
+        if (differentialReturn && !ret->isFPOrFPVectorTy()) {
+            outs.push_back(ret);
+        }
+    }
+
+    return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
+}
+
+//! assuming not top level
+std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGradient(FunctionType* called, bool differentialReturn) {
+    SmallVector<Type*, 4> args;
+    SmallVector<Type*, 4> outs;
+    for(auto &argType : called->params()) {
+        args.push_back(argType);
+
+        if ( argType->isPointerTy() || argType->isIntegerTy() ) {
+            args.push_back(argType);
+        } else {
+            outs.push_back(argType);
+        }
+    }
+
+    auto ret = called->getReturnType();
+
+    if (!ret->isVoidTy() && !ret->isEmptyTy()) {
+        if (differentialReturn) {
+            args.push_back(ret);
+        }
+    }
+
+    return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
+}
+
 //! return structtype if recursive function
 const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global_AA, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, bool differentialReturn, bool returnUsed, const std::map<Argument*, bool> _uncacheable_args, bool forceAnonymousTape) {
-  if (returnUsed) assert(!todiff->getReturnType()->isEmptyTy());
-  if (differentialReturn) assert(!todiff->getReturnType()->isEmptyTy());
+  if (returnUsed) assert(!todiff->getReturnType()->isEmptyTy() && !todiff->getReturnType()->isVoidTy());
+  if (differentialReturn) assert(!todiff->getReturnType()->isEmptyTy() && !todiff->getReturnType()->isVoidTy());
 
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, AugmentedReturn> cachedfunctions;
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, bool> cachedfinished;
@@ -808,12 +859,6 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
             }
             //llvm::errs() << "creating augmented func call for " << *op << "\n";
 
-            if (called == nullptr) {
-              llvm::errs() << gutils->newFunc << "\n";
-              assert(op);
-              llvm::errs() << "cannot handle augment non constant function\n" << *op << "\n";
-              report_fatal_error("unknown augment non constant function");
-            }
  
             std::set<unsigned> subconstant_args;
 
@@ -831,12 +876,15 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                  //llvm::errs() << "primal modified " << called->getName() << " modified via return" << "\n";
               }
 
-              if (called && called->empty()) modifyPrimal = true;
+              if (!called || called->empty()) modifyPrimal = true;
 
               for(unsigned i=0;i<op->getNumArgOperands(); i++) {
                 args.push_back(op->getArgOperand(i));
                 //llvm::errs() << " considering arg " << *op << " operand: " << *op->getArgOperand(i) << "\n";
-                if (gutils->isConstantValue(op->getArgOperand(i)) && !called->empty()) {
+
+                // For constant args, we should use the more efficient formulation; however, if given a function we call that is either empty or unknown
+                //   we will fall back to an implementation that assumes no arguments are constant
+                if (gutils->isConstantValue(op->getArgOperand(i)) && called && !called->empty()) {
                     subconstant_args.insert(i);
                     argsInverted.push_back(DIFFE_TYPE::CONSTANT);
                     continue;
@@ -848,7 +896,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                     argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
                     args.push_back(gutils->invertPointerM(op->getArgOperand(i), BuilderZ));
 
-                    if (! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
+                    if (called && ! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
                         modifyPrimal = true;
                         //llvm::errs() << "primal modified " << called->getName() << " modified via arg " << i << "\n";
                     }
@@ -886,11 +934,48 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                 }
                 continue;
               }
-                
+              
+              Value* newcalled = nullptr;
 
-                const AugmentedReturn& augmentation = CreateAugmentedPrimal(dyn_cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturn*/subdifferentialreturn, /*return is used*/subretused, uncacheable_args_map.find(gutils->getOriginal(op))->second, false);
+              unsigned tapeIdx = 0xDEADBEEF;
+              unsigned returnIdx = 0XDEADBEEF;
+              unsigned differeturnIdx = 0XDEADBEEF;
+
+
+              if (called) {
+                const AugmentedReturn& augmentation = CreateAugmentedPrimal(called, global_AA, subconstant_args, TLI, /*differentialReturn*/subdifferentialreturn, /*return is used*/subretused, uncacheable_args_map.find(gutils->getOriginal(op))->second, false);
                 cachedfunctions.find(tup)->second.subaugmentations.insert_or_assign(cast<CallInst>(gutils->getOriginal(op)), &augmentation);
-                Function* newcalled = augmentation.fn;
+                newcalled = augmentation.fn;
+
+                auto found = augmentation.returns.find(AugmentedStruct::Tape);
+                if (found != augmentation.returns.end()) {
+                    tapeIdx = found->second;
+                }
+                found = augmentation.returns.find(AugmentedStruct::Return);
+                if (found != augmentation.returns.end()) {
+                    returnIdx = found->second;
+                }
+                found = augmentation.returns.find(AugmentedStruct::DifferentialReturn);
+                if (found != augmentation.returns.end()) {
+                    differeturnIdx = found->second;
+                }
+
+              } else {
+                tapeIdx = 0;
+                if (!op->getType()->isEmptyTy() && !op->getType()->isVoidTy()) {
+                    returnIdx = 1;
+                    differeturnIdx = 2;
+                }
+                IRBuilder<> pre(op);
+                newcalled = gutils->invertPointerM(op->getCalledValue(), pre);
+
+                auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
+                auto res = getDefaultFunctionTypeForAugmentation(ft, /*returnUsed*/true, /*subdifferentialreturn*/true);
+                auto fptype = PointerType::getUnqual(FunctionType::get(StructType::get(newcalled->getContext(), res.second), res.first, ft->isVarArg()));
+                newcalled = pre.CreatePointerCast(newcalled, PointerType::getUnqual(fptype));
+                newcalled = pre.CreateLoad(newcalled);
+              }
+
                 CallInst* augmentcall = BuilderZ.CreateCall(newcalled, args);
                 assert(augmentcall->getType()->isStructTy());
                 augmentcall->setCallingConv(op->getCallingConv());
@@ -906,7 +991,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
       
                 augmentcall->setName(op->getName()+"_augmented");
 
-                Value* tp = BuilderZ.CreateExtractValue(augmentcall, {augmentation.returns.find(AugmentedStruct::Tape)->second}, "subcache");
+                Value* tp = BuilderZ.CreateExtractValue(augmentcall, {tapeIdx}, "subcache");
                 if (tp->getType()->isEmptyTy()) {
                     auto tpt = tp->getType();
                     gutils->erase(cast<Instruction>(tp));
@@ -920,7 +1005,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                     gutils->invertedPointers.erase(op);
 
                     if (subdifferentialreturn) {
-                      auto antiptr = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {augmentation.returns.find(AugmentedStruct::DifferentialReturn)->second}, "antiptr_" + op->getName() ));
+                      auto antiptr = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {differeturnIdx}, "antiptr_" + op->getName() ));
                       assert(antiptr->getType() == op->getType());
                       gutils->invertedPointers[op] = antiptr;
                       placeholder->replaceAllUsesWith(antiptr);
@@ -933,7 +1018,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                 }
                 
                 if (subretused) {
-                  auto rv = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {augmentation.returns.find(AugmentedStruct::Return)->second}));
+                  auto rv = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {returnIdx}));
                   assert(rv->getType() == op->getType());
                   gutils->originalInstructions.insert(rv);
                   gutils->nonconstant.insert(rv);
@@ -971,7 +1056,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
          }
 
          //! Store inverted pointer loads that need to be cached for use in reverse pass
-         if (!inst->getType()->isEmptyTy() && !inst->getType()->isFPOrFPVectorTy()) {
+         if (!inst->getType()->isVoidTy() && !inst->getType()->isEmptyTy() && !inst->getType()->isFPOrFPVectorTy()) {
             PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
             assert(placeholder->getType() == inst->getType());
             gutils->invertedPointers.erase(inst);
@@ -1422,54 +1507,6 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
             }
         }
     }
-}
-
-//! assuming not top level
-std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForAugmentation(FunctionType* called, bool returnUsed, bool differentialReturn) {
-    SmallVector<Type*, 4> args;
-    SmallVector<Type*, 4> outs;
-    for(auto &argType : called->params()) {
-        args.push_back(argType);
-
-        if (!argType->isFPOrFPVectorTy()) {
-            args.push_back(argType);
-        } 
-    }
-
-    auto ret = called->getReturnType();
-    outs.push_back(Type::getInt8PtrTy(called->getContext()));
-    if (returnUsed) {
-        outs.push_back(ret);
-    }
-    if (differentialReturn && !ret->isFPOrFPVectorTy()) {
-        outs.push_back(ret);
-    }
-
-    return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
-}
-
-//! assuming not top level
-std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGradient(FunctionType* called, bool returnUsed, bool differentialReturn) {
-    SmallVector<Type*, 4> args;
-    SmallVector<Type*, 4> outs;
-    for(auto &argType : called->params()) {
-        args.push_back(argType);
-
-        if ( argType->isPointerTy() || argType->isIntegerTy() ) {
-            args.push_back(argType);
-        } else {
-            outs.push_back(argType);
-        }
-    }
-
-    auto ret = called->getReturnType();
-    if (returnUsed) {
-        if (differentialReturn) {
-            args.push_back(ret);
-        }
-    }
-
-    return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
 void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, AAResults & global_AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
@@ -1932,7 +1969,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         newcalled = gutils->invertPointerM(op->getCalledValue(), pre);
 
         auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
-        auto res = getDefaultFunctionTypeForAugmentation(ft, /*returnUsed*/!ft->getReturnType()->isVoidTy(), /*subdifferentialreturn*/true);
+        auto res = getDefaultFunctionTypeForAugmentation(ft, /*returnUsed*/true, /*subdifferentialreturn*/true);
         auto fptype = PointerType::getUnqual(FunctionType::get(StructType::get(newcalled->getContext(), res.second), res.first, ft->isVarArg()));
         newcalled = pre.CreatePointerCast(newcalled, PointerType::getUnqual(fptype));
         newcalled = pre.CreateLoad(newcalled);
@@ -2125,7 +2162,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     newcalled = gutils->invertPointerM(op->getCalledValue(), Builder2);
 
     auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
-    auto res = getDefaultFunctionTypeForGradient(ft, /*returnUsed*/!ft->getReturnType()->isVoidTy(), subdiffereturn);
+    auto res = getDefaultFunctionTypeForGradient(ft, subdiffereturn);
     //TODO Note there is empty tape added here, replace with generic
     res.first.push_back(Type::getInt8PtrTy(newcalled->getContext()));
     auto fptype = PointerType::getUnqual(FunctionType::get(StructType::get(newcalled->getContext(), res.second), res.first, ft->isVarArg()));
@@ -2304,6 +2341,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   //    llvm::errs() << "addl arg: " << *additionalArg << "\n";
   //}
   if (additionalArg) assert(additionalArg->isStructTy() || (additionalArg == Type::getInt8PtrTy(additionalArg->getContext()) )  );
+  if (differentialReturn) assert(!todiff->getReturnType()->isVoidTy());
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*retval*/, bool/*differentialReturn*/, bool/*dretptr*/, bool/*topLevel*/, llvm::Type*>, Function*> cachedfunctions;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), returnUsed, differentialReturn, dretPtr, topLevel, additionalArg);
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
@@ -2329,7 +2367,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
       auto foundcalled = cast<Function>(gvemd->getValue());
 
-      auto res = getDefaultFunctionTypeForGradient(todiff->getFunctionType(), /*has return value*/!todiff->getReturnType()->isVoidTy(), differentialReturn);
+      auto res = getDefaultFunctionTypeForGradient(todiff->getFunctionType(), /*differentialReturn*/differentialReturn);
 
 
       if (foundcalled->arg_size() == res.first.size() + 1 /*tape*/) {
