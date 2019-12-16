@@ -445,21 +445,13 @@ impl<'a> Pattern<'a> for char {
 
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
-        if let Some(ch) = haystack.chars().next() {
-            self == ch
-        } else {
-            false
-        }
+        self.encode_utf8(&mut [0u8; 4]).is_prefix_of(haystack)
     }
 
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool where Self::Searcher: ReverseSearcher<'a>
     {
-        if let Some(ch) = haystack.chars().next_back() {
-            self == ch
-        } else {
-            false
-        }
+        self.encode_utf8(&mut [0u8; 4]).is_suffix_of(haystack)
     }
 }
 
@@ -710,16 +702,13 @@ impl<'a, 'b> Pattern<'a> for &'b str {
     /// Checks whether the pattern matches at the front of the haystack
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
-        haystack.is_char_boundary(self.len()) &&
-            self == &haystack[..self.len()]
+        haystack.as_bytes().starts_with(self.as_bytes())
     }
 
     /// Checks whether the pattern matches at the back of the haystack
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool {
-        self.len() <= haystack.len() &&
-            haystack.is_char_boundary(haystack.len() - self.len()) &&
-            self == &haystack[haystack.len() - self.len()..]
+        haystack.as_bytes().ends_with(self.as_bytes())
     }
 }
 
