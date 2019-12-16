@@ -889,11 +889,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                        args: &[&'ll Value]) -> Funclet<'ll> {
         let name = const_cstr!("cleanuppad");
         let ret = unsafe {
-            llvm::LLVMRustBuildCleanupPad(self.llbuilder,
-                                          parent,
-                                          args.len() as c_uint,
-                                          args.as_ptr(),
-                                          name.as_ptr())
+            llvm::LLVMBuildCleanupPad(self.llbuilder,
+                                      parent,
+                                      args.as_ptr(),
+                                      args.len() as c_uint,
+                                      name.as_ptr())
         };
         Funclet::new(ret.expect("LLVM does not have support for cleanuppad"))
     }
@@ -903,7 +903,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unwind: Option<&'ll BasicBlock>,
     ) -> &'ll Value {
         let ret = unsafe {
-            llvm::LLVMRustBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind)
+            llvm::LLVMBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind)
         };
         ret.expect("LLVM does not have support for cleanupret")
     }
@@ -913,9 +913,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                      args: &[&'ll Value]) -> Funclet<'ll> {
         let name = const_cstr!("catchpad");
         let ret = unsafe {
-            llvm::LLVMRustBuildCatchPad(self.llbuilder, parent,
-                                        args.len() as c_uint, args.as_ptr(),
-                                        name.as_ptr())
+            llvm::LLVMBuildCatchPad(self.llbuilder, parent,
+                                    args.as_ptr(), args.len() as c_uint,
+                                    name.as_ptr())
         };
         Funclet::new(ret.expect("LLVM does not have support for catchpad"))
     }
@@ -928,9 +928,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         let name = const_cstr!("catchswitch");
         let ret = unsafe {
-            llvm::LLVMRustBuildCatchSwitch(self.llbuilder, parent, unwind,
-                                           num_handlers as c_uint,
-                                           name.as_ptr())
+            llvm::LLVMBuildCatchSwitch(self.llbuilder, parent, unwind,
+                                       num_handlers as c_uint,
+                                       name.as_ptr())
         };
         ret.expect("LLVM does not have support for catchswitch")
     }
@@ -1182,7 +1182,7 @@ impl Builder<'a, 'll, 'tcx> {
 
     pub fn catch_ret(&mut self, funclet: &Funclet<'ll>, unwind: &'ll BasicBlock) -> &'ll Value {
         let ret = unsafe {
-            llvm::LLVMRustBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind)
+            llvm::LLVMBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind)
         };
         ret.expect("LLVM does not have support for catchret")
     }

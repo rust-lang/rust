@@ -886,33 +886,33 @@ extern "C" {
     pub fn LLVMBuildResume(B: &Builder<'a>, Exn: &'a Value) -> &'a Value;
     pub fn LLVMBuildUnreachable(B: &Builder<'a>) -> &'a Value;
 
-    pub fn LLVMRustBuildCleanupPad(B: &Builder<'a>,
-                                   ParentPad: Option<&'a Value>,
-                                   ArgCnt: c_uint,
-                                   Args: *const &'a Value,
-                                   Name: *const c_char)
-                                   -> Option<&'a Value>;
-    pub fn LLVMRustBuildCleanupRet(B: &Builder<'a>,
-                                   CleanupPad: &'a Value,
-                                   UnwindBB: Option<&'a BasicBlock>)
-                                   -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchPad(B: &Builder<'a>,
-                                 ParentPad: &'a Value,
-                                 ArgCnt: c_uint,
-                                 Args: *const &'a Value,
-                                 Name: *const c_char)
-                                 -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchRet(
+    pub fn LLVMBuildCleanupPad(B: &Builder<'a>,
+                               ParentPad: Option<&'a Value>,
+                               Args: *const &'a Value,
+                               ArgCnt: c_uint,
+                               Name: *const c_char)
+                               -> Option<&'a Value>;
+    pub fn LLVMBuildCleanupRet(B: &Builder<'a>,
+                               CleanupPad: &'a Value,
+                               UnwindBB: Option<&'a BasicBlock>)
+                               -> Option<&'a Value>;
+    pub fn LLVMBuildCatchPad(B: &Builder<'a>,
+                             ParentPad: &'a Value,
+                             Args: *const &'a Value,
+                             ArgCnt: c_uint,
+                             Name: *const c_char)
+                             -> Option<&'a Value>;
+    pub fn LLVMBuildCatchRet(
         B: &Builder<'a>,
         Pad: &'a Value,
         BB: &'a BasicBlock,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchSwitch(Builder: &Builder<'a>,
-                                    ParentPad: Option<&'a Value>,
-                                    BB: Option<&'a BasicBlock>,
-                                    NumHandlers: c_uint,
-                                    Name: *const c_char)
-                                    -> Option<&'a Value>;
+    pub fn LLVMBuildCatchSwitch(Builder: &Builder<'a>,
+                                ParentPad: Option<&'a Value>,
+                                BB: Option<&'a BasicBlock>,
+                                NumHandlers: c_uint,
+                                Name: *const c_char)
+                                -> Option<&'a Value>;
     pub fn LLVMRustAddHandler(CatchSwitch: &'a Value, Handler: &'a BasicBlock);
     pub fn LLVMSetPersonalityFn(Func: &'a Value, Pers: &'a Value);
 
