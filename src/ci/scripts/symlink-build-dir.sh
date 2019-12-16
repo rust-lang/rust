@@ -9,7 +9,7 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
-if isWindows; then
+if isWindows && isAzurePipelines; then
     cmd //c "mkdir c:\\MORE_SPACE"
     cmd //c "mklink /J build c:\\MORE_SPACE"
 fi
