@@ -5,9 +5,11 @@ macro_rules! int_module {
     ($T:ident, #[$attr:meta]) => (
         /// The smallest value that can be represented by this integer type.
         #[$attr]
+        #[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant MIN")]
         pub const MIN: $T = $T::min_value();
         /// The largest value that can be represented by this integer type.
         #[$attr]
+        #[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant MAX")]
         pub const MAX: $T = $T::max_value();
     )
 }
