@@ -1,3 +1,6 @@
+use std::ffi::OsStr;
+use std::path::{Component, Path};
+
 use crate::prelude::*;
 
 use syntax::source_map::FileName;
@@ -8,6 +11,30 @@ use gimli::write::{
     Address, AttributeValue, FileId, LineProgram, LineString, LineStringTable, UnitEntryId,
 };
 
+// OPTIMIZATION: It is cheaper to do this in one pass than using `.parent()` and `.file_name()`.
+fn split_path_dir_and_file(path: &Path) -> (&Path, &OsStr) {
+    let mut iter = path.components();
+    let file_name = match iter.next_back() {
+        Some(Component::Normal(p)) => p,
+        component => {
+            panic!("Path component {:?} of path {} is an invalid filename", component, path.display());
+        }
+    };
+    let parent = iter.as_path();
+    (parent, file_name)
+}
+
+// OPTIMIZATION: Avoid UTF-8 validation on UNIX.
+fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
+    #[cfg(unix)] {
+        use std::os::unix::ffi::OsStrExt;
+        return path.as_bytes();
+    }
+    #[cfg(not(unix))] {
+        return path.to_str().unwrap().as_bytes();
+    }
+}
+
 fn line_program_add_file(
     line_program: &mut LineProgram,
     line_strings: &mut LineStringTable,
@@ -15,7 +42,10 @@ fn line_program_add_file(
 ) -> FileId {
     match file {
         FileName::Real(path) => {
-            let dir_name = path.parent().unwrap().to_str().unwrap().as_bytes();
+            let (dir_path, file_name) = split_path_dir_and_file(path);
+            let dir_name = osstr_as_utf8_bytes(dir_path.as_os_str());
+            let file_name = osstr_as_utf8_bytes(file_name);
+
             let dir_id = if !dir_name.is_empty() {
                 let dir_name = LineString::new(dir_name, line_program.encoding(), line_strings);
                 line_program.add_directory(dir_name)
@@ -23,7 +53,7 @@ fn line_program_add_file(
                 line_program.default_directory()
             };
             let file_name = LineString::new(
-                path.file_name().unwrap().to_str().unwrap().as_bytes(),
+                file_name,
                 line_program.encoding(),
                 line_strings,
             );
