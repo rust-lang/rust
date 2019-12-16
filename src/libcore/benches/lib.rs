@@ -11,4 +11,5 @@ mod hash;
 mod iter;
 mod num;
 mod ops;
+mod pattern;
 mod slice;
