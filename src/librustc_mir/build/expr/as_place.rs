@@ -484,7 +484,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn read_fake_borrows(
         &mut self,
-        block: BasicBlock,
+        bb: BasicBlock,
         fake_borrow_temps: &mut Vec<Local>,
         source_info: SourceInfo,
     ) {
@@ -492,16 +492,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // fake borrows so that they are live across those index
         // expressions.
         for temp in fake_borrow_temps {
-            self.cfg.push(
-                block,
-                Statement {
-                    source_info,
-                    kind: StatementKind::FakeRead(
-                        FakeReadCause::ForIndex,
-                        Box::new(Place::from(*temp)),
-                    )
-                }
-            );
+            self.cfg.push_fake_read(bb, source_info, FakeReadCause::ForIndex, Place::from(*temp));
         }
     }
 }

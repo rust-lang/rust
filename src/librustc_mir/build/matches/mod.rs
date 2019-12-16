@@ -69,8 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// 3. Create the decision tree and record the places that we bind or test.
     /// 4. Determine the fake borrows that are needed from the above places.
     ///    Create the required temporaries for them.
-    /// 5. Create everything else: Create everything else: the guards and the
-    ///    arms.
+    /// 5. Create everything else: the guards and the arms.
     ///
     /// ## Fake Reads and borrows
     ///
@@ -132,13 +131,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // check safety.
 
         let source_info = self.source_info(scrutinee_span);
-        self.cfg.push(block, Statement {
-            source_info,
-            kind: StatementKind::FakeRead(
-                FakeReadCause::ForMatchedPlace,
-                box(scrutinee_place.clone()),
-            ),
-        });
+        let cause_matched_place = FakeReadCause::ForMatchedPlace;
+        self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place.clone());
 
         // Step 2. Create the otherwise and prebinding blocks.
 
@@ -314,16 +308,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
                 unpack!(block = self.into(&place, block, initializer));
 
-
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
-                self.cfg.push(
-                    block,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, box(place)),
-                    },
-                );
+                self.cfg.push_fake_read(block, source_info, FakeReadCause::ForLet, place);
 
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
@@ -359,13 +346,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
-                self.cfg.push(
-                    block,
-                    Statement {
-                        source_info: pattern_source_info,
-                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, box(place.clone())),
-                    },
-                );
+                let cause_let = FakeReadCause::ForLet;
+                self.cfg.push_fake_read(block, pattern_source_info, cause_let, place.clone());
 
                 let ty_source_info = self.source_info(user_ty_span);
                 let user_ty = pat_ascription_ty.user_ty(
@@ -1516,13 +1498,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
 
             for &(_, temp) in fake_borrows {
-                self.cfg.push(post_guard_block, Statement {
-                    source_info: guard_end,
-                    kind: StatementKind::FakeRead(
-                        FakeReadCause::ForMatchGuard,
-                        box(Place::from(temp)),
-                    ),
-                });
+                let cause = FakeReadCause::ForMatchGuard;
+                self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(temp));
             }
 
             self.exit_scope(
@@ -1565,14 +1542,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {
                 let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
-                let place = Place::from(local_id);
-                self.cfg.push(
-                    post_guard_block,
-                    Statement {
-                        source_info: guard_end,
-                        kind: StatementKind::FakeRead(FakeReadCause::ForGuardBinding, box(place)),
-                    },
-                );
+                let cause = FakeReadCause::ForGuardBinding;
+                self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(local_id));
             }
             self.bind_matched_candidate_for_arm_body(
                 post_guard_block,

@@ -114,28 +114,28 @@ fn test_weak_count() {
 
 #[test]
 fn weak_counts() {
-    assert_eq!(Weak::weak_count(&Weak::<u64>::new()), None);
+    assert_eq!(Weak::weak_count(&Weak::<u64>::new()), 0);
     assert_eq!(Weak::strong_count(&Weak::<u64>::new()), 0);
 
     let a = Rc::new(0);
     let w = Rc::downgrade(&a);
     assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), Some(1));
+    assert_eq!(Weak::weak_count(&w), 1);
     let w2 = w.clone();
     assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), Some(2));
+    assert_eq!(Weak::weak_count(&w), 2);
     assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), Some(2));
+    assert_eq!(Weak::weak_count(&w2), 2);
     drop(w);
     assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), Some(1));
+    assert_eq!(Weak::weak_count(&w2), 1);
     let a2 = a.clone();
     assert_eq!(Weak::strong_count(&w2), 2);
-    assert_eq!(Weak::weak_count(&w2), Some(1));
+    assert_eq!(Weak::weak_count(&w2), 1);
     drop(a2);
     drop(a);
     assert_eq!(Weak::strong_count(&w2), 0);
-    assert_eq!(Weak::weak_count(&w2), Some(1));
+    assert_eq!(Weak::weak_count(&w2), 0);
     drop(w2);
 }
 

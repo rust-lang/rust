@@ -1,8 +1,6 @@
 //! Panic support in the standard library.
 
-#![unstable(feature = "core_panic_info",
-            reason = "newly available in libcore",
-            issue = "44489")]
+#![stable(feature = "core_panic_info", since = "1.41.0")]
 
 use crate::any::Any;
 use crate::fmt;
@@ -39,10 +37,10 @@ pub struct PanicInfo<'a> {
 }
 
 impl<'a> PanicInfo<'a> {
-    #![unstable(feature = "panic_internals",
-                reason = "internal details of the implementation of the `panic!` \
-                          and related macros",
-                issue = "0")]
+    #[unstable(feature = "panic_internals",
+               reason = "internal details of the implementation of the `panic!` \
+                         and related macros",
+               issue = "0")]
     #[doc(hidden)]
     #[inline]
     pub fn internal_constructor(
@@ -57,6 +55,10 @@ impl<'a> PanicInfo<'a> {
         }
     }
 
+    #[unstable(feature = "panic_internals",
+               reason = "internal details of the implementation of the `panic!` \
+                         and related macros",
+               issue = "0")]
     #[doc(hidden)]
     #[inline]
     pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
@@ -90,7 +92,7 @@ impl<'a> PanicInfo<'a> {
     /// returns that message ready to be used for example with [`fmt::write`]
     ///
     /// [`fmt::write`]: ../fmt/fn.write.html
-    #[unstable(feature = "panic_info_message", issue = "44489")]
+    #[unstable(feature = "panic_info_message", issue = "66745")]
     pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
         self.message
     }
