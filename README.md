@@ -58,7 +58,7 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frls-2.2E0
 ## Quick Links
 
 * API docs: https://rust-analyzer.github.io/rust-analyzer/ra_ide/
-
+* Website: https://rust-analyzer.github.io/
 
 ## License
 
