@@ -206,6 +206,7 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, T
 
     if (returnUsed) {
         assert(!todiff->getReturnType()->isEmptyTy());
+        assert(!todiff->getReturnType()->isVoidTy());
         returnMapping[AugmentedStruct::Return] = returnCount+1;
         returnCount++;
     } 
@@ -213,6 +214,7 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, T
     // We don't need to differentially return something that we know is not a pointer (or somehow needed for shadow analysis)
     if (differentialReturn && !todiff->getReturnType()->isFPOrFPVectorTy()) { 
         assert(!todiff->getReturnType()->isEmptyTy());
+        assert(!todiff->getReturnType()->isVoidTy());
         assert(!todiff->getReturnType()->isFPOrFPVectorTy());
         returnMapping[AugmentedStruct::DifferentialReturn] = returnCount+1;
         returnCount++;
@@ -325,11 +327,17 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       for(auto &a : fn->args()) {
           uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
       }
-      auto& augdata = CreateAugmentedPrimal(fn, AA, /*constant_args*/{}, TLI, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/true, uncacheable_args, /*forceAnonymousTape*/true);
+      auto& augdata = CreateAugmentedPrimal(fn, AA, /*constant_args*/{}, TLI, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/!fn->getReturnType()->isEmptyTy() && !fn->getReturnType()->isVoidTy(), uncacheable_args, /*forceAnonymousTape*/true);
       auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
       auto cdata = ConstantStruct::get(StructType::get(newf->getContext(), {augdata.fn->getType(), newf->getType()}), {augdata.fn, newf});
-      auto gv = new GlobalVariable(*newf->getParent(), cdata->getType(), true, GlobalValue::LinkageTypes::InternalLinkage, cdata, fn->getName()+"_gdata");
-      return BuilderM.CreatePointerCast(gv, fn->getType());
+      std::string globalname = ("_enzyme_" + fn->getName() + "'").str();
+      auto GV = newf->getParent()->getNamedValue(globalname);
+
+      if (GV == nullptr) {
+        GV = new GlobalVariable(*newf->getParent(), cdata->getType(), true, GlobalValue::LinkageTypes::InternalLinkage, cdata, globalname);
+      }
+
+      return BuilderM.CreatePointerCast(GV, fn->getType());
     } else if (auto arg = dyn_cast<CastInst>(val)) {
       auto result = BuilderM.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), BuilderM), arg->getDestTy(), arg->getName()+"'ipc");
       return result;

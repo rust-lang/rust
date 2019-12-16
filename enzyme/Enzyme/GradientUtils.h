@@ -1139,6 +1139,8 @@ public:
               assert(val->getType() == toreturn->getType());
               return toreturn;
           } else if (auto load = dyn_cast<LoadInst>(val)) {
+              if (load->getMetadata("enzyme_noneedunwrap")) return load;
+
                 Value* idx = unwrapM(load->getOperand(0), BuilderM, available, lookupIfAble);
                 if (idx == nullptr) goto endCheck;
 

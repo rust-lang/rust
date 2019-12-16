@@ -474,11 +474,14 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
 
 //! return structtype if recursive function
 const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global_AA, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, bool differentialReturn, bool returnUsed, const std::map<Argument*, bool> _uncacheable_args, bool forceAnonymousTape) {
+  if (returnUsed) assert(!todiff->getReturnType()->isEmptyTy());
+  if (differentialReturn) assert(!todiff->getReturnType()->isEmptyTy());
+
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, AugmentedReturn> cachedfunctions;
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, bool> cachedfinished;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), differentialReturn, returnUsed);
   auto found = cachedfunctions.find(tup);
-  llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << " found==" << (found != cachedfunctions.end()) << "\n";
+  //llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << " found==" << (found != cachedfunctions.end()) << "\n";
   if (found != cachedfunctions.end()) {
     return found->second;
   }
@@ -1117,16 +1120,18 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                     nullptr,
                     "tapemem"
                     );
-            CallInst* malloccall = dyn_cast<CallInst>(tapeMemory);
-            if (malloccall == nullptr) {
-                malloccall = cast<CallInst>(cast<Instruction>(tapeMemory)->getOperand(0));
-            }
-            malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
-            malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+    CallInst* malloccall = dyn_cast<CallInst>(tapeMemory);
+    if (malloccall == nullptr) {
+        malloccall = cast<CallInst>(cast<Instruction>(tapeMemory)->getOperand(0));
+    }
+    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
     Value *Idxs[] = {
         ib.getInt32(0),
         ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
     };
+    assert(malloccall);
+    assert(ret);
     ib.CreateStore(malloccall, ib.CreateGEP(ret, Idxs, ""));
   } else {
     Value *Idxs[] = {
@@ -2447,11 +2452,27 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   gutils->can_modref_map = &can_modref_map;
 
-  Argument* additionalValue = nullptr;
+  Value* additionalValue = nullptr;
   if (additionalArg) {
     auto v = gutils->newFunc->arg_end();
     v--;
     additionalValue = v;
+    assert(!topLevel);
+    assert(augmenteddata);
+
+    if (!additionalValue->getType()->isStructTy()) {
+        assert(augmenteddata->tapeType);
+        IRBuilder<> BuilderZ(gutils->inversionAllocs);
+        auto tapep = BuilderZ.CreatePointerCast(additionalValue, PointerType::getUnqual(augmenteddata->tapeType));
+        LoadInst* truetape = BuilderZ.CreateLoad(tapep);
+        truetape->setMetadata("enzyme_noneedunwrap", MDNode::get(truetape->getContext(), {}));
+
+        CallInst* ci = cast<CallInst>(CallInst::CreateFree(additionalValue, truetape));//&*BuilderZ.GetInsertPoint()));
+        ci->moveAfter(truetape);
+        ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+        additionalValue = truetape;
+    }
+
     if (!additionalValue->getType()->isStructTy()) {
         llvm::errs() << *gutils->oldFunc << "\n";
         llvm::errs() << *gutils->newFunc << "\n";
