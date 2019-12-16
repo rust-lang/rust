@@ -270,24 +270,27 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 length: end as u64,
             });
 
-        let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
+        // FIXME make it more reliable and implement scopes before re-enabling this.
+        if false {
+            let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
 
-        for (local, _local_decl) in self.mir.local_decls.iter_enumerated() {
-            let var_id = self.define_local(format!("{:?}", local), &self.mir.local_decls[local].ty);
+            for (local, _local_decl) in self.mir.local_decls.iter_enumerated() {
+                let var_id = self.define_local(format!("{:?}", local), &self.mir.local_decls[local].ty);
 
-            let location = place_location(
-                self,
-                context,
-                &local_map,
-                &value_labels_ranges,
-                Place {
-                    base: PlaceBase::Local(local),
-                    projection: ty::List::empty(),
-                },
-            );
+                let location = place_location(
+                    self,
+                    context,
+                    &local_map,
+                    &value_labels_ranges,
+                    Place {
+                        base: PlaceBase::Local(local),
+                        projection: ty::List::empty(),
+                    },
+                );
 
-            let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
-            var_entry.set(gimli::DW_AT_location, location);
+                let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
+                var_entry.set(gimli::DW_AT_location, location);
+            }
         }
 
         // FIXME create locals for all entries in mir.var_debug_info
