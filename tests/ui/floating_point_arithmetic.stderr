@@ -120,53 +120,77 @@ error: cube-root of a number can be computed more accurately
 LL |     let _ = x.powf(1.0 / 3.0);
    |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.cbrt()`
 
+error: exponentiation with integer powers can be computed more efficiently
+  --> $DIR/floating_point_arithmetic.rs:49:13
+   |
+LL |     let _ = x.powf(2.0);
+   |             ^^^^^^^^^^^ help: consider using: `x.powi(2)`
+
+error: exponentiation with integer powers can be computed more efficiently
+  --> $DIR/floating_point_arithmetic.rs:50:13
+   |
+LL |     let _ = x.powf(-2.0);
+   |             ^^^^^^^^^^^^ help: consider using: `x.powi(-2)`
+
 error: exponent for bases 2 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:51:13
+  --> $DIR/floating_point_arithmetic.rs:57:13
    |
 LL |     let _ = 2f64.powf(x);
    |             ^^^^^^^^^^^^ help: consider using: `x.exp2()`
 
 error: exponent for bases 2 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:52:13
+  --> $DIR/floating_point_arithmetic.rs:58:13
    |
 LL |     let _ = std::f64::consts::E.powf(x);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.exp()`
 
 error: square-root of a number can be computed more efficiently and accurately
-  --> $DIR/floating_point_arithmetic.rs:53:13
+  --> $DIR/floating_point_arithmetic.rs:59:13
    |
 LL |     let _ = x.powf(1.0 / 2.0);
    |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.sqrt()`
 
 error: cube-root of a number can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:54:13
+  --> $DIR/floating_point_arithmetic.rs:60:13
    |
 LL |     let _ = x.powf(1.0 / 3.0);
    |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.cbrt()`
 
+error: exponentiation with integer powers can be computed more efficiently
+  --> $DIR/floating_point_arithmetic.rs:61:13
+   |
+LL |     let _ = x.powf(2.0);
+   |             ^^^^^^^^^^^ help: consider using: `x.powi(2)`
+
+error: exponentiation with integer powers can be computed more efficiently
+  --> $DIR/floating_point_arithmetic.rs:62:13
+   |
+LL |     let _ = x.powf(-2.0);
+   |             ^^^^^^^^^^^^ help: consider using: `x.powi(-2)`
+
 error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:59:13
+  --> $DIR/floating_point_arithmetic.rs:71:13
    |
 LL |     let _ = x.exp() - 1.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
 
 error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:60:13
+  --> $DIR/floating_point_arithmetic.rs:72:13
    |
 LL |     let _ = x.exp() - 1.0 + 2.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
 
 error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:66:13
+  --> $DIR/floating_point_arithmetic.rs:78:13
    |
 LL |     let _ = x.exp() - 1.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
 
 error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:67:13
+  --> $DIR/floating_point_arithmetic.rs:79:13
    |
 LL |     let _ = x.exp() - 1.0 + 2.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
 
-error: aborting due to 28 previous errors
+error: aborting due to 32 previous errors
 

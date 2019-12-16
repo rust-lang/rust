@@ -1,5 +1,5 @@
 use crate::consts::{
-    constant,
+    constant, Constant,
     Constant::{F32, F64},
 };
 use crate::utils::*;
@@ -37,6 +37,7 @@ declare_clippy_lint! {
     /// let _ = a.log(E);
     /// let _ = (1.0 + a).ln();
     /// let _ = a.exp() - 1.0;
+    /// let _ = a.powf(2.0);
     /// ```
     ///
     /// is better expressed as
@@ -54,6 +55,7 @@ declare_clippy_lint! {
     /// let _ = a.ln();
     /// let _ = a.ln_1p();
     /// let _ = a.exp_m1();
+    /// let _ = a.powi(2);
     /// ```
     pub FLOATING_POINT_IMPROVEMENTS,
     nursery,
@@ -114,6 +116,31 @@ fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
     }
 }
 
+// Returns an integer if the float constant is a whole number and it
+// can be converted to an integer without loss
+// TODO: Add a better check to determine whether the float can be
+// casted without loss
+#[allow(clippy::cast_possible_truncation)]
+fn get_integer_from_float_constant(value: &Constant) -> Option<i64> {
+    match value {
+        F32(num) if (num.trunc() - num).abs() <= std::f32::EPSILON => {
+            if *num > -16_777_217.0 && *num < 16_777_217.0 {
+                Some(num.round() as i64)
+            } else {
+                None
+            }
+        },
+        F64(num) if (num.trunc() - num).abs() <= std::f64::EPSILON => {
+            if *num > -9_007_199_254_740_993.0 && *num < 9_007_199_254_740_993.0 {
+                Some(num.round() as i64)
+            } else {
+                None
+            }
+        },
+        _ => None,
+    }
+}
+
 fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
     // Check receiver
     if let Some((value, _)) = constant(cx, cx.tables, &args[0]) {
@@ -149,6 +176,18 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
         } else if F32(1.0 / 3.0) == value || F64(1.0 / 3.0) == value {
             help = "cube-root of a number can be computed more accurately";
             method = "cbrt";
+        } else if let Some(exponent) = get_integer_from_float_constant(&value) {
+            span_lint_and_sugg(
+                cx,
+                FLOATING_POINT_IMPROVEMENTS,
+                expr.span,
+                "exponentiation with integer powers can be computed more efficiently",
+                "consider using",
+                format!("{}.powi({})", sugg::Sugg::hir(cx, &args[0], ".."), exponent),
+                Applicability::MachineApplicable,
+            );
+
+            return;
         } else {
             return;
         }
