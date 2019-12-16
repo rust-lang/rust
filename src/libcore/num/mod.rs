@@ -256,6 +256,7 @@ Basic usage:
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_deprecated(since = "1.41.0", reason = "replaced by associated constant MIN")]
             #[inline(always)]
             #[rustc_promotable]
             #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
@@ -276,6 +277,7 @@ Basic usage:
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_deprecated(since = "1.41.0", reason = "replaced by associated constant MAX")]
             #[inline(always)]
             #[rustc_promotable]
             #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
