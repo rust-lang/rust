@@ -956,8 +956,8 @@ where
             }
         }
     }
-    /// Retains only the elements specified by the predicate, and returns an iterator over the
-    /// removed items.
+    /// Drains elements which are false under the given predicate,
+    /// and returns an iterator over the removed items.
     ///
     /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `false` out
     /// into another iterator.
@@ -972,7 +972,7 @@ where
     /// assert_eq!(drained.count(), 4);
     /// assert_eq!(map.len(), 4);
     /// ```
-    pub fn drain_filter<'a, F>(&'a mut self, mut f: F) -> impl Iterator<Item=(K,V)> + '_
+    pub fn drain_filter<'a, F>(&'a mut self, mut f: F) -> impl Iterator<Item = (K, V)> + '_
     where
         F: 'a + FnMut(&K, &mut V) -> bool,
     {
@@ -980,12 +980,11 @@ where
         unsafe {
             self.table.iter().filter_map(move |item| {
                 let &mut (ref key, ref mut value) = item.as_mut();
-                if !f(key, value) {
-                    // Erase the element from the table first since drop might panic.
+                if f(key, value) {
+                    None
+                } else {
                     self.table.erase_no_drop(&item);
                     Some(item.read())
-                } else {
-                    None
                 }
             })
         }
@@ -3524,10 +3523,12 @@ mod test_map {
 
     #[test]
     fn test_drain_filter() {
-      let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
-      let drained = map.drain_filter(|&k, _| k % 2 == 0);
-      assert_eq!(drained.count(), 4);
-      assert_eq!(map.len(), 4);
+        let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
+        let drained = map.drain_filter(|&k, _| k % 2 == 0);
+        let mut out = drained.collect::<Vec<_>>();
+        out.sort_unstable();
+        assert_eq!(vec![(1, 10), (3, 30), (5, 50), (7, 70)], out);
+        assert_eq!(map.len(), 4);
     }
 
     #[test]
