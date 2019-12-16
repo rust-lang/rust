@@ -357,14 +357,12 @@ string; this was introduced so that UI tests could both make use of
 the structured JSON and see the "human" output (well, _sans_ colors)
 without having to compile everything twice.
 
-The JSON emitter currently lives in libsyntax/json.rs. (But arguably
-it should live in librustc_errors along with the "human" emitter? It's
-not obvious to the present author why it wasn't moved from libsyntax
-to librustc_errors at the same [time the "human" emitter was
-moved](https://github.com/rust-lang/rust/commit/6ae3502134).)
+The "human" readable and the json format emitter can be found under
+librustc_errors, both were moved from the libsyntax crate to the
+[librustc_errors crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html).
 
 The JSON emitter defines [its own `Diagnostic`
-struct](https://github.com/rust-lang/rust/blob/b2c6b8c29f13f8d1f242da89e587960b95337819/src/libsyntax/json.rs#L85-L99)
+struct](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/json/struct.Diagnostic.html)
 (and sub-structs) for the JSON serialization. Don't confuse this with
 [`errors::Diagnostic`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diagnostic.html)!
 
