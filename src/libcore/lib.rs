@@ -154,29 +154,41 @@ mod int_macros;
 #[macro_use]
 mod uint_macros;
 
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/i128.rs"]
 pub mod i128;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/i16.rs"]
 pub mod i16;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/i32.rs"]
 pub mod i32;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/i64.rs"]
 pub mod i64;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/i8.rs"]
 pub mod i8;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/isize.rs"]
 pub mod isize;
 
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/u128.rs"]
 pub mod u128;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/u16.rs"]
 pub mod u16;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/u32.rs"]
 pub mod u32;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/u64.rs"]
 pub mod u64;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/u8.rs"]
 pub mod u8;
+#[rustc_deprecated(since = "1.42.0", reason = "Replaced by associated constants")]
 #[path = "num/usize.rs"]
 pub mod usize;
 
