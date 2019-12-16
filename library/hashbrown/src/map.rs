@@ -962,6 +962,9 @@ where
     /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `false` out
     /// into another iterator.
     ///
+    /// When the returned DrainedFilter is dropped, the elements that don't satisfy
+    /// the predicate are dropped from the table.
+    ///
     /// # Examples
     ///
     /// ```
@@ -972,21 +975,14 @@ where
     /// assert_eq!(drained.count(), 4);
     /// assert_eq!(map.len(), 4);
     /// ```
-    pub fn drain_filter<'a, F>(&'a mut self, mut f: F) -> impl Iterator<Item = (K, V)> + '_
+    pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F>
     where
-        F: 'a + FnMut(&K, &mut V) -> bool,
+        F: FnMut(&K, &mut V) -> bool,
     {
-        // Here we only use `iter` as a temporary, preventing use-after-free
-        unsafe {
-            self.table.iter().filter_map(move |item| {
-                let &mut (ref key, ref mut value) = item.as_mut();
-                if f(key, value) {
-                    None
-                } else {
-                    self.table.erase_no_drop(&item);
-                    Some(item.read())
-                }
-            })
+        DrainFilter {
+            f,
+            iter: unsafe { self.table.iter() },
+            table: &mut self.table,
         }
     }
 }
@@ -1266,6 +1262,58 @@ impl<K, V> Drain<'_, K, V> {
             inner: self.inner.iter(),
             marker: PhantomData,
         }
+    }
+}
+
+/// A draining iterator over entries of a `HashMap` which don't satisfy the predicate `f`.
+///
+/// This `struct` is created by the [`drain_filter`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`drain_filter`]: struct.HashMap.html#method.drain_filter
+/// [`HashMap`]: struct.HashMap.html
+pub struct DrainFilter<'a, K, V, F>
+where
+    F: FnMut(&K, &mut V) -> bool,
+{
+    f: F,
+    iter: RawIter<(K, V)>,
+    table: &'a mut RawTable<(K, V)>,
+}
+
+impl<K, V, F> Drop for DrainFilter<'_, K, V, F>
+where
+    F: FnMut(&K, &mut V) -> bool,
+{
+    fn drop(&mut self) {
+        unsafe {
+            while let Some(item) = self.iter.next() {
+                let &mut (ref key, ref mut value) = item.as_mut();
+                if !(self.f)(key, value) {
+                    self.table.erase_no_drop(&item);
+                    item.drop();
+                }
+            }
+        }
+    }
+}
+
+impl<K, V, F> Iterator for DrainFilter<'_, K, V, F>
+where
+    F: FnMut(&K, &mut V) -> bool,
+{
+    type Item = (K, V);
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe {
+            while let Some(item) = self.iter.next() {
+                let &mut (ref key, ref mut value) = item.as_mut();
+                if !(self.f)(key, value) {
+                    self.table.erase_no_drop(&item);
+                    return Some(item.read());
+                }
+            }
+        }
+        None
     }
 }
 
@@ -3523,12 +3571,19 @@ mod test_map {
 
     #[test]
     fn test_drain_filter() {
-        let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
-        let drained = map.drain_filter(|&k, _| k % 2 == 0);
-        let mut out = drained.collect::<Vec<_>>();
-        out.sort_unstable();
-        assert_eq!(vec![(1, 10), (3, 30), (5, 50), (7, 70)], out);
-        assert_eq!(map.len(), 4);
+        {
+            let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
+            let drained = map.drain_filter(|&k, _| k % 2 == 0);
+            let mut out = drained.collect::<Vec<_>>();
+            out.sort_unstable();
+            assert_eq!(vec![(1, 10), (3, 30), (5, 50), (7, 70)], out);
+            assert_eq!(map.len(), 4);
+        }
+        {
+            let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
+            drop(map.drain_filter(|&k, _| k % 2 == 0));
+            assert_eq!(map.len(), 4);
+        }
     }
 
     #[test]
