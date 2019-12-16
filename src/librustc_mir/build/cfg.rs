@@ -59,6 +59,18 @@ impl<'tcx> CFG<'tcx> {
         ));
     }
 
+    pub fn push_fake_read(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        cause: FakeReadCause,
+        place: Place<'tcx>,
+    ) {
+        let kind = StatementKind::FakeRead(cause, box place);
+        let stmt = Statement { source_info, kind };
+        self.push(block, stmt);
+    }
+
     pub fn terminate(&mut self,
                      block: BasicBlock,
                      source_info: SourceInfo,
