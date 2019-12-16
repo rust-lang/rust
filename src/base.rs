@@ -17,10 +17,11 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let mut debug_context = cx
         .debug_context
         .as_mut()
-        .map(|debug_context| FunctionDebugContext::new(tcx, debug_context, mir, func_id, &name, &sig));
+        .map(|debug_context| FunctionDebugContext::new(debug_context, instance, func_id, &name));
 
     // Make FunctionBuilder
     let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
+    func.collect_debug_info();
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
 
@@ -60,6 +61,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let instance = fx.instance;
     let clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
+    let local_map = fx.local_map;
 
     #[cfg(debug_assertions)]
     crate::pretty_clif::write_clif_file(cx.tcx, "unopt", instance, &func, &clif_comments, None);
@@ -72,26 +74,28 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     context.func = func;
     cx.module.define_function(func_id, context).unwrap();
 
-    let value_ranges = context
-        .build_value_labels_ranges(cx.module.isa())
-        .expect("value location ranges");
-
     // Write optimized function to file for debugging
     #[cfg(debug_assertions)]
-    crate::pretty_clif::write_clif_file(
-        cx.tcx,
-        "opt",
-        instance,
-        &context.func,
-        &clif_comments,
-        Some(&value_ranges),
-    );
+    {
+        let value_ranges = context
+            .build_value_labels_ranges(cx.module.isa())
+            .expect("value location ranges");
+
+        crate::pretty_clif::write_clif_file(
+            cx.tcx,
+            "opt",
+            instance,
+            &context.func,
+            &clif_comments,
+            Some(&value_ranges),
+        );
+    }
 
     // Define debuginfo for function
     let isa = cx.module.isa();
     debug_context
         .as_mut()
-        .map(|x| x.define(tcx, context, isa, &source_info_set));
+        .map(|x| x.define(context, isa, &source_info_set, local_map));
 
     // Clear context to make it usable for the next function
     context.clear();

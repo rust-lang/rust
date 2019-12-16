@@ -74,8 +74,8 @@ pub struct CommentWriter {
 
 impl CommentWriter {
     pub fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
-        CommentWriter {
-            global_comments: vec![
+        let mut global_comments = if cfg!(debug_assertions) {
+            vec![
                 format!("symbol {}", tcx.symbol_name(instance).name.as_str()),
                 format!("instance {:?}", instance),
                 format!(
@@ -86,7 +86,13 @@ impl CommentWriter {
                     )
                 ),
                 String::new(),
-            ],
+            ]
+        } else {
+            vec![]
+        };
+
+        CommentWriter {
+            global_comments,
             entity_comments: HashMap::new(),
             inst_comments: HashMap::new(),
         }

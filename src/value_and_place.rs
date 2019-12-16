@@ -299,7 +299,11 @@ impl<'tcx> CPlace<'tcx> {
     pub fn to_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> CValue<'tcx> {
         let layout = self.layout();
         match self.inner {
-            CPlaceInner::Var(var) => CValue::by_val(fx.bcx.use_var(mir_var(var)), layout),
+            CPlaceInner::Var(var) => {
+                let val = fx.bcx.use_var(mir_var(var));
+                fx.bcx.set_val_label(val, cranelift::codegen::ir::ValueLabel::from_u32(var.as_u32()));
+                CValue::by_val(val, layout)
+            }
             CPlaceInner::Addr(addr, extra) => {
                 assert!(extra.is_none(), "unsized values are not yet supported");
                 CValue::by_ref(addr, layout)
@@ -419,6 +423,7 @@ impl<'tcx> CPlace<'tcx> {
         let addr = match self.inner {
             CPlaceInner::Var(var) => {
                 let data = from.load_scalar(fx);
+                fx.bcx.set_val_label(data, cranelift::codegen::ir::ValueLabel::from_u32(var.as_u32()));
                 fx.bcx.def_var(mir_var(var), data);
                 return;
             }
