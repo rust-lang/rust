@@ -1836,7 +1836,7 @@ impl<T: ?Sized> Weak<T> {
     /// If `self` was created using [`Weak::new`], this will return 0.
     ///
     /// [`Weak::new`]: #method.new
-    #[unstable(feature = "weak_counts", issue = "57977")]
+    #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
         if let Some(inner) = self.inner() {
             inner.strong()
@@ -1847,20 +1847,16 @@ impl<T: ?Sized> Weak<T> {
 
     /// Gets the number of `Weak` pointers pointing to this allocation.
     ///
-    /// If `self` was created using [`Weak::new`], this will return `None`. If
-    /// not, the returned value is at least 1, since `self` still points to the
-    /// allocation.
-    ///
-    /// [`Weak::new`]: #method.new
-    #[unstable(feature = "weak_counts", issue = "57977")]
-    pub fn weak_count(&self) -> Option<usize> {
+    /// If no strong pointers remain, this will return zero.
+    #[stable(feature = "weak_counts", since = "1.41.0")]
+    pub fn weak_count(&self) -> usize {
         self.inner().map(|inner| {
             if inner.strong() > 0 {
                 inner.weak() - 1  // subtract the implicit weak ptr
             } else {
-                inner.weak()
+                0
             }
-        })
+        }).unwrap_or(0)
     }
 
     /// Returns `None` when the pointer is dangling and there is no allocated `RcBox`
