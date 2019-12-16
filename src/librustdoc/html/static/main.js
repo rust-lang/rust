@@ -2683,7 +2683,7 @@ function getSearchElement() {
         insertAfter(popup, getSearchElement());
     }
 
-    onHashChange();
+    onHashChange(null);
     window.onhashchange = onHashChange;
 
     buildHelperPopup();
