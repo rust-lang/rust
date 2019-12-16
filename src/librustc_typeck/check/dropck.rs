@@ -56,8 +56,10 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            tcx.sess.delay_span_bug(span,
-                &format!("should have been rejected by coherence check: {}", dtor_self_type));
+            tcx.sess.delay_span_bug(
+                span,
+                &format!("should have been rejected by coherence check: {}", dtor_self_type),
+            );
             Err(ErrorReported)
         }
     }
@@ -85,10 +87,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
         let cause = &ObligationCause::misc(drop_impl_span, drop_impl_hir_id);
-        match infcx
-            .at(cause, impl_param_env)
-            .eq(named_type, fresh_impl_self_ty)
-        {
+        match infcx.at(cause, impl_param_env).eq(named_type, fresh_impl_self_ty) {
             Ok(InferOk { obligations, .. }) => {
                 fulfillment_cx.register_predicate_obligations(infcx, obligations);
             }
@@ -99,12 +98,13 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
                     drop_impl_span,
                     E0366,
                     "Implementations of Drop cannot be specialized"
-                ).span_note(
+                )
+                .span_note(
                     item_span,
                     "Use same sequence of generic type and region \
                      parameters that is on the struct/enum definition",
                 )
-                    .emit();
+                .emit();
                 return Err(ErrorReported);
             }
         }
@@ -245,12 +245,13 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 E0367,
                 "The requirement `{}` is added only by the Drop impl.",
                 predicate
-            ).span_note(
+            )
+            .span_note(
                 item_span,
                 "The same requirement must be part of \
                  the struct/enum definition",
             )
-                .emit();
+            .emit();
             result = Err(ErrorReported);
         }
     }
