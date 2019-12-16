@@ -102,19 +102,25 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  %list.011.i = phi %struct.n* [ %[[thisbc]], %for.body.i ], [ null, %entry ] 
 ; CHECK-NEXT:  %[[ivnext]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:  %call.i = call noalias i8* @malloc(i64 16) #4
-; CHECK-NEXT:  %[[callcachegep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
-; CHECK-NEXT:  store i8* %call.i, i8** %[[callcachegep]]
+
 ; CHECK-NEXT:  %"call'mi.i" = call noalias nonnull i8* @malloc(i64 16) #4
 ; CHECK-NEXT:  call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
-; CHECK-NEXT:  %[[callpcachegep:.+]] = getelementptr i8*, i8** %[[callpcache]], i64 %[[iv]]
-; CHECK-NEXT:  store i8* %"call'mi.i", i8** %[[callpcachegep]]
+
 ; CHECK-NEXT:  %[[thisbc]] = bitcast i8* %call.i to %struct.n*
 ; CHECK-NEXT:  %next.i = getelementptr inbounds i8, i8* %call.i, i64 8
 ; CHECK-NEXT:  %[[fbc:.+]] = bitcast i8* %next.i to %struct.n**
 ; CHECK-NEXT:  %"next'ipg.i" = getelementptr i8, i8* %"call'mi.i", i64 8
 ; CHECK-NEXT:  %[[dstruct1:.+]] = bitcast i8* %"next'ipg.i" to %struct.n**
+
 ; CHECK-NEXT:  store %struct.n* %[[structtostore]], %struct.n** %[[dstruct1]]
+; CHECK-NEXT:  %[[callcachegep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
+; CHECK-NEXT:  store i8* %call.i, i8** %[[callcachegep]]
+
 ; CHECK-NEXT:  store %struct.n* %list.011.i, %struct.n** %[[fbc]], align 8, !tbaa !8
+
+; CHECK-NEXT:  %[[callpcachegep:.+]] = getelementptr i8*, i8** %[[callpcache]], i64 %[[iv]]
+; CHECK-NEXT:  store i8* %"call'mi.i", i8** %[[callpcachegep]]
+
 ; CHECK-NEXT:  %value.i = bitcast i8* %call.i to double*
 ; CHECK-NEXT:  store double %x, double* %value.i, align 8, !tbaa !2
 ; CHECK-NEXT:  %[[exitcond:.+]] = icmp eq i64 %[[iv]], %n

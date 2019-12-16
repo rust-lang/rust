@@ -55,11 +55,11 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   %2 = load double, double* %x
 ; CHECK-NEXT:   %[[ipl:.+]] = load double*, double** %"y'"
 ; CHECK-NEXT:   %[[yload:.+]] = load double*, double** %y
+; CHECK-NEXT:   %[[finaly:.+]] = load double, double* %[[yload]]
+; CHECK-NEXT:   %add = fadd fast double %[[finaly]], %2
+; CHECK-NEXT:   store double %add, double* %[[yload]]
 ; CHECK-NEXT:   %[[cachex:.+]] = getelementptr double*, double** %[[anticache]], i64 %iv
 ; CHECK-NEXT:   store double* %[[ipl]], double** %[[cachex]], align 8, !invariant.group !0
-; CHECK-NEXT:   %5 = load double, double* %[[yload]]
-; CHECK-NEXT:   %add = fadd fast double %5, %2
-; CHECK-NEXT:   store double %add, double* %[[yload]]
 ; CHECK-NEXT:   br label %for.cond
 
 ; CHECK: invertentry:

@@ -145,8 +145,6 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[ivnext:.+]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 8) #4
 ; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull i8* @malloc(i64 8) #4
-; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
-; CHECK-NEXT:   store i8* %"call'mi", i8** %[[geper]], align 8
 ; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %"call'mi" to i64*
 ; CHECK-NEXT:   store i64 0, i64* %[[storeloc]], align 1
 ; CHECK-NEXT:   %[[bitcaster:.+]] = bitcast i8* %call to double*
@@ -155,11 +153,14 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double*, double** %"arrayp'", i64 %[[iv]]
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"arrayidx'ipg" to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
+; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
+; CHECK-NEXT:   store i8* %"call'mi", i8** %[[geper]], align 8
 ; CHECK-NEXT:   store i8* %call, i8** %[[bctwo]], align 8, !tbaa !2
 ; CHECK-NEXT:   store double %x, double* %[[bitcaster]], align 8, !tbaa !6
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[ivnext]], %wide.trip.count
 ; CHECK-NEXT:   br i1 %[[cmp]], label %for.cond.cleanup, label %for.body
 ; CHECK-NEXT: }
+
 
 ; CHECK: ; Function Attrs: noinline nounwind uwtable
 ; CHECK-NEXT: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** %"arrayp'", double %x, i32 %n, { i8** } %tapeArg) local_unnamed_addr #0 {

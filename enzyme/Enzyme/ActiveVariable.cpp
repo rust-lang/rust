@@ -937,7 +937,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 				constants.insert(inst);
 				return true;
 			}
-            if (!isCertainPrintMallocOrFree(called) && called->empty() && !hasMetadata(called, "enzyme_gradient") && emptyfnconst) {
+            if (!isCertainPrintMallocOrFree(called) && called->empty() && !hasMetadata(called, "enzyme_gradient") && !isa<IntrinsicInst>(op) && emptyfnconst) {
 				constants.insert(inst);
 				return true;
             }

@@ -1,27 +1,21 @@
-# RUN: cd %desired_wd/nn && pwd && ls && LOAD="%loadEnzyme" make taylorlog-results.txt VERBOSE=1 -f %s
+# RUN: cd %desired_wd/taylorlog && LOAD="%loadEnzyme" make -B taylorlog-opt.ll taylorlog-results.txt VERBOSE=1 -f %s
 
 .PHONY: time-* clean
 
 clean:
 	rm -f *.ll *.o
 	
-%-c-unopt.ll: %.c
-	clang $^ -O2 -fno-unroll-loops -fno-vectorize -o $@ -S -emit-llvm
-
-%-cpp-unopt.ll: %.cpp
+%-unopt.ll: %.cpp
 	#clang++ -I../adept ../tapenade $^ -O2 -fno-unroll-loops -fno-exceptions -fno-vectorize -o $@
-	clang++ -I../adept -I../tapenade $^ -O2 -fno-unroll-loops -fno-vectorize -o $@ -S -emit-llvm
+	clang++ -I../adept -I../tapenade $^ -O3 -fno-unroll-loops -fno-vectorize -o $@ -S -emit-llvm
 
 %-raw.ll: %-unopt.ll
 	opt $^ $(LOAD) -enzyme -o $@ -S
 	
 %-opt.ll: %-raw.ll
-	opt $^ -O2 -o $@ -S
-	
-%.o: %-c-opt.ll
-	clang $^ -o $@
+	opt $^ -O3 -o $@ -S
 
-%.o: %-cpp-opt.ll
+%.o: %-opt.ll
 	clang++ $^ -o $@ -lblas ../tapenade/*.o
 
 %-results.txt: %.o

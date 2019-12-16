@@ -218,28 +218,28 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %list.029.i = phi %struct.n* [ %[[bccast]], %for.cond.cleanup7.i ], [ null, %entry ] 
 ; CHECK-NEXT:   %[[nextvar]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call.i = call noalias i8* @malloc(i64 16) #4
-; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
-; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
 ; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull i8* @malloc(i64 16) #4
-; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
-; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
 ; CHECK-NEXT:   %next.i = getelementptr inbounds i8, i8* %call.i, i64 8
 ; CHECK-NEXT:   %[[bc4:.+]] = bitcast i8* %next.i to %struct.n**
 ; CHECK-NEXT:   %"next'ipg.i" = getelementptr i8, i8* %"call'mi.i", i64 8
 ; CHECK-NEXT:   %[[thisipc:.+]] = bitcast i8* %"next'ipg.i" to %struct.n**
 ; CHECK-NEXT:   store %struct.n* %[[dstruct]], %struct.n** %[[thisipc]]
+; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
+; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
+; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
+; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
 ; CHECK-NEXT:   store %struct.n* %list.029.i, %struct.n** %[[bc4]], align 8, !tbaa !7
 ; CHECK-NEXT:   %call2.i = call noalias i8* @malloc(i64 %mul.i) #4
-; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr i8*, i8** %call2_malloccache.i, i64 %[[iv]]
-; CHECK-NEXT:   store i8* %call2.i, i8** %[[call2gep]]
 ; CHECK-NEXT:   %"call2'mi.i" = call noalias nonnull i8* @malloc(i64 %mul.i) #4
-; CHECK-NEXT:   %[[call2pgep:.+]] = getelementptr i8*, i8** %"call2'mi_malloccache.i", i64 %[[iv]]
-; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[call2pgep]]
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call2'mi.i", i8 0, i64 %mul.i, {{(i32 1, )?}}i1 false) #4
 ; CHECK-NEXT:   %[[herebc:.+]] = bitcast i8* %call.i to i8**
 ; CHECK-NEXT:   %[[thatipc:.+]] = bitcast i8* %"call'mi.i" to i8**
-; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[thatipc]]
+; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[thatipc]], align 8
+; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr i8*, i8** %call2_malloccache.i, i64 %[[iv]]
+; CHECK-NEXT:   store i8* %call2.i, i8** %[[call2gep]]
+; CHECK-NEXT:   %[[call2pgep:.+]] = getelementptr i8*, i8** %"call2'mi_malloccache.i", i64 %[[iv]]
+; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[call2pgep]]
 ; CHECK-NEXT:   store i8* %call2.i, i8** %[[herebc]], align 8, !tbaa !2
 ; CHECK-NEXT:   %.cast.i = bitcast i8* %call2.i to double*
 ; CHECK-NEXT:   br label %for.body8.i

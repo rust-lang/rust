@@ -1,3 +1,5 @@
+#define BOOST_MATH_NO_LONG_DOUBLE_MATH_FUNCTIONS
+#define BOOST_NO_EXCEPTIONS
 #include <iostream>
 #include <boost/array.hpp>
 
@@ -41,9 +43,9 @@ double foobar(double init=10.0) {
     //state_type x = { init , 1.0 , 1.0 }; // initial conditions
 
     typedef controlled_runge_kutta< runge_kutta_dopri5< state_type , typename state_type::value_type , state_type , double > > stepper_type;
-    integrate_const( stepper_type(), lorenz , x , 0.0 , 25.0 , 0.1 , write_lorenz );
+    integrate_const( stepper_type(), lorenz , x , 0.0 , 25.0 , 0.1 );
     //integrate( lorenz , x , 0.0 , 25.0 , 0.1 , write_lorenz );
-    printf("final result x[0]=%f x[1]=%f x[2]=%f\n", x[0], x[1], x[2]);
+    printf("final result x[0]=%f x[1]=%f x[2]=%f\n", x[0], x[1], 3.1415);
     return x[0];
 }
 

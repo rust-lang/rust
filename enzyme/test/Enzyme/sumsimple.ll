@@ -55,11 +55,11 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %2 = load double, double* %x
 ; CHECK-NEXT:   %[[ipload:.+]] = load double*, double** %"y'"
 ; CHECK-NEXT:   %[[yload:.+]] = load double*, double** %y
+; CHECK-NEXT:   %[[finaly:.+]] = load double, double* %[[yload]]
+; CHECK-NEXT:   %add = fadd fast double %[[finaly]], %2
+; CHECK-NEXT:   store double %add, double* %[[yload]]
 ; CHECK-NEXT:   %[[cachegep:.+]] = getelementptr double*, double** %[[antimallocs]], i64 %iv
 ; CHECK-NEXT:   store double* %[[ipload]], double** %[[cachegep]], align 8, !invariant.group !0
-; CHECK-NEXT:   %5 = load double, double* %[[yload]]
-; CHECK-NEXT:   %add = fadd fast double %5, %2
-; CHECK-NEXT:   store double %add, double* %[[yload]]
 ; CHECK-NEXT:   br label %for.cond
 
 ; CHECK: invertentry:

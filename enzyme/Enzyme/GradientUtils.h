@@ -1354,6 +1354,7 @@ endCheck:
                     malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
                     
                     storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
+                    //storealloc->setMetadata("enzyme_cache_static_store", MDNode::get(storealloc->getContext(), {}));
                     
                     scopeAllocs[alloc].push_back(malloccall);
 
@@ -1363,6 +1364,9 @@ endCheck:
                 } else {
                     auto zerostore = allocationBuilder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(myType)), storeInto);
                     scopeStores[alloc].push_back(zerostore);
+
+                    //auto mdpair = MDNode::getDistinct(zerostore->getContext(), {});
+                    //zerostore->setMetadata("enzyme_cache_dynamiczero_store", mdpair);
 
                     /*
                     if (containedloops.back().first.incvar != containedloops.back().first.header->getFirstNonPHI()) {
@@ -1375,7 +1379,13 @@ endCheck:
                     IRBuilder <> build(containedloops.back().first.incvar->getNextNode());
                     Value* allocation = build.CreateLoad(storeInto);
                     //Value* foo = build.CreateNUWAdd(containedloops.back().first.var, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1));
-                    Value* realloc_size = build.CreateNUWMul(containedloops.back().first.incvar, sublimits[i].first);
+                    Value* realloc_size = nullptr;
+                    if (isa<ConstantInt>(sublimits[i].first) && cast<ConstantInt>(sublimits[i].first)->isOne()) {
+                        realloc_size = containedloops.back().first.incvar;
+                    } else {
+                        realloc_size = build.CreateNUWMul(containedloops.back().first.incvar, sublimits[i].first);
+                    }
+
                     Value* idxs[2] = {
                         build.CreatePointerCast(allocation, BPTy),
                         build.CreateNUWMul(
@@ -1384,9 +1394,10 @@ endCheck:
                     };
 
                     Value* realloccall = nullptr;
-                    allocation = build.CreatePointerCast(realloccall = build.CreateCall(realloc, idxs, name+"_realloccache"), allocation->getType());
+                    allocation = build.CreatePointerCast(realloccall = build.CreateCall(realloc, idxs, name+"_realloccache"), allocation->getType(), name+"_realloccast");
                     scopeAllocs[alloc].push_back(cast<CallInst>(realloccall));
                     storealloc = build.CreateStore(allocation, storeInto);
+                    //storealloc->setMetadata("enzyme_cache_dynamic_store", mdpair);
                 }
                 
                 if (invariantGroups.find(std::make_pair((Value*)alloc, i)) == invariantGroups.end()) {
@@ -1558,14 +1569,12 @@ endCheck:
 
         //Note for dynamic loops where the allocation is stored somewhere inside the loop,
         // we must ensure that we load the allocation after the store ensuring memory exists
-        // This does not need to occur (and will find no such store) for nondynamic loops
-        // as memory is statically allocated in the preheader
+        // to simplify things and ensure we always store after a potential realloc occurs in this loop
+        // This is okay as there should be no load to the cache in the same block where this instruction is defined (since we will just use this instruction)
         for (auto I = BuilderM.GetInsertBlock()->rbegin(), E = BuilderM.GetInsertBlock()->rend(); I != E; I++) {
             if (&*I == &*BuilderM.GetInsertPoint()) break;
             if (auto si = dyn_cast<StoreInst>(&*I)) {
-                if (si->getPointerOperand() == cache) {
-                    v.SetInsertPoint(getNextNonDebugInstruction(si));
-                }   
+                v.SetInsertPoint(getNextNonDebugInstruction(si));
             }
         }
         Value* loc = getCachePointer(v, ctx, cache, /*storeinstorecache*/true);

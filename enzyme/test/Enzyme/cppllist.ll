@@ -182,15 +182,15 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %list.09.i = phi %class.node* [ %[[bcnode:.+]], %for.body.i ], [ null, %entry ] 
 ; CHECK-NEXT:   %[[ivnext]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call.i = call i8* @_Znwm(i64 16) #10
-; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
-; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
 ; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull i8* @_Znwm(i64 16) #10
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #5
-; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
-; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
 ; CHECK-NEXT:   %[[bcnode]] = bitcast i8* %call.i to %class.node*
 ; CHECK-NEXT:   %value.i.i = bitcast i8* %call.i to double*
 ; CHECK-NEXT:   store double %x, double* %value.i.i, align 8, !tbaa !2
+; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
+; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
+; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
+; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
 ; CHECK-NEXT:   %next.i.i = getelementptr inbounds i8, i8* %call.i, i64 8
 ; CHECK-NEXT:   %[[bctwo:.+]] = bitcast i8* %next.i.i to %class.node**
 ; CHECK-NEXT:   %"next.i'ipg.i" = getelementptr i8, i8* %"call'mi.i", i64 8
@@ -200,6 +200,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[endcomp:.+]] = icmp eq i64 %[[iv]], %n
 ; CHECK-NEXT:   %"'ipc.i" = bitcast i8* %"call'mi.i" to %class.node*
 ; CHECK-NEXT:   br i1 %[[endcomp]], label %[[invertdelete:.+]], label %for.body.i
+
 
 ; CHECK: [[invertdelete]]:                               ; preds = %for.body.i
 ; CHECK-NEXT:   %[[dsum:.+]] = call {} @diffe_Z8sum_listPK4node(%class.node* nonnull %[[bcnode]], %class.node* nonnull %"'ipc.i", double 1.000000e+00)

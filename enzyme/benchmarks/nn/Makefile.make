@@ -1,4 +1,4 @@
-# RUN: cd %desired_wd/nn && pwd && ls && LOAD="%loadEnzyme" make nn-results.txt VERBOSE=1 -f %s
+# RUN: cd %desired_wd/nn && pwd && ls && LOAD="%loadEnzyme" make -B nn-results.txt VERBOSE=1 -f %s
 
 .PHONY: time-* clean
 

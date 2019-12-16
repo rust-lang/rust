@@ -23,6 +23,8 @@
 
 #include "FunctionUtils.h"
 
+#include "llvm/IR/GlobalValue.h"
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
@@ -319,8 +321,15 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       //  However, in the absence of a way to pass tape data from an indirect augmented (and also since we dont presently allow indirect augmented calls), topLevel MUST be true
       //  otherwise subcalls will not be able to lookup the augmenteddata/subdata (triggering an assertion failure, among much worse)
       std::map<Argument*, bool> uncacheable_args;
-      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/true, /*additionalArg*/nullptr, uncacheable_args, /*map*/nullptr); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
-      return BuilderM.CreatePointerCast(newf, fn->getType());
+      //conservatively assume that we can only cache existing floating types (i.e. that all args are uncacheable)
+      for(auto &a : fn->args()) {
+          uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
+      }
+      auto& augdata = CreateAugmentedPrimal(fn, AA, /*constant_args*/{}, TLI, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/true, uncacheable_args, /*forceAnonymousTape*/true);
+      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
+      auto cdata = ConstantStruct::get(StructType::get(newf->getContext(), {augdata.fn->getType(), newf->getType()}), {augdata.fn, newf});
+      auto gv = new GlobalVariable(*newf->getParent(), cdata->getType(), true, GlobalValue::LinkageTypes::InternalLinkage, cdata, fn->getName()+"_gdata");
+      return BuilderM.CreatePointerCast(gv, fn->getType());
     } else if (auto arg = dyn_cast<CastInst>(val)) {
       auto result = BuilderM.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), BuilderM), arg->getDestTy(), arg->getName()+"'ipc");
       return result;

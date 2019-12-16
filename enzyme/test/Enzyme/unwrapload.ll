@@ -92,9 +92,9 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %res1 = phi double [ %add, %exit ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
 ; CHECK-NEXT:   %a19 = load i64, i64* %a4, align 4
+; CHECK-NEXT:   store i64 %iv.next, i64* %a4, align 4
 ; CHECK-NEXT:   %0 = getelementptr i64, i64* %a19_malloccache, i64 %iv
 ; CHECK-NEXT:   store i64 %a19, i64* %0, align 8, !invariant.group !0
-; CHECK-NEXT:   store i64 %iv.next, i64* %a4, align 4
 ; CHECK-NEXT:   br label %loop2
 
 ; CHECK: loop2:                                            ; preds = %loop2, %loop1
