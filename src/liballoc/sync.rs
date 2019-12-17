@@ -555,6 +555,11 @@ impl<T: ?Sized> Arc<T> {
         let fake_ptr = ptr as *mut T;
         mem::forget(this);
 
+        // SAFETY: This cannot go through Deref::deref.
+        // Instead, we manually offset the pointer rather than manifesting a reference.
+        // This is so that the returned pointer retains the same provenance as our pointer.
+        // This is required so that e.g. `get_mut` can write through the pointer
+        // after the Arc is recovered through `from_raw`.
         unsafe {
             let offset = data_offset(&(*ptr).data);
             set_data_ptr(fake_ptr, (ptr as *mut u8).offset(offset))
