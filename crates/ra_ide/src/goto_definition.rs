@@ -221,7 +221,7 @@ fn named_target(db: &RootDatabase, node: InFile<&SyntaxNode>) -> Option<Navigati
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::{assert_eq_text, covers};
 
     use crate::mock_analysis::analysis_and_position;
 
@@ -231,6 +231,24 @@ mod tests {
         let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);
         let nav = navs.pop().unwrap();
+        nav.assert_match(expected);
+    }
+
+    fn check_goto_with_range_content(fixture: &str, expected: &str, expected_range: &str) {
+        let (analysis, pos) = analysis_and_position(fixture);
+
+        let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
+        assert_eq!(navs.len(), 1);
+        let nav = navs.pop().unwrap();
+        let file_text = analysis.file_text(pos.file_id).unwrap();
+
+        let actual_full_range = &file_text[nav.full_range()];
+        let actual_range = &file_text[nav.range()];
+
+        test_utils::assert_eq_text!(
+            &format!("{}|{}", actual_full_range, actual_range),
+            expected_range
+        );
         nav.assert_match(expected);
     }
 
@@ -363,28 +381,27 @@ mod tests {
 
     #[test]
     fn goto_definition_works_for_macro_defined_fn_with_arg() {
-        check_goto(
+        check_goto_with_range_content(
             "
             //- /lib.rs
             macro_rules! define_fn {
                 ($name:ident) => (fn $name() {})
             }
 
-            define_fn!(
-                foo
-            )
+            define_fn!(foo);
 
             fn bar() {
                <|>foo();
             }
             ",
-            "foo FN_DEF FileId(1) [80; 83) [80; 83)",
+            "foo FN_DEF FileId(1) [64; 80) [75; 78)",
+            "define_fn!(foo);|foo",
         );
     }
 
     #[test]
     fn goto_definition_works_for_macro_defined_fn_no_arg() {
-        check_goto(
+        check_goto_with_range_content(
             "
             //- /lib.rs
             macro_rules! define_fn {
@@ -397,7 +414,8 @@ mod tests {
                <|>foo();
             }
             ",
-            "foo FN_DEF FileId(1) [39; 42) [39; 42)",
+            "foo FN_DEF FileId(1) [51; 64) [51; 64)",
+            "define_fn!();|define_fn!();",
         );
     }
 
