@@ -1467,15 +1467,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 propagated_outlives_requirements,
                 errors_buffer,
             ) {
-                // continuing to iterate just reports more errors than necessary
-                //
-                // FIXME It would also allow us to report more Outlives Suggestions, though, so
-                // it's not clear that that's a bad thing. Somebody should try commenting out this
-                // line and see it is actually a regression.
-                //
-                // TODO(mark-i-m): perhaps we could add them to the `RegionErrors` with a flag that
-                // says "don't report me"?
-                return;
+                // We only report the first region error. Subsequent errors are hidden so as not to
+                // overwhelm the user, but we do record them so as to potentially print better
+                // diagnostics elsewhere...
+                errors_buffer.push(RegionErrorKind::UnreportedError {
+                    longer_fr, shorter_fr,
+                    fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                });
             }
         }
     }

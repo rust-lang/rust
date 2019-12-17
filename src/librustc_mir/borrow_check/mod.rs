@@ -1664,7 +1664,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     db.buffer(&mut self.errors_buffer);
 
                     // Emit outlives suggestions
-                    //outlives_suggestion.add_suggestion(body, self, infcx, errors_buffer, region_naming);
+                    outlives_suggestion.add_suggestion(
+                        &self.body,
+                        &self.nonlexical_regioncx,
+                        self.infcx,
+                        &mut self.errors_buffer,
+                        &mut region_naming
+                    );
+                }
+
+                RegionErrorKind::UnreportedError {
+                    longer_fr, shorter_fr,
+                    fr_origin: _,
+                } => {
+                    // FIXME: currently we do nothing with these, but perhaps we can do better?
+                    debug!(
+                        "Unreported region error: can't prove that {:?}: {:?}",
+                        longer_fr, shorter_fr
+                    );
                 }
             }
         }

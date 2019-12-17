@@ -107,6 +107,17 @@ crate enum RegionErrorKind<'tcx> {
         /// The region that should be shorter, but we can't prove it
         shorter_fr: RegionVid,
     },
+
+    /// The same as `RegionError`, but this is an unreported error. We currently only report the
+    /// first error encountered and leave the rest unreported so as not to overwhelm the user.
+    UnreportedError {
+        /// The origin of the region
+        fr_origin: NLLRegionVariableOrigin,
+        /// The region that should outlive `shorter_fr`
+        longer_fr: RegionVid,
+        /// The region that should be shorter, but we can't prove it
+        shorter_fr: RegionVid,
+    }
 }
 
 /// Various pieces of state used when reporting borrow checker errors.
