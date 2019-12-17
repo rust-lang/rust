@@ -74,7 +74,6 @@ fn test_cmp_by() {
 #[test]
 fn test_partial_cmp_by() {
     use core::cmp::Ordering;
-    use core::f64;
 
     let f = |x: i32, y: i32| (x * x).partial_cmp(&y);
     let xs = || [1, 2, 3, 4].iter().copied();

@@ -16,12 +16,20 @@ use crate::sys::cmath;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::consts;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use core::f32::{DIGITS, EPSILON, MANTISSA_DIGITS, RADIX};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use core::f32::{INFINITY, MAX_10_EXP, NAN, NEG_INFINITY};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use core::f32::{MAX, MIN, MIN_POSITIVE};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use core::f32::{MAX_EXP, MIN_10_EXP, MIN_EXP};
 
 #[cfg(not(test))]
@@ -181,8 +189,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 3.5_f32;
     ///
     /// assert_eq!(f.signum(), 1.0);
@@ -194,7 +200,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn signum(self) -> f32 {
-        if self.is_nan() { NAN } else { 1.0_f32.copysign(self) }
+        if self.is_nan() { Self::NAN } else { 1.0_f32.copysign(self) }
     }
 
     /// Returns a number composed of the magnitude of `self` and the sign of
@@ -207,8 +213,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 3.5_f32;
     ///
     /// assert_eq!(f.copysign(0.42), 3.5_f32);
@@ -234,8 +238,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let m = 10.0_f32;
     /// let x = 4.0_f32;
     /// let b = 60.0_f32;
@@ -362,8 +364,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let positive = 4.0_f32;
     /// let negative = -4.0_f32;
     ///
@@ -898,8 +898,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let e = f32::consts::E;
     /// let x = 1.0f32;
     ///
@@ -922,8 +920,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 1.0f32;
     /// let f = x.sinh().asinh();
     ///
@@ -935,8 +931,8 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
-        if self == NEG_INFINITY {
-            NEG_INFINITY
+        if self == Self::NEG_INFINITY {
+            Self::NEG_INFINITY
         } else {
             (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
         }
@@ -947,8 +943,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 1.0f32;
     /// let f = x.cosh().acosh();
     ///
@@ -960,7 +954,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f32 {
-        if self < 1.0 { crate::f32::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
+        if self < 1.0 { Self::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
     }
 
     /// Inverse hyperbolic tangent function.
@@ -968,8 +962,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let e = f32::consts::E;
     /// let f = e.tanh().atanh();
     ///
@@ -1023,8 +1015,6 @@ impl f32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::f32;
-    use crate::f32::*;
     use crate::num::FpCategory as Fp;
     use crate::num::*;
 
@@ -1035,14 +1025,14 @@ mod tests {
 
     #[test]
     fn test_min_nan() {
-        assert_eq!(NAN.min(2.0), 2.0);
-        assert_eq!(2.0f32.min(NAN), 2.0);
+        assert_eq!(f32::NAN.min(2.0), 2.0);
+        assert_eq!(2.0f32.min(f32::NAN), 2.0);
     }
 
     #[test]
     fn test_max_nan() {
-        assert_eq!(NAN.max(2.0), 2.0);
-        assert_eq!(2.0f32.max(NAN), 2.0);
+        assert_eq!(f32::NAN.max(2.0), 2.0);
+        assert_eq!(2.0f32.max(f32::NAN), 2.0);
     }
 
     #[test]

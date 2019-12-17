@@ -61,25 +61,23 @@ fn test_range_inclusive() {
 
 #[test]
 fn test_range_is_empty() {
-    use core::f32::*;
-
     assert!(!(0.0..10.0).is_empty());
     assert!((-0.0..0.0).is_empty());
     assert!((10.0..0.0).is_empty());
 
-    assert!(!(NEG_INFINITY..INFINITY).is_empty());
-    assert!((EPSILON..NAN).is_empty());
-    assert!((NAN..EPSILON).is_empty());
-    assert!((NAN..NAN).is_empty());
+    assert!(!(f32::NEG_INFINITY..f32::INFINITY).is_empty());
+    assert!((f32::EPSILON..f32::NAN).is_empty());
+    assert!((f32::NAN..f32::EPSILON).is_empty());
+    assert!((f32::NAN..f32::NAN).is_empty());
 
     assert!(!(0.0..=10.0).is_empty());
     assert!(!(-0.0..=0.0).is_empty());
     assert!((10.0..=0.0).is_empty());
 
-    assert!(!(NEG_INFINITY..=INFINITY).is_empty());
-    assert!((EPSILON..=NAN).is_empty());
-    assert!((NAN..=EPSILON).is_empty());
-    assert!((NAN..=NAN).is_empty());
+    assert!(!(f32::NEG_INFINITY..=f32::INFINITY).is_empty());
+    assert!((f32::EPSILON..=f32::NAN).is_empty());
+    assert!((f32::NAN..=f32::EPSILON).is_empty());
+    assert!((f32::NAN..=f32::NAN).is_empty());
 }
 
 #[test]

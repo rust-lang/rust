@@ -16,12 +16,20 @@ use crate::sys::cmath;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::consts;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use core::f64::{DIGITS, EPSILON, MANTISSA_DIGITS, RADIX};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use core::f64::{INFINITY, MAX_10_EXP, NAN, NEG_INFINITY};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use core::f64::{MAX, MIN, MIN_POSITIVE};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use core::f64::{MAX_EXP, MIN_10_EXP, MIN_EXP};
 
 #[cfg(not(test))]
@@ -159,8 +167,6 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let f = 3.5_f64;
     ///
     /// assert_eq!(f.signum(), 1.0);
@@ -172,7 +178,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn signum(self) -> f64 {
-        if self.is_nan() { NAN } else { 1.0_f64.copysign(self) }
+        if self.is_nan() { Self::NAN } else { 1.0_f64.copysign(self) }
     }
 
     /// Returns a number composed of the magnitude of `self` and the sign of
@@ -185,8 +191,6 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let f = 3.5_f64;
     ///
     /// assert_eq!(f.copysign(0.42), 3.5_f64);
@@ -859,8 +863,8 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f64 {
-        if self == NEG_INFINITY {
-            NEG_INFINITY
+        if self == Self::NEG_INFINITY {
+            Self::NEG_INFINITY
         } else {
             (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
         }
@@ -882,7 +886,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f64 {
-        if self < 1.0 { NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
+        if self < 1.0 { Self::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
     }
 
     /// Inverse hyperbolic tangent function.
@@ -890,8 +894,6 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let e = f64::consts::E;
     /// let f = e.tanh().atanh();
     ///
@@ -953,16 +955,16 @@ impl f64 {
                 if self > 0.0 {
                     log_fn(self)
                 } else if self == 0.0 {
-                    NEG_INFINITY // log(0) = -Inf
+                    Self::NEG_INFINITY // log(0) = -Inf
                 } else {
-                    NAN // log(-n) = NaN
+                    Self::NAN // log(-n) = NaN
                 }
             } else if self.is_nan() {
                 self // log(NaN) = NaN
             } else if self > 0.0 {
                 self // log(Inf) = Inf
             } else {
-                NAN // log(-Inf) = NaN
+                Self::NAN // log(-Inf) = NaN
             }
         }
     }
@@ -970,8 +972,6 @@ impl f64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::f64;
-    use crate::f64::*;
     use crate::num::FpCategory as Fp;
     use crate::num::*;
 
@@ -982,19 +982,19 @@ mod tests {
 
     #[test]
     fn test_min_nan() {
-        assert_eq!(NAN.min(2.0), 2.0);
-        assert_eq!(2.0f64.min(NAN), 2.0);
+        assert_eq!(f64::NAN.min(2.0), 2.0);
+        assert_eq!(2.0f64.min(f64::NAN), 2.0);
     }
 
     #[test]
     fn test_max_nan() {
-        assert_eq!(NAN.max(2.0), 2.0);
-        assert_eq!(2.0f64.max(NAN), 2.0);
+        assert_eq!(f64::NAN.max(2.0), 2.0);
+        assert_eq!(2.0f64.max(f64::NAN), 2.0);
     }
 
     #[test]
     fn test_nan() {
-        let nan: f64 = NAN;
+        let nan: f64 = f64::NAN;
         assert!(nan.is_nan());
         assert!(!nan.is_infinite());
         assert!(!nan.is_finite());
@@ -1006,7 +1006,7 @@ mod tests {
 
     #[test]
     fn test_infinity() {
-        let inf: f64 = INFINITY;
+        let inf: f64 = f64::INFINITY;
         assert!(inf.is_infinite());
         assert!(!inf.is_finite());
         assert!(inf.is_sign_positive());
@@ -1018,7 +1018,7 @@ mod tests {
 
     #[test]
     fn test_neg_infinity() {
-        let neg_inf: f64 = NEG_INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert!(neg_inf.is_infinite());
         assert!(!neg_inf.is_finite());
         assert!(!neg_inf.is_sign_positive());
@@ -1070,9 +1070,9 @@ mod tests {
 
     #[test]
     fn test_is_nan() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert!(nan.is_nan());
         assert!(!0.0f64.is_nan());
         assert!(!5.3f64.is_nan());
@@ -1083,9 +1083,9 @@ mod tests {
 
     #[test]
     fn test_is_infinite() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert!(!nan.is_infinite());
         assert!(inf.is_infinite());
         assert!(neg_inf.is_infinite());
@@ -1110,9 +1110,9 @@ mod tests {
     #[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
     #[test]
     fn test_is_normal() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         let zero: f64 = 0.0f64;
         let neg_zero: f64 = -0.0;
         assert!(!nan.is_normal());
@@ -1128,9 +1128,9 @@ mod tests {
     #[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
     #[test]
     fn test_classify() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         let zero: f64 = 0.0f64;
         let neg_zero: f64 = -0.0;
         assert_eq!(nan.classify(), Fp::Nan);

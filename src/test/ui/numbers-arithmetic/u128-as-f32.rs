@@ -4,7 +4,6 @@
 #![deny(overflowing_literals)]
 extern crate test;
 
-use std::f32;
 use test::black_box;
 
 macro_rules! test {

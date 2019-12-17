@@ -1,5 +1,3 @@
-use std::f32;
-
 #[derive(PartialEq)]
 struct Foo {
     x: u32

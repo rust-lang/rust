@@ -129,15 +129,15 @@ macro_rules! other_constants {
     ($type: ident) => {
         const EXPLICIT_SIG_BITS: u8 = Self::SIG_BITS - 1;
         const MAX_EXP: i16 = (1 << (Self::EXP_BITS - 1)) - 1;
-        const MIN_EXP: i16 = -Self::MAX_EXP + 1;
-        const MAX_EXP_INT: i16 = Self::MAX_EXP - (Self::SIG_BITS as i16 - 1);
+        const MIN_EXP: i16 = -<Self as RawFloat>::MAX_EXP + 1;
+        const MAX_EXP_INT: i16 = <Self as RawFloat>::MAX_EXP - (Self::SIG_BITS as i16 - 1);
         const MAX_ENCODED_EXP: i16 = (1 << Self::EXP_BITS) - 1;
-        const MIN_EXP_INT: i16 = Self::MIN_EXP - (Self::SIG_BITS as i16 - 1);
+        const MIN_EXP_INT: i16 = <Self as RawFloat>::MIN_EXP - (Self::SIG_BITS as i16 - 1);
         const MAX_SIG: u64 = (1 << Self::SIG_BITS) - 1;
         const MIN_SIG: u64 = 1 << (Self::SIG_BITS - 1);
 
-        const INFINITY: Self = $crate::$type::INFINITY;
-        const NAN: Self = $crate::$type::NAN;
+        const INFINITY: Self = $type::INFINITY;
+        const NAN: Self = $type::NAN;
         const ZERO: Self = 0.0;
     };
 }

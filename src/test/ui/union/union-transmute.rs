@@ -1,7 +1,6 @@
 // run-pass
 
 extern crate core;
-use core::f32;
 
 union U {
     a: (u8, u8),
