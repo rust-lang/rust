@@ -10,6 +10,8 @@
 //!
 //! `ReachedFixedPoint` signals about this.
 
+use std::iter::successors;
+
 use hir_expand::name::Name;
 use ra_db::Edition;
 use test_utils::tested_by;
@@ -97,9 +99,6 @@ impl CrateDefMap {
             PathKind::Crate => {
                 PerNs::types(ModuleId { krate: self.krate, local_id: self.root }.into())
             }
-            PathKind::Self_ => {
-                PerNs::types(ModuleId { krate: self.krate, local_id: original_module }.into())
-            }
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
             // rust-lang/rust#57745)
@@ -123,9 +122,22 @@ impl CrateDefMap {
                 log::debug!("resolving {:?} in module", segment);
                 self.resolve_name_in_module(db, original_module, &segment, prefer_module(idx))
             }
-            PathKind::Super => {
-                if let Some(p) = self.modules[original_module].parent {
-                    PerNs::types(ModuleId { krate: self.krate, local_id: p }.into())
+            // PathKind::Self_ => {
+            //     PerNs::types(ModuleId { krate: self.krate, local_id: original_module }.into())
+            // }
+            // PathKind::Super => {
+            //     if let Some(p) = self.modules[original_module].parent {
+            //         PerNs::types(ModuleId { krate: self.krate, local_id: p }.into())
+            //     } else {
+            //         log::debug!("super path in root module");
+            //         return ResolvePathResult::empty(ReachedFixedPoint::Yes);
+            //     }
+            // }
+            PathKind::Super(lvl) => {
+                let m = successors(Some(original_module), |m| self.modules[*m].parent)
+                    .nth(lvl as usize);
+                if let Some(local_id) = m {
+                    PerNs::types(ModuleId { krate: self.krate, local_id }.into())
                 } else {
                     log::debug!("super path in root module");
                     return ResolvePathResult::empty(ReachedFixedPoint::Yes);
@@ -170,7 +182,7 @@ impl CrateDefMap {
                     if module.krate != self.krate {
                         let path = ModPath {
                             segments: path.segments[i..].to_vec(),
-                            kind: PathKind::Self_,
+                            kind: PathKind::Super(0),
                         };
                         log::debug!("resolving {:?} in other crate", path);
                         let defp_map = db.crate_def_map(module.krate);

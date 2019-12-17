@@ -95,13 +95,13 @@ fn convert_path(prefix: Option<ModPath>, path: ast::Path, hygiene: &Hygiene) -> 
             if prefix.is_some() {
                 return None;
             }
-            ModPath::from_simple_segments(PathKind::Self_, iter::empty())
+            ModPath::from_simple_segments(PathKind::Super(0), iter::empty())
         }
         ast::PathSegmentKind::SuperKw => {
             if prefix.is_some() {
                 return None;
             }
-            ModPath::from_simple_segments(PathKind::Super, iter::empty())
+            ModPath::from_simple_segments(PathKind::Super(1), iter::empty())
         }
         ast::PathSegmentKind::Type { .. } => {
             // not allowed in imports
