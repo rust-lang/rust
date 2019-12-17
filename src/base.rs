@@ -340,29 +340,27 @@ fn trans_stmt<'tcx>(
                     };
                     lval.write_cvalue(fx, res);
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), operand, ty) => {
-                    let layout = fx.layout_of(ty);
-                    match fx
-                        .monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx))
-                        .kind
-                    {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), operand, to_ty) => {
+                    let from_ty = fx.monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx));
+                    let to_layout = fx.layout_of(fx.monomorphize(to_ty));
+                    match from_ty.kind {
                         ty::FnDef(def_id, substs) => {
                             let func_ref = fx.get_function_ref(
                                 Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs)
                                     .unwrap(),
                             );
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
-                            lval.write_cvalue(fx, CValue::by_val(func_addr, layout));
+                            lval.write_cvalue(fx, CValue::by_val(func_addr, to_layout));
                         }
-                        _ => bug!("Trying to ReifyFnPointer on non FnDef {:?}", ty),
+                        _ => bug!("Trying to ReifyFnPointer on non FnDef {:?}", from_ty),
                     }
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), operand, ty)
-                | Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, ty)
-                | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, ty) => {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), operand, to_ty)
+                | Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, to_ty)
+                | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, to_ty) => {
+                    let to_layout = fx.layout_of(fx.monomorphize(to_ty));
                     let operand = trans_operand(fx, operand);
-                    let layout = fx.layout_of(ty);
-                    lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
+                    lval.write_cvalue(fx, operand.unchecked_cast_to(to_layout));
                 }
                 Rvalue::Cast(CastKind::Misc, operand, to_ty) => {
                     let operand = trans_operand(fx, operand);
@@ -420,7 +418,7 @@ fn trans_stmt<'tcx>(
                         lval.write_cvalue(fx, CValue::by_val(res, dest_layout));
                     }
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), operand, _ty) => {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), operand, _to_ty) => {
                     let operand = trans_operand(fx, operand);
                     match operand.layout().ty.kind {
                         ty::Closure(def_id, substs) => {
@@ -437,7 +435,7 @@ fn trans_stmt<'tcx>(
                         _ => bug!("{} cannot be cast to a fn ptr", operand.layout().ty),
                     }
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, _ty) => {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, _to_ty) => {
                     let operand = trans_operand(fx, operand);
                     operand.unsize_value(fx, lval);
                 }
@@ -466,6 +464,7 @@ fn trans_stmt<'tcx>(
                     use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
                     let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();
+                    let content_ty = fx.monomorphize(content_ty);
                     let layout = fx.layout_of(content_ty);
                     let llsize = fx.bcx.ins().iconst(usize_type, layout.size.bytes() as i64);
                     let llalign = fx
@@ -494,7 +493,7 @@ fn trans_stmt<'tcx>(
                         .layout()
                         .ty
                         .is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()));
-                    let ty_size = fx.layout_of(ty).size.bytes();
+                    let ty_size = fx.layout_of(fx.monomorphize(ty)).size.bytes();
                     let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size.into());
                     lval.write_cvalue(fx, val);
                 }

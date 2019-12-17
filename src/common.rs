@@ -279,7 +279,7 @@ impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyLayout<'tcx> {
-        let ty = self.monomorphize(&ty);
+        assert!(!ty.needs_subst());
         self.tcx
             .layout_of(ParamEnv::reveal_all().and(&ty))
             .unwrap_or_else(|e| {

@@ -353,7 +353,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
             ArgKind::Normal(Some(val)) => {
                 if let Some(addr) = val.try_to_addr() {
                     let local_decl = &fx.mir.local_decls[local];
-                    //                             v this ! is important
+                    //                       v this ! is important
                     let internally_mutable = !val.layout().ty.is_freeze(
                         fx.tcx,
                         ParamEnv::reveal_all(),
@@ -398,7 +398,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
     }
 
     for local in fx.mir.vars_and_temps_iter() {
-        let ty = fx.mir.local_decls[local].ty;
+        let ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
         let layout = fx.layout_of(ty);
 
         let is_ssa = *ssa_analyzed.get(&local).unwrap() == crate::analyze::SsaKind::Ssa;
