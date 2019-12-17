@@ -779,6 +779,9 @@ impl Step for Tidy {
     /// This tool in `src/tools` checks up on various bits and pieces of style and
     /// otherwise just implements a few lint-like checks that are specific to the
     /// compiler itself.
+    ///
+    /// Once tidy passes, this step also runs `fmt --check` if tests are being run
+    /// for the `dev` or `nightly` channels.
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(builder.src.join("src"));
@@ -792,6 +795,11 @@ impl Step for Tidy {
 
         builder.info("tidy check");
         try_run(builder, &mut cmd);
+
+        if builder.config.channel == "dev" || builder.config.channel == "nightly" {
+            builder.info("fmt check");
+            crate::format::format(&builder.build, true);
+        }
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

@@ -5,6 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -149,6 +150,7 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+    pub initial_rustfmt: Option<PathBuf>,
     pub out: PathBuf,
 }
 
@@ -348,10 +350,14 @@ struct TomlTarget {
 impl Config {
     fn path_from_python(var_key: &str) -> PathBuf {
         match env::var_os(var_key) {
-            // Do not trust paths from Python and normalize them slightly (#49785).
-            Some(var_val) => Path::new(&var_val).components().collect(),
+            Some(var_val) => Self::normalize_python_path(var_val),
             _ => panic!("expected '{}' to be set", var_key),
         }
+    }
+
+    /// Normalizes paths from Python slightly. We don't trust paths from Python (#49785).
+    fn normalize_python_path(path: OsString) -> PathBuf {
+        Path::new(&path).components().collect()
     }
 
     pub fn default_opts() -> Config {
@@ -380,6 +386,7 @@ impl Config {
 
         config.initial_rustc = Config::path_from_python("RUSTC");
         config.initial_cargo = Config::path_from_python("CARGO");
+        config.initial_rustfmt = env::var_os("RUSTFMT").map(Config::normalize_python_path);
 
         config
     }
