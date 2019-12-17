@@ -38,8 +38,6 @@ $RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --cra
 ./target/out/mini_core_hello_world abc bcd
 # (echo "break set -n main"; echo "run"; sleep 1; echo "si -c 10"; sleep 1; echo "frame variable") | lldb -- ./target/out/mini_core_hello_world abc bcd
 
-exit 1
-
 echo "[AOT] arbitrary_self_types_pointers_and_wrappers"
 $RUSTC example/arbitrary_self_types_pointers_and_wrappers.rs --crate-name arbitrary_self_types_pointers_and_wrappers --crate-type bin
 ./target/out/arbitrary_self_types_pointers_and_wrappers
