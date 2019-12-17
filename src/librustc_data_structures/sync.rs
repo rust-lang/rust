@@ -317,7 +317,9 @@ cfg_if! {
         pub use parking_lot::MutexGuard as LockGuard;
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
-        pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
+        pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32};
+        #[cfg(target_has_atomic = "64")]
+        pub use std::sync::atomic::{AtomicU64};
 
         pub use crossbeam_utils::atomic::AtomicCell;
 
