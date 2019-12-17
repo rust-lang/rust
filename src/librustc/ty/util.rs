@@ -63,9 +63,9 @@ impl<'tcx> Discr<'tcx> {
         if signed {
             let sext = |u| sign_extend(u, size) as i128;
             let min = sext(1_u128 << (bit_size - 1));
-            let max = i128::max_value() >> shift;
+            let max = i128::MAX >> shift;
             let val = sext(self.val);
-            assert!(n < (i128::max_value() as u128));
+            assert!(n < (i128::MAX as u128));
             let n = n as i128;
             let oflo = val > max - n;
             let val = if oflo { min + (n - (max - val) - 1) } else { val + n };
@@ -74,7 +74,7 @@ impl<'tcx> Discr<'tcx> {
             let val = truncate(val, size);
             (Self { val: val as u128, ty: self.ty }, oflo)
         } else {
-            let max = u128::max_value() >> shift;
+            let max = u128::MAX >> shift;
             let val = self.val;
             let oflo = val > max - n;
             let val = if oflo { n - (max - val) - 1 } else { val + n };

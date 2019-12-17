@@ -499,7 +499,7 @@ impl str {
     ///
     /// ```should_panic
     /// // this will panic at runtime
-    /// "0123456789abcdef".repeat(usize::max_value());
+    /// "0123456789abcdef".repeat(usize::MAX);
     /// ```
     #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {

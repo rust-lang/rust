@@ -1086,7 +1086,7 @@ fn id_from_node_id(id: NodeId, scx: &SaveContext<'_, '_>) -> rls_data::Id {
 }
 
 fn null_id() -> rls_data::Id {
-    rls_data::Id { krate: u32::max_value(), index: u32::max_value() }
+    rls_data::Id { krate: u32::MAX, index: u32::MAX }
 }
 
 fn lower_attributes(attrs: Vec<Attribute>, scx: &SaveContext<'_, '_>) -> Vec<rls_data::Attribute> {

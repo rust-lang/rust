@@ -1576,7 +1576,7 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
-            if align != usize::max_value() && align.wrapping_sub(index) % usize_bytes == 0 {
+            if align != usize::MAX && align.wrapping_sub(index) % usize_bytes == 0 {
                 let ptr = v.as_ptr();
                 while index < blocks_end {
                     unsafe {
@@ -1996,7 +1996,7 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 None
             } else {
                 (*self.start()..self.end() + 1).get(slice)
@@ -2004,7 +2004,7 @@ mod traits {
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 None
             } else {
                 (*self.start()..self.end() + 1).get_mut(slice)
@@ -2020,14 +2020,14 @@ mod traits {
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 str_index_overflow_fail();
             }
             (*self.start()..self.end() + 1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 str_index_overflow_fail();
             }
             (*self.start()..self.end() + 1).index_mut(slice)
@@ -2053,11 +2053,11 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if self.end == usize::max_value() { None } else { (..self.end + 1).get(slice) }
+            if self.end == usize::MAX { None } else { (..self.end + 1).get(slice) }
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if self.end == usize::max_value() { None } else { (..self.end + 1).get_mut(slice) }
+            if self.end == usize::MAX { None } else { (..self.end + 1).get_mut(slice) }
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
@@ -2069,14 +2069,14 @@ mod traits {
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            if self.end == usize::max_value() {
+            if self.end == usize::MAX {
                 str_index_overflow_fail();
             }
             (..self.end + 1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            if self.end == usize::max_value() {
+            if self.end == usize::MAX {
                 str_index_overflow_fail();
             }
             (..self.end + 1).index_mut(slice)

@@ -1,7 +1,7 @@
 // run-pass
 
 const ADD_A: (u32, bool) = 5u32.overflowing_add(2);
-const ADD_B: (u32, bool) = u32::max_value().overflowing_add(1);
+const ADD_B: (u32, bool) = u32::MAX.overflowing_add(1);
 
 const SUB_A: (u32, bool) = 5u32.overflowing_sub(2);
 const SUB_B: (u32, bool) = 0u32.overflowing_sub(1);
@@ -20,14 +20,14 @@ const NEG_B: (u32, bool) = core::u32::MAX.overflowing_neg();
 
 const ABS_POS: (i32, bool) = 10i32.overflowing_abs();
 const ABS_NEG: (i32, bool) = (-10i32).overflowing_abs();
-const ABS_MIN: (i32, bool) = i32::min_value().overflowing_abs();
+const ABS_MIN: (i32, bool) = i32::MIN.overflowing_abs();
 
 fn main() {
     assert_eq!(ADD_A, (7, false));
     assert_eq!(ADD_B, (0, true));
 
     assert_eq!(SUB_A, (3, false));
-    assert_eq!(SUB_B, (u32::max_value(), true));
+    assert_eq!(SUB_B, (u32::MAX, true));
 
     assert_eq!(MUL_A, (10, false));
     assert_eq!(MUL_B, (1410065408, true));
@@ -43,5 +43,5 @@ fn main() {
 
     assert_eq!(ABS_POS, (10, false));
     assert_eq!(ABS_NEG, (10, false));
-    assert_eq!(ABS_MIN, (i32::min_value(), true));
+    assert_eq!(ABS_MIN, (i32::MIN, true));
 }

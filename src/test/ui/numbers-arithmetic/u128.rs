@@ -53,14 +53,14 @@ fn main() {
     assert_eq!("10000000000000000000000000000000000000000000000000000000000000000000",
                format!("{:b}", j));
     assert_eq!("340282366920938463463374607431768211455",
-        format!("{}", u128::max_value()));
+        format!("{}", u128::MAX));
     assert_eq!("147573952589676412928", format!("{:?}", j));
     // common traits
     assert_eq!(x, b(x.clone()));
     // overflow checks
     assert_eq!((z).checked_mul(z), Some(0x734C_C2F2_A521));
     assert_eq!((k).checked_mul(k), None);
-    let l: u128 = b(u128::max_value() - 10);
+    let l: u128 = b(u128::MAX - 10);
     let o: u128 = b(17);
     assert_eq!(l.checked_add(b(11)), None);
     assert_eq!(l.checked_sub(l), Some(0));

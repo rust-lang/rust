@@ -1300,14 +1300,14 @@ extern "rust-intrinsic" {
     pub fn mul_with_overflow<T>(x: T, y: T) -> (T, bool);
 
     /// Performs an exact division, resulting in undefined behavior where
-    /// `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`
+    /// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
     pub fn exact_div<T>(x: T, y: T) -> T;
 
     /// Performs an unchecked division, resulting in undefined behavior
-    /// where y = 0 or x = `T::min_value()` and y = -1
+    /// where y = 0 or x = `T::MIN` and y = -1
     pub fn unchecked_div<T>(x: T, y: T) -> T;
     /// Returns the remainder of an unchecked division, resulting in
-    /// undefined behavior where y = 0 or x = `T::min_value()` and y = -1
+    /// undefined behavior where y = 0 or x = `T::MIN` and y = -1
     pub fn unchecked_rem<T>(x: T, y: T) -> T;
 
     /// Performs an unchecked left shift, resulting in undefined behavior when
@@ -1320,15 +1320,15 @@ extern "rust-intrinsic" {
     pub fn unchecked_shr<T>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked addition, resulting in
-    /// undefined behavior when `x + y > T::max_value()` or `x + y < T::min_value()`.
+    /// undefined behavior when `x + y > T::MAX` or `x + y < T::MIN`.
     pub fn unchecked_add<T>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked subtraction, resulting in
-    /// undefined behavior when `x - y > T::max_value()` or `x - y < T::min_value()`.
+    /// undefined behavior when `x - y > T::MAX` or `x - y < T::MIN`.
     pub fn unchecked_sub<T>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked multiplication, resulting in
-    /// undefined behavior when `x * y > T::max_value()` or `x * y < T::min_value()`.
+    /// undefined behavior when `x * y > T::MAX` or `x * y < T::MIN`.
     pub fn unchecked_mul<T>(x: T, y: T) -> T;
 
     /// Performs rotate left.

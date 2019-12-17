@@ -5,5 +5,5 @@
 
 fn main() {
     let x = &(0u32 - 1);
-    assert_eq!(*x, u32::max_value())
+    assert_eq!(*x, u32::MAX)
 }

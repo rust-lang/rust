@@ -1090,7 +1090,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
                 //
                 // Note, that we use wrapping operations here intentionally – the original formula
                 // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
-                // usize::max_value()` instead, because we take the result `mod n` at the end
+                // usize::MAX` instead, because we take the result `mod n` at the end
                 // anyway.
                 inverse = inverse.wrapping_mul(2usize.wrapping_sub(x.wrapping_mul(inverse)))
                     & (going_mod - 1);
@@ -1149,7 +1149,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     }
 
     // Cannot be aligned at all.
-    usize::max_value()
+    usize::MAX
 }
 
 /// Compares raw pointers for equality.

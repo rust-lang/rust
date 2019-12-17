@@ -217,7 +217,7 @@ macro_rules! try_from_upper_bounded {
             /// is outside of the range of the target type.
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
-                if u > (Self::max_value() as $source) {
+                if u > (Self::MAX as $source) {
                     Err(TryFromIntError(()))
                 } else {
                     Ok(u as Self)
@@ -239,8 +239,8 @@ macro_rules! try_from_both_bounded {
             /// is outside of the range of the target type.
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
-                let min = Self::min_value() as $source;
-                let max = Self::max_value() as $source;
+                let min = Self::MIN as $source;
+                let max = Self::MAX as $source;
                 if u < min || u > max {
                     Err(TryFromIntError(()))
                 } else {

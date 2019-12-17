@@ -1061,7 +1061,7 @@ impl<'a> Iterator for Incoming<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::max_value(), None)
+        (usize::MAX, None)
     }
 }
 

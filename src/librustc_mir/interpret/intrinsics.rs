@@ -205,7 +205,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if is_add {
                             // max unsigned
                             Scalar::from_uint(
-                                u128::max_value() >> (128 - num_bits),
+                                u128::MAX >> (128 - num_bits),
                                 Size::from_bits(num_bits),
                             )
                         } else {

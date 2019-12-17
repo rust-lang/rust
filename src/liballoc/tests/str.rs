@@ -566,13 +566,13 @@ mod slice_index {
                 data: "hello";
                 // note: using 0 specifically ensures that the result of overflowing is 0..0,
                 //       so that `get` doesn't simply return None for the wrong reason.
-                bad: data[0..=usize::max_value()];
+                bad: data[0..=usize::MAX];
                 message: "maximum usize";
             }
 
             in mod rangetoinclusive {
                 data: "hello";
-                bad: data[..=usize::max_value()];
+                bad: data[..=usize::MAX];
                 message: "maximum usize";
             }
         }

@@ -345,7 +345,7 @@ where
 
 fn byte_from_char(c: char) -> u8 {
     let res = c as u32;
-    assert!(res <= u8::max_value() as u32, "guaranteed because of Mode::Byte(Str)");
+    assert!(res <= u8::MAX as u32, "guaranteed because of Mode::Byte(Str)");
     res as u8
 }
 

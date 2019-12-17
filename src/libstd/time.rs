@@ -686,7 +686,7 @@ mod tests {
 
         // checked_add_duration will not panic on overflow
         let mut maybe_t = Some(Instant::now());
-        let max_duration = Duration::from_secs(u64::max_value());
+        let max_duration = Duration::from_secs(u64::MAX);
         // in case `Instant` can store `>= now + max_duration`.
         for _ in 0..2 {
             maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
@@ -766,7 +766,7 @@ mod tests {
 
         // checked_add_duration will not panic on overflow
         let mut maybe_t = Some(SystemTime::UNIX_EPOCH);
-        let max_duration = Duration::from_secs(u64::max_value());
+        let max_duration = Duration::from_secs(u64::MAX);
         // in case `SystemTime` can store `>= UNIX_EPOCH + max_duration`.
         for _ in 0..2 {
             maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));

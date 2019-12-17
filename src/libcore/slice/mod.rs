@@ -2962,16 +2962,12 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        if *self.end() == usize::max_value() {
-            None
-        } else {
-            (*self.start()..self.end() + 1).get(slice)
-        }
+        if *self.end() == usize::MAX { None } else { (*self.start()..self.end() + 1).get(slice) }
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        if *self.end() == usize::max_value() {
+        if *self.end() == usize::MAX {
             None
         } else {
             (*self.start()..self.end() + 1).get_mut(slice)
@@ -2990,7 +2986,7 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        if *self.end() == usize::max_value() {
+        if *self.end() == usize::MAX {
             slice_index_overflow_fail();
         }
         (*self.start()..self.end() + 1).index(slice)
@@ -2998,7 +2994,7 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        if *self.end() == usize::max_value() {
+        if *self.end() == usize::MAX {
             slice_index_overflow_fail();
         }
         (*self.start()..self.end() + 1).index_mut(slice)

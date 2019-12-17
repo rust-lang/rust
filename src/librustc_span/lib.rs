@@ -1097,7 +1097,7 @@ impl SourceFile {
             hasher.finish::<u128>()
         };
         let end_pos = start_pos.to_usize() + src.len();
-        if end_pos > u32::max_value() as usize {
+        if end_pos > u32::MAX as usize {
             return Err(OffsetOverflowError);
         }
 
