@@ -524,7 +524,7 @@
             },
             {
                 "id": "ralsp.type.lifetime",
-                "description": "Color for `Self` param type",
+                "description": "Color for lifetimes parameters",
                 "defaults": {
                     "dark": "#4EC9B0",
                     "light": "#267F99",
