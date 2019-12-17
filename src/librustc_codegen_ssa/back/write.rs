@@ -10,7 +10,6 @@ use crate::{
 };
 
 use crate::traits::*;
-use jobserver::{Acquired, Client};
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::exported_symbols::SymbolExportLevel;
@@ -32,6 +31,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
+use rustc_jobserver::{Acquired, Client};
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;

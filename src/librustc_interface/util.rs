@@ -4,11 +4,11 @@ use rustc::ty;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-#[cfg(parallel_compiler)]
-use rustc_data_structures::jobserver;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::registry::Registry;
+#[cfg(parallel_compiler)]
+use rustc_jobserver as jobserver;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;

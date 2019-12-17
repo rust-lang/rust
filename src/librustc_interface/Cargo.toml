@@ -27,6 +27,7 @@ rustc_ast_passes = { path = "../librustc_ast_passes" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_traits = { path = "../librustc_traits" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_jobserver = { path = "../librustc_jobserver" }
 rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_codegen_llvm = { path = "../librustc_codegen_llvm", optional = true }

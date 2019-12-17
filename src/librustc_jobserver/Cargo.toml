@@ -1,0 +1,15 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_jobserver"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+name = "rustc_jobserver"
+path = "lib.rs"
+doctest = false
+
+[dependencies]
+jobserver = "0.1.21"
+log = "0.4"
+lazy_static = "1"

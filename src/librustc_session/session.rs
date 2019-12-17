@@ -29,8 +29,8 @@ use rustc_span::source_map;
 use rustc_span::{MultiSpan, Span};
 
 use rustc_data_structures::flock;
-use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
+use rustc_jobserver::{self as jobserver, Client};
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 
 use std::cell::{self, RefCell};

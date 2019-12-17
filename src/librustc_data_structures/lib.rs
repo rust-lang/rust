@@ -67,7 +67,6 @@ pub mod const_cstr;
 pub mod flock;
 pub mod fx;
 pub mod graph;
-pub mod jobserver;
 pub mod macros;
 pub mod obligation_forest;
 pub mod owning_ref;
