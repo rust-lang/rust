@@ -114,7 +114,7 @@ pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 ///
 /// [`escape_unicode`]: ../../std/primitive.char.html#method.escape_unicode
 /// [`char`]: ../../std/primitive.char.html
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeUnicode {
     c: char,
@@ -129,7 +129,7 @@ pub struct EscapeUnicode {
 // The enum values are ordered so that their representation is the
 // same as the remaining length (besides the hexadecimal digits). This
 // likely makes `len()` a single load from memory) and inline-worth.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 enum EscapeUnicodeState {
     Done,
     RightBrace,
@@ -236,13 +236,13 @@ impl fmt::Display for EscapeUnicode {
 ///
 /// [`escape_default`]: ../../std/primitive.char.html#method.escape_default
 /// [`char`]: ../../std/primitive.char.html
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeDefault {
     state: EscapeDefaultState,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 enum EscapeDefaultState {
     Done,
     Char(char),
@@ -346,7 +346,7 @@ impl fmt::Display for EscapeDefault {
 /// [`escape_debug`]: ../../std/primitive.char.html#method.escape_debug
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct EscapeDebug(EscapeDefault);
 
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
@@ -381,7 +381,7 @@ impl fmt::Display for EscapeDebug {
 /// [`to_lowercase`]: ../../std/primitive.char.html#method.to_lowercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ToLowercase(CaseMappingIter);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -409,7 +409,7 @@ impl ExactSizeIterator for ToLowercase {}
 /// [`to_uppercase`]: ../../std/primitive.char.html#method.to_uppercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ToUppercase(CaseMappingIter);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -429,7 +429,7 @@ impl FusedIterator for ToUppercase {}
 #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
 impl ExactSizeIterator for ToUppercase {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 enum CaseMappingIter {
     Three(char, char, char),
     Two(char, char),
