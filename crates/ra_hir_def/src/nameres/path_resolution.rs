@@ -122,17 +122,6 @@ impl CrateDefMap {
                 log::debug!("resolving {:?} in module", segment);
                 self.resolve_name_in_module(db, original_module, &segment, prefer_module(idx))
             }
-            // PathKind::Self_ => {
-            //     PerNs::types(ModuleId { krate: self.krate, local_id: original_module }.into())
-            // }
-            // PathKind::Super => {
-            //     if let Some(p) = self.modules[original_module].parent {
-            //         PerNs::types(ModuleId { krate: self.krate, local_id: p }.into())
-            //     } else {
-            //         log::debug!("super path in root module");
-            //         return ResolvePathResult::empty(ReachedFixedPoint::Yes);
-            //     }
-            // }
             PathKind::Super(lvl) => {
                 let m = successors(Some(original_module), |m| self.modules[*m].parent)
                     .nth(lvl as usize);
