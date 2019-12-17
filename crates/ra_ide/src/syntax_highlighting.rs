@@ -284,9 +284,9 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string             { color: #CC9393; }
 .function           { color: #93E0E3; }
 .parameter          { color: #94BFF3; }
-.builtin            { color: #DD6718; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
+.type\\.builtin     { color: #8CD0D3; }
 .type\\.param       { color: #20999D; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
