@@ -10,6 +10,12 @@ export enum SuggestionApplicability {
     Unspecified = 'Unspecified',
 }
 
+export interface RustDiagnosticSpanMacroExpansion {
+    span: RustDiagnosticSpan;
+    macro_decl_name: string;
+    def_site_span?: RustDiagnosticSpan;
+}
+
 // Reference:
 // https://github.com/rust-lang/rust/blob/master/src/libsyntax/json.rs
 export interface RustDiagnosticSpan {
@@ -20,6 +26,7 @@ export interface RustDiagnosticSpan {
     is_primary: boolean;
     file_name: string;
     label?: string;
+    expansion?: RustDiagnosticSpanMacroExpansion;
     suggested_replacement?: string;
     suggestion_applicability?: SuggestionApplicability;
 }
@@ -61,9 +68,40 @@ function mapLevelToSeverity(s: string): vscode.DiagnosticSeverity {
 }
 
 /**
+ * Check whether a file name is from macro invocation
+ */
+function isFromMacro(fileName: string): boolean {
+    return fileName.startsWith('<') && fileName.endsWith('>');
+}
+
+/**
+ * Converts a Rust macro span to a VsCode location recursively
+ */
+function mapMacroSpanToLocation(
+    spanMacro: RustDiagnosticSpanMacroExpansion,
+): vscode.Location | undefined {
+    if (!isFromMacro(spanMacro.span.file_name)) {
+        return mapSpanToLocation(spanMacro.span);
+    }
+
+    if (spanMacro.span.expansion) {
+        return mapMacroSpanToLocation(spanMacro.span.expansion);
+    }
+
+    return;
+}
+
+/**
  * Converts a Rust span to a VsCode location
  */
 function mapSpanToLocation(span: RustDiagnosticSpan): vscode.Location {
+    if (isFromMacro(span.file_name) && span.expansion) {
+        const macroLoc = mapMacroSpanToLocation(span.expansion);
+        if (macroLoc) {
+            return macroLoc;
+        }
+    }
+
     const fileName = path.join(vscode.workspace.rootPath || '', span.file_name);
     const fileUri = vscode.Uri.file(fileName);
 
