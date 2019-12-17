@@ -30,7 +30,7 @@ export class Config {
     public displayInlayHints = true;
     public maxInlayHintLength: null | number = null;
     public excludeGlobs = [];
-    public useClientWatching = false;
+    public useClientWatching = true;
     public featureFlags = {};
     // for internal use
     public withSysroot: null | boolean = null;
@@ -148,7 +148,7 @@ export class Config {
             this.excludeGlobs = config.get('excludeGlobs') || [];
         }
         if (config.has('useClientWatching')) {
-            this.useClientWatching = config.get('useClientWatching') || false;
+            this.useClientWatching = config.get('useClientWatching') || true;
         }
         if (config.has('featureFlags')) {
             this.featureFlags = config.get('featureFlags') || {};
