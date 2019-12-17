@@ -12,7 +12,6 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(crate_visibility_modifier)]
 #![feature(concat_idents)]
-#![feature(result_map_or)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
