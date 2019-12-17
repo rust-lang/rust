@@ -890,7 +890,7 @@ where
         // We rewrite simple path `macro_name` to `self::macro_name` to force resolve in module scope only.
         let mut path = mac.path.clone();
         if path.is_ident() {
-            path.kind = PathKind::Self_;
+            path.kind = PathKind::Super(0);
         }
 
         self.def_collector.unexpanded_macros.push(MacroDirective {

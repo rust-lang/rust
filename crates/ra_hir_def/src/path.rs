@@ -56,7 +56,7 @@ impl ModPath {
     }
 
     pub fn is_self(&self) -> bool {
-        self.kind == PathKind::Self_ && self.segments.is_empty()
+        self.kind == PathKind::Super(0) && self.segments.is_empty()
     }
 
     /// If this path is a single identifier, like `foo`, return its name.
@@ -100,8 +100,7 @@ pub enum GenericArg {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PathKind {
     Plain,
-    Self_,
-    Super,
+    Super(u8),
     Crate,
     // Absolute path
     Abs,

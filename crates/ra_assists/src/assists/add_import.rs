@@ -582,8 +582,14 @@ fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
         hir::PathKind::Abs => ps.push("".into()),
         hir::PathKind::Crate => ps.push("crate".into()),
         hir::PathKind::Plain => {}
-        hir::PathKind::Self_ => ps.push("self".into()),
-        hir::PathKind::Super => ps.push("super".into()),
+        hir::PathKind::Super(0) => ps.push("self".into()),
+        hir::PathKind::Super(lvl) => {
+            let mut chain = "super".to_string();
+            for _ in 0..*lvl {
+                chain += "::super";
+            }
+            ps.push(chain.into());
+        }
         hir::PathKind::Type(_) | hir::PathKind::DollarCrate(_) => return None,
     }
     ps.extend(path.segments().iter().map(|it| it.name.to_string().into()));

@@ -95,11 +95,11 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                 break;
             }
             ast::PathSegmentKind::SelfKw => {
-                kind = PathKind::Self_;
+                kind = PathKind::Super(0);
                 break;
             }
             ast::PathSegmentKind::SuperKw => {
-                kind = PathKind::Super;
+                kind = PathKind::Super(1);
                 break;
             }
         }
