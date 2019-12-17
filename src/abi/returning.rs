@@ -1,15 +1,17 @@
 use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
+fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> TyLayout<'tcx> {
+    fx.layout_of(fx.monomorphize(&fx.mir.local_decls[RETURN_PLACE].ty))
+}
+
 pub fn codegen_return_param(
     fx: &mut FunctionCx<impl Backend>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
     start_ebb: Ebb,
 ) {
-    let ret_layout = fx.return_layout();
-    let output_pass_mode = get_pass_mode(fx.tcx, fx.return_layout());
-
-    let ret_param = match output_pass_mode {
+    let ret_layout = return_layout(fx);
+    let ret_param = match get_pass_mode(fx.tcx, ret_layout) {
         PassMode::NoPass => {
             fx.local_map
                 .insert(RETURN_PLACE, CPlace::no_place(ret_layout));
@@ -85,7 +87,7 @@ pub fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
 }
 
 pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
-    match get_pass_mode(fx.tcx, fx.return_layout()) {
+    match get_pass_mode(fx.tcx, return_layout(fx)) {
         PassMode::NoPass | PassMode::ByRef => {
             fx.bcx.ins().return_(&[]);
         }

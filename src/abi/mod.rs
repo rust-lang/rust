@@ -260,17 +260,6 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             _ => unreachable!(),
         }
     }
-
-    fn self_sig(&self) -> FnSig<'tcx> {
-        self.tcx.normalize_erasing_late_bound_regions(
-            ParamEnv::reveal_all(),
-            &fn_sig_for_fn_abi(self.tcx, self.instance),
-        )
-    }
-
-    fn return_layout(&self) -> TyLayout<'tcx> {
-        self.layout_of(self.self_sig().output())
-    }
 }
 
 fn local_place<'tcx>(
