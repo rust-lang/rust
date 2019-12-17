@@ -36,9 +36,7 @@ $RUSTC example/example.rs --crate-type lib
 echo "[AOT] mini_core_hello_world"
 $RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin -g
 ./target/out/mini_core_hello_world abc bcd
-lldb -v && \
-    (echo "break set -n main"; echo "run"; sleep 1; echo "si -c 10"; sleep 1; echo "frame variable") \
-    | lldb -- ./target/out/mini_core_hello_world abc bcd
+# (echo "break set -n main"; echo "run"; sleep 1; echo "si -c 10"; sleep 1; echo "frame variable") | lldb -- ./target/out/mini_core_hello_world abc bcd
 
 exit 1
 
