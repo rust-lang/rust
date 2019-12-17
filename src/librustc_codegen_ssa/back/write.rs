@@ -41,7 +41,6 @@ use syntax::attr;
 
 use std::any::Any;
 use std::fs;
-use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -905,7 +904,7 @@ fn execute_lto_work_item<B: ExtraBackendMethods>(
 }
 
 pub enum Message<B: WriteBackendMethods> {
-    Token(io::Result<Acquired>),
+    Token(Acquired),
     NeedsFatLTO {
         result: FatLTOInput<B>,
         worker_id: usize,
@@ -999,6 +998,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let coordinator_send2 = coordinator_send.clone();
     let helper = jobserver
         .into_helper_thread(move |token| {
+            let token = token.expect("acquired token successfully");
             drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
         })
         .expect("failed to spawn helper thread");
@@ -1390,25 +1390,15 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // this to spawn a new unit of work, or it may get dropped
                 // immediately if we have no more work to spawn.
                 Message::Token(token) => {
-                    match token {
-                        Ok(token) => {
-                            tokens.push(token);
+                    tokens.push(token);
 
-                            if main_thread_worker_state == MainThreadWorkerState::LLVMing {
-                                // If the main thread token is used for LLVM work
-                                // at the moment, we turn that thread into a regular
-                                // LLVM worker thread, so the main thread is free
-                                // to react to codegen demand.
-                                main_thread_worker_state = MainThreadWorkerState::Idle;
-                                running += 1;
-                            }
-                        }
-                        Err(e) => {
-                            let msg = &format!("failed to acquire jobserver token: {}", e);
-                            shared_emitter.fatal(msg);
-                            // Exit the coordinator thread
-                            panic!("{}", msg)
-                        }
+                    if main_thread_worker_state == MainThreadWorkerState::LLVMing {
+                        // If the main thread token is used for LLVM work
+                        // at the moment, we turn that thread into a regular
+                        // LLVM worker thread, so the main thread is free
+                        // to react to codegen demand.
+                        main_thread_worker_state = MainThreadWorkerState::Idle;
+                        running += 1;
                     }
                 }
 
