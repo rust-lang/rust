@@ -14,7 +14,7 @@ use rustc_errors::ErrorReported;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{
-    self, Lrc, Lock, OneThread, Once, AtomicUsize, Ordering,
+    self, Lrc, Lock, OneThread, Once, AtomicU64, AtomicUsize, Ordering,
     Ordering::SeqCst,
 };
 use rustc_data_structures::impl_stable_hash_via_hash;
@@ -119,7 +119,7 @@ pub struct Session {
     /// If `-zprint-fuel=crate`, `Some(crate)`.
     pub print_fuel_crate: Option<String>,
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
-    pub print_fuel: AtomicUsize,
+    pub print_fuel: AtomicU64,
 
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
@@ -1116,7 +1116,7 @@ fn build_session_(
         out_of_fuel: false,
     });
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
-    let print_fuel = AtomicUsize::new(0);
+    let print_fuel = AtomicU64::new(0);
 
     let working_dir = env::current_dir().unwrap_or_else(|e|
         parse_sess.span_diagnostic

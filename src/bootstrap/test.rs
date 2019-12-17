@@ -4,10 +4,10 @@
 //! our CI.
 
 use std::env;
-//use std::ffi::OsString;
+use std::ffi::OsString;
 use std::fmt;
 use std::fs;
-//use std::iter;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -204,8 +204,8 @@ impl Step for Cargo {
     }
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
-    fn run(self, _builder: &Builder<'_>) {
-        /*let compiler = builder.compiler(self.stage, self.host);
+    fn run(self, builder: &Builder<'_>) {
+        let compiler = builder.compiler(self.stage, self.host);
 
         builder.ensure(tool::Cargo {
             compiler,
@@ -235,7 +235,7 @@ impl Step for Cargo {
 
         cargo.env("PATH", &path_for_cargo(builder, compiler));
 
-        try_run(builder, &mut cargo.into());*/
+        try_run(builder, &mut cargo.into());
     }
 }
 
@@ -590,14 +590,14 @@ impl Step for Clippy {
     }
 }
 
-//fn path_for_cargo(builder: &Builder<'_>, compiler: Compiler) -> OsString {
-//    // Configure PATH to find the right rustc. NB. we have to use PATH
-//    // and not RUSTC because the Cargo test suite has tests that will
-//    // fail if rustc is not spelled `rustc`.
-//    let path = builder.sysroot(compiler).join("bin");
-//    let old_path = env::var_os("PATH").unwrap_or_default();
-//    env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
-//}
+fn path_for_cargo(builder: &Builder<'_>, compiler: Compiler) -> OsString {
+    // Configure PATH to find the right rustc. NB. we have to use PATH
+    // and not RUSTC because the Cargo test suite has tests that will
+    // fail if rustc is not spelled `rustc`.
+    let path = builder.sysroot(compiler).join("bin");
+    let old_path = env::var_os("PATH").unwrap_or_default();
+    env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
+}
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocTheme {

@@ -1358,11 +1358,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "prints the LLVM optimization passes being run"),
     ast_json: bool = (false, parse_bool, [UNTRACKED],
         "print the AST as JSON and halt"),
-    // We default to min(4, vCPUs) here since we want to avoid spawning *too*
-    // many threads -- that causes scalability issues due to contention on
-    // the jobserver pipe (at least) -- but 4 is a reasonable amount on systems
-    // with lots of cores.
-    threads: usize = (std::cmp::min(::num_cpus::get(), 4), parse_threads, [UNTRACKED],
+    // We default to 1 here since we want to behave like
+    // a sequential compiler for now. This'll likely be adjusted
+    // in the future. Note that -Zthreads=0 is the way to get
+    // the num_cpus behavior.
+    threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     ast_json_noexpand: bool = (false, parse_bool, [UNTRACKED],
         "print the pre-expansion AST as JSON and halt"),
