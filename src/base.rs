@@ -12,7 +12,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let mir = *tcx.instance_mir(instance.def);
 
     // Declare function
-    let (name, sig) = get_function_name_and_sig(tcx, instance, false);
+    let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
     let mut debug_context = cx
         .debug_context

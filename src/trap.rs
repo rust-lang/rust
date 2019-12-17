@@ -7,7 +7,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
             "puts",
             Linkage::Import,
             &Signature {
-                call_conv: crate::default_call_conv(fx.tcx.sess),
+                call_conv: CallConv::triple_default(fx.triple()),
                 params: vec![AbiParam::new(pointer_ty(fx.tcx))],
                 returns: vec![],
             },

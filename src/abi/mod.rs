@@ -75,6 +75,7 @@ pub fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> t
 
 fn clif_sig_from_fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
+    triple: &target_lexicon::Triple,
     sig: FnSig<'tcx>,
     is_vtable_fn: bool,
 ) -> Signature {
@@ -89,8 +90,8 @@ fn clif_sig_from_fn_sig<'tcx>(
         abi => abi,
     };
     let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match abi {
-        Abi::Rust => (crate::default_call_conv(tcx.sess), sig.inputs().to_vec(), sig.output()),
-        Abi::C => (crate::default_call_conv(tcx.sess), sig.inputs().to_vec(), sig.output()),
+        Abi::Rust => (CallConv::triple_default(triple), sig.inputs().to_vec(), sig.output()),
+        Abi::C => (CallConv::triple_default(triple), sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
             assert_eq!(sig.inputs().len(), 2);
             let extra_args = match sig.inputs().last().unwrap().kind {
@@ -99,10 +100,10 @@ fn clif_sig_from_fn_sig<'tcx>(
             };
             let mut inputs: Vec<Ty> = vec![sig.inputs()[0]];
             inputs.extend(extra_args.types());
-            (crate::default_call_conv(tcx.sess), inputs, sig.output())
+            (CallConv::triple_default(triple), inputs, sig.output())
         }
         Abi::System => unreachable!(),
-        Abi::RustIntrinsic => (crate::default_call_conv(tcx.sess), sig.inputs().to_vec(), sig.output()),
+        Abi::RustIntrinsic => (CallConv::triple_default(triple), sig.inputs().to_vec(), sig.output()),
         _ => unimplemented!("unsupported abi {:?}", sig.abi),
     };
 
@@ -156,6 +157,7 @@ fn clif_sig_from_fn_sig<'tcx>(
 
 pub fn get_function_name_and_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
+    triple: &target_lexicon::Triple,
     inst: Instance<'tcx>,
     support_vararg: bool,
 ) -> (String, Signature) {
@@ -165,7 +167,7 @@ pub fn get_function_name_and_sig<'tcx>(
     if fn_sig.c_variadic && !support_vararg {
         unimpl!("Variadic function definitions are not yet supported");
     }
-    let sig = clif_sig_from_fn_sig(tcx, fn_sig, false);
+    let sig = clif_sig_from_fn_sig(tcx, triple, fn_sig, false);
     (tcx.symbol_name(inst).name.as_str().to_string(), sig)
 }
 
@@ -175,7 +177,7 @@ pub fn import_function<'tcx>(
     module: &mut Module<impl Backend>,
     inst: Instance<'tcx>,
 ) -> FuncId {
-    let (name, sig) = get_function_name_and_sig(tcx, inst, true);
+    let (name, sig) = get_function_name_and_sig(tcx, module.isa().triple(), inst, true);
     module
         .declare_function(&name, Linkage::Import, &sig)
         .unwrap()
@@ -205,7 +207,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         let sig = Signature {
             params: input_tys.iter().cloned().map(AbiParam::new).collect(),
             returns: output_tys.iter().cloned().map(AbiParam::new).collect(),
-            call_conv: crate::default_call_conv(self.tcx.sess),
+            call_conv: CallConv::triple_default(self.triple()),
         };
         let func_id = self
             .module
@@ -579,8 +581,8 @@ fn codegen_call_inner<'tcx>(
 
             let call_inst = if let Some(func_ref) = func_ref {
                 let sig =
-                    fx.bcx
-                        .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, is_virtual_call));
+                    clif_sig_from_fn_sig(fx.tcx, fx.triple(), fn_sig, is_virtual_call);
+                let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
             } else {
                 let func_ref =
@@ -632,9 +634,8 @@ pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_plac
 
                 assert_eq!(fn_sig.output(), fx.tcx.mk_unit());
 
-                let sig = fx
-                    .bcx
-                    .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, true));
+                let sig = clif_sig_from_fn_sig(fx.tcx, fx.triple(), fn_sig, true);
+                let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
             }
             _ => {

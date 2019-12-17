@@ -55,7 +55,7 @@ pub fn codegen_inner(sess: &Session, module: &mut Module<impl Backend + 'static>
         };
 
         let sig = Signature {
-            call_conv: crate::default_call_conv(sess),
+            call_conv: CallConv::triple_default(module.isa().triple()),
             params: arg_tys.iter().cloned().map(AbiParam::new).collect(),
             returns: output.into_iter().map(AbiParam::new).collect(),
         };

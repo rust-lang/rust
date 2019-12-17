@@ -41,7 +41,7 @@ pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Back
             returns: vec![AbiParam::new(
                 m.target_config().pointer_type(), /*isize*/
             )],
-            call_conv: crate::default_call_conv(tcx.sess),
+            call_conv: CallConv::triple_default(m.isa().triple()),
         };
 
         let cmain_func_id = m
@@ -50,7 +50,8 @@ pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Back
 
         let instance = Instance::mono(tcx, rust_main_def_id);
 
-        let (main_name, main_sig) = get_function_name_and_sig(tcx, instance, false);
+        let (main_name, main_sig) =
+            get_function_name_and_sig(tcx, m.isa().triple(), instance, false);
         let main_func_id = m
             .declare_function(&main_name, Linkage::Import, &main_sig)
             .unwrap();

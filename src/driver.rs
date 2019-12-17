@@ -54,7 +54,7 @@ fn run_jit(tcx: TyCtxt<'_>) -> ! {
         returns: vec![AbiParam::new(
             jit_module.target_config().pointer_type(), /*isize*/
         )],
-        call_conv: crate::default_call_conv(tcx.sess),
+        call_conv: CallConv::triple_default(&crate::target_triple(tcx.sess)),
     };
     let main_func_id = jit_module
         .declare_function("main", Linkage::Import, &sig)
@@ -298,7 +298,8 @@ fn codegen_mono_items<'tcx>(
         for (&mono_item, &(linkage, visibility)) in &mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
-                    let (name, sig) = get_function_name_and_sig(tcx, instance, false);
+                    let (name, sig) =
+                        get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
                     let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
                     cx.module.declare_function(&name, linkage, &sig).unwrap();
                 }

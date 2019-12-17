@@ -364,4 +364,8 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         ));
         crate::constant::trans_const_value(self, const_loc)
     }
+
+    pub fn triple(&self) -> &target_lexicon::Triple {
+        self.module.isa().triple()
+    }
 }

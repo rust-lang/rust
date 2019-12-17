@@ -245,10 +245,6 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     sess.target.target.llvm_target.parse().unwrap()
 }
 
-fn default_call_conv(sess: &Session) -> CallConv {
-    CallConv::triple_default(&target_triple(sess))
-}
-
 fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'static> {
     let mut flags_builder = settings::builder();
     if enable_pic {
