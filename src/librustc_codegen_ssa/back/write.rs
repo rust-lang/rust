@@ -453,7 +453,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         codegen_worker_send,
         coordinator_receive,
         total_cgus,
-        sess.jobserver.clone(),
+        rustc_jobserver::client(),
         Arc::new(modules_config),
         Arc::new(metadata_config),
         Arc::new(allocator_config),

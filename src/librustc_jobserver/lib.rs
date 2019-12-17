@@ -29,6 +29,10 @@ lazy_static! {
     };
 }
 
+pub fn initialize() {
+    lazy_static::initialize(&GLOBAL_CLIENT)
+}
+
 pub fn client() -> Client {
     GLOBAL_CLIENT.clone()
 }

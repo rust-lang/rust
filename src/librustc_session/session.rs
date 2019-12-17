@@ -119,10 +119,6 @@ pub struct Session {
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
     pub print_fuel: AtomicU64,
 
-    /// Loaded up early on in the initialization of this `Session` to avoid
-    /// false positives about a job server in our environment.
-    pub jobserver: Client,
-
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
@@ -1036,6 +1032,8 @@ fn build_session_(
         sopts.debugging_opts.time_passes,
     );
 
+    rustc_jobserver::initialize();
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1068,7 +1066,6 @@ fn build_session_(
         optimization_fuel,
         print_fuel_crate,
         print_fuel,
-        jobserver: jobserver::client(),
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
