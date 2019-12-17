@@ -1,17 +1,12 @@
 //! The AST pointer.
 //!
-//! Provides `P<T>`, a frozen owned smart pointer, as a replacement for `@T` in
-//! the AST.
+//! Provides `P<T>`, a frozen owned smart pointer.
 //!
 //! # Motivations and benefits
 //!
 //! * **Identity**: sharing AST nodes is problematic for the various analysis
 //!   passes (e.g., one may be able to bypass the borrow checker with a shared
-//!   `ExprKind::AddrOf` node taking a mutable borrow). The only reason `@T` in the
-//!   AST hasn't caused issues is because of inefficient folding passes which
-//!   would always deduplicate any such shared nodes. Even if the AST were to
-//!   switch to an arena, this would still hold, i.e., it couldn't use `&'a T`,
-//!   but rather a wrapper like `P<'a, T>`.
+//!   `ExprKind::AddrOf` node taking a mutable borrow).
 //!
 //! * **Immutability**: `P<T>` disallows mutating its inner `T`, unlike `Box<T>`
 //!   (unless it contains an `Unsafe` interior, but that may be denied later).
