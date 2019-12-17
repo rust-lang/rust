@@ -397,7 +397,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                 let name = llvm::get_value_name(g).to_vec();
                 llvm::set_value_name(g, b"");
 
-                let linkage = llvm::LLVMRustGetLinkage(g);
+                let linkage = llvm::LLVMGetLinkage(g);
                 let visibility = llvm::LLVMRustGetVisibility(g);
 
                 let new_g = llvm::LLVMRustGetOrInsertGlobal(

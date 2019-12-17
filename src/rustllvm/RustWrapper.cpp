@@ -1267,35 +1267,6 @@ enum class LLVMRustLinkage {
   CommonLinkage = 10,
 };
 
-static LLVMRustLinkage toRust(LLVMLinkage Linkage) {
-  switch (Linkage) {
-  case LLVMExternalLinkage:
-    return LLVMRustLinkage::ExternalLinkage;
-  case LLVMAvailableExternallyLinkage:
-    return LLVMRustLinkage::AvailableExternallyLinkage;
-  case LLVMLinkOnceAnyLinkage:
-    return LLVMRustLinkage::LinkOnceAnyLinkage;
-  case LLVMLinkOnceODRLinkage:
-    return LLVMRustLinkage::LinkOnceODRLinkage;
-  case LLVMWeakAnyLinkage:
-    return LLVMRustLinkage::WeakAnyLinkage;
-  case LLVMWeakODRLinkage:
-    return LLVMRustLinkage::WeakODRLinkage;
-  case LLVMAppendingLinkage:
-    return LLVMRustLinkage::AppendingLinkage;
-  case LLVMInternalLinkage:
-    return LLVMRustLinkage::InternalLinkage;
-  case LLVMPrivateLinkage:
-    return LLVMRustLinkage::PrivateLinkage;
-  case LLVMExternalWeakLinkage:
-    return LLVMRustLinkage::ExternalWeakLinkage;
-  case LLVMCommonLinkage:
-    return LLVMRustLinkage::CommonLinkage;
-  default:
-    report_fatal_error("Invalid LLVMRustLinkage value!");
-  }
-}
-
 static LLVMLinkage fromRust(LLVMRustLinkage Linkage) {
   switch (Linkage) {
   case LLVMRustLinkage::ExternalLinkage:
@@ -1322,10 +1293,6 @@ static LLVMLinkage fromRust(LLVMRustLinkage Linkage) {
     return LLVMCommonLinkage;
   }
   report_fatal_error("Invalid LLVMRustLinkage value!");
-}
-
-extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
-  return toRust(LLVMGetLinkage(V));
 }
 
 extern "C" void LLVMRustSetLinkage(LLVMValueRef V,

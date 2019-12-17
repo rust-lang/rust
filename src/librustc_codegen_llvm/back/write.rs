@@ -830,7 +830,7 @@ fn create_msvc_imps(
         let i8p_ty = Type::i8p_llcx(llcx);
         let globals = base::iter_globals(llmod)
             .filter(|&val| {
-                llvm::LLVMRustGetLinkage(val) == llvm::Linkage::ExternalLinkage &&
+                llvm::LLVMGetLinkage(val) == llvm::Linkage::ExternalLinkage &&
                     llvm::LLVMIsDeclaration(val) == 0
             })
             .filter_map(|val| {

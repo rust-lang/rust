@@ -761,7 +761,7 @@ extern "C" {
 
     // Operations on global variables, functions, and aliases (globals)
     pub fn LLVMIsDeclaration(Global: &Value) -> Bool;
-    pub fn LLVMRustGetLinkage(Global: &Value) -> Linkage;
+    pub fn LLVMGetLinkage(Global: &Value) -> Linkage;
     pub fn LLVMRustSetLinkage(Global: &Value, RustLinkage: Linkage);
     pub fn LLVMSetSection(Global: &Value, Section: *const c_char);
     pub fn LLVMRustGetVisibility(Global: &Value) -> Visibility;
