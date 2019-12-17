@@ -248,7 +248,12 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
             p.error("expected `{`");
         }
     }
-    expr(p);
+
+    if p.at_ts(EXPR_FIRST) {
+        expr(p);
+    } else {
+        p.error("expected expression");
+    }
     m.complete(p, LAMBDA_EXPR)
 }
 
