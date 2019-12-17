@@ -510,6 +510,9 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: Interned<St
 }
 
 pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: Interned<String>) {
+    // librustc_driver is linked as both an rlib and a dylib. Prefer the dylib.
+    cargo.rustflag("-Cprefer-dynamic");
+
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo.env("CFG_RELEASE", builder.rust_release())

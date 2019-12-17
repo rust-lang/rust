@@ -273,6 +273,10 @@ pub fn prepare_tool_cargo(
     if !features.is_empty() {
         cargo.arg("--features").arg(&features.join(", "));
     }
+
+    // librustc_driver is linked as both an rlib and a dylib. Prefer the dylib.
+    cargo.rustflag("-Cprefer-dynamic");
+
     cargo
 }
 

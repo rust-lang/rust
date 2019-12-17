@@ -5,5 +5,5 @@
 # The program needs the path to rustc to get sysroot.
 
 all:
-	$(RUSTC) foo.rs
+	$(RUSTC) foo.rs -Cprefer-dynamic
 	$(call RUN,foo $(TMPDIR) $(RUSTC))
