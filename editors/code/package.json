@@ -219,7 +219,7 @@
                 },
                 "rust-analyzer.useClientWatching": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "client provided file watching instead of notify watching."
                 },
                 "rust-analyzer.cargo-watch.arguments": {
