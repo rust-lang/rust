@@ -31,7 +31,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
-use rustc_jobserver::{Acquired, Client};
+use rustc_jobserver::Acquired;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;
@@ -452,7 +452,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         codegen_worker_send,
         coordinator_receive,
         total_cgus,
-        rustc_jobserver::client(),
         Arc::new(modules_config),
         Arc::new(metadata_config),
         Arc::new(allocator_config),
@@ -952,7 +951,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     codegen_worker_send: Sender<Message<B>>,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
     total_cgus: usize,
-    jobserver: Client,
     modules_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
@@ -996,7 +994,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
     let coordinator_send2 = coordinator_send.clone();
-    let helper = jobserver
+    let helper = rustc_jobserver::client()
         .into_helper_thread(move |token| {
             let token = token.expect("acquired token successfully");
             drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
