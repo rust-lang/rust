@@ -15,14 +15,17 @@ use crate::num::FpCategory;
 
 /// The radix or base of the internal representation of `f64`.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const RADIX: u32 = 2;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const RADIX: u32 = f64::RADIX;
 
 /// Number of significant digits in base 2.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MANTISSA_DIGITS: u32 = 53;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 /// Approximate number of significant digits in base 10.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const DIGITS: u32 = 15;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const DIGITS: u32 = f64::DIGITS;
 
 /// [Machine epsilon] value for `f64`.
 ///
@@ -30,41 +33,52 @@ pub const DIGITS: u32 = 15;
 ///
 /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const EPSILON: f64 = f64::EPSILON;
 
 /// Smallest finite `f64` value.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MIN: f64 = -1.7976931348623157e+308_f64;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const MIN: f64 = f64::MIN;
 /// Smallest positive normal `f64` value.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MIN_POSITIVE: f64 = 2.2250738585072014e-308_f64;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 /// Largest finite `f64` value.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MAX: f64 = 1.7976931348623157e+308_f64;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const MAX: f64 = f64::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MIN_EXP: i32 = -1021;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const MIN_EXP: i32 = f64::MIN_EXP;
 /// Maximum possible power of 2 exponent.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MAX_EXP: i32 = 1024;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const MAX_EXP: i32 = f64::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MIN_10_EXP: i32 = -307;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 /// Maximum possible power of 10 exponent.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MAX_10_EXP: i32 = 308;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 
 /// Not a Number (NaN).
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const NAN: f64 = 0.0_f64 / 0.0_f64;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const NAN: f64 = f64::NAN;
 /// Infinity (∞).
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const INFINITY: f64 = 1.0_f64 / 0.0_f64;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const INFINITY: f64 = f64::INFINITY;
 /// Negative infinity (−∞).
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
+#[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant")]
+pub const NEG_INFINITY: f64 = f64::NEG_INFINITY;
 
 /// Basic mathematical constants.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -153,6 +167,59 @@ pub mod consts {
 #[lang = "f64"]
 #[cfg(not(test))]
 impl f64 {
+    /// The radix or base of the internal representation of `f64`.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const RADIX: u32 = 2;
+
+    /// Number of significant digits in base 2.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const MANTISSA_DIGITS: u32 = 53;
+    /// Approximate number of significant digits in base 10.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const DIGITS: u32 = 15;
+
+    /// [Machine epsilon] value for `f64`.
+    ///
+    /// This is the difference between `1.0` and the next larger representable number.
+    ///
+    /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
+
+    /// Smallest finite `f64` value.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const MIN: f64 = -1.7976931348623157e+308_f64;
+    /// Smallest positive normal `f64` value.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const MIN_POSITIVE: f64 = 2.2250738585072014e-308_f64;
+    /// Largest finite `f64` value.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const MAX: f64 = 1.7976931348623157e+308_f64;
+
+    /// One greater than the minimum possible normal power of 2 exponent.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const MIN_EXP: i32 = -1021;
+    /// Maximum possible power of 2 exponent.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const MAX_EXP: i32 = 1024;
+
+    /// Minimum possible normal power of 10 exponent.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const MIN_10_EXP: i32 = -307;
+    /// Maximum possible power of 10 exponent.
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const MAX_10_EXP: i32 = 308;
+
+    /// Not a Number (NaN).
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const NAN: f64 = 0.0_f64 / 0.0_f64;
+    /// Infinity (∞).
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const INFINITY: f64 = 1.0_f64 / 0.0_f64;
+    /// Negative infinity (-∞).
+    #[stable(feature = "assoc_int_consts", since = "1.42.0")]
+    pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
+
     /// Returns `true` if this value is `NaN`.
     ///
     /// ```
