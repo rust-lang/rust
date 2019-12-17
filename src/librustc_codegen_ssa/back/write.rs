@@ -994,12 +994,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
     let coordinator_send2 = coordinator_send.clone();
-    let helper = rustc_jobserver::client()
-        .into_helper_thread(move |token| {
-            let token = token.expect("acquired token successfully");
-            drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
-        })
-        .expect("failed to spawn helper thread");
+    let helper = rustc_jobserver::helper_thread(move |token| {
+        drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
+    });
 
     let mut each_linked_rlib_for_lto = Vec::new();
     drop(link::each_linked_rlib(crate_info, &mut |cnum, path| {

@@ -1,4 +1,5 @@
-pub use jobserver::{Acquired, Client};
+pub use jobserver::Acquired;
+use jobserver::{Client, HelperThread};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -33,8 +34,14 @@ pub fn initialize() {
     lazy_static::initialize(&GLOBAL_CLIENT)
 }
 
-pub fn client() -> Client {
-    GLOBAL_CLIENT.clone()
+pub fn helper_thread<F>(mut cb: F) -> HelperThread
+where
+    F: FnMut(Acquired) + Send + 'static,
+{
+    GLOBAL_CLIENT
+        .clone()
+        .into_helper_thread(move |token| cb(token.expect("acquire token")))
+        .expect("failed to spawn helper thread")
 }
 
 pub fn acquire_thread() {
