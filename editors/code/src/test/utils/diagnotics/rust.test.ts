@@ -212,7 +212,7 @@ describe('mapRustDiagnosticToVsCode', () => {
         assert.strictEqual(
             diagnostic.message,
             [
-                'can\'t compare `{integer}` with `&str`',
+                "can't compare `{integer}` with `&str`",
                 'the trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`',
             ].join('\n'),
         );
@@ -229,8 +229,8 @@ describe('mapRustDiagnosticToVsCode', () => {
         // The file url should be normal file
         // Ignore the first part because it depends on vs workspace location
         assert.strictEqual(
-            true,
-            location.uri.toString().endsWith('src/main.rs'),
+            location.uri.path.substr(-'src/main.rs'.length),
+            'src/main.rs',
         );
     });
 });
