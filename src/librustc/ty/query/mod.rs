@@ -81,6 +81,9 @@ pub(crate) use self::config::QueryDescription;
 mod on_disk_cache;
 pub use self::on_disk_cache::OnDiskCache;
 
+mod profiling_support;
+pub use self::profiling_support::{IntoSelfProfilingString, QueryKeyStringBuilder};
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way

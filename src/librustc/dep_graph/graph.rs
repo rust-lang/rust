@@ -30,7 +30,7 @@ pub struct DepGraph {
 
     /// This field is used for assigning DepNodeIndices when running in
     /// non-incremental mode. Even in non-incremental mode we make sure that
-    /// each task as a `DepNodeIndex` that uniquely identifies it. This unique
+    /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
     virtual_dep_node_index: Lrc<AtomicU32>,
 }

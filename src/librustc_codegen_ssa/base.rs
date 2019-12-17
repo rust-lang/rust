@@ -722,10 +722,10 @@ fn finalize_tcx(tcx: TyCtxt<'_>) {
 
     // We assume that no queries are run past here. If there are new queries
     // after this point, they'll show up as "<unknown>" in self-profiling data.
-    tcx.prof.with_profiler(|profiler| {
+    {
         let _prof_timer = tcx.prof.generic_activity("self_profile_alloc_query_strings");
-        tcx.queries.allocate_self_profile_query_strings(profiler);
-    });
+        tcx.alloc_self_profile_query_strings();
+    }
 }
 
 impl CrateInfo {

@@ -39,7 +39,7 @@
 //! ## `event_id` Assignment
 //!
 //! As far as `measureme` is concerned, `event_id`s are just strings. However,
-//! it would incur way too much overhead to generate and persist each `event_id`
+//! it would incur too much overhead to generate and persist each `event_id`
 //! string at the point where the event is recorded. In order to make this more
 //! efficient `measureme` has two features:
 //!
@@ -56,7 +56,7 @@
 //!   ID be mapped to an actual string. This is used to cheaply generate
 //!   `event_id`s while the events actually occur, causing little timing
 //!   distortion, and then later map those `StringId`s, in bulk, to actual
-//!   `event_id` strings. This way the largest part of tracing overhead is
+//!   `event_id` strings. This way the largest part of the tracing overhead is
 //!   localized to one contiguous chunk of time.
 //!
 //! How are these `event_id`s generated in the compiler? For things that occur
@@ -92,7 +92,7 @@ use std::thread::ThreadId;
 use std::time::{Duration, Instant};
 use std::u32;
 
-use measureme::StringId;
+use measureme::{EventId, EventIdBuilder, SerializableString, StringId};
 use parking_lot::RwLock;
 
 /// MmapSerializatioSink is faster on macOS and Linux
@@ -123,6 +123,8 @@ bitflags::bitflags! {
         const QUERY_BLOCKED      = 1 << 3;
         const INCR_CACHE_LOADS   = 1 << 4;
 
+        const QUERY_KEYS         = 1 << 5;
+
         const DEFAULT = Self::GENERIC_ACTIVITIES.bits |
                         Self::QUERY_PROVIDERS.bits |
                         Self::QUERY_BLOCKED.bits |
@@ -142,6 +144,7 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("query-cache-hit", EventFilter::QUERY_CACHE_HITS),
     ("query-blocked", EventFilter::QUERY_BLOCKED),
     ("incr-cache-load", EventFilter::INCR_CACHE_LOADS),
+    ("query-keys", EventFilter::QUERY_KEYS),
 ];
 
 fn thread_id_to_u32(tid: ThreadId) -> u32 {
@@ -253,6 +256,7 @@ impl SelfProfilerRef {
     pub fn generic_activity(&self, event_id: &'static str) -> TimingGuard<'_> {
         self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
             let event_id = profiler.get_or_alloc_cached_string(event_id);
+            let event_id = EventId::from_label(event_id);
             TimingGuard::start(
                 profiler,
                 profiler.generic_activity_event_kind,
@@ -266,7 +270,7 @@ impl SelfProfilerRef {
     #[inline(always)]
     pub fn query_provider(&self) -> TimingGuard<'_> {
         self.exec(EventFilter::QUERY_PROVIDERS, |profiler| {
-            TimingGuard::start(profiler, profiler.query_event_kind, StringId::INVALID)
+            TimingGuard::start(profiler, profiler.query_event_kind, EventId::INVALID)
         })
     }
 
@@ -289,7 +293,7 @@ impl SelfProfilerRef {
             TimingGuard::start(
                 profiler,
                 profiler.query_blocked_event_kind,
-                StringId::INVALID,
+                EventId::INVALID,
             )
         })
     }
@@ -303,7 +307,7 @@ impl SelfProfilerRef {
             TimingGuard::start(
                 profiler,
                 profiler.incremental_load_result_event_kind,
-                StringId::INVALID,
+                EventId::INVALID,
             )
         })
     }
@@ -319,7 +323,11 @@ impl SelfProfilerRef {
             let event_id = StringId::new_virtual(query_invocation_id.0);
             let thread_id = thread_id_to_u32(std::thread::current().id());
 
-            profiler.profiler.record_instant_event(event_kind(profiler), event_id, thread_id);
+            profiler.profiler.record_instant_event(
+                event_kind(profiler),
+                EventId::from_virtual(event_id),
+                thread_id,
+            );
 
             TimingGuard::none()
         }));
@@ -329,6 +337,10 @@ impl SelfProfilerRef {
         if let Some(profiler) = &self.profiler {
             f(&profiler)
         }
+    }
+
+    pub fn enabled(&self) -> bool {
+        self.profiler.is_some()
     }
 }
 
@@ -409,6 +421,15 @@ impl SelfProfiler {
         })
     }
 
+    /// Allocates a new string in the profiling data. Does not do any caching
+    /// or deduplication.
+    pub fn alloc_string<STR: SerializableString + ?Sized>(&self, s: &STR) -> StringId {
+        self.profiler.alloc_string(s)
+    }
+
+    /// Gets a `StringId` for the given string. This method makes sure that
+    /// any strings going through it will only be allocated once in the
+    /// profiling data.
     pub fn get_or_alloc_cached_string(&self, s: &'static str) -> StringId {
         // Only acquire a read-lock first since we assume that the string is
         // already present in the common case.
@@ -445,6 +466,14 @@ impl SelfProfiler {
         let from = from.map(|qid| StringId::new_virtual(qid.0));
         self.profiler.bulk_map_virtual_to_single_concrete_string(from, to);
     }
+
+    pub fn query_key_recording_enabled(&self) -> bool {
+        self.event_filter_mask.contains(EventFilter::QUERY_KEYS)
+    }
+
+    pub fn event_id_builder(&self) -> EventIdBuilder<'_, SerializationSink> {
+        EventIdBuilder::new(&self.profiler)
+    }
 }
 
 #[must_use]
@@ -455,7 +484,7 @@ impl<'a> TimingGuard<'a> {
     pub fn start(
         profiler: &'a SelfProfiler,
         event_kind: StringId,
-        event_id: StringId,
+        event_id: EventId,
     ) -> TimingGuard<'a> {
         let thread_id = thread_id_to_u32(std::thread::current().id());
         let raw_profiler = &profiler.profiler;
@@ -468,6 +497,7 @@ impl<'a> TimingGuard<'a> {
     pub fn finish_with_query_invocation_id(self, query_invocation_id: QueryInvocationId) {
         if let Some(guard) = self.0 {
             let event_id = StringId::new_virtual(query_invocation_id.0);
+            let event_id = EventId::from_virtual(event_id);
             guard.finish_with_override_event_id(event_id);
         }
     }
