@@ -27,7 +27,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
-use std::{iter, mem, usize};
+use std::{iter, mem};
 
 use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstKind, Item};
 use crate::transform::{MirPass, MirSource};

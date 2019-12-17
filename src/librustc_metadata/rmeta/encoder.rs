@@ -30,7 +30,6 @@ use rustc_span::{self, FileName, SourceFile, Span};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
-use std::u32;
 use syntax::ast;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;

@@ -5,7 +5,6 @@ use rustc::mir::*;
 use rustc::ty;
 use smallvec::SmallVec;
 use std::convert::TryInto;
-use std::u32;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn field_match_pairs<'pat>(

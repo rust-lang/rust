@@ -7,7 +7,6 @@
 
 use std::cell::RefCell;
 use std::fmt::{self, Write};
-use std::usize;
 
 struct A;
 struct B;

@@ -258,7 +258,6 @@ use std::convert::TryInto;
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::RangeInclusive;
-use std::u128;
 
 pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pat<'tcx>) -> Pat<'tcx> {
     LiteralExpander { tcx: cx.tcx, param_env: cx.param_env }.fold_pattern(&pat)

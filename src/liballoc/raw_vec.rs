@@ -52,7 +52,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     pub const fn new_in(a: A) -> Self {
-        let cap = if mem::size_of::<T>() == 0 { core::usize::MAX } else { 0 };
+        let cap = if mem::size_of::<T>() == 0 { usize::MAX } else { 0 };
 
         // `Unique::empty()` doubles as "unallocated" and "zero-sized allocation".
         RawVec { ptr: Unique::empty(), cap, a }
@@ -732,7 +732,7 @@ unsafe impl<#[may_dangle] T, A: Alloc> Drop for RawVec<T, A> {
 
 #[inline]
 fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
-    if mem::size_of::<usize>() < 8 && alloc_size > core::isize::MAX as usize {
+    if mem::size_of::<usize>() < 8 && alloc_size > isize::MAX as usize {
         Err(CapacityOverflow)
     } else {
         Ok(())

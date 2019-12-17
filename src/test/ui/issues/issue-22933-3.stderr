@@ -6,7 +6,7 @@ LL | const FOO: [u32; u8::MIN as usize] = [];
    |
 help: you are looking for the module in `std`, not the primitive type
    |
-LL | const FOO: [u32; std::u8::MIN as usize] = [];
+LL | const FOO: [u32; u8::MIN as usize] = [];
    |                  ^^^^^^^^^^^^
 
 error: aborting due to previous error

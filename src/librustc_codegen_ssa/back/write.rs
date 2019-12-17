@@ -1516,7 +1516,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     }
 }
 
-pub const CODEGEN_WORKER_ID: usize = ::std::usize::MAX;
+pub const CODEGEN_WORKER_ID: usize = usize::MAX;
 
 fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>) {
     thread::spawn(move || {

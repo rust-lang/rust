@@ -10,8 +10,6 @@
 
 #![deny(unreachable_patterns, overlapping_patterns)]
 
-use std::{usize, isize};
-
 fn main() {
     match 0isize {
         isize::MIN ..= isize::MAX => {} // ok

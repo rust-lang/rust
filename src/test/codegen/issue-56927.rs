@@ -1,7 +1,6 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type="rlib"]
-use std::usize;
 
 #[repr(align(16))]
 pub struct S {

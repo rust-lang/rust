@@ -15,7 +15,7 @@ fn black_box<T>(_: T) {
 }
 
 fn main() {
-    let a = -std::i8::MIN;
+    let a = -i8::MIN;
     //~^ ERROR const_err
     let b = 200u8 + 200u8 + 200u8;
     //~^ ERROR const_err

@@ -23,7 +23,6 @@
 use crate::snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 use rustc_index::bit_set::BitSet;
 use std::fmt::Debug;
-use std::usize;
 
 #[cfg(test)]
 mod tests;

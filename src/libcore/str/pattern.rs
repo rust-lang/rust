@@ -14,7 +14,6 @@
 use crate::cmp;
 use crate::fmt;
 use crate::slice::memchr;
-use crate::usize;
 
 // Pattern
 

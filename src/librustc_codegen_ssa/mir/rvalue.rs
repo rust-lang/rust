@@ -16,8 +16,6 @@ use rustc_apfloat::{ieee, Float, Round, Status};
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::sym;
 
-use std::{i128, u128};
-
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_rvalue(
         &mut self,

@@ -1,5 +1,4 @@
 use crate::ops::Try;
-use crate::usize;
 
 use super::super::{DoubleEndedIterator, FusedIterator, Iterator, TrustedLen};
 

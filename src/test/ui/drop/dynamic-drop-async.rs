@@ -19,7 +19,6 @@ use std::{
     ptr,
     rc::Rc,
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-    usize,
 };
 
 struct InjectedFailure;

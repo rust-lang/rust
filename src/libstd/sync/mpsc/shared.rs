@@ -12,7 +12,6 @@ use self::StartResult::*;
 
 use core::cmp;
 use core::intrinsics::abort;
-use core::isize;
 
 use crate::cell::UnsafeCell;
 use crate::ptr;

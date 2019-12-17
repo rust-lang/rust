@@ -1,6 +1,5 @@
 // error-pattern:index out of bounds
 
-use std::usize;
 use std::mem::size_of;
 
 fn main() {

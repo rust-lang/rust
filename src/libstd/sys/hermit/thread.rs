@@ -6,7 +6,6 @@ use crate::io;
 use crate::mem;
 use crate::sys::hermit::abi;
 use crate::time::Duration;
-use core::u32;
 
 use crate::sys_common::thread::*;
 

@@ -7,7 +7,6 @@ use std::iter::{self, FromIterator};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut, Range, RangeBounds};
 use std::slice;
-use std::u32;
 use std::vec;
 
 /// Represents some newtyped `usize` wrapper.

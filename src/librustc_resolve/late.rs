@@ -1776,10 +1776,10 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             // don't report an error right away, but try to fallback to a primitive type.
             // So, we are still able to successfully resolve something like
             //
-            // use std::u8; // bring module u8 in scope
-            // fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
+            // use u8; // bring module u8 in scope
+            // fn f() -> u8 { // OK, resolves to primitive u8, not to u8
             //     u8::MAX // OK, resolves to associated function <u8>::max_value,
-            //                     // not to non-existent std::u8::max_value
+            //                     // not to non-existent u8::max_value
             // }
             //
             // Such behavior is required for backward compatibility.

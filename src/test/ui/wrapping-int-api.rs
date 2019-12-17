@@ -4,9 +4,6 @@
 // Don't warn about overflowing ops on 32-bit platforms
 #![cfg_attr(target_pointer_width = "32", allow(const_err))]
 
-use std::{i8, i16, i32, i64, isize};
-use std::{u8, u16, u32, u64, usize};
-
 fn main() {
     assert_eq!(   i8::MAX.wrapping_add(1),    i8::MIN);
     assert_eq!(  i16::MAX.wrapping_add(1),   i16::MIN);

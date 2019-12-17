@@ -7,9 +7,6 @@
 extern crate test;
 
 use std::{f32, f64};
-use std::{u8, i8, u16, i16, u32, i32, u64, i64};
-#[cfg(not(target_os="emscripten"))]
-use std::{u128, i128};
 use test::black_box;
 
 macro_rules! test {

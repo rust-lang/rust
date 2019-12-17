@@ -60,18 +60,18 @@ macro_rules! wrapping_test {
 }
 
 fn main() {
-    wrapping_test!(i8, std::i8::MIN, std::i8::MAX);
-    wrapping_test!(i16, std::i16::MIN, std::i16::MAX);
-    wrapping_test!(i32, std::i32::MIN, std::i32::MAX);
-    wrapping_test!(i64, std::i64::MIN, std::i64::MAX);
+    wrapping_test!(i8, i8::MIN, i8::MAX);
+    wrapping_test!(i16, i16::MIN, i16::MAX);
+    wrapping_test!(i32, i32::MIN, i32::MAX);
+    wrapping_test!(i64, i64::MIN, i64::MAX);
     #[cfg(not(target_os = "emscripten"))]
-    wrapping_test!(i128, std::i128::MIN, std::i128::MAX);
-    wrapping_test!(isize, std::isize::MIN, std::isize::MAX);
-    wrapping_test!(u8, std::u8::MIN, std::u8::MAX);
-    wrapping_test!(u16, std::u16::MIN, std::u16::MAX);
-    wrapping_test!(u32, std::u32::MIN, std::u32::MAX);
-    wrapping_test!(u64, std::u64::MIN, std::u64::MAX);
+    wrapping_test!(i128, i128::MIN, i128::MAX);
+    wrapping_test!(isize, isize::MIN, isize::MAX);
+    wrapping_test!(u8, u8::MIN, u8::MAX);
+    wrapping_test!(u16, u16::MIN, u16::MAX);
+    wrapping_test!(u32, u32::MIN, u32::MAX);
+    wrapping_test!(u64, u64::MIN, u64::MAX);
     #[cfg(not(target_os = "emscripten"))]
-    wrapping_test!(u128, std::u128::MIN, std::u128::MAX);
-    wrapping_test!(usize, std::usize::MIN, std::usize::MAX);
+    wrapping_test!(u128, u128::MIN, u128::MAX);
+    wrapping_test!(usize, usize::MIN, usize::MAX);
 }

@@ -9,7 +9,6 @@ use crate::fmt;
 use crate::mem;
 use crate::num::NonZeroUsize;
 use crate::ptr::{self, NonNull};
-use crate::usize;
 
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.

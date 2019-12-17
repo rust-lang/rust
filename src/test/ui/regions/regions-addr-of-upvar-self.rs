@@ -1,5 +1,3 @@
-use std::usize;
-
 struct Dog {
     food: usize,
 }

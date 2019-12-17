@@ -2,7 +2,6 @@ use crate::cmp;
 use crate::fmt;
 use crate::intrinsics;
 use crate::ops::{Add, AddAssign, Try};
-use crate::usize;
 
 use super::{from_fn, LoopState};
 use super::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedLen};

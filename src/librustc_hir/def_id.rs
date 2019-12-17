@@ -1,7 +1,6 @@
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
 use std::fmt;
-use std::u32;
 
 rustc_index::newtype_index! {
     pub struct CrateId {

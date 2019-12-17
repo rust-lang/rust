@@ -1,6 +1,5 @@
 use std::cmp;
 use std::string::String;
-use std::usize;
 
 use crate::clean::{self, DocFragment, Item};
 use crate::core::DocContext;

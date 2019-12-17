@@ -12,7 +12,6 @@ use std::mem::ManuallyDrop;
 use std::ops::Generator;
 use std::panic;
 use std::pin::Pin;
-use std::usize;
 
 struct InjectedFailure;
 

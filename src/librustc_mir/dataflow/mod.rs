@@ -16,7 +16,6 @@ use std::borrow::Borrow;
 use std::fmt;
 use std::io;
 use std::path::PathBuf;
-use std::usize;
 
 pub use self::at_location::{FlowAtLocation, FlowsAtLocation};
 pub(crate) use self::drop_flag_effects::*;

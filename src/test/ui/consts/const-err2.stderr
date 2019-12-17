@@ -1,7 +1,7 @@
 error: this expression will panic at runtime
   --> $DIR/const-err2.rs:18:13
    |
-LL |     let a = -std::i8::MIN;
+LL |     let a = -i8::MIN;
    |             ^^^^^^^^^^^^^ attempt to negate with overflow
    |
 note: lint level defined here

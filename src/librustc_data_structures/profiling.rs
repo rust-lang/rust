@@ -6,7 +6,6 @@ use std::process;
 use std::sync::Arc;
 use std::thread::ThreadId;
 use std::time::{Duration, Instant};
-use std::u32;
 
 use crate::cold_path;
 

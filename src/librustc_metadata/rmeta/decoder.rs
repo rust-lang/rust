@@ -30,7 +30,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use std::io;
 use std::mem;
 use std::num::NonZeroUsize;
-use std::u32;
 
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;

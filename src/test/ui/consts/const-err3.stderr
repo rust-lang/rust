@@ -1,7 +1,7 @@
 error: attempt to negate with overflow
   --> $DIR/const-err3.rs:18:13
    |
-LL |     let a = -std::i8::MIN;
+LL |     let a = -i8::MIN;
    |             ^^^^^^^^^^^^^
    |
 note: lint level defined here

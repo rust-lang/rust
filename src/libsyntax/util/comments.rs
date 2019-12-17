@@ -6,8 +6,6 @@ use crate::sess::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos};
 
-use std::usize;
-
 use log::debug;
 
 #[cfg(test)]

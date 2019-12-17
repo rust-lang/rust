@@ -7,7 +7,6 @@ use syntax::attr;
 
 use std::cmp;
 use std::fmt;
-use std::i128;
 use std::iter;
 use std::mem;
 use std::ops::Bound;

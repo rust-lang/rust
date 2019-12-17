@@ -5,7 +5,6 @@
 use std::thread::{self, sleep};
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
-use std::u64;
 
 fn main() {
     let finished = Arc::new(Mutex::new(false));

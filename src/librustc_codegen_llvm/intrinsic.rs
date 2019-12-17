@@ -26,7 +26,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_span::Span;
 
 use std::cmp::Ordering;
-use std::{i128, iter, u128};
+use std::iter;
 
 fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
     let llvm_name = match name {

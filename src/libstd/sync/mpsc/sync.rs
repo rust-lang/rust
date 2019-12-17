@@ -26,7 +26,6 @@ use self::Blocker::*;
 pub use self::Failure::*;
 
 use core::intrinsics::abort;
-use core::isize;
 use core::mem;
 use core::ptr;
 
