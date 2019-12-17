@@ -135,43 +135,38 @@ to load path and require it in `init.el`
 * (Optionally) bind commands like `rust-analyzer-join-lines`, `rust-analyzer-extend-selection` and `rust-analyzer-expand-macro` to keys, and enable `rust-analyzer-inlay-hints-mode` to get inline type hints
 
 
-## Vim and NeoVim
+## Vim and NeoVim (coc-rust-analyzer)
 
-Neovim 0.5 has a built in language server. For a quick start configuration of
-rust-analyzer, use [neovim/nvim-lsp](https://github.com/neovim/nvim-lsp#rust_analyzer).
-Once `neovim/nvim-lsp` is installed, you can use `call nvim_lsp#setup("rust_analyzer", {})`
-or `lua require'nvim_lsp'.rust_analyzer.setup({})` to quickly get set up.
-
-* Install coc.nvim by following the instructions at [coc.nvim]
-  - You will need nodejs installed.
-  - You may want to include some of the sample vim configurations [from here][coc-vim-conf]
-  - Note that if you use a plugin manager other than `vim-plug`, you may need to manually
-    checkout the `release` branch wherever your plugin manager cloned it. Otherwise you will
-    get errors about a missing javascript file.
-* Run `:CocInstall coc-rust-analyzer` to install [coc-rust-analyzer], this extension implemented _most_ of the features supported in the VSCode extension:
+* Install coc.nvim by following the instructions at [coc.nvim][] (nodejs required)
+* Run `:CocInstall coc-rust-analyzer` to install [coc-rust-analyzer], this extension implements _most_ of the features supported in the VSCode extension:
   - same configurations as VSCode extension, `rust-analyzer.raLspServerPath`, `rust-analyzer.enableCargoWatchOnStartup` etc.
   - same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.startCargoWatch` etc.
   - highlighting and inlay_hints are not implemented yet
 
 [coc.nvim]: https://github.com/neoclide/coc.nvim
-[coc-vim-conf]: https://github.com/neoclide/coc.nvim/#example-vim-configuration
 [coc-rust-analyzer]: https://github.com/fannheyward/coc-rust-analyzer
 
-## Vim and NeoVim Alternative
+## Vim and NeoVim (LanguageClient-neovim)
 
 * Install LanguageClient-neovim by following the instructions [here][lang-client-neovim]
-  - No extra run-time is required as this server is written in Rust
   - The github project wiki has extra tips on configuration
 
 * Configure by adding this to your vim/neovim config file (replacing the existing rust specific line if it exists):
 
-```
+```vim
 let g:LanguageClient_serverCommands = {
 \ 'rust': ['ra_lsp_server'],
 \ }
 ```
 
 [lang-client-neovim]: https://github.com/autozimu/LanguageClient-neovim
+
+## NeoVim (nvim-lsp)
+
+NeoVim 0.5 (not yet released) has built in language server support. For a quick start configuration
+of rust-analyzer, use [neovim/nvim-lsp](https://github.com/neovim/nvim-lsp#rust_analyzer).
+Once `neovim/nvim-lsp` is installed, you can use `call nvim_lsp#setup("rust_analyzer", {})`
+or `lua require'nvim_lsp'.rust_analyzer.setup({})` to quickly get set up.
 
 
 ## Sublime Text 3
