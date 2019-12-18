@@ -343,12 +343,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             ExprKind::Binary(ref cmp, ref left, ref right) => {
                 let op = cmp.node;
                 if op.is_comparison() {
-                    if let ExprKind::Path(QPath::Resolved(_, ref path)) = left.kind {
-                        check_nan(cx, path, expr);
-                    }
-                    if let ExprKind::Path(QPath::Resolved(_, ref path)) = right.kind {
-                        check_nan(cx, path, expr);
-                    }
+                    check_nan(cx, left, expr.span);
+                    check_nan(cx, right, expr.span);
                     check_to_owned(cx, left, right);
                     check_to_owned(cx, right, left);
                 }
@@ -444,17 +440,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
     }
 }
 
-fn check_nan(cx: &LateContext<'_, '_>, path: &Path, expr: &Expr) {
-    if !in_constant(cx, expr.hir_id) {
-        if let Some(seg) = path.segments.last() {
-            if seg.ident.name == sym!(NAN) {
-                span_lint(
-                    cx,
-                    CMP_NAN,
-                    expr.span,
-                    "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
-                );
-            }
+fn check_nan(cx: &LateContext<'_, '_>, expr: &Expr, cmp_span: Span) {
+    if let Some((value, _)) = constant(cx, cx.tables, expr) {
+        let needs_lint = match value {
+            Constant::F32(num) => num.is_nan(),
+            Constant::F64(num) => num.is_nan(),
+            _ => false,
+        };
+
+        if needs_lint {
+            span_lint(
+                cx,
+                CMP_NAN,
+                cmp_span,
+                "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
+            );
         }
     }
 }
