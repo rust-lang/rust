@@ -271,7 +271,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_size_of", since = "1.32.0"))]
+#[rustc_const_stable(feature = "const_size_of", since = "1.32.0")]
 pub const fn size_of<T>() -> usize {
     intrinsics::size_of::<T>()
 }
@@ -299,10 +299,6 @@ pub const fn size_of<T>() -> usize {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
-    #[cfg(bootstrap)]
-    // SAFETY: going away soon
-    unsafe { intrinsics::size_of_val(val) }
-    #[cfg(not(bootstrap))]
     intrinsics::size_of_val(val)
 }
 
@@ -347,10 +343,6 @@ pub fn min_align_of<T>() -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
-    #[cfg(bootstrap)]
-    // SAFETY: going away soon
-    unsafe { intrinsics::min_align_of_val(val) }
-    #[cfg(not(bootstrap))]
     intrinsics::min_align_of_val(val)
 }
 
@@ -372,7 +364,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_align_of", since = "1.32.0"))]
+#[rustc_const_stable(feature = "const_align_of", since = "1.32.0")]
 pub const fn align_of<T>() -> usize {
     intrinsics::min_align_of::<T>()
 }
@@ -455,7 +447,7 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "needs_drop", since = "1.21.0")]
-#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_needs_drop", since = "1.36.0"))]
+#[rustc_const_stable(feature = "const_needs_drop", since = "1.36.0")]
 pub const fn needs_drop<T>() -> bool {
     intrinsics::needs_drop::<T>()
 }
@@ -501,7 +493,7 @@ pub const fn needs_drop<T>() -> bool {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
-#[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "mem_zeroed")]
+#[rustc_diagnostic_item = "mem_zeroed"]
 pub unsafe fn zeroed<T>() -> T {
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::init()
@@ -534,7 +526,7 @@ pub unsafe fn zeroed<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
-#[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "mem_uninitialized")]
+#[rustc_diagnostic_item = "mem_uninitialized"]
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::uninit()
@@ -874,11 +866,5 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub fn discriminant<T>(v: &T) -> Discriminant<T> {
-    #[cfg(bootstrap)]
-    // SAFETY: going away soon
-    unsafe {
-        Discriminant(intrinsics::discriminant_value(v), PhantomData)
-    }
-    #[cfg(not(bootstrap))]
     Discriminant(intrinsics::discriminant_value(v), PhantomData)
 }

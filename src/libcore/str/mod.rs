@@ -2090,7 +2090,7 @@ impl str {
     /// assert_eq!("ƒoo".chars().count(), 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_str_len", since = "1.32.0"))]
+    #[rustc_const_stable(feature = "const_str_len", since = "1.32.0")]
     #[inline]
     pub const fn len(&self) -> usize {
         self.as_bytes().len()
@@ -2111,10 +2111,7 @@ impl str {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_str_is_empty", since = "1.32.0"),
-    )]
+    #[rustc_const_stable(feature = "const_str_is_empty", since = "1.32.0")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -2171,7 +2168,7 @@ impl str {
     /// assert_eq!(b"bors", bytes);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "str_as_bytes", since = "1.32.0"))]
+    #[rustc_const_stable(feature = "str_as_bytes", since = "1.32.0")]
     #[inline(always)]
     // SAFETY: const sound because we transmute two types with the same layout
     #[allow(unused_attributes)]
@@ -2245,7 +2242,7 @@ impl str {
     /// let ptr = s.as_ptr();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "rustc_str_as_ptr", since = "1.32.0"))]
+    #[rustc_const_stable(feature = "rustc_str_as_ptr", since = "1.32.0")]
     #[inline]
     pub const fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8

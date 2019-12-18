@@ -331,7 +331,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_atomic_new", since = "1.32.0"))]
+    #[rustc_const_stable(feature = "const_atomic_new", since = "1.32.0")]
     pub const fn new(v: bool) -> AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
@@ -856,7 +856,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_atomic_new", since = "1.32.0"))]
+    #[rustc_const_stable(feature = "const_atomic_new", since = "1.32.0")]
     pub const fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p) }
     }
@@ -1261,7 +1261,7 @@ let atomic_forty_two = ", stringify!($atomic_type), "::new(42);
 ```"),
                 #[inline]
                 #[$stable]
-                #[cfg_attr(not(bootstrap), $const_stable)]
+                #[$const_stable]
                 pub const fn new(v: $int_type) -> Self {
                     Self {v: UnsafeCell::new(v)}
                 }

@@ -324,7 +324,7 @@ impl<T> Cell<T> {
     /// let c = Cell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_cell_new", since = "1.32.0"))]
+    #[rustc_const_stable(feature = "const_cell_new", since = "1.32.0")]
     #[inline]
     pub const fn new(value: T) -> Cell<T> {
         Cell {
@@ -470,7 +470,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_as_ptr", since = "1.12.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_cell_as_ptr", since = "1.32.0"))]
+    #[rustc_const_stable(feature = "const_cell_as_ptr", since = "1.32.0")]
     pub const fn as_ptr(&self) -> *mut T {
         self.value.get()
     }
@@ -651,7 +651,7 @@ impl<T> RefCell<T> {
     /// let c = RefCell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_refcell_new", since = "1.32.0"))]
+    #[rustc_const_stable(feature = "const_refcell_new", since = "1.32.0")]
     #[inline]
     pub const fn new(value: T) -> RefCell<T> {
         RefCell {
@@ -1504,10 +1504,7 @@ impl<T> UnsafeCell<T> {
     /// let uc = UnsafeCell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_unsafe_cell_new", since = "1.32.0"),
-    )]
+    #[rustc_const_stable(feature = "const_unsafe_cell_new", since = "1.32.0")]
     #[inline]
     pub const fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value }
@@ -1550,10 +1547,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_unsafecell_get", since = "1.32.0"),
-    )]
+    #[rustc_const_stable(feature = "const_unsafecell_get", since = "1.32.0")]
     pub const fn get(&self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
         // #[repr(transparent)]. This exploits libstd's special status, there is

@@ -911,10 +911,7 @@ impl char {
     /// assert!(!non_ascii.is_ascii());
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.32.0"),
-    )]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.32.0")]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
         *self as u32 <= 0x7F

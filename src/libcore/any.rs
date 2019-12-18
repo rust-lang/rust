@@ -423,14 +423,9 @@ impl TypeId {
     /// assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(bootstrap, rustc_const_unstable(feature="const_type_id"))]
-    #[cfg_attr(not(bootstrap), rustc_const_unstable(feature="const_type_id", issue = "41875"))]
+    #[rustc_const_unstable(feature="const_type_id", issue = "41875")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {
-            #[cfg(bootstrap)]
-            // SAFETY: going away soon
-            t: unsafe { intrinsics::type_id::<T>() },
-            #[cfg(not(bootstrap))]
             t: intrinsics::type_id::<T>(),
         }
     }
@@ -462,8 +457,7 @@ impl TypeId {
 /// );
 /// ```
 #[stable(feature = "type_name", since = "1.38.0")]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_type_name"))]
-#[cfg_attr(not(bootstrap), rustc_const_unstable(feature = "const_type_name", issue = "63084"))]
+#[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name<T: ?Sized>() -> &'static str {
     intrinsics::type_name::<T>()
 }
@@ -501,8 +495,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 /// println!("{}", type_name_of_val(&y));
 /// ```
 #[unstable(feature = "type_name_of_val", issue = "66359")]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_type_name"))]
-#[cfg_attr(not(bootstrap), rustc_const_unstable(feature = "const_type_name", issue = "63084"))]
+#[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name_of_val<T: ?Sized>(val: &T) -> &'static str {
     let _ = val;
     type_name::<T>()

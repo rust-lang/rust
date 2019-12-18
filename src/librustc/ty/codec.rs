@@ -76,9 +76,6 @@ pub fn encode_with_shorthand<E, T, M>(encoder: &mut E,
 
     // The shorthand encoding uses the same usize as the
     // discriminant, with an offset so they can't conflict.
-    #[cfg(bootstrap)]
-    let discriminant = unsafe { intrinsics::discriminant_value(variant) };
-    #[cfg(not(bootstrap))]
     let discriminant = intrinsics::discriminant_value(variant);
     assert!(discriminant < SHORTHAND_OFFSET as u64);
     let shorthand = start + SHORTHAND_OFFSET;

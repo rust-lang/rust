@@ -222,7 +222,6 @@ impl<'a> Location<'a> {
     /// assert_ne!(this_location.line(), another_location.line());
     /// assert_ne!(this_location.column(), another_location.column());
     /// ```
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "track_caller",
                reason = "uses #[track_caller] which is not yet stable",
                issue = "47809")]

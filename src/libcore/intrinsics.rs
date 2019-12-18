@@ -939,11 +939,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_transmute"))]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_unstable(feature = "const_transmute", issue = "53605"),
-    )]
+    #[rustc_const_unstable(feature = "const_transmute", issue = "53605")]
     pub fn transmute<T, U>(e: T) -> U;
 
     /// Returns `true` if the actual type given as `T` requires drop
@@ -1150,7 +1146,6 @@ extern "rust-intrinsic" {
 
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// https://github.com/rust-lang/rust/issues/10184
-    #[cfg(not(bootstrap))]
     pub fn float_to_int_approx_unchecked<Float, Int>(value: Float) -> Int;
 
 
@@ -1361,7 +1356,6 @@ extern "rust-intrinsic" {
     /// Compiles to a NOP during non-Miri codegen.
     ///
     /// Perma-unstable: do not use
-    #[cfg(not(bootstrap))]
     pub fn miri_start_panic(data: *mut (dyn crate::any::Any + crate::marker::Send)) -> ();
 }
 

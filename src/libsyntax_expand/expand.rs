@@ -85,7 +85,6 @@ macro_rules! ast_fragments {
                     $($(AstFragment::$Kind(ast) => ast.extend(placeholders.iter().flat_map(|id| {
                         // We are repeating through arguments with `many`, to do that we have to
                         // mention some macro variable from those arguments even if it's not used.
-                        #[cfg_attr(bootstrap, allow(unused_macros))]
                         macro _repeating($flat_map_ast_elt) {}
                         placeholder(AstFragmentKind::$Kind, *id, None).$make_ast()
                     })),)?)*

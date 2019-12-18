@@ -569,6 +569,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         list: false,
         options: test::Options::new(),
         time_options: None,
+        force_run_in_process: false,
     }
 }
 

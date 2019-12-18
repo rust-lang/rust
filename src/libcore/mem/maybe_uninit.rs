@@ -250,10 +250,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: #method.assume_init
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0"),
-    )]
+    #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
     #[inline(always)]
     pub const fn new(val: T) -> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
@@ -268,12 +265,9 @@ impl<T> MaybeUninit<T> {
     ///
     /// [type]: union.MaybeUninit.html
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0"),
-    )]
+    #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
     #[inline(always)]
-    #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "maybe_uninit_uninit")]
+    #[rustc_diagnostic_item = "maybe_uninit_uninit"]
     pub const fn uninit() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
@@ -357,7 +351,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline]
-    #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "maybe_uninit_zeroed")]
+    #[rustc_diagnostic_item = "maybe_uninit_zeroed"]
     pub fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
         unsafe {
@@ -498,7 +492,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline(always)]
-    #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "assume_init")]
+    #[rustc_diagnostic_item = "assume_init"]
     pub unsafe fn assume_init(self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
         ManuallyDrop::into_inner(self.value)

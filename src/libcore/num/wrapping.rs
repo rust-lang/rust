@@ -530,10 +530,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// assert_eq!(m, Wrapping(-22016));
             /// ```
             #[stable(feature = "reverse_bits", since = "1.37.0")]
-            #[cfg_attr(
-                not(bootstrap),
-                rustc_const_stable(feature = "const_reverse_bits", since = "1.37.0"),
-            )]
+            #[rustc_const_stable(feature = "const_reverse_bits", since = "1.37.0")]
             #[inline]
             #[must_use]
             pub const fn reverse_bits(self) -> Self {
