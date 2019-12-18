@@ -1592,9 +1592,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Iterate through all the errors, producing a diagnostic for each one. The diagnostics are
         // buffered in the `MirBorrowckCtxt`.
 
-        // TODO(mark-i-m): Would be great to get rid of the naming context.
+        // FIXME(mark-i-m): Would be great to get rid of the naming context.
         let mut region_naming = RegionErrorNamingCtx::new();
-        let mut outlives_suggestion = OutlivesSuggestionBuilder::new(self.mir_def_id, &self.local_names);
+        let mut outlives_suggestion = OutlivesSuggestionBuilder::new(
+            self.mir_def_id, &self.local_names
+        );
 
         for nll_error in nll_errors.into_iter() {
             match nll_error {
