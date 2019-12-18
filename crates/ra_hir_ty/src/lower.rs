@@ -11,7 +11,7 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::BuiltinType,
     generics::WherePredicate,
-    path::{GenericArg, Path, PathKind, PathSegment, PathSegments},
+    path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId,
@@ -101,7 +101,7 @@ impl Ty {
             TypeRef::Path(path) => path,
             _ => return None,
         };
-        if let PathKind::Type(_) = path.kind() {
+        if path.type_anchor().is_some() {
             return None;
         }
         if path.segments().len() > 1 {
@@ -202,7 +202,7 @@ impl Ty {
 
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Ty {
         // Resolve the path (in type namespace)
-        if let PathKind::Type(type_ref) = path.kind() {
+        if let Some(type_ref) = path.type_anchor() {
             let ty = Ty::from_hir(db, resolver, &type_ref);
             return Ty::from_type_relative_path(db, resolver, ty, path.segments());
         }

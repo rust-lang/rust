@@ -15,7 +15,7 @@ use crate::{
     db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId},
     nameres::{BuiltinShadowMode, CrateDefMap},
-    path::Path,
+    path::{ModPath, Path},
     src::HasSource,
     DefWithBodyId, HasModule, Lookup, ModuleId,
 };
@@ -44,7 +44,7 @@ impl Expander {
             db.ast_id_map(self.current_file_id).ast_id(&macro_call),
         );
 
-        if let Some(path) = macro_call.path().and_then(|path| self.parse_path(path)) {
+        if let Some(path) = macro_call.path().and_then(|path| self.parse_mod_path(path)) {
             if let Some(def) = self.resolve_path_as_macro(db, &path) {
                 let call_id = def.as_call_id(db, MacroCallKind::FnLike(ast_id));
                 let file_id = call_id.as_file();
@@ -81,9 +81,13 @@ impl Expander {
         Path::from_src(path, &self.hygiene)
     }
 
-    fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &Path) -> Option<MacroDefId> {
+    fn parse_mod_path(&mut self, path: ast::Path) -> Option<ModPath> {
+        ModPath::from_src(path, &self.hygiene)
+    }
+
+    fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &ModPath) -> Option<MacroDefId> {
         self.crate_def_map
-            .resolve_path(db, self.module.local_id, path.mod_path(), BuiltinShadowMode::Other)
+            .resolve_path(db, self.module.local_id, path, BuiltinShadowMode::Other)
             .0
             .take_macros()
     }
