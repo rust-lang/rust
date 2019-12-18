@@ -9,7 +9,6 @@ use rustc::mir::{
     ConstraintCategory, Local, Location,
 };
 use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
-use rustc::util::common::ErrorReported;
 use rustc_errors::DiagnosticBuilder;
 use rustc_data_structures::binary_search_util;
 use rustc_index::bit_set::BitSet;
@@ -223,6 +222,15 @@ pub struct TypeTest<'tcx> {
     /// A test which, if met by the region `'x`, proves that this type
     /// constraint is satisfied.
     pub verify_bound: VerifyBound<'tcx>,
+}
+
+/// When we have an unmet lifetime constraint, we try to propagate it outward (e.g. to a closure
+/// environment). If we can't, it is an error.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RegionRelationCheckResult {
+    Ok,
+    Propagated,
+    Error,
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -1386,7 +1394,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 body,
                 &mut propagated_outlives_requirements,
             );
-            if !propagated {
+            if propagated == RegionRelationCheckResult::Error {
                 errors_buffer.push(RegionErrorKind::RegionError {
                     longer_fr: *longer_fr,
                     shorter_fr: *shorter_fr,
@@ -1412,7 +1420,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             }
         }
-
     }
 
     /// Checks the final value for the free region `fr` to see if it
@@ -1447,59 +1454,64 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // one in this SCC, so we will always check the representative here.
         let representative = self.scc_representatives[longer_fr_scc];
         if representative != longer_fr {
-            self.check_universal_region_relation(
+            if let RegionRelationCheckResult::Error = self.check_universal_region_relation(
                 longer_fr,
                 representative,
                 body,
                 propagated_outlives_requirements,
-                errors_buffer,
-            );
+            ) {
+                errors_buffer.push(RegionErrorKind::RegionError {
+                    longer_fr,
+                    shorter_fr: representative,
+                    fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                });
+            }
             return;
         }
 
         // Find every region `o` such that `fr: o`
         // (because `fr` includes `end(o)`).
+        let mut error_reported = false;
         for shorter_fr in self.scc_values.universal_regions_outlived_by(longer_fr_scc) {
-            if let Some(ErrorReported) = self.check_universal_region_relation(
+            if let RegionRelationCheckResult::Error = self.check_universal_region_relation(
                 longer_fr,
                 shorter_fr,
                 body,
                 propagated_outlives_requirements,
-                errors_buffer,
             ) {
-                // We only report the first region error. Subsequent errors are hidden so as not to
-                // overwhelm the user, but we do record them so as to potentially print better
-                // diagnostics elsewhere...
-                errors_buffer.push(RegionErrorKind::UnreportedError {
-                    longer_fr, shorter_fr,
-                    fr_origin: NLLRegionVariableOrigin::FreeRegion,
-                });
+                // We only report the first region error. Subsequent errors are hidden so as
+                // not to overwhelm the user, but we do record them so as to potentially print
+                // better diagnostics elsewhere...
+                if error_reported {
+                    errors_buffer.push(RegionErrorKind::UnreportedError {
+                        longer_fr, shorter_fr,
+                        fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                    });
+                } else {
+                    errors_buffer.push(RegionErrorKind::RegionError {
+                        longer_fr, shorter_fr,
+                        fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                    });
+                }
+
+                error_reported = true;
             }
         }
     }
 
+    /// Checks that we can prove that `longer_fr: shorter_fr`. If we can't we attempt to propagate
+    /// the constraint outward (e.g. to a closure environment), but if that fails, there is an
+    /// error.
     fn check_universal_region_relation(
         &self,
         longer_fr: RegionVid,
         shorter_fr: RegionVid,
         body: &Body<'tcx>,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
-        errors_buffer: &mut RegionErrors<'tcx>,
-    ) -> Option<ErrorReported> {
+    ) -> RegionRelationCheckResult {
         // If it is known that `fr: o`, carry on.
         if self.universal_region_relations.outlives(longer_fr, shorter_fr) {
-            return None;
-        }
-
-        let propagated = self.try_propagate_universal_region_error(
-            longer_fr,
-            shorter_fr,
-            body,
-            propagated_outlives_requirements,
-        );
-
-        if propagated {
-            None
+            RegionRelationCheckResult::Ok
         } else {
             // If we are not in a context where we can't propagate errors, or we
             // could not shrink `fr` to something smaller, then just report an
@@ -1507,26 +1519,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             //
             // Note: in this case, we use the unapproximated regions to report the
             // error. This gives better error messages in some cases.
-            errors_buffer.push(RegionErrorKind::RegionError {
-                longer_fr, shorter_fr,
-                fr_origin: NLLRegionVariableOrigin::FreeRegion,
-            });
-
-            Some(ErrorReported)
+            self.try_propagate_universal_region_error(
+                longer_fr,
+                shorter_fr,
+                body,
+                propagated_outlives_requirements,
+            )
         }
     }
 
     /// Attempt to propagate a region error (e.g. `'a: 'b`) that is not met to a closure's
     /// creator. If we cannot, then the caller should report an error to the user.
-    ///
-    /// Returns `true` if the error was propagated, and `false` otherwise.
     fn try_propagate_universal_region_error(
         &self,
         longer_fr: RegionVid,
         shorter_fr: RegionVid,
         body: &Body<'tcx>,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
-    ) -> bool {
+    ) -> RegionRelationCheckResult {
         if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
             // Shrink `longer_fr` until we find a non-local region (if we do).
             // We'll call it `fr-` -- it's ever so slightly smaller than
@@ -1558,11 +1568,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         category: blame_span_category.0,
                     });
                 }
-                return true;
+                return RegionRelationCheckResult::Propagated;
             }
         }
 
-        false
+        RegionRelationCheckResult::Error
     }
 
     fn check_bound_universal_region(
