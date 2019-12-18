@@ -1664,15 +1664,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
 
                     db.buffer(&mut self.errors_buffer);
-
-                    // Emit outlives suggestions
-                    outlives_suggestion.add_suggestion(
-                        &self.body,
-                        &self.nonlexical_regioncx,
-                        self.infcx,
-                        &mut self.errors_buffer,
-                        &mut region_naming
-                    );
                 }
 
                 RegionErrorKind::UnreportedError {
@@ -1680,6 +1671,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     fr_origin: _,
                 } => {
                     // FIXME: currently we do nothing with these, but perhaps we can do better?
+                    // FIXME: try collecting these constraints on the outlives suggestion builder.
+                    // Does it make the suggestions any better?
                     debug!(
                         "Unreported region error: can't prove that {:?}: {:?}",
                         longer_fr, shorter_fr
@@ -1687,6 +1680,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
         }
+
+        // Emit one outlives suggestions for each MIR def we borrowck
+        outlives_suggestion.add_suggestion(
+            &self.body,
+            &self.nonlexical_regioncx,
+            self.infcx,
+            &mut self.errors_buffer,
+            &mut region_naming
+        );
     }
 }
 
