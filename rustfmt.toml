@@ -68,6 +68,7 @@ ignore = [
     "src/rustllvm/",
     "src/test/",
     "src/tools/",
+    "src/etc",
 
     # do not format submodules
     "src/doc/book",
