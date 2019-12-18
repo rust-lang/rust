@@ -103,7 +103,7 @@ impl fmt::Display for TokenTree {
 
 impl fmt::Display for Subtree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (l, r) = match self.delimiter.map(|it| it.kind) {
+        let (l, r) = match self.delimiter_kind() {
             Some(DelimiterKind::Parenthesis) => ("(", ")"),
             Some(DelimiterKind::Brace) => ("{", "}"),
             Some(DelimiterKind::Bracket) => ("[", "]"),
@@ -170,6 +170,10 @@ impl Subtree {
             .sum::<usize>();
 
         self.token_trees.len() + children_count
+    }
+
+    pub fn delimiter_kind(&self) -> Option<DelimiterKind> {
+        self.delimiter.map(|it| it.kind)
     }
 }
 

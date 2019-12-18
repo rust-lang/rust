@@ -269,35 +269,33 @@ impl Convertor {
                             .take(token.text().len() - 1)
                             .chain(std::iter::once(last_spacing));
                         for (char, spacing) in token.text().chars().zip(spacing_iter) {
-                            let id = self.alloc(token.text_range());
-                            token_trees
-                                .push(tt::Leaf::from(tt::Punct { char, spacing, id }).into());
+                            token_trees.push(
+                                tt::Leaf::from(tt::Punct {
+                                    char,
+                                    spacing,
+                                    id: self.alloc(token.text_range()),
+                                })
+                                .into(),
+                            );
                         }
                     } else {
+                        macro_rules! make_leaf {
+                            ($i:ident) => {
+                                tt::$i {
+                                    id: self.alloc(token.text_range()),
+                                    text: token.text().clone(),
+                                }
+                                .into()
+                            };
+                        }
+
                         let child: tt::Leaf = match token.kind() {
-                            T![true] | T![false] => {
-                                let id = self.alloc(token.text_range());
-                                let text = token.text().clone();
-                                tt::Literal { text, id }.into()
-                            }
-                            IDENT | LIFETIME => {
-                                let id = self.alloc(token.text_range());
-                                let text = token.text().clone();
-                                tt::Ident { text, id }.into()
-                            }
-                            k if k.is_keyword() => {
-                                let id = self.alloc(token.text_range());
-                                let text = token.text().clone();
-                                tt::Ident { text, id }.into()
-                            }
-                            k if k.is_literal() => {
-                                let id = self.alloc(token.text_range());
-                                let text = token.text().clone();
-                                tt::Literal { text, id }.into()
-                            }
+                            T![true] | T![false] => make_leaf!(Literal),
+                            IDENT | LIFETIME => make_leaf!(Ident),
+                            k if k.is_keyword() => make_leaf!(Ident),
+                            k if k.is_literal() => make_leaf!(Literal),
                             _ => return None,
                         };
-
                         token_trees.push(child.into());
                     }
                 }
@@ -370,8 +368,8 @@ impl<'a> TtTreeSink<'a> {
     }
 }
 
-fn delim_to_str(d: Option<tt::Delimiter>, closing: bool) -> SmolStr {
-    let texts = match d.map(|it| it.kind) {
+fn delim_to_str(d: Option<tt::DelimiterKind>, closing: bool) -> SmolStr {
+    let texts = match d {
         Some(tt::DelimiterKind::Parenthesis) => "()",
         Some(tt::DelimiterKind::Brace) => "{}",
         Some(tt::DelimiterKind::Bracket) => "[]",
@@ -395,7 +393,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                 break;
             }
 
-            let text: Option<SmolStr> = match self.cursor.token_tree() {
+            let text: SmolStr = match self.cursor.token_tree() {
                 Some(tt::TokenTree::Leaf(leaf)) => {
                     // Mark the range if needed
                     let id = match leaf {
@@ -407,35 +405,35 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                     let range = TextRange::offset_len(self.text_pos, TextUnit::of_str(&text));
                     self.token_map.insert(id, range);
                     self.cursor = self.cursor.bump();
-                    Some(text)
+                    text
                 }
                 Some(tt::TokenTree::Subtree(subtree)) => {
                     self.cursor = self.cursor.subtree().unwrap();
                     if let Some(id) = subtree.delimiter.map(|it| it.id) {
                         self.open_delims.insert(id, self.text_pos);
                     }
-                    Some(delim_to_str(subtree.delimiter, false))
+                    delim_to_str(subtree.delimiter_kind(), false)
                 }
-                None => self.cursor.end().and_then(|parent| {
-                    self.cursor = self.cursor.bump();
-                    if let Some(id) = parent.delimiter.map(|it| it.id) {
-                        if let Some(open_delim) = self.open_delims.get(&id) {
-                            let open_range =
-                                TextRange::offset_len(*open_delim, TextUnit::from_usize(1));
-                            let close_range =
-                                TextRange::offset_len(self.text_pos, TextUnit::from_usize(1));
-                            self.token_map.insert_delim(id, open_range, close_range);
+                None => {
+                    if let Some(parent) = self.cursor.end() {
+                        self.cursor = self.cursor.bump();
+                        if let Some(id) = parent.delimiter.map(|it| it.id) {
+                            if let Some(open_delim) = self.open_delims.get(&id) {
+                                let open_range =
+                                    TextRange::offset_len(*open_delim, TextUnit::from_usize(1));
+                                let close_range =
+                                    TextRange::offset_len(self.text_pos, TextUnit::from_usize(1));
+                                self.token_map.insert_delim(id, open_range, close_range);
+                            }
                         }
+                        delim_to_str(parent.delimiter_kind(), true)
+                    } else {
+                        continue;
                     }
-
-                    Some(delim_to_str(parent.delimiter, true))
-                }),
+                }
             };
-
-            if let Some(text) = text {
-                self.buf += &text;
-                self.text_pos += TextUnit::of_str(&text);
-            }
+            self.buf += &text;
+            self.text_pos += TextUnit::of_str(&text);
         }
 
         let text = SmolStr::new(self.buf.as_str());
@@ -583,7 +581,7 @@ mod tests {
         let token_tree = ast::TokenTree::cast(token_tree).unwrap();
         let tt = ast_to_token_tree(&token_tree).unwrap().0;
 
-        assert_eq!(tt.delimiter.map(|it| it.kind), Some(tt::DelimiterKind::Brace));
+        assert_eq!(tt.delimiter_kind(), Some(tt::DelimiterKind::Brace));
     }
 
     #[test]
