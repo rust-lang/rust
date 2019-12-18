@@ -80,9 +80,7 @@ unsafe fn configure_llvm(sess: &Session) {
         add("rustc", true); // fake program name
         if sess.time_llvm_passes() { add("-time-passes", false); }
         if sess.print_llvm_passes() { add("-debug-pass=Structure", false); }
-        if sess.opts.debugging_opts.disable_instrumentation_preinliner {
-            add("-disable-preinline", false);
-        }
+
         if sess.opts.debugging_opts.generate_arange_section {
             add("-generate-arange-section", false);
         }
