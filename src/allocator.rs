@@ -21,14 +21,14 @@ pub fn codegen(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) -> 
     if any_dynamic_crate {
         false
     } else if let Some(kind) = tcx.allocator_kind() {
-        codegen_inner(tcx.sess, module, kind);
+        codegen_inner(module, kind);
         true
     } else {
         false
     }
 }
 
-pub fn codegen_inner(sess: &Session, module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
+pub fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
     let usize_ty = module.target_config().pointer_type();
 
     for method in ALLOCATOR_METHODS {
