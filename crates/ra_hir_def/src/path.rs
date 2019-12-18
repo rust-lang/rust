@@ -100,13 +100,14 @@ pub enum GenericArg {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PathKind {
     Plain,
+    /// `self::` is `Super(0)`
     Super(u8),
     Crate,
-    // Absolute path
+    /// Absolute path (::foo)
     Abs,
-    // Type based path like `<T>::foo`
+    /// Type based path like `<T>::foo`
     Type(Box<TypeRef>),
-    // `$crate` from macro expansion
+    /// `$crate` from macro expansion
     DollarCrate(CrateId),
 }
 
