@@ -616,11 +616,13 @@ pub fn trans_place<'tcx>(
         PlaceBase::Local(local) => fx.get_local_place(*local),
         PlaceBase::Static(static_) => match static_.kind {
             StaticKind::Static => {
+                // Statics can't be generic, so `static_.ty` doesn't need to be monomorphized.
                 crate::constant::codegen_static_ref(fx, static_.def_id, static_.ty)
             }
             StaticKind::Promoted(promoted, substs) => {
                 let instance = Instance::new(static_.def_id, fx.monomorphize(&substs));
-                crate::constant::trans_promoted(fx, instance, promoted, static_.ty)
+                let ty = fx.monomorphize(&static_.ty);
+                crate::constant::trans_promoted(fx, instance, promoted, ty)
             }
         },
     };
