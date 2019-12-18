@@ -66,6 +66,7 @@ mod reuse {
 }
 
 mod guard {
+    #[allow(deprecated)]
     pub fn check() {
         use std::u8; // bring module u8 in scope
         fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
