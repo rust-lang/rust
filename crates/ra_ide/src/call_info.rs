@@ -7,7 +7,9 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
-use crate::{db::RootDatabase, expand::descend_into_macros, CallInfo, FilePosition, FunctionSignature};
+use crate::{
+    db::RootDatabase, expand::descend_into_macros, CallInfo, FilePosition, FunctionSignature,
+};
 
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
