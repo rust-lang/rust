@@ -1730,6 +1730,16 @@ extern "C" {
         InsertAtEnd: &'a BasicBlock,
     ) -> &'a Value;
 
+    pub fn LLVMRustDIBuilderInsertDbgValueAtEnd(
+        Builder: &DIBuilder<'a>,
+        Val: &'a Value,
+        VarInfo: &'a DIVariable,
+        AddrOps: *const i64,
+        AddrOpsCount: c_uint,
+        DL: &'a Value,
+        InsertAtEnd: &'a BasicBlock,
+    ) -> &'a Value;
+
     pub fn LLVMRustDIBuilderCreateEnumerator(
         Builder: &DIBuilder<'a>,
         Name: *const c_char,

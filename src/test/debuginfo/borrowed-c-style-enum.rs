@@ -40,7 +40,7 @@
 
 enum ABC { TheA, TheB, TheC }
 
-fn main() {
+pub fn main() {
     let the_a = ABC::TheA;
     let the_a_ref: &ABC = &the_a;
 

@@ -215,16 +215,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             None => return,
         };
 
-        // FIXME(eddyb) add debuginfo for unsized places too.
-        let base = match local_ref {
-            LocalRef::Place(place) => place,
-            _ => return,
+        let base_layout = match local_ref {
+            LocalRef::Operand(None) => return,
+            LocalRef::Operand(Some(operand)) => operand.layout,
+            LocalRef::Place(place) => place.layout,
+
+            // FIXME(eddyb) add debuginfo for unsized places too.
+            LocalRef::UnsizedPlace(_) => return,
         };
 
         let vars = vars.iter().copied().chain(fallback_var);
 
         for var in vars {
-            let mut layout = base.layout;
+            let mut layout = base_layout;
             let mut direct_offset = Size::ZERO;
             // FIXME(eddyb) use smallvec here.
             let mut indirect_offsets = vec![];
@@ -263,15 +266,36 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let (scope, span) = self.debug_loc(var.source_info);
             if let Some(scope) = scope {
                 if let Some(dbg_var) = var.dbg_var {
-                    bx.dbg_var_addr(
-                        debug_context,
-                        dbg_var,
-                        scope,
-                        base.llval,
-                        direct_offset,
-                        &indirect_offsets,
-                        span,
-                    );
+                    match local_ref {
+                        LocalRef::Place(place) => {
+                            bx.dbg_var_addr(
+                                debug_context,
+                                dbg_var,
+                                scope,
+                                place.llval,
+                                direct_offset,
+                                &indirect_offsets,
+                                span,
+                                false,
+                            );
+                        }
+                        LocalRef::Operand(Some(operand)) => match operand.val {
+                            OperandValue::Immediate(x) => {
+                                bx.dbg_var_addr(
+                                    debug_context,
+                                    dbg_var,
+                                    scope,
+                                    x,
+                                    direct_offset,
+                                    &indirect_offsets,
+                                    span,
+                                    true,
+                                );
+                            }
+                            OperandValue::Ref(..) | OperandValue::Pair(..) => unreachable!(),
+                        },
+                        LocalRef::UnsizedPlace(_) | LocalRef::Operand(None) => unreachable!(),
+                    }
                 }
             }
         }

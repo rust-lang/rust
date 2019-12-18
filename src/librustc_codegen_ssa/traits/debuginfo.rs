@@ -57,6 +57,7 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
         // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
         indirect_offsets: &[Size],
         span: Span,
+        is_by_value: bool,
     );
     fn set_source_location(
         &mut self,

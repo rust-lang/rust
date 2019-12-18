@@ -24,15 +24,6 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     analyzer.visit_body(mir);
 
     for (local, decl) in mir.local_decls.iter_enumerated() {
-        // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
-        // of putting everything in allocas just so we can use llvm.dbg.declare.
-        if fx.cx.sess().opts.debuginfo == DebugInfo::Full {
-            if fx.mir.local_kind(local) == mir::LocalKind::Arg {
-                analyzer.not_ssa(local);
-                continue;
-            }
-        }
-
         let ty = fx.monomorphize(&decl.ty);
         debug!("local {:?} has type `{}`", local, ty);
         let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
@@ -41,6 +32,15 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // in an Value without an alloca.
         } else if fx.cx.is_backend_scalar_pair(layout) {
             // We allow pairs and uses of any of their 2 fields.
+
+            // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
+            // of putting everything in allocas just so we can use llvm.dbg.declare.
+            if fx.cx.sess().opts.debuginfo == DebugInfo::Full {
+                if fx.mir.local_kind(local) == mir::LocalKind::Arg {
+                    analyzer.not_ssa(local);
+                    continue;
+                }
+            }
         } else {
             // These sorts of types require an alloca. Note that
             // is_llvm_immediate() may *still* be true, particularly
@@ -286,7 +286,13 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 // FIXME(eddyb): We should figure out how to use `llvm.dbg.value` instead
                 // of putting everything in allocas just so we can use `llvm.dbg.declare`.
                 if self.fx.cx.sess().opts.debuginfo == DebugInfo::Full {
-                    self.not_ssa(local);
+                    let decl_span = self.fx.mir.local_decls[local].source_info.span;
+                    let ty = self.fx.mir.local_decls[local].ty;
+                    let ty = self.fx.monomorphize(&ty);
+                    let layout = self.fx.cx.spanned_layout_of(ty, decl_span);
+                    if !self.fx.cx.is_backend_immediate(layout) {
+                        self.not_ssa(local);
+                    }
                 }
             }
 
