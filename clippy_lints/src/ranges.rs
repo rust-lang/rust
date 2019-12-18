@@ -8,28 +8,8 @@ use syntax::ast::RangeLimits;
 use syntax::source_map::Spanned;
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
-use crate::utils::{is_integer_const, paths, snippet, snippet_opt, span_lint, span_lint_and_then};
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for calling `.step_by(0)` on iterators,
-    /// which never terminates.
-    ///
-    /// **Why is this bad?** This very much looks like an oversight, since with
-    /// `loop { .. }` there is an obvious better way to endlessly loop.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```ignore
-    /// for x in (5..5).step_by(0) {
-    ///     ..
-    /// }
-    /// ```
-    pub ITERATOR_STEP_BY_ZERO,
-    correctness,
-    "using `Iterator::step_by(0)`, which produces an infinite iterator"
-}
+use crate::utils::{higher, SpanlessEq};
+use crate::utils::{is_integer_const, snippet, snippet_opt, span_lint, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for zipping a collection with the range of
@@ -102,7 +82,6 @@ declare_clippy_lint! {
 }
 
 declare_lint_pass!(Ranges => [
-    ITERATOR_STEP_BY_ZERO,
     RANGE_ZIP_WITH_LEN,
     RANGE_PLUS_ONE,
     RANGE_MINUS_ONE
@@ -112,19 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind {
             let name = path.ident.as_str();
-
-            // Range with step_by(0).
-            if name == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) {
-                use crate::consts::{constant, Constant};
-                if let Some((Constant::Int(0), _)) = constant(cx, cx.tables, &args[1]) {
-                    span_lint(
-                        cx,
-                        ITERATOR_STEP_BY_ZERO,
-                        expr.span,
-                        "Iterator::step_by(0) will panic at runtime",
-                    );
-                }
-            } else if name == "zip" && args.len() == 2 {
+            if name == "zip" && args.len() == 2 {
                 let iter = &args[0].kind;
                 let zip_arg = &args[1];
                 if_chain! {
@@ -230,14 +197,6 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
             );
         }
     }
-}
-
-fn has_step_by(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
-    // No need for `walk_ptrs_ty` here because `step_by` moves `self`, so it
-    // can't be called on a borrowed range.
-    let ty = cx.tables.expr_ty_adjusted(expr);
-
-    get_trait_def_id(cx, &paths::ITERATOR).map_or(false, |iterator_trait| implements_trait(cx, ty, iterator_trait, &[]))
 }
 
 fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr) -> Option<&'t Expr> {
