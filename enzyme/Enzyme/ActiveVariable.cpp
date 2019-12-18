@@ -46,11 +46,12 @@ cl::opt<bool> nonmarkedglobals_inactive(
 
 bool isKnownIntegerTBAA(Instruction* inst) {
   if (MDNode* md = inst->getMetadata(LLVMContext::MD_tbaa)) {
-	if (md->getNumOperands() != 3) return false;
+	if (md->getNumOperands() != 3 && md->getNumOperands() != 4) return false;
 	Metadata* metadata = md->getOperand(1).get();
 	if (auto mda = dyn_cast<MDNode>(metadata)) {
 	  if (mda->getNumOperands() == 0) return false;
 	  Metadata* metadata2 = mda->getOperand(0).get();
+      if (!isa<MDString>(metadata2)) { metadata2 = mda->getOperand(mda->getNumOperands()-1).get(); }
 	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
 	    auto typeNameStringRef = typeName->getString();
 	    if (typeNameStringRef == "long long" || typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
@@ -69,13 +70,39 @@ bool isKnownIntegerTBAA(Instruction* inst) {
   return false;
 }
 
+bool isKnownPointerTBAA(Instruction* inst) {
+  if (MDNode* md = inst->getMetadata(LLVMContext::MD_tbaa)) {
+	if (md->getNumOperands() != 3 && md->getNumOperands() != 4) return false;
+	Metadata* metadata = md->getOperand(1).get();
+	if (auto mda = dyn_cast<MDNode>(metadata)) {
+	  if (mda->getNumOperands() == 0) return false;
+	  Metadata* metadata2 = mda->getOperand(0).get();
+      if (!isa<MDString>(metadata2)) { metadata2 = mda->getOperand(mda->getNumOperands()-1).get(); }
+	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
+	    auto typeNameStringRef = typeName->getString();
+	    if (typeNameStringRef == "any pointer") {
+          if (printconst)
+            llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
+          //llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
+		  return true; 
+	    } else {
+          //if (printconst)
+          //  llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
+        }
+	  }
+	}
+  }
+  return false;
+}
+
 Type* isKnownFloatTBAA(Instruction* inst) {
   if (MDNode* md = inst->getMetadata(LLVMContext::MD_tbaa)) {
-	if (md->getNumOperands() != 3) return nullptr;
+	if (md->getNumOperands() != 3 && md->getNumOperands() != 4) return nullptr;
 	Metadata* metadata = md->getOperand(1).get();
 	if (auto mda = dyn_cast<MDNode>(metadata)) {
 	  if (mda->getNumOperands() == 0) return nullptr;
 	  Metadata* metadata2 = mda->getOperand(0).get();
+      if (!isa<MDString>(metadata2)) { metadata2 = mda->getOperand(mda->getNumOperands()-1).get(); }
 	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
 	    auto typeNameStringRef = typeName->getString();
 	    if (typeNameStringRef == "float") {
@@ -158,8 +185,10 @@ bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& 
 
     return false;
 }
+
+bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/);
         
-bool trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool onlyFirst, std::vector<int> indices = {}) {
+bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool onlyFirst, std::vector<int> indices = {}) {
     if (seen.find(v) != seen.end()) return false;
     seen.insert(v);
 
@@ -182,14 +211,14 @@ bool trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> t
             
     if (auto phi = dyn_cast<PHINode>(v)) {
         for(auto &a : phi->incoming_values()) {
-            if (trackPointer(a.get(), seen, typeseen, floatingUse, pointerUse, onlyFirst, indices)) {
+            if (trackPointer(a.get(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
                 if (fast_tracking) return true;
             }
         }
     }
     if (auto ci = dyn_cast<CastInst>(v)) {
         if (ci->getSrcTy()->isPointerTy())
-            if (trackPointer(ci->getOperand(0), seen, typeseen, floatingUse, pointerUse, onlyFirst, indices)) {
+            if (trackPointer(ci->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
                 if (fast_tracking) return true;
             }
     } 
@@ -207,7 +236,7 @@ bool trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> t
             }
         }
         idnext.insert(idnext.end(), indices.begin(), indices.end());
-        if (trackPointer(gep->getOperand(0), seen, typeseen, floatingUse, pointerUse, onlyFirst, idnext)) {
+        if (trackPointer(gep->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
             if (fast_tracking) return true;
         }
     }
@@ -215,8 +244,29 @@ bool trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> t
         for(User* use: inst->users()) {
             if (auto ci = dyn_cast<CastInst>(use)) {
                 if (ci->getDestTy()->isPointerTy()) {
-                    if (trackPointer(ci, seen, typeseen, floatingUse, pointerUse, onlyFirst, indices)) {
+                    if (trackPointer(ci, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
                         if (fast_tracking) return true;
+                    }
+                }
+            }
+            if (auto gep = dyn_cast<GetElementPtrInst>(use)) {
+                //TODO consider implication of gep indices on onlyfirst/indices
+                if (trackPointer(gep, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                    if (fast_tracking) return true;
+                }
+            }
+            if (auto li = dyn_cast<LoadInst>(use)) {
+                bool unknownuse;
+                if (li->getType()->isIntegerTy())
+                if (trackInt(li, intseen, seen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknownuse*/false)) {
+                    if (fast_tracking) return true; 
+                }
+            }
+            if (auto si = dyn_cast<StoreInst>(use)) {
+                if (si->getPointerOperand() == inst && si->getValueOperand()->getType()->isIntegerTy()) {
+                    bool unknownuse;
+                    if (trackInt(si->getValueOperand(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknownuse*/false)) {
+                        if (fast_tracking) return true; 
                     }
                 }
             }
@@ -225,7 +275,7 @@ bool trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> t
     return false;
 }
 
-bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
+bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
     auto idx = std::pair<Value*, bool>(v, shouldConsiderUnknownUse);
     if (intseen.find(idx) != intseen.end()) {
         if (intseen[idx] == IntType::Integer) {
@@ -405,8 +455,18 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
                 intseen[idx] = IntType::Integer;
                 if (fast_tracking) return true;
             }
-            if (Type* t = isKnownFloatTBAA(si)) floatingUse = t;
-            if (trackPointer(si->getPointerOperand(), ptrseen, typeseen, floatingUse, pointerUse, true, {})) {
+
+            if (isKnownPointerTBAA(si)) {
+                pointerUse = true;
+                if (fast_tracking) return true;
+            }
+
+            if (Type* t = isKnownFloatTBAA(si)) {
+                floatingUse = t;
+                if (fast_tracking) return true;
+            }
+
+            if (trackPointer(si->getPointerOperand(), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, true, {})) {
                 if (fast_tracking) return true;
             }
 
@@ -459,8 +519,15 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
             intseen[idx] = IntType::Integer;
             if (fast_tracking) return true;
         }
-        if (Type* t = isKnownFloatTBAA(li)) floatingUse = t;
-        if (trackPointer(li->getOperand(0), ptrseen, typeseen, floatingUse, pointerUse, true, {})) {
+        if (isKnownPointerTBAA(li)) {
+            pointerUse = true;
+            if (fast_tracking) return true;
+        }
+        if (Type* t = isKnownFloatTBAA(li)) {
+            floatingUse = t;
+            if (fast_tracking) return true;
+        }
+        if (trackPointer(li->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, true, {})) {
             if (fast_tracking) return true;
         }
     }
@@ -631,9 +698,16 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
 
         if (defaultType != IntType::Unknown) return defaultType;
 
-        if(auto inst = dyn_cast<Instruction>(val))
+        if(auto inst = dyn_cast<Instruction>(val)) {
+        llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
         llvm::errs() << *inst->getParent()->getParent() << "\n";
+        }
         
+        if(auto inst = dyn_cast<Argument>(val)) {
+        llvm::errs() << *inst->getParent()->getParent() << "\n";
+        llvm::errs() << *inst->getParent() << "\n";
+        }
+
         if(auto arg = dyn_cast<Argument>(val))
         llvm::errs() << *arg->getParent() << "\n";
 
@@ -659,24 +733,28 @@ Type* isIntPointerASecretFloat(Value* val) {
 
     Type* floatingUse = nullptr;
     bool pointerUse = false;
+    bool intUse = false;
 
+    std::map<std::pair<Value*,bool>, IntType> intseen;
     SmallPtrSet<Type*, 4> typeseen;
 
     SmallPtrSet<Value*, 4> seen;
 
-    trackPointer(val, seen, typeseen, floatingUse, pointerUse, false);
+    trackPointer(val, intseen, seen, typeseen, floatingUse, pointerUse, intUse, false);
 
-    if (pointerUse && (floatingUse == nullptr)) return nullptr; 
-    if (!pointerUse && (floatingUse != nullptr)) return floatingUse;
+    if (pointerUse && (floatingUse == nullptr) && !intUse) return nullptr; 
+    if (!pointerUse && (floatingUse != nullptr) && !intUse) return floatingUse;
+    if (!pointerUse && (floatingUse == nullptr) && intUse) return nullptr; 
 
     if (auto inst = dyn_cast<Instruction>(val)) {
         llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
         llvm::errs() << *inst->getParent()->getParent() << "\n";
     }
+        
     if (floatingUse)
-    llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << "\n";
+    llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
     else
-    llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << "\n";
+    llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
     assert(0 && "ambiguous unsure if constant or not");
 }
 

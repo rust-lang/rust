@@ -726,7 +726,11 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
             case Intrinsic::memmove: {
                 if (gutils->isConstantInstruction(inst)) continue;
 
+
                 if (!isIntPointerASecretFloat(op->getOperand(0)) ) {
+                    //if src is inactive, then no need to update pointers, even if dst is active
+                    if (gutils->isConstantValue(op->getOperand(0))) continue;
+
                     SmallVector<Value*, 4> args;
                     IRBuilder <>BuilderZ(op);
                     args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
@@ -2175,7 +2179,10 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   }
 
   if (tape) {
-    args.push_back(gutils->lookupM(tape, Builder2));
+    auto ntape = gutils->lookupM(tape, Builder2);
+    assert(ntape);
+    assert(ntape->getType());
+    args.push_back(ntape);
   }
 
   assert(newcalled);
@@ -2726,6 +2733,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             goto realcall;
         case Intrinsic::memcpy: {
             if (gutils->isConstantInstruction(inst)) continue;
+            // copying into nullptr is invalid (not sure why it exists here), but we shouldn't do it in reverse pass
+            if (isa<ConstantPointerNull>(op->getOperand(0))) continue;
+
+            // If destination (operand 0) is constant 
                 if (Type* secretty = isIntPointerASecretFloat(op->getOperand(0)) ) {
                     SmallVector<Value*, 4> args;
                     auto secretpt = PointerType::getUnqual(secretty);
@@ -2749,6 +2760,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                     Builder2.CreateCall(dmemcpy, args);
                 } else {
                     if (topLevel) {
+                        //if src is inactive, then no need to update pointers, even if dst is active
+                        if (gutils->isConstantValue(op->getOperand(1))) continue;
+
                         SmallVector<Value*, 4> args;
                         IRBuilder <>BuilderZ(op);
                         args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
@@ -2789,6 +2803,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                     Builder2.CreateCall(dmemmove, args);
                 } else {
                     if (topLevel) {
+
+                        //if src is inactive, then no need to update pointers, even if dst is active
+                        if (gutils->isConstantValue(op->getOperand(1))) continue;
+
                         SmallVector<Value*, 4> args;
                         IRBuilder <>BuilderZ(op);
                         args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
