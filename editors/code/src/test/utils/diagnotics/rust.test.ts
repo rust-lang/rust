@@ -199,4 +199,38 @@ describe('mapRustDiagnosticToVsCode', () => {
         // There are no suggested fixes
         assert.strictEqual(suggestedFixes.length, 0);
     });
+
+    it('should map a macro invocation location to normal file path', () => {
+        const { location, diagnostic, suggestedFixes } = mapFixtureToVsCode(
+            'error/E0277',
+        );
+
+        assert.strictEqual(
+            diagnostic.severity,
+            vscode.DiagnosticSeverity.Error,
+        );
+        assert.strictEqual(
+            diagnostic.message,
+            [
+                "can't compare `{integer}` with `&str`",
+                'the trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`',
+            ].join('\n'),
+        );
+        assert.strictEqual(diagnostic.code, 'E0277');
+        assert.strictEqual(diagnostic.source, 'rustc');
+        assert.deepStrictEqual(diagnostic.tags, []);
+
+        // No related information
+        assert.deepStrictEqual(diagnostic.relatedInformation, []);
+
+        // There are no suggested fixes
+        assert.strictEqual(suggestedFixes.length, 0);
+
+        // The file url should be normal file
+        // Ignore the first part because it depends on vs workspace location
+        assert.strictEqual(
+            location.uri.path.substr(-'src/main.rs'.length),
+            'src/main.rs',
+        );
+    });
 });
