@@ -35,8 +35,8 @@ LL | type Test = dyn Add + Sub;
    |                 first non-auto trait
    |                 trait alias used in trait object type (first use)
 
-error[E0191]: the value of the associated types `Output` (from trait `Add`), `Output` (from trait `Sub`) must be specified
-  --> $DIR/issue-22560.rs:9:13
+error[E0191]: the value of the associated types `Output` (from trait `Sub`), `Output` (from trait `Add`) must be specified
+  --> $DIR/issue-22560.rs:9:23
    |
 LL |     type Output;
    |     ------------ `Output` defined here
@@ -45,7 +45,14 @@ LL |     type Output;
    |     ------------ `Output` defined here
 ...
 LL | type Test = dyn Add + Sub;
-   |             ^^^^^^^^^^^^^ associated types `Output`, `Output` must be specified
+   |                 ^^^   ^^^ associated type `Output` must be specified
+   |                 |
+   |                 associated type `Output` must be specified
+   |
+help: specify the associated types
+   |
+LL | type Test = dyn Add<Output = Type> + Sub<Output = Type>;
+   |                 ^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 
