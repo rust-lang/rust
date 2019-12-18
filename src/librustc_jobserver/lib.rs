@@ -1,5 +1,6 @@
 use jobserver::Client;
 use lazy_static::lazy_static;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 lazy_static! {
     // We can only call `from_env` once per process
@@ -35,15 +36,50 @@ lazy_static! {
 // That makes this function necessary unlike in the release case where everything is piped through
 // `release_thread`.
 fn notify_acquiring_token() {
-    // this function does nothing for now but will be wired up to send a message to Cargo
+    if should_notify() {
+        // FIXME: tell Cargo of our interest
+    }
 }
 
-pub fn initialize() {
+// These are the values for TOKEN_REQUESTS, which is an enum between these
+// different options.
+//
+//
+// It takes the following values:
+//  * EMPTY: not yet set
+//  * CARGO_REQUESTED: we're in the jobserver-per-rustc mode
+//  * MAKE_REQUESTED: legacy global jobserver client
+const EMPTY: usize = 0;
+const CARGO_REQUESTED: usize = 1;
+const MAKE_REQUESTED: usize = 2;
+static TOKEN_REQUESTS: AtomicUsize = AtomicUsize::new(EMPTY);
+
+fn should_notify() -> bool {
+    let value = TOKEN_REQUESTS.load(Ordering::SeqCst);
+    assert!(value != EMPTY, "jobserver must be initialized");
+    value == CARGO_REQUESTED
+}
+
+/// This changes a global value to the new value of token_requests, which means
+/// that you probably don't want to be calling this more than once per process.
+/// Unfortunately the jobserver is inherently a global resource (we can't have
+/// more than one) so the token requesting strategy must likewise be global.
+///
+/// Usually this doesn't matter too much, as you're not wanting to set the token
+/// requests unless you're in the one-rustc-per-process model, and we help out
+/// here a bit by not resetting it once it's set (i.e., only the first init will
+/// change the value).
+pub fn initialize(token_requests: bool) {
+    TOKEN_REQUESTS.compare_and_swap(
+        EMPTY,
+        if token_requests { CARGO_REQUESTED } else { MAKE_REQUESTED },
+        Ordering::SeqCst,
+    );
     lazy_static::initialize(&GLOBAL_CLIENT)
 }
 
 pub struct HelperThread {
-    helper: jobserver_crate::HelperThread,
+    helper: jobserver::HelperThread,
 }
 
 impl HelperThread {
