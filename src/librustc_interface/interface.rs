@@ -206,6 +206,22 @@ pub fn run_compiler_in_existing_thread_pool<R>(
 
 pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     let stderr = config.stderr.take();
+
+    if config.opts.debugging_opts.jobserver_token_requests {
+        if let config::ErrorOutputType::Json { .. } = config.opts.error_format {
+            if stderr.is_some() {
+                panic!("Non-default output not supported with -Zjobserver-token-requests");
+            }
+        } else {
+            panic!(
+                "-Zjobserver-token-requests can only be specified if using \
+                JSON error output type"
+            );
+        }
+    }
+
+    rustc_jobserver::initialize(config.opts.debugging_opts.jobserver_token_requests);
+
     util::spawn_thread_pool(
         config.opts.edition,
         config.opts.debugging_opts.threads,
@@ -215,6 +231,9 @@ pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R 
 }
 
 pub fn default_thread_pool<R: Send>(edition: edition::Edition, f: impl FnOnce() -> R + Send) -> R {
+    // FIXME: allow for smart jobserver
+    rustc_jobserver::initialize(false);
+
     // the 1 here is duplicating code in config.opts.debugging_opts.threads
     // which also defaults to 1; it ultimately doesn't matter as the default
     // isn't threaded, and just ignores this parameter

@@ -30,7 +30,6 @@ use rustc_span::{MultiSpan, Span};
 
 use rustc_data_structures::flock;
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use rustc_jobserver::{self as jobserver, Client};
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 
 use std::cell::{self, RefCell};
@@ -1031,24 +1030,6 @@ fn build_session_(
         sopts.debugging_opts.time_passes || sopts.debugging_opts.time,
         sopts.debugging_opts.time_passes,
     );
-
-    if sopts.debugging_opts.jobserver_token_requests {
-        if let config::ErrorOutputType::Json { .. } = sopts.error_format {
-            if is_diagnostic_output_raw {
-                panic!("Raw output format not supported with -Zjobserver-token-requests");
-            }
-        } else {
-            parse_sess
-                .span_diagnostic
-                .fatal(
-                    "-Zjobserver-token-requests can only be specified if \
-                        using JSON error output type",
-                )
-                .raise();
-        }
-    }
-
-    rustc_jobserver::initialize(sopts.debugging_opts.jobserver_token_requests);
 
     let sess = Session {
         target: target_cfg,

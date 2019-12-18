@@ -4066,7 +4066,6 @@ dependencies = [
  "rustc_feature",
  "rustc_fs_util",
  "rustc_index",
- "rustc_jobserver",
  "rustc_span",
  "rustc_target",
  "serialize",
