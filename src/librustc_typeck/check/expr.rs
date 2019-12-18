@@ -1425,8 +1425,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: ast::Ident,
     ) -> Ty<'tcx> {
         let expr_t = self.check_expr_with_needs(base, needs);
-        let expr_t = self.structurally_resolved_type(base.span,
-                                                     expr_t);
+        let expr_t = self.structurally_resolved_type(base.span, expr_t);
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, expr_t);
         while let Some((base_t, _)) = autoderef.next() {
