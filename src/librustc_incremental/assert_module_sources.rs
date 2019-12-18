@@ -28,8 +28,6 @@ use rustc::ty::TyCtxt;
 use std::collections::BTreeSet;
 use syntax::ast;
 use syntax::symbol::{Symbol, sym};
-use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED,
-                 ATTR_EXPECTED_CGU_REUSE};
 
 pub fn assert_module_sources(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
@@ -62,11 +60,11 @@ struct AssertModuleSource<'tcx> {
 
 impl AssertModuleSource<'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
-        let (expected_reuse, comp_kind) = if attr.check_name(ATTR_PARTITION_REUSED) {
+        let (expected_reuse, comp_kind) = if attr.check_name(sym::rustc_partition_reused) {
             (CguReuse::PreLto, ComparisonKind::AtLeast)
-        } else if attr.check_name(ATTR_PARTITION_CODEGENED) {
+        } else if attr.check_name(sym::rustc_partition_codegened) {
             (CguReuse::No, ComparisonKind::Exact)
-        } else if attr.check_name(ATTR_EXPECTED_CGU_REUSE) {
+        } else if attr.check_name(sym::rustc_expected_cgu_reuse) {
             match &*self.field(attr, sym::kind).as_str() {
                 "no" => (CguReuse::No, ComparisonKind::Exact),
                 "pre-lto" => (CguReuse::PreLto, ComparisonKind::Exact),
