@@ -937,7 +937,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn add_handler(&mut self, catch_switch: &'ll Value, handler: &'ll BasicBlock) {
         unsafe {
-            llvm::LLVMRustAddHandler(catch_switch, handler);
+            llvm::LLVMAddHandler(catch_switch, handler);
         }
     }
 

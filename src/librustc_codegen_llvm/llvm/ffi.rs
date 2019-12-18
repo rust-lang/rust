@@ -913,7 +913,7 @@ extern "C" {
                                 NumHandlers: c_uint,
                                 Name: *const c_char)
                                 -> Option<&'a Value>;
-    pub fn LLVMRustAddHandler(CatchSwitch: &'a Value, Handler: &'a BasicBlock);
+    pub fn LLVMAddHandler(CatchSwitch: &'a Value, Handler: &'a BasicBlock);
     pub fn LLVMSetPersonalityFn(Func: &'a Value, Pers: &'a Value);
 
     // Add a case to the switch instruction
