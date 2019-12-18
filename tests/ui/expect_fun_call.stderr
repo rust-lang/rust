@@ -66,5 +66,11 @@ error: use of `expect` followed by a function call
 LL |     Some(true).expect(&format!("key {}, {}", 1, 2));
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("key {}, {}", 1, 2))`
 
-error: aborting due to 11 previous errors
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:92:17
+   |
+LL |         opt_ref.expect(&format!("{:?}", opt_ref));
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("{:?}", opt_ref))`
+
+error: aborting due to 12 previous errors
 

@@ -84,4 +84,11 @@ fn main() {
 
     //Issue #3839
     Some(true).expect(&format!("key {}, {}", 1, 2));
+
+    //Issue #4912 - the receiver is a &Option
+    {
+        let opt = Some(1);
+        let opt_ref = &opt;
+        opt_ref.expect(&format!("{:?}", opt_ref));
+    }
 }
