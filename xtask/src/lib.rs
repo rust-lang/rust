@@ -144,6 +144,7 @@ pub fn run_fuzzer() -> Result<()> {
 }
 
 pub fn reformat_staged_files() -> Result<()> {
+    run_rustfmt(Mode::Overwrite)?;
     let root = project_root();
     let output = Command::new("git")
         .arg("diff")
