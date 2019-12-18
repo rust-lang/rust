@@ -3,7 +3,7 @@
 use std::iter;
 
 use hir_def::{
-    path::{Path, PathKind, PathSegment},
+    path::{Path, PathSegment},
     resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
     AssocItemId, ContainerId, Lookup,
 };
@@ -32,7 +32,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         path: &Path,
         id: ExprOrPatId,
     ) -> Option<Ty> {
-        let (value, self_subst) = if let PathKind::Type(type_ref) = path.kind() {
+        let (value, self_subst) = if let Some(type_ref) = path.type_anchor() {
             if path.segments().is_empty() {
                 // This can't actually happen syntax-wise
                 return None;

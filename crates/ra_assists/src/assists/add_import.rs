@@ -590,7 +590,7 @@ fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
             }
             ps.push(chain.into());
         }
-        hir::PathKind::Type(_) | hir::PathKind::DollarCrate(_) => return None,
+        hir::PathKind::DollarCrate(_) => return None,
     }
     ps.extend(path.segments().iter().map(|it| it.name.to_string().into()));
     Some(ps)

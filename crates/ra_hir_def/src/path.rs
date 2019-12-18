@@ -26,8 +26,6 @@ pub enum PathKind {
     Crate,
     /// Absolute path (::foo)
     Abs,
-    /// Type based path like `<T>::foo`
-    Type(Box<TypeRef>),
     /// `$crate` from macro expansion
     DollarCrate(CrateId),
 }
@@ -84,6 +82,8 @@ impl ModPath {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
+    /// Type based path like `<T>::foo`
+    type_anchor: Option<Box<TypeRef>>,
     mod_path: ModPath,
     /// Invariant: the same len as self.path.segments
     generic_args: Vec<Option<Arc<GenericArgs>>>,
@@ -126,7 +126,7 @@ impl Path {
 
     /// Converts an `ast::NameRef` into a single-identifier `Path`.
     pub(crate) fn from_name_ref(name_ref: &ast::NameRef) -> Path {
-        Path { mod_path: name_ref.as_name().into(), generic_args: vec![None] }
+        Path { type_anchor: None, mod_path: name_ref.as_name().into(), generic_args: vec![None] }
     }
 
     /// `true` if this path is just a standalone `self`
@@ -136,6 +136,10 @@ impl Path {
 
     pub fn kind(&self) -> &PathKind {
         &self.mod_path.kind
+    }
+
+    pub fn type_anchor(&self) -> Option<&TypeRef> {
+        self.type_anchor.as_ref().map(|it| &**it)
     }
 
     pub fn segments(&self) -> PathSegments<'_> {
@@ -154,6 +158,7 @@ impl Path {
             return None;
         }
         let res = Path {
+            type_anchor: self.type_anchor.clone(),
             mod_path: ModPath {
                 kind: self.mod_path.kind.clone(),
                 segments: self.mod_path.segments[..self.mod_path.segments.len() - 1].to_vec(),
@@ -226,6 +231,7 @@ impl GenericArgs {
 impl From<Name> for Path {
     fn from(name: Name) -> Path {
         Path {
+            type_anchor: None,
             mod_path: ModPath::from_simple_segments(PathKind::Plain, iter::once(name)),
             generic_args: vec![None],
         }

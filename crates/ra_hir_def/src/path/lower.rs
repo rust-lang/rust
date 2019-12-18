@@ -22,6 +22,7 @@ pub(super) use lower_use::lower_use_tree;
 /// It correctly handles `$crate` based path from macro call.
 pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
     let mut kind = PathKind::Plain;
+    let mut type_anchor = None;
     let mut segments = Vec::new();
     let mut generic_args = Vec::new();
     loop {
@@ -63,7 +64,8 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                 match trait_ref {
                     // <T>::foo
                     None => {
-                        kind = PathKind::Type(Box::new(self_type));
+                        type_anchor = Some(Box::new(self_type));
+                        kind = PathKind::Plain;
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
@@ -111,7 +113,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
     segments.reverse();
     generic_args.reverse();
     let mod_path = ModPath { kind, segments };
-    return Some(Path { mod_path, generic_args });
+    return Some(Path { type_anchor, mod_path, generic_args });
 
     fn qualifier(path: &ast::Path) -> Option<ast::Path> {
         if let Some(q) = path.qualifier() {
