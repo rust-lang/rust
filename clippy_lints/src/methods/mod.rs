@@ -738,18 +738,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calling `.step_by(0)` on iterators,
-    /// which never terminates.
+    /// **What it does:** Checks for calling `.step_by(0)` on iterators which panics.
     ///
-    /// **Why is this bad?** This very much looks like an oversight, since with
-    /// `loop { .. }` there is an obvious better way to endlessly loop.
+    /// **Why is this bad?** This very much looks like an oversight. Use `panic!()` instead if you
+    /// actually intend to panic.
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
-    /// for x in (5..5).step_by(0) {
-    ///     ..
+    /// ```should_panic
+    /// for x in (0..100).step_by(0) {
+    ///     //..
     /// }
     /// ```
     pub ITERATOR_STEP_BY_ZERO,
