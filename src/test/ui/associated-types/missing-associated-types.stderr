@@ -38,8 +38,8 @@ LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
    |                     first non-auto trait
    |                     trait alias used in trait object type (first use)
 
-error[E0191]: the value of the associated types `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Sub`), `A` (from trait `Z`), `B` (from trait `Z`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Div`) must be specified
-  --> $DIR/missing-associated-types.rs:15:21
+error[E0191]: the value of the associated types `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Sub`), `A` (from trait `Z`), `B` (from trait `Z`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Add`) must be specified
+  --> $DIR/missing-associated-types.rs:15:43
    |
 LL |     type A;
    |     ------- `A` defined here
