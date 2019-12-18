@@ -82,7 +82,8 @@ impl ModPath {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
-    /// Type based path like `<T>::foo`
+    /// Type based path like `<T>::foo`.
+    /// Note that paths like `<Type as Trait>::foo` are desugard to `Trait::<Self=Type>::foo`.
     type_anchor: Option<Box<TypeRef>>,
     mod_path: ModPath,
     /// Invariant: the same len as self.path.segments
