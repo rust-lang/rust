@@ -814,6 +814,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
     }
 
+    /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
+    /// the type parameter's name as a placeholder.
     fn complain_about_missing_type_params(
         &self,
         missing_type_params: Vec<String>,
@@ -1010,15 +1012,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty::TraitRef::new(trait_def_id, substs)
     }
 
-    fn create_substs_for_ast_trait_ref<'a>(
+    /// When the code is using the `Fn` traits directly, instead of the `Fn(A) -> B` syntax, emit
+    /// an error and attempt to build a reasonable structured suggestion.
+    fn complain_about_internal_fn_trait(
         &self,
         span: Span,
         trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
         trait_segment: &'a hir::PathSegment,
-    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>) {
-        debug!("create_substs_for_ast_trait_ref(trait_segment={:?})", trait_segment);
-
+    ) {
         let trait_def = self.tcx().trait_def(trait_def_id);
 
         if !self.tcx().features().unboxed_closures
@@ -1068,6 +1069,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             err.emit();
         }
+    }
+
+    fn create_substs_for_ast_trait_ref<'a>(
+        &self,
+        span: Span,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        trait_segment: &'a hir::PathSegment,
+    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>) {
+        debug!("create_substs_for_ast_trait_ref(trait_segment={:?})", trait_segment);
+
+        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment);
 
         self.create_substs_for_ast_path(
             span,
@@ -1452,8 +1465,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
         for (base_trait_ref, span) in regular_traits_refs_spans {
-            debug!("conv_object_ty_poly_trait_ref regular_trait_ref `{:?}`", base_trait_ref);
-            let mut new_bounds = vec![];
             for trait_ref in traits::elaborate_trait_ref(tcx, base_trait_ref) {
                 debug!(
                     "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
@@ -1486,17 +1497,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // but actually supporting that would "expand" to an infinitely-long type
                         // `fix $ τ → dyn MyTrait<MyOutput = X, Output = <τ as MyTrait>::MyOutput`.
                         //
-                        // Instead, we force the user to write `dyn MyTrait<MyOutput = X, Output = X>`,
-                        // which is uglier but works. See the discussion in #56288 for alternatives.
+                        // Instead, we force the user to write
+                        // `dyn MyTrait<MyOutput = X, Output = X>`, which is uglier but works. See
+                        // the discussion in #56288 for alternatives.
                         if !references_self {
                             // Include projections defined on supertraits.
-                            new_bounds.push((pred, span));
+                            bounds.projection_bounds.push((pred, span));
                         }
                     }
                     _ => (),
                 }
             }
-            bounds.projection_bounds.extend(new_bounds);
         }
 
         for (projection_bound, _) in &bounds.projection_bounds {
@@ -1598,9 +1609,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty
     }
 
+    /// When there are any missing associated types, emit an E0191 error and attempt to supply a
+    /// reasonable suggestion on how to write it. For the case of multiple associated types in the
+    /// same trait bound have the same name (as they come from different super-traits), we instead
+    /// emit a generic note suggesting using a `where` clause to constraint instead.
     fn complain_about_missing_associated_types(
         &self,
-        mut associated_types: FxHashMap<Span, BTreeSet<DefId>>,
+        associated_types: FxHashMap<Span, BTreeSet<DefId>>,
         potential_assoc_types: Vec<Span>,
         trait_bounds: &[hir::PolyTraitRef],
     ) {
@@ -1608,17 +1623,24 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return;
         }
         let tcx = self.tcx();
+        // FIXME: Marked `mut` so that we can replace the spans further below with a more
+        // appropriate one, but this should be handled earlier in the span assignment.
+        let mut associated_types: FxHashMap<Span, Vec<_>> = associated_types
+            .into_iter()
+            .map(|(span, def_ids)| {
+                (span, def_ids.into_iter().map(|did| tcx.associated_item(did)).collect())
+            })
+            .collect();
         let mut names = vec![];
 
         // Account for things like `dyn Foo + 'a`, like in tests `issue-22434.rs` and
         // `issue-22560.rs`.
         let mut trait_bound_spans: Vec<Span> = vec![];
-        for (span, item_def_ids) in &associated_types {
-            if !item_def_ids.is_empty() {
+        for (span, items) in &associated_types {
+            if !items.is_empty() {
                 trait_bound_spans.push(*span);
             }
-            for item_def_id in item_def_ids {
-                let assoc_item = tcx.associated_item(*item_def_id);
+            for assoc_item in items {
                 let trait_def_id = assoc_item.container.id();
                 names.push(format!(
                     "`{}` (from trait `{}`)",
@@ -1657,7 +1679,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     trait_bound_spans = vec![segment.ident.span];
                     associated_types = associated_types
                         .into_iter()
-                        .map(|(_, defs)| (segment.ident.span, defs))
+                        .map(|(_, items)| (segment.ident.span, items))
                         .collect();
                 }
                 _ => {}
@@ -1675,16 +1697,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut suggestions = vec![];
         let mut types_count = 0;
         let mut where_constraints = vec![];
-        for (span, def_ids) in &associated_types {
-            let assoc_items: Vec<_> =
-                def_ids.iter().map(|def_id| tcx.associated_item(*def_id)).collect();
+        for (span, assoc_items) in &associated_types {
             let mut names: FxHashMap<_, usize> = FxHashMap::default();
-            for item in &assoc_items {
+            for item in assoc_items {
                 types_count += 1;
                 *names.entry(item.ident.name).or_insert(0) += 1;
             }
             let mut dupes = false;
-            for item in &assoc_items {
+            for item in assoc_items {
                 let prefix = if names[&item.ident.name] > 1 {
                     let trait_def_id = item.container.id();
                     dupes = true;
@@ -1738,16 +1758,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
         if suggestions.len() != 1 {
             // We don't need this label if there's an inline suggestion, show otherwise.
-            for (span, def_ids) in &associated_types {
-                let assoc_items: Vec<_> =
-                    def_ids.iter().map(|def_id| tcx.associated_item(*def_id)).collect();
+            for (span, assoc_items) in &associated_types {
                 let mut names: FxHashMap<_, usize> = FxHashMap::default();
-                for item in &assoc_items {
+                for item in assoc_items {
                     types_count += 1;
                     *names.entry(item.ident.name).or_insert(0) += 1;
                 }
                 let mut label = vec![];
-                for item in &assoc_items {
+                for item in assoc_items {
                     let postfix = if names[&item.ident.name] > 1 {
                         let trait_def_id = item.container.id();
                         format!(" (from trait `{}`)", tcx.def_path_str(trait_def_id))
