@@ -207,8 +207,8 @@ pub fn lines_match(expected: &str, actual: &str) -> bool {
     // Let's not deal with / vs \ (windows...)
     // First replace backslash-escaped backslashes with forward slashes
     // which can occur in, for example, JSON output
-    let expected = expected.replace("\\\\", "/").replace("\\", "/");
-    let mut actual: &str = &actual.replace("\\\\", "/").replace("\\", "/");
+    let expected = expected.replace(r"\\", "/").replace(r"\", "/");
+    let mut actual: &str = &actual.replace(r"\\", "/").replace(r"\", "/");
     for (i, part) in expected.split("[..]").enumerate() {
         match actual.find(part) {
             Some(j) => {
