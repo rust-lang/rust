@@ -13,6 +13,8 @@ use errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::cold_path;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
+#[cfg(parallel_compiler)]
+use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -82,6 +84,19 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// for some compile-time benchmarks.
     #[inline(always)]
     pub(super) fn try_get(tcx: TyCtxt<'tcx>, span: Span, key: &Q::Key) -> TryGetJob<'a, 'tcx, Q> {
+        // Handling the `query_blocked_prof_timer` is a bit weird because of the
+        // control flow in this function: Blocking is implemented by
+        // awaiting a running job and, once that is done, entering the loop below
+        // again from the top. In that second iteration we will hit the
+        // cache which provides us with the information we need for
+        // finishing the "query-blocked" event.
+        //
+        // We thus allocate `query_blocked_prof_timer` outside the loop,
+        // initialize it during the first iteration and finish it during the
+        // second iteration.
+        #[cfg(parallel_compiler)]
+        let mut query_blocked_prof_timer: Option<TimingGuard<'_>> = None;
+
         let cache = Q::query_cache(tcx);
         loop {
             // We compute the key's hash once and then use it for both the
@@ -95,7 +110,17 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             if let Some((_, value)) =
                 lock.results.raw_entry().from_key_hashed_nocheck(key_hash, key)
             {
-                tcx.prof.query_cache_hit(value.index.into());
+                if unlikely!(tcx.prof.enabled()) {
+                    tcx.prof.query_cache_hit(value.index.into());
+
+                    #[cfg(parallel_compiler)]
+                    {
+                        if let Some(prof_timer) = query_blocked_prof_timer.take() {
+                            prof_timer.finish_with_query_invocation_id(value.index.into());
+                        }
+                    }
+                }
+
                 let result = (value.value.clone(), value.index);
                 #[cfg(debug_assertions)]
                 {
@@ -103,9 +128,6 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 }
                 return TryGetJob::JobCompleted(result);
             }
-
-            #[cfg(parallel_compiler)]
-            let query_blocked_prof_timer;
 
             let job = match lock.active.entry((*key).clone()) {
                 Entry::Occupied(entry) => {
@@ -116,7 +138,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             // self-profiler.
                             #[cfg(parallel_compiler)]
                             {
-                                query_blocked_prof_timer = tcx.prof.query_blocked(Q::NAME);
+                                query_blocked_prof_timer = Some(tcx.prof.query_blocked());
                             }
 
                             job.clone()
@@ -152,11 +174,6 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             #[cfg(parallel_compiler)]
             {
                 let result = job.r#await(tcx, span);
-
-                // This `drop()` is not strictly necessary as the binding
-                // would go out of scope anyway. But it's good to have an
-                // explicit marker of how far the measurement goes.
-                drop(query_blocked_prof_timer);
 
                 if let Err(cycle) = result {
                     return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));

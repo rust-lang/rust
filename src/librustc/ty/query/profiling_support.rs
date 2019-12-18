@@ -1,4 +1,3 @@
-
 use crate::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use crate::hir::map::definitions::DefPathData;
 use crate::ty::context::TyCtxt;
