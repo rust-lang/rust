@@ -18,6 +18,20 @@ pub struct ModPath {
     pub segments: Vec<Name>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PathKind {
+    Plain,
+    /// `self::` is `Super(0)`
+    Super(u8),
+    Crate,
+    /// Absolute path (::foo)
+    Abs,
+    /// Type based path like `<T>::foo`
+    Type(Box<TypeRef>),
+    /// `$crate` from macro expansion
+    DollarCrate(CrateId),
+}
+
 impl ModPath {
     pub fn from_src(path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
         lower::lower_path(path, hygiene).map(|it| it.mod_path)
@@ -95,20 +109,6 @@ pub struct GenericArgs {
 pub enum GenericArg {
     Type(TypeRef),
     // or lifetime...
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PathKind {
-    Plain,
-    /// `self::` is `Super(0)`
-    Super(u8),
-    Crate,
-    /// Absolute path (::foo)
-    Abs,
-    /// Type based path like `<T>::foo`
-    Type(Box<TypeRef>),
-    /// `$crate` from macro expansion
-    DollarCrate(CrateId),
 }
 
 impl Path {
