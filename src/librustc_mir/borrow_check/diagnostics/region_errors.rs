@@ -63,10 +63,7 @@ enum Trace {
 
 /// A collection of errors encountered during region inference. This is needed to efficiently
 /// report errors after borrow checking.
-#[derive(Clone, Debug)]
-crate struct RegionErrors<'tcx> {
-    errors: smallvec::SmallVec<[RegionErrorKind<'tcx>; 4]>,
-}
+crate type RegionErrors<'tcx> = smallvec::SmallVec<[RegionErrorKind<'tcx>; 4]>;
 
 #[derive(Clone, Debug)]
 crate enum RegionErrorKind<'tcx> {
@@ -153,22 +150,6 @@ pub struct ErrorConstraintInfo {
     // Category and span for best blame constraint
     pub(super) category: ConstraintCategory,
     pub(super) span: Span,
-}
-
-impl<'tcx> RegionErrors<'tcx> {
-    pub fn new() -> Self {
-        RegionErrors {
-            errors: smallvec::SmallVec::new(),
-        }
-    }
-
-    pub fn push(&mut self, error: RegionErrorKind<'tcx>) {
-        self.errors.push(error)
-    }
-
-    pub fn into_iter(self) -> impl Iterator<Item=RegionErrorKind<'tcx>> {
-        self.errors.into_iter()
-    }
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
