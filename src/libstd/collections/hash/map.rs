@@ -2464,7 +2464,7 @@ pub struct RandomState {
 }
 
 pub(super) const DETERMINISTIC_HASHING_ENABLED: u8 = 0x01;
-pub(super) const RANDOM_STATE_CONSTRUCTED: u8 = 0x02;
+pub(super) const RANDOM_STATE_CONSTRUCTED_BEFORE_DETERMINISTIC_HASHING_ENABLED: u8 = 0x02;
 
 pub(super) static HASHING_FLAGS: AtomicU8 = AtomicU8::new(0);
 
@@ -2483,7 +2483,11 @@ impl RandomState {
     // rand
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn new() -> RandomState {
-        let flags = HASHING_FLAGS.fetch_or(RANDOM_STATE_CONSTRUCTED, Ordering::SeqCst);
+        let flags = HASHING_FLAGS.compare_and_swap(
+            0,
+            RANDOM_STATE_CONSTRUCTED_BEFORE_DETERMINISTIC_HASHING_ENABLED,
+            Ordering::SeqCst,
+        );
         if (flags & DETERMINISTIC_HASHING_ENABLED) != 0 {
             RandomState { k0: 0, k1: 0 }
         } else {

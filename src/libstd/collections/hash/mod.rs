@@ -3,14 +3,15 @@
 pub mod map;
 pub mod set;
 
-/// Returns `true` if deterministic hashing was successfully
-/// enabled. A call to `enable_deterministic_hashing` will fail (i.e.,
-/// return `false`) if a `RandomState` instance was already constructed
-/// while deterministic hashing was disabled.
+/// Enables deterministic hashing, which is useful when repeatability
+/// is desired, e.g., during debugging. Returns `true` if no
+/// `RandomState` instance was constructed prior to the first
+/// invocation of `enable_deterministic_hashing`. Put another way,
+/// if `enable_deterministic_hashing` returns `true`, then every
+/// `HashMap` or `HashSet`'s hasher that isn't otherwise specified
+/// will have been generated without using randomness.
 ///
-/// Deterministic hashing is useful when repeatability is desired,
-/// e.g., during debugging. A possible use is to structure one's
-/// program as follows:
+/// A possible use is to structure one's program as follows:
 ///
 /// ```
 /// #![feature(deterministic_hashing)]
@@ -31,10 +32,6 @@ pub mod set;
 #[unstable(feature = "deterministic_hashing", reason = "new API", issue = "0")]
 pub fn enable_deterministic_hashing() -> bool {
     use crate::sync::atomic::Ordering;
-    let flags = map::HASHING_FLAGS.compare_and_swap(
-        0,
-        map::DETERMINISTIC_HASHING_ENABLED,
-        Ordering::SeqCst,
-    );
-    flags == 0 || (flags & map::DETERMINISTIC_HASHING_ENABLED) != 0
+    let flags = map::HASHING_FLAGS.fetch_or(map::DETERMINISTIC_HASHING_ENABLED, Ordering::SeqCst);
+    (flags & map::RANDOM_STATE_CONSTRUCTED_BEFORE_DETERMINISTIC_HASHING_ENABLED) == 0
 }
