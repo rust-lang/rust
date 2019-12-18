@@ -3,7 +3,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
 use smallvec::SmallVec;
-use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, AtomicUsize, Ordering};
+use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, AtomicU64, Ordering};
 use rustc_data_structures::sharded::{self, Sharded};
 use std::sync::atomic::Ordering::SeqCst;
 use std::env;
@@ -485,8 +485,8 @@ impl DepGraph {
         if cfg!(debug_assertions) {
             let current_dep_graph = &self.data.as_ref().unwrap().current;
 
-            Some((current_dep_graph.total_read_count.load(SeqCst) as u64,
-                  current_dep_graph.total_duplicate_read_count.load(SeqCst) as u64))
+            Some((current_dep_graph.total_read_count.load(SeqCst),
+                  current_dep_graph.total_duplicate_read_count.load(SeqCst)))
         } else {
             None
         }
@@ -970,8 +970,8 @@ pub(super) struct CurrentDepGraph {
 
     /// These are simple counters that are for profiling and
     /// debugging and only active with `debug_assertions`.
-    total_read_count: AtomicUsize,
-    total_duplicate_read_count: AtomicUsize,
+    total_read_count: AtomicU64,
+    total_duplicate_read_count: AtomicU64,
 }
 
 impl CurrentDepGraph {
@@ -1012,8 +1012,8 @@ impl CurrentDepGraph {
             )),
             anon_id_seed: stable_hasher.finish(),
             forbidden_edge,
-            total_read_count: AtomicUsize::new(0),
-            total_duplicate_read_count: AtomicUsize::new(0),
+            total_read_count: AtomicU64::new(0),
+            total_duplicate_read_count: AtomicU64::new(0),
         }
     }
 
