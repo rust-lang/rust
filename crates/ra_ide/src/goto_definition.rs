@@ -817,4 +817,45 @@ mod tests {
             "T",
         );
     }
+
+    #[test]
+    fn goto_within_macro() {
+        check_goto(
+            "
+            //- /lib.rs
+            macro_rules! id {
+                ($($tt:tt)*) => ($($tt)*)
+            }
+
+            fn foo() {
+                let x = 1;
+                id!({
+                    let y = <|>x;
+                    let z = y;
+                });
+            }
+            ",
+            "x BIND_PAT FileId(1) [69; 70)",
+            "x",
+        );
+
+        check_goto(
+            "
+            //- /lib.rs
+            macro_rules! id {
+                ($($tt:tt)*) => ($($tt)*)
+            }
+
+            fn foo() {
+                let x = 1;
+                id!({
+                    let y = x;
+                    let z = <|>y;
+                });
+            }
+            ",
+            "y BIND_PAT FileId(1) [98; 99)",
+            "y",
+        );
+    }
 }
