@@ -285,8 +285,10 @@ mod tests {
             mod a;
             mod b;
             enum E { X(Foo<|>) }
+
             //- /a.rs
             struct Foo;
+
             //- /b.rs
             struct Foo;
             ",
@@ -300,6 +302,7 @@ mod tests {
             "
             //- /lib.rs
             mod <|>foo;
+
             //- /foo.rs
             // empty
             ",
@@ -310,6 +313,7 @@ mod tests {
             "
             //- /lib.rs
             mod <|>foo;
+
             //- /foo/mod.rs
             // empty
             ",
