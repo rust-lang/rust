@@ -4,7 +4,7 @@ use crate::hash;
 use crate::io;
 use crate::iter;
 use crate::mem;
-use crate::net::{hton, ntoh, IpAddr, Ipv4Addr, Ipv6Addr};
+use crate::net::{htons, ntohs, IpAddr, Ipv4Addr, Ipv6Addr};
 use crate::option;
 use crate::slice;
 use crate::sys::net::netc as c;
@@ -276,7 +276,7 @@ impl SocketAddrV4 {
         SocketAddrV4 {
             inner: c::sockaddr_in {
                 sin_family: c::AF_INET as c::sa_family_t,
-                sin_port: hton(port),
+                sin_port: htons(port),
                 sin_addr: *ip.as_inner(),
                 ..unsafe { mem::zeroed() }
             },
@@ -326,7 +326,7 @@ impl SocketAddrV4 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 {
-        ntoh(self.inner.sin_port)
+        ntohs(self.inner.sin_port)
     }
 
     /// Changes the port number associated with this socket address.
@@ -342,7 +342,7 @@ impl SocketAddrV4 {
     /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_port(&mut self, new_port: u16) {
-        self.inner.sin_port = hton(new_port);
+        self.inner.sin_port = htons(new_port);
     }
 }
 
@@ -368,7 +368,7 @@ impl SocketAddrV6 {
         SocketAddrV6 {
             inner: c::sockaddr_in6 {
                 sin6_family: c::AF_INET6 as c::sa_family_t,
-                sin6_port: hton(port),
+                sin6_port: htons(port),
                 sin6_addr: *ip.as_inner(),
                 sin6_flowinfo: flowinfo,
                 sin6_scope_id: scope_id,
@@ -420,7 +420,7 @@ impl SocketAddrV6 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 {
-        ntoh(self.inner.sin6_port)
+        ntohs(self.inner.sin6_port)
     }
 
     /// Changes the port number associated with this socket address.
@@ -436,7 +436,7 @@ impl SocketAddrV6 {
     /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_port(&mut self, new_port: u16) {
-        self.inner.sin6_port = hton(new_port);
+        self.inner.sin6_port = htons(new_port);
     }
 
     /// Returns the flow information associated with this address.
