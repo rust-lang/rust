@@ -24,7 +24,6 @@
 #![feature(integer_atomics)]
 #![feature(test)]
 #![feature(associated_type_bounds)]
-#![feature(cfg_target_has_atomic)]
 
 #![cfg_attr(unix, feature(libc))]
 
