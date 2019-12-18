@@ -102,7 +102,7 @@ macro_rules! foobar {
     let (expansion, (token_map, content)) = expand_and_map(&rules, "foobar!(baz);");
 
     let get_text = |id, kind| -> String {
-        content[token_map.range_by_token(id).unwrap().range(kind).unwrap()].to_string()
+        content[token_map.range_by_token(id).unwrap().by_kind(kind).unwrap()].to_string()
     };
 
     assert_eq!(expansion.token_trees.len(), 4);

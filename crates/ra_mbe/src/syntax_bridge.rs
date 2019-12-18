@@ -19,7 +19,7 @@ pub enum TokenTextRange {
 }
 
 impl TokenTextRange {
-    pub fn range(self, kind: SyntaxKind) -> Option<TextRange> {
+    pub fn by_kind(self, kind: SyntaxKind) -> Option<TextRange> {
         match self {
             TokenTextRange::Token(it) => Some(it),
             TokenTextRange::Delimiter(open, close) => match kind {
