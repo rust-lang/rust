@@ -1,24 +1,26 @@
 //! FIXME: write short doc here
 
-use ra_db::SourceDatabase;
+use hir::db::AstDatabase;
 use ra_syntax::{
-    algo::ancestors_at_offset,
     ast::{self, ArgListOwner},
-    match_ast, AstNode, SyntaxNode, TextUnit,
+    match_ast, AstNode, SyntaxNode,
 };
 use test_utils::tested_by;
 
-use crate::{db::RootDatabase, CallInfo, FilePosition, FunctionSignature};
+use crate::{
+    db::RootDatabase, expand::descend_into_macros, CallInfo, FilePosition, FunctionSignature,
+};
 
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
-    let parse = db.parse(position.file_id);
-    let syntax = parse.tree().syntax().clone();
+    let file = db.parse_or_expand(position.file_id.into())?;
+    let token = file.token_at_offset(position.offset).next()?;
+    let token = descend_into_macros(db, position.file_id, token);
 
     // Find the calling expression and it's NameRef
-    let calling_node = FnCallNode::with_node(&syntax, position.offset)?;
+    let calling_node = FnCallNode::with_node(&token.value.parent())?;
     let name_ref = calling_node.name_ref()?;
-    let name_ref = hir::InFile::new(position.file_id.into(), name_ref.syntax());
+    let name_ref = token.with_value(name_ref.syntax());
 
     let analyzer = hir::SourceAnalyzer::new(db, name_ref, None);
     let (mut call_info, has_self) = match &calling_node {
@@ -93,8 +95,8 @@ enum FnCallNode {
 }
 
 impl FnCallNode {
-    fn with_node(syntax: &SyntaxNode, offset: TextUnit) -> Option<FnCallNode> {
-        ancestors_at_offset(syntax, offset).find_map(|node| {
+    fn with_node(syntax: &SyntaxNode) -> Option<FnCallNode> {
+        syntax.ancestors().find_map(|node| {
             match_ast! {
                 match node {
                     ast::CallExpr(it) => { Some(FnCallNode::CallExpr(it)) },
@@ -588,5 +590,26 @@ fn f() {
 
         assert_eq!(info.label(), "foo!()");
         assert_eq!(info.doc().map(|it| it.into()), Some("empty macro".to_string()));
+    }
+
+    #[test]
+    fn fn_signature_for_call_in_macro() {
+        let info = call_info(
+            r#"
+            macro_rules! id {
+                ($($tt:tt)*) => { $($tt)* }
+            }
+            fn foo() {
+
+            }
+            id! {
+                fn bar() {
+                    foo(<|>);
+                }
+            }
+            "#,
+        );
+
+        assert_eq!(info.label(), "fn foo()");
     }
 }
