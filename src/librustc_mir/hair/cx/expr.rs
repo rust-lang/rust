@@ -137,8 +137,11 @@ fn apply_adjustment<'a, 'tcx>(
                 arg: expr.to_ref(),
             }
         }
-        Adjust::Borrow(AutoBorrow::RawPtr(mutbl)) => {
-            raw_ref_shim(cx, expr.to_ref(), adjustment.target, mutbl, span, temp_lifetime)
+        Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
+            ExprKind::AddressOf {
+                mutability,
+                arg: expr.to_ref(),
+            }
         }
     };
 
@@ -262,17 +265,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             }
         }
 
-        hir::ExprKind::AddrOf(hir::BorrowKind::Raw, mutbl, ref arg) => {
-            cx.tcx.sess
-                .struct_span_err(
-                    expr.span,
-                    "raw borrows are not yet implemented"
-                )
-                .note("for more information, see https://github.com/rust-lang/rust/issues/64490")
-                .emit();
-
-            // Lower to an approximation to avoid further errors.
-            raw_ref_shim(cx, arg.to_ref(), expr_ty, mutbl, expr.span, temp_lifetime)
+        hir::ExprKind::AddrOf(hir::BorrowKind::Raw, mutability, ref arg) => {
+            ExprKind::AddressOf {
+                mutability,
+                arg: arg.to_ref(),
+            }
         }
 
         hir::ExprKind::Block(ref blk, _) => ExprKind::Block { body: &blk },
@@ -1081,67 +1078,6 @@ fn convert_var(
     }
 }
 
-
-/// Fake `&raw [mut|const] expr` using a borrow and a cast until `AddressOf`
-/// exists in MIR.
-fn raw_ref_shim<'tcx>(
-    cx: &mut Cx<'_, 'tcx>,
-    arg: ExprRef<'tcx>,
-    ty: Ty<'tcx>,
-    mutbl: hir::Mutability,
-    span: Span,
-    temp_lifetime: Option<region::Scope>,
-) -> ExprKind<'tcx> {
-    let arg_tm = if let ty::RawPtr(type_mutbl) = ty.kind {
-        type_mutbl
-    } else {
-        bug!("raw_ref_shim called with non-raw pointer type");
-    };
-    // Convert this to a suitable `&foo` and
-    // then an unsafe coercion.
-    let borrow_expr = Expr {
-        temp_lifetime,
-        ty: cx.tcx.mk_ref(cx.tcx.lifetimes.re_erased, arg_tm),
-        span,
-        kind: ExprKind::Borrow {
-            borrow_kind: mutbl.to_borrow_kind(),
-            arg,
-        },
-    };
-    let cast_expr = Expr {
-        temp_lifetime,
-        ty,
-        span,
-        kind: ExprKind::Cast { source: borrow_expr.to_ref() }
-    };
-
-    // To ensure that both implicit and explicit coercions are
-    // handled the same way, we insert an extra layer of indirection here.
-    // For explicit casts (e.g., 'foo as *const T'), the source of the 'Use'
-    // will be an ExprKind::Hair with the appropriate cast expression. Here,
-    // we make our Use source the generated Cast from the original coercion.
-    //
-    // In both cases, this outer 'Use' ensures that the inner 'Cast' is handled by
-    // as_operand, not by as_rvalue - causing the cast result to be stored in a temporary.
-    // Ordinary, this is identical to using the cast directly as an rvalue. However, if the
-    // source of the cast was previously borrowed as mutable, storing the cast in a
-    // temporary gives the source a chance to expire before the cast is used. For
-    // structs with a self-referential *mut ptr, this allows assignment to work as
-    // expected.
-    //
-    // For example, consider the type 'struct Foo { field: *mut Foo }',
-    // The method 'fn bar(&mut self) { self.field = self }'
-    // triggers a coercion from '&mut self' to '*mut self'. In order
-    // for the assignment to be valid, the implicit borrow
-    // of 'self' involved in the coercion needs to end before the local
-    // containing the '*mut T' is assigned to 'self.field' - otherwise,
-    // we end up trying to assign to 'self.field' while we have another mutable borrow
-    // active.
-    //
-    // We only need to worry about this kind of thing for coercions from refs to ptrs,
-    // since they get rid of a borrow implicitly.
-    ExprKind::Use { source: cast_expr.to_ref() }
-}
 
 fn bin_op(op: hir::BinOpKind) -> BinOp {
     match op {

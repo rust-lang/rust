@@ -728,13 +728,13 @@ impl Mutability {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum BorrowKind {
-    /// A raw borrow, `&raw const $expr` or `&raw mut $expr`.
-    /// The resulting type is either `*const T` or `*mut T`
-    /// where `T = typeof($expr)`.
-    Ref,
     /// A normal borrow, `&$expr` or `&mut $expr`.
     /// The resulting type is either `&'a T` or `&'a mut T`
     /// where `T = typeof($expr)` and `'a` is some lifetime.
+    Ref,
+    /// A raw borrow, `&raw const $expr` or `&raw mut $expr`.
+    /// The resulting type is either `*const T` or `*mut T`
+    /// where `T = typeof($expr)`.
     Raw,
 }
 

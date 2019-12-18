@@ -136,21 +136,9 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             // iterate backwards using indices.
             for i in (0..block_data.statements.len()).rev() {
                 let (retag_kind, place) = match block_data.statements[i].kind {
-                    // If we are casting *from* a reference, we may have to retag-as-raw.
-                    StatementKind::Assign(box(ref place, Rvalue::Cast(
-                        CastKind::Misc,
-                        ref src,
-                        dest_ty,
-                    ))) => {
-                        let src_ty = src.ty(&*local_decls, tcx);
-                        if src_ty.is_region_ptr() {
-                            // The only `Misc` casts on references are those creating raw pointers.
-                            assert!(dest_ty.is_unsafe_ptr());
-                            (RetagKind::Raw, place.clone())
-                        } else {
-                            // Some other cast, no retag
-                            continue
-                        }
+                    // Retag-as-raw after escaping to a raw pointer.
+                    StatementKind::Assign(box (ref place, Rvalue::AddressOf(..))) => {
+                        (RetagKind::Raw, place.clone())
                     }
                     // Assignments of reference or ptr type are the ones where we may have
                     // to update tags.  This includes `x = &[mut] ...` and hence
