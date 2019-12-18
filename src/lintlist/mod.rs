@@ -887,7 +887,7 @@ pub const ALL_LINTS: [Lint; 340] = [
         group: "correctness",
         desc: "using `Iterator::step_by(0)`, which produces an infinite iterator",
         deprecation: None,
-        module: "ranges",
+        module: "methods",
     },
     Lint {
         name: "just_underscores_and_digits",
