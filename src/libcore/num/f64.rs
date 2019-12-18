@@ -7,7 +7,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(not(bootstrap))]
 use crate::convert::FloatToInt;
 #[cfg(not(test))]
 use crate::intrinsics;
@@ -436,7 +435,6 @@ impl f64 {
     /// * Not be `NaN`
     /// * Not be infinite
     /// * Be representable in the return type `Int`, after truncating off its fractional part
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "float_approx_unchecked_to", issue = "67058")]
     #[inline]
     pub unsafe fn approx_unchecked_to<Int>(self) -> Int

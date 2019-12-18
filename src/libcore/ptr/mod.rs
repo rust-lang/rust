@@ -198,7 +198,7 @@ unsafe fn real_drop_in_place<T: ?Sized>(to_drop: &mut T) {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_ptr_null", since = "1.32.0"))]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.32.0")]
 pub const fn null<T>() -> *const T {
     0 as *const T
 }
@@ -216,7 +216,7 @@ pub const fn null<T>() -> *const T {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_ptr_null", since = "1.32.0"))]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.32.0")]
 pub const fn null_mut<T>() -> *mut T {
     0 as *mut T
 }
@@ -1062,7 +1062,7 @@ impl<T: ?Sized> *const T {
 
     /// Casts to a pointer of another type.
     #[stable(feature = "ptr_cast", since = "1.38.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0"))]
+    #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
     #[inline]
     pub const fn cast<U>(self) -> *const U {
         self as _
@@ -1310,11 +1310,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[unstable(feature = "ptr_offset_from", issue = "41079")]
-    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_ptr_offset_from"))]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079"),
-    )]
+    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
     #[inline]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
     where
@@ -1770,7 +1766,7 @@ impl<T: ?Sized> *mut T {
 
     /// Casts to a pointer of another type.
     #[stable(feature = "ptr_cast", since = "1.38.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0"))]
+    #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
     #[inline]
     pub const fn cast<U>(self) -> *mut U {
         self as _
@@ -2057,11 +2053,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[unstable(feature = "ptr_offset_from", issue = "41079")]
-    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_ptr_offset_from"))]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079"),
-    )]
+    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
     #[inline]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
     where

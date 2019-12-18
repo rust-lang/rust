@@ -1065,8 +1065,7 @@ impl CStr {
     /// ```
     #[inline]
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_cstr_unchecked"))]
-    #[cfg_attr(not(bootstrap), rustc_const_unstable(feature = "const_cstr_unchecked", issue = "0"))]
+    #[rustc_const_unstable(feature = "const_cstr_unchecked", issue = "0")]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
         &*(bytes as *const [u8] as *const CStr)
     }
@@ -1120,7 +1119,7 @@ impl CStr {
     /// [`CString`]: struct.CString.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_str_as_ptr", since = "1.32.0"))]
+    #[rustc_const_stable(feature = "const_str_as_ptr", since = "1.32.0")]
     pub const fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
     }
