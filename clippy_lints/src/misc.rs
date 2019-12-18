@@ -343,8 +343,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             ExprKind::Binary(ref cmp, ref left, ref right) => {
                 let op = cmp.node;
                 if op.is_comparison() {
-                    check_nan(cx, left, expr.span);
-                    check_nan(cx, right, expr.span);
+                    check_nan(cx, left, expr);
+                    check_nan(cx, right, expr);
                     check_to_owned(cx, left, right);
                     check_to_owned(cx, right, left);
                 }
@@ -440,21 +440,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
     }
 }
 
-fn check_nan(cx: &LateContext<'_, '_>, expr: &Expr, cmp_span: Span) {
-    if let Some((value, _)) = constant(cx, cx.tables, expr) {
-        let needs_lint = match value {
-            Constant::F32(num) => num.is_nan(),
-            Constant::F64(num) => num.is_nan(),
-            _ => false,
-        };
+fn check_nan(cx: &LateContext<'_, '_>, expr: &Expr, cmp_expr: &Expr) {
+    if_chain! {
+        if !in_constant(cx, cmp_expr.hir_id);
+        if let Some((value, _)) = constant(cx, cx.tables, expr);
+        then {
+            let needs_lint = match value {
+                Constant::F32(num) => num.is_nan(),
+                Constant::F64(num) => num.is_nan(),
+                _ => false,
+            };
 
-        if needs_lint {
-            span_lint(
-                cx,
-                CMP_NAN,
-                cmp_span,
-                "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
-            );
+            if needs_lint {
+                span_lint(
+                    cx,
+                    CMP_NAN,
+                    cmp_expr.span,
+                    "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
+                );
+            }
         }
     }
 }
