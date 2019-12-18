@@ -97,11 +97,24 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
 
 fn make_type_args(n: usize, bound: Vec<tt::TokenTree>) -> Vec<tt::TokenTree> {
     let mut result = Vec::<tt::TokenTree>::new();
-    result.push(tt::Leaf::Punct(tt::Punct { char: '<', spacing: tt::Spacing::Alone }).into());
+    result.push(
+        tt::Leaf::Punct(tt::Punct {
+            char: '<',
+            spacing: tt::Spacing::Alone,
+            id: tt::TokenId::unspecified(),
+        })
+        .into(),
+    );
     for i in 0..n {
         if i > 0 {
-            result
-                .push(tt::Leaf::Punct(tt::Punct { char: ',', spacing: tt::Spacing::Alone }).into());
+            result.push(
+                tt::Leaf::Punct(tt::Punct {
+                    char: ',',
+                    spacing: tt::Spacing::Alone,
+                    id: tt::TokenId::unspecified(),
+                })
+                .into(),
+            );
         }
         result.push(
             tt::Leaf::Ident(tt::Ident {
@@ -112,7 +125,14 @@ fn make_type_args(n: usize, bound: Vec<tt::TokenTree>) -> Vec<tt::TokenTree> {
         );
         result.extend(bound.iter().cloned());
     }
-    result.push(tt::Leaf::Punct(tt::Punct { char: '>', spacing: tt::Spacing::Alone }).into());
+    result.push(
+        tt::Leaf::Punct(tt::Punct {
+            char: '>',
+            spacing: tt::Spacing::Alone,
+            id: tt::TokenId::unspecified(),
+        })
+        .into(),
+    );
     result
 }
 

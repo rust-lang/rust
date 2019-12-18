@@ -16,7 +16,10 @@ macro_rules! __quote {
         {
             let children = $crate::__quote!($($tt)*);
             let subtree = tt::Subtree {
-                delimiter: Some(tt::Delimiter::$delim),
+                delimiter: Some(tt::Delimiter {
+                    kind: tt::DelimiterKind::$delim,
+                    id: tt::TokenId::unspecified(),
+                }),
                 token_trees: $crate::quote::IntoTt::to_tokens(children),
             };
             subtree
@@ -29,6 +32,7 @@ macro_rules! __quote {
                 tt::Leaf::Punct(tt::Punct {
                     char: $first,
                     spacing: tt::Spacing::Alone,
+                    id: tt::TokenId::unspecified(),
                 }).into()
             ]
         }
@@ -40,10 +44,12 @@ macro_rules! __quote {
                 tt::Leaf::Punct(tt::Punct {
                     char: $first,
                     spacing: tt::Spacing::Joint,
+                    id: tt::TokenId::unspecified(),
                 }).into(),
                 tt::Leaf::Punct(tt::Punct {
                     char: $sec,
                     spacing: tt::Spacing::Alone,
+                    id: tt::TokenId::unspecified(),
                 }).into()
             ]
         }
@@ -179,15 +185,15 @@ macro_rules! impl_to_to_tokentrees {
 }
 
 impl_to_to_tokentrees! {
-    u32 => self { tt::Literal{text: self.to_string().into()} };
-    usize => self { tt::Literal{text: self.to_string().into()}};
-    i32 => self { tt::Literal{text: self.to_string().into()}};
+    u32 => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()} };
+    usize => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()}};
+    i32 => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()}};
     tt::Leaf => self { self };
     tt::Literal => self { self };
     tt::Ident => self { self };
     tt::Punct => self { self };
-    &str => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into()}};
-    String => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into()}}
+    &str => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into(), id: tt::TokenId::unspecified()}};
+    String => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into(), id: tt::TokenId::unspecified()}}
 }
 
 #[cfg(test)]
@@ -254,8 +260,13 @@ mod tests {
         let fields =
             fields.iter().map(|it| quote!(#it: self.#it.clone(), ).token_trees.clone()).flatten();
 
-        let list =
-            tt::Subtree { delimiter: Some(tt::Delimiter::Brace), token_trees: fields.collect() };
+        let list = tt::Subtree {
+            delimiter: Some(tt::Delimiter {
+                kind: tt::DelimiterKind::Brace,
+                id: tt::TokenId::unspecified(),
+            }),
+            token_trees: fields.collect(),
+        };
 
         let quoted = quote! {
             impl Clone for #struct_name {

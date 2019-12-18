@@ -77,13 +77,41 @@ macro_rules! foobar {
     }
 
     assert_eq!(expansion.token_trees.len(), 3);
-    // ($e:ident) => { foo bar $e }
-    //   0 1            2   3   4
-    assert_eq!(get_id(&expansion.token_trees[0]), Some(2));
-    assert_eq!(get_id(&expansion.token_trees[1]), Some(3));
+    // {($e:ident) => { foo bar $e }}
+    // 012345      67 8 9   T   12
+    assert_eq!(get_id(&expansion.token_trees[0]), Some(9));
+    assert_eq!(get_id(&expansion.token_trees[1]), Some(10));
 
-    // So baz should be 5
-    assert_eq!(get_id(&expansion.token_trees[2]), Some(5));
+    // The input args of macro call include parentheses:
+    // (baz)
+    // So baz should be 12+1+1
+    assert_eq!(get_id(&expansion.token_trees[2]), Some(14));
+}
+
+#[test]
+fn test_token_map() {
+    use ra_parser::SyntaxKind::*;
+    use ra_syntax::T;
+
+    let macro_definition = r#"
+macro_rules! foobar {
+    ($e:ident) => { fn $e() {} }
+}
+"#;
+    let rules = create_rules(macro_definition);
+    let (expansion, (token_map, content)) = expand_and_map(&rules, "foobar!(baz);");
+
+    let get_text = |id, kind| -> String {
+        content[token_map.range_by_token(id).unwrap().by_kind(kind).unwrap()].to_string()
+    };
+
+    assert_eq!(expansion.token_trees.len(), 4);
+    // {($e:ident) => { fn $e() {} }}
+    // 012345      67 8 9  T12  3
+
+    assert_eq!(get_text(tt::TokenId(9), IDENT), "fn");
+    assert_eq!(get_text(tt::TokenId(12), T!['(']), "(");
+    assert_eq!(get_text(tt::TokenId(13), T!['{']), "{");
 }
 
 #[test]
@@ -1439,6 +1467,23 @@ pub(crate) fn expand(rules: &MacroRules, invocation: &str) -> tt::Subtree {
     let (invocation_tt, _) = ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
     rules.expand(&invocation_tt).unwrap()
+}
+
+pub(crate) fn expand_and_map(
+    rules: &MacroRules,
+    invocation: &str,
+) -> (tt::Subtree, (TokenMap, String)) {
+    let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
+    let macro_invocation =
+        source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+
+    let (invocation_tt, _) = ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
+    let expanded = rules.expand(&invocation_tt).unwrap();
+
+    let (node, expanded_token_tree) =
+        token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap();
+
+    (expanded, (expanded_token_tree, node.syntax_node().to_string()))
 }
 
 pub(crate) enum MacroKind {

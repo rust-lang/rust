@@ -106,7 +106,7 @@ fn match_subtree(
             }
             Op::TokenTree(tt::TokenTree::Subtree(lhs)) => {
                 let rhs = src.expect_subtree().map_err(|()| err!("expected subtree"))?;
-                if lhs.delimiter != rhs.delimiter {
+                if lhs.delimiter_kind() != rhs.delimiter_kind() {
                     bail!("mismatched delimiter")
                 }
                 let mut src = TtIter::new(rhs);
