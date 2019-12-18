@@ -130,11 +130,6 @@ impl Path {
         Path { type_anchor: None, mod_path: name_ref.as_name().into(), generic_args: vec![None] }
     }
 
-    /// `true` if this path is just a standalone `self`
-    pub fn is_self(&self) -> bool {
-        self.mod_path.is_self()
-    }
-
     pub fn kind(&self) -> &PathKind {
         &self.mod_path.kind
     }
