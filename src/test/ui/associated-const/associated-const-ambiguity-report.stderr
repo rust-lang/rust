@@ -9,13 +9,19 @@ note: candidate #1 is defined in an impl of the trait `Foo` for the type `i32`
    |
 LL |     const ID: i32 = 1;
    |     ^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `Foo::ID(...)` instead
 note: candidate #2 is defined in an impl of the trait `Bar` for the type `i32`
   --> $DIR/associated-const-ambiguity-report.rs:14:5
    |
 LL |     const ID: i32 = 3;
    |     ^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `Bar::ID(...)` instead
+help: disambiguate the associated constant for candidate #1
+   |
+LL | const X: i32 = Foo::ID;
+   |                ^^^^^^^
+help: disambiguate the associated constant for candidate #2
+   |
+LL | const X: i32 = Bar::ID;
+   |                ^^^^^^^
 
 error: aborting due to previous error
 
