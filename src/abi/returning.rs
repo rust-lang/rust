@@ -11,7 +11,8 @@ pub fn codegen_return_param(
     start_ebb: Ebb,
 ) {
     let ret_layout = return_layout(fx);
-    let ret_param = match get_pass_mode(fx.tcx, ret_layout) {
+    let ret_pass_mode = get_pass_mode(fx.tcx, ret_layout);
+    let ret_param = match ret_pass_mode {
         PassMode::NoPass => {
             fx.local_map
                 .insert(RETURN_PLACE, CPlace::no_place(ret_layout));
@@ -40,7 +41,7 @@ pub fn codegen_return_param(
         RETURN_PLACE,
         None,
         ret_param,
-        output_pass_mode,
+        ret_pass_mode,
         ret_layout.ty,
     );
 }
