@@ -13,3 +13,4 @@ doctest = false
 jobserver = "0.1.21"
 log = "0.4"
 lazy_static = "1"
+rustc_serialize = { path = "../libserialize", package = "serialize" }

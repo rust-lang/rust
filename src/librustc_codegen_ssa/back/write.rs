@@ -994,9 +994,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
     let coordinator_send2 = coordinator_send.clone();
-    let helper = rustc_jobserver::helper_thread(move |token| {
-        drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
-    });
+    let request_token = move || {
+        let coordinator_send2 = coordinator_send2.clone();
+        rustc_jobserver::request_token(move |token| {
+            drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
+        });
+    };
 
     let mut each_linked_rlib_for_lto = Vec::new();
     drop(link::each_linked_rlib(crate_info, &mut |cnum, path| {
@@ -1303,7 +1306,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             .unwrap_or_else(|e| e);
                         work_items.insert(insertion_index, (work, cost));
                         if !cgcx.opts.debugging_opts.no_parallel_llvm {
-                            helper.request_token();
+                            request_token();
                         }
                     }
                 }
@@ -1413,7 +1416,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     work_items.insert(insertion_index, (llvm_work_item, cost));
 
                     if !cgcx.opts.debugging_opts.no_parallel_llvm {
-                        helper.request_token();
+                        request_token();
                     }
                     assert!(!codegen_aborted);
                     assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
