@@ -686,7 +686,7 @@ macro_rules! unimplemented {
 /// }
 /// ```
 #[macro_export]
-#[stable(feature = "todo_macro", since = "1.39.0")]
+#[stable(feature = "todo_macro", since = "1.40.0")]
 macro_rules! todo {
     () => (panic!("not yet implemented"));
     ($($arg:tt)+) => (panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));

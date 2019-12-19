@@ -524,8 +524,8 @@ pub use core::{
     unreachable,
     write,
     writeln,
-    // Unstable
     todo,
+    // Unstable
     matches,
 };
 
