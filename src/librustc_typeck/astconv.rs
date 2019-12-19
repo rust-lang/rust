@@ -1814,7 +1814,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         assoc_name: ast::Ident,
         span: Span,
         is_equality: Option<String>,
-    ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported> 
+    ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
         where I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
         let mut matching_candidates = all_candidates().filter(|r| {
@@ -1828,7 +1828,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     all_candidates,
                     ty_param_name,
                     assoc_name,
-                    span
+                    span,
                 );
                 return Err(ErrorReported);
             }
@@ -1916,16 +1916,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         return Ok(bound);
     }
 
-    fn complain_about_assoc_type_not_found<I>(&self,
-                                              all_candidates: impl Fn() -> I,
-                                              ty_param_name: &str,
-                                              assoc_name: ast::Ident,
-                                              span: Span)
-    where I: Iterator<Item = ty::PolyTraitRef<'tcx>> {
-        let mut err = struct_span_err!(self.tcx().sess, span, E0220,
-                                 "associated type `{}` not found for `{}`",
-                                 assoc_name,
-                                 ty_param_name);
+    fn complain_about_assoc_type_not_found<I>(
+        &self,
+        all_candidates: impl Fn() -> I,
+        ty_param_name: &str,
+        assoc_name: ast::Ident,
+        span: Span,
+    ) where I: Iterator<Item = ty::PolyTraitRef<'tcx>> {
+        // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
+        // valid span, so we point at the whole path segment instead.
+        let span = if assoc_name.span != DUMMY_SP {
+            assoc_name.span
+        } else {
+            span
+        };
+        let mut err = struct_span_err!(
+            self.tcx().sess, span, E0220,
+            "associated type `{}` not found for `{}`",
+            assoc_name,
+            ty_param_name
+        );
 
         let all_candidate_names: Vec<_> = all_candidates()
             .map(|r| self.tcx().associated_items(r.def_id()))
@@ -1939,22 +1949,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             )
             .collect();
 
-        if let Some(suggested_name) = find_best_match_for_name(
-            all_candidate_names.iter(),
-            &assoc_name.as_str(),
-            None,
+        if let (Some(suggested_name), true) = (
+            find_best_match_for_name(all_candidate_names.iter(), &assoc_name.as_str(), None),
+            assoc_name.span != DUMMY_SP,
         ) {
             err.span_suggestion(
-                span,
+                assoc_name.span,
                 "there is an associated type with a similar name",
                 suggested_name.to_string(),
                 Applicability::MaybeIncorrect,
             );
         } else {
-            err.span_label(
-                span,
-                format!("associated type `{}` not found", assoc_name)
-            );
+            err.span_label(span, format!("associated type `{}` not found", assoc_name));
         }
 
         err.emit();
