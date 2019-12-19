@@ -1176,7 +1176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let expected = self.structurally_resolved_type(span, expected);
-        let (inner_ty, slice_ty) = match expected.kind {
+        let (inner_ty, slice_ty, expected) = match expected.kind {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(inner_ty, size) => {
                 let slice_ty = if let Some(size) = size.try_eval_usize(tcx, self.param_env) {
@@ -1206,15 +1206,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.error_scrutinee_unfixed_length(span);
                     tcx.types.err
                 };
-                (inner_ty, slice_ty)
+                (inner_ty, slice_ty, expected)
             }
-            ty::Slice(inner_ty) => (inner_ty, expected),
+            ty::Slice(inner_ty) => (inner_ty, expected, expected),
             // The expected type must be an array or slice, but was neither, so error.
             _ => {
                 if !expected.references_error() {
                     self.error_expected_array_or_slice(span, expected);
                 }
-                (tcx.types.err, tcx.types.err)
+                (tcx.types.err, tcx.types.err, tcx.types.err)
             }
         };
 

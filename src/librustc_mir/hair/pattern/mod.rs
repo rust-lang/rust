@@ -545,15 +545,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Slice(ref prefix, ref slice, ref suffix) => {
                 match ty.kind {
-                    ty::Ref(_, ty, _) =>
-                        PatKind::Deref {
-                            subpattern: Pat {
-                                ty,
-                                span: pat.span,
-                                kind: Box::new(self.slice_or_array_pattern(
-                                    pat.span, ty, prefix, slice, suffix))
-                            },
-                        },
                     ty::Slice(..) |
                     ty::Array(..) =>
                         self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix),
