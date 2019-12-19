@@ -573,7 +573,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Binding(_, id, ident, ref sub) => {
-                let var_ty = self.tables.node_type(pat.hir_id);
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
                                                          .expect("missing binding mode");
                 let (mutability, mode) = match bm {
@@ -591,13 +590,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
+                let var_ty = ty;
                 if let ty::BindByReference(_) = bm {
                     if let ty::Ref(_, rty, _) = ty.kind {
                         ty = rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
                     }
-                }
+                };
 
                 PatKind::Binding {
                     mutability,
