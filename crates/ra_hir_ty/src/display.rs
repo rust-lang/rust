@@ -9,7 +9,8 @@ pub struct HirFormatter<'a, 'b, DB> {
     fmt: &'a mut fmt::Formatter<'b>,
     buf: String,
     curr_size: usize,
-    truncate_options: Option<&'a TruncateOptions>,
+    max_size: Option<usize>,
+    should_display_default_types: bool,
 }
 
 pub trait HirDisplay {
@@ -19,18 +20,18 @@ pub trait HirDisplay {
     where
         Self: Sized,
     {
-        HirDisplayWrapper(db, self, None)
+        HirDisplayWrapper(db, self, None, true)
     }
 
     fn display_truncated<'a, DB>(
         &'a self,
         db: &'a DB,
-        truncate_options: &'a TruncateOptions,
+        max_size: Option<usize>,
     ) -> HirDisplayWrapper<'a, DB, Self>
     where
         Self: Sized,
     {
-        HirDisplayWrapper(db, self, Some(truncate_options))
+        HirDisplayWrapper(db, self, max_size, false)
     }
 }
 
@@ -66,7 +67,7 @@ where
     }
 
     pub fn should_truncate(&self) -> bool {
-        if let Some(max_size) = self.truncate_options.and_then(|options| options.max_length) {
+        if let Some(max_size) = self.max_size {
             self.curr_size >= max_size
         } else {
             false
@@ -74,16 +75,11 @@ where
     }
 
     pub fn should_display_default_types(&self) -> bool {
-        self.truncate_options.map(|options| options.show_default_types).unwrap_or(true)
+        self.should_display_default_types
     }
 }
 
-pub struct TruncateOptions {
-    pub max_length: Option<usize>,
-    pub show_default_types: bool,
-}
-
-pub struct HirDisplayWrapper<'a, DB, T>(&'a DB, &'a T, Option<&'a TruncateOptions>);
+pub struct HirDisplayWrapper<'a, DB, T>(&'a DB, &'a T, Option<usize>, bool);
 
 impl<'a, DB, T> fmt::Display for HirDisplayWrapper<'a, DB, T>
 where
@@ -96,7 +92,8 @@ where
             fmt: f,
             buf: String::with_capacity(20),
             curr_size: 0,
-            truncate_options: self.2,
+            max_size: self.2,
+            should_display_default_types: self.3,
         })
     }
 }

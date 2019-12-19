@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use crate::{db::RootDatabase, FileId};
-use hir::{HirDisplay, SourceAnalyzer, TruncateOptions};
+use hir::{HirDisplay, SourceAnalyzer};
 use ra_syntax::{
     ast::{self, AstNode, TypeAscriptionOwner},
     match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
@@ -23,11 +23,11 @@ pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
     file: &SourceFile,
-    truncate_options: &TruncateOptions,
+    max_inlay_hint_length: Option<usize>,
 ) -> Vec<InlayHint> {
     file.syntax()
         .descendants()
-        .map(|node| get_inlay_hints(db, file_id, &node, truncate_options).unwrap_or_default())
+        .map(|node| get_inlay_hints(db, file_id, &node, max_inlay_hint_length).unwrap_or_default())
         .flatten()
         .collect()
 }
@@ -36,7 +36,7 @@ fn get_inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
     node: &SyntaxNode,
-    truncate_options: &TruncateOptions,
+    max_inlay_hint_length: Option<usize>,
 ) -> Option<Vec<InlayHint>> {
     let analyzer = SourceAnalyzer::new(db, hir::InFile::new(file_id.into(), node), None);
     match_ast! {
@@ -46,7 +46,7 @@ fn get_inlay_hints(
                     return None;
                 }
                 let pat = it.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, false, truncate_options))
+                Some(get_pat_type_hints(db, &analyzer, pat, false, max_inlay_hint_length))
             },
             ast::LambdaExpr(it) => {
                 it.param_list().map(|param_list| {
@@ -54,22 +54,22 @@ fn get_inlay_hints(
                         .params()
                         .filter(|closure_param| closure_param.ascribed_type().is_none())
                         .filter_map(|closure_param| closure_param.pat())
-                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false, truncate_options))
+                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false, max_inlay_hint_length))
                         .flatten()
                         .collect()
                 })
             },
             ast::ForExpr(it) => {
                 let pat = it.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, false, truncate_options))
+                Some(get_pat_type_hints(db, &analyzer, pat, false, max_inlay_hint_length))
             },
             ast::IfExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, true, truncate_options))
+                Some(get_pat_type_hints(db, &analyzer, pat, true, max_inlay_hint_length))
             },
             ast::WhileExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, true, truncate_options))
+                Some(get_pat_type_hints(db, &analyzer, pat, true, max_inlay_hint_length))
             },
             ast::MatchArmList(it) => {
                 Some(
@@ -77,7 +77,7 @@ fn get_inlay_hints(
                         .arms()
                         .map(|match_arm| match_arm.pats())
                         .flatten()
-                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true, truncate_options))
+                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true, max_inlay_hint_length))
                         .flatten()
                         .collect(),
                 )
@@ -92,7 +92,7 @@ fn get_pat_type_hints(
     analyzer: &SourceAnalyzer,
     root_pat: ast::Pat,
     skip_root_pat_hint: bool,
-    truncate_options: &TruncateOptions,
+    max_inlay_hint_length: Option<usize>,
 ) -> Vec<InlayHint> {
     let original_pat = &root_pat.clone();
 
@@ -109,7 +109,7 @@ fn get_pat_type_hints(
         .map(|(range, pat_type)| InlayHint {
             range,
             kind: InlayKind::TypeHint,
-            label: pat_type.display_truncated(db, truncate_options).to_string().into(),
+            label: pat_type.display_truncated(db, max_inlay_hint_length).to_string().into(),
         })
         .collect()
 }

@@ -349,10 +349,8 @@ impl Analysis {
         file_id: FileId,
         max_inlay_hint_length: Option<usize>,
     ) -> Cancelable<Vec<InlayHint>> {
-        let truncate_options =
-            hir::TruncateOptions { max_length: max_inlay_hint_length, show_default_types: false };
         self.with_db(|db| {
-            inlay_hints::inlay_hints(db, file_id, &db.parse(file_id).tree(), &truncate_options)
+            inlay_hints::inlay_hints(db, file_id, &db.parse(file_id).tree(), max_inlay_hint_length)
         })
     }
 
