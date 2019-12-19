@@ -549,10 +549,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Slice(ref prefix, ref slice, ref suffix) => {
-                match ty.kind {
-                    ty::Slice(..) | ty::Array(..) => {}
-                    _ => span_bug!(pat.span, "unexpanded type for vector pattern: {:?}", ty),
-                }
                 self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
             }
 
@@ -658,42 +654,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
-    fn lower_opt_pattern(&mut self, pat: &'tcx Option<P<hir::Pat>>) -> Option<Pat<'tcx>>
-    {
+    fn lower_opt_pattern(&mut self, pat: &'tcx Option<P<hir::Pat>>) -> Option<Pat<'tcx>> {
         pat.as_ref().map(|p| self.lower_pattern(p))
-    }
-
-    fn flatten_nested_slice_patterns(
-        &mut self,
-        prefix: Vec<Pat<'tcx>>,
-        slice: Option<Pat<'tcx>>,
-        suffix: Vec<Pat<'tcx>>,
-    ) -> (Vec<Pat<'tcx>>, Option<Pat<'tcx>>, Vec<Pat<'tcx>>) {
-        let orig_slice = match slice {
-            Some(orig_slice) => orig_slice,
-            None => return (prefix, slice, suffix)
-        };
-        let orig_prefix = prefix;
-        let orig_suffix = suffix;
-
-        // dance because of intentional borrow-checker stupidity.
-        let kind = *orig_slice.kind;
-        match kind {
-            PatKind::Slice { prefix, slice, mut suffix } |
-            PatKind::Array { prefix, slice, mut suffix } => {
-                let mut orig_prefix = orig_prefix;
-
-                orig_prefix.extend(prefix);
-                suffix.extend(orig_suffix);
-
-                (orig_prefix, slice, suffix)
-            }
-            _ => {
-                (orig_prefix, Some(Pat {
-                    kind: box kind, ..orig_slice
-                }), orig_suffix)
-            }
-        }
     }
 
     fn slice_or_array_pattern(
@@ -707,9 +669,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let prefix = self.lower_patterns(prefix);
         let slice = self.lower_opt_pattern(slice);
         let suffix = self.lower_patterns(suffix);
-        let (prefix, slice, suffix) = self.flatten_nested_slice_patterns(prefix, slice, suffix);
-
-        // Some validation:
         match ty.kind {
             // Matching a slice, `[T]`.
             ty::Slice(..) => PatKind::Slice { prefix, slice, suffix },
