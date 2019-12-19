@@ -895,11 +895,7 @@ pub fn handle_inlay_hints(
     let analysis = world.analysis();
     let line_index = analysis.file_line_index(file_id)?;
     Ok(analysis
-        .inlay_hints(
-            file_id,
-            world.options.max_inlay_hint_length,
-            world.options.show_default_types_in_inlay_hints,
-        )?
+        .inlay_hints(file_id, world.options.max_inlay_hint_length)?
         .into_iter()
         .map(|api_type| InlayHint {
             label: api_type.label.to_string(),

@@ -160,7 +160,7 @@ mod tests {
     use crate::mock_analysis::single_file;
 
     #[test]
-    fn default_generic_types_disabled() {
+    fn default_generic_types_should_not_be_displayed() {
         let (analysis, file_id) = single_file(
             r#"
 struct Test<K, T = u8> {
@@ -173,38 +173,12 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, false).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [69; 71),
                 kind: TypeHint,
                 label: "Test<i32>",
-            },
-        ]
-        "###
-        );
-    }
-
-    #[test]
-    fn default_generic_types_enabled() {
-        let (analysis, file_id) = single_file(
-            r#"
-struct Test<K, T = u8> {
-    k: K,
-    t: T,
-}
-
-fn main() {
-    let zz = Test { t: 23, k: 33 };
-}"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
-        [
-            InlayHint {
-                range: [69; 71),
-                kind: TypeHint,
-                label: "Test<i32, u8>",
             },
         ]
         "###
@@ -251,7 +225,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [193; 197),
@@ -325,7 +299,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -354,7 +328,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -402,7 +376,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [166; 170),
@@ -465,7 +439,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [166; 170),
@@ -528,7 +502,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [311; 315),
@@ -570,7 +544,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, Some(8), true).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, Some(8)).unwrap(), @r###"
         [
             InlayHint {
                 range: [74; 75),

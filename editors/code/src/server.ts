@@ -55,8 +55,6 @@ export class Server {
                 publishDecorations: true,
                 lruCapacity: Server.config.lruCapacity,
                 maxInlayHintLength: Server.config.maxInlayHintLength,
-                showDefaultTypesInInlayHints:
-                    Server.config.showDefaultTypesInInlayHints,
                 excludeGlobs: Server.config.excludeGlobs,
                 useClientWatching: Server.config.useClientWatching,
                 featureFlags: Server.config.featureFlags,

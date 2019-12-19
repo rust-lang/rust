@@ -31,7 +31,6 @@ pub struct ServerConfig {
     pub lru_capacity: Option<usize>,
 
     pub max_inlay_hint_length: Option<usize>,
-    pub show_default_types_in_inlay_hints: bool,
 
     /// For internal usage to make integrated tests faster.
     #[serde(deserialize_with = "nullable_bool_true")]
@@ -52,7 +51,6 @@ impl Default for ServerConfig {
             use_client_watching: false,
             lru_capacity: None,
             max_inlay_hint_length: None,
-            show_default_types_in_inlay_hints: false,
             with_sysroot: true,
             feature_flags: FxHashMap::default(),
             cargo_features: Default::default(),
