@@ -1175,8 +1175,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         discrim_span: Option<Span>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let expected_ty = self.structurally_resolved_type(span, expected);
-        let (inner_ty, slice_ty) = match expected_ty.kind {
+        let expected = self.structurally_resolved_type(span, expected);
+        let (inner_ty, slice_ty) = match expected.kind {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(inner_ty, size) => {
                 let slice_ty = if let Some(size) = size.try_eval_usize(tcx, self.param_env) {
@@ -1208,11 +1208,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 (inner_ty, slice_ty)
             }
-            ty::Slice(inner_ty) => (inner_ty, expected_ty),
+            ty::Slice(inner_ty) => (inner_ty, expected),
             // The expected type must be an array or slice, but was neither, so error.
             _ => {
-                if !expected_ty.references_error() {
-                    self.error_expected_array_or_slice(span, expected_ty);
+                if !expected.references_error() {
+                    self.error_expected_array_or_slice(span, expected);
                 }
                 (tcx.types.err, tcx.types.err)
             }
@@ -1230,7 +1230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for elt in after {
             self.check_pat(&elt, inner_ty, def_bm, discrim_span);
         }
-        expected_ty
+        expected
     }
 
     fn error_scrutinee_inconsistent_length(&self, span: Span, min_len: u64, size: u64) {
