@@ -550,15 +550,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Slice(ref prefix, ref slice, ref suffix) => {
                 match ty.kind {
-                    ty::Slice(..) |
-                    ty::Array(..) =>
-                        self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix),
-                    _ => span_bug!(
-                        pat.span,
-                        "unexpanded type for vector pattern: {:?}",
-                        ty
-                    ),
+                    ty::Slice(..) | ty::Array(..) => {}
+                    _ => span_bug!(pat.span, "unexpanded type for vector pattern: {:?}", ty),
                 }
+                self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
             }
 
             hir::PatKind::Tuple(ref subpatterns, ddpos) => {
