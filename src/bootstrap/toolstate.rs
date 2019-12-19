@@ -13,13 +13,13 @@ use std::env;
 // Each cycle is 42 days long (6 weeks); the last week is 35..=42 then.
 const BETA_WEEK_START: u64 = 35;
 
-#[cfg(linux)]
+#[cfg(target_os = "linux")]
 const OS: Option<&str> = Some("linux");
 
 #[cfg(windows)]
 const OS: Option<&str> = Some("windows");
 
-#[cfg(all(not(linux), not(windows)))]
+#[cfg(all(not(target_os = "linux"), not(windows)))]
 const OS: Option<&str> = None;
 
 type ToolstateData = HashMap<Box<str>, ToolState>;
@@ -379,7 +379,7 @@ fn change_toolstate(
     let mut regressed = false;
     for repo_state in old_toolstate {
         let tool = &repo_state.tool;
-        let state = if cfg!(linux) {
+        let state = if cfg!(target_os = "linux") {
             &repo_state.linux
         } else if cfg!(windows) {
             &repo_state.windows
