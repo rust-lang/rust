@@ -1,4 +1,4 @@
-error[E0369]: binary operation `%` cannot be applied to type `&&{integer}`
+error[E0369]: cannot mod `&&{integer}` by `{integer}`
   --> $DIR/binary-op-on-double-ref.rs:4:11
    |
 LL |         x % 2 == 0

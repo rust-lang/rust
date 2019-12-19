@@ -1,4 +1,4 @@
-error[E0369]: binary operation `*` cannot be applied to type `&T`
+error[E0369]: cannot multiply `f64` to `&T`
   --> $DIR/trait-resolution-in-overloaded-op.rs:8:7
    |
 LL |     a * b

@@ -1,4 +1,4 @@
-error[E0369]: binary operation `+` cannot be applied to type `std::boxed::Box<isize>`
+error[E0369]: cannot add `{integer}` to `std::boxed::Box<isize>`
   --> $DIR/issue-14915.rs:6:22
    |
 LL |     println!("{}", x + 1);
