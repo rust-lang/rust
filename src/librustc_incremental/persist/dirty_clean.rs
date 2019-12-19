@@ -22,7 +22,6 @@ use rustc::hir::Node as HirNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit;
-use rustc::ich::{ATTR_DIRTY, ATTR_CLEAN};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
@@ -224,7 +223,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
         let mut all_attrs = FindAllAttrs {
             tcx,
-            attr_names: vec![ATTR_DIRTY, ATTR_CLEAN],
+            attr_names: vec![sym::rustc_dirty, sym::rustc_clean],
             found_attrs: vec![],
         };
         intravisit::walk_crate(&mut all_attrs, krate);
@@ -246,9 +245,9 @@ impl DirtyCleanVisitor<'tcx> {
     fn assertion_maybe(&mut self, item_id: hir::HirId, attr: &Attribute)
         -> Option<Assertion>
     {
-        let is_clean = if attr.check_name(ATTR_DIRTY) {
+        let is_clean = if attr.check_name(sym::rustc_dirty) {
             false
-        } else if attr.check_name(ATTR_CLEAN) {
+        } else if attr.check_name(sym::rustc_clean) {
             true
         } else {
             // skip: not rustc_clean/dirty
