@@ -557,14 +557,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ty::Slice(..) |
                     ty::Array(..) =>
                         self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix),
-                    ty::Error => { // Avoid ICE
-                        return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
-                    }
-                    _ =>
-                        span_bug!(
-                            pat.span,
-                            "unexpanded type for vector pattern: {:?}",
-                            ty),
+                    // Avoid ICE
+                    ty::Error => return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) },
+                    _ => span_bug!(
+                        pat.span,
+                        "unexpanded type for vector pattern: {:?}",
+                        ty
+                    ),
                 }
             }
 
@@ -698,9 +697,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &mut self,
         prefix: Vec<Pat<'tcx>>,
         slice: Option<Pat<'tcx>>,
-        suffix: Vec<Pat<'tcx>>)
-        -> (Vec<Pat<'tcx>>, Option<Pat<'tcx>>, Vec<Pat<'tcx>>)
-    {
+        suffix: Vec<Pat<'tcx>>,
+    ) -> (Vec<Pat<'tcx>>, Option<Pat<'tcx>>, Vec<Pat<'tcx>>) {
         let orig_slice = match slice {
             Some(orig_slice) => orig_slice,
             None => return (prefix, slice, suffix)
@@ -734,31 +732,24 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         prefix: &'tcx [P<hir::Pat>],
         slice: &'tcx Option<P<hir::Pat>>,
-        suffix: &'tcx [P<hir::Pat>])
-        -> PatKind<'tcx>
-    {
+        suffix: &'tcx [P<hir::Pat>],
+    ) -> PatKind<'tcx> {
         let prefix = self.lower_patterns(prefix);
         let slice = self.lower_opt_pattern(slice);
         let suffix = self.lower_patterns(suffix);
-        let (prefix, slice, suffix) =
-            self.flatten_nested_slice_patterns(prefix, slice, suffix);
+        let (prefix, slice, suffix) = self.flatten_nested_slice_patterns(prefix, slice, suffix);
 
+        // Some validation:
         match ty.kind {
-            ty::Slice(..) => {
-                // matching a slice or fixed-length array
-                PatKind::Slice { prefix: prefix, slice: slice, suffix: suffix }
-            }
-
+            // Matching a slice, `[T]`.
+            ty::Slice(..) => PatKind::Slice { prefix, slice, suffix },
+            // Fixed-length array, `[T; len]`.
             ty::Array(_, len) => {
-                // fixed-length array
                 let len = len.eval_usize(self.tcx, self.param_env);
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
-                PatKind::Array { prefix: prefix, slice: slice, suffix: suffix }
+                PatKind::Array { prefix, slice, suffix }
             }
-
-            _ => {
-                span_bug!(span, "bad slice pattern type {:?}", ty);
-            }
+            _ => span_bug!(span, "bad slice pattern type {:?}", ty),
         }
     }
 
