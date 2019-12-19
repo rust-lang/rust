@@ -586,6 +586,7 @@ impl HasResolver for ContainerId {
             ContainerId::TraitId(it) => it.resolver(db),
             ContainerId::ImplId(it) => it.resolver(db),
             ContainerId::ModuleId(it) => it.resolver(db),
+            ContainerId::DefWithBodyId(it) => it.resolver(db),
         }
     }
 }

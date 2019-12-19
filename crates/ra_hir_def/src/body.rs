@@ -17,7 +17,7 @@ use crate::{
     nameres::{BuiltinShadowMode, CrateDefMap},
     path::{ModPath, Path},
     src::HasSource,
-    DefWithBodyId, HasModule, Lookup, ModuleId,
+    DefWithBodyId, HasModule, Lookup, ModuleDefId, ModuleId,
 };
 
 struct Expander {
@@ -119,6 +119,7 @@ pub struct Body {
     pub params: Vec<PatId>,
     /// The `ExprId` of the actual body expression.
     pub body_expr: ExprId,
+    pub defs: Vec<ModuleDefId>,
 }
 
 pub type ExprPtr = Either<AstPtr<ast::Expr>, AstPtr<ast::RecordField>>;

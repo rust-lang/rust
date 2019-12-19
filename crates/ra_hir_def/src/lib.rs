@@ -335,6 +335,7 @@ pub enum ContainerId {
     ModuleId(ModuleId),
     ImplId(ImplId),
     TraitId(TraitId),
+    DefWithBodyId(DefWithBodyId),
 }
 
 /// A Data Type
@@ -478,33 +479,32 @@ pub trait HasModule {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId;
 }
 
-impl HasModule for FunctionLoc {
+impl HasModule for ContainerId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
-        match self.container {
+        match *self {
             ContainerId::ModuleId(it) => it,
             ContainerId::ImplId(it) => it.lookup(db).container,
             ContainerId::TraitId(it) => it.lookup(db).container,
+            ContainerId::DefWithBodyId(it) => it.module(db),
         }
+    }
+}
+
+impl HasModule for FunctionLoc {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        self.container.module(db)
     }
 }
 
 impl HasModule for TypeAliasLoc {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
-        match self.container {
-            ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.lookup(db).container,
-            ContainerId::TraitId(it) => it.lookup(db).container,
-        }
+        self.container.module(db)
     }
 }
 
 impl HasModule for ConstLoc {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
-        match self.container {
-            ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.lookup(db).container,
-            ContainerId::TraitId(it) => it.lookup(db).container,
-        }
+        self.container.module(db)
     }
 }
 
