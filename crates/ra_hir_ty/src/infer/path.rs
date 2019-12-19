@@ -237,7 +237,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         }));
                         Some(substs)
                     }
-                    ContainerId::ModuleId(_) => None,
+                    ContainerId::ModuleId(_) | ContainerId::DefWithBodyId(_) => None,
                 };
 
                 self.write_assoc_resolution(id, item.into());
