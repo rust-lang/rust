@@ -212,6 +212,17 @@ pub enum AssocKind {
     Type
 }
 
+impl AssocKind {
+    pub fn suggestion_descr(&self) -> &'static str {
+        match self {
+            ty::AssocKind::Method => "method call",
+            ty::AssocKind::Type |
+            ty::AssocKind::OpaqueTy => "associated type",
+            ty::AssocKind::Const => "associated constant",
+        }
+    }
+}
+
 impl AssocItem {
     pub fn def_kind(&self) -> DefKind {
         match self.kind {

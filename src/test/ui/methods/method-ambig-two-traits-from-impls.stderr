@@ -9,13 +9,19 @@ note: candidate #1 is defined in an impl of the trait `A` for the type `AB`
    |
 LL |     fn foo(self) {}
    |     ^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `A::foo(AB {})` instead
 note: candidate #2 is defined in an impl of the trait `B` for the type `AB`
   --> $DIR/method-ambig-two-traits-from-impls.rs:11:5
    |
 LL |     fn foo(self) {}
    |     ^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `B::foo(AB {})` instead
+help: disambiguate the method call for candidate #1
+   |
+LL |     A::foo(AB {});
+   |     ^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #2
+   |
+LL |     B::foo(AB {});
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
