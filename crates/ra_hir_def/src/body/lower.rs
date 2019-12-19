@@ -41,6 +41,7 @@ pub(super) fn lower(
             pats: Arena::default(),
             params: Vec::new(),
             body_expr: ExprId::dummy(),
+            defs: Vec::new(),
         },
     }
     .collect(params, body)
