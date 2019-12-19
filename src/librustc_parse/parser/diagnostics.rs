@@ -1397,6 +1397,12 @@ impl<'a> Parser<'a> {
         consume_close: ConsumeClosingDelim,
     ) {
         let mut brace_depth = 0;
+        // Avoid complaining about main in
+        // `src/test/ui/parser/mismatched-braces/missing-close-brace-in-trait.rs`.
+        // We set this here because we can't be sure that we're not going to hit `Eof` shortly
+        // afterwards, but handling this case in other parts of the parser would complicate the
+        // logic too much.
+        *self.sess.reached_eof.borrow_mut() = true;
         loop {
             if self.eat(&token::OpenDelim(delim)) {
                 brace_depth += 1;

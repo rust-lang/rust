@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/missing-close-brace-in-trait.rs:12:65
+  --> $DIR/missing-close-brace-in-trait.rs:11:65
    |
 LL | trait T {
    |         - unclosed delimiter
@@ -8,23 +8,10 @@ LL | fn main() {}
    |                                                                 ^
 
 error: expected one of `async`, `const`, `default`, `extern`, `fn`, `type`, or `unsafe`, found keyword `struct`
-  --> $DIR/missing-close-brace-in-trait.rs:5:12
+  --> $DIR/missing-close-brace-in-trait.rs:4:12
    |
 LL | pub(crate) struct Bar<T>();
    |            ^^^^^^ expected one of 7 possible tokens
 
-error[E0601]: `main` function not found in crate `missing_close_brace_in_trait`
-  --> $DIR/missing-close-brace-in-trait.rs:1:1
-   |
-LL | / trait T {
-LL | |
-LL | |     fn foo(&self);
-LL | |
-...  |
-LL | |
-LL | | fn main() {}
-   | |________________________________________________________________^ consider adding a `main` function to `$DIR/missing-close-brace-in-trait.rs`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0601`.
