@@ -753,7 +753,7 @@ declare_clippy_lint! {
     /// ```
     pub ITERATOR_STEP_BY_ZERO,
     correctness,
-    "using `Iterator::step_by(0)`, which produces an infinite iterator"
+    "using `Iterator::step_by(0)`, which will panic at runtime"
 }
 
 declare_clippy_lint! {
