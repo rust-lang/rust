@@ -1450,6 +1450,24 @@ macro_rules! delegate_impl {
     );
 }
 
+#[test]
+fn expr_interpolation() {
+    let rules = create_rules(
+        r#"
+        macro_rules! id {
+            ($expr:expr) => {
+                map($expr)
+            }
+        }
+        "#,
+    );
+
+    let expanded = expand(&rules, "id!(x + foo);");
+    let expanded =
+        token_tree_to_syntax_node(&expanded, FragmentKind::Expr).unwrap().0.syntax_node();
+    assert_eq!(expanded.to_string(), "map(x+foo)");
+}
+
 pub(crate) fn create_rules(macro_definition: &str) -> MacroRules {
     let source_file = ast::SourceFile::parse(macro_definition).ok().unwrap();
     let macro_definition =
