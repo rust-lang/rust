@@ -312,15 +312,35 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
     }
     bool oldunknownUse = unknownUse;
     unknownUse = false;
+
     for(User* use: v->users()) {
         if (auto ci = dyn_cast<CastInst>(use)) {
+
+            if (isa<SIToFPInst>(use) || isa<UIToFPInst>(use)) {
+                intUse = true;
+                intseen[idx] = IntType::Integer;
+                if (fast_tracking) return true;
+                continue;
+            }
+
+            if (isa<FPToSIInst>(use) || isa<FPToUIInst>(use)) {
+                if (floatingUse == nullptr) {
+                    floatingUse = ci->getSrcTy();
+                } else {
+                    assert(floatingUse == ci->getSrcTy());
+                }
+                intseen[idx] = IntType::Float;
+                if (fast_tracking) return true;
+                continue;
+            }
+
             if (ci->getDestTy()->isPointerTy()) {
                 //llvm::errs() << "saw(p use) of " << *v << " use " << *ci << "\n";
                 pointerUse = true;
                 if (fast_tracking) return true;
                 continue;
             }
-            if (ci->getDestTy()->isFloatingPointTy()) {
+            if (ci->getDestTy()->isFPOrFPVectorTy()) {
                 if (isa<BitCastInst>(ci)) {
                     if (floatingUse == nullptr) {
                         floatingUse = ci->getDestTy();
@@ -497,7 +517,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
         }
 
         unknownUse = true;
-        //llvm::errs() << "unknown use : " << *use << " of v: " << *v << "\n";
+        llvm::errs() << "unknown use : " << *use << " of v: " << *v << "\n";
         continue;
     }
 
@@ -993,6 +1013,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
     if (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer)==IntType::Integer) {
         //! The instruction itself is constant if it does not modify memory (otherwise causing active memory to flow)
         if (!inst->mayReadOrWriteMemory()) {
+            if (printconst)
+                llvm::errs() << " constant instruction from known integral " << *inst << "\n";
             constants.insert(inst);
             return true;
         }
