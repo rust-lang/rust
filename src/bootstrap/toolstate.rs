@@ -13,13 +13,13 @@ use std::env;
 // Each cycle is 42 days long (6 weeks); the last week is 35..=42 then.
 const BETA_WEEK_START: u64 = 35;
 
-#[cfg(linux)]
+#[cfg(target_os = "linux")]
 const OS: Option<&str> = Some("linux");
 
 #[cfg(windows)]
 const OS: Option<&str> = Some("windows");
 
-#[cfg(all(not(linux), not(windows)))]
+#[cfg(all(not(target_os = "linux"), not(windows)))]
 const OS: Option<&str> = None;
 
 type ToolstateData = HashMap<Box<str>, ToolState>;
@@ -379,7 +379,7 @@ fn change_toolstate(
     let mut regressed = false;
     for repo_state in old_toolstate {
         let tool = &repo_state.tool;
-        let state = if cfg!(linux) {
+        let state = if cfg!(target_os = "linux") {
             &repo_state.linux
         } else if cfg!(windows) {
             &repo_state.windows
@@ -413,7 +413,7 @@ fn change_toolstate(
     let history_path = format!("rust-toolstate/history/{}.tsv", OS.expect("linux/windows only"));
     let mut file = t!(fs::read_to_string(&history_path));
     let end_of_first_line = file.find('\n').unwrap();
-    file.insert_str(end_of_first_line, &format!("{}\t{}\n", commit, toolstate_serialized));
+    file.insert_str(end_of_first_line, &format!("\n{}\t{}", commit, toolstate_serialized));
     t!(fs::write(&history_path, file));
 }
 

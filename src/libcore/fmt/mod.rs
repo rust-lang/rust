@@ -63,7 +63,7 @@ pub mod rt {
 ///
 /// let pythagorean_triple = Triangle { a: 3.0, b: 4.0, c: 5.0 };
 ///
-/// println!("{}", pythagorean_triple);
+/// assert_eq!(format!("{}", pythagorean_triple), "(3, 4, 5)");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result = result::Result<(), Error>;
@@ -440,7 +440,7 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// println!("The origin is: {:?}", origin);
+/// assert_eq!(format!("The origin is: {:?}", origin), "The origin is: Point { x: 0, y: 0 }");
 /// ```
 ///
 /// Manually implementing:
@@ -455,28 +455,25 @@ impl Display for Arguments<'_> {
 ///
 /// impl fmt::Debug for Point {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         write!(f, "Point {{ x: {}, y: {} }}", self.x, self.y)
+///         f.debug_struct("Point")
+///          .field("x", &self.x)
+///          .field("y", &self.y)
+///          .finish()
 ///     }
 /// }
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// println!("The origin is: {:?}", origin);
+/// assert_eq!(format!("The origin is: {:?}", origin), "The origin is: Point { x: 0, y: 0 }");
 /// ```
 ///
-/// This outputs:
-///
-/// ```text
-/// The origin is: Point { x: 0, y: 0 }
-/// ```
-///
-/// There are a number of `debug_*` methods on [`Formatter`] to help you with manual
-/// implementations, such as [`debug_struct`][debug_struct].
+/// There are a number of helper methods on the [`Formatter`] struct to help you with manual
+/// implementations, such as [`debug_struct`].
 ///
 /// `Debug` implementations using either `derive` or the debug builder API
 /// on [`Formatter`] support pretty-printing using the alternate flag: `{:#?}`.
 ///
-/// [debug_struct]: ../../std/fmt/struct.Formatter.html#method.debug_struct
+/// [`debug_struct`]: ../../std/fmt/struct.Formatter.html#method.debug_struct
 /// [`Formatter`]: ../../std/fmt/struct.Formatter.html
 ///
 /// Pretty-printing with `#?`:
@@ -490,17 +487,13 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// println!("The origin is: {:#?}", origin);
-/// ```
-///
-/// This outputs:
-///
-/// ```text
-/// The origin is: Point {
+/// assert_eq!(format!("The origin is: {:#?}", origin),
+/// "The origin is: Point {
 ///     x: 0,
-///     y: 0
-/// }
+///     y: 0,
+/// }");
 /// ```
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
@@ -528,12 +521,20 @@ pub trait Debug {
     ///
     /// impl fmt::Debug for Position {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "({:?}, {:?})", self.longitude, self.latitude)
+    ///         f.debug_tuple("")
+    ///          .field(&self.longitude)
+    ///          .field(&self.latitude)
+    ///          .finish()
     ///     }
     /// }
     ///
-    /// assert_eq!("(1.987, 2.983)".to_owned(),
-    ///            format!("{:?}", Position { longitude: 1.987, latitude: 2.983, }));
+    /// let position = Position { longitude: 1.987, latitude: 2.983 };
+    /// assert_eq!(format!("{:?}", position), "(1.987, 2.983)");
+    ///
+    /// assert_eq!(format!("{:#?}", position), "(
+    ///     1.987,
+    ///     2.983,
+    /// )");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -584,7 +585,7 @@ pub use macros::Debug;
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// println!("The origin is: {}", origin);
+/// assert_eq!(format!("The origin is: {}", origin), "The origin is: (0, 0)");
 /// ```
 #[rustc_on_unimplemented(
     on(
@@ -618,7 +619,7 @@ pub trait Display {
     ///     }
     /// }
     ///
-    /// assert_eq!("(1.987, 2.983)".to_owned(),
+    /// assert_eq!("(1.987, 2.983)",
     ///            format!("{}", Position { longitude: 1.987, latitude: 2.983, }));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -668,7 +669,9 @@ pub trait Display {
 ///
 /// let l = Length(9);
 ///
-/// println!("l as octal is: {:o}", l);
+/// assert_eq!(format!("l as octal is: {:o}", l), "l as octal is: 11");
+///
+/// assert_eq!(format!("l as octal is: {:#06o}", l), "l as octal is: 0o0011");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Octal {
@@ -718,7 +721,12 @@ pub trait Octal {
 ///
 /// let l = Length(107);
 ///
-/// println!("l as binary is: {:b}", l);
+/// assert_eq!(format!("l as binary is: {:b}", l), "l as binary is: 1101011");
+///
+/// assert_eq!(
+///     format!("l as binary is: {:#032b}", l),
+///     "l as binary is: 0b000000000000000000000001101011"
+/// );
 /// ```
 ///
 /// [module]: ../../std/fmt/index.html
@@ -777,7 +785,9 @@ pub trait Binary {
 ///
 /// let l = Length(9);
 ///
-/// println!("l as hex is: {:x}", l);
+/// assert_eq!(format!("l as hex is: {:x}", l), "l as hex is: 9");
+///
+/// assert_eq!(format!("l as hex is: {:#010x}", l), "l as hex is: 0x00000009");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait LowerHex {
@@ -828,9 +838,11 @@ pub trait LowerHex {
 ///     }
 /// }
 ///
-/// let l = Length(9);
+/// let l = Length(i32::max_value());
 ///
-/// println!("l as hex is: {:X}", l);
+/// assert_eq!(format!("l as hex is: {:X}", l), "l as hex is: 7FFFFFFF");
+///
+/// assert_eq!(format!("l as hex is: {:#010X}", l), "l as hex is: 0x7FFFFFFF");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait UpperHex {
@@ -877,6 +889,10 @@ pub trait UpperHex {
 /// let l = Length(42);
 ///
 /// println!("l is in memory here: {:p}", l);
+///
+/// let l_ptr = format!("{:018p}", l);
+/// assert_eq!(l_ptr.len(), 18);
+/// assert_eq!(&l_ptr[..2], "0x");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Pointer {
@@ -912,14 +928,22 @@ pub trait Pointer {
 ///
 /// impl fmt::LowerExp for Length {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         let val = self.0;
-///         write!(f, "{}e1", val / 10)
+///         let val = f64::from(self.0);
+///         fmt::LowerExp::fmt(&val, f) // delegate to f64's implementation
 ///     }
 /// }
 ///
 /// let l = Length(100);
 ///
-/// println!("l in scientific notation is: {:e}", l);
+/// assert_eq!(
+///     format!("l in scientific notation is: {:e}", l),
+///     "l in scientific notation is: 1e2"
+/// );
+///
+/// assert_eq!(
+///     format!("l in scientific notation is: {:05e}", l),
+///     "l in scientific notation is: 001e2"
+/// );
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait LowerExp {
@@ -955,14 +979,22 @@ pub trait LowerExp {
 ///
 /// impl fmt::UpperExp for Length {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         let val = self.0;
-///         write!(f, "{}E1", val / 10)
+///         let val = f64::from(self.0);
+///         fmt::UpperExp::fmt(&val, f) // delegate to f64's implementation
 ///     }
 /// }
 ///
 /// let l = Length(100);
 ///
-/// println!("l in scientific notation is: {:E}", l);
+/// assert_eq!(
+///     format!("l in scientific notation is: {:E}", l),
+///     "l in scientific notation is: 1E2"
+/// );
+///
+/// assert_eq!(
+///     format!("l in scientific notation is: {:05E}", l),
+///     "l in scientific notation is: 001E2"
+/// );
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait UpperExp {
@@ -1807,8 +1839,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // prints "[10, 11]"
-    /// println!("{:?}", Foo(vec![10, 11]));
+    /// assert_eq!(format!("{:?}", Foo(vec![10, 11])), "[10, 11]");
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_list<'b>(&'b mut self) -> DebugList<'b, 'a> {
@@ -1831,8 +1862,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // prints "{10, 11}"
-    /// println!("{:?}", Foo(vec![10, 11]));
+    /// assert_eq!(format!("{:?}", Foo(vec![10, 11])), "{10, 11}");
     /// ```
     ///
     /// [`format_args!`]: ../../std/macro.format_args.html
@@ -1890,8 +1920,10 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // prints "{"A": 10, "B": 11}"
-    /// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
+    /// assert_eq!(
+    ///     format!("{:?}",  Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     r#"{"A": 10, "B": 11}"#
+    ///  );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {

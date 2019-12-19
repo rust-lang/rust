@@ -25,7 +25,7 @@ use syntax_pos::edition;
 pub type Result<T> = result::Result<T, ErrorReported>;
 
 /// Represents a compiler session.
-/// Can be used run `rustc_interface` queries.
+/// Can be used to run `rustc_interface` queries.
 /// Created by passing `Config` to `run_compiler`.
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
