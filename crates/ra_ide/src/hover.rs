@@ -250,7 +250,7 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     } else {
         return None;
     };
-    Some(ty.display(db).to_string())
+    Some(ty.display_truncated(db, None).to_string())
 }
 
 #[cfg(test)]
@@ -425,7 +425,7 @@ mod tests {
     }
 
     #[test]
-    fn hover_default_generic_type() {
+    fn hover_omits_default_generic_types() {
         check_hover_result(
             r#"
 //- /main.rs
@@ -437,7 +437,7 @@ struct Test<K, T = u8> {
 fn main() {
     let zz<|> = Test { t: 23, k: 33 };
 }"#,
-            &["Test<i32, u8>"],
+            &["Test<i32>"],
         );
     }
 
