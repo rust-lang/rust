@@ -476,7 +476,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{create_rules, expand};
+    use crate::tests::parse_macro;
     use ra_parser::TokenSource;
     use ra_syntax::{
         algo::{insert_children, InsertPosition},
@@ -485,7 +485,7 @@ mod tests {
 
     #[test]
     fn convert_tt_token_source() {
-        let rules = create_rules(
+        let expansion = parse_macro(
             r#"
             macro_rules! literals {
                 ($i:ident) => {
@@ -498,8 +498,8 @@ mod tests {
                 }
             }
             "#,
-        );
-        let expansion = expand(&rules, "literals!(foo);");
+        )
+        .expand_tt("literals!(foo);");
         let tts = &[expansion.into()];
         let buffer = tt::buffer::TokenBuffer::new(tts);
         let mut tt_src = SubtreeTokenSource::new(&buffer);
@@ -527,7 +527,7 @@ mod tests {
 
     #[test]
     fn stmts_token_trees_to_expr_is_err() {
-        let rules = create_rules(
+        let expansion = parse_macro(
             r#"
             macro_rules! stmts {
                 () => {
@@ -538,8 +538,8 @@ mod tests {
                 }
             }
             "#,
-        );
-        let expansion = expand(&rules, "stmts!();");
+        )
+        .expand_tt("stmts!();");
         assert!(token_tree_to_syntax_node(&expansion, FragmentKind::Expr).is_err());
     }
 

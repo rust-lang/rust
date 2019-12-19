@@ -83,6 +83,7 @@ pub fn parse(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::root);
 }
 
+#[derive(Clone, Copy)]
 pub enum FragmentKind {
     Path,
     Expr,

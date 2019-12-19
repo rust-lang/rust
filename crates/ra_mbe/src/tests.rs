@@ -1,5 +1,7 @@
+use std::fmt::Write;
+
 use ra_parser::FragmentKind;
-use ra_syntax::{ast, AstNode, NodeOrToken, WalkEvent};
+use ra_syntax::{ast, AstNode, NodeOrToken, SyntaxKind::IDENT, SyntaxNode, WalkEvent, T};
 use test_utils::assert_eq_text;
 
 use super::*;
@@ -61,13 +63,14 @@ mod rule_parsing {
 
 #[test]
 fn test_token_id_shift() {
-    let macro_definition = r#"
+    let expansion = parse_macro(
+        r#"
 macro_rules! foobar {
     ($e:ident) => { foo bar $e }
 }
-"#;
-    let rules = create_rules(macro_definition);
-    let expansion = expand(&rules, "foobar!(baz);");
+"#,
+    )
+    .expand_tt("foobar!(baz);");
 
     fn get_id(t: &tt::TokenTree) -> Option<u32> {
         if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = t {
@@ -90,22 +93,23 @@ macro_rules! foobar {
 
 #[test]
 fn test_token_map() {
-    use ra_parser::SyntaxKind::*;
-    use ra_syntax::T;
-
-    let macro_definition = r#"
+    let expanded = parse_macro(
+        r#"
 macro_rules! foobar {
     ($e:ident) => { fn $e() {} }
 }
-"#;
-    let rules = create_rules(macro_definition);
-    let (expansion, (token_map, content)) = expand_and_map(&rules, "foobar!(baz);");
+"#,
+    )
+    .expand_tt("foobar!(baz);");
+
+    let (node, token_map) = token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap();
+    let content = node.syntax_node().to_string();
 
     let get_text = |id, kind| -> String {
         content[token_map.range_by_token(id).unwrap().by_kind(kind).unwrap()].to_string()
     };
 
-    assert_eq!(expansion.token_trees.len(), 4);
+    assert_eq!(expanded.token_trees.len(), 4);
     // {($e:ident) => { fn $e() {} }}
     // 012345      67 8 9  T12  3
 
@@ -116,7 +120,7 @@ macro_rules! foobar {
 
 #[test]
 fn test_convert_tt() {
-    let macro_definition = r#"
+    parse_macro(r#"
 macro_rules! impl_froms {
     ($e:ident: $($v:ident),*) => {
         $(
@@ -128,24 +132,17 @@ macro_rules! impl_froms {
         )*
     }
 }
-"#;
-
-    let macro_invocation = r#"
-impl_froms!(TokenTree: Leaf, Subtree);
-"#;
-
-    let rules = create_rules(macro_definition);
-    let expansion = expand(&rules, macro_invocation);
-    assert_eq!(
-        expansion.to_string(),
-        "impl From <Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree ::Leaf (it)}} \
-         impl From <Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree ::Subtree (it)}}"
-    )
+"#)
+        .assert_expand_tt(
+            "impl_froms!(TokenTree: Leaf, Subtree);",
+            "impl From <Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree ::Leaf (it)}} \
+             impl From <Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree ::Subtree (it)}}"
+        );
 }
 
 #[test]
 fn test_expr_order() {
-    let rules = create_rules(
+    let expanded = parse_macro(
         r#"
         macro_rules! foo {
             ($ i:expr) => {
@@ -153,11 +150,10 @@ fn test_expr_order() {
             }
         }
 "#,
-    );
-    let expanded = expand(&rules, "foo! { 1 + 1}");
-    let tree = token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap().0.syntax_node();
+    )
+    .expand_items("foo! { 1 + 1}");
 
-    let dump = format!("{:#?}", tree);
+    let dump = format!("{:#?}", expanded);
     assert_eq_text!(
         dump.trim(),
         r#"MACRO_ITEMS@[0; 15)
@@ -189,7 +185,7 @@ fn test_expr_order() {
 
 #[test]
 fn test_fail_match_pattern_by_first_token() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:ident) => (
@@ -203,16 +199,15 @@ fn test_fail_match_pattern_by_first_token() {
             )
         }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! { foo }", "mod foo {}");
-    assert_expansion(MacroKind::Items, &rules, "foo! { = bar }", "fn bar () {}");
-    assert_expansion(MacroKind::Items, &rules, "foo! { + Baz }", "struct Baz ;");
+    )
+    .assert_expand_items("foo! { foo }", "mod foo {}")
+    .assert_expand_items("foo! { = bar }", "fn bar () {}")
+    .assert_expand_items("foo! { + Baz }", "struct Baz ;");
 }
 
 #[test]
 fn test_fail_match_pattern_by_last_token() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:ident) => (
@@ -226,16 +221,15 @@ fn test_fail_match_pattern_by_last_token() {
             )
         }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! { foo }", "mod foo {}");
-    assert_expansion(MacroKind::Items, &rules, "foo! { bar = }", "fn bar () {}");
-    assert_expansion(MacroKind::Items, &rules, "foo! { Baz + }", "struct Baz ;");
+    )
+    .assert_expand_items("foo! { foo }", "mod foo {}")
+    .assert_expand_items("foo! { bar = }", "fn bar () {}")
+    .assert_expand_items("foo! { Baz + }", "struct Baz ;");
 }
 
 #[test]
 fn test_fail_match_pattern_by_word_token() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:ident) => (
@@ -249,16 +243,15 @@ fn test_fail_match_pattern_by_word_token() {
             )
         }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! { foo }", "mod foo {}");
-    assert_expansion(MacroKind::Items, &rules, "foo! { spam bar }", "fn bar () {}");
-    assert_expansion(MacroKind::Items, &rules, "foo! { eggs Baz }", "struct Baz ;");
+    )
+    .assert_expand_items("foo! { foo }", "mod foo {}")
+    .assert_expand_items("foo! { spam bar }", "fn bar () {}")
+    .assert_expand_items("foo! { eggs Baz }", "struct Baz ;");
 }
 
 #[test]
 fn test_match_group_pattern_by_separator_token() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ ($ i:ident),*) => ($ (
@@ -273,16 +266,15 @@ fn test_match_group_pattern_by_separator_token() {
             )
         }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! { foo, bar }", "mod foo {} mod bar {}");
-    assert_expansion(MacroKind::Items, &rules, "foo! { foo# bar }", "fn foo () {} fn bar () {}");
-    assert_expansion(MacroKind::Items, &rules, "foo! { Foo,# Bar }", "struct Foo ; struct Bar ;");
+    )
+    .assert_expand_items("foo! { foo, bar }", "mod foo {} mod bar {}")
+    .assert_expand_items("foo! { foo# bar }", "fn foo () {} fn bar () {}")
+    .assert_expand_items("foo! { Foo,# Bar }", "struct Foo ; struct Bar ;");
 }
 
 #[test]
 fn test_match_group_pattern_with_multiple_defs() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ ($ i:ident),*) => ( struct Bar { $ (
@@ -290,19 +282,13 @@ fn test_match_group_pattern_with_multiple_defs() {
             )*} );
         }
 "#,
-    );
-
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
-        "foo! { foo, bar }",
-        "struct Bar {fn foo {} fn bar {}}",
-    );
+    )
+    .assert_expand_items("foo! { foo, bar }", "struct Bar {fn foo {} fn bar {}}");
 }
 
 #[test]
 fn test_match_group_pattern_with_multiple_statement() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ ($ i:ident),*) => ( fn baz { $ (
@@ -310,14 +296,13 @@ fn test_match_group_pattern_with_multiple_statement() {
             )*} );
         }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! { foo, bar }", "fn baz {foo () ; bar () ;}");
+    )
+    .assert_expand_items("foo! { foo, bar }", "fn baz {foo () ; bar () ;}");
 }
 
 #[test]
 fn test_match_group_pattern_with_multiple_statement_without_semi() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ ($ i:ident),*) => ( fn baz { $ (
@@ -325,14 +310,13 @@ fn test_match_group_pattern_with_multiple_statement_without_semi() {
             );*} );
         }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! { foo, bar }", "fn baz {foo () ;bar ()}");
+    )
+    .assert_expand_items("foo! { foo, bar }", "fn baz {foo () ;bar ()}");
 }
 
 #[test]
 fn test_match_group_empty_fixed_token() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ ($ i:ident)* #abc) => ( fn baz { $ (
@@ -340,69 +324,59 @@ fn test_match_group_empty_fixed_token() {
             )*} );
         }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! {#abc}", "fn baz {}");
+    )
+    .assert_expand_items("foo! {#abc}", "fn baz {}");
 }
 
 #[test]
 fn test_match_group_in_subtree() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             (fn $name:ident {$($i:ident)*} ) => ( fn $name() { $ (
                 $ i ();
             )*} );
         }"#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! {fn baz {a b} }", "fn baz () {a () ; b () ;}");
+    )
+    .assert_expand_items("foo! {fn baz {a b} }", "fn baz () {a () ; b () ;}");
 }
 
 #[test]
 fn test_match_group_with_multichar_sep() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             (fn $name:ident {$($i:literal)*} ) => ( fn $name() -> bool { $($i)&&*} );
         }"#,
-    );
-
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
-        "foo! (fn baz {true true} );",
-        "fn baz () -> bool {true &&true}",
-    );
+    )
+    .assert_expand_items("foo! (fn baz {true true} );", "fn baz () -> bool {true &&true}");
 }
 
 #[test]
 fn test_match_group_zero_match() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ( $($i:ident)* ) => ();
         }"#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! ();", "");
+    )
+    .assert_expand_items("foo! ();", "");
 }
 
 #[test]
 fn test_match_group_in_group() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             { $( ( $($i:ident)* ) )* } => ( $( ( $($i)* ) )* );
         }"#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, "foo! ( (a b) );", "(a b)");
+    )
+    .assert_expand_items("foo! ( (a b) );", "(a b)");
 }
 
 #[test]
 fn test_expand_to_item_list() {
-    let rules = create_rules(
+    let tree = parse_macro(
         "
             macro_rules! structs {
                 ($($i:ident),*) => {
@@ -410,9 +384,8 @@ fn test_expand_to_item_list() {
                 }
             }
             ",
-    );
-    let expansion = expand(&rules, "structs!(Foo, Bar);");
-    let tree = token_tree_to_syntax_node(&expansion, FragmentKind::Items).unwrap().0.syntax_node();
+    )
+    .expand_items("structs!(Foo, Bar);");
     assert_eq!(
         format!("{:#?}", tree).trim(),
         r#"
@@ -469,7 +442,7 @@ fn test_expand_literals_to_token_tree() {
         unreachable!("It is not a literal");
     }
 
-    let rules = create_rules(
+    let expansion = parse_macro(
         r#"
             macro_rules! literals {
                 ($i:ident) => {
@@ -482,8 +455,8 @@ fn test_expand_literals_to_token_tree() {
                 }
             }
             "#,
-    );
-    let expansion = expand(&rules, "literals!(foo);");
+    )
+    .expand_tt("literals!(foo);");
     let stm_tokens = &to_subtree(&expansion.token_trees[0]).token_trees;
 
     // [let] [a] [=] ['c'] [;]
@@ -498,7 +471,7 @@ fn test_expand_literals_to_token_tree() {
 
 #[test]
 fn test_two_idents() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:ident, $ j:ident) => {
@@ -506,18 +479,13 @@ fn test_two_idents() {
             }
         }
 "#,
-    );
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
-        "foo! { foo, bar }",
-        "fn foo () {let a = foo ; let b = bar ;}",
-    );
+    )
+    .assert_expand_items("foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
 }
 
 #[test]
 fn test_tt_to_stmts() {
-    let rules = create_rules(
+    let stmts = parse_macro(
         r#"
         macro_rules! foo {
             () => {
@@ -527,11 +495,8 @@ fn test_tt_to_stmts() {
             }
         }
 "#,
-    );
-
-    let expanded = expand(&rules, "foo!{}");
-    let stmts =
-        token_tree_to_syntax_node(&expanded, FragmentKind::Statements).unwrap().0.syntax_node();
+    )
+    .expand_statements("foo!{}");
 
     assert_eq!(
         format!("{:#?}", stmts).trim(),
@@ -571,7 +536,7 @@ fn test_tt_to_stmts() {
 
 #[test]
 fn test_match_literal() {
-    let rules = create_rules(
+    parse_macro(
         r#"
     macro_rules! foo {
         ('(') => {
@@ -579,8 +544,8 @@ fn test_match_literal() {
         }
     }
 "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, "foo! ['('];", "fn foo () {}");
+    )
+    .assert_expand_items("foo! ['('];", "fn foo () {}");
 }
 
 // The following tests are port from intellij-rust directly
@@ -588,7 +553,7 @@ fn test_match_literal() {
 
 #[test]
 fn test_path() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:path) => {
@@ -596,11 +561,9 @@ fn test_path() {
             }
         }
 "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, "foo! { foo }", "fn foo () {let a = foo ;}");
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    )
+    .assert_expand_items("foo! { foo }", "fn foo () {let a = foo ;}")
+    .assert_expand_items(
         "foo! { bar::<u8>::baz::<u8> }",
         "fn foo () {let a = bar ::< u8 >:: baz ::< u8 > ;}",
     );
@@ -608,7 +571,7 @@ fn test_path() {
 
 #[test]
 fn test_two_paths() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:path, $ j:path) => {
@@ -616,18 +579,13 @@ fn test_two_paths() {
             }
         }
 "#,
-    );
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
-        "foo! { foo, bar }",
-        "fn foo () {let a = foo ; let b = bar ;}",
-    );
+    )
+    .assert_expand_items("foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
 }
 
 #[test]
 fn test_path_with_path() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:path) => {
@@ -635,13 +593,13 @@ fn test_path_with_path() {
             }
         }
 "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, "foo! { foo }", "fn foo () {let a = foo :: bar ;}");
+    )
+    .assert_expand_items("foo! { foo }", "fn foo () {let a = foo :: bar ;}");
 }
 
 #[test]
 fn test_expr() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:expr) => {
@@ -649,11 +607,8 @@ fn test_expr() {
             }
         }
 "#,
-    );
-
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    )
+    .assert_expand_items(
         "foo! { 2 + 2 * baz(3).quux() }",
         "fn bar () {2 + 2 * baz (3) . quux () ;}",
     );
@@ -661,7 +616,7 @@ fn test_expr() {
 
 #[test]
 fn test_last_expr() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! vec {
             ($($item:expr),*) => {
@@ -675,10 +630,8 @@ fn test_last_expr() {
             };
         }
 "#,
-    );
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    )
+    .assert_expand_items(
         "vec!(1,2,3);",
         "{let mut v = Vec :: new () ; v . push (1) ; v . push (2) ; v . push (3) ; v}",
     );
@@ -686,7 +639,7 @@ fn test_last_expr() {
 
 #[test]
 fn test_ty() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:ty) => (
@@ -694,18 +647,13 @@ fn test_ty() {
             )
         }
 "#,
-    );
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
-        "foo! { Baz<u8> }",
-        "fn bar () -> Baz < u8 > {unimplemented ! ()}",
-    );
+    )
+    .assert_expand_items("foo! { Baz<u8> }", "fn bar () -> Baz < u8 > {unimplemented ! ()}");
 }
 
 #[test]
 fn test_ty_with_complex_type() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:ty) => (
@@ -713,20 +661,14 @@ fn test_ty_with_complex_type() {
             )
         }
 "#,
-    );
-
+    )
     // Reference lifetime struct with generic type
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    .assert_expand_items(
         "foo! { &'a Baz<u8> }",
         "fn bar () -> & 'a Baz < u8 > {unimplemented ! ()}",
-    );
-
+    )
     // extern "Rust" func type
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    .assert_expand_items(
         r#"foo! { extern "Rust" fn() -> Ret }"#,
         r#"fn bar () -> extern "Rust" fn () -> Ret {unimplemented ! ()}"#,
     );
@@ -734,19 +676,19 @@ fn test_ty_with_complex_type() {
 
 #[test]
 fn test_pat_() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:pat) => { fn foo() { let $ i; } }
         }
 "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, "foo! { (a, b) }", "fn foo () {let (a , b) ;}");
+    )
+    .assert_expand_items("foo! { (a, b) }", "fn foo () {let (a , b) ;}");
 }
 
 #[test]
 fn test_stmt() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:stmt) => (
@@ -754,14 +696,14 @@ fn test_stmt() {
             )
         }
 "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, "foo! { 2 }", "fn bar () {2 ;}");
-    assert_expansion(MacroKind::Items, &rules, "foo! { let a = 0 }", "fn bar () {let a = 0 ;}");
+    )
+    .assert_expand_items("foo! { 2 }", "fn bar () {2 ;}")
+    .assert_expand_items("foo! { let a = 0 }", "fn bar () {let a = 0 ;}");
 }
 
 #[test]
 fn test_single_item() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:item) => (
@@ -769,13 +711,13 @@ fn test_single_item() {
             )
         }
 "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, "foo! {mod c {}}", "mod c {}");
+    )
+    .assert_expand_items("foo! {mod c {}}", "mod c {}");
 }
 
 #[test]
 fn test_all_items() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ ($ i:item)*) => ($ (
@@ -783,10 +725,8 @@ fn test_all_items() {
             )*)
         }
 "#,
-    );
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    ).
+    assert_expand_items(
         r#"
         foo! {
             extern crate a;
@@ -810,19 +750,19 @@ fn test_all_items() {
 
 #[test]
 fn test_block() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:block) => { fn foo() $ i }
         }
 "#,
-    );
-    assert_expansion(MacroKind::Stmts, &rules, "foo! { { 1; } }", "fn foo () {1 ;}");
+    )
+    .assert_expand_statements("foo! { { 1; } }", "fn foo () {1 ;}");
 }
 
 #[test]
 fn test_meta() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($ i:meta) => (
@@ -831,10 +771,8 @@ fn test_meta() {
             )
         }
 "#,
-    );
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    )
+    .assert_expand_items(
         r#"foo! { cfg(target_os = "windows") }"#,
         r#"# [cfg (target_os = "windows")] fn bar () {}"#,
     );
@@ -842,7 +780,7 @@ fn test_meta() {
 
 #[test]
 fn test_meta_doc_comments() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
             ($(#[$ i:meta])+) => (
@@ -851,10 +789,8 @@ fn test_meta_doc_comments() {
             )
         }
 "#,
-    );
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    ).
+    assert_expand_items(
         r#"foo! {
             /// Single Line Doc 1
             /**
@@ -867,69 +803,68 @@ fn test_meta_doc_comments() {
 
 #[test]
 fn test_tt_block() {
-    let rules = create_rules(
+    parse_macro(
         r#"
             macro_rules! foo {
                 ($ i:tt) => { fn foo() $ i }
             }
     "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, r#"foo! { { 1; } }"#, r#"fn foo () {1 ;}"#);
+    )
+    .assert_expand_items(r#"foo! { { 1; } }"#, r#"fn foo () {1 ;}"#);
 }
 
 #[test]
 fn test_tt_group() {
-    let rules = create_rules(
+    parse_macro(
         r#"
             macro_rules! foo {
                  ($($ i:tt)*) => { $($ i)* }
             }
     "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
+    )
+    .assert_expand_items(r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
 }
 #[test]
 fn test_lifetime() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
               ($ lt:lifetime) => { struct Ref<$ lt>{ s: &$ lt str } }
         }
 "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, r#"foo!{'a}"#, r#"struct Ref <'a > {s : &'a str}"#);
+    )
+    .assert_expand_items(r#"foo!{'a}"#, r#"struct Ref <'a > {s : &'a str}"#);
 }
 
 #[test]
 fn test_literal() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
               ($ type:ty $ lit:literal) => { const VALUE: $ type = $ lit;};
         }
 "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, r#"foo!(u8 0);"#, r#"const VALUE : u8 = 0 ;"#);
+    )
+    .assert_expand_items(r#"foo!(u8 0);"#, r#"const VALUE : u8 = 0 ;"#);
 }
 
 #[test]
 fn test_vis() {
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! foo {
               ($ vis:vis $ name:ident) => { $ vis fn $ name() {}};
         }
 "#,
-    );
-    assert_expansion(MacroKind::Items, &rules, r#"foo!(pub foo);"#, r#"pub fn foo () {}"#);
-
-    // test optional casse
-    assert_expansion(MacroKind::Items, &rules, r#"foo!(foo);"#, r#"fn foo () {}"#);
+    )
+    .assert_expand_items(r#"foo!(pub foo);"#, r#"pub fn foo () {}"#)
+    // test optional cases
+    .assert_expand_items(r#"foo!(foo);"#, r#"fn foo () {}"#);
 }
 
 #[test]
 fn test_inner_macro_rules() {
-    let rules = create_rules(
+    parse_macro(
         r#"
 macro_rules! foo {
     ($a:ident, $b:ident, $c:tt) => {
@@ -945,10 +880,8 @@ macro_rules! foo {
     }
 }
 "#,
-    );
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    ).
+    assert_expand_items(
         r#"foo!(x,y, 1);"#,
         r#"macro_rules ! bar {($ bi : ident) => {fn $ bi () -> u8 {1}}} bar ! (x) ; fn y () -> u8 {1}"#,
     );
@@ -957,7 +890,7 @@ macro_rules! foo {
 // The following tests are based on real world situations
 #[test]
 fn test_vec() {
-    let rules = create_rules(
+    let fixture = parse_macro(
         r#"
          macro_rules! vec {
             ($($item:expr),*) => {
@@ -972,16 +905,14 @@ fn test_vec() {
 }
 "#,
     );
-    assert_expansion(MacroKind::Items, &rules, r#"vec!();"#, r#"{let mut v = Vec :: new () ; v}"#);
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
-        r#"vec![1u32,2];"#,
-        r#"{let mut v = Vec :: new () ; v . push (1u32) ; v . push (2) ; v}"#,
-    );
+    fixture
+        .assert_expand_items(r#"vec!();"#, r#"{let mut v = Vec :: new () ; v}"#)
+        .assert_expand_items(
+            r#"vec![1u32,2];"#,
+            r#"{let mut v = Vec :: new () ; v . push (1u32) ; v . push (2) ; v}"#,
+        );
 
-    let expansion = expand(&rules, r#"vec![1u32,2];"#);
-    let tree = token_tree_to_syntax_node(&expansion, FragmentKind::Expr).unwrap().0.syntax_node();
+    let tree = fixture.expand_expr(r#"vec![1u32,2];"#);
 
     assert_eq!(
         format!("{:#?}", tree).trim(),
@@ -1055,7 +986,7 @@ fn test_vec() {
 fn test_winapi_struct() {
     // from https://github.com/retep998/winapi-rs/blob/a7ef2bca086aae76cf6c4ce4c2552988ed9798ad/src/macros.rs#L366
 
-    let rules = create_rules(
+    parse_macro(
         r#"
 macro_rules! STRUCT {
     ($(#[$attrs:meta])* struct $name:ident {
@@ -1077,17 +1008,19 @@ macro_rules! STRUCT {
     );
 }
 "#,
-    );
+    ).
     // from https://github.com/retep998/winapi-rs/blob/a7ef2bca086aae76cf6c4ce4c2552988ed9798ad/src/shared/d3d9caps.rs
-    assert_expansion(MacroKind::Items, &rules, r#"STRUCT!{struct D3DVSHADERCAPS2_0 {Caps: u8,}}"#,
-        "# [repr (C)] # [derive (Copy)] pub struct D3DVSHADERCAPS2_0 {pub Caps : u8 ,} impl Clone for D3DVSHADERCAPS2_0 {# [inline] fn clone (& self) -> D3DVSHADERCAPS2_0 {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DVSHADERCAPS2_0 {# [inline] fn default () -> D3DVSHADERCAPS2_0 {unsafe {$crate :: _core :: mem :: zeroed ()}}}");
-    assert_expansion(MacroKind::Items, &rules, r#"STRUCT!{#[cfg_attr(target_arch = "x86", repr(packed))] struct D3DCONTENTPROTECTIONCAPS {Caps : u8 ,}}"#,
-        "# [repr (C)] # [derive (Copy)] # [cfg_attr (target_arch = \"x86\" , repr (packed))] pub struct D3DCONTENTPROTECTIONCAPS {pub Caps : u8 ,} impl Clone for D3DCONTENTPROTECTIONCAPS {# [inline] fn clone (& self) -> D3DCONTENTPROTECTIONCAPS {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DCONTENTPROTECTIONCAPS {# [inline] fn default () -> D3DCONTENTPROTECTIONCAPS {unsafe {$crate :: _core :: mem :: zeroed ()}}}");
+    assert_expand_items(r#"STRUCT!{struct D3DVSHADERCAPS2_0 {Caps: u8,}}"#,
+        "# [repr (C)] # [derive (Copy)] pub struct D3DVSHADERCAPS2_0 {pub Caps : u8 ,} impl Clone for D3DVSHADERCAPS2_0 {# [inline] fn clone (& self) -> D3DVSHADERCAPS2_0 {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DVSHADERCAPS2_0 {# [inline] fn default () -> D3DVSHADERCAPS2_0 {unsafe {$crate :: _core :: mem :: zeroed ()}}}"
+    )
+    .assert_expand_items(r#"STRUCT!{#[cfg_attr(target_arch = "x86", repr(packed))] struct D3DCONTENTPROTECTIONCAPS {Caps : u8 ,}}"#,
+        "# [repr (C)] # [derive (Copy)] # [cfg_attr (target_arch = \"x86\" , repr (packed))] pub struct D3DCONTENTPROTECTIONCAPS {pub Caps : u8 ,} impl Clone for D3DCONTENTPROTECTIONCAPS {# [inline] fn clone (& self) -> D3DCONTENTPROTECTIONCAPS {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DCONTENTPROTECTIONCAPS {# [inline] fn default () -> D3DCONTENTPROTECTIONCAPS {unsafe {$crate :: _core :: mem :: zeroed ()}}}"
+    );
 }
 
 #[test]
 fn test_int_base() {
-    let rules = create_rules(
+    parse_macro(
         r#"
 macro_rules! int_base {
     ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
@@ -1100,17 +1033,15 @@ macro_rules! int_base {
     }
 }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, r#" int_base!{Binary for isize as usize -> Binary}"#,
+    ).assert_expand_items(r#" int_base!{Binary for isize as usize -> Binary}"#,
         "# [stable (feature = \"rust1\" , since = \"1.0.0\")] impl fmt ::Binary for isize {fn fmt (& self , f : & mut fmt :: Formatter < \'_ >) -> fmt :: Result {Binary . fmt_int (* self as usize , f)}}"
-        );
+    );
 }
 
 #[test]
 fn test_generate_pattern_iterators() {
     // from https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/str/mod.rs
-    let rules = create_rules(
+    parse_macro(
         r#"
 macro_rules! generate_pattern_iterators {
         { double ended; with $(#[$common_stability_attribute:meta])*,
@@ -1121,11 +1052,7 @@ macro_rules! generate_pattern_iterators {
         }
 }
 "#,
-    );
-
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    ).assert_expand_items(
         r#"generate_pattern_iterators ! ( double ended ; with # [ stable ( feature = "rust1" , since = "1.0.0" ) ] , Split , RSplit , & 'a str );"#,
         "fn foo () {}",
     );
@@ -1134,7 +1061,7 @@ macro_rules! generate_pattern_iterators {
 #[test]
 fn test_impl_fn_for_zst() {
     // from https://github.com/rust-lang/rust/blob/5d20ff4d2718c820632b38c1e49d4de648a9810b/src/libcore/internal_macros.rs
-    let rules = create_rules(
+    parse_macro(
         r#"
 macro_rules! impl_fn_for_zst  {
         {  $( $( #[$attr: meta] )*
@@ -1175,9 +1102,7 @@ $body: block; )+
 }
         }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, r#"
+    ).assert_expand_items(r#"
 impl_fn_for_zst !   {
      # [ derive ( Clone ) ]
      struct   CharEscapeDebugContinue   impl   Fn   =   | c :   char |   ->   char :: EscapeDebug   {
@@ -1194,13 +1119,14 @@ impl_fn_for_zst !   {
      } ;
  }
 "#,
-        "# [derive (Clone)] struct CharEscapeDebugContinue ; impl Fn < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDebug {{c . escape_debug_ext (false)}}} impl FnMut < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (&* self , (c ,))}} impl FnOnce < (char ,) > for CharEscapeDebugContinue {type Output = char :: EscapeDebug ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeUnicode ; impl Fn < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeUnicode {{c . escape_unicode ()}}} impl FnMut < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (&* self , (c ,))}} impl FnOnce < (char ,) > for CharEscapeUnicode {type Output = char :: EscapeUnicode ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeDefault ; impl Fn < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDefault {{c . escape_default ()}}} impl FnMut < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (&* self , (c ,))}} impl FnOnce < (char ,) > for CharEscapeDefault {type Output = char :: EscapeDefault ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (& self , (c ,))}}");
+        "# [derive (Clone)] struct CharEscapeDebugContinue ; impl Fn < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDebug {{c . escape_debug_ext (false)}}} impl FnMut < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (&* self , (c ,))}} impl FnOnce < (char ,) > for CharEscapeDebugContinue {type Output = char :: EscapeDebug ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeUnicode ; impl Fn < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeUnicode {{c . escape_unicode ()}}} impl FnMut < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (&* self , (c ,))}} impl FnOnce < (char ,) > for CharEscapeUnicode {type Output = char :: EscapeUnicode ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeDefault ; impl Fn < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDefault {{c . escape_default ()}}} impl FnMut < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (&* self , (c ,))}} impl FnOnce < (char ,) > for CharEscapeDefault {type Output = char :: EscapeDefault ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (& self , (c ,))}}"
+    );
 }
 
 #[test]
 fn test_impl_nonzero_fmt() {
     // from https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/num/mod.rs#L12
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! impl_nonzero_fmt {
             ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
@@ -1208,11 +1134,7 @@ fn test_impl_nonzero_fmt() {
             }
         }
 "#,
-    );
-
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    ).assert_expand_items(
         r#"impl_nonzero_fmt! { # [stable(feature= "nonzero",since="1.28.0")] (Debug,Display,Binary,Octal,LowerHex,UpperHex) for NonZeroU8}"#,
         "fn foo () {}",
     );
@@ -1221,7 +1143,7 @@ fn test_impl_nonzero_fmt() {
 #[test]
 fn test_cfg_if_items() {
     // from https://github.com/rust-lang/rust/blob/33fe1131cadba69d317156847be9a402b89f11bb/src/libstd/macros.rs#L986
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! __cfg_if_items {
             (($($not:meta,)*) ; ) => {};
@@ -1230,11 +1152,7 @@ fn test_cfg_if_items() {
             }
         }
 "#,
-    );
-
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    ).assert_expand_items(
         r#"__cfg_if_items ! { ( rustdoc , ) ; ( ( ) ( # [ cfg ( any ( target_os = "redox" , unix ) ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as unix ; # [ cfg ( windows ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as windows ; # [ cfg ( any ( target_os = "linux" , target_os = "l4re" ) ) ] pub mod linux ; ) ) , }"#,
         "__cfg_if_items ! {(rustdoc ,) ;}",
     );
@@ -1243,7 +1161,7 @@ fn test_cfg_if_items() {
 #[test]
 fn test_cfg_if_main() {
     // from https://github.com/rust-lang/rust/blob/3d211248393686e0f73851fc7548f6605220fbe1/src/libpanic_unwind/macros.rs#L9
-    let rules = create_rules(
+    parse_macro(
         r#"
         macro_rules! cfg_if {
             ($(
@@ -1264,9 +1182,7 @@ fn test_cfg_if_main() {
             };
         }
 "#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, r#"
+    ).assert_expand_items(r#"
 cfg_if !   {
      if   # [ cfg ( target_env   =   "msvc" ) ]   {
          // no extra unwinder support needed
@@ -1278,11 +1194,8 @@ cfg_if !   {
      }
  }
 "#,
-        "__cfg_if_items ! {() ; ((target_env = \"msvc\") ()) , ((all (target_arch = \"wasm32\" , not (target_os = \"emscripten\"))) ()) , (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
-
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+        "__cfg_if_items ! {() ; ((target_env = \"msvc\") ()) , ((all (target_arch = \"wasm32\" , not (target_os = \"emscripten\"))) ()) , (() (mod libunwind ; pub use libunwind :: * ;)) ,}"
+    ).assert_expand_items(
         r#"
 cfg_if ! { @ __apply cfg ( all ( not ( any ( not ( any ( target_os = "solaris" , target_os = "illumos" ) ) ) ) ) ) , }
 "#,
@@ -1293,7 +1206,7 @@ cfg_if ! { @ __apply cfg ( all ( not ( any ( not ( any ( target_os = "solaris" ,
 #[test]
 fn test_proptest_arbitrary() {
     // from https://github.com/AltSysrq/proptest/blob/d1c4b049337d2f75dd6f49a095115f7c532e5129/proptest/src/arbitrary/macros.rs#L16
-    let rules = create_rules(
+    parse_macro(
         r#"
 macro_rules! arbitrary {
     ([$($bounds : tt)*] $typ: ty, $strat: ty, $params: ty;
@@ -1308,22 +1221,21 @@ macro_rules! arbitrary {
     };
 
 }"#,
-    );
-
-    assert_expansion(MacroKind::Items, &rules, r#"arbitrary !   ( [ A : Arbitrary ]
+    ).assert_expand_items(r#"arbitrary !   ( [ A : Arbitrary ]
         Vec < A > ,
         VecStrategy < A :: Strategy > ,
         RangedParams1 < A :: Parameters > ;
         args =>   { let product_unpack !   [ range , a ] = args ; vec ( any_with :: < A >   ( a ) , range ) }
     ) ;"#,
-    "impl <A : Arbitrary > $crate :: arbitrary :: Arbitrary for Vec < A > {type Parameters = RangedParams1 < A :: Parameters > ; type Strategy = VecStrategy < A :: Strategy > ; fn arbitrary_with (args : Self :: Parameters) -> Self :: Strategy {{let product_unpack ! [range , a] = args ; vec (any_with :: < A > (a) , range)}}}");
+    "impl <A : Arbitrary > $crate :: arbitrary :: Arbitrary for Vec < A > {type Parameters = RangedParams1 < A :: Parameters > ; type Strategy = VecStrategy < A :: Strategy > ; fn arbitrary_with (args : Self :: Parameters) -> Self :: Strategy {{let product_unpack ! [range , a] = args ; vec (any_with :: < A > (a) , range)}}}"
+    );
 }
 
 #[test]
 fn test_old_ridl() {
     // This is from winapi 2.8, which do not have a link from github
     //
-    let rules = create_rules(
+    let expanded = parse_macro(
         r#"
 #[macro_export]
 macro_rules! RIDL {
@@ -1339,21 +1251,17 @@ macro_rules! RIDL {
         }
     };
 }"#,
-    );
+    ).expand_tt(r#"
+    RIDL!{interface ID3D11Asynchronous(ID3D11AsynchronousVtbl): ID3D11DeviceChild(ID3D11DeviceChildVtbl) {
+        fn GetDataSize(&mut self) -> UINT
+    }}"#);
 
-    let expanded = expand(
-        &rules,
-        r#"
-RIDL!{interface ID3D11Asynchronous(ID3D11AsynchronousVtbl): ID3D11DeviceChild(ID3D11DeviceChildVtbl) {
-    fn GetDataSize(&mut self) -> UINT
-}}"#,
-    );
     assert_eq!(expanded.to_string(), "impl ID3D11Asynchronous {pub unsafe fn GetDataSize (& mut self) -> UINT {((* self . lpVtbl) .GetDataSize) (self)}}");
 }
 
 #[test]
 fn test_quick_error() {
-    let rules = create_rules(
+    let expanded = parse_macro(
         r#"
 macro_rules! quick_error {
 
@@ -1376,10 +1284,8 @@ macro_rules! quick_error {
 
 }
 "#,
-    );
-
-    let expanded = expand(
-        &rules,
+    )
+    .expand_tt(
         r#"
 quick_error ! (SORT [enum Wrapped # [derive (Debug)]] items [
         => One : UNIT [] {}
@@ -1393,7 +1299,7 @@ quick_error ! (SORT [enum Wrapped # [derive (Debug)]] items [
 
 #[test]
 fn test_empty_repeat_vars_in_empty_repeat_vars() {
-    let rules = create_rules(
+    parse_macro(
         r#"
 macro_rules! delegate_impl {
     ([$self_type:ident, $self_wrap:ty, $self_map:ident]
@@ -1440,11 +1346,7 @@ macro_rules! delegate_impl {
     }
 }
 "#,
-    );
-
-    assert_expansion(
-        MacroKind::Items,
-        &rules,
+    ).assert_expand_items(
         r#"delegate_impl ! {[G , & 'a mut G , deref] pub trait Data : GraphBase {@ section type type NodeWeight ;}}"#,
         "impl <> Data for & \'a mut G where G : Data {}",
     );
@@ -1452,7 +1354,7 @@ macro_rules! delegate_impl {
 
 #[test]
 fn expr_interpolation() {
-    let rules = create_rules(
+    let expanded = parse_macro(
         r#"
         macro_rules! id {
             ($expr:expr) => {
@@ -1460,118 +1362,101 @@ fn expr_interpolation() {
             }
         }
         "#,
-    );
+    )
+    .expand_expr("id!(x + foo);");
 
-    let expanded = expand(&rules, "id!(x + foo);");
-    let expanded =
-        token_tree_to_syntax_node(&expanded, FragmentKind::Expr).unwrap().0.syntax_node();
     assert_eq!(expanded.to_string(), "map(x+foo)");
 }
 
-pub(crate) fn create_rules(macro_definition: &str) -> MacroRules {
+pub(crate) struct MacroFixture {
+    rules: MacroRules,
+}
+
+impl MacroFixture {
+    pub(crate) fn expand_tt(&self, invocation: &str) -> tt::Subtree {
+        let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
+        let macro_invocation =
+            source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+
+        let (invocation_tt, _) =
+            ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
+
+        self.rules.expand(&invocation_tt).unwrap()
+    }
+
+    fn expand_items(&self, invocation: &str) -> SyntaxNode {
+        let expanded = self.expand_tt(invocation);
+        token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap().0.syntax_node()
+    }
+
+    fn expand_statements(&self, invocation: &str) -> SyntaxNode {
+        let expanded = self.expand_tt(invocation);
+        token_tree_to_syntax_node(&expanded, FragmentKind::Statements).unwrap().0.syntax_node()
+    }
+
+    fn expand_expr(&self, invocation: &str) -> SyntaxNode {
+        let expanded = self.expand_tt(invocation);
+        token_tree_to_syntax_node(&expanded, FragmentKind::Expr).unwrap().0.syntax_node()
+    }
+
+    fn assert_expand_tt(&self, invocation: &str, expected: &str) {
+        let expansion = self.expand_tt(invocation);
+        assert_eq!(expansion.to_string(), expected);
+    }
+
+    fn assert_expand_items(&self, invocation: &str, expected: &str) -> &MacroFixture {
+        self.assert_expansion(FragmentKind::Items, invocation, expected);
+        self
+    }
+
+    fn assert_expand_statements(&self, invocation: &str, expected: &str) -> &MacroFixture {
+        self.assert_expansion(FragmentKind::Statements, invocation, expected);
+        self
+    }
+
+    fn assert_expansion(&self, kind: FragmentKind, invocation: &str, expected: &str) {
+        let expanded = self.expand_tt(invocation);
+        assert_eq!(expanded.to_string(), expected);
+
+        let expected = expected.replace("$crate", "C_C__C");
+
+        // wrap the given text to a macro call
+        let expected = {
+            let wrapped = format!("wrap_macro!( {} )", expected);
+            let wrapped = ast::SourceFile::parse(&wrapped);
+            let wrapped =
+                wrapped.tree().syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+            let mut wrapped = ast_to_token_tree(&wrapped).unwrap().0;
+            wrapped.delimiter = None;
+            wrapped
+        };
+
+        let expanded_tree = token_tree_to_syntax_node(&expanded, kind).unwrap().0.syntax_node();
+        let expanded_tree = debug_dump_ignore_spaces(&expanded_tree).trim().to_string();
+
+        let expected_tree = token_tree_to_syntax_node(&expected, kind).unwrap().0.syntax_node();
+        let expected_tree = debug_dump_ignore_spaces(&expected_tree).trim().to_string();
+
+        let expected_tree = expected_tree.replace("C_C__C", "$crate");
+        assert_eq!(
+            expanded_tree, expected_tree,
+            "\nleft:\n{}\nright:\n{}",
+            expanded_tree, expected_tree,
+        );
+    }
+}
+
+pub(crate) fn parse_macro(macro_definition: &str) -> MacroFixture {
     let source_file = ast::SourceFile::parse(macro_definition).ok().unwrap();
     let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
     let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
-    crate::MacroRules::parse(&definition_tt).unwrap()
+    let rules = MacroRules::parse(&definition_tt).unwrap();
+    MacroFixture { rules }
 }
 
-pub(crate) fn expand(rules: &MacroRules, invocation: &str) -> tt::Subtree {
-    let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
-    let macro_invocation =
-        source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
-
-    let (invocation_tt, _) = ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
-
-    rules.expand(&invocation_tt).unwrap()
-}
-
-pub(crate) fn expand_and_map(
-    rules: &MacroRules,
-    invocation: &str,
-) -> (tt::Subtree, (TokenMap, String)) {
-    let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
-    let macro_invocation =
-        source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
-
-    let (invocation_tt, _) = ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
-    let expanded = rules.expand(&invocation_tt).unwrap();
-
-    let (node, expanded_token_tree) =
-        token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap();
-
-    (expanded, (expanded_token_tree, node.syntax_node().to_string()))
-}
-
-pub(crate) enum MacroKind {
-    Items,
-    Stmts,
-}
-
-pub(crate) fn assert_expansion(
-    kind: MacroKind,
-    rules: &MacroRules,
-    invocation: &str,
-    expected: &str,
-) -> tt::Subtree {
-    let expanded = expand(rules, invocation);
-    assert_eq!(expanded.to_string(), expected);
-
-    let expected = expected.replace("$crate", "C_C__C");
-
-    // wrap the given text to a macro call
-    let expected = {
-        let wrapped = format!("wrap_macro!( {} )", expected);
-        let wrapped = ast::SourceFile::parse(&wrapped);
-        let wrapped = wrapped.tree().syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        let mut wrapped = ast_to_token_tree(&wrapped).unwrap().0;
-        wrapped.delimiter = None;
-        wrapped
-    };
-    let (expanded_tree, expected_tree) = match kind {
-        MacroKind::Items => {
-            let expanded_tree =
-                token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap().0.syntax_node();
-            let expected_tree =
-                token_tree_to_syntax_node(&expected, FragmentKind::Items).unwrap().0.syntax_node();
-
-            (
-                debug_dump_ignore_spaces(&expanded_tree).trim().to_string(),
-                debug_dump_ignore_spaces(&expected_tree).trim().to_string(),
-            )
-        }
-
-        MacroKind::Stmts => {
-            let expanded_tree = token_tree_to_syntax_node(&expanded, FragmentKind::Statements)
-                .unwrap()
-                .0
-                .syntax_node();
-            let expected_tree = token_tree_to_syntax_node(&expected, FragmentKind::Statements)
-                .unwrap()
-                .0
-                .syntax_node();
-
-            (
-                debug_dump_ignore_spaces(&expanded_tree).trim().to_string(),
-                debug_dump_ignore_spaces(&expected_tree).trim().to_string(),
-            )
-        }
-    };
-
-    let expected_tree = expected_tree.replace("C_C__C", "$crate");
-    assert_eq!(
-        expanded_tree, expected_tree,
-        "\nleft:\n{}\nright:\n{}",
-        expanded_tree, expected_tree,
-    );
-
-    expanded
-}
-
-pub fn debug_dump_ignore_spaces(node: &ra_syntax::SyntaxNode) -> String {
-    use std::fmt::Write;
-
+fn debug_dump_ignore_spaces(node: &ra_syntax::SyntaxNode) -> String {
     let mut level = 0;
     let mut buf = String::new();
     macro_rules! indent {
