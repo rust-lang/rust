@@ -557,21 +557,19 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Tuple(ref subpatterns, ddpos) => {
-                match ty.kind {
-                    ty::Tuple(ref tys) => {
-                        let subpatterns =
-                            subpatterns.iter()
-                                       .enumerate_and_adjust(tys.len(), ddpos)
-                                       .map(|(i, subpattern)| FieldPat {
-                                            field: Field::new(i),
-                                            pattern: self.lower_pattern(subpattern)
-                                       })
-                                       .collect();
-
-                        PatKind::Leaf { subpatterns }
-                    }
+                let tys = match ty.kind {
+                    ty::Tuple(ref tys) => tys,
                     _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
-                }
+                };
+                let subpatterns = subpatterns
+                    .iter()
+                    .enumerate_and_adjust(tys.len(), ddpos)
+                    .map(|(i, subpattern)| FieldPat {
+                        field: Field::new(i),
+                        pattern: self.lower_pattern(subpattern)
+                    })
+                    .collect();
+                PatKind::Leaf { subpatterns }
             }
 
             hir::PatKind::Binding(_, id, ident, ref sub) => {
