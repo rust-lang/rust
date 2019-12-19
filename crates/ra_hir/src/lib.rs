@@ -39,7 +39,7 @@ mod from_source;
 
 pub use crate::{
     code_model::{
-        Adt, AssocItem, AttrDef, Const, Container, Crate, CrateDependency, DefWithBody, Docs, Enum,
+        Adt, AssocItem, AttrDef, Const, Crate, CrateDependency, DefWithBody, Docs, Enum,
         EnumVariant, FieldSource, Function, GenericDef, HasAttrs, ImplBlock, Import, Local,
         MacroDef, Module, ModuleDef, ScopeDef, Static, Struct, StructField, Trait, Type, TypeAlias,
         TypeParam, Union, VariantDef,

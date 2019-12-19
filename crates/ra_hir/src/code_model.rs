@@ -11,9 +11,9 @@ use hir_def::{
     per_ns::PerNs,
     resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
-    AdtId, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, HasModule, ImplId,
-    LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId,
-    StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
+    AdtId, ConstId, DefWithBodyId, EnumId, FunctionId, HasModule, ImplId, LocalEnumVariantId,
+    LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -529,30 +529,6 @@ impl Const {
     pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
         db.const_data(self.id).name.clone()
     }
-
-    /// The containing impl block, if this is a type alias.
-    pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        match self.container(db) {
-            Some(Container::ImplBlock(it)) => Some(it),
-            _ => None,
-        }
-    }
-
-    /// The containing trait, if this is a trait type alias definition.
-    pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        match self.container(db) {
-            Some(Container::Trait(it)) => Some(it),
-            _ => None,
-        }
-    }
-
-    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
-        match self.id.lookup(db).container {
-            ContainerId::TraitId(it) => Some(Container::Trait(it.into())),
-            ContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
-            ContainerId::ModuleId(_) => None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -612,30 +588,6 @@ impl TypeAlias {
         Some(self.module(db).krate())
     }
 
-    /// The containing impl block, if this is a type alias.
-    pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        match self.container(db) {
-            Some(Container::ImplBlock(it)) => Some(it),
-            _ => None,
-        }
-    }
-
-    /// The containing trait, if this is a trait type alias definition.
-    pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        match self.container(db) {
-            Some(Container::Trait(it)) => Some(it),
-            _ => None,
-        }
-    }
-
-    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
-        match self.id.lookup(db).container {
-            ContainerId::TraitId(it) => Some(Container::Trait(it.into())),
-            ContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
-            ContainerId::ModuleId(_) => None,
-        }
-    }
-
     pub fn type_ref(self, db: &impl DefDatabase) -> Option<TypeRef> {
         db.type_alias_data(self.id).type_ref.clone()
     }
@@ -653,14 +605,6 @@ impl TypeAlias {
 pub struct MacroDef {
     pub(crate) id: MacroDefId,
 }
-
-impl MacroDef {}
-
-pub enum Container {
-    Trait(Trait),
-    ImplBlock(ImplBlock),
-}
-impl_froms!(Container: Trait, ImplBlock);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
