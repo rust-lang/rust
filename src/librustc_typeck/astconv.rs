@@ -1995,6 +1995,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
+        // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
+        // valid span, so we point at the whole path segment instead.
+        let span = if assoc_name.span != DUMMY_SP { assoc_name.span } else { span };
         let mut err = struct_span_err!(
             self.tcx().sess,
             span,
@@ -2012,11 +2015,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             )
             .collect();
 
-        if let Some(suggested_name) =
-            find_best_match_for_name(all_candidate_names.iter(), &assoc_name.as_str(), None)
-        {
+        if let (Some(suggested_name), true) = (
+            find_best_match_for_name(all_candidate_names.iter(), &assoc_name.as_str(), None),
+            assoc_name.span != DUMMY_SP,
+        ) {
             err.span_suggestion(
-                span,
+                assoc_name.span,
                 "there is an associated type with a similar name",
                 suggested_name.to_string(),
                 Applicability::MaybeIncorrect,
