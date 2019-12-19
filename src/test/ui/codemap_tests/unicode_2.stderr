@@ -14,7 +14,7 @@ LL |     let _ = ("아あ", 1i42);
    |
    = help: valid widths are 8, 16, 32, 64 and 128
 
-error[E0425]: cannot find value `a̐é` in this scope
+error[E0425]: cannot find value `a̐é` in this scope
   --> $DIR/unicode_2.rs:6:13
    |
 LL |     let _ = a̐é;
