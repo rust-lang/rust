@@ -74,6 +74,13 @@ impl Step for Llvm {
         let done_stamp = out_dir.join("llvm-finished-building");
 
         if done_stamp.exists() {
+            if builder.config.llvm_skip_rebuild {
+                builder.info("Warning: \
+                              Using a potentially stale build of LLVM; \
+                              This may not behave well.");
+                return build_llvm_config;
+            }
+
             if let Some(llvm_commit) = llvm_info.sha() {
                 let done_contents = t!(fs::read(&done_stamp));
 
