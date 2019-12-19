@@ -43,6 +43,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T!['('],
         T!['{'],
         T!['['],
+        L_DOLLAR,
         T![|],
         T![move],
         T![box],
