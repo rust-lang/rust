@@ -2,7 +2,7 @@ error[E0220]: associated type `Trget` not found for `std::ops::Deref`
   --> $DIR/type-binding.rs:6:20
    |
 LL | fn homura<T: Deref<Trget = i32>>(_: T) {}
-   |                    ^^^^^^^^^^^ associated type `Trget` not found
+   |                    ^^^^^^^^^^^ help: there is an associated type with a similar name: `Target`
 
 error: aborting due to previous error
 
