@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! A bit-set of `SyntaxKind`s.
 
 use crate::SyntaxKind;
 
@@ -7,9 +7,7 @@ use crate::SyntaxKind;
 pub(crate) struct TokenSet(u128);
 
 impl TokenSet {
-    pub(crate) const fn empty() -> TokenSet {
-        TokenSet(0)
-    }
+    pub(crate) const EMPTY: TokenSet = TokenSet(0);
 
     pub(crate) const fn singleton(kind: SyntaxKind) -> TokenSet {
         TokenSet(mask(kind))
@@ -30,7 +28,7 @@ const fn mask(kind: SyntaxKind) -> u128 {
 
 #[macro_export]
 macro_rules! token_set {
-    ($($t:expr),*) => { TokenSet::empty()$(.union(TokenSet::singleton($t)))* };
+    ($($t:expr),*) => { TokenSet::EMPTY$(.union(TokenSet::singleton($t)))* };
     ($($t:expr),* ,) => { token_set!($($t),*) };
 }
 
