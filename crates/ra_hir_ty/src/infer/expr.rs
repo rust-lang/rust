@@ -422,10 +422,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
             Expr::Index { base, index } => {
-                let _base_ty = self.infer_expr_inner(*base, &Expectation::none());
-                let _index_ty = self.infer_expr(*index, &Expectation::none());
-                // FIXME: use `std::ops::Index::Output` to figure out the real return type
-                Ty::Unknown
+                let base_ty = self.infer_expr_inner(*base, &Expectation::none());
+                let index_ty = self.infer_expr(*index, &Expectation::none());
+
+                self.resolve_associated_type_with_params(
+                    base_ty,
+                    self.resolve_ops_index_output(),
+                    &[index_ty],
+                )
             }
             Expr::Tuple { exprs } => {
                 let mut tys = match &expected.ty {

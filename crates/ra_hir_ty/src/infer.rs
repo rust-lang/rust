@@ -363,14 +363,28 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_associated_type(&mut self, inner_ty: Ty, assoc_ty: Option<TypeAliasId>) -> Ty {
+        self.resolve_associated_type_with_params(inner_ty, assoc_ty, &[])
+    }
+
+    fn resolve_associated_type_with_params(
+        &mut self,
+        inner_ty: Ty,
+        assoc_ty: Option<TypeAliasId>,
+        params: &[Ty],
+    ) -> Ty {
         match assoc_ty {
             Some(res_assoc_ty) => {
                 let ty = self.table.new_type_var();
+                let mut builder = Substs::builder(1 + params.len()).push(inner_ty);
+                for ty in params {
+                    builder = builder.push(ty.clone());
+                }
+
                 let projection = ProjectionPredicate {
                     ty: ty.clone(),
                     projection_ty: ProjectionTy {
                         associated_ty: res_assoc_ty,
-                        parameters: Substs::single(inner_ty),
+                        parameters: builder.build(),
                     },
                 };
                 self.obligations.push(Obligation::Projection(projection));
@@ -516,6 +530,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let path = path![std::ops::RangeToInclusive];
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
+    }
+
+    fn resolve_ops_index_output(&self) -> Option<TypeAliasId> {
+        let path = path![std::ops::Index];
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 }
 
