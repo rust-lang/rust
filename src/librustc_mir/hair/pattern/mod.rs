@@ -556,19 +556,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
             }
 
-            hir::PatKind::Tuple(ref subpatterns, ddpos) => {
+            hir::PatKind::Tuple(ref pats, ddpos) => {
                 let tys = match ty.kind {
                     ty::Tuple(ref tys) => tys,
                     _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
                 };
-                let subpatterns = subpatterns
-                    .iter()
-                    .enumerate_and_adjust(tys.len(), ddpos)
-                    .map(|(i, subpattern)| FieldPat {
-                        field: Field::new(i),
-                        pattern: self.lower_pattern(subpattern)
-                    })
-                    .collect();
+                let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
                 PatKind::Leaf { subpatterns }
             }
 
@@ -609,25 +602,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
             }
 
-            hir::PatKind::TupleStruct(ref qpath, ref subpatterns, ddpos) => {
+            hir::PatKind::TupleStruct(ref qpath, ref pats, ddpos) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let adt_def = match ty.kind {
                     ty::Adt(adt_def, _) => adt_def,
-                    _ => span_bug!(pat.span,
-                                   "tuple struct pattern not applied to an ADT {:?}",
-                                   ty),
+                    _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty),
                 };
                 let variant_def = adt_def.variant_of_res(res);
-
-                let subpatterns =
-                        subpatterns.iter()
-                                   .enumerate_and_adjust(variant_def.fields.len(), ddpos)
-                                   .map(|(i, field)| FieldPat {
-                                       field: Field::new(i),
-                                       pattern: self.lower_pattern(field),
-                                   })
-                    .collect();
-
+                let subpatterns = self.lower_tuple_subpats(pats, variant_def.fields.len(), ddpos);
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 
@@ -659,6 +641,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             ty,
             kind: Box::new(kind),
         }
+    }
+
+    fn lower_tuple_subpats(
+        &mut self,
+        pats: &'tcx [P<hir::Pat>],
+        expected_len: usize,
+        gap_pos: Option<usize>,
+    ) -> Vec<FieldPat<'tcx>> {
+        pats.iter()
+            .enumerate_and_adjust(expected_len, gap_pos)
+            .map(|(i, subpattern)| FieldPat {
+                field: Field::new(i),
+                pattern: self.lower_pattern(subpattern)
+            })
+            .collect()
     }
 
     fn lower_patterns(&mut self, pats: &'tcx [P<hir::Pat>]) -> Vec<Pat<'tcx>> {
