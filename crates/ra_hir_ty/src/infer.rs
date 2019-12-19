@@ -375,7 +375,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match assoc_ty {
             Some(res_assoc_ty) => {
                 let ty = self.table.new_type_var();
-                let mut builder = Substs::builder(1 + params.len()).push(inner_ty);
+                let mut builder = Substs::build_for_def(self.db, res_assoc_ty).push(inner_ty);
                 for ty in params {
                     builder = builder.push(ty.clone());
                 }
