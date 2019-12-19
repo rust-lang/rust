@@ -257,13 +257,13 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
             }
             if (auto li = dyn_cast<LoadInst>(use)) {
                 bool unknownuse;
-                if (li->getType()->isIntegerTy())
+                if (li->getType()->isIntOrIntVectorTy())
                 if (trackInt(li, intseen, seen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknownuse*/false)) {
                     if (fast_tracking) return true; 
                 }
             }
             if (auto si = dyn_cast<StoreInst>(use)) {
-                if (si->getPointerOperand() == inst && si->getValueOperand()->getType()->isIntegerTy()) {
+                if (si->getPointerOperand() == inst && si->getValueOperand()->getType()->isIntOrIntVectorTy()) {
                     bool unknownuse;
                     if (trackInt(si->getValueOperand(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknownuse*/false)) {
                         if (fast_tracking) return true; 
@@ -287,7 +287,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
     
     assert(v);
     assert(v->getType());
-    assert(v->getType()->isIntegerTy());
+    assert(v->getType()->isIntOrIntVectorTy());
 
     if (isa<UndefValue>(v)) {
         intUse = true;
@@ -296,7 +296,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
         return true;
     }
       
-    if (isa<ConstantInt>(v)) {
+    if (isa<Constant>(v)) {
         intUse = true;
         intseen[idx] = IntType::Integer;
         //llvm::errs() << "find int use of " << *v << " constant\n";
@@ -304,7 +304,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
     }
 
     //consider booleans to be integers
-    if (cast<IntegerType>(v->getType())->getBitWidth() == 1) {
+    if (cast<IntegerType>(v->getType()->getScalarType())->getBitWidth() == 1) {
         intUse = true;
         intseen[idx] = IntType::Integer;
         //llvm::errs() << "find int use of " << *v << " is bool\n";
@@ -331,8 +331,8 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
                 }
                 continue;
             }
-            if (ci->getDestTy()->isIntegerTy()) {
-              if (cast<IntegerType>(ci->getDestTy())->getBitWidth() < 8) continue;
+            if (ci->getDestTy()->isIntOrIntVectorTy()) {
+              if (cast<IntegerType>(ci->getDestTy()->getScalarType())->getBitWidth() < 8) continue;
 
               if (trackInt(ci, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
                 if (fast_tracking) return true;
@@ -550,7 +550,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
             floatingUse = ci->getSrcTy();
             if (fast_tracking) return true;
         }
-        if (ci->getSrcTy()->isIntegerTy()) {
+        if (ci->getSrcTy()->isIntOrIntVectorTy()) {
           bool fakeunknownuse = false;
           if (trackInt(ci->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
             if (fast_tracking) return true;
@@ -655,7 +655,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
 IntType isIntASecretFloat(Value* val, IntType defaultType) {
     //llvm::errs() << "starting isint a secretfloat for " << *val << "\n";
 
-    assert(val->getType()->isIntegerTy());
+    assert(val->getType()->isIntOrIntVectorTy());
 
     if (isa<UndefValue>(val)) {
         if (defaultType != IntType::Unknown) return defaultType;
@@ -721,7 +721,7 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
 //! return the secret float type if found, otherwise nullptr
 Type* isIntPointerASecretFloat(Value* val) {
     assert(val->getType()->isPointerTy());
-    assert(cast<PointerType>(val->getType())->getElementType()->isIntegerTy());
+    assert(cast<PointerType>(val->getType())->getElementType()->isIntOrIntVectorTy());
 
     if (isa<UndefValue>(val)) return nullptr;
       
@@ -828,7 +828,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     if (fn.startswith("fakeaugmented")) return false;
     if (fn.startswith("diffe")) return false;
     //if (val->getType()->isPointerTy()) return false;
-    if (!val->getType()->isIntegerTy()) return false;
+    if (!val->getType()->isIntOrIntVectorTy()) return false;
 
     assert(retvals.find(val) == retvals.end());
 
@@ -990,7 +990,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
     }
 
     //! This instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
-    if (inst->getType()->isIntegerTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer)==IntType::Integer) {
+    if (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer)==IntType::Integer) {
         //! The instruction itself is constant if it does not modify memory (otherwise causing active memory to flow)
         if (!inst->mayReadOrWriteMemory()) {
             constants.insert(inst);
@@ -1096,7 +1096,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
     //   * integers that we know are not pointers
     bool containsPointer = true;
     if (inst->getType()->isFPOrFPVectorTy()) containsPointer = false;
-    if (inst->getType()->isIntegerTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer) != IntType::Pointer) containsPointer = false;
+    if (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer) != IntType::Pointer) containsPointer = false;
 
     if (containsPointer) {
 
@@ -1345,7 +1345,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 	}
     }
 
-	if (!(inst->getType()->isPointerTy() || (inst->getType()->isIntegerTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer)==IntType::Pointer) ) && ( !inst->mayWriteToMemory() || isa<BinaryOperator>(inst) ) && (directions & DOWN) && (retvals.find(inst) == retvals.end()) ) { 
+	if (!(inst->getType()->isPointerTy() || (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer)==IntType::Pointer) ) && ( !inst->mayWriteToMemory() || isa<BinaryOperator>(inst) ) && (directions & DOWN) && (retvals.find(inst) == retvals.end()) ) { 
 		//Proceed assuming this is constant, can we prove this should be constant otherwise
 		SmallPtrSet<Value*, 20> constants2;
 		constants2.insert(constants.begin(), constants.end());
@@ -1498,7 +1498,7 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
     }
     
     //! This instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
-    if (val->getType()->isIntegerTy() && isIntASecretFloat(val, /*default*/IntType::Pointer)==IntType::Integer) {
+    if (val->getType()->isIntOrIntVectorTy() && isIntASecretFloat(val, /*default*/IntType::Pointer)==IntType::Integer) {
 		if (printconst)
 			llvm::errs() << " Value const as integral " << (int)directions << " " << *val << "\n";
         constantvals.insert(val);

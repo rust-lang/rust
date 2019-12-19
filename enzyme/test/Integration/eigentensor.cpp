@@ -334,8 +334,9 @@ int main(int argc, char** argv) {
     kernelp.setZero();
     outputp.setRandom(); //One();
 
+    matvec(&kernel, &input, &output);
+    printf("did original\n");
     __enzyme_autodiff((void*)matvec, &kernel, &kernelp, &input, &inputp, &output, &outputp);
-   
     Tensor<float, 2> expected_kernel(2, 2);
 for (int i = 0; i < 3; ++i) {
   for (int j = 0; j < 2; ++j) {

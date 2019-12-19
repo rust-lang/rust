@@ -505,7 +505,7 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     for(auto &argType : called->params()) {
         args.push_back(argType);
 
-        if ( argType->isPointerTy() || argType->isIntegerTy() ) {
+        if (!argType->isFPOrFPVectorTy()) {
             args.push_back(argType);
         } else {
             outs.push_back(argType);
@@ -1080,7 +1080,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
 
-          if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !gutils->isConstantValue(op->getValueOperand()) && isIntASecretFloat(op->getValueOperand()) == IntType::Pointer ) ) {
+          if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntOrIntVectorTy() && !gutils->isConstantValue(op->getValueOperand()) && isIntASecretFloat(op->getValueOperand()) == IntType::Pointer ) ) {
             IRBuilder <> storeBuilder(op);
             
             Value* valueop = nullptr;
@@ -1268,7 +1268,6 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
           }
 
           if (differentialReturn && !oldretTy->isFPOrFPVectorTy()) {
-            //if ((oldretTy->isPointerTy() || oldretTy->isIntegerTy()) && differentialReturn) {
               assert(invertedRetPs[ri]);
               if (!isa<UndefValue>(invertedRetPs[ri])) {
                 assert(VMap[invertedRetPs[ri]]);
@@ -2153,9 +2152,8 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   bool retUsed = replaceFunction && subretused;
   Value* newcalled = nullptr;
 
-  //bool subdiffereturn = (!gutils->isConstantValue(op)) && !( op->getType()->isPointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
-  bool subdiffereturn = (!gutils->isConstantValue(op));// &&op->getType()->isFPOrFPVectorTy(); //PointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
-  bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && replaceFunction;
+  bool subdiffereturn = (!gutils->isConstantValue(op));
+  bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntOrIntVectorTy()) && replaceFunction;
   //llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   if (called) {
     newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, global_AA, /*returnValue*/augmentedsubretused, /*subdiffereturn*/subdiffereturn, /*subdretptr*/subdretptr, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args, subdata);//, LI, DT);
@@ -2322,7 +2320,7 @@ badfn:;
         gutils->nonconstant_values.insert(dcall);
 
     if (!gutils->isConstantValue(op)) {
-      if (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) {
+      if (!op->getType()->isFPOrFPVectorTy()) {
         gutils->invertedPointers[dcall] = gutils->invertedPointers[op];
         gutils->invertedPointers.erase(op);
       } else {
@@ -3121,7 +3119,7 @@ realcall:
           }
       }
 
-      if (op_type->isFPOrFPVectorTy() || (op_type->isIntegerTy() && isIntASecretFloat(op_orig) == IntType::Float)) {
+      if (op_type->isFPOrFPVectorTy() || (op_type->isIntOrIntVectorTy() && isIntASecretFloat(op_orig) == IntType::Float)) {
         auto prediff = diffe(inst);
         setDiffe(inst, Constant::getNullValue(op_type));
         //llvm::errs() << "  + doing load propagation: op_orig:" << *op_orig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";
@@ -3140,7 +3138,7 @@ realcall:
       bool constantValue = gutils->isConstantValue(tostore);
 
       //TODO allow recognition of other types that could contain pointers [e.g. {void*, void*} or <2 x i64> ]
-      if (! ( tostoreType->isPointerTy() || (tostoreType->isIntegerTy() && !constantValue && isIntASecretFloat(tostore) == IntType::Pointer ) ) ) {
+      if (! ( tostoreType->isPointerTy() || (tostoreType->isIntOrIntVectorTy() && !constantValue && isIntASecretFloat(tostore) == IntType::Pointer ) ) ) {
           StoreInst* ts;
           //llvm::errs() << "  considering adding to value:" << *op->getValueOperand() << " " << *op << " " << gutils->isConstantValue(op->getValueOperand()) << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
           if (!gutils->isConstantValue(op->getValueOperand())) {
