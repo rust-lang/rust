@@ -391,6 +391,23 @@ impl Write for Cursor<Box<[u8]>> {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: AsMut<[u8]>> Write for Cursor<T> {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.inner.as_mut().write(buf)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.inner.as_mut().write_vectored(bufs)
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::io::prelude::*;
