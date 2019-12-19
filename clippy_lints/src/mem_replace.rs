@@ -87,7 +87,7 @@ declare_clippy_lint! {
     /// let taken = std::mem::take(&mut text);
     /// ```
     pub MEM_REPLACE_WITH_DEFAULT,
-    nursery,
+    style,
     "replacing a value of type `T` with `T::default()` instead of using `std::mem::take`"
 }
 
