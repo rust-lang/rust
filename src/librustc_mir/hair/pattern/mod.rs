@@ -445,6 +445,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat) -> Pat<'tcx> {
         let mut ty = self.tables.node_type(pat.hir_id);
 
+        if let ty::Error = ty.kind {
+            // Avoid ICEs (e.g., #50577 and #50585).
+            return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
+        }
+
         let kind = match pat.kind {
             hir::PatKind::Wild => PatKind::Wild,
 
@@ -548,8 +553,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ty::Slice(..) |
                     ty::Array(..) =>
                         self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix),
-                    // Avoid ICE
-                    ty::Error => return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) },
                     _ => span_bug!(
                         pat.span,
                         "unexpanded type for vector pattern: {:?}",
@@ -572,19 +575,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
                         PatKind::Leaf { subpatterns }
                     }
-                    ty::Error => { // Avoid ICE (#50577)
-                        return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
-                    }
                     _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
                 }
             }
 
             hir::PatKind::Binding(_, id, ident, ref sub) => {
                 let var_ty = self.tables.node_type(pat.hir_id);
-                if let ty::Error = var_ty.kind {
-                    // Avoid ICE
-                    return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
-                };
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
                                                          .expect("missing binding mode");
                 let (mutability, mode) = match bm {
@@ -624,9 +620,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let adt_def = match ty.kind {
                     ty::Adt(adt_def, _) => adt_def,
-                    ty::Error => { // Avoid ICE (#50585)
-                        return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
-                    }
                     _ => span_bug!(pat.span,
                                    "tuple struct pattern not applied to an ADT {:?}",
                                    ty),
