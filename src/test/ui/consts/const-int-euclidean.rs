@@ -1,16 +1,9 @@
 // run-pass
+// aux-build:const_assert_lib.rs
+use const_assert_lib::assert_same_const;
+
 #![feature(const_int_euclidean)]
 #![feature(saturating_neg)]
-
-macro_rules! assert_same_const {
-    ($(const $ident:ident: $ty:ty = $exp:expr;)+) => {
-        $(const $ident: $ty = $exp;)+
-
-        pub fn main() {
-            $(assert_eq!($exp, $ident);)+
-        }
-    }
-}
 
 assert_same_const! {
     const CHECKED_DIV_I32_A: Option<i32> = 5i32.checked_div_euclid(7777);

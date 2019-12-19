@@ -184,23 +184,10 @@ impl<T> Option<T> {
     ///
     /// [`Some`]: #variant.Some
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     #[must_use = "if you intended to assert that this has a value, consider `.unwrap()` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_some(&self) -> bool {
-        match *self {
-            Some(_) => true,
-            None => false,
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
-    #[must_use = "if you intended to assert that this has a value, consider `.unwrap()` instead"]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_some(&self) -> bool {
         match *self {
             Some(_) => true,
             None => false,
@@ -221,22 +208,11 @@ impl<T> Option<T> {
     ///
     /// [`None`]: #variant.None
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
                   `.and_then(|| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_none(&self) -> bool {
-        !self.is_some()
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
-    #[must_use = "if you intended to assert that this doesn't have a value, consider \
-                  `.and_then(|| panic!(\"`Option` had a value when expected `None`\"))` instead"]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_none(&self) -> bool {
         !self.is_some()
     }
 
@@ -294,21 +270,9 @@ impl<T> Option<T> {
     /// println!("still can print text: {:?}", text);
     /// ```
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn as_ref(&self) -> Option<&T> {
-        match *self {
-            Some(ref x) => Some(x),
-            None => None,
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_ref(&self) -> Option<&T> {
         match *self {
             Some(ref x) => Some(x),
             None => None,
@@ -380,21 +344,9 @@ impl<T> Option<T> {
     /// x.expect("the world is ending"); // panics with `the world is ending`
     /// ```
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn expect(self, msg: &str) -> T {
-        match self {
-            Some(val) => val,
-            None => expect_failed(msg),
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
             None => expect_failed(msg),
@@ -449,21 +401,9 @@ impl<T> Option<T> {
     /// assert_eq!(None.unwrap_or("bike"), "bike");
     /// ```
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn unwrap_or(self, default: T) -> T {
-        match self {
-            Some(x) => x,
-            None => default,
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, default: T) -> T {
         match self {
             Some(x) => x,
             None => default,
@@ -585,21 +525,9 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or(0), Err(0));
     /// ```
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn ok_or<E>(self, err: E) -> Result<T, E> {
-        match self {
-            Some(v) => Ok(v),
-            None => Err(err),
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
             Some(v) => Ok(v),
             None => Err(err),
@@ -703,21 +631,9 @@ impl<T> Option<T> {
     /// assert_eq!(x.and(y), None);
     /// ```
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn and<U>(self, optb: Option<U>) -> Option<U> {
-        match self {
-            Some(_) => optb,
-            None => None,
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn and<U>(self, optb: Option<U>) -> Option<U> {
         match self {
             Some(_) => optb,
             None => None,
@@ -816,21 +732,9 @@ impl<T> Option<T> {
     /// assert_eq!(x.or(y), None);
     /// ```
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn or(self, optb: Option<T>) -> Option<T> {
-        match self {
-            Some(_) => self,
-            None => optb,
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or(self, optb: Option<T>) -> Option<T> {
         match self {
             Some(_) => self,
             None => optb,
@@ -884,22 +788,9 @@ impl<T> Option<T> {
     /// assert_eq!(x.xor(y), None);
     /// ```
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     #[inline]
     #[stable(feature = "option_xor", since = "1.37.0")]
     pub const fn xor(self, optb: Option<T>) -> Option<T> {
-        match (self, optb) {
-            (Some(a), None) => Some(a),
-            (None, Some(b)) => Some(b),
-            _ => None,
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
-    #[inline]
-    #[stable(feature = "option_xor", since = "1.37.0")]
-    pub fn xor(self, optb: Option<T>) -> Option<T> {
         match (self, optb) {
             (Some(a), None) => Some(a),
             (None, Some(b)) => Some(b),
@@ -1291,7 +1182,6 @@ impl<T, E> Option<Result<T, E>> {
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
     #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
     pub const fn transpose(self) -> Result<Option<T>, E> {
         match self {
             Some(Ok(x)) => Ok(Some(x)),
@@ -1299,19 +1189,6 @@ impl<T, E> Option<Result<T, E>> {
             None => Ok(None),
         }
     }
-
-    /// No docs for bootstrap.
-    #[inline]
-    #[stable(feature = "transpose_result", since = "1.33.0")]
-    #[cfg(bootstrap)]
-    pub fn transpose(self) -> Result<Option<T>, E> {
-        match self {
-            Some(Ok(x)) => Ok(Some(x)),
-            Some(Err(e)) => Err(e),
-            None => Ok(None),
-        }
-    }
-}
 
 // This is a separate function to reduce the code size of .expect() itself.
 #[inline(never)]

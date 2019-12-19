@@ -1,16 +1,9 @@
 // run-pass
+// aux-build:const_assert_lib.rs
+use const_assert_lib::assert_same_const;
+
 #![feature(const_option_match)]
 #![feature(option_result_contains)]
-
-macro_rules! assert_same_const {
-    ($(const $ident:ident: $ty:ty = $exp:expr;)+) => {
-        $(const $ident: $ty = $exp;)+
-
-        pub fn main() {
-            $(assert_eq!($exp, $ident);)+
-        }
-    }
-}
 
 assert_same_const! {
     const SOME: Option<i32> = Some(3);

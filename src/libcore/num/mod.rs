@@ -71,24 +71,10 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 #[$stability]
                 #[inline]
                 #[rustc_const_unstable(feature = "const_int_nonzero")]
-                #[cfg(not(bootstrap))]
                 pub const fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
                         // SAFETY: we just checked that there's no `0`
                         Some(unsafe { $Ty(n) })
-                    } else {
-                        None
-                    }
-                }
-
-                /// No docs for bootstrap.
-                #[$stability]
-                #[inline]
-                #[cfg(bootstrap)]
-                pub fn new(n: $Int) -> Option<Self> {
-                    if n != 0 {
-                        // SAFETY: we just checked that there's no `0`
-                        Some(unsafe { Self(n) })
                     } else {
                         None
                     }
@@ -660,22 +646,10 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_add(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_add(rhs);
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -697,22 +671,10 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_sub(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_sub(rhs);
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -734,22 +696,10 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_mul(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_mul(rhs);
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -772,7 +722,6 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
@@ -780,21 +729,6 @@ $EndFeature, "
                     // SAFETY: div by zero and by INT_MIN have been checked above
                     Some(unsafe { intrinsics::unchecked_div(self, rhs) })
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_div(self, rhs: Self) -> Option<Self> {
-            if rhs == 0 || (self == Self::min_value() && rhs == -1) {
-                None
-            } else {
-                // SAFETY: div by zero and by INT_MIN have been checked above
-                Some(unsafe { intrinsics::unchecked_div(self, rhs) })
             }
         }
 
@@ -817,27 +751,12 @@ assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
                     Some(self.div_euclid(rhs))
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-            if rhs == 0 || (self == Self::min_value() && rhs == -1) {
-                None
-            } else {
-                Some(self.div_euclid(rhs))
             }
         }
 
@@ -891,27 +810,12 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-            if rhs == 0 || (self == Self::min_value() && rhs == -1) {
-                None
-            } else {
-                Some(self.rem_euclid(rhs))
             }
         }
 
@@ -932,20 +836,10 @@ $EndFeature, "
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_neg(self) -> Option<Self> {
-            let (a, b) = self.overflowing_neg();
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -966,24 +860,12 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
                 if b {None} else {Some(a)}
             }
         }
 
-
-        /// No docs for bootstrap.
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_shl(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shl(rhs);
-            if b {None} else {Some(a)}
-        }
 
         doc_comment! {
             concat!("Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is
@@ -1003,22 +885,10 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_shr(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shr(rhs);
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -1039,25 +909,12 @@ $EndFeature, "
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_abs(self) -> Option<Self> {
                 if self.is_negative() {
                     self.checked_neg()
                 } else {
                     Some(self)
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "no_panic_abs", since = "1.13.0")]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_abs(self) -> Option<Self> {
-            if self.is_negative() {
-                self.checked_neg()
-            } else {
-                Some(self)
             }
         }
 
@@ -1238,7 +1095,6 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_saturating")]
-            #[cfg(not(bootstrap))]
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 match self.checked_mul(rhs) {
                     Some(r) => r,
@@ -1250,25 +1106,6 @@ $EndFeature, "
                         }
                     },
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn saturating_mul(self, rhs: Self) -> Self {
-            match self.checked_mul(rhs) {
-                Some(r) => r,
-                None => {
-                    if (self < 0) == (rhs < 0) {
-                        Self::max_value()
-                    } else {
-                        Self::min_value()
-                    }
-                },
             }
         }
 
@@ -1398,20 +1235,9 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_wrapping")]
-            #[cfg(not(bootstrap))]
             pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self.overflowing_div(rhs).0
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn wrapping_div(self, rhs: Self) -> Self {
-            self.overflowing_div(rhs).0
         }
 
         doc_comment! {
@@ -1439,20 +1265,9 @@ assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self.overflowing_div_euclid(rhs).0
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
-            self.overflowing_div_euclid(rhs).0
         }
 
         doc_comment! {
@@ -1481,20 +1296,9 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_wrapping")]
-            #[cfg(not(bootstrap))]
             pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self.overflowing_rem(rhs).0
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn wrapping_rem(self, rhs: Self) -> Self {
-            self.overflowing_rem(rhs).0
         }
 
         doc_comment! {
@@ -1521,20 +1325,9 @@ assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self.overflowing_rem_euclid(rhs).0
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
-            self.overflowing_rem_euclid(rhs).0
         }
 
         doc_comment! {
@@ -1814,27 +1607,12 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[rustc_const_unstable(feature = "const_int_overflowing")]
-            #[cfg(not(bootstrap))]
             pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (self, true)
                 } else {
                     (self / rhs, false)
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[cfg(bootstrap)]
-        pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
-            if self == Self::min_value() && rhs == -1 {
-                (self, true)
-            } else {
-                (self / rhs, false)
             }
         }
 
@@ -1864,27 +1642,12 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (self, true)
                 } else {
                     (self.div_euclid(rhs), false)
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[inline]
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[cfg(bootstrap)]
-        pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
-            if self == Self::min_value() && rhs == -1 {
-                (self, true)
-            } else {
-                (self.div_euclid(rhs), false)
             }
         }
 
@@ -1914,27 +1677,12 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[rustc_const_unstable(feature = "const_int_overflowing")]
-            #[cfg(not(bootstrap))]
             pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (0, true)
                 } else {
                     (self % rhs, false)
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[cfg(bootstrap)]
-        pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-            if self == Self::min_value() && rhs == -1 {
-                (0, true)
-            } else {
-                (self % rhs, false)
             }
         }
 
@@ -1963,7 +1711,6 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (0, true)
@@ -1972,21 +1719,6 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
                 }
             }
         }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-            if self == Self::min_value() && rhs == -1 {
-                (0, true)
-            } else {
-                (self.rem_euclid(rhs), false)
-            }
-        }
-
 
         doc_comment! {
             concat!("Negates self, overflowing if this is equal to the minimum value.
@@ -2219,7 +1951,6 @@ assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
             #[inline]
             #[rustc_inherit_overflow_checks]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn div_euclid(self, rhs: Self) -> Self {
                 let q = self / rhs;
                 if self % rhs < 0 {
@@ -2228,22 +1959,6 @@ assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
                 q
             }
         }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[rustc_inherit_overflow_checks]
-        #[cfg(bootstrap)]
-        pub fn div_euclid(self, rhs: Self) -> Self {
-            let q = self / rhs;
-            if self % rhs < 0 {
-                return if rhs > 0 { q - 1 } else { q + 1 }
-            }
-            q
-        }
-
 
         doc_comment! {
             concat!("Calculates the least nonnegative remainder of `self (mod rhs)`.
@@ -2275,7 +1990,6 @@ assert_eq!((-a).rem_euclid(-b), 1);
             #[inline]
             #[rustc_inherit_overflow_checks]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn rem_euclid(self, rhs: Self) -> Self {
                 let r = self % rhs;
                 if r < 0 {
@@ -2287,26 +2001,6 @@ assert_eq!((-a).rem_euclid(-b), 1);
                 } else {
                     r
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                        without modifying the original"]
-        #[inline]
-        #[rustc_inherit_overflow_checks]
-        #[cfg(bootstrap)]
-        pub fn rem_euclid(self, rhs: Self) -> Self {
-            let r = self % rhs;
-            if r < 0 {
-                if rhs < 0 {
-                    r - rhs
-                } else {
-                    r + rhs
-                }
-            } else {
-                r
             }
         }
 
@@ -3072,22 +2766,10 @@ assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", 
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_add(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_add(rhs);
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -3107,22 +2789,10 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_sub(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_sub(rhs);
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -3142,22 +2812,10 @@ assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);", $EndFe
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_mul(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_mul(rhs);
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -3177,7 +2835,6 @@ assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
                 match rhs {
                     0 => None,
@@ -3185,21 +2842,6 @@ assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
                     // failure modes for division
                     rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_div(self, rhs: Self) -> Option<Self> {
-            match rhs {
-                0 => None,
-                // SAFETY: div by zero has been checked above and unsigned types have no other
-                // failure modes for division
-                rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
             }
         }
 
@@ -3220,7 +2862,6 @@ assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
@@ -3229,21 +2870,6 @@ assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
                 }
             }
         }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-            if rhs == 0 {
-                None
-            } else {
-                Some(self.div_euclid(rhs))
-            }
-        }
-
 
         doc_comment! {
             concat!("Checked integer remainder. Computes `self % rhs`, returning `None`
@@ -3262,7 +2888,6 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
@@ -3271,22 +2896,6 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
                     // failure modes for division
                     Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_rem(self, rhs: Self) -> Option<Self> {
-            if rhs == 0 {
-                None
-            } else {
-                // SAFETY: div by zero has been checked above and unsigned types have no other
-                // failure modes for division
-                Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
             }
         }
 
@@ -3307,27 +2916,12 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
                 }
-            }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-            if rhs == 0 {
-                None
-            } else {
-                Some(self.rem_euclid(rhs))
             }
         }
 
@@ -3348,20 +2942,10 @@ assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_neg(self) -> Option<Self> {
-            let (a, b) = self.overflowing_neg();
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -3381,22 +2965,10 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, 
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_shl(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shl(rhs);
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -3416,22 +2988,10 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, 
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_checked")]
-            #[cfg(not(bootstrap))]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
                 if b {None} else {Some(a)}
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn checked_shr(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shr(rhs);
-            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -3538,20 +3098,9 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_saturating")]
-            #[cfg(not(bootstrap))]
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 self.checked_mul(rhs).unwrap_or(Self::max_value())
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn saturating_mul(self, rhs: Self) -> Self {
-            self.checked_mul(rhs).unwrap_or(Self::max_value())
         }
 
         doc_comment! {
@@ -3669,20 +3218,9 @@ Basic usage:
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_wrapping")]
-            #[cfg(not(bootstrap))]
             pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self / rhs
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn wrapping_div(self, rhs: Self) -> Self {
-            self / rhs
         }
 
         doc_comment! {
@@ -3707,20 +3245,9 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self / rhs
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
-            self / rhs
         }
 
         doc_comment! {
@@ -3743,20 +3270,9 @@ Basic usage:
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_wrapping")]
-            #[cfg(not(bootstrap))]
             pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self % rhs
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn wrapping_rem(self, rhs: Self) -> Self {
-            self % rhs
         }
 
         doc_comment! {
@@ -3782,20 +3298,9 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
                           without modifying the original"]
             #[inline]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[cfg(bootstrap)]
-        pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
-            self % rhs
         }
 
         /// Wrapping (modular) negation. Computes `-self`,
@@ -4041,20 +3546,9 @@ Basic usage
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[rustc_const_unstable(feature = "const_int_overflowing")]
-            #[cfg(not(bootstrap))]
             pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 (self / rhs, false)
             }
-        }
-
-        /// No docs for bootstrap.
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[cfg(bootstrap)]
-        pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
-            (self / rhs, false)
         }
 
         doc_comment! {
@@ -4084,19 +3578,9 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
                 (self / rhs, false)
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[cfg(bootstrap)]
-        pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
-            (self / rhs, false)
         }
 
         doc_comment! {
@@ -4123,20 +3607,9 @@ Basic usage
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[rustc_const_unstable(feature = "const_int_overflowing")]
-            #[cfg(not(bootstrap))]
             pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
-        }
-
-        /// No docs for bootstrap.
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[cfg(bootstrap)]
-        pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-            (self % rhs, false)
         }
 
         doc_comment! {
@@ -4166,20 +3639,9 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
-        }
-
-        /// No docs for bootstrap.
-        #[inline]
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[cfg(bootstrap)]
-        pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-            (self % rhs, false)
         }
 
         doc_comment! {
@@ -4373,23 +3835,10 @@ assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer 
             #[inline]
             #[rustc_inherit_overflow_checks]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn div_euclid(self, rhs: Self) -> Self {
                 self / rhs
             }
         }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[rustc_inherit_overflow_checks]
-        #[cfg(bootstrap)]
-        pub fn div_euclid(self, rhs: Self) -> Self {
-            self / rhs
-        }
-
 
         doc_comment! {
             concat!("Calculates the least remainder of `self (mod rhs)`.
@@ -4415,21 +3864,9 @@ assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer 
             #[inline]
             #[rustc_inherit_overflow_checks]
             #[rustc_const_unstable(feature = "const_int_euclidean")]
-            #[cfg(not(bootstrap))]
             pub const fn rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
             }
-        }
-
-        /// No docs for bootstrap.
-        #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        #[rustc_inherit_overflow_checks]
-        #[cfg(bootstrap)]
-        pub fn rem_euclid(self, rhs: Self) -> Self {
-            self % rhs
         }
 
         doc_comment! {
