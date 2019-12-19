@@ -341,6 +341,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     llval
                                 }
                             }
+                            (CastTy::Int(_), CastTy::Float) => {
+                                if signed {
+                                    bx.sitofp(llval, ll_t_out)
+                                } else {
+                                    bx.uitofp(llval, ll_t_out)
+                                }
+                            }
                             (CastTy::Ptr(_), CastTy::Ptr(_)) |
                             (CastTy::FnPtr, CastTy::Ptr(_)) |
                             (CastTy::RPtr(_), CastTy::Ptr(_)) =>
@@ -352,8 +359,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);
                                 bx.inttoptr(usize_llval, ll_t_out)
                             }
-                            (CastTy::Int(_), CastTy::Float) =>
-                                cast_int_to_float(&mut bx, signed, llval, ll_t_in, ll_t_out),
                             (CastTy::Float, CastTy::Int(IntTy::I)) =>
                                 cast_float_to_int(&mut bx, true, llval, ll_t_in, ll_t_out),
                             (CastTy::Float, CastTy::Int(_)) =>
@@ -717,40 +722,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         // (*) this is only true if the type is suitable
-    }
-}
-
-fn cast_int_to_float<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    signed: bool,
-    x: Bx::Value,
-    int_ty: Bx::Type,
-    float_ty: Bx::Type
-) -> Bx::Value {
-    // Most integer types, even i128, fit into [-f32::MAX, f32::MAX] after rounding.
-    // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
-    // LLVM's uitofp produces undef in those cases, so we manually check for that case.
-    let is_u128_to_f32 = !signed &&
-        bx.cx().int_width(int_ty) == 128 &&
-        bx.cx().float_width(float_ty) == 32;
-    if is_u128_to_f32 {
-        // All inputs greater or equal to (f32::MAX + 0.5 ULP) are rounded to infinity,
-        // and for everything else LLVM's uitofp works just fine.
-        use rustc_apfloat::ieee::Single;
-        const MAX_F32_PLUS_HALF_ULP: u128 = ((1 << (Single::PRECISION + 1)) - 1)
-                                            << (Single::MAX_EXP - Single::PRECISION as i16);
-        let max = bx.cx().const_uint_big(int_ty, MAX_F32_PLUS_HALF_ULP);
-        let overflow = bx.icmp(IntPredicate::IntUGE, x, max);
-        let infinity_bits = bx.cx().const_u32(ieee::Single::INFINITY.to_bits() as u32);
-        let infinity = bx.bitcast(infinity_bits, float_ty);
-        let fp = bx.uitofp(x, float_ty);
-        bx.select(overflow, infinity, fp)
-    } else {
-        if signed {
-            bx.sitofp(x, float_ty)
-        } else {
-            bx.uitofp(x, float_ty)
-        }
     }
 }
 

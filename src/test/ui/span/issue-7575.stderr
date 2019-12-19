@@ -10,24 +10,33 @@ note: candidate #1 is defined in the trait `CtxtFn`
    |
 LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `CtxtFn::f9(u, 342)` instead
 note: candidate #2 is defined in the trait `OtherTrait`
   --> $DIR/issue-7575.rs:8:5
    |
 LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `OtherTrait::f9(u, 342)` instead
 note: candidate #3 is defined in the trait `UnusedTrait`
   --> $DIR/issue-7575.rs:17:5
    |
 LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `UnusedTrait::f9(u, 342)` instead
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following traits define an item `f9`, perhaps you need to implement one of them:
            candidate #1: `CtxtFn`
            candidate #2: `OtherTrait`
            candidate #3: `UnusedTrait`
+help: disambiguate the method call for candidate #1
+   |
+LL |     u.f8(42) + CtxtFn::f9(u, 342) + m.fff(42)
+   |                ^^^^^^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #2
+   |
+LL |     u.f8(42) + OtherTrait::f9(u, 342) + m.fff(42)
+   |                ^^^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #3
+   |
+LL |     u.f8(42) + UnusedTrait::f9(u, 342) + m.fff(42)
+   |                ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `fff` found for type `Myisize` in the current scope
   --> $DIR/issue-7575.rs:62:30
@@ -60,8 +69,11 @@ note: the candidate is defined in the trait `ManyImplTrait`
    |
 LL |     fn is_str() -> bool {
    |     ^^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `ManyImplTrait::is_str(t)` instead
    = help: items from traits can only be used if the type parameter is bounded by the trait
+help: disambiguate the method call for the candidate
+   |
+LL |     ManyImplTrait::is_str(t)
+   |
 help: the following trait defines an item `is_str`, perhaps you need to restrict type parameter `T` with it:
    |
 LL | fn param_bound<T: ManyImplTrait + ManyImplTrait>(t: T) -> bool {

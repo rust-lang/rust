@@ -5,9 +5,15 @@ LL |     assert_eq!('x'.ipu_flatten(), 0);
    |                    ^^^^^^^^^^^ multiple `ipu_flatten` found
    |
    = note: candidate #1 is defined in an impl of the trait `inference_unstable_iterator::IpuIterator` for the type `char`
-   = help: to disambiguate the method call, write `inference_unstable_iterator::IpuIterator::ipu_flatten('x')` instead
    = note: candidate #2 is defined in an impl of the trait `inference_unstable_itertools::IpuItertools` for the type `char`
-   = help: to disambiguate the method call, write `inference_unstable_itertools::IpuItertools::ipu_flatten('x')` instead
+help: disambiguate the method call for candidate #1
+   |
+LL |     assert_eq!(inference_unstable_iterator::IpuIterator::ipu_flatten(&'x'), 0);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #2
+   |
+LL |     assert_eq!(inference_unstable_itertools::IpuItertools::ipu_flatten(&'x'), 0);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
