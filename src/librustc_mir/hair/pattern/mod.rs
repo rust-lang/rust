@@ -629,11 +629,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 
-            hir::PatKind::Or(ref pats) => {
-                PatKind::Or {
-                    pats: pats.iter().map(|p| self.lower_pattern(p)).collect(),
-                }
-            }
+            hir::PatKind::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
         };
 
         Pat {
