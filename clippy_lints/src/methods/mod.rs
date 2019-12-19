@@ -1595,7 +1595,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         return;
     }
 
-    let receiver_type = cx.tables.expr_ty(&args[0]);
+    let receiver_type = cx.tables.expr_ty_adjusted(&args[0]);
     let closure_args = if match_type(cx, receiver_type, &paths::OPTION) {
         "||"
     } else if match_type(cx, receiver_type, &paths::RESULT) {
