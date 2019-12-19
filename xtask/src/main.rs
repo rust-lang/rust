@@ -20,7 +20,7 @@ use xtask::{
 };
 
 // Latest stable, feel free to send a PR if this lags behind.
-const REQUIRED_RUST_VERSION: u32 = 39;
+const REQUIRED_RUST_VERSION: u32 = 40;
 
 struct InstallOpt {
     client: Option<ClientOpt>,
