@@ -618,6 +618,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 c,
                             );
                             return OperandRef { val: Immediate(llval), layout: bx.layout_of(ty) };
+                        } else {
+                            span_bug!(span, "shuffle indices must be constant");
                         }
                     }
 
