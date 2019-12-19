@@ -1221,7 +1221,14 @@ fn resolve_local<'tcx>(
                 is_binding_pat(&subpat)
             }
 
-            _ => false,
+            PatKind::Or(_) |
+            PatKind::Ref(_, _) |
+            PatKind::Binding(hir::BindingAnnotation::Unannotated, ..) |
+            PatKind::Binding(hir::BindingAnnotation::Mutable, ..) |
+            PatKind::Wild |
+            PatKind::Path(_) |
+            PatKind::Lit(_) |
+            PatKind::Range(_, _, _) => false,
         }
     }
 
