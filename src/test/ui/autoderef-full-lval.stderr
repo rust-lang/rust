@@ -1,4 +1,4 @@
-error[E0369]: binary operation `+` cannot be applied to type `std::boxed::Box<isize>`
+error[E0369]: cannot add `std::boxed::Box<isize>` to `std::boxed::Box<isize>`
   --> $DIR/autoderef-full-lval.rs:15:24
    |
 LL |     let z: isize = a.x + b.y;
@@ -8,7 +8,7 @@ LL |     let z: isize = a.x + b.y;
    |
    = note: an implementation of `std::ops::Add` might be missing for `std::boxed::Box<isize>`
 
-error[E0369]: binary operation `+` cannot be applied to type `std::boxed::Box<isize>`
+error[E0369]: cannot add `std::boxed::Box<isize>` to `std::boxed::Box<isize>`
   --> $DIR/autoderef-full-lval.rs:21:33
    |
 LL |     let answer: isize = forty.a + two.a;

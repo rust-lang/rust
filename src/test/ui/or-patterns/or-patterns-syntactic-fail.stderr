@@ -104,7 +104,7 @@ LL | #![feature(or_patterns)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0369]: binary operation `|` cannot be applied to type `E`
+error[E0369]: no implementation for `E | ()`
   --> $DIR/or-patterns-syntactic-fail.rs:24:22
    |
 LL |     let _ = |A | B: E| ();

@@ -334,10 +334,70 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.emit();
                         }
                         IsAssign::No => {
+                            let (message, missing_trait) = match op.node {
+                                hir::BinOpKind::Add    => {
+                                    (format!("cannot add `{}` to `{}`", rhs_ty, lhs_ty),
+                                    Some("std::ops::Add"))
+                                },
+                                hir::BinOpKind::Sub    => {
+                                    (format!("cannot substract `{}` from `{}`", rhs_ty, lhs_ty),
+                                    Some("std::ops::Sub"))
+                                },
+                                hir::BinOpKind::Mul    => {
+                                    (format!("cannot multiply `{}` to `{}`", rhs_ty, lhs_ty),
+                                    Some("std::ops::Mul"))
+                                },
+                                hir::BinOpKind::Div    => {
+                                    (format!("cannot divide `{}` by `{}`", lhs_ty, rhs_ty),
+                                    Some("std::ops::Div"))
+                                },
+                                hir::BinOpKind::Rem    => {
+                                    (format!("cannot mod `{}` by `{}`", lhs_ty, rhs_ty),
+                                    Some("std::ops::Rem"))
+                                },
+                                hir::BinOpKind::BitAnd => {
+                                    (format!("no implementation for `{} & {}`", lhs_ty, rhs_ty),
+                                    Some("std::ops::BitAnd"))
+                                },
+                                hir::BinOpKind::BitXor => {
+                                    (format!("no implementation for `{} ^ {}`", lhs_ty, rhs_ty),
+                                    Some("std::ops::BitXor"))
+                                },
+                                hir::BinOpKind::BitOr  => {
+                                    (format!("no implementation for `{} | {}`", lhs_ty, rhs_ty),
+                                    Some("std::ops::BitOr"))
+                                },
+                                hir::BinOpKind::Shl    => {
+                                    (format!("no implementation for `{} << {}`", lhs_ty, rhs_ty),
+                                    Some("std::ops::Shl"))
+                                },
+                                hir::BinOpKind::Shr    => {
+                                    (format!("no implementation for `{} >> {}`", lhs_ty, rhs_ty),
+                                    Some("std::ops::Shr"))
+                                },
+                                hir::BinOpKind::Eq |
+                                hir::BinOpKind::Ne     => {
+                                    (format!(
+                                            "binary operation `{}` cannot be applied to type `{}`",
+                                            op.node.as_str(), lhs_ty),
+                                    Some("std::cmp::PartialEq"))
+                                },
+                                hir::BinOpKind::Lt |
+                                hir::BinOpKind::Le |
+                                hir::BinOpKind::Gt |
+                                hir::BinOpKind::Ge     => {
+                                    (format!(
+                                            "binary operation `{}` cannot be applied to type `{}`",
+                                            op.node.as_str(), lhs_ty),
+                                    Some("std::cmp::PartialOrd"))
+                                }
+                                _ => (format!(
+                                        "binary operation `{}` cannot be applied to type `{}`",
+                                        op.node.as_str(), lhs_ty),
+                                    None)
+                            };
                             let mut err = struct_span_err!(self.tcx.sess, op.span, E0369,
-                                "binary operation `{}` cannot be applied to type `{}`",
-                                op.node.as_str(),
-                                lhs_ty);
+                                "{}", message.as_str());
 
                             let mut involves_fn = false;
                             if !lhs_expr.span.eq(&rhs_expr.span) {
@@ -382,25 +442,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     }
                                 }
                             }
-                            let missing_trait = match op.node {
-                                hir::BinOpKind::Add    => Some("std::ops::Add"),
-                                hir::BinOpKind::Sub    => Some("std::ops::Sub"),
-                                hir::BinOpKind::Mul    => Some("std::ops::Mul"),
-                                hir::BinOpKind::Div    => Some("std::ops::Div"),
-                                hir::BinOpKind::Rem    => Some("std::ops::Rem"),
-                                hir::BinOpKind::BitAnd => Some("std::ops::BitAnd"),
-                                hir::BinOpKind::BitXor => Some("std::ops::BitXor"),
-                                hir::BinOpKind::BitOr  => Some("std::ops::BitOr"),
-                                hir::BinOpKind::Shl    => Some("std::ops::Shl"),
-                                hir::BinOpKind::Shr    => Some("std::ops::Shr"),
-                                hir::BinOpKind::Eq |
-                                hir::BinOpKind::Ne => Some("std::cmp::PartialEq"),
-                                hir::BinOpKind::Lt |
-                                hir::BinOpKind::Le |
-                                hir::BinOpKind::Gt |
-                                hir::BinOpKind::Ge => Some("std::cmp::PartialOrd"),
-                                _ => None
-                            };
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&
                                     self.check_str_addition(

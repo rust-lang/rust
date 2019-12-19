@@ -1145,11 +1145,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         } else {
             // Otherwise, we have to walk through the supertraits to find
             // those that do.
-            let candidates = traits::supertraits(tcx, trait_ref).filter(|r| {
-                self.trait_defines_associated_type_named(r.def_id(), binding.item_name)
-            });
             self.one_bound_for_assoc_type(
-                candidates,
+                || traits::supertraits(tcx, trait_ref),
                 &trait_ref.print_only_trait_path().to_string(),
                 binding.item_name,
                 binding.span
@@ -1531,50 +1528,48 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
 
-        let bounds = predicates.iter().filter_map(|(p, _)| p.to_opt_poly_trait_ref());
-
-        // Check that there is exactly one way to find an associated type with the
-        // correct name.
-        let suitable_bounds = traits::transitive_bounds(tcx, bounds)
-            .filter(|b| self.trait_defines_associated_type_named(b.def_id(), assoc_name));
-
         let param_hir_id = tcx.hir().as_local_hir_id(ty_param_def_id).unwrap();
         let param_name = tcx.hir().ty_param_name(param_hir_id);
-        self.one_bound_for_assoc_type(suitable_bounds,
-                                      &param_name.as_str(),
-                                      assoc_name,
-                                      span)
+        self.one_bound_for_assoc_type(
+            || traits::transitive_bounds(tcx, predicates
+                .iter().filter_map(|(p, _)| p.to_opt_poly_trait_ref())),
+            &param_name.as_str(),
+            assoc_name,
+            span,
+        )
     }
 
-    // Checks that `bounds` contains exactly one element and reports appropriate
-    // errors otherwise.
     fn one_bound_for_assoc_type<I>(&self,
-                                   mut bounds: I,
+                                   all_candidates: impl Fn() -> I,
                                    ty_param_name: &str,
                                    assoc_name: ast::Ident,
                                    span: Span)
         -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
         where I: Iterator<Item = ty::PolyTraitRef<'tcx>>
     {
-        let bound = match bounds.next() {
+        let mut matching_candidates = all_candidates().filter(|r| {
+            self.trait_defines_associated_type_named(r.def_id(), assoc_name)
+        });
+
+        let bound = match matching_candidates.next() {
             Some(bound) => bound,
             None => {
-                struct_span_err!(self.tcx().sess, span, E0220,
-                                 "associated type `{}` not found for `{}`",
-                                 assoc_name,
-                                 ty_param_name)
-                    .span_label(span, format!("associated type `{}` not found", assoc_name))
-                    .emit();
+                self.complain_about_assoc_type_not_found(
+                    all_candidates,
+                    ty_param_name,
+                    assoc_name,
+                    span
+                );
                 return Err(ErrorReported);
             }
         };
 
         debug!("one_bound_for_assoc_type: bound = {:?}", bound);
 
-        if let Some(bound2) = bounds.next() {
+        if let Some(bound2) = matching_candidates.next() {
             debug!("one_bound_for_assoc_type: bound2 = {:?}", bound2);
 
-            let bounds = iter::once(bound).chain(iter::once(bound2)).chain(bounds);
+            let bounds = iter::once(bound).chain(iter::once(bound2)).chain(matching_candidates);
             let mut err = struct_span_err!(
                 self.tcx().sess, span, E0221,
                 "ambiguous associated type `{}` in bounds of `{}`",
@@ -1604,6 +1599,50 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         return Ok(bound);
+    }
+
+    fn complain_about_assoc_type_not_found<I>(&self,
+                                              all_candidates: impl Fn() -> I,
+                                              ty_param_name: &str,
+                                              assoc_name: ast::Ident,
+                                              span: Span)
+    where I: Iterator<Item = ty::PolyTraitRef<'tcx>> {
+        let mut err = struct_span_err!(self.tcx().sess, span, E0220,
+                                 "associated type `{}` not found for `{}`",
+                                 assoc_name,
+                                 ty_param_name);
+
+        let all_candidate_names: Vec<_> = all_candidates()
+            .map(|r| self.tcx().associated_items(r.def_id()))
+            .flatten()
+            .filter_map(|item|
+                if item.kind == ty::AssocKind::Type {
+                    Some(item.ident.name)
+                } else {
+                    None
+                }
+            )
+            .collect();
+
+        if let Some(suggested_name) = find_best_match_for_name(
+            all_candidate_names.iter(),
+            &assoc_name.as_str(),
+            None,
+        ) {
+            err.span_suggestion(
+                span,
+                "there is an associated type with a similar name",
+                suggested_name.to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        } else {
+            err.span_label(
+                span,
+                format!("associated type `{}` not found", assoc_name)
+            );
+        }
+
+        err.emit();
     }
 
     // Create a type from a path to an associated type.
@@ -1660,10 +1699,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 };
 
-                let candidates = traits::supertraits(tcx, ty::Binder::bind(trait_ref))
-                    .filter(|r| self.trait_defines_associated_type_named(r.def_id(), assoc_ident));
-
-                self.one_bound_for_assoc_type(candidates, "Self", assoc_ident, span)?
+                self.one_bound_for_assoc_type(
+                    || traits::supertraits(tcx, ty::Binder::bind(trait_ref)),
+                    "Self",
+                    assoc_ident,
+                    span
+                )?
             }
             (&ty::Param(_), Res::SelfTy(Some(param_did), None)) |
             (&ty::Param(_), Res::Def(DefKind::TyParam, param_did)) => {

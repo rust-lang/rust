@@ -1,4 +1,4 @@
-error[E0369]: binary operation `+` cannot be applied to type `std::vec::Vec<R>`
+error[E0369]: cannot add `std::vec::Vec<R>` to `std::vec::Vec<R>`
   --> $DIR/vec-res-add.rs:16:15
    |
 LL |     let k = i + j;

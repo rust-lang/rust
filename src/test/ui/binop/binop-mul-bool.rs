@@ -1,3 +1,3 @@
-// error-pattern:`*` cannot be applied to type `bool`
+// error-pattern:cannot multiply `bool` to `bool`
 
 fn main() { let x = true * false; }

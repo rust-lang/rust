@@ -1,4 +1,4 @@
-error[E0369]: binary operation `+` cannot be applied to type `A`
+error[E0369]: cannot add `A` to `A`
   --> $DIR/issue-28837.rs:6:7
    |
 LL |     a + a;
@@ -8,7 +8,7 @@ LL |     a + a;
    |
    = note: an implementation of `std::ops::Add` might be missing for `A`
 
-error[E0369]: binary operation `-` cannot be applied to type `A`
+error[E0369]: cannot substract `A` from `A`
   --> $DIR/issue-28837.rs:8:7
    |
 LL |     a - a;
@@ -18,7 +18,7 @@ LL |     a - a;
    |
    = note: an implementation of `std::ops::Sub` might be missing for `A`
 
-error[E0369]: binary operation `*` cannot be applied to type `A`
+error[E0369]: cannot multiply `A` to `A`
   --> $DIR/issue-28837.rs:10:7
    |
 LL |     a * a;
@@ -28,7 +28,7 @@ LL |     a * a;
    |
    = note: an implementation of `std::ops::Mul` might be missing for `A`
 
-error[E0369]: binary operation `/` cannot be applied to type `A`
+error[E0369]: cannot divide `A` by `A`
   --> $DIR/issue-28837.rs:12:7
    |
 LL |     a / a;
@@ -38,7 +38,7 @@ LL |     a / a;
    |
    = note: an implementation of `std::ops::Div` might be missing for `A`
 
-error[E0369]: binary operation `%` cannot be applied to type `A`
+error[E0369]: cannot mod `A` by `A`
   --> $DIR/issue-28837.rs:14:7
    |
 LL |     a % a;
@@ -48,7 +48,7 @@ LL |     a % a;
    |
    = note: an implementation of `std::ops::Rem` might be missing for `A`
 
-error[E0369]: binary operation `&` cannot be applied to type `A`
+error[E0369]: no implementation for `A & A`
   --> $DIR/issue-28837.rs:16:7
    |
 LL |     a & a;
@@ -58,7 +58,7 @@ LL |     a & a;
    |
    = note: an implementation of `std::ops::BitAnd` might be missing for `A`
 
-error[E0369]: binary operation `|` cannot be applied to type `A`
+error[E0369]: no implementation for `A | A`
   --> $DIR/issue-28837.rs:18:7
    |
 LL |     a | a;
@@ -68,7 +68,7 @@ LL |     a | a;
    |
    = note: an implementation of `std::ops::BitOr` might be missing for `A`
 
-error[E0369]: binary operation `<<` cannot be applied to type `A`
+error[E0369]: no implementation for `A << A`
   --> $DIR/issue-28837.rs:20:7
    |
 LL |     a << a;
@@ -78,7 +78,7 @@ LL |     a << a;
    |
    = note: an implementation of `std::ops::Shl` might be missing for `A`
 
-error[E0369]: binary operation `>>` cannot be applied to type `A`
+error[E0369]: no implementation for `A >> A`
   --> $DIR/issue-28837.rs:22:7
    |
 LL |     a >> a;
