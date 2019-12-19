@@ -11,8 +11,8 @@ use crate::{
     dyn_map::DynMap,
     keys,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, EnumId, EnumVariantId, ImplId, Lookup, ModuleDefId, ModuleId,
-    StructFieldId, TraitId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, ImplId, Lookup, ModuleDefId,
+    ModuleId, StructFieldId, TraitId, VariantId,
 };
 
 pub trait ChildBySource {
@@ -76,52 +76,56 @@ impl ChildBySource for ModuleId {
         let mut res = DynMap::default();
 
         let crate_def_map = db.crate_def_map(self.krate);
-        for item in crate_def_map[self.local_id].scope.declarations() {
-            match item {
-                ModuleDefId::FunctionId(func) => {
-                    let src = func.lookup(db).source(db);
-                    res[keys::FUNCTION].insert(src, func)
-                }
-                ModuleDefId::ConstId(konst) => {
-                    let src = konst.lookup(db).source(db);
-                    res[keys::CONST].insert(src, konst)
-                }
-                ModuleDefId::StaticId(statik) => {
-                    let src = statik.lookup(db).source(db);
-                    res[keys::STATIC].insert(src, statik)
-                }
-                ModuleDefId::TypeAliasId(ty) => {
-                    let src = ty.lookup(db).source(db);
-                    res[keys::TYPE_ALIAS].insert(src, ty)
-                }
-                ModuleDefId::TraitId(trait_) => {
-                    let src = trait_.lookup(db).source(db);
-                    res[keys::TRAIT].insert(src, trait_)
-                }
-                ModuleDefId::AdtId(adt) => match adt {
-                    AdtId::StructId(strukt) => {
-                        let src = strukt.lookup(db).source(db);
-                        res[keys::STRUCT].insert(src, strukt)
-                    }
-                    AdtId::UnionId(union_) => {
-                        let src = union_.lookup(db).source(db);
-                        res[keys::UNION].insert(src, union_)
-                    }
-                    AdtId::EnumId(enum_) => {
-                        let src = enum_.lookup(db).source(db);
-                        res[keys::ENUM].insert(src, enum_)
-                    }
-                },
-                _ => (),
-            }
-        }
+        let module_data = &crate_def_map[self.local_id];
 
-        for &impl_ in crate_def_map[self.local_id].impls.iter() {
+        module_data.scope.declarations().for_each(|item| add_module_def(db, &mut res, item));
+
+        for &impl_ in module_data.impls.iter() {
             let src = impl_.lookup(db).source(db);
             res[keys::IMPL].insert(src, impl_)
         }
 
         res
+    }
+}
+
+fn add_module_def(db: &impl DefDatabase, map: &mut DynMap, item: ModuleDefId) {
+    match item {
+        ModuleDefId::FunctionId(func) => {
+            let src = func.lookup(db).source(db);
+            map[keys::FUNCTION].insert(src, func)
+        }
+        ModuleDefId::ConstId(konst) => {
+            let src = konst.lookup(db).source(db);
+            map[keys::CONST].insert(src, konst)
+        }
+        ModuleDefId::StaticId(statik) => {
+            let src = statik.lookup(db).source(db);
+            map[keys::STATIC].insert(src, statik)
+        }
+        ModuleDefId::TypeAliasId(ty) => {
+            let src = ty.lookup(db).source(db);
+            map[keys::TYPE_ALIAS].insert(src, ty)
+        }
+        ModuleDefId::TraitId(trait_) => {
+            let src = trait_.lookup(db).source(db);
+            map[keys::TRAIT].insert(src, trait_)
+        }
+        ModuleDefId::AdtId(adt) => match adt {
+            AdtId::StructId(strukt) => {
+                let src = strukt.lookup(db).source(db);
+                map[keys::STRUCT].insert(src, strukt)
+            }
+            AdtId::UnionId(union_) => {
+                let src = union_.lookup(db).source(db);
+                map[keys::UNION].insert(src, union_)
+            }
+            AdtId::EnumId(enum_) => {
+                let src = enum_.lookup(db).source(db);
+                map[keys::ENUM].insert(src, enum_)
+            }
+        },
+        _ => (),
     }
 }
 
@@ -157,6 +161,15 @@ impl ChildBySource for EnumId {
             res[keys::ENUM_VARIANT].insert(arena_map.with_value(source.clone()), id)
         }
 
+        res
+    }
+}
+
+impl ChildBySource for DefWithBodyId {
+    fn child_by_source(&self, db: &impl DefDatabase) -> DynMap {
+        let mut res = DynMap::default();
+        let body = db.body(*self);
+        body.defs.iter().copied().for_each(|item| add_module_def(db, &mut res, item));
         res
     }
 }
