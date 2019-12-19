@@ -160,6 +160,32 @@ mod tests {
     use crate::mock_analysis::single_file;
 
     #[test]
+    fn default_generic_types_should_not_be_displayed() {
+        let (analysis, file_id) = single_file(
+            r#"
+struct Test<K, T = u8> {
+    k: K,
+    t: T,
+}
+
+fn main() {
+    let zz = Test { t: 23, k: 33 };
+}"#,
+        );
+
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [69; 71),
+                kind: TypeHint,
+                label: "Test<i32>",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn let_statement() {
         let (analysis, file_id) = single_file(
             r#"

@@ -906,7 +906,38 @@ impl HirDisplay for ApplicationTy {
                 write!(f, "{}", name)?;
                 if self.parameters.len() > 0 {
                     write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
+
+                    let mut non_default_parameters = Vec::with_capacity(self.parameters.len());
+                    let parameters_to_write = if f.should_display_default_types() {
+                        self.parameters.0.as_ref()
+                    } else {
+                        match self
+                            .ctor
+                            .as_generic_def()
+                            .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
+                            .filter(|defaults| !defaults.is_empty())
+                        {
+                            Option::None => self.parameters.0.as_ref(),
+                            Option::Some(default_parameters) => {
+                                for (i, parameter) in self.parameters.into_iter().enumerate() {
+                                    match (parameter, default_parameters.get(i)) {
+                                        (&Ty::Unknown, _) | (_, None) => {
+                                            non_default_parameters.push(parameter.clone())
+                                        }
+                                        (_, Some(default_parameter))
+                                            if parameter != default_parameter =>
+                                        {
+                                            non_default_parameters.push(parameter.clone())
+                                        }
+                                        _ => (),
+                                    }
+                                }
+                                &non_default_parameters
+                            }
+                        }
+                    };
+
+                    f.write_joined(parameters_to_write, ", ")?;
                     write!(f, ">")?;
                 }
             }
