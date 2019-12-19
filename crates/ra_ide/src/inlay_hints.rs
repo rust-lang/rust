@@ -164,7 +164,7 @@ mod tests {
         let (analysis, file_id) = single_file(
             r#"
 struct Test<K, T = u8> {
-k: K,
+    k: K,
     t: T,
 }
 
@@ -176,7 +176,7 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, None, false).unwrap(), @r###"
         [
             InlayHint {
-                range: [65; 67),
+                range: [69; 71),
                 kind: TypeHint,
                 label: "Test<i32>",
             },

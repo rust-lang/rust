@@ -425,6 +425,23 @@ mod tests {
     }
 
     #[test]
+    fn hover_default_generic_type() {
+        check_hover_result(
+            r#"
+//- /main.rs
+struct Test<K, T = u8> {
+    k: K,
+    t: T,
+}
+
+fn main() {
+    let zz<|> = Test { t: 23, k: 33 };
+}"#,
+            &["Test<i32, u8>"],
+        );
+    }
+
+    #[test]
     fn hover_some() {
         let (analysis, position) = single_file_with_position(
             "
