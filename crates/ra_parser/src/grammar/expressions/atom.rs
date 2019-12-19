@@ -444,7 +444,7 @@ fn match_arm(p: &mut Parser) -> BlockLike {
     // }
     attributes::outer_attributes(p);
 
-    patterns::pattern_list_r(p, TokenSet::empty());
+    patterns::pattern_list_r(p, TokenSet::EMPTY);
     if p.at(T![if]) {
         match_guard(p);
     }
