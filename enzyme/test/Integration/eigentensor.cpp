@@ -14,6 +14,41 @@
 #define EIGEN_DONT_VECTORIZE 1
 
 #include "test_utils.h"
+
+void memcpy(float* __restrict dst, float* __restrict src, size_t count) {
+    for(size_t i=0; i<count/sizeof(float); i++) {
+        dst[i] = src[i];
+    }
+}
+
+void memcpy(double* __restrict dst, double* __restrict src, size_t count) {
+    for(size_t i=0; i<count/sizeof(double); i++) {
+        dst[i] = src[i];
+    }
+}
+
+template<typename T>
+void memcpy(T* __restrict dst, T* __restrict src, size_t count) {
+    for(size_t i=0; i<count/sizeof(T); i++) {
+        dst[i] = src[i];
+    }
+}
+
+/*
+namespace std {
+void memcpy(float* __restrict dst, float* __restrict src, size_t count) {
+    for(size_t i=0; i<count/sizeof(float); i++) {
+        dst[i] = src[i];
+    }
+}
+
+void memcpy(double* __restrict dst, double* __restrict src, size_t count) {
+    for(size_t i=0; i<count/sizeof(double); i++) {
+        dst[i] = src[i];
+    }
+}
+};*/
+
 #include <eigen3/Eigen/Dense>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 
@@ -32,6 +67,20 @@ using Eigen::Matrix;
 using Eigen::Tensor;
 
 constexpr size_t IN = 4, OUT = 4, NUM = 5;
+
+namespace Eigen {
+namespace internal {
+
+template<> struct smart_copy_helper<float, true> {
+EIGEN_DEVICE_FUNC static inline void run(const float* start, const float* end, float* target) {
+    for(unsigned i=0; start+i != end; i++) {
+        target[i] = start[i];
+    }
+}
+};
+};
+
+};
 
 /*
 namespace Eigen {
@@ -333,11 +382,9 @@ int main(int argc, char** argv) {
     inputp.setZero();
     kernelp.setZero();
     outputp.setRandom(); //One();
-
-    matvec(&kernel, &input, &output);
-    printf("did original\n");
-    __enzyme_autodiff((void*)matvec, &kernel, &kernelp, &input, &inputp, &output, &outputp);
+    
     Tensor<float, 2> expected_kernel(2, 2);
+    expected_kernel.setZero();
 for (int i = 0; i < 3; ++i) {
   for (int j = 0; j < 2; ++j) {
     for (int k = 0; k < 6; ++k) {
@@ -350,18 +397,22 @@ for (int i = 0; i < 3; ++i) {
         //VERIFY_IS_APPROX(result, expected);
         //VERIFY_IS_APPROX(result, expected);
 		for(int si=0; si<2; si++)
-		for(int sj=0; sj<2; si++)
+		for(int sj=0; sj<2; sj++)
 			expected_kernel(si,sj) += outputp(i, j, k, l) * input(i, j+si, k+sj, l);
       }
     }
   }
 }
+
+    matvec(&kernel, &input, &output);
+    printf("did original\n");
+    __enzyme_autodiff((void*)matvec, &kernel, &kernelp, &input, &inputp, &output, &outputp);
  
 
 	for(int si=0; si<2; si++)
-	for(int sj=0; sj<2; si++) {
-        fprintf(stderr, "kernelp(si=%d, sj=%d)=%f\n", si, sj, kernelp(si, sj));
-        APPROX_EQ( kernelp(si, sj), expected_kernel(si, sj), 1e-10);
+	for(int sj=0; sj<2; sj++) {
+        fprintf(stderr, "kernelp(si=%d, sj=%d)=%f, expected_kernel(si=%d, sj=%d)=%f\n", si, sj, kernelp(si, sj), si, sj, expected_kernel(si, sj) );
+        APPROX_EQ( kernelp(si, sj), expected_kernel(si, sj), 1e-4);
     }
      
 }

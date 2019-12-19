@@ -728,13 +728,24 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
 
 
                 if (!isIntPointerASecretFloat(op->getOperand(0)) ) {
-                    //if src is inactive, then no need to update pointers, even if dst is active
-                    if (gutils->isConstantValue(op->getOperand(0))) continue;
 
+                    //It is questionable how the following case would even occur, but if the dst is constant, we shouldn't do anything extra
+                    if (gutils->isConstantValue(op->getOperand(0))) continue;
+                    
                     SmallVector<Value*, 4> args;
                     IRBuilder <>BuilderZ(op);
+                    
+                    //If src is inactive, then we should copy from the regular pointer (i.e. suppose we are copying constant memory representing dimensions into a tensor)
+                    //  to ensure that the differential tensor is well formed for use OUTSIDE the derivative generation (as enzyme doesn't need this), we should also perform the copy
+                    //  onto the differential. Future Optimization (not implemented): If dst can never escape Enzyme code, we may omit this copy.
+                    //no need to update pointers, even if dst is active
                     args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
-                    args.push_back(gutils->invertPointerM(op->getOperand(1), BuilderZ));
+
+                    if (!gutils->isConstantValue(op->getOperand(1)))
+                        args.push_back(gutils->invertPointerM(op->getOperand(1), BuilderZ));
+                    else
+                        args.push_back(op->getOperand(1));
+
                     args.push_back(op->getOperand(2));
                     args.push_back(op->getOperand(3));
 
@@ -750,25 +761,32 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
             }
             case Intrinsic::memset: {
                 if (gutils->isConstantInstruction(inst)) continue;
-                //llvm_unreachable("didn't finish implementing memset");
-                //TODO this doesn't seem complete
-                /*
+                
+                //TODO this should 1) assert that the value being meset is constant
+                //                 2) duplicate the memset for the inverted pointer
+                
                 if (!gutils->isConstantValue(op->getOperand(1))) {
                     assert(inst);
                     llvm::errs() << "couldn't handle non constant inst in memset to propagate differential to\n" << *inst;
                     report_fatal_error("non constant in memset");
                 }
-                auto ptx = invertPointer(op->getOperand(0));
+                
+                IRBuilder <>BuilderZ(op);
+
                 SmallVector<Value*, 4> args;
-                args.push_back(ptx);
-                args.push_back(lookup(op->getOperand(1)));
-                args.push_back(lookup(op->getOperand(2)));
-                args.push_back(lookup(op->getOperand(3)));
+                if (!gutils->isConstantValue(op->getOperand(0)))
+                    args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
+                else
+                    args.push_back(gutils->lookupM(op->getOperand(0), BuilderZ));
+                args.push_back(gutils->lookupM(op->getOperand(1), BuilderZ));
+                args.push_back(gutils->lookupM(op->getOperand(2), BuilderZ));
+                args.push_back(gutils->lookupM(op->getOperand(3), BuilderZ));
 
                 Type *tys[] = {args[0]->getType(), args[2]->getType()};
-                auto cal = Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args);
+                auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(inst->getParent()->getParent()->getParent(), Intrinsic::memset, tys), args);
                 cal->setAttributes(op->getAttributes());
-                */
+                cal->setCallingConv(op->getCallingConv());
+                cal->setTailCallKind(op->getTailCallKind());
                 break;
             }
             case Intrinsic::stacksave:
@@ -1078,9 +1096,9 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
           }
 
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
-          if (gutils->isConstantInstruction(inst)) continue;
+          if (gutils->isConstantValue(op->getPointerOperand())) continue;
 
-          if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntOrIntVectorTy() && !gutils->isConstantValue(op->getValueOperand()) && isIntASecretFloat(op->getValueOperand()) == IntType::Pointer ) ) {
+          if ( !( isKnownFloatTBAA(op) || op->getValueOperand()->getType()->isFPOrFPVectorTy() || (op->getValueOperand()->getType()->isIntOrIntVectorTy() && isIntASecretFloat(op->getValueOperand()) == IntType::Float ) ) ) {
             IRBuilder <> storeBuilder(op);
             
             Value* valueop = nullptr;
@@ -2758,13 +2776,16 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                     Builder2.CreateCall(dmemcpy, args);
                 } else {
                     if (topLevel) {
-                        //if src is inactive, then no need to update pointers, even if dst is active
-                        if (gutils->isConstantValue(op->getOperand(1))) continue;
+                        //if dst is inactive, then no need to update pointers/integers (unclear why src would be active, though....)
+                        if (gutils->isConstantValue(op->getOperand(0))) continue;
 
                         SmallVector<Value*, 4> args;
                         IRBuilder <>BuilderZ(op);
                         args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
-                        args.push_back(gutils->invertPointerM(op->getOperand(1), BuilderZ));
+                        if (!gutils->isConstantValue(op->getOperand(1)))
+                            args.push_back(gutils->invertPointerM(op->getOperand(1), BuilderZ));
+                        else
+                            args.push_back(op->getOperand(1));
                         args.push_back(op->getOperand(2));
                         args.push_back(op->getOperand(3));
 
@@ -2801,14 +2822,16 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                     Builder2.CreateCall(dmemmove, args);
                 } else {
                     if (topLevel) {
-
-                        //if src is inactive, then no need to update pointers, even if dst is active
-                        if (gutils->isConstantValue(op->getOperand(1))) continue;
+                        //if dst is inactive, then no need to update pointers/integers (unclear why src would be active, though....)
+                        if (gutils->isConstantValue(op->getOperand(0))) continue;
 
                         SmallVector<Value*, 4> args;
                         IRBuilder <>BuilderZ(op);
                         args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
-                        args.push_back(gutils->invertPointerM(op->getOperand(1), BuilderZ));
+                        if (!gutils->isConstantValue(op->getOperand(1)))
+                            args.push_back(gutils->invertPointerM(op->getOperand(1), BuilderZ));
+                        else
+                            args.push_back(op->getOperand(1));
                         args.push_back(op->getOperand(2));
                         args.push_back(op->getOperand(3));
 
@@ -3128,17 +3151,19 @@ realcall:
       }
 
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
-      //llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
-      if (gutils->isConstantInstruction(inst)) continue;
+      if (gutils->isConstantValue(op->getPointerOperand())) continue;
+      
 
       //TODO const
        //TODO IF OP IS POINTER
       Value* tostore = op->getValueOperand();
       Type* tostoreType = tostore->getType();
-      bool constantValue = gutils->isConstantValue(tostore);
+      //llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
+      //if (tostoreType->isIntOrIntVectorTy())
+      //    llvm::errs() << " + ip " << isIntASecretFloat(op->getValueOperand()) << "\n";
 
       //TODO allow recognition of other types that could contain pointers [e.g. {void*, void*} or <2 x i64> ]
-      if (! ( tostoreType->isPointerTy() || (tostoreType->isIntOrIntVectorTy() && !constantValue && isIntASecretFloat(tostore) == IntType::Pointer ) ) ) {
+      if ( isKnownFloatTBAA(op) || tostoreType->isFPOrFPVectorTy() || (tostoreType->isIntOrIntVectorTy() && isIntASecretFloat(op->getValueOperand()) == IntType::Float ) ) {
           StoreInst* ts;
           //llvm::errs() << "  considering adding to value:" << *op->getValueOperand() << " " << *op << " " << gutils->isConstantValue(op->getValueOperand()) << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
           if (!gutils->isConstantValue(op->getValueOperand())) {
@@ -3161,7 +3186,7 @@ realcall:
         Value* valueop = nullptr;
         
         if (gutils->isConstantValue(op->getValueOperand())) {
-            valueop = Constant::getNullValue(op->getValueOperand()->getType());
+            valueop = op->getValueOperand(); //Constant::getNullValue(op->getValueOperand()->getType());
         } else {
             valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
         }

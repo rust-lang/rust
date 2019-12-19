@@ -36,6 +36,18 @@ enum class IntType {
     Unknown
 };
 
+static inline std::string to_string(IntType t) {
+    switch(t) {
+        case IntType::Integer: return "Integer";
+        case IntType::Float: return "Float";
+        case IntType::Pointer: return "Pointer";
+        case IntType::Unknown: return "Unknown";
+    }
+    llvm_unreachable("unknown inttype");
+}
+
+llvm::Type* isKnownFloatTBAA(llvm::Instruction* inst);
+
 IntType isIntASecretFloat(llvm::Value* val, IntType defaultType=IntType::Unknown);
 
 //! return the secret float type if found, otherwise nullptr
