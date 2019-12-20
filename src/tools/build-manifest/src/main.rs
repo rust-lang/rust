@@ -453,10 +453,10 @@ impl Builder {
             "lldb-preview", "rust-analysis", "miri-preview"
         ]);
 
-        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
-        // split out of `rust-std`. We'll include it by default as a transition for nightly users.
+        // The compiler libraries are not stable for end users, and they're also huge, so we only
+        // `rustc-dev` for nightly users, and only in the "complete" profile. It's still possible
+        // for users to install the additional component manually, if needed.
         if self.rust_release == "nightly" {
-            self.extend_profile("default", &mut manifest.profiles, &["rustc-dev"]);
             self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
         }
     }
@@ -514,15 +514,6 @@ impl Builder {
             components.push(host_component("rust-mingw"));
         }
 
-        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
-        // split out of `rust-std`. We'll include it by default as a transition for nightly users,
-        // but ship it as an optional component on the beta and stable channels.
-        if self.rust_release == "nightly" {
-            components.push(host_component("rustc-dev"));
-        } else {
-            extensions.push(host_component("rustc-dev"));
-        }
-
         // Tools are always present in the manifest,
         // but might be marked as unavailable if they weren't built.
         extensions.extend(vec![
@@ -542,7 +533,6 @@ impl Builder {
         );
         extensions.extend(
             HOSTS.iter()
-                .filter(|&&target| target != host)
                 .map(|target| Component::from_str("rustc-dev", target))
         );
         extensions.push(Component::from_str("rust-src", "*"));
