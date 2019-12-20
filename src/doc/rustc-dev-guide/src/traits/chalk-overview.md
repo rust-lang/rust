@@ -7,8 +7,8 @@
 
 [Chalk][chalk] recasts Rust's trait system explicitly in terms of logic
 programming by "lowering" Rust code into a kind of logic program we can then
-execute queries against. (See [*Lowering to Logic*][lowering-to-logic] and
-[*Lowering Rules*][lowering-rules]) Its goal is to be an executable, highly
+execute queries against (see [*Lowering to Logic*][lowering-to-logic] and
+[*Lowering Rules*][lowering-rules]). Its goal is to be an executable, highly
 readable specification of the Rust trait system.
 
 There are many expected benefits from this work. It will consolidate our
