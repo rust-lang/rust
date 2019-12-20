@@ -70,6 +70,6 @@ int main(int argc, char **argv)
         double res = __enzyme_autodiff((void*)foobar, t);
         printf("t=%f d/dt(exp(-1.2*t))=%f, -1.2*exp(-1.2*t)=%f\n", t, res, mreal);
         // see if approximation is within 10%
-        APPROX_EQ(res, realanswer, max(fabs(realanswer)/10., 2.0e-5) );
+        APPROX_EQ(res, mreal, max(fabs(mreal)/10., 2.0e-5) );
     }
 }

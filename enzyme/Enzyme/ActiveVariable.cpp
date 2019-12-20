@@ -406,6 +406,12 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
                     //llvm::errs() << "find int use of " << *v << " in " << *use << "\n";
                     continue;
                 }
+
+                //These function calls are known uses that do not potentially have an inactive use
+                if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "__cxa_guard_release" || ci->getName() == "__cxa_guard_abort" || ci->getName() == "printf" || ci->getName() == "fprintf") {
+                    continue;
+                }
+
                 if (ci->getIntrinsicID() == Intrinsic::memset) {
                     if (call->getArgOperand(0) != v) {
                         intUse = true;
@@ -517,7 +523,7 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
         }
 
         unknownUse = true;
-        llvm::errs() << "unknown use : " << *use << " of v: " << *v << "\n";
+        //llvm::errs() << "unknown use : " << *use << " of v: " << *v << "\n";
         continue;
     }
 
@@ -625,6 +631,41 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
         }
     }
     
+    if (auto phi = dyn_cast<PHINode>(v)) {
+        std::map<std::pair<Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
+        SmallPtrSet<Value*, 4> ptrseen0(ptrseen.begin(), ptrseen.end());
+        SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
+        bool allintUse = true;
+        for (auto& val : phi->incoming_values() ) {
+            if (!isa<Value>(&val)) continue;
+
+            bool intUse0 = false;
+            bool fakeunknownuse0 = false;
+            if ( trackInt(cast<Value>(&val), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
+                intseen.insert(intseen0.begin(), intseen0.end());
+                ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
+                typeseen.insert(typeseen0.begin(), typeseen0.end());
+
+                if (fast_tracking) return true;
+            }
+            if (!intUse0) {
+                allintUse = false;
+            }
+        }
+
+        if (allintUse) {
+            intUse = true;
+            intseen[idx] = IntType::Integer;
+            
+            intseen.insert(intseen0.begin(), intseen0.end());
+            
+            ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
+            
+            typeseen.insert(typeseen0.begin(), typeseen0.end());
+            if (fast_tracking) return true;
+        }
+    }
+    
     if (auto ci = dyn_cast<CallInst>(v)) {
         if (auto F = ci->getCalledFunction()) {
             std::map<std::pair<Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
@@ -668,7 +709,6 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
         pointerUse = true;
         if (fast_tracking) return true;
     }
-    
     return false;
 }
 
