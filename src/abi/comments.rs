@@ -75,17 +75,6 @@ pub fn add_local_place_comments<'tcx>(
                 align.pref.bytes(),
             ));
         }
-        CPlaceInner::Stack(stack_slot) => fx.add_entity_comment(
-            stack_slot,
-            format!(
-                "{:?}: {:?} size={} align={},{}",
-                local,
-                ty,
-                size.bytes(),
-                align.abi.bytes(),
-                align.pref.bytes(),
-            ),
-        ),
         CPlaceInner::NoPlace => fx.add_global_comment(format!(
             "zst   {:5} {:20} {:4}b {}, {}",
             format!("{:?}", local),

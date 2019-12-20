@@ -669,7 +669,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                     fx.bcx.set_val_label(val, cranelift::codegen::ir::ValueLabel::from_u32(var.as_u32()));
                     fx.bcx.def_var(mir_var(var), val);
                 }
-                CPlaceInner::Addr(_, _) | CPlaceInner::Stack(_) => {
+                CPlaceInner::Addr(_, _) => {
                     // Don't write to `ret`, as the destination memory is already uninitialized.
                 }
             }

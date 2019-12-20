@@ -233,7 +233,6 @@ pub struct CPlace<'tcx> {
 pub enum CPlaceInner {
     Var(Local),
     Addr(Pointer, Option<Value>),
-    Stack(StackSlot),
     NoPlace,
 }
 
@@ -272,7 +271,7 @@ impl<'tcx> CPlace<'tcx> {
             offset: None,
         });
         CPlace {
-            inner: CPlaceInner::Stack(stack_slot),
+            inner: CPlaceInner::Addr(Pointer::stack_slot(stack_slot), None),
             layout,
         }
     }
@@ -316,10 +315,6 @@ impl<'tcx> CPlace<'tcx> {
                 assert!(extra.is_none(), "unsized values are not yet supported");
                 CValue::by_ref(ptr, layout)
             }
-            CPlaceInner::Stack(stack_slot) => CValue::by_ref(
-                Pointer::stack_slot(stack_slot),
-                layout,
-            ),
             CPlaceInner::NoPlace => CValue::by_ref(
                 Pointer::const_addr(fx, i64::try_from(self.layout.align.pref.bytes()).unwrap()),
                 layout,
@@ -340,10 +335,6 @@ impl<'tcx> CPlace<'tcx> {
     ) -> (Pointer, Option<Value>) {
         match self.inner {
             CPlaceInner::Addr(ptr, extra) => (ptr, extra),
-            CPlaceInner::Stack(stack_slot) => (
-                Pointer::stack_slot(stack_slot),
-                None,
-            ),
             CPlaceInner::NoPlace => {
                 (
                     Pointer::const_addr(fx, i64::try_from(self.layout.align.pref.bytes()).unwrap()),
@@ -431,7 +422,6 @@ impl<'tcx> CPlace<'tcx> {
                 return;
             }
             CPlaceInner::Addr(ptr, None) => ptr,
-            CPlaceInner::Stack(stack_slot) => Pointer::stack_slot(stack_slot),
             CPlaceInner::NoPlace => {
                 if dst_layout.abi != Abi::Uninhabited {
                     assert_eq!(dst_layout.size.bytes(), 0, "{:?}", dst_layout);

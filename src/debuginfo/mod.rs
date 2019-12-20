@@ -345,9 +345,9 @@ fn place_location<'a, 'tcx>(
             // FIXME implement this (used by arguments and returns)
 
             AttributeValue::Exprloc(Expression(vec![]))
-        }
-        CPlaceInner::Stack(stack_slot) => {
-            AttributeValue::Exprloc(Expression(translate_loc(ValueLoc::Stack(*stack_slot), &context.func.stack_slots).unwrap()))
+
+            // For PointerBase::Stack:
+            //AttributeValue::Exprloc(Expression(translate_loc(ValueLoc::Stack(*stack_slot), &context.func.stack_slots).unwrap()))
         }
         CPlaceInner::NoPlace => AttributeValue::Exprloc(Expression(vec![])),
     }
