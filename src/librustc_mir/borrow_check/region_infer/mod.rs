@@ -1619,7 +1619,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Attempt to propagate a region error (e.g. `'a: 'b`) that is not met to a closure's
-    /// creator. If we cannot, then we report an error to the user.
+    /// creator. If we cannot, then the caller should report an error to the user.
     ///
     /// Returns `true` if the error was propagated, and `false` otherwise.
     fn try_propagate_universal_region_error(
