@@ -1,8 +1,8 @@
 //! FIXME: write short doc here
 use hir_def::{
     child_by_source::ChildBySource, dyn_map::DynMap, keys, keys::Key, nameres::ModuleSource,
-    ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId, StaticId, StructId,
-    TraitId, TypeAliasId, UnionId, VariantId,
+    ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
@@ -227,7 +227,12 @@ fn _analyze_container(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> Option
                 ast::ImplBlock(it) => {
                     let c = ImplBlock::from_source(db, src.with_value(it))?;
                     c.id.child_by_source(db)
-                 },
+                },
+                ast::FnDef(it) => {
+                    let f = Function::from_source(db, src.with_value(it))?;
+                    DefWithBodyId::from(f.id)
+                        .child_by_source(db)
+                },
                 _ => { continue },
             }
         };

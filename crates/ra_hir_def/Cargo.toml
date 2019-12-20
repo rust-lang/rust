@@ -13,6 +13,7 @@ once_cell = "1.0.1"
 rustc-hash = "1.0"
 either = "1.5"
 anymap = "0.12"
+drop_bomb = "0.1.4"
 
 ra_arena = { path = "../ra_arena" }
 ra_db = { path = "../ra_db" }

@@ -2,11 +2,12 @@
 //! representation.
 
 use either::Either;
+
 use hir_expand::name::{name, AsName, Name};
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
-        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, NameOwner,
+        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, ModuleItemOwner, NameOwner,
         TypeAscriptionOwner,
     },
     AstNode, AstPtr,
@@ -24,17 +25,20 @@ use crate::{
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
+    ContainerId, DefWithBodyId, FunctionLoc, Intern,
 };
 
 pub(super) fn lower(
     db: &impl DefDatabase,
+    def: DefWithBodyId,
     expander: Expander,
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
     ExprCollector {
-        expander,
         db,
+        def,
+        expander,
         source_map: BodySourceMap::default(),
         body: Body {
             exprs: Arena::default(),
@@ -49,6 +53,7 @@ pub(super) fn lower(
 
 struct ExprCollector<DB> {
     db: DB,
+    def: DefWithBodyId,
     expander: Expander,
 
     body: Body,
@@ -467,6 +472,7 @@ where
             Some(block) => block,
             None => return self.alloc_expr(Expr::Missing, syntax_node_ptr),
         };
+        self.collect_block_items(&block);
         let statements = block
             .statements()
             .map(|s| match s {
@@ -481,6 +487,20 @@ where
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
         self.alloc_expr(Expr::Block { statements, tail }, syntax_node_ptr)
+    }
+
+    fn collect_block_items(&mut self, block: &ast::Block) {
+        let container = ContainerId::DefWithBodyId(self.def);
+        for item in block.items() {
+            match item {
+                ast::ModuleItem::FnDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    self.body.defs.push(FunctionLoc { container, ast_id }.intern(self.db).into())
+                }
+                // FIXME: handle other items
+                _ => (),
+            }
+        }
     }
 
     fn collect_block_opt(&mut self, expr: Option<ast::BlockExpr>) -> ExprId {
