@@ -738,6 +738,25 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for calling `.step_by(0)` on iterators which panics.
+    ///
+    /// **Why is this bad?** This very much looks like an oversight. Use `panic!()` instead if you
+    /// actually intend to panic.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```should_panic
+    /// for x in (0..100).step_by(0) {
+    ///     //..
+    /// }
+    /// ```
+    pub ITERATOR_STEP_BY_ZERO,
+    correctness,
+    "using `Iterator::step_by(0)`, which will panic at runtime"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for use of `.iter().nth()` (and the related
     /// `.iter_mut().nth()`) on standard library types with O(1) element access.
     ///
@@ -1115,6 +1134,7 @@ declare_lint_pass!(Methods => [
     FLAT_MAP_IDENTITY,
     FIND_MAP,
     MAP_FLATTEN,
+    ITERATOR_STEP_BY_ZERO,
     ITER_NTH,
     ITER_SKIP_NEXT,
     GET_UNWRAP,
@@ -1173,6 +1193,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             },
             ["nth", "iter"] => lint_iter_nth(cx, expr, arg_lists[1], false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, arg_lists[1], true),
+            ["step_by", ..] => lint_step_by(cx, expr, arg_lists[0]),
             ["next", "skip"] => lint_iter_skip_next(cx, expr),
             ["collect", "cloned"] => lint_iter_cloned_collect(cx, expr, arg_lists[1]),
             ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
@@ -1946,6 +1967,20 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
                 check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Mul, "product", false)
             },
             _ => (),
+        }
+    }
+}
+
+fn lint_step_by<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, args: &'tcx [hir::Expr]) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        use crate::consts::{constant, Constant};
+        if let Some((Constant::Int(0), _)) = constant(cx, cx.tables, &args[1]) {
+            span_lint(
+                cx,
+                ITERATOR_STEP_BY_ZERO,
+                expr.span,
+                "Iterator::step_by(0) will panic at runtime",
+            );
         }
     }
 }
