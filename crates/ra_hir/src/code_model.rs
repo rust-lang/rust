@@ -269,7 +269,7 @@ pub struct Struct {
 
 impl Struct {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.lookup(db).container }
+        Module { id: self.id.lookup(db).container.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -290,7 +290,7 @@ impl Struct {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
-        Type::from_def(db, self.id.lookup(db).container.krate, self.id)
+        Type::from_def(db, self.id.lookup(db).container.module(db).krate, self.id)
     }
 
     fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
@@ -309,11 +309,11 @@ impl Union {
     }
 
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.lookup(db).container }
+        Module { id: self.id.lookup(db).container.module(db) }
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
-        Type::from_def(db, self.id.lookup(db).container.krate, self.id)
+        Type::from_def(db, self.id.lookup(db).container.module(db).krate, self.id)
     }
 
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
@@ -337,7 +337,7 @@ pub struct Enum {
 
 impl Enum {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.lookup(db).container }
+        Module { id: self.id.lookup(db).container.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -357,7 +357,7 @@ impl Enum {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
-        Type::from_def(db, self.id.lookup(db).container.krate, self.id)
+        Type::from_def(db, self.id.lookup(db).container.module(db).krate, self.id)
     }
 }
 
@@ -553,7 +553,7 @@ pub struct Trait {
 
 impl Trait {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.lookup(db).container }
+        Module { id: self.id.lookup(db).container.module(db) }
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Name {

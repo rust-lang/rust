@@ -71,7 +71,7 @@ impl_intern_key!(FunctionId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionLoc {
-    pub container: ContainerId,
+    pub container: AssocContainerId,
     pub ast_id: AstId<ast::FnDef>,
 }
 
@@ -95,7 +95,7 @@ impl_intern_key!(StructId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::StructDef>,
 }
 
@@ -119,7 +119,7 @@ impl_intern_key!(UnionId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnionLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::UnionDef>,
 }
 
@@ -143,7 +143,7 @@ impl_intern_key!(EnumId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::EnumDef>,
 }
 
@@ -187,7 +187,7 @@ pub struct ConstId(salsa::InternId);
 impl_intern_key!(ConstId);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstLoc {
-    pub container: ContainerId,
+    pub container: AssocContainerId,
     pub ast_id: AstId<ast::ConstDef>,
 }
 
@@ -211,7 +211,7 @@ impl_intern_key!(StaticId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StaticLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::StaticDef>,
 }
 
@@ -235,7 +235,7 @@ impl_intern_key!(TraitId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::TraitDef>,
 }
 
@@ -259,7 +259,7 @@ impl_intern_key!(TypeAliasId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAliasLoc {
-    pub container: ContainerId,
+    pub container: AssocContainerId,
     pub ast_id: AstId<ast::TypeAliasDef>,
 }
 
@@ -333,10 +333,16 @@ impl_arena_id!(LocalTypeParamId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContainerId {
     ModuleId(ModuleId),
-    ImplId(ImplId),
-    TraitId(TraitId),
     DefWithBodyId(DefWithBodyId),
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AssocContainerId {
+    ContainerId(ContainerId),
+    ImplId(ImplId),
+    TraitId(TraitId),
+}
+impl_froms!(AssocContainerId: ContainerId);
 
 /// A Data Type
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -483,9 +489,17 @@ impl HasModule for ContainerId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match *self {
             ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.lookup(db).container,
-            ContainerId::TraitId(it) => it.lookup(db).container,
             ContainerId::DefWithBodyId(it) => it.module(db),
+        }
+    }
+}
+
+impl HasModule for AssocContainerId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        match *self {
+            AssocContainerId::ContainerId(it) => it.module(db),
+            AssocContainerId::ImplId(it) => it.lookup(db).container,
+            AssocContainerId::TraitId(it) => it.lookup(db).container.module(db),
         }
     }
 }
@@ -515,6 +529,7 @@ impl HasModule for AdtId {
             AdtId::UnionId(it) => it.lookup(db).container,
             AdtId::EnumId(it) => it.lookup(db).container,
         }
+        .module(db)
     }
 }
 
@@ -533,17 +548,17 @@ impl HasModule for GenericDefId {
         match self {
             GenericDefId::FunctionId(it) => it.lookup(db).module(db),
             GenericDefId::AdtId(it) => it.module(db),
-            GenericDefId::TraitId(it) => it.lookup(db).container,
+            GenericDefId::TraitId(it) => it.lookup(db).container.module(db),
             GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
             GenericDefId::ImplId(it) => it.lookup(db).container,
-            GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container,
+            GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container.module(db),
             GenericDefId::ConstId(it) => it.lookup(db).module(db),
         }
     }
 }
 
 impl HasModule for StaticLoc {
-    fn module(&self, _db: &impl db::DefDatabase) -> ModuleId {
-        self.container
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        self.container.module(db)
     }
 }

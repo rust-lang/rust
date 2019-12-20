@@ -760,10 +760,11 @@ where
         self.collect_derives(attrs, def);
 
         let name = def.name.clone();
+        let container = ContainerId::ModuleId(module);
         let def: PerNs = match def.kind {
             raw::DefKind::Function(ast_id) => {
                 let def = FunctionLoc {
-                    container: ContainerId::ModuleId(module),
+                    container: container.into(),
                     ast_id: AstId::new(self.file_id, ast_id),
                 }
                 .intern(self.def_collector.db);
@@ -771,23 +772,23 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Struct(ast_id) => {
-                let def = StructLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = StructLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
                 PerNs::both(def.into(), def.into())
             }
             raw::DefKind::Union(ast_id) => {
-                let def = UnionLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = UnionLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
                 PerNs::both(def.into(), def.into())
             }
             raw::DefKind::Enum(ast_id) => {
-                let def = EnumLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = EnumLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
                 PerNs::types(def.into())
             }
             raw::DefKind::Const(ast_id) => {
                 let def = ConstLoc {
-                    container: ContainerId::ModuleId(module),
+                    container: container.into(),
                     ast_id: AstId::new(self.file_id, ast_id),
                 }
                 .intern(self.def_collector.db);
@@ -795,20 +796,20 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Static(ast_id) => {
-                let def = StaticLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = StaticLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
 
                 PerNs::values(def.into())
             }
             raw::DefKind::Trait(ast_id) => {
-                let def = TraitLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = TraitLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
 
                 PerNs::types(def.into())
             }
             raw::DefKind::TypeAlias(ast_id) => {
                 let def = TypeAliasLoc {
-                    container: ContainerId::ModuleId(module),
+                    container: container.into(),
                     ast_id: AstId::new(self.file_id, ast_id),
                 }
                 .intern(self.def_collector.db);

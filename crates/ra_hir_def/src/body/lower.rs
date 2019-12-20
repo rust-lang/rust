@@ -25,7 +25,8 @@ use crate::{
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
-    ContainerId, DefWithBodyId, FunctionLoc, Intern,
+    ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId, StaticLoc,
+    StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
 pub(super) fn lower(
@@ -492,14 +493,45 @@ where
     fn collect_block_items(&mut self, block: &ast::Block) {
         let container = ContainerId::DefWithBodyId(self.def);
         for item in block.items() {
-            match item {
+            let def: ModuleDefId = match item {
                 ast::ModuleItem::FnDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    self.body.defs.push(FunctionLoc { container, ast_id }.intern(self.db).into())
+                    FunctionLoc { container: container.into(), ast_id }.intern(self.db).into()
                 }
-                // FIXME: handle other items
-                _ => (),
-            }
+                ast::ModuleItem::TypeAliasDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    TypeAliasLoc { container: container.into(), ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::ConstDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    ConstLoc { container: container.into(), ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::StaticDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    StaticLoc { container, ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::StructDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    StructLoc { container, ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::EnumDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    EnumLoc { container, ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::UnionDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    UnionLoc { container, ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::TraitDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    TraitLoc { container, ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::ImplBlock(_)
+                | ast::ModuleItem::UseItem(_)
+                | ast::ModuleItem::ExternCrateItem(_)
+                | ast::ModuleItem::Module(_) => continue,
+            };
+            self.body.defs.push(def)
         }
     }
 
