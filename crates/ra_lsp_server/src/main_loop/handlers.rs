@@ -164,7 +164,7 @@ pub fn handle_on_type_formatting(
 
     // in `ra_ide`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
-    position.offset = position.offset - TextUnit::of_char('.');
+    position.offset -= TextUnit::of_char('.');
     let char_typed = params.ch.chars().next().unwrap_or('\0');
 
     // We have an assist that inserts ` ` after typing `->` in `fn foo() ->{`,

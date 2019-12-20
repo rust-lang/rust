@@ -406,14 +406,14 @@ where
                     let resolutions = enum_data
                         .variants
                         .iter()
-                        .filter_map(|(local_id, variant_data)| {
+                        .map(|(local_id, variant_data)| {
                             let name = variant_data.name.clone();
                             let variant = EnumVariantId { parent: e, local_id };
                             let res = Resolution {
                                 def: PerNs::both(variant.into(), variant.into()),
                                 import: Some(import_id),
                             };
-                            Some((name, res))
+                            (name, res)
                         })
                         .collect::<Vec<_>>();
                     self.update(module_id, Some(import_id), &resolutions);

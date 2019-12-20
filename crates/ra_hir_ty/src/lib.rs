@@ -919,7 +919,7 @@ impl HirDisplay for ApplicationTy {
                         {
                             Option::None => self.parameters.0.as_ref(),
                             Option::Some(default_parameters) => {
-                                for (i, parameter) in self.parameters.into_iter().enumerate() {
+                                for (i, parameter) in self.parameters.iter().enumerate() {
                                     match (parameter, default_parameters.get(i)) {
                                         (&Ty::Unknown, _) | (_, None) => {
                                             non_default_parameters.push(parameter.clone())

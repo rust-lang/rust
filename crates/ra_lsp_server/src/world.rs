@@ -287,19 +287,15 @@ impl WorldSnapshot {
 ///
 /// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
 fn url_from_path_with_drive_lowercasing(path: impl AsRef<Path>) -> Result<Url> {
-    let component_has_windows_drive = path
-        .as_ref()
-        .components()
-        .find(|comp| {
-            if let Component::Prefix(c) = comp {
-                match c.kind() {
-                    Prefix::Disk(_) | Prefix::VerbatimDisk(_) => return true,
-                    _ => return false,
-                }
+    let component_has_windows_drive = path.as_ref().components().any(|comp| {
+        if let Component::Prefix(c) = comp {
+            match c.kind() {
+                Prefix::Disk(_) | Prefix::VerbatimDisk(_) => return true,
+                _ => return false,
             }
-            false
-        })
-        .is_some();
+        }
+        false
+    });
 
     // VSCode expects drive letters to be lowercased, where rust will uppercase the drive letters.
     if component_has_windows_drive {

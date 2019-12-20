@@ -138,7 +138,7 @@ fn to_col_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize 
         if c == '\n' {
             break;
         }
-        col_num = col_num + 1;
+        col_num += 1;
     }
     col_num
 }

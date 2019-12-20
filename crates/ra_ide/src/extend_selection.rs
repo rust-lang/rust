@@ -138,7 +138,7 @@ fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextUnit) -> TextRange 
     ws.text_range()
 }
 
-fn pick_best<'a>(l: SyntaxToken, r: SyntaxToken) -> SyntaxToken {
+fn pick_best(l: SyntaxToken, r: SyntaxToken) -> SyntaxToken {
     return if priority(&r) > priority(&l) { r } else { l };
     fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {

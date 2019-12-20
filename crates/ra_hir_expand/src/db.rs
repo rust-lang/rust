@@ -93,12 +93,11 @@ pub(crate) fn macro_def(
             Some(Arc::new((TokenExpander::MacroRules(rules), tmap)))
         }
         MacroDefKind::BuiltIn(expander) => {
-            Some(Arc::new((TokenExpander::Builtin(expander.clone()), mbe::TokenMap::default())))
+            Some(Arc::new((TokenExpander::Builtin(expander), mbe::TokenMap::default())))
         }
-        MacroDefKind::BuiltInDerive(expander) => Some(Arc::new((
-            TokenExpander::BuiltinDerive(expander.clone()),
-            mbe::TokenMap::default(),
-        ))),
+        MacroDefKind::BuiltInDerive(expander) => {
+            Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
+        }
     }
 }
 
