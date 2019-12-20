@@ -25,7 +25,7 @@ use crate::{
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
-    ContainerId, DefWithBodyId, FunctionLoc, Intern,
+    AssocContainerId, DefWithBodyId, FunctionLoc, Intern,
 };
 
 pub(super) fn lower(
@@ -490,7 +490,7 @@ where
     }
 
     fn collect_block_items(&mut self, block: &ast::Block) {
-        let container = ContainerId::DefWithBodyId(self.def);
+        let container = AssocContainerId::DefWithBodyId(self.def);
         for item in block.items() {
             match item {
                 ast::ModuleItem::FnDef(def) => {

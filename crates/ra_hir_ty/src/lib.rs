@@ -44,8 +44,8 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use hir_def::{
-    expr::ExprId, type_ref::Mutability, AdtId, ContainerId, DefWithBodyId, GenericDefId, HasModule,
-    Lookup, TraitId, TypeAliasId,
+    expr::ExprId, type_ref::Mutability, AdtId, AssocContainerId, DefWithBodyId, GenericDefId,
+    HasModule, Lookup, TraitId, TypeAliasId,
 };
 use hir_expand::name::Name;
 use ra_db::{impl_intern_key, salsa, CrateId};
@@ -251,7 +251,7 @@ impl ProjectionTy {
 
     fn trait_(&self, db: &impl HirDatabase) -> TraitId {
         match self.associated_ty.lookup(db).container {
-            ContainerId::TraitId(it) => it,
+            AssocContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }
     }
@@ -943,7 +943,7 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::AssociatedType(type_alias) => {
                 let trait_ = match type_alias.lookup(f.db).container {
-                    ContainerId::TraitId(it) => it,
+                    AssocContainerId::TraitId(it) => it,
                     _ => panic!("not an associated type"),
                 };
                 let trait_name = f.db.trait_data(trait_).name.clone();

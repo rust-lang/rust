@@ -71,7 +71,7 @@ impl_intern_key!(FunctionId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionLoc {
-    pub container: ContainerId,
+    pub container: AssocContainerId,
     pub ast_id: AstId<ast::FnDef>,
 }
 
@@ -187,7 +187,7 @@ pub struct ConstId(salsa::InternId);
 impl_intern_key!(ConstId);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstLoc {
-    pub container: ContainerId,
+    pub container: AssocContainerId,
     pub ast_id: AstId<ast::ConstDef>,
 }
 
@@ -259,7 +259,7 @@ impl_intern_key!(TypeAliasId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAliasLoc {
-    pub container: ContainerId,
+    pub container: AssocContainerId,
     pub ast_id: AstId<ast::TypeAliasDef>,
 }
 
@@ -331,7 +331,7 @@ pub struct LocalTypeParamId(RawId);
 impl_arena_id!(LocalTypeParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ContainerId {
+pub enum AssocContainerId {
     ModuleId(ModuleId),
     ImplId(ImplId),
     TraitId(TraitId),
@@ -479,13 +479,13 @@ pub trait HasModule {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId;
 }
 
-impl HasModule for ContainerId {
+impl HasModule for AssocContainerId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match *self {
-            ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.lookup(db).container,
-            ContainerId::TraitId(it) => it.lookup(db).container,
-            ContainerId::DefWithBodyId(it) => it.module(db),
+            AssocContainerId::ModuleId(it) => it,
+            AssocContainerId::ImplId(it) => it.lookup(db).container,
+            AssocContainerId::TraitId(it) => it.lookup(db).container,
+            AssocContainerId::DefWithBodyId(it) => it.module(db),
         }
     }
 }

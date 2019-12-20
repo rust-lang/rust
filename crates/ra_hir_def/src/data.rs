@@ -12,8 +12,8 @@ use crate::{
     db::DefDatabase,
     src::HasSource,
     type_ref::{Mutability, TypeRef},
-    AssocItemId, ConstId, ConstLoc, ContainerId, FunctionId, FunctionLoc, ImplId, Intern, Lookup,
-    StaticId, TraitId, TypeAliasId, TypeAliasLoc,
+    AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, ImplId, Intern,
+    Lookup, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,7 +99,7 @@ impl TraitData {
         let auto = src.value.is_auto();
         let ast_id_map = db.ast_id_map(src.file_id);
 
-        let container = ContainerId::TraitId(tr);
+        let container = AssocContainerId::TraitId(tr);
         let items = if let Some(item_list) = src.value.item_list() {
             item_list
                 .impl_items()
@@ -180,7 +180,7 @@ impl ImplData {
                 .map(|item_node| match item_node {
                     ast::ImplItem::FnDef(it) => {
                         let def = FunctionLoc {
-                            container: ContainerId::ImplId(id),
+                            container: AssocContainerId::ImplId(id),
                             ast_id: AstId::new(src.file_id, items.ast_id(&it)),
                         }
                         .intern(db);
@@ -188,7 +188,7 @@ impl ImplData {
                     }
                     ast::ImplItem::ConstDef(it) => {
                         let def = ConstLoc {
-                            container: ContainerId::ImplId(id),
+                            container: AssocContainerId::ImplId(id),
                             ast_id: AstId::new(src.file_id, items.ast_id(&it)),
                         }
                         .intern(db);
@@ -196,7 +196,7 @@ impl ImplData {
                     }
                     ast::ImplItem::TypeAliasDef(it) => {
                         let def = TypeAliasLoc {
-                            container: ContainerId::ImplId(id),
+                            container: AssocContainerId::ImplId(id),
                             ast_id: AstId::new(src.file_id, items.ast_id(&it)),
                         }
                         .intern(db);

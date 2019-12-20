@@ -8,7 +8,7 @@ use hir_def::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
-    AdtId, ContainerId, Lookup, StructFieldId,
+    AdtId, AssocContainerId, Lookup, StructFieldId,
 };
 use hir_expand::name::{name, Name};
 use ra_syntax::ast::RangeOp;
@@ -672,7 +672,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // add obligation for trait implementation, if this is a trait method
                 match def {
                     CallableDef::FunctionId(f) => {
-                        if let ContainerId::TraitId(trait_) = f.lookup(self.db).container {
+                        if let AssocContainerId::TraitId(trait_) = f.lookup(self.db).container {
                             // construct a TraitDef
                             let substs =
                                 a_ty.parameters.prefix(generics(self.db, trait_.into()).len());

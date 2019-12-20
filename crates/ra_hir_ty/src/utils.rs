@@ -9,7 +9,7 @@ use hir_def::{
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId, VariantId,
+    AssocContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId, VariantId,
 };
 use hir_expand::name::{name, Name};
 
@@ -155,8 +155,8 @@ fn parent_generic_def(db: &impl DefDatabase, def: GenericDefId) -> Option<Generi
     };
 
     match container {
-        ContainerId::ImplId(it) => Some(it.into()),
-        ContainerId::TraitId(it) => Some(it.into()),
-        ContainerId::ModuleId(_) | ContainerId::DefWithBodyId(_) => None,
+        AssocContainerId::ImplId(it) => Some(it.into()),
+        AssocContainerId::TraitId(it) => Some(it.into()),
+        AssocContainerId::ModuleId(_) | AssocContainerId::DefWithBodyId(_) => None,
     }
 }

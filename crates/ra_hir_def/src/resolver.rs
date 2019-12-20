@@ -17,9 +17,9 @@ use crate::{
     nameres::{BuiltinShadowMode, CrateDefMap},
     path::{ModPath, PathKind},
     per_ns::PerNs,
-    AdtId, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId,
-    TypeAliasId, TypeParamId, VariantId,
+    AdtId, AssocContainerId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
+    GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId,
+    StructId, TraitId, TypeAliasId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -580,13 +580,13 @@ impl HasResolver for DefWithBodyId {
     }
 }
 
-impl HasResolver for ContainerId {
+impl HasResolver for AssocContainerId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
         match self {
-            ContainerId::TraitId(it) => it.resolver(db),
-            ContainerId::ImplId(it) => it.resolver(db),
-            ContainerId::ModuleId(it) => it.resolver(db),
-            ContainerId::DefWithBodyId(it) => it.resolver(db),
+            AssocContainerId::TraitId(it) => it.resolver(db),
+            AssocContainerId::ImplId(it) => it.resolver(db),
+            AssocContainerId::ModuleId(it) => it.resolver(db),
+            AssocContainerId::DefWithBodyId(it) => it.resolver(db),
         }
     }
 }

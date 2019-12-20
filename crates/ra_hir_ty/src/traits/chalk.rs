@@ -9,7 +9,7 @@ use chalk_ir::{
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
 
-use hir_def::{AssocItemId, ContainerId, GenericDefId, ImplId, Lookup, TraitId, TypeAliasId};
+use hir_def::{AssocContainerId, AssocItemId, GenericDefId, ImplId, Lookup, TraitId, TypeAliasId};
 use ra_db::{
     salsa::{InternId, InternKey},
     CrateId,
@@ -542,7 +542,7 @@ pub(crate) fn associated_ty_data_query(
     debug!("associated_ty_data {:?}", id);
     let type_alias: TypeAliasId = from_chalk(db, id);
     let trait_ = match type_alias.lookup(db).container {
-        ContainerId::TraitId(t) => t,
+        AssocContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
     };
     let generic_params = generics(db, type_alias.into());
@@ -755,7 +755,7 @@ fn type_alias_associated_ty_value(
 ) -> Arc<AssociatedTyValue<ChalkIr>> {
     let type_alias_data = db.type_alias_data(type_alias);
     let impl_id = match type_alias.lookup(db).container {
-        ContainerId::ImplId(it) => it,
+        AssocContainerId::ImplId(it) => it,
         _ => panic!("assoc ty value should be in impl"),
     };
 

@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 use hir_def::{
-    lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutability, AssocItemId, ContainerId,
-    FunctionId, HasModule, ImplId, Lookup, TraitId,
+    lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutability, AssocContainerId,
+    AssocItemId, FunctionId, HasModule, ImplId, Lookup, TraitId,
 };
 use hir_expand::name::Name;
 use ra_db::CrateId;
@@ -451,12 +451,12 @@ fn transform_receiver_ty(
     self_ty: &Canonical<Ty>,
 ) -> Option<Ty> {
     let substs = match function_id.lookup(db).container {
-        ContainerId::TraitId(_) => Substs::build_for_def(db, function_id)
+        AssocContainerId::TraitId(_) => Substs::build_for_def(db, function_id)
             .push(self_ty.value.clone())
             .fill_with_unknown()
             .build(),
-        ContainerId::ImplId(impl_id) => inherent_impl_substs(db, impl_id, &self_ty)?,
-        ContainerId::ModuleId(_) | ContainerId::DefWithBodyId(_) => unreachable!(),
+        AssocContainerId::ImplId(impl_id) => inherent_impl_substs(db, impl_id, &self_ty)?,
+        AssocContainerId::ModuleId(_) | AssocContainerId::DefWithBodyId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());
     Some(sig.params()[0].clone().subst(&substs))
