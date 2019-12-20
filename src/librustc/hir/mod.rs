@@ -1857,6 +1857,16 @@ impl fmt::Display for YieldSource {
     }
 }
 
+impl From<GeneratorKind> for YieldSource {
+    fn from(kind: GeneratorKind) -> Self {
+        match kind {
+            // Guess based on the kind of the current generator.
+            GeneratorKind::Gen => Self::Yield,
+            GeneratorKind::Async(_) => Self::Await,
+        }
+    }
+}
+
 // N.B., if you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
