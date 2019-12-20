@@ -885,7 +885,7 @@ pub const ALL_LINTS: [Lint; 340] = [
     Lint {
         name: "iterator_step_by_zero",
         group: "correctness",
-        desc: "using `Iterator::step_by(0)`, which produces an infinite iterator",
+        desc: "using `Iterator::step_by(0)`, which will panic at runtime",
         deprecation: None,
         module: "methods",
     },
