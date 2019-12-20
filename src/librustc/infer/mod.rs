@@ -1135,7 +1135,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.universe(),
                     false,
                     TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::TypeParameterDefinition(param.name),
+                        kind: TypeVariableOriginKind::TypeParameterDefinition(
+                            param.name,
+                            Some(param.def_id)
+                        ),
                         span,
                     },
                 );

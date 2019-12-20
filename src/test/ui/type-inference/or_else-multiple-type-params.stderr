@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |         .or_else(|err| {
    |          ^^^^^^^
    |          |
-   |          cannot infer type for type parameter `F`
+   |          cannot infer type for type parameter `F` declared on the method `or_else`
    |          help: consider specifying the type arguments in the method call: `or_else::<F, O>`
 
 error: aborting due to previous error
