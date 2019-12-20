@@ -151,7 +151,7 @@ use core::ops::{Deref, DerefMut};
 use core::ptr;
 
 use crate::slice;
-use crate::vec::{self, Vec};
+use crate::vec::{self, Vec, AsIntoIter};
 
 use super::SpecExtend;
 
@@ -1175,16 +1175,22 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
 unsafe impl<T> SourceIter for IntoIter<T> {
-    type Source = impl Iterator<Item = T>;
+    type Source = IntoIter<T>;
 
     #[inline]
     fn as_inner(&mut self) -> &mut Self::Source {
-        &mut self.iter
+        self
     }
 }
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
 unsafe impl<I> InPlaceIterable for IntoIter<I> {}
+
+impl<I> AsIntoIter<I> for IntoIter<I> {
+    fn as_into_iter(&mut self) -> &mut vec::IntoIter<I> {
+        &mut self.iter
+    }
+}
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 #[derive(Clone, Debug)]

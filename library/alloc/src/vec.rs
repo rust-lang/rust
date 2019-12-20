@@ -2221,7 +2221,7 @@ impl<T> SpecFrom<T, IntoIter<T>> for Vec<T> {
 // T can be split into IN and OUT which only need to have the same size and alignment
 impl<T, I> SpecFrom<T, I> for Vec<T>
 where
-    I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source = IntoIter<T>>,
+    I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source: AsIntoIter<T>>,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // This specialization only makes sense if we're juggling real allocations.
@@ -2230,8 +2230,8 @@ where
             return SpecFromNested::from_iter(iterator);
         }
 
-        let src_buf = iterator.as_inner().buf.as_ptr();
-        let src_end = iterator.as_inner().end;
+        let src_buf = iterator.as_inner().as_into_iter().buf.as_ptr();
+        let src_end = iterator.as_inner().as_into_iter().end;
         let dst = src_buf;
 
         let dst = if mem::needs_drop::<T>() {
@@ -2273,14 +2273,14 @@ where
                 .unwrap()
         };
 
-        let src = iterator.as_inner();
+        let src = iterator.as_inner().as_into_iter();
         // check if SourceIter and InPlaceIterable contracts were upheld.
         // caveat: if they weren't we may not even make it to this point
         debug_assert_eq!(src_buf, src.buf.as_ptr());
         debug_assert!(dst as *const _ <= src.ptr, "InPlaceIterable contract violation");
 
         if mem::needs_drop::<T>() {
-            // drop tail if iterator was only partially exhaused
+            // drop tail if iterator was only partially exhausted
             unsafe {
                 ptr::drop_in_place(src.as_mut_slice());
             }
@@ -2994,6 +2994,17 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 
     #[inline]
     fn as_inner(&mut self) -> &mut Self::Source {
+        self
+    }
+}
+
+// internal helper trait for in-place iteration specialization.
+pub(crate) trait AsIntoIter<T> {
+    fn as_into_iter(&mut self) -> &mut IntoIter<T>;
+}
+
+impl<T> AsIntoIter<T> for IntoIter<T> {
+    fn as_into_iter(&mut self) -> &mut IntoIter<T> {
         self
     }
 }
