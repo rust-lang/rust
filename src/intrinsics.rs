@@ -681,7 +681,8 @@ pub fn codegen_intrinsic_call<'tcx>(
                 let msb_lz = fx.bcx.ins().clz(msb);
                 let msb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, msb, 0);
                 let lsb_lz_plus_64 = fx.bcx.ins().iadd_imm(lsb_lz, 64);
-                fx.bcx.ins().select(msb_is_zero, lsb_lz_plus_64, msb_lz)
+                let res = fx.bcx.ins().select(msb_is_zero, lsb_lz_plus_64, msb_lz);
+                fx.bcx.ins().uextend(types::I128, res)
             } else {
                 fx.bcx.ins().clz(arg)
             };
@@ -697,7 +698,8 @@ pub fn codegen_intrinsic_call<'tcx>(
                 let msb_tz = fx.bcx.ins().ctz(msb);
                 let lsb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, lsb, 0);
                 let msb_tz_plus_64 = fx.bcx.ins().iadd_imm(msb_tz, 64);
-                fx.bcx.ins().select(lsb_is_zero, msb_tz_plus_64, lsb_tz)
+                let res = fx.bcx.ins().select(lsb_is_zero, msb_tz_plus_64, lsb_tz);
+                fx.bcx.ins().uextend(types::I128, res)
             } else {
                 fx.bcx.ins().ctz(arg)
             };
