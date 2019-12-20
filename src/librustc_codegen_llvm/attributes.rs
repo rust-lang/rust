@@ -344,6 +344,17 @@ pub fn from_fn_attrs(
                 const_cstr!("wasm-import-module"),
                 &module,
             );
+
+            let name = codegen_fn_attrs.link_name.unwrap_or_else(|| {
+                cx.tcx.item_name(instance.def_id())
+            });
+            let name = CString::new(&name.as_str()[..]).unwrap();
+            llvm::AddFunctionAttrStringValue(
+                llfn,
+                llvm::AttributePlace::Function,
+                const_cstr!("wasm-import-name"),
+                &name,
+            );
         }
     }
 }
