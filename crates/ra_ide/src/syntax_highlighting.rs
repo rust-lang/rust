@@ -102,11 +102,10 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             COMMENT => tags::LITERAL_COMMENT,
             STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => tags::LITERAL_STRING,
             ATTR => tags::LITERAL_ATTRIBUTE,
+            // Special-case field init shorthand
+            NAME_REF if node.parent().and_then(ast::RecordField::cast).is_some() => tags::FIELD,
+            NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => continue,
             NAME_REF => {
-                if node.ancestors().any(|it| it.kind() == ATTR) {
-                    continue;
-                }
-
                 let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
                 let name_kind =
                     classify_name_ref(db, InFile::new(file_id.into(), &name_ref)).map(|d| d.kind);
