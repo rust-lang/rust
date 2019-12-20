@@ -142,12 +142,32 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
     };
 
     let attrs = tcx.codegen_fn_attrs(def_id);
+
+    // Foreign items by default use no mangling for their symbol name. There's a
+    // few exceptions to this rule though:
+    //
+    // * This can be overridden with the `#[link_name]` attribute
+    //
+    // * On the wasm32 targets there is a bug (or feature) in LLD [1] where the
+    //   same-named symbol when imported from different wasm modules will get
+    //   hooked up incorectly. As a result foreign symbols, on the wasm target,
+    //   with a wasm import module, get mangled. Additionally our codegen will
+    //   deduplicate symbols based purely on the symbol name, but for wasm this
+    //   isn't quite right because the same-named symbol on wasm can come from
+    //   different modules. For these reasons if `#[link(wasm_import_module)]`
+    //   is present we mangle everything on wasm because the demangled form will
+    //   show up in the `wasm-import-name` custom attribute in LLVM IR.
+    //
+    // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
     if is_foreign {
-        if let Some(name) = attrs.link_name {
-            return name;
+        if tcx.sess.target.target.arch != "wasm32" ||
+            !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id)
+        {
+            if let Some(name) = attrs.link_name {
+                return name;
+            }
+            return tcx.item_name(def_id);
         }
-        // Don't mangle foreign items.
-        return tcx.item_name(def_id);
     }
 
     if let Some(name) = attrs.export_name {
