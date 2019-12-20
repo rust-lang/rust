@@ -928,32 +928,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    /// Converts a region inference variable into a `ty::Region` that
-    /// we can use for error reporting. If `r` is universally bound,
-    /// then we use the name that we have on record for it. If `r` is
-    /// existentially bound, then we check its inferred value and try
-    /// to find a good name from that. Returns `None` if we can't find
-    /// one (e.g., this is just some random part of the CFG).
-    pub fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
-        self.to_error_region_vid(r).and_then(|r| self.definitions[r].external_name)
-    }
-
-    /// Returns the [RegionVid] corresponding to the region returned by
-    /// `to_error_region`.
-    pub fn to_error_region_vid(&self, r: RegionVid) -> Option<RegionVid> {
-        if self.universal_regions.is_universal_region(r) {
-            Some(r)
-        } else {
-            let r_scc = self.constraint_sccs.scc(r);
-            let upper_bound = self.universal_upper_bound(r);
-            if self.scc_values.contains(r_scc, upper_bound) {
-                self.to_error_region_vid(upper_bound)
-            } else {
-                None
-            }
-        }
-    }
-
     /// Invoked when we have some type-test (e.g., `T: 'X`) that we cannot
     /// prove to be satisfied. If this is a closure, we will attempt to
     /// "promote" this type-test into our `ClosureRegionRequirements` and
@@ -1164,7 +1138,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///   include the CFG anyhow.
     /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
     ///   a result `'y`.
-    fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
+    pub (in crate::borrow_check) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
         debug!("universal_upper_bound(r={:?}={})", r, self.region_value_str(r));
 
         // Find the smallest universal region that contains all other
@@ -1458,19 +1432,34 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             debug!("check_polonius_subset_errors: subset_error longer_fr={:?},\
                 shorter_fr={:?}", longer_fr, shorter_fr);
 
-            self.report_or_propagate_universal_region_error(
+            let propagated = self.try_propagate_universal_region_error(
                 *longer_fr,
                 *shorter_fr,
-                infcx,
                 body,
-                local_names,
-                upvars,
-                mir_def_id,
                 &mut propagated_outlives_requirements,
-                &mut outlives_suggestion,
-                errors_buffer,
-                region_naming,
             );
+            if !propagated {
+                // If we are not in a context where we can't propagate errors, or we
+                // could not shrink `fr` to something smaller, then just report an
+                // error.
+                //
+                // Note: in this case, we use the unapproximated regions to report the
+                // error. This gives better error messages in some cases.
+                let db = self.report_error(
+                    body,
+                    local_names,
+                    upvars,
+                    infcx,
+                    mir_def_id,
+                    *longer_fr,
+                    NLLRegionVariableOrigin::FreeRegion,
+                    *shorter_fr,
+                    &mut outlives_suggestion,
+                    region_naming,
+                );
+
+                db.buffer(errors_buffer);
+            }
         }
 
         // Handle the placeholder errors as usual, until the chalk-rustc-polonius triumvirate has
@@ -1594,48 +1583,59 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         }
 
-        self.report_or_propagate_universal_region_error(
+        let propagated = self.try_propagate_universal_region_error(
             longer_fr,
             shorter_fr,
-            infcx,
             body,
-            local_names,
-            upvars,
-            mir_def_id,
             propagated_outlives_requirements,
-            outlives_suggestion,
-            errors_buffer,
-            region_naming,
-        )
+        );
+
+        if propagated {
+            None
+        } else {
+            // If we are not in a context where we can't propagate errors, or we
+            // could not shrink `fr` to something smaller, then just report an
+            // error.
+            //
+            // Note: in this case, we use the unapproximated regions to report the
+            // error. This gives better error messages in some cases.
+            let db = self.report_error(
+                body,
+                local_names,
+                upvars,
+                infcx,
+                mir_def_id,
+                longer_fr,
+                NLLRegionVariableOrigin::FreeRegion,
+                shorter_fr,
+                outlives_suggestion,
+                region_naming,
+            );
+
+            db.buffer(errors_buffer);
+
+            Some(ErrorReported)
+        }
     }
 
-    fn report_or_propagate_universal_region_error(
+    /// Attempt to propagate a region error (e.g. `'a: 'b`) that is not met to a closure's
+    /// creator. If we cannot, then the caller should report an error to the user.
+    ///
+    /// Returns `true` if the error was propagated, and `false` otherwise.
+    fn try_propagate_universal_region_error(
         &self,
         longer_fr: RegionVid,
         shorter_fr: RegionVid,
-        infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
-        local_names: &IndexVec<Local, Option<Symbol>>,
-        upvars: &[Upvar],
-        mir_def_id: DefId,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
-        outlives_suggestion: &mut OutlivesSuggestionBuilder<'_>,
-        errors_buffer: &mut Vec<Diagnostic>,
-        region_naming: &mut RegionErrorNamingCtx,
-    ) -> Option<ErrorReported> {
-        debug!(
-            "report_or_propagate_universal_region_error: fr={:?} does not outlive shorter_fr={:?}",
-            longer_fr, shorter_fr,
-        );
-
+    ) -> bool {
         if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
             // Shrink `longer_fr` until we find a non-local region (if we do).
             // We'll call it `fr-` -- it's ever so slightly smaller than
             // `longer_fr`.
-
             if let Some(fr_minus) =
                 self.universal_region_relations.non_local_lower_bound(longer_fr) {
-                debug!("report_or_propagate_universal_region_error: fr_minus={:?}", fr_minus);
+                debug!("try_propagate_universal_region_error: fr_minus={:?}", fr_minus);
 
                 let blame_span_category =
                     self.find_outlives_blame_span(body, longer_fr,
@@ -1648,7 +1648,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     .universal_region_relations
                     .non_local_upper_bounds(&shorter_fr);
                 debug!(
-                    "report_or_propagate_universal_region_error: shorter_fr_plus={:?}",
+                    "try_propagate_universal_region_error: shorter_fr_plus={:?}",
                     shorter_fr_plus
                 );
                 for &&fr in &shorter_fr_plus {
@@ -1660,32 +1660,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         category: blame_span_category.0,
                     });
                 }
-                return None;
+                return true;
             }
         }
 
-        // If we are not in a context where we can't propagate errors, or we
-        // could not shrink `fr` to something smaller, then just report an
-        // error.
-        //
-        // Note: in this case, we use the unapproximated regions to report the
-        // error. This gives better error messages in some cases.
-        let db = self.report_error(
-            body,
-            local_names,
-            upvars,
-            infcx,
-            mir_def_id,
-            longer_fr,
-            NLLRegionVariableOrigin::FreeRegion,
-            shorter_fr,
-            outlives_suggestion,
-            region_naming,
-        );
-
-        db.buffer(errors_buffer);
-
-        Some(ErrorReported)
+        false
     }
 
     fn check_bound_universal_region(
