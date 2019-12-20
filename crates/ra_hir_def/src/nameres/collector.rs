@@ -226,10 +226,10 @@ where
 
     /// Define a legacy textual scoped macro in module
     ///
-    /// We use a map `legacy_macros` to store all legacy textual scoped macros visable per module.
+    /// We use a map `legacy_macros` to store all legacy textual scoped macros visible per module.
     /// It will clone all macros from parent legacy scope, whose definition is prior to
     /// the definition of current module.
-    /// And also, `macro_use` on a module will import all legacy macros visable inside to
+    /// And also, `macro_use` on a module will import all legacy macros visible inside to
     /// current legacy scope, with possible shadowing.
     fn define_legacy_macro(&mut self, module_id: LocalModuleId, name: Name, macro_: MacroDefId) {
         // Always shadowing
