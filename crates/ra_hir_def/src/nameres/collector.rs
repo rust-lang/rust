@@ -231,9 +231,9 @@ where
     /// the definition of current module.
     /// And also, `macro_use` on a module will import all legacy macros visible inside to
     /// current legacy scope, with possible shadowing.
-    fn define_legacy_macro(&mut self, module_id: LocalModuleId, name: Name, macro_: MacroDefId) {
+    fn define_legacy_macro(&mut self, module_id: LocalModuleId, name: Name, mac: MacroDefId) {
         // Always shadowing
-        self.def_map.modules[module_id].scope.legacy_macros.insert(name, macro_);
+        self.def_map.modules[module_id].scope.define_legacy_macro(name, mac);
     }
 
     /// Import macros from `#[macro_use] extern crate`.
@@ -711,7 +711,9 @@ where
         let res = modules.alloc(ModuleData::default());
         modules[res].parent = Some(self.module_id);
         modules[res].origin = ModuleOrigin::not_sure_file(definition, declaration);
-        modules[res].scope.legacy_macros = modules[self.module_id].scope.legacy_macros.clone();
+        for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
+            modules[res].scope.define_legacy_macro(name, mac)
+        }
         modules[self.module_id].children.insert(name.clone(), res);
         let resolution = Resolution {
             def: PerNs::types(
@@ -875,7 +877,7 @@ where
     }
 
     fn import_all_legacy_macros(&mut self, module_id: LocalModuleId) {
-        let macros = self.def_collector.def_map[module_id].scope.legacy_macros.clone();
+        let macros = self.def_collector.def_map[module_id].scope.collect_legacy_macros();
         for (name, macro_) in macros {
             self.def_collector.define_legacy_macro(self.module_id, name.clone(), macro_);
         }

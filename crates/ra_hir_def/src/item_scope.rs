@@ -23,7 +23,7 @@ pub struct ItemScope {
     /// Module scoped macros will be inserted into `items` instead of here.
     // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
     // be all resolved to the last one defined if shadowing happens.
-    pub(crate) legacy_macros: FxHashMap<Name, MacroDefId>,
+    legacy_macros: FxHashMap<Name, MacroDefId>,
 }
 
 static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
@@ -108,6 +108,10 @@ impl ItemScope {
         self.impls.push(imp)
     }
 
+    pub(crate) fn define_legacy_macro(&mut self, name: Name, mac: MacroDefId) {
+        self.legacy_macros.insert(name, mac);
+    }
+
     pub(crate) fn push_res(
         &mut self,
         name: Name,
@@ -145,6 +149,10 @@ impl ItemScope {
 
     pub(crate) fn collect_resolutions(&self) -> Vec<(Name, Resolution)> {
         self.items.iter().map(|(name, res)| (name.clone(), res.clone())).collect()
+    }
+
+    pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroDefId> {
+        self.legacy_macros.clone()
     }
 }
 
