@@ -135,7 +135,10 @@ fn check_rvalue(
         Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
             check_operand(tcx, operand, span, def_id, body)
         }
-        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) => {
+        Rvalue::Len(place)
+        | Rvalue::Discriminant(place)
+        | Rvalue::Ref(_, _, place)
+        | Rvalue::AddressOf(_, place) => {
             check_place(tcx, place, span, def_id, body)
         }
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
@@ -147,9 +150,6 @@ fn check_rvalue(
                     span,
                     "casting pointers to ints is unstable in const fn".into(),
                 )),
-                (CastTy::RPtr(_), CastTy::Float) => bug!(),
-                (CastTy::RPtr(_), CastTy::Int(_)) => bug!(),
-                (CastTy::Ptr(_), CastTy::RPtr(_)) => bug!(),
                 _ => check_operand(tcx, operand, span, def_id, body),
             }
         }

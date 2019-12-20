@@ -181,6 +181,14 @@ LL |     let mut v : &mut Vec<()> = &mut vec![];
    |         help: remove this `mut`
 
 error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:184:9
+   |
+LL |     let mut raw_address_of_const = 1;
+   |         ----^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:106:13
    |
 LL |     fn what(mut foo: isize) {}
@@ -197,7 +205,7 @@ LL |     fn mut_ref_arg(mut arg : &mut [u8]) -> &mut [u8] {
    |                    help: remove this `mut`
 
 error: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:196:9
+  --> $DIR/lint-unused-mut-variables.rs:202:9
    |
 LL |     let mut b = vec![2];
    |         ----^
@@ -205,10 +213,10 @@ LL |     let mut b = vec![2];
    |         help: remove this `mut`
    |
 note: lint level defined here
-  --> $DIR/lint-unused-mut-variables.rs:192:8
+  --> $DIR/lint-unused-mut-variables.rs:198:8
    |
 LL | #[deny(unused_mut)]
    |        ^^^^^^^^^^
 
-error: aborting due to 25 previous errors
+error: aborting due to 26 previous errors
 

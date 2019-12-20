@@ -2273,41 +2273,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::RPtr(ref_tm)), Some(CastTy::Ptr(ptr_tm))) => {
-                                if let hir::Mutability::Mutable = ptr_tm.mutbl {
-                                    if let Err(terr) = self.eq_types(
-                                        ref_tm.ty,
-                                        ptr_tm.ty,
-                                        location.to_locations(),
-                                        ConstraintCategory::Cast,
-                                    ) {
-                                        span_mirbug!(
-                                            self,
-                                            rvalue,
-                                            "equating {:?} with {:?} yields {:?}",
-                                            ref_tm.ty,
-                                            ptr_tm.ty,
-                                            terr
-                                        )
-                                    }
-                                } else {
-                                    if let Err(terr) = self.sub_types(
-                                        ref_tm.ty,
-                                        ptr_tm.ty,
-                                        location.to_locations(),
-                                        ConstraintCategory::Cast,
-                                    ) {
-                                        span_mirbug!(
-                                            self,
-                                            rvalue,
-                                            "relating {:?} with {:?} yields {:?}",
-                                            ref_tm.ty,
-                                            ptr_tm.ty,
-                                            terr
-                                        )
-                                    }
-                                }
-                            },
                             (None, _)
                             | (_, None)
                             | (_, Some(CastTy::FnPtr))
@@ -2320,7 +2285,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 ty_from,
                                 ty,
                             ),
-                            _ => (),
+                            (Some(CastTy::Int(_)), Some(CastTy::Int(_)))
+                            | (Some(CastTy::Float), Some(CastTy::Int(_)))
+                            | (Some(CastTy::Int(_)), Some(CastTy::Float))
+                            | (Some(CastTy::Float), Some(CastTy::Float))
+                            | (Some(CastTy::Ptr(_)), Some(CastTy::Int(_)))
+                            | (Some(CastTy::FnPtr), Some(CastTy::Int(_)))
+                            | (Some(CastTy::Int(_)), Some(CastTy::Ptr(_)))
+                            | (Some(CastTy::Ptr(_)), Some(CastTy::Ptr(_)))
+                            | (Some(CastTy::FnPtr), Some(CastTy::Ptr(_))) => (),
                         }
                     }
                 }
@@ -2371,7 +2344,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            Rvalue::Use(..)
+            Rvalue::AddressOf(..)
+            | Rvalue::Use(..)
             | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::CheckedBinaryOp(..)
@@ -2388,6 +2362,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::Repeat(..)
             | Rvalue::Ref(..)
+            | Rvalue::AddressOf(..)
             | Rvalue::Len(..)
             | Rvalue::Cast(..)
             | Rvalue::BinaryOp(..)

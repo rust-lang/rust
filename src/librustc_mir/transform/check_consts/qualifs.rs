@@ -151,17 +151,15 @@ pub trait Qualif {
                 Self::in_operand(cx, per_local, lhs) || Self::in_operand(cx, per_local, rhs)
             }
 
-            Rvalue::Ref(_, _, ref place) => {
+            Rvalue::Ref(_, _, ref place) | Rvalue::AddressOf(_, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
-                if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
-                    if ProjectionElem::Deref == elem {
-                        let base_ty = Place::ty_from(&place.base, proj_base, *cx.body, cx.tcx).ty;
-                        if let ty::Ref(..) = base_ty.kind {
-                            return Self::in_place(cx, per_local, PlaceRef {
-                                base: &place.base,
-                                projection: proj_base,
-                            });
-                        }
+                if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
+                    let base_ty = Place::ty_from(&place.base, proj_base, *cx.body, cx.tcx).ty;
+                    if let ty::Ref(..) = base_ty.kind {
+                        return Self::in_place(cx, per_local, PlaceRef {
+                            base: &place.base,
+                            projection: proj_base,
+                        });
                     }
                 }
 
