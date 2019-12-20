@@ -12,10 +12,7 @@ use ra_syntax::{
 
 use crate::{
     db::RootDatabase,
-    display::{
-        description_from_symbol, docs_from_symbol, macro_label, rust_code_markup,
-        rust_code_markup_with_doc, ShortLabel,
-    },
+    display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
     expand::descend_into_macros,
     references::{classify_name, classify_name_ref, NameKind, NameKind::*},
     FilePosition, FileRange, RangeInfo,
@@ -95,11 +92,7 @@ fn hover_text(docs: Option<String>, desc: Option<String>) -> Option<String> {
     }
 }
 
-fn hover_text_from_name_kind(
-    db: &RootDatabase,
-    name_kind: NameKind,
-    no_fallback: &mut bool,
-) -> Option<String> {
+fn hover_text_from_name_kind(db: &RootDatabase, name_kind: NameKind) -> Option<String> {
     return match name_kind {
         Macro(it) => {
             let src = it.source(db);
@@ -135,11 +128,7 @@ fn hover_text_from_name_kind(
             hir::ModuleDef::TypeAlias(it) => from_def_source(db, it),
             hir::ModuleDef::BuiltinType(it) => Some(it.to_string()),
         },
-        Local(_) => {
-            // Hover for these shows type names
-            *no_fallback = true;
-            None
-        }
+        Local(_) => None,
         TypeParam(_) | SelfType(_) => {
             // FIXME: Hover for generic param
             None
@@ -163,60 +152,35 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
     let mut res = HoverResult::new();
 
-    let mut range = match_ast! {
+    if let Some((range, name_kind)) = match_ast! {
         match (token.value.parent()) {
             ast::NameRef(name_ref) => {
-                let mut no_fallback = false;
-                if let Some(name_kind) =
-                    classify_name_ref(db, token.with_value(&name_ref)).map(|d| d.kind)
-                {
-                    res.extend(hover_text_from_name_kind(db, name_kind, &mut no_fallback))
-                }
-
-                if res.is_empty() && !no_fallback {
-                    // Fallback index based approach:
-                    let symbols = crate::symbol_index::index_resolve(db, &name_ref);
-                    for sym in symbols {
-                        let docs = docs_from_symbol(db, &sym);
-                        let desc = description_from_symbol(db, &sym);
-                        res.extend(hover_text(docs, desc));
-                    }
-                }
-
-                if !res.is_empty() {
-                    Some(name_ref.syntax().text_range())
-                } else {
-                    None
-                }
+                classify_name_ref(db, token.with_value(&name_ref)).map(|d| (name_ref.syntax().text_range(), d.kind))
             },
             ast::Name(name) => {
-                if let Some(name_kind) = classify_name(db, token.with_value(&name)).map(|d| d.kind) {
-                    res.extend(hover_text_from_name_kind(db, name_kind, &mut true));
-                }
-
-                if !res.is_empty() {
-                    Some(name.syntax().text_range())
-                } else {
-                    None
-                }
+                classify_name(db, token.with_value(&name)).map(|d| (name.syntax().text_range(), d.kind))
             },
             _ => None,
         }
-    };
+    } {
+        res.extend(hover_text_from_name_kind(db, name_kind));
 
-    if range.is_none() {
-        let node = token.value.ancestors().find(|n| {
-            ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some()
-        })?;
-        let frange = FileRange { file_id: position.file_id, range: node.text_range() };
-        res.extend(type_of(db, frange).map(rust_code_markup));
-        range = Some(node.text_range());
-    };
+        if !res.is_empty() {
+            return Some(RangeInfo::new(range, res));
+        }
+    }
 
-    let range = range?;
+    let node = token
+        .value
+        .ancestors()
+        .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
+    let frange = FileRange { file_id: position.file_id, range: node.text_range() };
+    res.extend(type_of(db, frange).map(rust_code_markup));
     if res.is_empty() {
         return None;
     }
+    let range = node.text_range();
+
     Some(RangeInfo::new(range, res))
 }
 
@@ -314,7 +278,7 @@ mod tests {
             &["pub fn foo() -> u32"],
         );
 
-        // Multiple results
+        // Multiple candidates but results are ambiguous.
         check_hover_result(
             r#"
             //- /a.rs
@@ -335,7 +299,7 @@ mod tests {
                 let foo_test = fo<|>o();
             }
         "#,
-            &["pub fn foo() -> &str", "pub fn foo() -> u32", "pub fn foo(a: u32, b: u32)"],
+            &["{unknown}"],
         );
     }
 
