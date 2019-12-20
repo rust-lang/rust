@@ -1,5 +1,7 @@
 // edition:2018
-// ignore-x86 FIXME: missing sysroot spans (#53081)
+// FIXME: missing sysroot spans (#53081)
+// ignore-i586-unknown-linux-gnu
+// ignore-i586-unknown-linux-musl
 
 async fn print_dur() {}
 
