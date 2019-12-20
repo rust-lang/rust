@@ -8,15 +8,24 @@ LL |     println!("{:?}", [0_usize; 33]);
    = note: required by `std::fmt::Debug::fmt`
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/core-traits-no-impls-length-33.rs:9:16
+  --> $DIR/core-traits-no-impls-length-33.rs:10:16
    |
 LL |     set.insert([0_usize; 33]);
    |                ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[usize; 33]`
    |
    = note: required because of the requirements on the impl of `std::cmp::Eq` for `[usize; 33]`
 
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/core-traits-no-impls-length-33.rs:8:19
+   |
+LL |     let mut set = HashSet::new();
+   |                   ^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[usize; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::cmp::Eq` for `[usize; 33]`
+   = note: required by `std::collections::HashSet::<T>::new`
+
 error[E0369]: binary operation `==` cannot be applied to type `[usize; 33]`
-  --> $DIR/core-traits-no-impls-length-33.rs:14:19
+  --> $DIR/core-traits-no-impls-length-33.rs:15:19
    |
 LL |     [0_usize; 33] == [1_usize; 33]
    |     ------------- ^^ ------------- [usize; 33]
@@ -26,7 +35,7 @@ LL |     [0_usize; 33] == [1_usize; 33]
    = note: an implementation of `std::cmp::PartialEq` might be missing for `[usize; 33]`
 
 error[E0369]: binary operation `<` cannot be applied to type `[usize; 33]`
-  --> $DIR/core-traits-no-impls-length-33.rs:19:19
+  --> $DIR/core-traits-no-impls-length-33.rs:20:19
    |
 LL |     [0_usize; 33] < [1_usize; 33]
    |     ------------- ^ ------------- [usize; 33]
@@ -36,7 +45,7 @@ LL |     [0_usize; 33] < [1_usize; 33]
    = note: an implementation of `std::cmp::PartialOrd` might be missing for `[usize; 33]`
 
 error[E0277]: the trait bound `&[usize; 33]: std::iter::IntoIterator` is not satisfied
-  --> $DIR/core-traits-no-impls-length-33.rs:24:14
+  --> $DIR/core-traits-no-impls-length-33.rs:25:14
    |
 LL |     for _ in &[0_usize; 33] {
    |              ^^^^^^^^^^^^^^ the trait `std::iter::IntoIterator` is not implemented for `&[usize; 33]`
@@ -48,7 +57,7 @@ LL |     for _ in &[0_usize; 33] {
              <&'a mut [T] as std::iter::IntoIterator>
    = note: required by `std::iter::IntoIterator::into_iter`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0277, E0369.
 For more information about an error, try `rustc --explain E0277`.
