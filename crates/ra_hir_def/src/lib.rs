@@ -15,6 +15,7 @@ pub mod type_ref;
 pub mod builtin_type;
 pub mod diagnostics;
 pub mod per_ns;
+pub mod item_scope;
 
 pub mod dyn_map;
 pub mod keys;

@@ -18,9 +18,10 @@ use test_utils::tested_by;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
+    item_scope::Resolution,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
-        raw, BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, Resolution, ResolveMode,
+        raw, BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
     },
     path::{ModPath, PathKind},
     per_ns::PerNs,
@@ -225,14 +226,14 @@ where
 
     /// Define a legacy textual scoped macro in module
     ///
-    /// We use a map `legacy_macros` to store all legacy textual scoped macros visable per module.
+    /// We use a map `legacy_macros` to store all legacy textual scoped macros visible per module.
     /// It will clone all macros from parent legacy scope, whose definition is prior to
     /// the definition of current module.
-    /// And also, `macro_use` on a module will import all legacy macros visable inside to
+    /// And also, `macro_use` on a module will import all legacy macros visible inside to
     /// current legacy scope, with possible shadowing.
-    fn define_legacy_macro(&mut self, module_id: LocalModuleId, name: Name, macro_: MacroDefId) {
+    fn define_legacy_macro(&mut self, module_id: LocalModuleId, name: Name, mac: MacroDefId) {
         // Always shadowing
-        self.def_map.modules[module_id].scope.legacy_macros.insert(name, macro_);
+        self.def_map.modules[module_id].scope.define_legacy_macro(name, mac);
     }
 
     /// Import macros from `#[macro_use] extern crate`.
@@ -371,11 +372,7 @@ where
                         let scope = &item_map[m.local_id].scope;
 
                         // Module scoped macros is included
-                        let items = scope
-                            .items
-                            .iter()
-                            .map(|(name, res)| (name.clone(), res.clone()))
-                            .collect::<Vec<_>>();
+                        let items = scope.collect_resolutions();
 
                         self.update(module_id, Some(import_id), &items);
                     } else {
@@ -385,11 +382,7 @@ where
                         let scope = &self.def_map[m.local_id].scope;
 
                         // Module scoped macros is included
-                        let items = scope
-                            .items
-                            .iter()
-                            .map(|(name, res)| (name.clone(), res.clone()))
-                            .collect::<Vec<_>>();
+                        let items = scope.collect_resolutions();
 
                         self.update(module_id, Some(import_id), &items);
                         // record the glob import in case we add further items
@@ -466,34 +459,10 @@ where
             // prevent stack overflows (but this shouldn't be possible)
             panic!("infinite recursion in glob imports!");
         }
-        let module_items = &mut self.def_map.modules[module_id].scope;
+        let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            let existing = module_items.items.entry(name.clone()).or_default();
-
-            if existing.def.types.is_none() && res.def.types.is_some() {
-                existing.def.types = res.def.types;
-                existing.import = import.or(res.import);
-                changed = true;
-            }
-            if existing.def.values.is_none() && res.def.values.is_some() {
-                existing.def.values = res.def.values;
-                existing.import = import.or(res.import);
-                changed = true;
-            }
-            if existing.def.macros.is_none() && res.def.macros.is_some() {
-                existing.def.macros = res.def.macros;
-                existing.import = import.or(res.import);
-                changed = true;
-            }
-
-            if existing.def.is_none()
-                && res.def.is_none()
-                && existing.import.is_none()
-                && res.import.is_some()
-            {
-                existing.import = res.import;
-            }
+            changed |= scope.push_res(name.clone(), res, import);
         }
 
         if !changed {
@@ -666,7 +635,9 @@ where
                         let impl_id =
                             ImplLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                                 .intern(self.def_collector.db);
-                        self.def_collector.def_map.modules[self.module_id].impls.push(impl_id)
+                        self.def_collector.def_map.modules[self.module_id]
+                            .scope
+                            .define_impl(impl_id)
                     }
                 }
             }
@@ -740,7 +711,9 @@ where
         let res = modules.alloc(ModuleData::default());
         modules[res].parent = Some(self.module_id);
         modules[res].origin = ModuleOrigin::not_sure_file(definition, declaration);
-        modules[res].scope.legacy_macros = modules[self.module_id].scope.legacy_macros.clone();
+        for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
+            modules[res].scope.define_legacy_macro(name, mac)
+        }
         modules[self.module_id].children.insert(name.clone(), res);
         let resolution = Resolution {
             def: PerNs::types(
@@ -904,7 +877,7 @@ where
     }
 
     fn import_all_legacy_macros(&mut self, module_id: LocalModuleId) {
-        let macros = self.def_collector.def_map[module_id].scope.legacy_macros.clone();
+        let macros = self.def_collector.def_map[module_id].scope.collect_legacy_macros();
         for (name, macro_) in macros {
             self.def_collector.define_legacy_macro(self.module_id, name.clone(), macro_);
         }

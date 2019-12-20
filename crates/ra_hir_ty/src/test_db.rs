@@ -98,7 +98,7 @@ impl TestDB {
                     }
                 }
 
-                for &impl_id in crate_def_map[module_id].impls.iter() {
+                for impl_id in crate_def_map[module_id].scope.impls() {
                     let impl_data = self.impl_data(impl_id);
                     for item in impl_data.items.iter() {
                         if let AssocItemId::FunctionId(f) = item {

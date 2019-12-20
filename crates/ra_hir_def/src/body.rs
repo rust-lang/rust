@@ -17,7 +17,8 @@ use rustc_hash::FxHashMap;
 use crate::{
     db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId},
-    nameres::{BuiltinShadowMode, CrateDefMap},
+    item_scope::BuiltinShadowMode,
+    nameres::CrateDefMap,
     path::{ModPath, Path},
     src::HasSource,
     DefWithBodyId, HasModule, Lookup, ModuleDefId, ModuleId,
