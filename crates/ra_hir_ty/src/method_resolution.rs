@@ -58,7 +58,7 @@ impl CrateImplBlocks {
 
         let crate_def_map = db.crate_def_map(krate);
         for (_module_id, module_data) in crate_def_map.modules.iter() {
-            for &impl_id in module_data.impls.iter() {
+            for impl_id in module_data.scope.impls() {
                 match db.impl_trait(impl_id) {
                     Some(tr) => {
                         res.impls_by_trait.entry(tr.trait_).or_default().push(impl_id);

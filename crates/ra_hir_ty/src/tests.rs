@@ -182,7 +182,7 @@ fn visit_module(
             _ => (),
         }
     }
-    for &impl_id in crate_def_map[module_id].impls.iter() {
+    for impl_id in crate_def_map[module_id].scope.impls() {
         let impl_data = db.impl_data(impl_id);
         for &item in impl_data.items.iter() {
             match item {

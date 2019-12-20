@@ -5,11 +5,12 @@ use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
 
-use crate::{per_ns::PerNs, BuiltinType, LocalImportId, MacroDefId, ModuleDefId, TraitId};
+use crate::{per_ns::PerNs, BuiltinType, ImplId, LocalImportId, MacroDefId, ModuleDefId, TraitId};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
     pub(crate) items: FxHashMap<Name, Resolution>,
+    pub(crate) impls: Vec<ImplId>,
     /// Macros visible in current module in legacy textual scope
     ///
     /// For macros invoked by an unqualified identifier like `bar!()`, `legacy_macros` will be searched in first.
@@ -57,6 +58,10 @@ impl ItemScope {
             .flat_map(|per_ns| {
                 per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
             })
+    }
+
+    pub fn impls(&self) -> impl Iterator<Item = ImplId> + ExactSizeIterator + '_ {
+        self.impls.iter().copied()
     }
 
     /// Iterate over all module scoped macros

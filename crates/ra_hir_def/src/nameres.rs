@@ -73,7 +73,7 @@ use crate::{
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
-    AstId, ImplId, LocalModuleId, ModuleDefId, ModuleId,
+    AstId, LocalModuleId, ModuleDefId, ModuleId,
 };
 
 /// Contains all top-level defs from a macro-expanded crate
@@ -169,8 +169,6 @@ pub struct ModuleData {
 
     /// Where does this module come from?
     pub origin: ModuleOrigin,
-
-    pub impls: Vec<ImplId>,
 }
 
 impl CrateDefMap {

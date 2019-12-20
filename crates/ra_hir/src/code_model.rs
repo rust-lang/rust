@@ -221,7 +221,7 @@ impl Module {
 
     pub fn impl_blocks(self, db: &impl DefDatabase) -> Vec<ImplBlock> {
         let def_map = db.crate_def_map(self.id.krate);
-        def_map[self.id.local_id].impls.iter().copied().map(ImplBlock::from).collect()
+        def_map[self.id.local_id].scope.impls().map(ImplBlock::from).collect()
     }
 
     pub(crate) fn with_module_id(self, module_id: LocalModuleId) -> Module {

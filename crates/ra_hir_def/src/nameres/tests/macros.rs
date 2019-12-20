@@ -610,7 +610,7 @@ fn expand_derive() {
         struct Foo;
         ",
     );
-    assert_eq!(map.modules[map.root].impls.len(), 1);
+    assert_eq!(map.modules[map.root].scope.impls().len(), 1);
 }
 
 #[test]
@@ -622,5 +622,5 @@ fn expand_multiple_derive() {
         struct Foo;
         ",
     );
-    assert_eq!(map.modules[map.root].impls.len(), 2);
+    assert_eq!(map.modules[map.root].scope.impls().len(), 2);
 }
