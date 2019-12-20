@@ -225,8 +225,11 @@ fn collect_impl_items_in_macros(
     let mut expander = Expander::new(db, impl_block.file_id, module_id);
     let mut res = Vec::new();
 
+    // We set a limit to protect against infinite recursion
+    let limit = 100;
+
     for m in impl_block.value.syntax().children().filter_map(ast::MacroCall::cast) {
-        res.extend(collect_impl_items_in_macro(db, &mut expander, m, id))
+        res.extend(collect_impl_items_in_macro(db, &mut expander, m, id, limit))
     }
 
     res
@@ -237,7 +240,12 @@ fn collect_impl_items_in_macro(
     expander: &mut Expander,
     m: ast::MacroCall,
     id: ImplId,
+    limit: usize,
 ) -> Vec<AssocItemId> {
+    if limit == 0 {
+        return Vec::new();
+    }
+
     if let Some((mark, items)) = expander.enter_expand(db, m) {
         let items: InFile<ast::MacroItems> = expander.to_source(items);
         let mut res = collect_impl_items(
@@ -250,7 +258,7 @@ fn collect_impl_items_in_macro(
         // Note that ast::ModuleItem do not include ast::MacroCall
         // We cannot use ModuleItemOwner::items here
         for it in items.value.syntax().children().filter_map(ast::MacroCall::cast) {
-            res.extend(collect_impl_items_in_macro(db, expander, it, id))
+            res.extend(collect_impl_items_in_macro(db, expander, it, id, limit - 1))
         }
         expander.exit(db, mark);
         res
