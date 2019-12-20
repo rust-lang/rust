@@ -61,17 +61,15 @@ where
 {
     // This function is defined over all borrow types (immutable, mutable, owned),
     // and may be called on the shared root in each case.
-    // Using `keys()` is fine here even if BorrowType is mutable, as all we return
+    // Using `keys_at()` is fine here even if BorrowType is mutable, as all we return
     // is an index -- not a reference.
     let len = node.len();
-    if len > 0 {
-        let keys = unsafe { node.keys() }; // safe because a non-empty node cannot be the shared root
-        for (i, k) in keys.iter().enumerate() {
-            match key.cmp(k.borrow()) {
-                Ordering::Greater => {}
-                Ordering::Equal => return (i, true),
-                Ordering::Less => return (i, false),
-            }
+    for i in 0..len {
+        let key_at_i = unsafe { node.key_at(i) };
+        match key.cmp(key_at_i.borrow()) {
+            Ordering::Greater => {}
+            Ordering::Equal => return (i, true),
+            Ordering::Less => return (i, false),
         }
     }
     (len, false)
