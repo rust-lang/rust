@@ -135,7 +135,7 @@ impl Path {
     }
 
     pub fn type_anchor(&self) -> Option<&TypeRef> {
-        self.type_anchor.as_ref().map(|it| &**it)
+        self.type_anchor.as_deref()
     }
 
     pub fn segments(&self) -> PathSegments<'_> {
