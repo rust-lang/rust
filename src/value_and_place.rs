@@ -103,9 +103,12 @@ impl<'tcx> CValue<'tcx> {
     pub fn try_to_addr(self) -> Option<Value> {
         match self.0 {
             CValueInner::ByRef(ptr) => {
-                let (base_addr, offset) = ptr.get_addr_and_offset();
-                if offset == Offset32::new(0) {
-                    Some(base_addr)
+                if let Some((base_addr, offset)) = ptr.try_get_addr_and_offset() {
+                    if offset == Offset32::new(0) {
+                        Some(base_addr)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -314,7 +317,7 @@ impl<'tcx> CPlace<'tcx> {
                 CValue::by_ref(ptr, layout)
             }
             CPlaceInner::Stack(stack_slot) => CValue::by_ref(
-                Pointer::new(fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0)),
+                Pointer::stack_slot(stack_slot),
                 layout,
             ),
             CPlaceInner::NoPlace => CValue::by_ref(
@@ -338,7 +341,7 @@ impl<'tcx> CPlace<'tcx> {
         match self.inner {
             CPlaceInner::Addr(ptr, extra) => (ptr, extra),
             CPlaceInner::Stack(stack_slot) => (
-                Pointer::new(fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0)),
+                Pointer::stack_slot(stack_slot),
                 None,
             ),
             CPlaceInner::NoPlace => {
@@ -428,9 +431,7 @@ impl<'tcx> CPlace<'tcx> {
                 return;
             }
             CPlaceInner::Addr(ptr, None) => ptr,
-            CPlaceInner::Stack(stack_slot) => {
-                Pointer::new(fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0))
-            }
+            CPlaceInner::Stack(stack_slot) => Pointer::stack_slot(stack_slot),
             CPlaceInner::NoPlace => {
                 if dst_layout.abi != Abi::Uninhabited {
                     assert_eq!(dst_layout.size.bytes(), 0, "{:?}", dst_layout);
