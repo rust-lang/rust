@@ -158,6 +158,6 @@ pub fn cvalue_for_param<'tcx>(
             let (a, b) = ebb_params.assert_pair();
             Some(CValue::by_val_pair(a, b, layout))
         }
-        PassMode::ByRef => Some(CValue::by_ref(ebb_params.assert_single(), layout)),
+        PassMode::ByRef => Some(CValue::by_ref(Pointer::new(ebb_params.assert_single()), layout)),
     }
 }

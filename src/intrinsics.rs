@@ -446,7 +446,7 @@ pub fn codegen_intrinsic_call<'tcx>(
         };
         discriminant_value, (c ptr) {
             let pointee_layout = fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::by_ref(ptr.load_scalar(fx), pointee_layout);
+            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), pointee_layout);
             let discr = crate::discriminant::codegen_get_discriminant(fx, val, ret.layout());
             ret.write_cvalue(fx, discr);
         };
@@ -598,7 +598,7 @@ pub fn codegen_intrinsic_call<'tcx>(
 
         transmute, <src_ty, dst_ty> (c from) {
             assert_eq!(from.layout().ty, src_ty);
-            let addr = from.force_stack(fx);
+            let addr = Pointer::new(from.force_stack(fx));
             let dst_layout = fx.layout_of(dst_ty);
             ret.write_cvalue(fx, CValue::by_ref(addr, dst_layout))
         };
@@ -815,12 +815,12 @@ pub fn codegen_intrinsic_call<'tcx>(
             // Cranelift treats loads as volatile by default
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::by_ref(ptr.load_scalar(fx), inner_layout);
+            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
         };
         volatile_store, (v ptr, c val) {
             // Cranelift treats stores as volatile by default
-            let dest = CPlace::for_addr(ptr, val.layout());
+            let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
             dest.write_cvalue(fx, val);
         };
 
@@ -854,11 +854,11 @@ pub fn codegen_intrinsic_call<'tcx>(
         _ if intrinsic.starts_with("atomic_load"), (c ptr) {
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::by_ref(ptr.load_scalar(fx), inner_layout);
+            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
         };
         _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
-            let dest = CPlace::for_addr(ptr, val.layout());
+            let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
             dest.write_cvalue(fx, val);
         };
         _ if intrinsic.starts_with("atomic_xchg"), <T> (v ptr, c src) {
@@ -868,7 +868,7 @@ pub fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(old, fx.layout_of(T)));
 
             // Write new
-            let dest = CPlace::for_addr(ptr, src.layout());
+            let dest = CPlace::for_ptr(Pointer::new(ptr), src.layout());
             dest.write_cvalue(fx, src);
         };
         _ if intrinsic.starts_with("atomic_cxchg"), <T> (v ptr, v test_old, v new) { // both atomic_cxchg_* and atomic_cxchgweak_*

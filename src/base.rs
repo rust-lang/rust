@@ -601,7 +601,7 @@ fn codegen_array_len<'tcx>(
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
         ty::Slice(_elem_ty) => place
-            .to_addr_maybe_unsized(fx)
+            .to_ptr_maybe_unsized(fx)
             .1
             .expect("Length metadata for slice place"),
         _ => bug!("Rvalue::Len({:?})", place),
@@ -659,25 +659,21 @@ pub fn trans_place<'tcx>(
                 match cplace.layout().ty.kind {
                     ty::Array(elem_ty, len) => {
                         let elem_layout = fx.layout_of(elem_ty);
-                        let ptr = cplace.to_addr(fx);
+                        let ptr = cplace.to_ptr(fx);
                         let len = crate::constant::force_eval_const(fx, len)
                             .eval_usize(fx.tcx, ParamEnv::reveal_all());
-                        cplace = CPlace::for_addr(
-                            fx.bcx
-                                .ins()
-                                .iadd_imm(ptr, elem_layout.size.bytes() as i64 * from as i64),
+                        cplace = CPlace::for_ptr(
+                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * from as i64),
                             fx.layout_of(fx.tcx.mk_array(elem_ty, len - from as u64 - to as u64)),
                         );
                     }
                     ty::Slice(elem_ty) => {
                         assert!(from_end, "slice subslices should be `from_end`");
                         let elem_layout = fx.layout_of(elem_ty);
-                        let (ptr, len) = cplace.to_addr_maybe_unsized(fx);
+                        let (ptr, len) = cplace.to_ptr_maybe_unsized(fx);
                         let len = len.unwrap();
-                        cplace = CPlace::for_addr_with_extra(
-                            fx.bcx
-                                .ins()
-                                .iadd_imm(ptr, elem_layout.size.bytes() as i64 * from as i64),
+                        cplace = CPlace::for_ptr_with_extra(
+                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * from as i64),
                             fx.bcx.ins().iadd_imm(len, -(from as i64 + to as i64)),
                             cplace.layout(),
                         );

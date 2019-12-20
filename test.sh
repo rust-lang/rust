@@ -78,8 +78,8 @@ hyperfine --runs ${RUN_RUNS:-10} ./raytracer_cg_llvm ./raytracer_cg_clif
 popd
 
 pushd build_sysroot/sysroot_src/src/libcore/tests
-rm -r sysroot_src/src/**/*/target/ || true
-cargo test
+rm -r ./target || true
+../../../../../cargo.sh test
 popd
 
 pushd regex

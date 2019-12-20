@@ -250,9 +250,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         let ret_vals = self.lib_call(name, input_tys, return_tys, &args);
         match *ret_vals {
             [] => CValue::by_ref(
-                self.bcx
-                    .ins()
-                    .iconst(self.pointer_type, self.pointer_type.bytes() as i64),
+                Pointer::const_addr(self, self.pointer_type.bytes() as i64),
                 return_layout,
             ),
             [val] => CValue::by_val(val, return_layout),
@@ -352,7 +350,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
                         // We wont mutate this argument, so it is fine to borrow the backing storage
                         // of this argument, to prevent a copy.
 
-                        let place = CPlace::for_addr(addr, val.layout());
+                        let place = CPlace::for_ptr(Pointer::new(addr), val.layout());
 
                         #[cfg(debug_assertions)]
                         self::comments::add_local_place_comments(fx, place, local);

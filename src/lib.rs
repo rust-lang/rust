@@ -49,6 +49,7 @@ mod llvm_intrinsics;
 mod main_shim;
 mod metadata;
 mod num;
+mod pointer;
 mod pretty_clif;
 mod target_features_whitelist;
 mod trap;
@@ -106,6 +107,7 @@ mod prelude {
     pub use crate::cast::*;
     pub use crate::common::*;
     pub use crate::debuginfo::{DebugContext, FunctionDebugContext};
+    pub use crate::pointer::Pointer;
     pub use crate::trap::*;
     pub use crate::unimpl::unimpl;
     pub use crate::value_and_place::{CPlace, CPlaceInner, CValue};

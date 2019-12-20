@@ -28,7 +28,7 @@ pub fn codegen_return_param(
         PassMode::ByRef => {
             let ret_param = fx.bcx.append_ebb_param(start_ebb, fx.pointer_type);
             fx.local_map
-                .insert(RETURN_PLACE, CPlace::for_addr(ret_param, ret_layout));
+                .insert(RETURN_PLACE, CPlace::for_ptr(Pointer::new(ret_param), ret_layout));
 
             Single(ret_param)
         }

@@ -132,9 +132,7 @@ pub fn trans_const_value<'tcx>(
             CValue::by_val(val, layout)
         }
         ty::FnDef(_def_id, _substs) => CValue::by_ref(
-            fx.bcx
-                .ins()
-                .iconst(fx.pointer_type, fx.pointer_type.bytes() as i64),
+            crate::pointer::Pointer::const_addr(fx, fx.pointer_type.bytes() as i64),
             layout,
         ),
         _ => trans_const_place(fx, const_).to_cvalue(fx),
@@ -265,7 +263,7 @@ fn cplace_for_dataid<'tcx>(
     let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
     let layout = fx.layout_of(fx.monomorphize(&ty));
     assert!(!layout.is_unsized(), "unsized statics aren't supported");
-    CPlace::for_addr(global_ptr, layout)
+    CPlace::for_ptr(crate::pointer::Pointer::new(global_ptr), layout)
 }
 
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mut ConstantCx) {
