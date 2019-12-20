@@ -772,17 +772,17 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Struct(ast_id) => {
-                let def = StructLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = StructLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
                 PerNs::both(def.into(), def.into())
             }
             raw::DefKind::Union(ast_id) => {
-                let def = UnionLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = UnionLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
                 PerNs::both(def.into(), def.into())
             }
             raw::DefKind::Enum(ast_id) => {
-                let def = EnumLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = EnumLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
                 PerNs::types(def.into())
             }

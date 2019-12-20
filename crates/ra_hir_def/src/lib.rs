@@ -95,7 +95,7 @@ impl_intern_key!(StructId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::StructDef>,
 }
 
@@ -119,7 +119,7 @@ impl_intern_key!(UnionId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnionLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::UnionDef>,
 }
 
@@ -143,7 +143,7 @@ impl_intern_key!(EnumId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::EnumDef>,
 }
 
@@ -529,6 +529,7 @@ impl HasModule for AdtId {
             AdtId::UnionId(it) => it.lookup(db).container,
             AdtId::EnumId(it) => it.lookup(db).container,
         }
+        .module(db)
     }
 }
 
@@ -550,7 +551,7 @@ impl HasModule for GenericDefId {
             GenericDefId::TraitId(it) => it.lookup(db).container,
             GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
             GenericDefId::ImplId(it) => it.lookup(db).container,
-            GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container,
+            GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container.module(db),
             GenericDefId::ConstId(it) => it.lookup(db).module(db),
         }
     }

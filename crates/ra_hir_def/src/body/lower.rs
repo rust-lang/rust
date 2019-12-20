@@ -25,7 +25,7 @@ use crate::{
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
-    ContainerId, DefWithBodyId, FunctionLoc, Intern,
+    ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId, StructLoc, UnionLoc,
 };
 
 pub(super) fn lower(
@@ -490,16 +490,28 @@ where
     }
 
     fn collect_block_items(&mut self, block: &ast::Block) {
-        let container = ContainerId::DefWithBodyId(self.def).into();
+        let container = ContainerId::DefWithBodyId(self.def);
         for item in block.items() {
-            match item {
+            let def: ModuleDefId = match item {
                 ast::ModuleItem::FnDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    self.body.defs.push(FunctionLoc { container, ast_id }.intern(self.db).into())
+                    FunctionLoc { container: container.into(), ast_id }.intern(self.db).into()
                 }
-                // FIXME: handle other items
-                _ => (),
-            }
+                ast::ModuleItem::StructDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    StructLoc { container, ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::EnumDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    EnumLoc { container, ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::UnionDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    UnionLoc { container, ast_id }.intern(self.db).into()
+                }
+                _ => continue,
+            };
+            self.body.defs.push(def)
         }
     }
 
