@@ -282,6 +282,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .comment            { color: #7F9F7F; }
 .string             { color: #CC9393; }
+.field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
@@ -327,7 +328,8 @@ fn main() {
 
     let mut vec = Vec::new();
     if true {
-        vec.push(Foo { x: 0, y: 1 });
+        let x = 92;
+        vec.push(Foo { x, y: 1 });
     }
     unsafe { vec.set_len(0); }
 
