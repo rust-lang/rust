@@ -11,25 +11,21 @@ fn main() {
 // START rustc.main.ConstProp.before.mir
 //  bb0: {
 //      ...
-//      _3 = _4;
-//      _2 = move _3 as *const i32 (Misc);
-//      ...
+//      _2 = &raw const (*_3);
 //      _1 = move _2 as usize (Misc);
 //      ...
-//      _6 = _1;
-//      _5 = const read(move _6) -> bb1;
+//      _5 = _1;
+//      _4 = const read(move _5) -> bb1;
 //  }
 // END rustc.main.ConstProp.before.mir
 // START rustc.main.ConstProp.after.mir
 //  bb0: {
 //      ...
-//      _4 = const main::FOO;
-//      _3 = _4;
-//      _2 = move _3 as *const i32 (Misc);
-//      ...
+//      _3 = const main::FOO;
+//      _2 = &raw const (*_3);
 //      _1 = move _2 as usize (Misc);
 //      ...
-//      _6 = _1;
-//      _5 = const read(move _6) -> bb1;
+//      _5 = _1;
+//      _4 = const read(move _5) -> bb1;
 //  }
 // END rustc.main.ConstProp.after.mir

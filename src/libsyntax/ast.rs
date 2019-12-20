@@ -254,7 +254,7 @@ pub struct ParenthesizedArgs {
     pub inputs: Vec<P<Ty>>,
 
     /// `C`
-    pub output: Option<P<Ty>>,
+    pub output: FunctionRetTy,
 }
 
 impl ParenthesizedArgs {
@@ -728,13 +728,13 @@ impl Mutability {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum BorrowKind {
-    /// A raw borrow, `&raw const $expr` or `&raw mut $expr`.
-    /// The resulting type is either `*const T` or `*mut T`
-    /// where `T = typeof($expr)`.
-    Ref,
     /// A normal borrow, `&$expr` or `&mut $expr`.
     /// The resulting type is either `&'a T` or `&'a mut T`
     /// where `T = typeof($expr)` and `'a` is some lifetime.
+    Ref,
+    /// A raw borrow, `&raw const $expr` or `&raw mut $expr`.
+    /// The resulting type is either `*const T` or `*mut T`
+    /// where `T = typeof($expr)`.
     Raw,
 }
 
@@ -1603,35 +1603,10 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-/// Represents an item declaration within a trait declaration,
-/// possibly including a default implementation. A trait item is
-/// either required (meaning it doesn't have an implementation, just a
-/// signature) or provided (meaning it has a default implementation).
+/// Represents associated items.
+/// These include items in `impl` and `trait` definitions.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct TraitItem {
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub vis: Visibility,
-    pub ident: Ident,
-
-    pub generics: Generics,
-    pub kind: TraitItemKind,
-    /// See `Item::tokens` for what this is.
-    pub tokens: Option<TokenStream>,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum TraitItemKind {
-    Const(P<Ty>, Option<P<Expr>>),
-    Method(FnSig, Option<P<Block>>),
-    Type(GenericBounds, Option<P<Ty>>),
-    Macro(Mac),
-}
-
-/// Represents anything within an `impl` block.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct ImplItem {
+pub struct AssocItem {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
@@ -1640,17 +1615,31 @@ pub struct ImplItem {
 
     pub defaultness: Defaultness,
     pub generics: Generics,
-    pub kind: ImplItemKind,
+    pub kind: AssocItemKind,
     /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,
 }
 
 /// Represents various kinds of content within an `impl`.
+///
+/// The term "provided" in the variants below refers to the item having a default
+/// definition / body. Meanwhile, a "required" item lacks a definition / body.
+/// In an implementation, all items must be provided.
+/// The `Option`s below denote the bodies, where `Some(_)`
+/// means "provided" and conversely `None` means "required".
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ImplItemKind {
-    Const(P<Ty>, P<Expr>),
-    Method(FnSig, P<Block>),
-    TyAlias(P<Ty>),
+pub enum AssocItemKind  {
+    /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
+    /// If `def` is parsed, then the associated constant is provided, and otherwise required.
+    Const(P<Ty>, Option<P<Expr>>),
+
+    /// An associated function.
+    Fn(FnSig, Option<P<Block>>),
+
+    /// An associated type.
+    TyAlias(GenericBounds, Option<P<Ty>>),
+
+    /// A macro expanding to an associated item.
     Macro(Mac),
 }
 
@@ -2189,7 +2178,7 @@ impl fmt::Debug for ImplPolarity {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum FunctionRetTy {
+pub enum FunctionRetTy { // FIXME(Centril): Rename to `FnRetTy` and in HIR also.
     /// Returns type is not specified.
     ///
     /// Functions default to `()` and closures default to inference.
@@ -2602,7 +2591,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<TraitItem>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<AssocItem>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2617,7 +2606,7 @@ pub enum ItemKind {
         Generics,
         Option<TraitRef>, // (optional) trait this impl implements
         P<Ty>,            // self
-        Vec<ImplItem>,
+        Vec<AssocItem>,
     ),
     /// A macro invocation.
     ///

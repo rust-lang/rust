@@ -248,7 +248,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
             }
 
-            Ref(_, _, ref place) => {
+            AddressOf(_, ref place) | Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(src)?;
                 if place.layout.size.bytes() > 0 {

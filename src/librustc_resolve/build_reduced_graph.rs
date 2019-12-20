@@ -30,7 +30,7 @@ use errors::Applicability;
 use syntax::ast::{Name, Ident};
 use syntax::attr;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
-use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
+use syntax::ast::{MetaItemKind, StmtKind, AssocItem, AssocItemKind};
 use syntax::token::{self, Token};
 use syntax::span_err;
 use syntax::source_map::{respan, Spanned};
@@ -1164,10 +1164,10 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         self.parent_scope.legacy = orig_current_legacy_scope;
     }
 
-    fn visit_trait_item(&mut self, item: &'b TraitItem) {
+    fn visit_trait_item(&mut self, item: &'b AssocItem) {
         let parent = self.parent_scope.module;
 
-        if let TraitItemKind::Macro(_) = item.kind {
+        if let AssocItemKind::Macro(_) = item.kind {
             self.visit_invoc(item.id);
             return
         }
@@ -1175,15 +1175,15 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         // Add the item to the trait info.
         let item_def_id = self.r.definitions.local_def_id(item.id);
         let (res, ns) = match item.kind {
-            TraitItemKind::Const(..) => (Res::Def(DefKind::AssocConst, item_def_id), ValueNS),
-            TraitItemKind::Method(ref sig, _) => {
+            AssocItemKind::Const(..) => (Res::Def(DefKind::AssocConst, item_def_id), ValueNS),
+            AssocItemKind::Fn(ref sig, _) => {
                 if sig.decl.has_self() {
                     self.r.has_self.insert(item_def_id);
                 }
                 (Res::Def(DefKind::Method, item_def_id), ValueNS)
             }
-            TraitItemKind::Type(..) => (Res::Def(DefKind::AssocTy, item_def_id), TypeNS),
-            TraitItemKind::Macro(_) => bug!(),  // handled above
+            AssocItemKind::TyAlias(..) => (Res::Def(DefKind::AssocTy, item_def_id), TypeNS),
+            AssocItemKind::Macro(_) => bug!(),  // handled above
         };
 
         let vis = ty::Visibility::Public;
@@ -1193,8 +1193,8 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         visit::walk_trait_item(self, item);
     }
 
-    fn visit_impl_item(&mut self, item: &'b ast::ImplItem) {
-        if let ast::ImplItemKind::Macro(..) = item.kind {
+    fn visit_impl_item(&mut self, item: &'b ast::AssocItem) {
+        if let ast::AssocItemKind::Macro(..) = item.kind {
             self.visit_invoc(item.id);
         } else {
             self.resolve_visibility(&item.vis);

@@ -557,10 +557,10 @@ where
     ///    if can_go then succ else drop-block
     /// drop-block:
     ///    if ptr_based {
-    ///        ptr = &mut *cur
+    ///        ptr = cur
     ///        cur = cur.offset(1)
     ///    } else {
-    ///        ptr = &mut P[cur]
+    ///        ptr = &raw mut P[cur]
     ///        cur = cur + 1
     ///    }
     ///    drop(ptr)
@@ -574,34 +574,28 @@ where
         unwind: Unwind,
         ptr_based: bool,
     ) -> BasicBlock {
-        let copy = |place: &Place<'tcx>| Operand::Copy(place.clone());
-        let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
+        let copy = |place: Place<'tcx>| Operand::Copy(place);
+        let move_ = |place: Place<'tcx>| Operand::Move(place);
         let tcx = self.tcx();
 
-        let ref_ty = tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut {
+        let ptr_ty = tcx.mk_ptr(ty::TypeAndMut {
             ty: ety,
             mutbl: hir::Mutability::Mutable
         });
-        let ptr = &Place::from(self.new_temp(ref_ty));
-        let can_go = &Place::from(self.new_temp(tcx.types.bool));
+        let ptr = &Place::from(self.new_temp(ptr_ty));
+        let can_go = Place::from(self.new_temp(tcx.types.bool));
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
-            (Rvalue::Ref(
-                tcx.lifetimes.re_erased,
-                BorrowKind::Mut { allow_two_phase_borrow: false },
-                Place {
-                    base: PlaceBase::Local(cur),
-                    projection: tcx.intern_place_elems(&vec![ProjectionElem::Deref]),
-                }
-             ),
-             Rvalue::BinaryOp(BinOp::Offset, move_(&Place::from(cur)), one))
+            (
+                Rvalue::Use(copy(cur.into())),
+                Rvalue::BinaryOp(BinOp::Offset, move_(cur.into()), one),
+            )
         } else {
-            (Rvalue::Ref(
-                 tcx.lifetimes.re_erased,
-                 BorrowKind::Mut { allow_two_phase_borrow: false },
-                 tcx.mk_place_index(self.place.clone(), cur)),
-             Rvalue::BinaryOp(BinOp::Add, move_(&Place::from(cur)), one))
+            (
+                Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place.clone(), cur)),
+                Rvalue::BinaryOp(BinOp::Add, move_(cur.into()), one),
+            )
         };
 
         let drop_block = BasicBlockData {
@@ -620,9 +614,9 @@ where
 
         let loop_block = BasicBlockData {
             statements: vec![
-                self.assign(can_go, Rvalue::BinaryOp(BinOp::Eq,
-                                                     copy(&Place::from(cur)),
-                                                     copy(length_or_end)))
+                self.assign(&can_go, Rvalue::BinaryOp(BinOp::Eq,
+                                                     copy(Place::from(cur)),
+                                                     copy(length_or_end.clone())))
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -725,8 +719,6 @@ where
 
         let cur = self.new_temp(iter_ty);
         let length_or_end = if ptr_based {
-            // FIXME check if we want to make it return a `Place` directly
-            // if all use sites want a `Place::Base` anyway.
             Place::from(self.new_temp(iter_ty))
         } else {
             length.clone()
@@ -753,23 +745,16 @@ where
         let drop_block_stmts = if ptr_based {
             let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
             let tmp = Place::from(self.new_temp(tmp_ty));
-            // tmp = &mut P;
+            // tmp = &raw mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
             vec![
-                self.assign(&tmp, Rvalue::Ref(
-                    tcx.lifetimes.re_erased,
-                    BorrowKind::Mut { allow_two_phase_borrow: false },
-                    self.place.clone()
-                )),
-                self.assign(
-                    &cur,
-                    Rvalue::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty),
-                ),
+                self.assign(&tmp, Rvalue::AddressOf(Mutability::Mut, self.place.clone())),
+                self.assign(&cur, Rvalue::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty)),
                 self.assign(
                     &length_or_end,
-                    Rvalue::BinaryOp(BinOp::Offset, Operand::Copy(cur), Operand::Move(length)
-                )),
+                    Rvalue::BinaryOp(BinOp::Offset, Operand::Copy(cur), Operand::Move(length)),
+                ),
             ]
         } else {
             // cur = 0 (length already pushed)

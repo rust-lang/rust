@@ -10,15 +10,15 @@ fn main() {
 // let mut _2: usize;
 // let mut _3: usize;
 // let mut _4: usize;
-// let mut _5: &mut std::string::String;
+// let mut _5: *mut std::string::String;
 // let mut _6: bool;
-// let mut _7: &mut std::string::String;
+// let mut _7: *mut std::string::String;
 // let mut _8: bool;
 // let mut _9: *mut std::string::String;
 // let mut _10: *mut std::string::String;
-// let mut _11: &mut std::string::String;
+// let mut _11: *mut std::string::String;
 // let mut _12: bool;
-// let mut _13: &mut std::string::String;
+// let mut _13: *mut std::string::String;
 // let mut _14: bool;
 // let mut _15: *mut [std::string::String];
 // bb0: {
@@ -31,7 +31,7 @@ fn main() {
 //     resume;
 // }
 // bb3 (cleanup): {
-//     _5 = &mut (*_1)[_4];
+//     _5 = &raw mut (*_1)[_4];
 //     _4 = Add(move _4, const 1usize);
 //     drop((*_5)) -> bb4;
 // }
@@ -40,7 +40,7 @@ fn main() {
 //     switchInt(move _6) -> [false: bb3, otherwise: bb2];
 // }
 // bb5: {
-//     _7 = &mut (*_1)[_4];
+//     _7 = &raw mut (*_1)[_4];
 //     _4 = Add(move _4, const 1usize);
 //     drop((*_7)) -> [return: bb6, unwind: bb4];
 // }
@@ -56,7 +56,7 @@ fn main() {
 //     goto -> bb7;
 // }
 // bb9 (cleanup): {
-//     _11 = &mut (*_9);
+//     _11 = _9;
 //     _9 = Offset(move _9, const 1usize);
 //     drop((*_11)) -> bb10;
 // }
@@ -65,7 +65,7 @@ fn main() {
 //     switchInt(move _12) -> [false: bb9, otherwise: bb2];
 // }
 // bb11: {
-//     _13 = &mut (*_9);
+//     _13 = _9;
 //     _9 = Offset(move _9, const 1usize);
 //     drop((*_13)) -> [return: bb12, unwind: bb10];
 // }
@@ -74,7 +74,7 @@ fn main() {
 //     switchInt(move _14) -> [false: bb11, otherwise: bb1];
 // }
 // bb13: {
-//     _15 = &mut (*_1);
+//     _15 = &raw mut (*_1);
 //     _9 = move _15 as *mut std::string::String (Misc);
 //     _10 = Offset(_9, move _3);
 //     goto -> bb12;

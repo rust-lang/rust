@@ -676,7 +676,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         generics: &'l ast::Generics,
         trait_ref: &'l Option<ast::TraitRef>,
         typ: &'l ast::Ty,
-        impl_items: &'l [ast::ImplItem],
+        impl_items: &'l [ast::AssocItem],
     ) {
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
             if !self.span.filter_generated(item.span) {
@@ -707,7 +707,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         item: &'l ast::Item,
         generics: &'l ast::Generics,
         trait_refs: &'l ast::GenericBounds,
-        methods: &'l [ast::TraitItem],
+        methods: &'l [ast::AssocItem],
     ) {
         let name = item.ident.to_string();
         let qualname = format!("::{}",
@@ -811,9 +811,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 match **generic_args {
                     ast::GenericArgs::AngleBracketed(ref data) => {
                         for arg in &data.args {
-                            match arg {
-                                ast::GenericArg::Type(ty) => self.visit_ty(ty),
-                                _ => {}
+                            if let ast::GenericArg::Type(ty) = arg {
+                                self.visit_ty(ty);
                             }
                         }
                     }
@@ -821,8 +820,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                         for t in &data.inputs {
                             self.visit_ty(t);
                         }
-                        if let Some(ref t) = data.output {
-                            self.visit_ty(t);
+                        if let ast::FunctionRetTy::Ty(ty) = &data.output {
+                            self.visit_ty(ty);
                         }
                     }
                 }
@@ -1030,11 +1029,11 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         // }
     }
 
-    fn process_trait_item(&mut self, trait_item: &'l ast::TraitItem, trait_id: DefId) {
+    fn process_trait_item(&mut self, trait_item: &'l ast::AssocItem, trait_id: DefId) {
         self.process_macro_use(trait_item.span);
         let vis_span = trait_item.span.shrink_to_lo();
         match trait_item.kind {
-            ast::TraitItemKind::Const(ref ty, ref expr) => {
+            ast::AssocItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
                     trait_item.id,
                     trait_item.ident,
@@ -1045,7 +1044,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     &trait_item.attrs,
                 );
             }
-            ast::TraitItemKind::Method(ref sig, ref body) => {
+            ast::AssocItemKind::Fn(ref sig, ref body) => {
                 self.process_method(
                     sig,
                     body.as_ref().map(|x| &**x),
@@ -1056,7 +1055,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     trait_item.span,
                 );
             }
-            ast::TraitItemKind::Type(ref bounds, ref default_ty) => {
+            ast::AssocItemKind::TyAlias(ref bounds, ref default_ty) => {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
                 let qualname = format!("::{}",
@@ -1098,28 +1097,28 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     self.visit_ty(default_ty)
                 }
             }
-            ast::TraitItemKind::Macro(_) => {}
+            ast::AssocItemKind::Macro(_) => {}
         }
     }
 
-    fn process_impl_item(&mut self, impl_item: &'l ast::ImplItem, impl_id: DefId) {
+    fn process_impl_item(&mut self, impl_item: &'l ast::AssocItem, impl_id: DefId) {
         self.process_macro_use(impl_item.span);
         match impl_item.kind {
-            ast::ImplItemKind::Const(ref ty, ref expr) => {
+            ast::AssocItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
                     impl_item.id,
                     impl_item.ident,
                     &ty,
-                    Some(expr),
+                    expr.as_deref(),
                     impl_id,
                     impl_item.vis.clone(),
                     &impl_item.attrs,
                 );
             }
-            ast::ImplItemKind::Method(ref sig, ref body) => {
+            ast::AssocItemKind::Fn(ref sig, ref body) => {
                 self.process_method(
                     sig,
-                    Some(body),
+                    body.as_deref(),
                     impl_item.id,
                     impl_item.ident,
                     &impl_item.generics,
@@ -1127,13 +1126,14 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     impl_item.span,
                 );
             }
-            ast::ImplItemKind::TyAlias(ref ty) => {
+            ast::AssocItemKind::TyAlias(_, None) => {}
+            ast::AssocItemKind::TyAlias(_, Some(ref ty)) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
                 self.visit_ty(ty)
             }
-            ast::ImplItemKind::Macro(_) => {}
+            ast::AssocItemKind::Macro(_) => {}
         }
     }
 

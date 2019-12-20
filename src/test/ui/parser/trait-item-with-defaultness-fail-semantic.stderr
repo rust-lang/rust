@@ -1,0 +1,38 @@
+error: `default` is only allowed on items in `impl` definitions
+  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:6:5
+   |
+LL |     default const A: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: `default` is only allowed on items in `impl` definitions
+  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:7:5
+   |
+LL |     default const B: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `default` is only allowed on items in `impl` definitions
+  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:8:5
+   |
+LL |     default type D;
+   |     ^^^^^^^^^^^^^^^
+
+error: `default` is only allowed on items in `impl` definitions
+  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:9:5
+   |
+LL |     default type C: Ord;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: `default` is only allowed on items in `impl` definitions
+  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:10:5
+   |
+LL |     default fn f1();
+   |     ^^^^^^^^^^^^^^^^
+
+error: `default` is only allowed on items in `impl` definitions
+  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:11:5
+   |
+LL |     default fn f2() {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

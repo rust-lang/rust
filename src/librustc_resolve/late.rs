@@ -806,7 +806,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                 this.with_generic_param_rib(&trait_item.generics, AssocItemRibKind,
                                     |this| {
                                         match trait_item.kind {
-                                            TraitItemKind::Const(ref ty, ref default) => {
+                                            AssocItemKind::Const(ref ty, ref default) => {
                                                 this.visit_ty(ty);
 
                                                 // Only impose the restrictions of
@@ -818,13 +818,13 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                     });
                                                 }
                                             }
-                                            TraitItemKind::Method(_, _) => {
+                                            AssocItemKind::Fn(_, _) => {
                                                 visit::walk_trait_item(this, trait_item)
                                             }
-                                            TraitItemKind::Type(..) => {
+                                            AssocItemKind::TyAlias(..) => {
                                                 visit::walk_trait_item(this, trait_item)
                                             }
-                                            TraitItemKind::Macro(_) => {
+                                            AssocItemKind::Macro(_) => {
                                                 panic!("unexpanded macro in resolve!")
                                             }
                                         };
@@ -989,13 +989,13 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     /// When evaluating a `trait` use its associated types' idents for suggestionsa in E0412.
     fn with_trait_items<T>(
         &mut self,
-        trait_items: &Vec<TraitItem>,
+        trait_items: &Vec<AssocItem>,
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
         let trait_assoc_types = replace(
             &mut self.diagnostic_metadata.current_trait_assoc_types,
             trait_items.iter().filter_map(|item| match &item.kind {
-                TraitItemKind::Type(bounds, _) if bounds.len() == 0 => Some(item.ident),
+                AssocItemKind::TyAlias(bounds, _) if bounds.len() == 0 => Some(item.ident),
                 _ => None,
             }).collect(),
         );
@@ -1063,7 +1063,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                               opt_trait_reference: &Option<TraitRef>,
                               self_type: &Ty,
                               item_id: NodeId,
-                              impl_items: &[ImplItem]) {
+                              impl_items: &[AssocItem]) {
         debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
@@ -1092,9 +1092,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                                 |this| {
                                         use crate::ResolutionError::*;
                                         match impl_item.kind {
-                                            ImplItemKind::Const(..) => {
+                                            AssocItemKind::Const(..) => {
                                                 debug!(
-                                                    "resolve_implementation ImplItemKind::Const",
+                                                    "resolve_implementation AssocItemKind::Const",
                                                 );
                                                 // If this is a trait impl, ensure the const
                                                 // exists in trait
@@ -1109,7 +1109,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                     visit::walk_impl_item(this, impl_item)
                                                 });
                                             }
-                                            ImplItemKind::Method(..) => {
+                                            AssocItemKind::Fn(..) => {
                                                 // If this is a trait impl, ensure the method
                                                 // exists in trait
                                                 this.check_trait_item(impl_item.ident,
@@ -1119,7 +1119,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
                                                 visit::walk_impl_item(this, impl_item);
                                             }
-                                            ImplItemKind::TyAlias(ref ty) => {
+                                            AssocItemKind::TyAlias(_, Some(ref ty)) => {
                                                 // If this is a trait impl, ensure the type
                                                 // exists in trait
                                                 this.check_trait_item(impl_item.ident,
@@ -1129,7 +1129,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
                                                 this.visit_ty(ty);
                                             }
-                                            ImplItemKind::Macro(_) =>
+                                            AssocItemKind::TyAlias(_, None) => {}
+                                            AssocItemKind::Macro(_) =>
                                                 panic!("unexpanded macro in resolve!"),
                                         }
                                     });

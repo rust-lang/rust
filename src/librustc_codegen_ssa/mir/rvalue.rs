@@ -7,7 +7,7 @@ use crate::MemFlags;
 use crate::common::{self, RealPredicate, IntPredicate};
 use crate::traits::*;
 
-use rustc::ty::{self, Ty, adjustment::{PointerCast}, Instance};
+use rustc::ty::{self, Ty, TyCtxt, adjustment::{PointerCast}, Instance};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir;
@@ -349,8 +349,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 }
                             }
                             (CastTy::Ptr(_), CastTy::Ptr(_)) |
-                            (CastTy::FnPtr, CastTy::Ptr(_)) |
-                            (CastTy::RPtr(_), CastTy::Ptr(_)) =>
+                            (CastTy::FnPtr, CastTy::Ptr(_)) =>
                                 bx.pointercast(llval, ll_t_out),
                             (CastTy::Ptr(_), CastTy::Int(_)) |
                             (CastTy::FnPtr, CastTy::Int(_)) =>
@@ -375,24 +374,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Ref(_, bk, ref place) => {
-                let cg_place = self.codegen_place(&mut bx, &place.as_ref());
+                let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| tcx.mk_ref(
+                    tcx.lifetimes.re_erased,
+                    ty::TypeAndMut { ty, mutbl: bk.to_mutbl_lossy() }
+                );
+                self.codegen_place_to_pointer(bx, place, mk_ref)
+            }
 
-                let ty = cg_place.layout.ty;
-
-                // Note: places are indirect, so storing the `llval` into the
-                // destination effectively creates a reference.
-                let val = if !bx.cx().type_has_metadata(ty) {
-                    OperandValue::Immediate(cg_place.llval)
-                } else {
-                    OperandValue::Pair(cg_place.llval, cg_place.llextra.unwrap())
-                };
-                (bx, OperandRef {
-                    val,
-                    layout: self.cx.layout_of(self.cx.tcx().mk_ref(
-                        self.cx.tcx().lifetimes.re_erased,
-                        ty::TypeAndMut { ty, mutbl: bk.to_mutbl_lossy() }
-                    )),
-                })
+            mir::Rvalue::AddressOf(mutability, ref place) => {
+                let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| tcx.mk_ptr(
+                    ty::TypeAndMut { ty, mutbl: mutability.into() }
+                );
+                self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
             mir::Rvalue::Len(ref place) => {
@@ -546,6 +539,30 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // use common size calculation for non zero-sized types
         let cg_value = self.codegen_place(bx, &place.as_ref());
         cg_value.len(bx.cx())
+    }
+
+    /// Codegen an `Rvalue::AddressOf` or `Rvalue::Ref`
+    fn codegen_place_to_pointer(
+        &mut self,
+        mut bx: Bx,
+        place: &mir::Place<'tcx>,
+        mk_ptr_ty: impl FnOnce(TyCtxt<'tcx>, Ty<'tcx>) -> Ty<'tcx>,
+    ) -> (Bx, OperandRef<'tcx, Bx::Value>) {
+        let cg_place = self.codegen_place(&mut bx, &place.as_ref());
+
+        let ty = cg_place.layout.ty;
+
+        // Note: places are indirect, so storing the `llval` into the
+        // destination effectively creates a reference.
+        let val = if !bx.cx().type_has_metadata(ty) {
+            OperandValue::Immediate(cg_place.llval)
+        } else {
+            OperandValue::Pair(cg_place.llval, cg_place.llextra.unwrap())
+        };
+        (bx, OperandRef {
+            val,
+            layout: self.cx.layout_of(mk_ptr_ty(self.cx.tcx(), ty)),
+        })
     }
 
     pub fn codegen_scalar_binop(
@@ -704,6 +721,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Ref(..) |
+            mir::Rvalue::AddressOf(..) |
             mir::Rvalue::Len(..) |
             mir::Rvalue::Cast(..) | // (*)
             mir::Rvalue::BinaryOp(..) |

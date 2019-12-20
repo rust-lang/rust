@@ -6,7 +6,7 @@ use crate::maybe_whole;
 use rustc_errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
 use rustc_error_codes::*;
 use syntax::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
-use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
+use syntax::ast::{AssocItem, AssocItemKind, ItemKind, UseTree, UseTreeKind};
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, Variant, VariantData, StructField};
@@ -648,7 +648,7 @@ impl<'a> Parser<'a> {
         Ok((Ident::invalid(), item_kind, Some(attrs)))
     }
 
-    fn parse_impl_body(&mut self) -> PResult<'a, (Vec<ImplItem>, Vec<Attribute>)> {
+    fn parse_impl_body(&mut self) -> PResult<'a, (Vec<AssocItem>, Vec<Attribute>)> {
         self.expect(&token::OpenDelim(token::Brace))?;
         let attrs = self.parse_inner_attributes()?;
 
@@ -667,60 +667,6 @@ impl<'a> Parser<'a> {
             }
         }
         Ok((impl_items, attrs))
-    }
-
-    /// Parses an impl item.
-    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
-        maybe_whole!(self, NtImplItem, |x| x);
-        let attrs = self.parse_outer_attributes()?;
-        let mut unclosed_delims = vec![];
-        let (mut item, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_impl_item_(at_end, attrs);
-            unclosed_delims.append(&mut this.unclosed_delims);
-            item
-        })?;
-        self.unclosed_delims.append(&mut unclosed_delims);
-
-        // See `parse_item` for why this clause is here.
-        if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-            item.tokens = Some(tokens);
-        }
-        Ok(item)
-    }
-
-    fn parse_impl_item_(
-        &mut self,
-        at_end: &mut bool,
-        mut attrs: Vec<Attribute>,
-    ) -> PResult<'a, ImplItem> {
-        let lo = self.token.span;
-        let vis = self.parse_visibility(FollowedByType::No)?;
-        let defaultness = self.parse_defaultness();
-        let (name, kind, generics) = if self.eat_keyword(kw::Type) {
-            let (name, ty, generics) = self.parse_type_alias()?;
-            (name, ast::ImplItemKind::TyAlias(ty), generics)
-        } else if self.is_const_item() {
-            self.parse_impl_const()?
-        } else if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(&vis), at_end)? {
-            // FIXME: code copied from `parse_macro_use_or_failure` -- use abstraction!
-            (Ident::invalid(), ast::ImplItemKind::Macro(mac), Generics::default())
-        } else {
-            let (name, inner_attrs, generics, kind) = self.parse_impl_method(at_end)?;
-            attrs.extend(inner_attrs);
-            (name, kind, generics)
-        };
-
-        Ok(ImplItem {
-            id: DUMMY_NODE_ID,
-            span: lo.to(self.prev_span),
-            ident: name,
-            vis,
-            defaultness,
-            attrs,
-            generics,
-            kind,
-            tokens: None,
-        })
     }
 
     /// Parses defaultness (i.e., `default` or nothing).
@@ -743,26 +689,6 @@ impl<'a> Parser<'a> {
         } else {
             Defaultness::Final
         }
-    }
-
-    /// Returns `true` if we are looking at `const ID`
-    /// (returns `false` for things like `const fn`, etc.).
-    fn is_const_item(&self) -> bool {
-        self.token.is_keyword(kw::Const) &&
-            !self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe])
-    }
-
-    /// This parses the grammar:
-    ///     ImplItemConst = "const" Ident ":" Ty "=" Expr ";"
-    fn parse_impl_const(&mut self) -> PResult<'a, (Ident, ImplItemKind, Generics)> {
-        self.expect_keyword(kw::Const)?;
-        let name = self.parse_ident()?;
-        self.expect(&token::Colon)?;
-        let typ = self.parse_ty()?;
-        self.expect(&token::Eq)?;
-        let expr = self.parse_expr()?;
-        self.expect_semi()?;
-        Ok((name, ImplItemKind::Const(typ, expr), Generics::default()))
     }
 
     /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
@@ -857,13 +783,30 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses the items in a trait declaration.
-    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
+    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, AssocItem> {
+        maybe_whole!(self, NtImplItem, |x| x);
+        self.parse_assoc_item(at_end, |_| true)
+    }
+
+    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, AssocItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
+        // This is somewhat dubious; We don't want to allow
+        // param names to be left off if there is a definition...
+        //
+        // We don't allow param names to be left off in edition 2018.
+        self.parse_assoc_item(at_end, |t| t.span.rust_2018())
+    }
+
+    /// Parses associated items.
+    fn parse_assoc_item(
+        &mut self,
+        at_end: &mut bool,
+        is_name_required: fn(&token::Token) -> bool,
+    ) -> PResult<'a, AssocItem> {
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_trait_item_(at_end, attrs);
+            let item = this.parse_assoc_item_(at_end, attrs, is_name_required);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
         })?;
@@ -875,54 +818,66 @@ impl<'a> Parser<'a> {
         Ok(item)
     }
 
-    fn parse_trait_item_(
+    fn parse_assoc_item_(
         &mut self,
         at_end: &mut bool,
         mut attrs: Vec<Attribute>,
-    ) -> PResult<'a, TraitItem> {
+        is_name_required: fn(&token::Token) -> bool,
+    ) -> PResult<'a, AssocItem> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
+        let defaultness = self.parse_defaultness();
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
-            self.parse_trait_item_assoc_ty()?
+            self.parse_assoc_ty()?
         } else if self.is_const_item() {
-            self.parse_trait_item_const()?
-        } else if let Some(mac) = self.parse_assoc_macro_invoc("trait", None, &mut false)? {
-            // trait item macro.
-            (Ident::invalid(), TraitItemKind::Macro(mac), Generics::default())
+            self.parse_assoc_const()?
+        } else if let Some(mac) = self.parse_assoc_macro_invoc("associated", Some(&vis), at_end)? {
+            (Ident::invalid(), AssocItemKind::Macro(mac), Generics::default())
         } else {
-            self.parse_trait_item_method(at_end, &mut attrs)?
+            self.parse_assoc_fn(at_end, &mut attrs, is_name_required)?
         };
 
-        Ok(TraitItem {
+        Ok(AssocItem {
             id: DUMMY_NODE_ID,
+            span: lo.to(self.prev_span),
             ident: name,
             attrs,
             vis,
+            defaultness,
             generics,
             kind,
-            span: lo.to(self.prev_span),
             tokens: None,
         })
     }
 
-    fn parse_trait_item_const(&mut self) -> PResult<'a, (Ident, TraitItemKind, Generics)> {
+    /// Returns `true` if we are looking at `const ID`
+    /// (returns `false` for things like `const fn`, etc.).
+    fn is_const_item(&self) -> bool {
+        self.token.is_keyword(kw::Const) &&
+            !self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe])
+    }
+
+    /// This parses the grammar:
+    ///
+    ///     AssocConst = "const" Ident ":" Ty "=" Expr ";"
+    fn parse_assoc_const(&mut self) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
         self.expect_keyword(kw::Const)?;
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
-        let default = if self.eat(&token::Eq) {
+        let expr = if self.eat(&token::Eq) {
             Some(self.parse_expr()?)
         } else {
             None
         };
         self.expect_semi()?;
-        Ok((ident, TraitItemKind::Const(ty, default), Generics::default()))
+        Ok((ident, AssocItemKind::Const(ty, expr), Generics::default()))
     }
 
     /// Parses the following grammar:
     ///
-    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
-    fn parse_trait_item_assoc_ty(&mut self) -> PResult<'a, (Ident, TraitItemKind, Generics)> {
+    ///     AssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
+    fn parse_assoc_ty(&mut self) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -941,7 +896,7 @@ impl<'a> Parser<'a> {
         };
         self.expect_semi()?;
 
-        Ok((ident, TraitItemKind::Type(bounds, default), generics))
+        Ok((ident, AssocItemKind::TyAlias(bounds, default), generics))
     }
 
     /// Parses a `UseTree`.
@@ -1772,8 +1727,6 @@ impl<'a> Parser<'a> {
 pub(super) struct ParamCfg {
     /// Is `self` is allowed as the first parameter?
     pub is_self_allowed: bool,
-    /// Is `...` allowed as the tail of the parameter list?
-    pub allow_c_variadic: bool,
     /// `is_name_required` decides if, per-parameter,
     /// the parameter must have a pattern or just a type.
     pub is_name_required: fn(&token::Token) -> bool,
@@ -1789,16 +1742,8 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
         header: FnHeader,
     ) -> PResult<'a, Option<P<Item>>> {
-        let is_c_abi = match header.ext {
-            ast::Extern::None => false,
-            ast::Extern::Implicit => true,
-            ast::Extern::Explicit(abi) => abi.symbol_unescaped == sym::C,
-        };
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: false,
-            // FIXME: Parsing should not depend on ABI or unsafety and
-            // the variadic parameter should always be parsed.
-            allow_c_variadic: is_c_abi && header.unsafety == Unsafety::Unsafe,
             is_name_required: |_| true,
         })?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1817,7 +1762,6 @@ impl<'a> Parser<'a> {
         self.expect_keyword(kw::Fn)?;
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: false,
-            allow_c_variadic: true,
             is_name_required: |_| true,
         })?;
         let span = lo.to(self.token.span);
@@ -1833,48 +1777,39 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses a method or a macro invocation in a trait impl.
-    fn parse_impl_method(
-        &mut self,
-        at_end: &mut bool,
-    ) -> PResult<'a, (Ident, Vec<Attribute>, Generics, ImplItemKind)> {
-        let (ident, sig, generics) = self.parse_method_sig(|_| true)?;
-        *at_end = true;
-        let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-        Ok((ident, inner_attrs, generics, ast::ImplItemKind::Method(sig, body)))
-    }
-
-    fn parse_trait_item_method(
+    fn parse_assoc_fn(
         &mut self,
         at_end: &mut bool,
         attrs: &mut Vec<Attribute>,
-    ) -> PResult<'a, (Ident, TraitItemKind, Generics)> {
-        // This is somewhat dubious; We don't want to allow
-        // argument names to be left off if there is a definition...
-        //
-        // We don't allow argument names to be left off in edition 2018.
-        let (ident, sig, generics) = self.parse_method_sig(|t| t.span.rust_2018())?;
-        let body = self.parse_trait_method_body(at_end, attrs)?;
-        Ok((ident, TraitItemKind::Method(sig, body), generics))
+        is_name_required: fn(&token::Token) -> bool,
+    ) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
+        let header = self.parse_fn_front_matter()?;
+        let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
+            is_self_allowed: true,
+            is_name_required,
+        })?;
+        let sig = FnSig { header, decl };
+        let body = self.parse_assoc_fn_body(at_end, attrs)?;
+        Ok((ident, AssocItemKind::Fn(sig, body), generics))
     }
 
-    /// Parse the "body" of a method in a trait item definition.
+    /// Parse the "body" of a method in an associated item definition.
     /// This can either be `;` when there's no body,
     /// or e.g. a block when the method is a provided one.
-    fn parse_trait_method_body(
+    fn parse_assoc_fn_body(
         &mut self,
         at_end: &mut bool,
         attrs: &mut Vec<Attribute>,
     ) -> PResult<'a, Option<P<Block>>> {
         Ok(match self.token.kind {
             token::Semi => {
-                debug!("parse_trait_method_body(): parsing required method");
+                debug!("parse_assoc_fn_body(): parsing required method");
                 self.bump();
                 *at_end = true;
                 None
             }
             token::OpenDelim(token::Brace) => {
-                debug!("parse_trait_method_body(): parsing provided method");
+                debug!("parse_assoc_fn_body(): parsing provided method");
                 *at_end = true;
                 let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
                 attrs.extend(inner_attrs.iter().cloned());
@@ -1893,21 +1828,6 @@ impl<'a> Parser<'a> {
             }
             _ => return self.expected_semi_or_open_brace(),
         })
-    }
-
-    /// Parse the "signature", including the identifier, parameters, and generics
-    /// of a method. The body is not parsed as that differs between `trait`s and `impl`s.
-    fn parse_method_sig(
-        &mut self,
-        is_name_required: fn(&token::Token) -> bool,
-    ) -> PResult<'a, (Ident, FnSig, Generics)> {
-        let header = self.parse_fn_front_matter()?;
-        let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
-            is_self_allowed: true,
-            allow_c_variadic: false,
-            is_name_required,
-        })?;
-        Ok((ident, FnSig { header, decl }, generics))
     }
 
     /// Parses all the "front matter" for a `fn` declaration, up to
@@ -1959,64 +1879,29 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<FnDecl>> {
         Ok(P(FnDecl {
             inputs: self.parse_fn_params(cfg)?,
-            output: self.parse_ret_ty(ret_allow_plus)?,
+            output: self.parse_ret_ty(ret_allow_plus, true)?,
         }))
     }
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
     fn parse_fn_params(&mut self, mut cfg: ParamCfg) -> PResult<'a, Vec<Param>> {
-        let sp = self.token.span;
         let is_trait_item = cfg.is_self_allowed;
-        let mut c_variadic = false;
         // Parse the arguments, starting out with `self` being possibly allowed...
-        let (params, _) = self.parse_paren_comma_seq(|p| {
-            let param = p.parse_param_general(&cfg, is_trait_item);
+        let (mut params, _) = self.parse_paren_comma_seq(|p| {
+            let param = p.parse_param_general(&cfg, is_trait_item).or_else(|mut e| {
+                e.emit();
+                let lo = p.prev_span;
+                // Skip every token until next possible arg or end.
+                p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
+                // Create a placeholder argument for proper arg count (issue #34264).
+                Ok(dummy_arg(Ident::new(kw::Invalid, lo.to(p.prev_span))))
+            });
             // ...now that we've parsed the first argument, `self` is no longer allowed.
             cfg.is_self_allowed = false;
-
-            match param {
-                Ok(param) => Ok(
-                    if let TyKind::CVarArgs = param.ty.kind {
-                        c_variadic = true;
-                        if p.token != token::CloseDelim(token::Paren) {
-                            p.span_err(
-                                p.token.span,
-                                "`...` must be the last argument of a C-variadic function",
-                            );
-                            // FIXME(eddyb) this should probably still push `CVarArgs`.
-                            // Maybe AST validation/HIR lowering should emit the above error?
-                            None
-                        } else {
-                            Some(param)
-                        }
-                    } else {
-                        Some(param)
-                    }
-                ),
-                Err(mut e) => {
-                    e.emit();
-                    let lo = p.prev_span;
-                    // Skip every token until next possible arg or end.
-                    p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
-                    // Create a placeholder argument for proper arg count (issue #34264).
-                    let span = lo.to(p.prev_span);
-                    Ok(Some(dummy_arg(Ident::new(kw::Invalid, span))))
-                }
-            }
+            param
         })?;
-
-        let mut params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
-
         // Replace duplicated recovered params with `_` pattern to avoid unnecessary errors.
         self.deduplicate_recovered_params_names(&mut params);
-
-        if c_variadic && params.len() <= 1 {
-            self.span_err(
-                sp,
-                "C-variadic function must be declared with at least one named argument",
-            );
-        }
-
         Ok(params)
     }
 
@@ -2061,12 +1946,12 @@ impl<'a> Parser<'a> {
             }
 
             self.eat_incorrect_doc_comment_for_param_type();
-            (pat, self.parse_ty_common(true, true, cfg.allow_c_variadic)?)
+            (pat, self.parse_ty_for_param()?)
         } else {
             debug!("parse_param_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
             self.eat_incorrect_doc_comment_for_param_type();
-            let mut ty = self.parse_ty_common(true, true, cfg.allow_c_variadic);
+            let mut ty = self.parse_ty_for_param();
             if ty.is_ok() && self.token != token::Comma &&
                self.token != token::CloseDelim(token::Paren) {
                 // This wasn't actually a type, but a pattern looking like a type,

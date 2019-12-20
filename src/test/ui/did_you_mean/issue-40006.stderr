@@ -1,4 +1,4 @@
-error: missing `fn`, `type`, or `const` for impl-item declaration
+error: missing `fn`, `type`, or `const` for associated-item declaration
   --> $DIR/issue-40006.rs:1:13
    |
 LL |   impl dyn A {
@@ -6,7 +6,7 @@ LL |   impl dyn A {
 LL | |     Y
    | |____^ missing `fn`, `type`, or `const`
 
-error: missing `fn`, `type`, or `const` for trait-item declaration
+error: missing `fn`, `type`, or `const` for associated-item declaration
   --> $DIR/issue-40006.rs:7:10
    |
 LL |   trait X {
@@ -14,7 +14,7 @@ LL |   trait X {
 LL | |     X() {}
    | |____^ missing `fn`, `type`, or `const`
 
-error: missing `fn`, `type`, or `const` for trait-item declaration
+error: missing `fn`, `type`, or `const` for associated-item declaration
   --> $DIR/issue-40006.rs:15:10
    |
 LL |   trait A {
@@ -28,7 +28,7 @@ error: expected `[`, found `#`
 LL |     fn xxx() { ### }
    |                 ^ expected `[`
 
-error: missing `fn`, `type`, or `const` for trait-item declaration
+error: missing `fn`, `type`, or `const` for associated-item declaration
   --> $DIR/issue-40006.rs:21:10
    |
 LL |   trait C {
@@ -36,7 +36,7 @@ LL |   trait C {
 LL | |     L = M;
    | |____^ missing `fn`, `type`, or `const`
 
-error: missing `fn`, `type`, or `const` for trait-item declaration
+error: missing `fn`, `type`, or `const` for associated-item declaration
   --> $DIR/issue-40006.rs:24:10
    |
 LL |   trait D {
@@ -50,7 +50,7 @@ error: expected one of `!` or `::`, found `(`
 LL |     ::Y ();
    |         ^ expected one of `!` or `::`
 
-error: missing `fn`, `type`, or `const` for impl-item declaration
+error: missing `fn`, `type`, or `const` for associated-item declaration
   --> $DIR/issue-40006.rs:32:8
    |
 LL |     pub hello_method(&self) {

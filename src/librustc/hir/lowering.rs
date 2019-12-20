@@ -477,11 +477,11 @@ impl<'a> LoweringContext<'a> {
                 });
             }
 
-            fn visit_trait_item(&mut self, item: &'tcx TraitItem) {
+            fn visit_trait_item(&mut self, item: &'tcx AssocItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
 
                 match item.kind {
-                    TraitItemKind::Method(_, None) => {
+                    AssocItemKind::Fn(_, None) => {
                         // Ignore patterns in trait methods without bodies
                         self.with_hir_id_owner(None, |this| {
                             visit::walk_trait_item(this, item)
@@ -493,7 +493,7 @@ impl<'a> LoweringContext<'a> {
                 }
             }
 
-            fn visit_impl_item(&mut self, item: &'tcx ImplItem) {
+            fn visit_impl_item(&mut self, item: &'tcx AssocItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
                 self.with_hir_id_owner(Some(item.id), |this| {
                     visit::walk_impl_item(this, item);
@@ -1211,7 +1211,7 @@ impl<'a> LoweringContext<'a> {
                             let ct = self.with_new_scopes(|this| {
                                 hir::AnonConst {
                                     hir_id: this.lower_node_id(node_id),
-                                    body: this.lower_const_body(&path_expr),
+                                    body: this.lower_const_body(path_expr.span, Some(&path_expr)),
                                 }
                             });
                             return GenericArg::Const(ConstArg {
@@ -1251,6 +1251,14 @@ impl<'a> LoweringContext<'a> {
             self.maybe_lint_bare_trait(t.span, t.id, qself.is_none() && path.is_global());
         }
         ty
+    }
+
+    fn ty(&mut self, span: Span, kind: hir::TyKind) -> hir::Ty {
+        hir::Ty { hir_id: self.next_id(), kind, span }
+    }
+
+    fn ty_tup(&mut self, span: Span, tys: HirVec<hir::Ty>) -> hir::Ty {
+        self.ty(span, hir::TyKind::Tup(tys))
     }
 
     fn lower_ty_direct(&mut self, t: &Ty, mut itctx: ImplTraitContext<'_>) -> hir::Ty {
@@ -1418,7 +1426,13 @@ impl<'a> LoweringContext<'a> {
                 }
             }
             TyKind::Mac(_) => bug!("`TyKind::Mac` should have been expanded by now"),
-            TyKind::CVarArgs => bug!("`TyKind::CVarArgs` should have been handled elsewhere"),
+            TyKind::CVarArgs => {
+                self.sess.delay_span_bug(
+                    t.span,
+                    "`TyKind::CVarArgs` should have been handled elsewhere",
+                );
+                hir::TyKind::Err
+            }
         };
 
         hir::Ty {
@@ -2084,32 +2098,19 @@ impl<'a> LoweringContext<'a> {
                     .iter()
                     .map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed()))
                     .collect();
-                let mk_tup = |this: &mut Self, tys, span| {
-                    hir::Ty { kind: hir::TyKind::Tup(tys), hir_id: this.next_id(), span }
+                let output_ty = match output {
+                    FunctionRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
+                    FunctionRetTy::Default(_) => P(this.ty_tup(span, hir::HirVec::new())),
+                };
+                let args = hir_vec![GenericArg::Type(this.ty_tup(span, inputs))];
+                let binding = hir::TypeBinding {
+                    hir_id: this.next_id(),
+                    ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
+                    span: output_ty.span,
+                    kind: hir::TypeBindingKind::Equality { ty: output_ty },
                 };
                 (
-                    hir::GenericArgs {
-                        args: hir_vec![GenericArg::Type(mk_tup(this, inputs, span))],
-                        bindings: hir_vec![
-                            hir::TypeBinding {
-                                hir_id: this.next_id(),
-                                ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
-                                kind: hir::TypeBindingKind::Equality {
-                                    ty: output
-                                        .as_ref()
-                                        .map(|ty| this.lower_ty(
-                                            &ty,
-                                            ImplTraitContext::disallowed()
-                                        ))
-                                        .unwrap_or_else(||
-                                            P(mk_tup(this, hir::HirVec::new(), span))
-                                        ),
-                                },
-                                span: output.as_ref().map_or(span, |ty| ty.span),
-                            }
-                        ],
-                        parenthesized: true,
-                    },
+                    hir::GenericArgs { args, bindings: hir_vec![binding], parenthesized: true },
                     false,
                 )
             }
@@ -2474,17 +2475,13 @@ impl<'a> LoweringContext<'a> {
             })
         );
 
-        // Create the `Foo<...>` refernece itself. Note that the `type
+        // Create the `Foo<...>` reference itself. Note that the `type
         // Foo = impl Trait` is, internally, created as a child of the
         // async fn, so the *type parameters* are inherited.  It's
         // only the lifetime parameters that we must supply.
         let opaque_ty_ref = hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, generic_args.into());
-
-        hir::FunctionRetTy::Return(P(hir::Ty {
-            kind: opaque_ty_ref,
-            span: opaque_ty_span,
-            hir_id: self.next_id(),
-        }))
+        let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
+        hir::FunctionRetTy::Return(P(opaque_ty))
     }
 
     /// Transforms `-> T` into `Future<Output = T>`
@@ -2496,16 +2493,8 @@ impl<'a> LoweringContext<'a> {
     ) -> hir::GenericBound {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
-            FunctionRetTy::Ty(ty) => {
-                self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(fn_def_id)))
-            }
-            FunctionRetTy::Default(ret_ty_span) => {
-                P(hir::Ty {
-                    hir_id: self.next_id(),
-                    kind: hir::TyKind::Tup(hir_vec![]),
-                    span: *ret_ty_span,
-                })
-            }
+            FunctionRetTy::Ty(ty) => self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(fn_def_id))),
+            FunctionRetTy::Default(ret_ty_span) => P(self.ty_tup(*ret_ty_span, hir_vec![])),
         };
 
         // "<Output = T>"
@@ -3017,7 +3006,7 @@ impl<'a> LoweringContext<'a> {
         self.with_new_scopes(|this| {
             hir::AnonConst {
                 hir_id: this.lower_node_id(c.id),
-                body: this.lower_const_body(&c.value),
+                body: this.lower_const_body(c.value.span, Some(&c.value)),
             }
         })
     }

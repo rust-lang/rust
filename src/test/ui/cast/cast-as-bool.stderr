@@ -10,12 +10,13 @@ error[E0054]: cannot cast as `bool`
 LL |     let t = (1 + 2) as bool;
    |             ^^^^^^^^^^^^^^^ help: compare with zero instead: `(1 + 2) != 0`
 
-error[E0054]: cannot cast as `bool`
+error[E0606]: casting `&'static str` as `bool` is invalid
   --> $DIR/cast-as-bool.rs:8:13
    |
 LL |     let v = "hello" as bool;
-   |             ^^^^^^^^^^^^^^^ unsupported cast
+   |             ^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0054`.
+Some errors have detailed explanations: E0054, E0606.
+For more information about an error, try `rustc --explain E0054`.

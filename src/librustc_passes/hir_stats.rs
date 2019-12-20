@@ -314,12 +314,12 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_fn(self, fk, fd, s)
     }
 
-    fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'v ast::AssocItem) {
         self.record("TraitItem", Id::None, ti);
         ast_visit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'v ast::AssocItem) {
         self.record("ImplItem", Id::None, ii);
         ast_visit::walk_impl_item(self, ii)
     }

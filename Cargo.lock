@@ -726,16 +726,6 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-deque"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05e44b8cf3e1a625844d1750e1f7820da46044ff6d28f4d43e455ba3e5bb2c13"
-dependencies = [
- "crossbeam-epoch",
- "crossbeam-utils 0.6.5",
-]
-
-[[package]]
-name = "crossbeam-deque"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b18cd2e169ad86297e6bc0ad9aa679aee9daa4f19e8163860faf7c164e4f5a71"
@@ -755,7 +745,7 @@ dependencies = [
  "crossbeam-utils 0.6.5",
  "lazy_static 1.3.0",
  "memoffset",
- "scopeguard 1.0.0",
+ "scopeguard",
 ]
 
 [[package]]
@@ -1407,7 +1397,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3753954f7bd71f0e671afb8b5a992d1724cf43b7f95a563cd4a0bde94659ca8"
 dependencies = [
- "scopeguard 1.0.0",
+ "scopeguard",
  "winapi 0.3.8",
 ]
 
@@ -1726,7 +1716,7 @@ dependencies = [
  "jsonrpc-server-utils",
  "log",
  "parity-tokio-ipc",
- "parking_lot 0.9.0",
+ "parking_lot",
  "tokio-service",
 ]
 
@@ -1738,7 +1728,7 @@ checksum = "e2c08b444cc0ed70263798834343d0ac875e664257df8079160f23ac1ea79446"
 dependencies = [
  "jsonrpc-core",
  "log",
- "parking_lot 0.9.0",
+ "parking_lot",
  "serde",
 ]
 
@@ -1852,21 +1842,11 @@ version = "0.1.0"
 
 [[package]]
 name = "lock_api"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "949826a5ccf18c1b3a7c3d57692778d21768b79e46eb9dd07bfc4c2160036c54"
-dependencies = [
- "owning_ref",
- "scopeguard 0.3.3",
-]
-
-[[package]]
-name = "lock_api"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8912e782533a93a167888781b836336a6ca5da6175c05944c86cf28c31104dc"
 dependencies = [
- "scopeguard 1.0.0",
+ "scopeguard",
 ]
 
 [[package]]
@@ -2027,7 +2007,7 @@ checksum = "c420bbc064623934620b5ab2dc0cf96451b34163329e82f95e7fa1b7b99a6ac8"
 dependencies = [
  "byteorder",
  "memmap",
- "parking_lot 0.9.0",
+ "parking_lot",
  "rustc-hash",
 ]
 
@@ -2321,15 +2301,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd20eec3dbe4376829cb7d80ae6ac45e0a766831dca50202ff2d40db46a8a024"
 
 [[package]]
-name = "owning_ref"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdf84f41639e037b484f93433aa3897863b561ed65c6e59c7073d7c561710f37"
-dependencies = [
- "stable_deref_trait",
-]
-
-[[package]]
 name = "packed_simd"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2379,36 +2350,13 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab41b4aed082705d1056416ae4468b6ea99d52599ecf3169b00088d43113e337"
-dependencies = [
- "lock_api 0.1.3",
- "parking_lot_core 0.4.0",
-]
-
-[[package]]
-name = "parking_lot"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f842b1982eb6c2fe34036a4fbfb06dd185a3f5c8edfaacdf7d1ea10b07de6252"
 dependencies = [
- "lock_api 0.3.1",
- "parking_lot_core 0.6.2",
+ "lock_api",
+ "parking_lot_core",
  "rustc_version",
-]
-
-[[package]]
-name = "parking_lot_core"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94c8c7923936b28d546dfd14d4472eaf34c99b14e1c973a32b3e6d4eb04298c9"
-dependencies = [
- "libc",
- "rand 0.6.1",
- "rustc_version",
- "smallvec 0.6.10",
- "winapi 0.3.8",
 ]
 
 [[package]]
@@ -2879,7 +2827,7 @@ version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83a27732a533a1be0a0035a111fe76db89ad312f6f0347004c220c57f209a123"
 dependencies = [
- "crossbeam-deque 0.7.1",
+ "crossbeam-deque",
  "either",
  "rayon-core",
 ]
@@ -2890,7 +2838,7 @@ version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98dcf634205083b17d0861252431eb2acbfb698ab7478a2d20de07954f47ec7b"
 dependencies = [
- "crossbeam-deque 0.7.1",
+ "crossbeam-deque",
  "crossbeam-queue",
  "crossbeam-utils 0.6.5",
  "lazy_static 1.3.0",
@@ -3155,7 +3103,7 @@ dependencies = [
  "log",
  "measureme",
  "num_cpus",
- "parking_lot 0.9.0",
+ "parking_lot",
  "polonius-engine",
  "rustc-rayon",
  "rustc-rayon-core",
@@ -3205,7 +3153,7 @@ dependencies = [
  "jobserver",
  "lazy_static 1.3.0",
  "log",
- "parking_lot 0.9.0",
+ "parking_lot",
  "rustc-ap-graphviz",
  "rustc-ap-rustc_index",
  "rustc-ap-serialize",
@@ -3360,7 +3308,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f32767f90d938f1b7199a174ef249ae1924f6e5bbdb9d112fea141e016f25b3a"
 dependencies = [
- "crossbeam-deque 0.7.1",
+ "crossbeam-deque",
  "either",
  "rustc-rayon-core",
 ]
@@ -3371,7 +3319,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea2427831f0053ea3ea73559c8eabd893133a51b251d142bacee53c62a288cb3"
 dependencies = [
- "crossbeam-deque 0.7.1",
+ "crossbeam-deque",
  "crossbeam-queue",
  "crossbeam-utils 0.6.5",
  "lazy_static 1.3.0",
@@ -3515,7 +3463,7 @@ dependencies = [
  "lazy_static 1.3.0",
  "log",
  "measureme",
- "parking_lot 0.9.0",
+ "parking_lot",
  "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
@@ -4053,12 +4001,6 @@ name = "scoped_threadpool"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d51f5df5af43ab3f1360b429fa5e0152ac5ce8c0bd6485cae490332e96846a8"
-
-[[package]]
-name = "scopeguard"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94258f53601af11e6a49f722422f6e3425c52b06245a5cf9bc09908b174f5e27"
 
 [[package]]
 name = "scopeguard"
@@ -4655,9 +4597,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "0.1.14"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4790d0be6f4ba6ae4f48190efa2ed7780c9e3567796abdb285003cf39840d9c5"
+checksum = "5a09c0b5bb588872ab2f09afa13ee6e9dac11e10a0ec9e8e3ba39a5a5d530af6"
 dependencies = [
  "bytes",
  "futures",
@@ -4669,6 +4611,7 @@ dependencies = [
  "tokio-fs",
  "tokio-io",
  "tokio-reactor",
+ "tokio-sync",
  "tokio-tcp",
  "tokio-threadpool",
  "tokio-timer",
@@ -4700,9 +4643,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-current-thread"
-version = "0.1.4"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "331c8acc267855ec06eb0c94618dcbbfea45bed2d20b77252940095273fb58f6"
+checksum = "d16217cad7f1b840c5a97dfb3c43b0c871fef423a6e8d2118c604e843662a443"
 dependencies = [
  "futures",
  "tokio-executor",
@@ -4710,9 +4653,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-executor"
-version = "0.1.6"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30c6dbf2d1ad1de300b393910e8a3aa272b724a400b6531da03eed99e329fbf0"
+checksum = "ca6df436c42b0c3330a82d855d2ef017cd793090ad550a6bc2184f4b933532ab"
 dependencies = [
  "crossbeam-utils 0.6.5",
  "futures",
@@ -4720,9 +4663,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-fs"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e9cbbc8a3698b7ab652340f46633364f9eaa928ddaaee79d8b8f356dd79a09d"
+checksum = "3fe6dc22b08d6993916647d108a1a7d15b9cd29c4f4496c62b92c45b5041b7af"
 dependencies = [
  "futures",
  "tokio-io",
@@ -4731,9 +4674,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-io"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b53aeb9d3f5ccf2ebb29e19788f96987fa1355f8fe45ea193928eaaaf3ae820f"
+checksum = "5090db468dad16e1a7a54c8c67280c5e4b544f3d3e018f0b913b400261f85926"
 dependencies = [
  "bytes",
  "futures",
@@ -4755,12 +4698,15 @@ dependencies = [
 
 [[package]]
 name = "tokio-process"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88e1281e412013f1ff5787def044a9577a0bed059f451e835f1643201f8b777d"
+checksum = "afbd6ef1b8cc2bd2c2b580d882774d443ebb1c6ceefe35ba9ea4ab586c89dbe8"
 dependencies = [
+ "crossbeam-queue",
  "futures",
+ "lazy_static 1.3.0",
  "libc",
+ "log",
  "mio",
  "mio-named-pipes",
  "tokio-io",
@@ -4771,9 +4717,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-reactor"
-version = "0.1.8"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afbcdb0f0d2a1e4c440af82d7bbf0bf91a8a8c0575bcd20c05d15be7e9d3a02f"
+checksum = "6732fe6b53c8d11178dcb77ac6d9682af27fc6d4cb87789449152e5377377146"
 dependencies = [
  "crossbeam-utils 0.6.5",
  "futures",
@@ -4781,10 +4727,11 @@ dependencies = [
  "log",
  "mio",
  "num_cpus",
- "parking_lot 0.7.1",
+ "parking_lot",
  "slab",
  "tokio-executor",
  "tokio-io",
+ "tokio-sync",
 ]
 
 [[package]]
@@ -4814,6 +4761,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-sync"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d06554cce1ae4a50f42fba8023918afa931413aded705b560e29600ccf7c6d76"
+dependencies = [
+ "fnv",
+ "futures",
+]
+
+[[package]]
 name = "tokio-tcp"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4829,25 +4786,26 @@ dependencies = [
 
 [[package]]
 name = "tokio-threadpool"
-version = "0.1.10"
+version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17465013014410310f9f61fa10bf4724803c149ea1d51efece131c38efca93aa"
+checksum = "f0c32ffea4827978e9aa392d2f743d973c1dfa3730a2ed3f22ce1e6984da848c"
 dependencies = [
- "crossbeam-channel",
- "crossbeam-deque 0.6.3",
+ "crossbeam-deque",
+ "crossbeam-queue",
  "crossbeam-utils 0.6.5",
  "futures",
+ "lazy_static 1.3.0",
  "log",
  "num_cpus",
- "rand 0.6.1",
+ "slab",
  "tokio-executor",
 ]
 
 [[package]]
 name = "tokio-timer"
-version = "0.2.8"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f37f0111d76cc5da132fe9bc0590b9b9cfd079bc7e75ac3846278430a299ff8"
+checksum = "1739638e364e558128461fc1ad84d997702c8e31c2e6b18fb99842268199e827"
 dependencies = [
  "crossbeam-utils 0.6.5",
  "futures",
@@ -4857,9 +4815,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-udp"
-version = "0.1.3"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66268575b80f4a4a710ef83d087fdfeeabdce9b74c797535fbac18a2cb906e92"
+checksum = "f02298505547f73e60f568359ef0d016d5acd6e830ab9bc7c4a5b3403440121b"
 dependencies = [
  "bytes",
  "futures",

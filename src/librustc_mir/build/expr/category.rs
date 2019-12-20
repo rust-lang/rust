@@ -49,6 +49,7 @@ impl Category {
             | ExprKind::Use { .. }
             | ExprKind::Adt { .. }
             | ExprKind::Borrow { .. }
+            | ExprKind::AddressOf { .. }
             | ExprKind::Call { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
 
             ExprKind::Array { .. }

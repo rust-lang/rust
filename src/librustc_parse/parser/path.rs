@@ -182,11 +182,7 @@ impl<'a> Parser<'a> {
                 // `(T, U) -> R`
                 let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
                 let span = ident.span.to(self.prev_span);
-                let output = if self.eat(&token::RArrow) {
-                    Some(self.parse_ty_common(false, false, false)?)
-                } else {
-                    None
-                };
+                let output = self.parse_ret_ty(false, false)?;
                 ParenthesizedArgs { inputs, output, span }.into()
             };
 

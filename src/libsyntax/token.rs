@@ -685,8 +685,8 @@ pub enum Nonterminal {
     // Used only for passing items to proc macro attributes (they are not
     // strictly necessary for that, `Annotatable` can be converted into
     // tokens directly, but doing that naively regresses pretty-printing).
-    NtTraitItem(ast::TraitItem),
-    NtImplItem(ast::ImplItem),
+    NtTraitItem(ast::AssocItem),
+    NtImplItem(ast::AssocItem),
     NtForeignItem(ast::ForeignItem),
 }
 
