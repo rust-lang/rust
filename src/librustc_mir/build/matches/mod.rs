@@ -259,11 +259,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             scrutinee_span,
                             match_scope,
                         );
-                        this.cfg.terminate(
-                            binding_end,
-                            source_info,
-                            TerminatorKind::Goto { target: arm_block },
-                        );
+                        this.cfg.goto(binding_end, source_info, arm_block);
                     }
                 }
 
@@ -279,11 +275,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let end_block = self.cfg.start_new_block();
 
         for arm_block in arm_end_blocks {
-            self.cfg.terminate(
-                unpack!(arm_block),
-                outer_source_info,
-                TerminatorKind::Goto { target: end_block },
-            );
+            self.cfg.goto(unpack!(arm_block), outer_source_info, end_block);
         }
 
         self.source_scope = outer_source_info.scope;
@@ -848,18 +840,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // never reach this point.
         if unmatched_candidates.is_empty() {
             let source_info = self.source_info(span);
-            if let Some(otherwise) = otherwise_block {
-                self.cfg.terminate(
-                    block,
-                    source_info,
-                    TerminatorKind::Goto { target: otherwise },
-                );
-            } else {
-                self.cfg.terminate(
-                    block,
-                    source_info,
-                    TerminatorKind::Unreachable,
-                )
+            match otherwise_block {
+                Some(otherwise) => self.cfg.goto(block, source_info, otherwise),
+                None => self.cfg.terminate(block, source_info, TerminatorKind::Unreachable),
             }
             return;
         }
@@ -950,11 +933,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // `goto -> first_prebinding_block` from the `start_block` if there is one.
         if let Some(start_block) = *start_block {
             let source_info = self.source_info(first_candidate.span);
-            self.cfg.terminate(
-                start_block,
-                source_info,
-                TerminatorKind::Goto { target: first_prebinding_block },
-            );
+            self.cfg.goto(start_block, source_info, first_prebinding_block);
         } else {
             *start_block = Some(first_prebinding_block);
         }
@@ -988,8 +967,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let last_candidate = reachable_candidates.last().unwrap();
 
+        let last_candidate = reachable_candidates.last().unwrap();
         if let Some(otherwise) = last_candidate.otherwise_block {
             let source_info = self.source_info(last_candidate.span);
             let block = self.cfg.start_new_block();
