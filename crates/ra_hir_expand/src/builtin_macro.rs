@@ -108,7 +108,7 @@ fn stringify_expand(
 
     let macro_content = {
         let arg = loc.kind.arg(db).ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
-        let macro_args = arg.clone();
+        let macro_args = arg;
         let text = macro_args.text();
         let without_parens = TextUnit::of_char('(')..text.len() - TextUnit::of_char(')');
         text.slice(without_parens).to_string()

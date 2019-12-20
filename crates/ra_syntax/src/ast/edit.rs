@@ -104,7 +104,7 @@ impl ast::ItemList {
             }
         };
 
-        let indent = leading_indent(self.syntax()).unwrap_or("".into());
+        let indent = leading_indent(self.syntax()).unwrap_or_default();
         let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
         let to_insert = iter::once(ws.ws().into());
         match existing_ws {
@@ -133,7 +133,7 @@ impl ast::RecordFieldList {
         let space = if is_multiline {
             ws = tokens::WsBuilder::new(&format!(
                 "\n{}    ",
-                leading_indent(self.syntax()).unwrap_or("".into())
+                leading_indent(self.syntax()).unwrap_or_default()
             ));
             ws.ws()
         } else {
