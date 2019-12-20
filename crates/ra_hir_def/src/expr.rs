@@ -143,6 +143,7 @@ pub enum Expr {
     Lambda {
         args: Vec<PatId>,
         arg_types: Vec<Option<TypeRef>>,
+        ret_type: Option<TypeRef>,
         body: ExprId,
     },
     Tuple {

@@ -1606,3 +1606,58 @@ fn main() {
     );
     assert_eq!(t, "u32");
 }
+
+#[test]
+fn closure_return() {
+    assert_snapshot!(
+        infer(r#"
+fn foo() -> u32 {
+    let x = || -> usize { return 1; };
+}
+"#),
+        @r###"
+    [17; 59) '{     ...; }; }': ()
+    [27; 28) 'x': || -> usize
+    [31; 56) '|| -> ...n 1; }': || -> usize
+    [43; 56) '{ return 1; }': !
+    [45; 53) 'return 1': !
+    [52; 53) '1': usize
+    "###
+    );
+}
+
+#[test]
+fn closure_return_unit() {
+    assert_snapshot!(
+        infer(r#"
+fn foo() -> u32 {
+    let x = || { return; };
+}
+"#),
+        @r###"
+    [17; 48) '{     ...; }; }': ()
+    [27; 28) 'x': || -> ()
+    [31; 45) '|| { return; }': || -> ()
+    [34; 45) '{ return; }': !
+    [36; 42) 'return': !
+    "###
+    );
+}
+
+#[test]
+fn closure_return_inferred() {
+    assert_snapshot!(
+        infer(r#"
+fn foo() -> u32 {
+    let x = || { "test" };
+}
+"#),
+        @r###"
+    [17; 47) '{     ..." }; }': ()
+    [27; 28) 'x': || -> &str
+    [31; 44) '|| { "test" }': || -> &str
+    [34; 44) '{ "test" }': &str
+    [36; 42) '"test"': &str
+    "###
+    );
+}

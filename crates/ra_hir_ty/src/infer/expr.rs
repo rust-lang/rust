@@ -102,7 +102,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
-            Expr::Lambda { body, args, arg_types } => {
+            Expr::Lambda { body, args, ret_type, arg_types } => {
                 assert_eq!(args.len(), arg_types.len());
 
                 let mut sig_tys = Vec::new();
@@ -118,7 +118,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 // add return type
-                let ret_ty = self.table.new_type_var();
+                let ret_ty = match ret_type {
+                    Some(type_ref) => self.make_ty(type_ref),
+                    None => self.table.new_type_var(),
+                };
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = Ty::apply(
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
@@ -134,7 +137,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // infer the body.
                 self.coerce(&closure_ty, &expected.ty);
 
-                self.infer_expr(*body, &Expectation::has_type(ret_ty));
+                let prev_ret_ty = std::mem::replace(&mut self.return_ty, ret_ty.clone());
+
+                self.infer_expr_coerce(*body, &Expectation::has_type(ret_ty));
+
+                self.return_ty = prev_ret_ty;
+
                 closure_ty
             }
             Expr::Call { callee, args } => {
@@ -192,6 +200,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Return { expr } => {
                 if let Some(expr) = expr {
                     self.infer_expr_coerce(*expr, &Expectation::has_type(self.return_ty.clone()));
+                } else {
+                    let unit = Ty::unit();
+                    self.coerce(&unit, &self.return_ty.clone());
                 }
                 Ty::simple(TypeCtor::Never)
             }

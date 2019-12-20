@@ -1426,6 +1426,9 @@ impl LambdaExpr {
     pub fn param_list(&self) -> Option<ParamList> {
         AstChildren::new(&self.syntax).next()
     }
+    pub fn ret_type(&self) -> Option<RetType> {
+        AstChildren::new(&self.syntax).next()
+    }
     pub fn body(&self) -> Option<Expr> {
         AstChildren::new(&self.syntax).next()
     }

@@ -372,8 +372,9 @@ where
                         arg_types.push(type_ref);
                     }
                 }
+                let ret_type = e.ret_type().and_then(|r| r.type_ref()).map(TypeRef::from_ast);
                 let body = self.collect_expr_opt(e.body());
-                self.alloc_expr(Expr::Lambda { args, arg_types, body }, syntax_ptr)
+                self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
             }
             ast::Expr::BinExpr(e) => {
                 let lhs = self.collect_expr_opt(e.lhs());

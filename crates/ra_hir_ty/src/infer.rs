@@ -196,7 +196,12 @@ struct InferenceContext<'a, D: HirDatabase> {
     trait_env: Arc<TraitEnvironment>,
     obligations: Vec<Obligation>,
     result: InferenceResult,
-    /// The return type of the function being inferred.
+    /// The return type of the function being inferred, or the closure if we're
+    /// currently within one.
+    ///
+    /// We might consider using a nested inference context for checking
+    /// closures, but currently this is the only field that will change there,
+    /// so it doesn't make sense.
     return_ty: Ty,
 
     /// Impls of `CoerceUnsized` used in coercion.
