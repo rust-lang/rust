@@ -635,7 +635,9 @@ where
                         let impl_id =
                             ImplLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                                 .intern(self.def_collector.db);
-                        self.def_collector.def_map.modules[self.module_id].scope.impls.push(impl_id)
+                        self.def_collector.def_map.modules[self.module_id]
+                            .scope
+                            .define_impl(impl_id)
                     }
                 }
             }

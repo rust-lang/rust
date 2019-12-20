@@ -80,9 +80,9 @@ impl ChildBySource for ModuleId {
 
         module_data.scope.declarations().for_each(|item| add_module_def(db, &mut res, item));
 
-        for &impl_ in module_data.scope.impls.iter() {
-            let src = impl_.lookup(db).source(db);
-            res[keys::IMPL].insert(src, impl_)
+        for imp in module_data.scope.impls() {
+            let src = imp.lookup(db).source(db);
+            res[keys::IMPL].insert(src, imp)
         }
 
         res

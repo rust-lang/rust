@@ -10,7 +10,7 @@ use crate::{per_ns::PerNs, BuiltinType, ImplId, LocalImportId, MacroDefId, Modul
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
     items: FxHashMap<Name, Resolution>,
-    pub(crate) impls: Vec<ImplId>,
+    impls: Vec<ImplId>,
     /// Macros visible in current module in legacy textual scope
     ///
     /// For macros invoked by an unqualified identifier like `bar!()`, `legacy_macros` will be searched in first.
@@ -102,6 +102,10 @@ impl ItemScope {
 
     pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<MacroDefId> {
         self.legacy_macros.get(name).copied()
+    }
+
+    pub(crate) fn define_impl(&mut self, imp: ImplId) {
+        self.impls.push(imp)
     }
 
     pub(crate) fn push_res(
