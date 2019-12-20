@@ -651,16 +651,22 @@ pub trait BottomValue {
 
     /// Merges `in_set` into `inout_set`, returning `true` if `inout_set` changed.
     ///
-    /// You usually don't need to override this, since it automatically applies
+    /// It is almost certainly wrong to override this, since it automatically applies
     /// * `inout_set & in_set` if `BOTTOM_VALUE == true`
     /// * `inout_set | in_set` if `BOTTOM_VALUE == false`
     ///
     /// This means that if a bit is not `BOTTOM_VALUE`, it is propagated into all target blocks.
     /// For clarity, the above statement again from a different perspective:
-    /// A block's initial bit value is `!BOTTOM_VALUE` if *any* predecessor block's bit value is
+    /// A bit in the block's entry set is `!BOTTOM_VALUE` if *any* predecessor block's bit value is
     /// `!BOTTOM_VALUE`.
+    ///
     /// There are situations where you want the opposite behaviour: propagate only if *all*
-    /// predecessor blocks's value is `!BOTTOM_VALUE`. In that case you need to
+    /// predecessor blocks's value is `!BOTTOM_VALUE`.
+    /// E.g. if you want to know whether a bit is *definitely* set at a specific location. This
+    /// means that all code paths leading to the location must have set the bit, instead of any
+    /// code path leading there.
+    ///
+    /// If you want this kind of "definitely set" analysis, you need to
     /// 1. Invert `BOTTOM_VALUE`
     /// 2. Reset the `entry_set` in `start_block_effect` to `!BOTTOM_VALUE`
     /// 3. Override `join` to do the opposite from what it's doing now.
