@@ -358,8 +358,8 @@ impl EarlyLintPass for NonExpressiveNames {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &ImplItem) {
-        if let ImplItemKind::Method(ref sig, ref blk) = item.kind {
+    fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &AssocItem) {
+        if let AssocItemKind::Fn(ref sig, Some(ref blk)) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
