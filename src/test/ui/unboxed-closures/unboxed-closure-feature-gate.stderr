@@ -2,7 +2,7 @@ error[E0658]: parenthetical notation is only stable when used with `Fn`-family t
   --> $DIR/unboxed-closure-feature-gate.rs:13:20
    |
 LL |     let x: Box<dyn Foo(isize)>;
-   |                    ^^^^^^^^^^
+   |                    ^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable

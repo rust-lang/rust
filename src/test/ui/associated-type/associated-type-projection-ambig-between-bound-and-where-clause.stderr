@@ -9,6 +9,15 @@ LL |     type Color;
 ...
 LL | fn a<C:Vehicle+Box>(_: C::Color) {
    |                        ^^^^^^^^ ambiguous associated type `Color`
+   |
+help: use fully qualified syntax to disambiguate
+   |
+LL | fn a<C:Vehicle+Box>(_: <C as Box>::Color) {
+   |                        ^^^^^^^^^^^^^^^^^
+help: use fully qualified syntax to disambiguate
+   |
+LL | fn a<C:Vehicle+Box>(_: <C as Vehicle>::Color) {
+   |                        ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:20:12
@@ -21,6 +30,15 @@ LL |     type Color;
 ...
 LL | fn b<C>(_: C::Color) where C : Vehicle+Box {
    |            ^^^^^^^^ ambiguous associated type `Color`
+   |
+help: use fully qualified syntax to disambiguate
+   |
+LL | fn b<C>(_: <C as Box>::Color) where C : Vehicle+Box {
+   |            ^^^^^^^^^^^^^^^^^
+help: use fully qualified syntax to disambiguate
+   |
+LL | fn b<C>(_: <C as Vehicle>::Color) where C : Vehicle+Box {
+   |            ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:24:12
@@ -33,6 +51,15 @@ LL |     type Color;
 ...
 LL | fn c<C>(_: C::Color) where C : Vehicle, C : Box {
    |            ^^^^^^^^ ambiguous associated type `Color`
+   |
+help: use fully qualified syntax to disambiguate
+   |
+LL | fn c<C>(_: <C as Box>::Color) where C : Vehicle, C : Box {
+   |            ^^^^^^^^^^^^^^^^^
+help: use fully qualified syntax to disambiguate
+   |
+LL | fn c<C>(_: <C as Vehicle>::Color) where C : Vehicle, C : Box {
+   |            ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0221]: ambiguous associated type `Color` in bounds of `X`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:35:20
@@ -45,6 +72,15 @@ LL |     type Color;
 ...
 LL |     fn e(&self, _: X::Color) where X : Box;
    |                    ^^^^^^^^ ambiguous associated type `Color`
+   |
+help: use fully qualified syntax to disambiguate
+   |
+LL |     fn e(&self, _: <X as Box>::Color) where X : Box;
+   |                    ^^^^^^^^^^^^^^^^^
+help: use fully qualified syntax to disambiguate
+   |
+LL |     fn e(&self, _: <X as Vehicle>::Color) where X : Box;
+   |                    ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0221]: ambiguous associated type `Color` in bounds of `X`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:38:20
@@ -57,6 +93,15 @@ LL |     type Color;
 ...
 LL |     fn f(&self, _: X::Color) where X : Box { }
    |                    ^^^^^^^^ ambiguous associated type `Color`
+   |
+help: use fully qualified syntax to disambiguate
+   |
+LL |     fn f(&self, _: <X as Box>::Color) where X : Box { }
+   |                    ^^^^^^^^^^^^^^^^^
+help: use fully qualified syntax to disambiguate
+   |
+LL |     fn f(&self, _: <X as Vehicle>::Color) where X : Box { }
+   |                    ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0221]: ambiguous associated type `Color` in bounds of `X`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:30:20
@@ -69,6 +114,15 @@ LL |     type Color;
 ...
 LL |     fn d(&self, _: X::Color) where X : Box { }
    |                    ^^^^^^^^ ambiguous associated type `Color`
+   |
+help: use fully qualified syntax to disambiguate
+   |
+LL |     fn d(&self, _: <X as Box>::Color) where X : Box { }
+   |                    ^^^^^^^^^^^^^^^^^
+help: use fully qualified syntax to disambiguate
+   |
+LL |     fn d(&self, _: <X as Vehicle>::Color) where X : Box { }
+   |                    ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

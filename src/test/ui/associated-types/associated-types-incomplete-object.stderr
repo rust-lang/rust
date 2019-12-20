@@ -1,23 +1,23 @@
-error[E0191]: the value of the associated type `B` (from the trait `Foo`) must be specified
-  --> $DIR/associated-types-incomplete-object.rs:23:26
+error[E0191]: the value of the associated type `B` (from trait `Foo`) must be specified
+  --> $DIR/associated-types-incomplete-object.rs:23:30
    |
 LL |     type B;
    |     ------- `B` defined here
 ...
 LL |     let b = &42isize as &dyn Foo<A=usize>;
-   |                          ^^^^^^^^^^^^^^^^ associated type `B` must be specified
+   |                              ^^^^^^^^^^^^ help: specify the associated type: `Foo<A=usize, B = Type>`
 
-error[E0191]: the value of the associated type `A` (from the trait `Foo`) must be specified
-  --> $DIR/associated-types-incomplete-object.rs:26:26
+error[E0191]: the value of the associated type `A` (from trait `Foo`) must be specified
+  --> $DIR/associated-types-incomplete-object.rs:26:30
    |
 LL |     type A;
    |     ------- `A` defined here
 ...
 LL |     let c = &42isize as &dyn Foo<B=char>;
-   |                          ^^^^^^^^^^^^^^^ associated type `A` must be specified
+   |                              ^^^^^^^^^^^ help: specify the associated type: `Foo<B=char, A = Type>`
 
-error[E0191]: the value of the associated types `A` (from the trait `Foo`), `B` (from the trait `Foo`) must be specified
-  --> $DIR/associated-types-incomplete-object.rs:29:26
+error[E0191]: the value of the associated types `A` (from trait `Foo`), `B` (from trait `Foo`) must be specified
+  --> $DIR/associated-types-incomplete-object.rs:29:30
    |
 LL |     type A;
    |     ------- `A` defined here
@@ -25,10 +25,7 @@ LL |     type B;
    |     ------- `B` defined here
 ...
 LL |     let d = &42isize as &dyn Foo;
-   |                          ^^^^^^^
-   |                          |
-   |                          associated type `A` must be specified
-   |                          associated type `B` must be specified
+   |                              ^^^ help: specify the associated types: `Foo<A = Type, B = Type>`
 
 error: aborting due to 3 previous errors
 

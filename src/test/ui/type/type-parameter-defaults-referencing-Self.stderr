@@ -1,8 +1,13 @@
 error[E0393]: the type parameter `T` must be explicitly specified
   --> $DIR/type-parameter-defaults-referencing-Self.rs:10:16
    |
-LL | fn foo(x: &dyn Foo) { }
-   |                ^^^ missing reference to `T`
+LL | / trait Foo<T=Self> {
+LL | |     fn method(&self);
+LL | | }
+   | |_- type parameter `T` must be specified for this
+LL | 
+LL |   fn foo(x: &dyn Foo) { }
+   |                  ^^^ help: set the type parameter to the desired type: `Foo<T>`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 

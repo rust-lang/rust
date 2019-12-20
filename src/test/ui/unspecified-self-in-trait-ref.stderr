@@ -25,8 +25,13 @@ LL |     let d = Bar::<usize, _>::lol();
 error[E0393]: the type parameter `A` must be explicitly specified
   --> $DIR/unspecified-self-in-trait-ref.rs:18:13
    |
-LL |     let e = Bar::<usize>::lol();
-   |             ^^^^^^^^^^^^^^^^^ missing reference to `A`
+LL | / pub trait Bar<X=usize, A=Self> {
+LL | |     fn foo(&self);
+LL | | }
+   | |_- type parameter `A` must be specified for this
+...
+LL |       let e = Bar::<usize>::lol();
+   |               ^^^ missing reference to `A`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 

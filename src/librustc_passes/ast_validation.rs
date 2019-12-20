@@ -736,9 +736,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {
-                self.err_handler()
-                    .span_err(predicate.span, "equality constraints are not yet \
-                                               supported in where clauses (see #20041)");
+                self.err_handler().struct_span_err(
+                    predicate.span,
+                    "equality constraints are not yet supported in where clauses",
+                )
+                    .span_label(predicate.span, "not supported")
+                    .note("for more information, see #20041")
+                    .emit();
             }
         }
 
