@@ -30,14 +30,6 @@ pub fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, SsaKind
                 _ => {}
             }
         }
-
-        match &bb.terminator().kind {
-            TerminatorKind::Call {
-                destination: Some((place, _)),
-                ..
-            } => analyze_non_ssa_place(&mut flag_map, place),
-            _ => {}
-        }
     }
 
     flag_map
