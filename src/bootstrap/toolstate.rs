@@ -413,7 +413,7 @@ fn change_toolstate(
     let history_path = format!("rust-toolstate/history/{}.tsv", OS.expect("linux/windows only"));
     let mut file = t!(fs::read_to_string(&history_path));
     let end_of_first_line = file.find('\n').unwrap();
-    file.insert_str(end_of_first_line, &format!("\n{}\t{}", commit, toolstate_serialized));
+    file.insert_str(end_of_first_line, &format!("\n{}\t{}", commit.trim(), toolstate_serialized));
     t!(fs::write(&history_path, file));
 }
 
