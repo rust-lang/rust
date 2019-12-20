@@ -9,13 +9,19 @@ note: candidate #1 is defined in an impl of the trait `Trait1` for the type `Tes
    |
 LL |     fn foo() {}
    |     ^^^^^^^^
-   = help: to disambiguate the method call, write `Trait1::foo(...)` instead
 note: candidate #2 is defined in an impl of the trait `Trait2` for the type `Test`
   --> $DIR/E0034.rs:16:5
    |
 LL |     fn foo() {}
    |     ^^^^^^^^
-   = help: to disambiguate the method call, write `Trait2::foo(...)` instead
+help: disambiguate the method call for candidate #1
+   |
+LL |     Trait1::foo()
+   |     ^^^^^^^^^^^
+help: disambiguate the method call for candidate #2
+   |
+LL |     Trait2::foo()
+   |     ^^^^^^^^^^^
 
 error: aborting due to previous error
 
