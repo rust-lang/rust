@@ -9,8 +9,8 @@ This chapter is based on the explanation given by Niko Matsakis in this
 
 ## What is Salsa?
 
-Salsa is a library for incremental recomputation, this means reusing
-computation that has already been done in the past to increase the efficiency
+Salsa is a library for incremental recomputation. This means it allows reusing
+computations that were already done in the past to increase the efficiency
 of future computations.
 
 The objectives of Salsa are:
