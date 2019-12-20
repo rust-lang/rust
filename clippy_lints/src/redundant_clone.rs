@@ -33,7 +33,7 @@ macro_rules! unwrap_or_continue {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for a redudant `clone()` (and its relatives) which clones an owned
+    /// **What it does:** Checks for a redundant `clone()` (and its relatives) which clones an owned
     /// value that is going to be dropped without further use.
     ///
     /// **Why is this bad?** It is not always possible for the compiler to eliminate useless
