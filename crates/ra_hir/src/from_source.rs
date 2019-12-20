@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! Finds a corresponding hir data structure for a syntax node in a specific
+//! file.
+
 use hir_def::{
     child_by_source::ChildBySource, dyn_map::DynMap, keys, keys::Key, nameres::ModuleSource,
     ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId,
@@ -11,14 +13,14 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::{AstDatabase, DefDatabase, HirDatabase},
+    db::{DefDatabase, HirDatabase},
     Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, ImplBlock, InFile, Local,
     MacroDef, Module, Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
 };
 
 pub trait FromSource: Sized {
     type Ast;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self>;
+    fn from_source(db: &impl DefDatabase, src: InFile<Self::Ast>) -> Option<Self>;
 }
 
 pub trait FromSourceByContainer: Sized {
@@ -32,7 +34,7 @@ where
     T: From<<T as FromSourceByContainer>::Id>,
 {
     type Ast = <T as FromSourceByContainer>::Ast;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &impl DefDatabase, src: InFile<Self::Ast>) -> Option<Self> {
         analyze_container(db, src.as_ref().map(|it| it.syntax()))[T::KEY]
             .get(&src)
             .copied()
@@ -64,7 +66,7 @@ from_source_by_container_impls![
 
 impl FromSource for MacroDef {
     type Ast = ast::MacroCall;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &impl DefDatabase, src: InFile<Self::Ast>) -> Option<Self> {
         let kind = MacroDefKind::Declarative;
 
         let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
@@ -80,7 +82,7 @@ impl FromSource for MacroDef {
 
 impl FromSource for EnumVariant {
     type Ast = ast::EnumVariant;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &impl DefDatabase, src: InFile<Self::Ast>) -> Option<Self> {
         let parent_enum = src.value.parent_enum();
         let src_enum = InFile { file_id: src.file_id, value: parent_enum };
         let parent_enum = Enum::from_source(db, src_enum)?;
@@ -93,7 +95,7 @@ impl FromSource for EnumVariant {
 
 impl FromSource for StructField {
     type Ast = FieldSource;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &impl DefDatabase, src: InFile<Self::Ast>) -> Option<Self> {
         let src = src.as_ref();
 
         // FIXME this is buggy

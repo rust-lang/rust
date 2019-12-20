@@ -134,21 +134,22 @@ pub(crate) fn classify_name_ref(
     let analyzer = SourceAnalyzer::new(db, name_ref.map(|it| it.syntax()), None);
 
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
-        tested_by!(goto_definition_works_for_methods);
+        tested_by!(goto_def_for_methods);
         if let Some(func) = analyzer.resolve_method_call(&method_call) {
             return Some(from_assoc_item(db, func.into()));
         }
     }
 
     if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
-        tested_by!(goto_definition_works_for_fields);
+        tested_by!(goto_def_for_fields);
         if let Some(field) = analyzer.resolve_field(&field_expr) {
             return Some(from_struct_field(db, field));
         }
     }
 
     if let Some(record_field) = ast::RecordField::cast(parent.clone()) {
-        tested_by!(goto_definition_works_for_record_fields);
+        tested_by!(goto_def_for_record_fields);
+        tested_by!(goto_def_for_field_init_shorthand);
         if let Some(field_def) = analyzer.resolve_record_field(&record_field) {
             return Some(from_struct_field(db, field_def));
         }
@@ -160,7 +161,7 @@ pub(crate) fn classify_name_ref(
     let visibility = None;
 
     if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
-        tested_by!(goto_definition_works_for_macros);
+        tested_by!(goto_def_for_macros);
         if let Some(macro_def) = analyzer.resolve_macro_call(db, name_ref.with_value(&macro_call)) {
             let kind = NameKind::Macro(macro_def);
             return Some(NameDefinition { kind, container, visibility });

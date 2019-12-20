@@ -237,7 +237,13 @@ impl SourceAnalyzer {
     }
 
     pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<crate::StructField> {
-        let expr_id = self.expr_id(&field.expr()?)?;
+        let expr_id = match field.expr() {
+            Some(it) => self.expr_id(&it)?,
+            None => {
+                let src = InFile { file_id: self.file_id, value: field };
+                self.body_source_map.as_ref()?.field_init_shorthand_expr(src)?
+            }
+        };
         self.infer.as_ref()?.record_field_resolution(expr_id).map(|it| it.into())
     }
 

@@ -258,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_in_items() {
+    fn goto_def_in_items() {
         check_goto(
             "
             //- /lib.rs
@@ -271,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_at_start_of_item() {
+    fn goto_def_at_start_of_item() {
         check_goto(
             "
             //- /lib.rs
@@ -305,7 +305,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_module_declaration() {
+    fn goto_def_for_module_declaration() {
         check_goto(
             "
             //- /lib.rs
@@ -332,8 +332,8 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_macros() {
-        covers!(goto_definition_works_for_macros);
+    fn goto_def_for_macros() {
+        covers!(goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -349,8 +349,8 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_macros_from_other_crates() {
-        covers!(goto_definition_works_for_macros);
+    fn goto_def_for_macros_from_other_crates() {
+        covers!(goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -369,7 +369,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_macros_in_use_tree() {
+    fn goto_def_for_macros_in_use_tree() {
         check_goto(
             "
             //- /lib.rs
@@ -385,7 +385,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_macro_defined_fn_with_arg() {
+    fn goto_def_for_macro_defined_fn_with_arg() {
         check_goto(
             "
             //- /lib.rs
@@ -405,7 +405,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_macro_defined_fn_no_arg() {
+    fn goto_def_for_macro_defined_fn_no_arg() {
         check_goto(
             "
             //- /lib.rs
@@ -425,8 +425,8 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_methods() {
-        covers!(goto_definition_works_for_methods);
+    fn goto_def_for_methods() {
+        covers!(goto_def_for_methods);
         check_goto(
             "
             //- /lib.rs
@@ -445,8 +445,8 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_fields() {
-        covers!(goto_definition_works_for_fields);
+    fn goto_def_for_fields() {
+        covers!(goto_def_for_fields);
         check_goto(
             "
             //- /lib.rs
@@ -464,8 +464,8 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_record_fields() {
-        covers!(goto_definition_works_for_record_fields);
+    fn goto_def_for_record_fields() {
+        covers!(goto_def_for_record_fields);
         check_goto(
             "
             //- /lib.rs
@@ -502,7 +502,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_ufcs_inherent_methods() {
+    fn goto_def_for_ufcs_inherent_methods() {
         check_goto(
             "
             //- /lib.rs
@@ -521,7 +521,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_ufcs_trait_methods_through_traits() {
+    fn goto_def_for_ufcs_trait_methods_through_traits() {
         check_goto(
             "
             //- /lib.rs
@@ -539,7 +539,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_for_ufcs_trait_methods_through_self() {
+    fn goto_def_for_ufcs_trait_methods_through_self() {
         check_goto(
             "
             //- /lib.rs
@@ -654,7 +654,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_definition_works_when_used_on_definition_name_itself() {
+    fn goto_def_when_used_on_definition_name_itself() {
         check_goto(
             "
             //- /lib.rs
@@ -874,5 +874,22 @@ mod tests {
             "x BIND_PAT FileId(1) [39; 40)",
             "x",
         );
+    }
+
+    #[test]
+    fn goto_def_for_field_init_shorthand() {
+        covers!(goto_def_for_field_init_shorthand);
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo { x: i32 }
+            fn main() {
+                let x = 92;
+                Foo { x<|> };
+            }
+            ",
+            "x RECORD_FIELD_DEF FileId(1) [13; 19) [13; 14)",
+            "x: i32|x",
+        )
     }
 }
