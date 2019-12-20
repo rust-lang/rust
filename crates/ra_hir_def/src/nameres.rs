@@ -57,9 +57,7 @@ mod tests;
 
 use std::sync::Arc;
 
-use hir_expand::{
-    ast_id_map::FileAstId, diagnostics::DiagnosticSink, name::Name, InFile, MacroDefId,
-};
+use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile, MacroDefId};
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
 use ra_db::{CrateId, Edition, FileId, FilePosition};
@@ -76,7 +74,7 @@ use crate::{
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
-    AstId, FunctionId, ImplId, LocalImportId, LocalModuleId, ModuleDefId, ModuleId, TraitId,
+    AstId, ImplId, LocalImportId, LocalModuleId, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Contains all top-level defs from a macro-expanded crate
@@ -174,11 +172,6 @@ pub struct ModuleData {
     pub origin: ModuleOrigin,
 
     pub impls: Vec<ImplId>,
-}
-
-#[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct Declarations {
-    fns: FxHashMap<FileAstId<ast::FnDef>, FunctionId>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
