@@ -36,6 +36,9 @@
 #![feature(iter_is_partitioned)]
 #![feature(iter_order_by)]
 #![feature(cmp_min_max_by)]
+#![feature(slice_from_raw_parts)]
+#![feature(const_slice_from_raw_parts)]
+#![feature(const_raw_ptr_deref)]
 
 extern crate test;
 
