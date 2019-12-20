@@ -134,6 +134,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
 
+            (ty_app!(TypeCtor::Closure { .. }, params), ty_app!(TypeCtor::FnPtr { .. })) => {
+                from_ty = params[0].clone();
+            }
+
             _ => {}
         }
 
