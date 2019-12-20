@@ -18,8 +18,6 @@ pub extern crate libc as netc;
 
 pub type wrlen_t = size_t;
 
-const SOCK_CLOEXEC: c_int = 0;
-
 pub struct Socket(FileDesc);
 
 pub fn init() {}

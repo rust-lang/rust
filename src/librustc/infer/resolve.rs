@@ -124,7 +124,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
                 if let ty::TyVar(ty_vid) = infer_ty {
                     let ty_vars = self.infcx.type_variables.borrow();
                     if let TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::TypeParameterDefinition(_),
+                        kind: TypeVariableOriginKind::TypeParameterDefinition(_, _),
                         span,
                     } = *ty_vars.var_origin(ty_vid)
                     {
