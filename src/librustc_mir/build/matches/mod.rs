@@ -26,6 +26,7 @@ mod simplify;
 mod test;
 mod util;
 
+use itertools::Itertools;
 use std::convert::TryFrom;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -822,9 +823,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         let (matched_candidates, unmatched_candidates) = candidates.split_at_mut(fully_matched);
 
-        let block: BasicBlock;
-
-        if !matched_candidates.is_empty() {
+        let block: BasicBlock = if !matched_candidates.is_empty() {
             let otherwise_block = self.select_matched_candidates(
                 matched_candidates,
                 start_block,
@@ -832,17 +831,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
 
             if let Some(last_otherwise_block) = otherwise_block {
-                block = last_otherwise_block
+                last_otherwise_block
             } else {
                 // Any remaining candidates are unreachable.
                 if unmatched_candidates.is_empty() {
                     return;
                 }
-                block = self.cfg.start_new_block();
-            };
+                self.cfg.start_new_block()
+            }
         } else {
-            block = *start_block.get_or_insert_with(|| self.cfg.start_new_block());
-        }
+            *start_block.get_or_insert_with(|| self.cfg.start_new_block())
+        };
 
         // If there are no candidates that still need testing, we're
         // done. Since all matches are exhaustive, execution should
@@ -885,7 +884,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ...
     ///
     /// We generate real edges from:
-    /// * `block` to the prebinding_block of the first pattern,
+    /// * `start_block` to the `prebinding_block` of the first pattern,
     /// * the otherwise block of the first pattern to the second pattern,
     /// * the otherwise block of the third pattern to the a block with an
     ///   Unreachable terminator.
@@ -948,6 +947,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let first_candidate = &reachable_candidates[0];
         let first_prebinding_block = first_candidate.pre_binding_block;
 
+        // `goto -> first_prebinding_block` from the `start_block` if there is one.
         if let Some(start_block) = *start_block {
             let source_info = self.source_info(first_candidate.span);
             self.cfg.terminate(
@@ -959,21 +959,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             *start_block = Some(first_prebinding_block);
         }
 
-        for window in reachable_candidates.windows(2) {
-            if let [first_candidate, second_candidate] = window {
-                let source_info = self.source_info(first_candidate.span);
-                if let Some(otherwise_block) = first_candidate.otherwise_block {
-                    self.false_edges(
-                        otherwise_block,
-                        second_candidate.pre_binding_block,
-                        first_candidate.next_candidate_pre_binding_block,
-                        source_info,
-                    );
-                } else {
-                    bug!("candidate other than the last has no guard");
-                }
+        for (first_candidate, second_candidate) in reachable_candidates.iter().tuple_windows() {
+            let source_info = self.source_info(first_candidate.span);
+            if let Some(otherwise_block) = first_candidate.otherwise_block {
+                self.false_edges(
+                    otherwise_block,
+                    second_candidate.pre_binding_block,
+                    first_candidate.next_candidate_pre_binding_block,
+                    source_info,
+                );
             } else {
-                bug!("<[_]>::windows returned incorrectly sized window");
+                bug!("candidate other than the last has no guard");
             }
         }
 
