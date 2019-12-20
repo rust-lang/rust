@@ -796,7 +796,7 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Static(ast_id) => {
-                let def = StaticLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = StaticLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
 
                 PerNs::values(def.into())

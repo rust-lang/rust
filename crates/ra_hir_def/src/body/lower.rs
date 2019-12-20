@@ -25,7 +25,8 @@ use crate::{
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
-    ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId, StructLoc, UnionLoc,
+    ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId, StaticLoc,
+    StructLoc, TypeAliasLoc, UnionLoc,
 };
 
 pub(super) fn lower(
@@ -496,6 +497,18 @@ where
                 ast::ModuleItem::FnDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
                     FunctionLoc { container: container.into(), ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::TypeAliasDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    TypeAliasLoc { container: container.into(), ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::ConstDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    ConstLoc { container: container.into(), ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::StaticDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    StaticLoc { container, ast_id }.intern(self.db).into()
                 }
                 ast::ModuleItem::StructDef(def) => {
                     let ast_id = self.expander.ast_id(&def);

@@ -211,7 +211,7 @@ impl_intern_key!(StaticId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StaticLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::StaticDef>,
 }
 
@@ -558,7 +558,7 @@ impl HasModule for GenericDefId {
 }
 
 impl HasModule for StaticLoc {
-    fn module(&self, _db: &impl db::DefDatabase) -> ModuleId {
-        self.container
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        self.container.module(db)
     }
 }
