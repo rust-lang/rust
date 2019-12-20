@@ -16,7 +16,7 @@ note: ...so that the expression is assignable
    |
 LL |         C { f: b }
    |                ^
-   = note: expected `std::boxed::Box<std::boxed::Box<&isize>>`
+   = note: expected `std::boxed::Box<std::boxed::Box<&'z0 isize>>`
               found `std::boxed::Box<std::boxed::Box<&isize>>`
 note: but, the lifetime must be valid for the lifetime `'a` as defined on the impl at 15:6...
   --> $DIR/type-alias-free-regions.rs:15:6
@@ -49,7 +49,7 @@ note: ...so that the expression is assignable
    |
 LL |         C { f: Box::new(b.0) }
    |                         ^^^
-   = note: expected `std::boxed::Box<&isize>`
+   = note: expected `std::boxed::Box<&'z1 isize>`
               found `std::boxed::Box<&isize>`
 note: but, the lifetime must be valid for the lifetime `'a` as defined on the impl at 25:6...
   --> $DIR/type-alias-free-regions.rs:25:6

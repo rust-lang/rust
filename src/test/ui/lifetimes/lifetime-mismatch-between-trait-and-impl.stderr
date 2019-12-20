@@ -8,7 +8,9 @@ LL |     fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found fn(&i32, &i32) -> &i32
    |
    = note: expected `fn(&i32, &'a i32) -> &'a i32`
-              found `fn(&i32, &i32) -> &i32`
+              found `fn(&'z0 i32, &'z0 i32) -> &'z0 i32`
+   = note: the lifetime requirements from the `trait` could not be fulfilled by the `impl`
+   = help: consider adding a named lifetime to the `trait` that constrains the item's `self` argument, its inputs and its output with it
 
 error: aborting due to previous error
 

@@ -39,7 +39,7 @@ note: ...so that the expression is assignable
    |
 LL |     Box::new(v)
    |              ^
-   = note: expected `&[u8]`
+   = note: expected `&'z1 [u8]`
               found `&'a [u8]`
 note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 25:9...
   --> $DIR/region-object-lifetime-in-coercion.rs:25:9

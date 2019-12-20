@@ -987,13 +987,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         fn push_ty_ref<'tcx>(
-            r: &ty::Region<'tcx>,
+            region: &ty::Region<'tcx>,
             ty: Ty<'tcx>,
             mutbl: hir::Mutability,
             s: &mut DiagnosticStyledString,
         ) {
-            let mut r = r.to_string();
-            if r == "'_" {
+            let mut r = region.to_string();
+            if let ty::RegionKind::ReVar(var) = region {
+                // Show these named, not as `'_` or elide them in "expected/found" notes.
+                r = format!("'z{} ", var.index());
+            } else if r == "'_" {
                 r.clear();
             } else {
                 r.push(' ');

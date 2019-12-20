@@ -20,7 +20,7 @@ LL |     fn bar(&mut self, bar: &Bar) { }
    |                            ^^^^ types differ in mutability
    |
    = note: expected fn pointer `fn(&mut Bar, &mut Bar)`
-              found fn pointer `fn(&mut Bar, &Bar)`
+              found fn pointer `fn(&'z0 mut Bar, &'z1 Bar)`
 help: consider change the type to match the mutability in trait
    |
 LL |     fn bar(&mut self, bar: &mut Bar) { }

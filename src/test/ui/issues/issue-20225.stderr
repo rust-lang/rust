@@ -7,7 +7,9 @@ LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&T`, found type parameter `T`
    |
    = note: expected fn pointer `extern "rust-call" fn(&Foo, (&'a T,))`
-              found fn pointer `extern "rust-call" fn(&Foo, (T,))`
+              found fn pointer `extern "rust-call" fn(&'z0 Foo, (T,))`
+   = help: type parameters must be constrained to match other types
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0053]: method `call_mut` has an incompatible type for trait
   --> $DIR/issue-20225.rs:11:3
@@ -18,7 +20,9 @@ LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&T`, found type parameter `T`
    |
    = note: expected fn pointer `extern "rust-call" fn(&mut Foo, (&'a T,))`
-              found fn pointer `extern "rust-call" fn(&mut Foo, (T,))`
+              found fn pointer `extern "rust-call" fn(&'z0 mut Foo, (T,))`
+   = help: type parameters must be constrained to match other types
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0053]: method `call_once` has an incompatible type for trait
   --> $DIR/issue-20225.rs:18:3
