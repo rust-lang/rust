@@ -456,7 +456,7 @@ fn transform_receiver_ty(
             .fill_with_unknown()
             .build(),
         AssocContainerId::ImplId(impl_id) => inherent_impl_substs(db, impl_id, &self_ty)?,
-        AssocContainerId::ModuleId(_) | AssocContainerId::DefWithBodyId(_) => unreachable!(),
+        AssocContainerId::ContainerId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());
     Some(sig.params()[0].clone().subst(&substs))

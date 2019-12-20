@@ -24,7 +24,7 @@ use crate::{
     },
     path::{ModPath, PathKind},
     per_ns::PerNs,
-    AdtId, AssocContainerId, AstId, ConstLoc, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
+    AdtId, AstId, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
     LocalImportId, LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitLoc,
     TypeAliasLoc, UnionLoc,
 };
@@ -760,10 +760,11 @@ where
         self.collect_derives(attrs, def);
 
         let name = def.name.clone();
+        let container = ContainerId::ModuleId(module);
         let def: PerNs = match def.kind {
             raw::DefKind::Function(ast_id) => {
                 let def = FunctionLoc {
-                    container: AssocContainerId::ModuleId(module),
+                    container: container.into(),
                     ast_id: AstId::new(self.file_id, ast_id),
                 }
                 .intern(self.def_collector.db);
@@ -787,7 +788,7 @@ where
             }
             raw::DefKind::Const(ast_id) => {
                 let def = ConstLoc {
-                    container: AssocContainerId::ModuleId(module),
+                    container: container.into(),
                     ast_id: AstId::new(self.file_id, ast_id),
                 }
                 .intern(self.def_collector.db);
@@ -808,7 +809,7 @@ where
             }
             raw::DefKind::TypeAlias(ast_id) => {
                 let def = TypeAliasLoc {
-                    container: AssocContainerId::ModuleId(module),
+                    container: container.into(),
                     ast_id: AstId::new(self.file_id, ast_id),
                 }
                 .intern(self.def_collector.db);

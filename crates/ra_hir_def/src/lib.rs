@@ -331,12 +331,18 @@ pub struct LocalTypeParamId(RawId);
 impl_arena_id!(LocalTypeParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum AssocContainerId {
+pub enum ContainerId {
     ModuleId(ModuleId),
-    ImplId(ImplId),
-    TraitId(TraitId),
     DefWithBodyId(DefWithBodyId),
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AssocContainerId {
+    ContainerId(ContainerId),
+    ImplId(ImplId),
+    TraitId(TraitId),
+}
+impl_froms!(AssocContainerId: ContainerId);
 
 /// A Data Type
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -479,13 +485,21 @@ pub trait HasModule {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId;
 }
 
+impl HasModule for ContainerId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        match *self {
+            ContainerId::ModuleId(it) => it,
+            ContainerId::DefWithBodyId(it) => it.module(db),
+        }
+    }
+}
+
 impl HasModule for AssocContainerId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match *self {
-            AssocContainerId::ModuleId(it) => it,
+            AssocContainerId::ContainerId(it) => it.module(db),
             AssocContainerId::ImplId(it) => it.lookup(db).container,
             AssocContainerId::TraitId(it) => it.lookup(db).container,
-            AssocContainerId::DefWithBodyId(it) => it.module(db),
         }
     }
 }
