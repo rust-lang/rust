@@ -161,6 +161,7 @@ pub mod known {
         Range,
         Neg,
         Not,
+        Index,
         // Builtin macros
         file,
         column,

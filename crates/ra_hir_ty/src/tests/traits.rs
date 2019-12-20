@@ -427,6 +427,38 @@ fn indexing_arrays() {
 }
 
 #[test]
+fn infer_ops_index() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+
+struct Bar;
+struct Foo;
+
+impl std::ops::Index<u32> for Bar {
+    type Output = Foo;
+}
+
+fn test() {
+    let a = Bar;
+    let b = a[1];
+    b<|>;
+}
+
+//- /std.rs crate:std
+
+#[prelude_import] use ops::*;
+mod ops {
+    pub trait Index<Idx> {
+        type Output;
+    }
+}
+"#,
+    );
+    assert_eq!("Foo", type_at_pos(&db, pos));
+}
+
+#[test]
 fn deref_trait() {
     let t = type_at(
         r#"
