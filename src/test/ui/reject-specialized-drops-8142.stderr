@@ -118,8 +118,8 @@ note: ...so that the types are compatible
    |
 LL | impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected  `W<'l1, 'l2>`
-              found  `W<'_, '_>`
+   = note: expected `W<'l1, 'l2>`
+              found `W<'_, '_>`
 
 error[E0367]: `Drop` impl requires `AddsBnd: Bound` but the enum it is implemented for does not
   --> $DIR/reject-specialized-drops-8142.rs:61:14

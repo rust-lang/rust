@@ -26,8 +26,8 @@ note: ...so that the expression is assignable
    |
 LL |         Foo { bar }
    |         ^^^^^^^^^^^
-   = note: expected  `Foo<'_>`
-              found  `Foo<'_>`
+   = note: expected `Foo<'_>`
+              found `Foo<'_>`
 
 error: aborting due to previous error
 
