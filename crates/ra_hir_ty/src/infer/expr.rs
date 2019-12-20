@@ -41,7 +41,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     /// Infer type of expression with possibly implicit coerce to the expected type.
     /// Return the type after possible coercion.
-    fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
+    pub(super) fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, &expected);
         let ty = if !self.coerce(&ty, &expected.ty) {
             self.result

@@ -460,7 +460,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn infer_body(&mut self) {
-        self.infer_expr(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
+        self.infer_expr_coerce(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
