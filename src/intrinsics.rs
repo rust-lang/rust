@@ -615,6 +615,10 @@ pub fn codegen_intrinsic_call<'tcx>(
                     let clif_ty = fx.clif_type(layout.ty).unwrap();
                     let val = match clif_ty {
                         types::I8 | types::I16 | types::I32 | types::I64 => fx.bcx.ins().iconst(clif_ty, 0),
+                        types::I128 => {
+                            let zero = fx.bcx.ins().iconst(types::I64, 0);
+                            fx.bcx.ins().iconcat(zero, zero)
+                        }
                         types::F32 => {
                             let zero = fx.bcx.ins().iconst(types::I32, 0);
                             fx.bcx.ins().bitcast(types::F32, zero)
@@ -647,6 +651,11 @@ pub fn codegen_intrinsic_call<'tcx>(
                     let clif_ty = fx.clif_type(layout.ty).unwrap();
                     let val = match clif_ty {
                         types::I8 | types::I16 | types::I32 | types::I64 => fx.bcx.ins().iconst(clif_ty, 42),
+                        types::I128 => {
+                            let zero = fx.bcx.ins().iconst(types::I64, 0);
+                            let fourty_two = fx.bcx.ins().iconst(types::I64, 42);
+                            fx.bcx.ins().iconcat(fourty_two, zero)
+                        }
                         types::F32 => {
                             let zero = fx.bcx.ins().iconst(types::I32, 0xdeadbeef);
                             fx.bcx.ins().bitcast(types::F32, zero)
