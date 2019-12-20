@@ -455,7 +455,10 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let actual_to = if from_end {
-            assert!(from <= len - to);
+            if from + to > len {
+                // This can only be reached in ConstProp and non-rustc-MIR.
+                throw_ub!(BoundsCheckFailed { len: len as u64, index: from as u64 + to as u64 });
+            }
             len - to
         } else {
             to
@@ -523,7 +526,11 @@ where
                 from_end,
             } => {
                 let n = base.len(self)?;
-                assert!(n >= min_length as u64);
+                if n < min_length as u64 {
+                    // This can only be reached in ConstProp and non-rustc-MIR.
+                    throw_ub!(BoundsCheckFailed { len: min_length as u64, index: n as u64 });
+                }
+                assert!(offset < min_length);
 
                 let index = if from_end {
                     n - u64::from(offset)
