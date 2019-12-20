@@ -1,8 +1,8 @@
 //! FIXME: write short doc here
 use hir_def::{
     child_by_source::ChildBySource, dyn_map::DynMap, keys, keys::Key, nameres::ModuleSource,
-    ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId, StaticId, StructId,
-    TraitId, TypeAliasId, UnionId, VariantId,
+    ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
@@ -212,29 +212,43 @@ impl Module {
 }
 
 fn analyze_container(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> DynMap {
-    _analyze_container(db, src).unwrap_or_default()
-}
+    return child_by_source(db, src).unwrap_or_default();
 
-fn _analyze_container(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> Option<DynMap> {
-    // FIXME: this doesn't try to handle nested declarations
-    for container in src.value.ancestors().skip(1) {
-        let res = match_ast! {
-            match container {
-                ast::TraitDef(it) => {
-                    let c = Trait::from_source(db, src.with_value(it))?;
-                    c.id.child_by_source(db)
-                },
-                ast::ImplBlock(it) => {
-                    let c = ImplBlock::from_source(db, src.with_value(it))?;
-                    c.id.child_by_source(db)
-                 },
-                _ => { continue },
-            }
-        };
-        return Some(res);
+    fn child_by_source(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> Option<DynMap> {
+        for container in src.value.ancestors().skip(1) {
+            let res = match_ast! {
+                match container {
+                    ast::TraitDef(it) => {
+                        let def = Trait::from_source(db, src.with_value(it))?;
+                        def.id.child_by_source(db)
+                    },
+                    ast::ImplBlock(it) => {
+                        let def = ImplBlock::from_source(db, src.with_value(it))?;
+                        def.id.child_by_source(db)
+                    },
+                    ast::FnDef(it) => {
+                        let def = Function::from_source(db, src.with_value(it))?;
+                        DefWithBodyId::from(def.id)
+                            .child_by_source(db)
+                    },
+                    ast::StaticDef(it) => {
+                        let def = Static::from_source(db, src.with_value(it))?;
+                        DefWithBodyId::from(def.id)
+                            .child_by_source(db)
+                    },
+                    ast::ConstDef(it) => {
+                        let def = Const::from_source(db, src.with_value(it))?;
+                        DefWithBodyId::from(def.id)
+                            .child_by_source(db)
+                    },
+                    _ => { continue },
+                }
+            };
+            return Some(res);
+        }
+
+        let module_source = ModuleSource::from_child_node(db, src);
+        let c = Module::from_definition(db, src.with_value(module_source))?;
+        Some(c.id.child_by_source(db))
     }
-
-    let module_source = ModuleSource::from_child_node(db, src);
-    let c = Module::from_definition(db, src.with_value(module_source))?;
-    Some(c.id.child_by_source(db))
 }

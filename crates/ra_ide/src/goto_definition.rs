@@ -858,4 +858,21 @@ mod tests {
             "y",
         );
     }
+
+    #[test]
+    fn goto_def_in_local_fn() {
+        check_goto(
+            "
+            //- /lib.rs
+            fn main() {
+                fn foo() {
+                    let x = 92;
+                    <|>x;
+                }
+            }
+            ",
+            "x BIND_PAT FileId(1) [39; 40)",
+            "x",
+        );
+    }
 }

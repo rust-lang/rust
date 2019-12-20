@@ -3,10 +3,13 @@
 mod lower;
 pub mod scope;
 
-use std::{ops::Index, sync::Arc};
+use std::{mem, ops::Index, sync::Arc};
 
+use drop_bomb::DropBomb;
 use either::Either;
-use hir_expand::{hygiene::Hygiene, AstId, HirFileId, InFile, MacroCallKind, MacroDefId};
+use hir_expand::{
+    ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroCallKind, MacroDefId,
+};
 use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
@@ -24,6 +27,7 @@ struct Expander {
     crate_def_map: Arc<CrateDefMap>,
     current_file_id: HirFileId,
     hygiene: Hygiene,
+    ast_id_map: Arc<AstIdMap>,
     module: ModuleId,
 }
 
@@ -31,7 +35,8 @@ impl Expander {
     fn new(db: &impl DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db, current_file_id);
-        Expander { crate_def_map, current_file_id, hygiene, module }
+        let ast_id_map = db.ast_id_map(current_file_id);
+        Expander { crate_def_map, current_file_id, hygiene, ast_id_map, module }
     }
 
     fn enter_expand(
@@ -52,9 +57,14 @@ impl Expander {
                     if let Some(expr) = ast::Expr::cast(node) {
                         log::debug!("macro expansion {:#?}", expr.syntax());
 
-                        let mark = Mark { file_id: self.current_file_id };
+                        let mark = Mark {
+                            file_id: self.current_file_id,
+                            ast_id_map: mem::take(&mut self.ast_id_map),
+                            bomb: DropBomb::new("expansion mark dropped"),
+                        };
                         self.hygiene = Hygiene::new(db, file_id);
                         self.current_file_id = file_id;
+                        self.ast_id_map = db.ast_id_map(file_id);
 
                         return Some((mark, expr));
                     }
@@ -67,10 +77,11 @@ impl Expander {
         None
     }
 
-    fn exit(&mut self, db: &impl DefDatabase, mark: Mark) {
+    fn exit(&mut self, db: &impl DefDatabase, mut mark: Mark) {
         self.hygiene = Hygiene::new(db, mark.file_id);
         self.current_file_id = mark.file_id;
-        std::mem::forget(mark);
+        self.ast_id_map = mem::take(&mut mark.ast_id_map);
+        mark.bomb.defuse();
     }
 
     fn to_source<T>(&self, value: T) -> InFile<T> {
@@ -91,18 +102,17 @@ impl Expander {
             .0
             .take_macros()
     }
+
+    fn ast_id<N: AstNode>(&self, item: &N) -> AstId<N> {
+        let file_local_id = self.ast_id_map.ast_id(item);
+        AstId::new(self.current_file_id, file_local_id)
+    }
 }
 
 struct Mark {
     file_id: HirFileId,
-}
-
-impl Drop for Mark {
-    fn drop(&mut self) {
-        if !std::thread::panicking() {
-            panic!("dropped mark")
-        }
-    }
+    ast_id_map: Arc<AstIdMap>,
+    bomb: DropBomb,
 }
 
 /// The body of an item (function, const etc.).
@@ -174,7 +184,7 @@ impl Body {
             }
         };
         let expander = Expander::new(db, file_id, module);
-        let (body, source_map) = Body::new(db, expander, params, body);
+        let (body, source_map) = Body::new(db, def, expander, params, body);
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -184,11 +194,12 @@ impl Body {
 
     fn new(
         db: &impl DefDatabase,
+        def: DefWithBodyId,
         expander: Expander,
         params: Option<ast::ParamList>,
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
-        lower::lower(db, expander, params, body)
+        lower::lower(db, def, expander, params, body)
     }
 }
 
