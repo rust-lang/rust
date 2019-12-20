@@ -372,11 +372,7 @@ where
                         let scope = &item_map[m.local_id].scope;
 
                         // Module scoped macros is included
-                        let items = scope
-                            .items
-                            .iter()
-                            .map(|(name, res)| (name.clone(), res.clone()))
-                            .collect::<Vec<_>>();
+                        let items = scope.collect_resolutions();
 
                         self.update(module_id, Some(import_id), &items);
                     } else {
@@ -386,11 +382,7 @@ where
                         let scope = &self.def_map[m.local_id].scope;
 
                         // Module scoped macros is included
-                        let items = scope
-                            .items
-                            .iter()
-                            .map(|(name, res)| (name.clone(), res.clone()))
-                            .collect::<Vec<_>>();
+                        let items = scope.collect_resolutions();
 
                         self.update(module_id, Some(import_id), &items);
                         // record the glob import in case we add further items

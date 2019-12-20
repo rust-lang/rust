@@ -9,7 +9,7 @@ use crate::{per_ns::PerNs, BuiltinType, ImplId, LocalImportId, MacroDefId, Modul
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
-    pub(crate) items: FxHashMap<Name, Resolution>,
+    items: FxHashMap<Name, Resolution>,
     pub(crate) impls: Vec<ImplId>,
     /// Macros visible in current module in legacy textual scope
     ///
@@ -47,41 +47,6 @@ pub(crate) enum BuiltinShadowMode {
 /// Legacy macros can only be accessed through special methods like `get_legacy_macros`.
 /// Other methods will only resolve values, types and module scoped macros only.
 impl ItemScope {
-    pub fn push_res(
-        &mut self,
-        name: Name,
-        res: &Resolution,
-        import: Option<LocalImportId>,
-    ) -> bool {
-        let mut changed = false;
-        let existing = self.items.entry(name.clone()).or_default();
-
-        if existing.def.types.is_none() && res.def.types.is_some() {
-            existing.def.types = res.def.types;
-            existing.import = import.or(res.import);
-            changed = true;
-        }
-        if existing.def.values.is_none() && res.def.values.is_some() {
-            existing.def.values = res.def.values;
-            existing.import = import.or(res.import);
-            changed = true;
-        }
-        if existing.def.macros.is_none() && res.def.macros.is_some() {
-            existing.def.macros = res.def.macros;
-            existing.import = import.or(res.import);
-            changed = true;
-        }
-
-        if existing.def.is_none()
-            && res.def.is_none()
-            && existing.import.is_none()
-            && res.import.is_some()
-        {
-            existing.import = res.import;
-        }
-        changed
-    }
-
     pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, &'a Resolution)> + 'a {
         //FIXME: shadowing
         self.items.iter().chain(BUILTIN_SCOPE.iter())
@@ -137,6 +102,45 @@ impl ItemScope {
 
     pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<MacroDefId> {
         self.legacy_macros.get(name).copied()
+    }
+
+    pub(crate) fn push_res(
+        &mut self,
+        name: Name,
+        res: &Resolution,
+        import: Option<LocalImportId>,
+    ) -> bool {
+        let mut changed = false;
+        let existing = self.items.entry(name.clone()).or_default();
+
+        if existing.def.types.is_none() && res.def.types.is_some() {
+            existing.def.types = res.def.types;
+            existing.import = import.or(res.import);
+            changed = true;
+        }
+        if existing.def.values.is_none() && res.def.values.is_some() {
+            existing.def.values = res.def.values;
+            existing.import = import.or(res.import);
+            changed = true;
+        }
+        if existing.def.macros.is_none() && res.def.macros.is_some() {
+            existing.def.macros = res.def.macros;
+            existing.import = import.or(res.import);
+            changed = true;
+        }
+
+        if existing.def.is_none()
+            && res.def.is_none()
+            && existing.import.is_none()
+            && res.import.is_some()
+        {
+            existing.import = res.import;
+        }
+        changed
+    }
+
+    pub(crate) fn collect_resolutions(&self) -> Vec<(Name, Resolution)> {
+        self.items.iter().map(|(name, res)| (name.clone(), res.clone())).collect()
     }
 }
 
