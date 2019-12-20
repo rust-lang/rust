@@ -36,7 +36,7 @@ static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
 
 /// Shadow mode for builtin type which can be shadowed by module.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum BuiltinShadowMode {
+pub(crate) enum BuiltinShadowMode {
     // Prefer Module
     Module,
     // Prefer Other Types
@@ -60,19 +60,19 @@ impl ItemScope {
     }
 
     /// Iterate over all module scoped macros
-    pub fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
+    pub(crate) fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
         self.items
             .iter()
             .filter_map(|(name, res)| res.def.take_macros().map(|macro_| (name, macro_)))
     }
 
-    /// Iterate over all legacy textual scoped macros visable at the end of the module
-    pub fn legacy_macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
+    /// Iterate over all legacy textual scoped macros visible at the end of the module
+    pub(crate) fn legacy_macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
         self.legacy_macros.iter().map(|(name, def)| (name, *def))
     }
 
     /// Get a name from current module scope, legacy macros are not included
-    pub fn get(&self, name: &Name, shadow: BuiltinShadowMode) -> Option<&Resolution> {
+    pub(crate) fn get(&self, name: &Name, shadow: BuiltinShadowMode) -> Option<&Resolution> {
         match shadow {
             BuiltinShadowMode::Module => self.items.get(name).or_else(|| BUILTIN_SCOPE.get(name)),
             BuiltinShadowMode::Other => {
@@ -88,7 +88,7 @@ impl ItemScope {
         }
     }
 
-    pub fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
+    pub(crate) fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
         self.items.values().filter_map(|r| match r.def.take_types() {
             Some(ModuleDefId::TraitId(t)) => Some(t),
             _ => None,
