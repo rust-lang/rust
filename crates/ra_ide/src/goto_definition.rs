@@ -425,6 +425,42 @@ mod tests {
     }
 
     #[test]
+    fn goto_definition_works_for_macro_inside_pattern() {
+        check_goto(
+            "
+            //- /lib.rs
+            macro_rules! foo {() => {0}}
+
+            fn bar() {
+                match (0,1) {
+                    (<|>foo!(), _) => {}
+                }
+            }
+            ",
+            "foo MACRO_CALL FileId(1) [0; 28) [13; 16)",
+            "macro_rules! foo {() => {0}}|foo",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_for_macro_inside_match_arm_lhs() {
+        check_goto(
+            "
+            //- /lib.rs
+            macro_rules! foo {() => {0}}
+
+            fn bar() {
+                match 0 {
+                    <|>foo!() => {}
+                }
+            }
+            ",
+            "foo MACRO_CALL FileId(1) [0; 28) [13; 16)",
+            "macro_rules! foo {() => {0}}|foo",
+        );
+    }
+
+    #[test]
     fn goto_def_for_methods() {
         covers!(goto_def_for_methods);
         check_goto(

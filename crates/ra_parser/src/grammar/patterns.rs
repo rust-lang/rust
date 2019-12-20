@@ -50,7 +50,7 @@ pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
         //     let m!(x) = 0;
         // }
         if lhs.kind() == PATH_PAT && p.at(T![!]) {
-            let m = lhs.precede(p);
+            let m = lhs.undo_completion(p);
             items::macro_call_after_excl(p);
             m.complete(p, MACRO_CALL);
         }
