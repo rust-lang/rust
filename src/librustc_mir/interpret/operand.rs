@@ -578,9 +578,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                // FIXME: don't use `const_eval_raw` for regular constants, instead use `const_eval`
-                // which immediately validates the result before we continue with it here.
-                return Ok(OpTy::from(self.const_eval_raw(GlobalId { instance, promoted: None })?));
+                let param_env = if self.tcx.is_static(def_id) {
+                    ty::ParamEnv::reveal_all()
+                } else {
+                    self.param_env
+                };
+                let val =
+                    self.tcx.const_eval(param_env.and(GlobalId { instance, promoted: None }))?;
+                // "recurse". This is only ever going into a recusion depth of 1, because after
+                // `const_eval` we don't have `Unevaluated` anymore.
+                return self.eval_const_to_op(val, layout);
             }
             ty::ConstKind::Value(val_val) => val_val,
         };
