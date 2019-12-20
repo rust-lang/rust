@@ -370,6 +370,22 @@ fn test() {
 }
 
 #[test]
+fn return_coerce_unknown() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn foo() -> u32 {
+    return unknown;
+}
+"#, true),
+        @r###"
+    [17; 40) '{     ...own; }': !
+    [23; 37) 'return unknown': !
+    [30; 37) 'unknown': u32
+    "###
+    );
+}
+
+#[test]
 fn coerce_autoderef() {
     assert_snapshot!(
         infer_with_mismatches(r#"
