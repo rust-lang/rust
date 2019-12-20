@@ -73,13 +73,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_fn(self, fk, fd, s)
     }
-    fn visit_trait_item(&mut self, ti: &TraitItem) {
+    fn visit_assoc_item(&mut self, ti: &AssocItem) {
         self.count += 1;
-        walk_trait_item(self, ti)
-    }
-    fn visit_impl_item(&mut self, ii: &ImplItem) {
-        self.count += 1;
-        walk_impl_item(self, ii)
+        walk_assoc_item(self, ti)
     }
     fn visit_trait_ref(&mut self, t: &TraitRef) {
         self.count += 1;

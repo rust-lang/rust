@@ -643,8 +643,8 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
         ret
     }
 
-    fn should_ignore_fn(ret_ty: &ast::FnDecl) -> bool {
-        if let ast::FunctionRetTy::Ty(ref ty) = ret_ty.output {
+    fn should_ignore_fn(ret_ty: &ast::FunctionRetTy) -> bool {
+        if let ast::FunctionRetTy::Ty(ref ty) = ret_ty {
             fn involves_impl_trait(ty: &ast::Ty) -> bool {
                 match ty.kind {
                     ast::TyKind::ImplTrait(..) => true,
@@ -673,7 +673,7 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                             },
                             Some(&ast::GenericArgs::Parenthesized(ref data)) => {
                                 any_involves_impl_trait(data.inputs.iter()) ||
-                                any_involves_impl_trait(data.output.iter())
+                                ReplaceBodyWithLoop::should_ignore_fn(&data.output)
                             }
                         }
                     }),
@@ -693,7 +693,7 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
 
     fn is_sig_const(sig: &ast::FnSig) -> bool {
         sig.header.constness.node == ast::Constness::Const ||
-            ReplaceBodyWithLoop::should_ignore_fn(&sig.decl)
+            ReplaceBodyWithLoop::should_ignore_fn(&sig.decl.output)
     }
 }
 
@@ -707,22 +707,17 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
         self.run(is_const, |s| noop_visit_item_kind(i, s))
     }
 
-    fn flat_map_trait_item(&mut self, i: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
+    fn flat_map_trait_item(&mut self, i: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
         let is_const = match i.kind {
-            ast::TraitItemKind::Const(..) => true,
-            ast::TraitItemKind::Method(ref sig, _) => Self::is_sig_const(sig),
+            ast::AssocItemKind::Const(..) => true,
+            ast::AssocItemKind::Fn(ref sig, _) => Self::is_sig_const(sig),
             _ => false,
         };
-        self.run(is_const, |s| noop_flat_map_trait_item(i, s))
+        self.run(is_const, |s| noop_flat_map_assoc_item(i, s))
     }
 
-    fn flat_map_impl_item(&mut self, i: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
-        let is_const = match i.kind {
-            ast::ImplItemKind::Const(..) => true,
-            ast::ImplItemKind::Method(ref sig, _) => Self::is_sig_const(sig),
-            _ => false,
-        };
-        self.run(is_const, |s| noop_flat_map_impl_item(i, s))
+    fn flat_map_impl_item(&mut self, i: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+        self.flat_map_trait_item(i)
     }
 
     fn visit_anon_const(&mut self, c: &mut ast::AnonConst) {

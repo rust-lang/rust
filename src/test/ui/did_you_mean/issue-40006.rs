@@ -18,10 +18,10 @@ trait A { //~ ERROR missing
 trait B {
     fn xxx() { ### } //~ ERROR expected
 }
-trait C { //~ ERROR missing `fn`, `type`, or `const` for trait-item declaration
+trait C { //~ ERROR missing `fn`, `type`, or `const` for associated-item declaration
     L = M;
 }
-trait D { //~ ERROR missing `fn`, `type`, or `const` for trait-item declaration
+trait D { //~ ERROR missing `fn`, `type`, or `const` for associated-item declaration
     Z = { 2 + 3 };
 }
 trait E {

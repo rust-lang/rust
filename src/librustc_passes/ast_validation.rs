@@ -250,6 +250,26 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_fn_decl(&self, fn_decl: &FnDecl) {
+        match &*fn_decl.inputs {
+            [Param { ty, span, .. }] => if let TyKind::CVarArgs = ty.kind {
+                self.err_handler()
+                    .span_err(
+                        *span,
+                        "C-variadic function must be declared with at least one named argument",
+                    );
+            },
+            [ps @ .., _] => for Param { ty, span, .. } in ps {
+                if let TyKind::CVarArgs = ty.kind {
+                    self.err_handler()
+                        .span_err(
+                            *span,
+                            "`...` must be the last argument of a C-variadic function",
+                        );
+                }
+            }
+            _ => {}
+        }
+
         fn_decl
             .inputs
             .iter()
@@ -259,17 +279,64 @@ impl<'a> AstValidator<'a> {
                 !arr.contains(&attr.name_or_empty()) && attr::is_builtin_attr(attr)
             })
             .for_each(|attr| if attr.is_doc_comment() {
-                let mut err = self.err_handler().struct_span_err(
+                self.err_handler().struct_span_err(
                     attr.span,
                     "documentation comments cannot be applied to function parameters"
-                );
-                err.span_label(attr.span, "doc comments are not allowed here");
-                err.emit();
-            }
-            else {
+                )
+                .span_label(attr.span, "doc comments are not allowed here")
+                .emit();
+            } else {
                 self.err_handler().span_err(attr.span, "allow, cfg, cfg_attr, deny, \
                 forbid, and warn are the only allowed built-in attributes in function parameters")
             });
+    }
+
+    fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
+        if let Defaultness::Default = defaultness {
+            self.err_handler()
+                .struct_span_err(span, "`default` is only allowed on items in `impl` definitions")
+                .emit();
+        }
+    }
+
+    fn check_impl_item_provided<T>(&self, sp: Span, body: &Option<T>, ctx: &str, sugg: &str) {
+        if body.is_some() {
+            return;
+        }
+
+        self.err_handler()
+            .struct_span_err(sp, &format!("associated {} in `impl` without body", ctx))
+            .span_suggestion(
+                self.session.source_map().end_point(sp),
+                &format!("provide a definition for the {}", ctx),
+                sugg.to_string(),
+                Applicability::HasPlaceholders,
+            )
+            .emit();
+    }
+
+    fn check_impl_assoc_type_no_bounds(&self, bounds: &[GenericBound]) {
+        let span = match bounds {
+            [] => return,
+            [b0] => b0.span(),
+            [b0, .., bl] => b0.span().to(bl.span()),
+        };
+        self.err_handler()
+            .struct_span_err(span, "bounds on associated `type`s in `impl`s have no effect")
+            .emit();
+    }
+
+    fn check_c_varadic_type(&self, decl: &FnDecl) {
+        for Param { ty, span, .. } in &decl.inputs {
+            if let TyKind::CVarArgs = ty.kind {
+                self.err_handler()
+                    .struct_span_err(
+                        *span,
+                        "only foreign or `unsafe extern \"C\" functions may be C-variadic",
+                    )
+                    .emit();
+            }
+        }
     }
 }
 
@@ -477,7 +544,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, None);
-                    if let ImplItemKind::Method(ref sig, _) = impl_item.kind {
+                    if let AssocItemKind::Fn(ref sig, _) = impl_item.kind {
                         self.check_trait_fn_not_const(sig.header.constness);
                         self.check_trait_fn_not_async(impl_item.span, sig.header.asyncness.node);
                     }
@@ -519,6 +586,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         }
                     }
                 }
+                // Reject C-varadic type unless the function is `unsafe extern "C"` semantically.
+                match sig.header.ext {
+                    Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }) |
+                    Extern::Implicit if sig.header.unsafety == Unsafety::Unsafe => {}
+                    _ => self.check_c_varadic_type(&sig.decl),
+                }
             }
             ItemKind::ForeignMod(..) => {
                 self.invalid_visibility(
@@ -554,26 +627,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
-                for trait_item in trait_items {
-                    if let TraitItemKind::Method(ref sig, ref block) = trait_item.kind {
-                        self.check_fn_decl(&sig.decl);
-                        self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness.node);
-                        self.check_trait_fn_not_const(sig.header.constness);
-                        if block.is_none() {
-                            Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
-                                if mut_ident {
-                                    self.lint_buffer.buffer_lint(
-                                        lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
-                                        trait_item.id, span,
-                                        "patterns aren't allowed in methods without bodies");
-                                } else {
-                                    struct_span_err!(self.session, span, E0642,
-                                        "patterns aren't allowed in methods without bodies").emit();
-                                }
-                            });
-                        }
-                    }
-                }
             }
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
@@ -639,10 +692,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             GenericArgs::Parenthesized(ref data) => {
                 walk_list!(self, visit_ty, &data.inputs);
-                if let Some(ref type_) = data.output {
+                if let FunctionRetTy::Ty(ty) = &data.output {
                     // `-> Foo` syntax is essentially an associated type binding,
                     // so it is also allowed to contain nested `impl Trait`.
-                    self.with_impl_trait(None, |this| this.visit_ty(type_));
+                    self.with_impl_trait(None, |this| this.visit_ty(ty));
                 }
             }
         }
@@ -737,16 +790,58 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             |this| visit::walk_enum_def(this, enum_definition, generics, item_id))
     }
 
-    fn visit_impl_item(&mut self, ii: &'a ImplItem) {
-        if let ImplItemKind::Method(ref sig, _) = ii.kind {
-            self.check_fn_decl(&sig.decl);
+    fn visit_impl_item(&mut self, ii: &'a AssocItem) {
+        match &ii.kind {
+            AssocItemKind::Const(_, body) => {
+                self.check_impl_item_provided(ii.span, body, "constant", " = <expr>;");
+            }
+            AssocItemKind::Fn(sig, body) => {
+                self.check_impl_item_provided(ii.span, body, "function", " { <body> }");
+                self.check_fn_decl(&sig.decl);
+            }
+            AssocItemKind::TyAlias(bounds, body) => {
+                self.check_impl_item_provided(ii.span, body, "type", " = <type>;");
+                self.check_impl_assoc_type_no_bounds(bounds);
+            }
+            _ => {}
         }
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_trait_item(&mut self, ti: &'a TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'a AssocItem) {
         self.invalid_visibility(&ti.vis, None);
+        self.check_defaultness(ti.span, ti.defaultness);
+
+        if let AssocItemKind::Fn(sig, block) = &ti.kind {
+            self.check_fn_decl(&sig.decl);
+            self.check_trait_fn_not_async(ti.span, sig.header.asyncness.node);
+            self.check_trait_fn_not_const(sig.header.constness);
+            if block.is_none() {
+                Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
+                    if mut_ident {
+                        self.lint_buffer.buffer_lint(
+                            lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
+                            ti.id, span,
+                            "patterns aren't allowed in methods without bodies"
+                        );
+                    } else {
+                        struct_span_err!(
+                            self.session, span, E0642,
+                            "patterns aren't allowed in methods without bodies"
+                        ).emit();
+                    }
+                });
+            }
+        }
+
         visit::walk_trait_item(self, ti);
+    }
+
+    fn visit_assoc_item(&mut self, item: &'a AssocItem) {
+        if let AssocItemKind::Fn(sig, _) = &item.kind {
+            self.check_c_varadic_type(&sig.decl);
+        }
+        visit::walk_assoc_item(self, item);
     }
 }
 

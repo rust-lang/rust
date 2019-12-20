@@ -154,10 +154,10 @@ ast_fragments! {
     Items(SmallVec<[P<ast::Item>; 1]>) {
         "item"; many fn flat_map_item; fn visit_item; fn make_items;
     }
-    TraitItems(SmallVec<[ast::TraitItem; 1]>) {
+    TraitItems(SmallVec<[ast::AssocItem; 1]>) {
         "trait item"; many fn flat_map_trait_item; fn visit_trait_item; fn make_trait_items;
     }
-    ImplItems(SmallVec<[ast::ImplItem; 1]>) {
+    ImplItems(SmallVec<[ast::AssocItem; 1]>) {
         "impl item"; many fn flat_map_impl_item; fn visit_impl_item; fn make_impl_items;
     }
     ForeignItems(SmallVec<[ast::ForeignItem; 1]>) {
@@ -1316,7 +1316,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
     }
 
-    fn flat_map_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
+    fn flat_map_trait_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
         let mut item = configure!(self, item);
 
         let (attr, traits, after_derive) = self.classify_item(&mut item);
@@ -1326,16 +1326,16 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::TraitItemKind::Macro(mac) => {
-                let ast::TraitItem { attrs, span, .. } = item;
+            ast::AssocItemKind::Macro(mac) => {
+                let ast::AssocItem { attrs, span, .. } = item;
                 self.check_attributes(&attrs);
                 self.collect_bang(mac, span, AstFragmentKind::TraitItems).make_trait_items()
             }
-            _ => noop_flat_map_trait_item(item, self),
+            _ => noop_flat_map_assoc_item(item, self),
         }
     }
 
-    fn flat_map_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
+    fn flat_map_impl_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
         let mut item = configure!(self, item);
 
         let (attr, traits, after_derive) = self.classify_item(&mut item);
@@ -1345,12 +1345,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::ImplItemKind::Macro(mac) => {
-                let ast::ImplItem { attrs, span, .. } = item;
+            ast::AssocItemKind::Macro(mac) => {
+                let ast::AssocItem { attrs, span, .. } = item;
                 self.check_attributes(&attrs);
                 self.collect_bang(mac, span, AstFragmentKind::ImplItems).make_impl_items()
             }
-            _ => noop_flat_map_impl_item(item, self),
+            _ => noop_flat_map_assoc_item(item, self),
         }
     }
 

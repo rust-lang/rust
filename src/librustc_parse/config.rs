@@ -344,12 +344,12 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
         noop_flat_map_item(configure!(self, item), self)
     }
 
-    fn flat_map_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
-        noop_flat_map_impl_item(configure!(self, item), self)
+    fn flat_map_impl_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+        noop_flat_map_assoc_item(configure!(self, item), self)
     }
 
-    fn flat_map_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
-        noop_flat_map_trait_item(configure!(self, item), self)
+    fn flat_map_trait_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+        noop_flat_map_assoc_item(configure!(self, item), self)
     }
 
     fn visit_mac(&mut self, _mac: &mut ast::Mac) {

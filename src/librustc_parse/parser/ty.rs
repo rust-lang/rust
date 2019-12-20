@@ -10,7 +10,7 @@ use syntax::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam
 use syntax::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
 use syntax::ast::{Mutability, AnonConst, Mac};
 use syntax::token::{self, Token};
-use syntax::struct_span_fatal;
+use syntax::struct_span_err;
 use syntax_pos::source_map::Span;
 use syntax_pos::symbol::kw;
 
@@ -30,6 +30,13 @@ impl<'a> Parser<'a> {
         self.parse_ty_common(true, true, false)
     }
 
+    /// Parse a type suitable for a function or function pointer parameter.
+    /// The difference from `parse_ty` is that this version allows `...`
+    /// (`CVarArgs`) at the top level of the the type.
+    pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, P<Ty>> {
+        self.parse_ty_common(true, true, true)
+    }
+
     /// Parses a type in restricted contexts where `+` is not permitted.
     ///
     /// Example 1: `&'a TYPE`
@@ -41,16 +48,26 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an optional return type `[ -> TY ]` in a function declaration.
-    pub(super) fn parse_ret_ty(&mut self, allow_plus: bool) -> PResult<'a, FunctionRetTy> {
-        if self.eat(&token::RArrow) {
-            Ok(FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true, false)?))
+    pub(super) fn parse_ret_ty(
+        &mut self,
+        allow_plus: bool,
+        allow_qpath_recovery: bool,
+    ) -> PResult<'a, FunctionRetTy> {
+        Ok(if self.eat(&token::RArrow) {
+            // FIXME(Centril): Can we unconditionally `allow_plus`?
+            FunctionRetTy::Ty(self.parse_ty_common(allow_plus, allow_qpath_recovery, false)?)
         } else {
-            Ok(FunctionRetTy::Default(self.token.span.shrink_to_lo()))
-        }
+            FunctionRetTy::Default(self.token.span.shrink_to_lo())
+        })
     }
 
-    pub(super) fn parse_ty_common(&mut self, allow_plus: bool, allow_qpath_recovery: bool,
-                       allow_c_variadic: bool) -> PResult<'a, P<Ty>> {
+    fn parse_ty_common(
+        &mut self,
+        allow_plus: bool,
+        allow_qpath_recovery: bool,
+        // Is `...` (`CVarArgs`) legal in the immediate top level call?
+        allow_c_variadic: bool,
+    ) -> PResult<'a, P<Ty>> {
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
         maybe_whole!(self, NtTy, |x| x);
 
@@ -192,17 +209,21 @@ impl<'a> Parser<'a> {
                     TyKind::Path(None, path)
                 }
             }
-        } else if self.check(&token::DotDotDot) {
+        } else if self.eat(&token::DotDotDot) {
             if allow_c_variadic {
-                self.eat(&token::DotDotDot);
                 TyKind::CVarArgs
             } else {
-                return Err(struct_span_fatal!(
+                // FIXME(Centril): Should we just allow `...` syntactically
+                // anywhere in a type and use semantic restrictions instead?
+                struct_span_err!(
                     self.sess.span_diagnostic,
-                    self.token.span,
+                    lo.to(self.prev_span),
                     E0743,
-                    "only foreign functions are allowed to be C-variadic",
-                ));
+                    "C-variadic type `...` may not be nested inside another type",
+                )
+                .emit();
+
+                TyKind::Err
             }
         } else {
             let msg = format!("expected type, found {}", self.this_token_descr());
@@ -287,7 +308,6 @@ impl<'a> Parser<'a> {
         self.expect_keyword(kw::Fn)?;
         let cfg = ParamCfg {
             is_self_allowed: false,
-            allow_c_variadic: true,
             is_name_required: |_| false,
         };
         let decl = self.parse_fn_decl(cfg, false)?;

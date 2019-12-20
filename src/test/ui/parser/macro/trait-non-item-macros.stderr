@@ -1,8 +1,8 @@
-error: expected one of `async`, `const`, `crate`, `extern`, `fn`, `pub`, `type`, or `unsafe`, found `2`
+error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, or `unsafe`, found `2`
   --> $DIR/trait-non-item-macros.rs:2:19
    |
 LL |     ($a:expr) => ($a)
-   |                   ^^ expected one of 8 possible tokens
+   |                   ^^ expected one of 9 possible tokens
 ...
 LL |     bah!(2);
    |     -------- in this macro invocation

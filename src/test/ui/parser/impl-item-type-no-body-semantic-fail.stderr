@@ -1,0 +1,73 @@
+error: associated type in `impl` without body
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:5
+   |
+LL |     type Y;
+   |     ^^^^^^-
+   |           |
+   |           help: provide a definition for the type: `= <type>;`
+
+error: associated type in `impl` without body
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:12:5
+   |
+LL |     type Z: Ord;
+   |     ^^^^^^^^^^^-
+   |                |
+   |                help: provide a definition for the type: `= <type>;`
+
+error: bounds on associated `type`s in `impl`s have no effect
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:12:13
+   |
+LL |     type Z: Ord;
+   |             ^^^
+
+error: associated type in `impl` without body
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:16:5
+   |
+LL |     type W: Ord where Self: Eq;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                               |
+   |                               help: provide a definition for the type: `= <type>;`
+
+error: bounds on associated `type`s in `impl`s have no effect
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:16:13
+   |
+LL |     type W: Ord where Self: Eq;
+   |             ^^^
+
+error: associated type in `impl` without body
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:20:5
+   |
+LL |     type W where Self: Eq;
+   |     ^^^^^^^^^^^^^^^^^^^^^-
+   |                          |
+   |                          help: provide a definition for the type: `= <type>;`
+
+warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0202]: associated types are not yet supported in inherent impls (see #8995)
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:5
+   |
+LL |     type Y;
+   |     ^^^^^^^
+
+error[E0202]: associated types are not yet supported in inherent impls (see #8995)
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:12:5
+   |
+LL |     type Z: Ord;
+   |     ^^^^^^^^^^^^
+
+error[E0202]: associated types are not yet supported in inherent impls (see #8995)
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:16:5
+   |
+LL |     type W: Ord where Self: Eq;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0202`.
