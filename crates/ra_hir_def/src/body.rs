@@ -23,7 +23,7 @@ use crate::{
     DefWithBodyId, HasModule, Lookup, ModuleDefId, ModuleId,
 };
 
-struct Expander {
+pub(crate) struct Expander {
     crate_def_map: Arc<CrateDefMap>,
     current_file_id: HirFileId,
     hygiene: Hygiene,
@@ -32,18 +32,22 @@ struct Expander {
 }
 
 impl Expander {
-    fn new(db: &impl DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
+    pub(crate) fn new(
+        db: &impl DefDatabase,
+        current_file_id: HirFileId,
+        module: ModuleId,
+    ) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db, current_file_id);
         let ast_id_map = db.ast_id_map(current_file_id);
         Expander { crate_def_map, current_file_id, hygiene, ast_id_map, module }
     }
 
-    fn enter_expand(
+    pub(crate) fn enter_expand<T: ast::AstNode, DB: DefDatabase>(
         &mut self,
-        db: &impl DefDatabase,
+        db: &DB,
         macro_call: ast::MacroCall,
-    ) -> Option<(Mark, ast::Expr)> {
+    ) -> Option<(Mark, T)> {
         let ast_id = AstId::new(
             self.current_file_id,
             db.ast_id_map(self.current_file_id).ast_id(&macro_call),
@@ -54,7 +58,7 @@ impl Expander {
                 let call_id = def.as_call_id(db, MacroCallKind::FnLike(ast_id));
                 let file_id = call_id.as_file();
                 if let Some(node) = db.parse_or_expand(file_id) {
-                    if let Some(expr) = ast::Expr::cast(node) {
+                    if let Some(expr) = T::cast(node) {
                         log::debug!("macro expansion {:#?}", expr.syntax());
 
                         let mark = Mark {
@@ -77,14 +81,14 @@ impl Expander {
         None
     }
 
-    fn exit(&mut self, db: &impl DefDatabase, mut mark: Mark) {
+    pub(crate) fn exit(&mut self, db: &impl DefDatabase, mut mark: Mark) {
         self.hygiene = Hygiene::new(db, mark.file_id);
         self.current_file_id = mark.file_id;
         self.ast_id_map = mem::take(&mut mark.ast_id_map);
         mark.bomb.defuse();
     }
 
-    fn to_source<T>(&self, value: T) -> InFile<T> {
+    pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
         InFile { file_id: self.current_file_id, value }
     }
 
@@ -109,7 +113,7 @@ impl Expander {
     }
 }
 
-struct Mark {
+pub(crate) struct Mark {
     file_id: HirFileId,
     ast_id_map: Arc<AstIdMap>,
     bomb: DropBomb,

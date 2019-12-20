@@ -47,6 +47,7 @@ use ra_arena::{impl_arena_id, RawId};
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_syntax::{ast, AstNode};
 
+use crate::body::Expander;
 use crate::builtin_type::BuiltinType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
