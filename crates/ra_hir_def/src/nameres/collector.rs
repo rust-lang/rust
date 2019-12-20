@@ -467,34 +467,10 @@ where
             // prevent stack overflows (but this shouldn't be possible)
             panic!("infinite recursion in glob imports!");
         }
-        let module_items = &mut self.def_map.modules[module_id].scope;
+        let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            let existing = module_items.items.entry(name.clone()).or_default();
-
-            if existing.def.types.is_none() && res.def.types.is_some() {
-                existing.def.types = res.def.types;
-                existing.import = import.or(res.import);
-                changed = true;
-            }
-            if existing.def.values.is_none() && res.def.values.is_some() {
-                existing.def.values = res.def.values;
-                existing.import = import.or(res.import);
-                changed = true;
-            }
-            if existing.def.macros.is_none() && res.def.macros.is_some() {
-                existing.def.macros = res.def.macros;
-                existing.import = import.or(res.import);
-                changed = true;
-            }
-
-            if existing.def.is_none()
-                && res.def.is_none()
-                && existing.import.is_none()
-                && res.import.is_some()
-            {
-                existing.import = res.import;
-            }
+            changed |= scope.push_res(name.clone(), res, import);
         }
 
         if !changed {
