@@ -119,7 +119,7 @@ pub fn adjust_arg_for_abi<'tcx>(
             let (a, b) = arg.load_scalar_pair(fx);
             Pair(a, b)
         }
-        PassMode::ByRef => Single(arg.force_stack(fx)),
+        PassMode::ByRef => Single(arg.force_stack(fx).get_addr(fx)),
     }
 }
 

@@ -88,14 +88,14 @@ impl<'tcx> CValue<'tcx> {
         self.1
     }
 
-    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
+    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Pointer {
         let layout = self.1;
         match self.0 {
-            CValueInner::ByRef(ptr) => ptr.get_addr(fx),
+            CValueInner::ByRef(ptr) => ptr,
             CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => {
                 let cplace = CPlace::new_stack_slot(fx, layout.ty);
                 cplace.write_cvalue(fx, self);
-                cplace.to_addr(fx)
+                cplace.to_ptr(fx)
             }
         }
     }
@@ -331,10 +331,6 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    pub fn to_addr(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
-        self.to_ptr(fx).get_addr(fx)
-    }
-
     pub fn to_ptr_maybe_unsized(
         self,
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
@@ -353,14 +349,6 @@ impl<'tcx> CPlace<'tcx> {
             }
             CPlaceInner::Var(_) => bug!("Expected CPlace::Addr, found CPlace::Var"),
         }
-    }
-
-    pub fn to_addr_maybe_unsized(
-        self,
-        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    ) -> (Value, Option<Value>) {
-        let (ptr, extra) = self.to_ptr_maybe_unsized(fx);
-        (ptr.get_addr(fx), extra)
     }
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, from: CValue<'tcx>) {
@@ -533,15 +521,15 @@ impl<'tcx> CPlace<'tcx> {
 
     pub fn write_place_ref(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
         if has_ptr_meta(fx.tcx, self.layout().ty) {
-            let (value, extra) = self.to_addr_maybe_unsized(fx);
+            let (ptr, extra) = self.to_ptr_maybe_unsized(fx);
             let ptr = CValue::by_val_pair(
-                value,
+                ptr.get_addr(fx),
                 extra.expect("unsized type without metadata"),
                 dest.layout(),
             );
             dest.write_cvalue(fx, ptr);
         } else {
-            let ptr = CValue::by_val(self.to_addr(fx), dest.layout());
+            let ptr = CValue::by_val(self.to_ptr(fx).get_addr(fx), dest.layout());
             dest.write_cvalue(fx, ptr);
         }
     }

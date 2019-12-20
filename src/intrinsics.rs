@@ -598,7 +598,7 @@ pub fn codegen_intrinsic_call<'tcx>(
 
         transmute, <src_ty, dst_ty> (c from) {
             assert_eq!(from.layout().ty, src_ty);
-            let addr = Pointer::new(from.force_stack(fx));
+            let addr = from.force_stack(fx);
             let dst_layout = fx.layout_of(dst_ty);
             ret.write_cvalue(fx, CValue::by_ref(addr, dst_layout))
         };
@@ -633,7 +633,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                     fx.bcx.def_var(mir_var(var), val);
                 }
                 _ => {
-                    let addr = ret.to_addr(fx);
+                    let addr = ret.to_ptr(fx).get_addr(fx);
                     let layout = ret.layout();
                     fx.bcx.emit_small_memset(fx.module.target_config(), addr, 0, layout.size.bytes(), 1);
                 }

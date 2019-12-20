@@ -611,7 +611,8 @@ pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_plac
         let drop_fn_ty = drop_fn.ty(fx.tcx);
         match ty.kind {
             ty::Dynamic(..) => {
-                let (ptr, vtable) = drop_place.to_addr_maybe_unsized(fx);
+                let (ptr, vtable) = drop_place.to_ptr_maybe_unsized(fx);
+                let ptr = ptr.get_addr(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
 
                 let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(
