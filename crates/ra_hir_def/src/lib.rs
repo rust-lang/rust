@@ -366,19 +366,7 @@ impl HasModule for AssocContainerId {
     }
 }
 
-impl HasModule for FunctionLoc {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
-        self.container.module(db)
-    }
-}
-
-impl HasModule for TypeAliasLoc {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
-        self.container.module(db)
-    }
-}
-
-impl HasModule for ConstLoc {
+impl<N: AstNode> HasModule for AssocItemLoc<N> {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         self.container.module(db)
     }
