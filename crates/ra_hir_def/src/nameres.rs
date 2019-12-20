@@ -69,7 +69,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     db::DefDatabase,
-    item_scope::{BuiltinShadowMode, ModuleScope},
+    item_scope::{BuiltinShadowMode, ItemScope},
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
@@ -165,7 +165,7 @@ impl ModuleOrigin {
 pub struct ModuleData {
     pub parent: Option<LocalModuleId>,
     pub children: FxHashMap<Name, LocalModuleId>,
-    pub scope: ModuleScope,
+    pub scope: ItemScope,
 
     /// Where does this module come from?
     pub origin: ModuleOrigin,

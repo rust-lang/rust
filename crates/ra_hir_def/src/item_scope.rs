@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use crate::{per_ns::PerNs, BuiltinType, LocalImportId, MacroDefId, ModuleDefId, TraitId};
 
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct ModuleScope {
+pub struct ItemScope {
     pub(crate) items: FxHashMap<Name, Resolution>,
     /// Macros visible in current module in legacy textual scope
     ///
@@ -45,7 +45,7 @@ pub enum BuiltinShadowMode {
 
 /// Legacy macros can only be accessed through special methods like `get_legacy_macros`.
 /// Other methods will only resolve values, types and module scoped macros only.
-impl ModuleScope {
+impl ItemScope {
     pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, &'a Resolution)> + 'a {
         //FIXME: shadowing
         self.items.iter().chain(BUILTIN_SCOPE.iter())
