@@ -196,7 +196,12 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         } else if let TempState::Defined { ref mut uses, .. } = *temp {
             // We always allow borrows, even mutable ones, as we need
             // to promote mutable borrows of some ZSTs e.g., `&mut []`.
-            let allowed_use = context.is_borrow() || context.is_nonmutating_use();
+            let allowed_use = match context {
+                PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+                | PlaceContext::NonMutatingUse(_) => true,
+                PlaceContext::MutatingUse(_)
+                | PlaceContext::NonUse(_) => false,
+            };
             debug!("visit_local: allowed_use={:?}", allowed_use);
             if allowed_use {
                 *uses += 1;
@@ -618,6 +623,21 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(rhs)
             }
 
+            Rvalue::AddressOf(_, place) => {
+                // Raw reborrows can come from reference to pointer coercions,
+                // so are allowed.
+                if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
+                    let base_ty = Place::ty_from(&place.base, proj_base, *self.body, self.tcx).ty;
+                    if let ty::Ref(..) = base_ty.kind {
+                        return self.validate_place(PlaceRef {
+                            base: &place.base,
+                            projection: proj_base,
+                        });
+                    }
+                }
+                Err(Unpromotable)
+            }
+
             Rvalue::Ref(_, kind, place) => {
                 if let BorrowKind::Mut { .. } = kind {
                     let ty = place.ty(*self.body, self.tcx).ty;
@@ -950,7 +970,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Candidate::Ref(loc) => {
                     let ref mut statement = blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
-                        StatementKind::Assign(box(_, Rvalue::Ref(_, _, ref mut place))) => {
+                        StatementKind::Assign(box (_, Rvalue::Ref(_, _, ref mut place))) => {
                             // Use the underlying local for this (necessarily interior) borrow.
                             let ty = place.base.ty(local_decls).ty;
                             let span = statement.source_info.span;

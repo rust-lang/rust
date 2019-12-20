@@ -225,6 +225,23 @@ impl NonConstOp for MutBorrow {
 }
 
 #[derive(Debug)]
+pub struct MutAddressOf;
+impl NonConstOp for MutAddressOf {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_mut_refs)
+    }
+
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        feature_err(
+            &item.tcx.sess.parse_sess,
+            sym::const_mut_refs,
+            span,
+            &format!("`&raw mut` is not allowed in {}s", item.const_kind())
+        ).emit();
+    }
+}
+
+#[derive(Debug)]
 pub struct MutDeref;
 impl NonConstOp for MutDeref {
     fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {

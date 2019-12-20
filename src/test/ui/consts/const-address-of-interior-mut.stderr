@@ -1,0 +1,27 @@
+error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+  --> $DIR/const-address-of-interior-mut.rs:5:39
+   |
+LL | const A: () = { let x = Cell::new(2); &raw const x; };
+   |                                       ^^^^^^^^^^^^
+
+error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+  --> $DIR/const-address-of-interior-mut.rs:7:40
+   |
+LL | static B: () = { let x = Cell::new(2); &raw const x; };
+   |                                        ^^^^^^^^^^^^
+
+error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+  --> $DIR/const-address-of-interior-mut.rs:9:44
+   |
+LL | static mut C: () = { let x = Cell::new(2); &raw const x; };
+   |                                            ^^^^^^^^^^^^
+
+error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+  --> $DIR/const-address-of-interior-mut.rs:13:13
+   |
+LL |     let y = &raw const x;
+   |             ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0492`.

@@ -28,8 +28,6 @@ pub enum CastTy<'tcx> {
     FnPtr,
     /// Raw pointers
     Ptr(ty::TypeAndMut<'tcx>),
-    /// References
-    RPtr(ty::TypeAndMut<'tcx>),
 }
 
 /// Cast Kind. See RFC 401 (or librustc_typeck/check/cast.rs)
@@ -63,7 +61,6 @@ impl<'tcx> CastTy<'tcx> {
             ty::Adt(d,_) if d.is_enum() && d.is_payloadfree() =>
                 Some(CastTy::Int(IntTy::CEnum)),
             ty::RawPtr(mt) => Some(CastTy::Ptr(mt)),
-            ty::Ref(_, ty, mutbl) => Some(CastTy::RPtr(ty::TypeAndMut { ty, mutbl })),
             ty::FnPtr(..) => Some(CastTy::FnPtr),
             _ => None,
         }

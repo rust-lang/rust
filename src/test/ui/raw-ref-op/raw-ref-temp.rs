@@ -1,6 +1,8 @@
 // Ensure that we don't allow taking the address of temporary values
 #![feature(raw_ref_op, type_ascription)]
 
+const FOUR: u64 = 4;
+
 const PAIR: (i32, i64) = (1, 2);
 
 const ARRAY: [i32; 2] = [1, 2];
@@ -8,8 +10,8 @@ const ARRAY: [i32; 2] = [1, 2];
 fn main() {
     let ref_expr = &raw const 2;                        //~ ERROR cannot take address
     let mut_ref_expr = &raw mut 3;                      //~ ERROR cannot take address
-    let ref_const = &raw const 4;                       //~ ERROR cannot take address
-    let mut_ref_const = &raw mut 5;                     //~ ERROR cannot take address
+    let ref_const = &raw const FOUR;                    //~ ERROR cannot take address
+    let mut_ref_const = &raw mut FOUR;                  //~ ERROR cannot take address
 
     let field_ref_expr = &raw const (1, 2).0;           //~ ERROR cannot take address
     let mut_field_ref_expr = &raw mut (1, 2).0;         //~ ERROR cannot take address
