@@ -406,6 +406,13 @@
 # Whether to verify generated LLVM IR
 #verify-llvm-ir = false
 
+# Compile the compiler with a non-default ThinLTO import limit. This import
+# limit controls the maximum size of functions imported by ThinLTO. Decreasing
+# will make code compile faster at the expense of lower runtime performance.
+# If `incremental` is set to true above, the import limit will default to 10
+# instead of LLVM's default of 100.
+#thin-lto-import-instr-limit = 100
+
 # Map all debuginfo paths for libstd and crates to `/rust/$sha/$crate/...`,
 # generally only set for releases
 #remap-debuginfo = false

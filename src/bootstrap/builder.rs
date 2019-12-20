@@ -1183,6 +1183,21 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Cprefer-dynamic");
         }
 
+        // When building incrementally we default to a lower ThinLTO import limit
+        // (unless explicitly specified otherwise). This will produce a somewhat
+        // slower code but give way better compile times.
+        {
+            let limit = match self.config.rust_thin_lto_import_instr_limit {
+                Some(limit) => Some(limit),
+                None if self.config.incremental => Some(10),
+                _ => None,
+            };
+
+            if let Some(limit) = limit {
+                rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
+            }
+        }
+
         Cargo { command: cargo, rustflags }
     }
 
