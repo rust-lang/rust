@@ -18,16 +18,6 @@ pub extern crate libc as netc;
 
 pub type wrlen_t = size_t;
 
-// See below for the usage of SOCK_CLOEXEC, but this constant is only defined on
-// Linux currently (e.g., support doesn't exist on other platforms). In order to
-// get name resolution to work and things to compile we just define a dummy
-// SOCK_CLOEXEC here for other platforms. Note that the dummy constant isn't
-// actually ever used (the blocks below are wrapped in `if cfg!` as well.
-#[cfg(target_os = "linux")]
-use libc::SOCK_CLOEXEC;
-#[cfg(not(target_os = "linux"))]
-const SOCK_CLOEXEC: c_int = 0;
-
 pub struct Socket(FileDesc);
 
 pub fn init() {}
@@ -69,8 +59,9 @@ impl Socket {
             // this option, however, was added in 2.6.27, and we still support
             // 2.6.18 as a kernel, so if the returned error is EINVAL we
             // fallthrough to the fallback.
-            if cfg!(target_os = "linux") {
-                match cvt(libc::socket(fam, ty | SOCK_CLOEXEC, 0)) {
+            #[cfg(target_os = "linux")]
+            {
+                match cvt(libc::socket(fam, ty | libc::SOCK_CLOEXEC, 0)) {
                     Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
                     Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {}
                     Err(e) => return Err(e),
@@ -96,8 +87,9 @@ impl Socket {
             let mut fds = [0, 0];
 
             // Like above, see if we can set cloexec atomically
-            if cfg!(target_os = "linux") {
-                match cvt(libc::socketpair(fam, ty | SOCK_CLOEXEC, 0, fds.as_mut_ptr())) {
+            #[cfg(target_os = "linux")]
+            {
+                match cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr())) {
                     Ok(_) => {
                         return Ok((Socket(FileDesc::new(fds[0])), Socket(FileDesc::new(fds[1]))));
                     }
@@ -187,7 +179,8 @@ impl Socket {
         // atomically set the CLOEXEC flag is to use the `accept4` syscall on
         // Linux. This was added in 2.6.28, however, and because we support
         // 2.6.18 we must detect this support dynamically.
-        if cfg!(target_os = "linux") {
+        #[cfg(target_os = "linux")]
+        {
             syscall! {
                 fn accept4(
                     fd: c_int,
@@ -196,7 +189,7 @@ impl Socket {
                     flags: c_int
                 ) -> c_int
             }
-            let res = cvt_r(|| unsafe { accept4(self.0.raw(), storage, len, SOCK_CLOEXEC) });
+            let res = cvt_r(|| unsafe { accept4(self.0.raw(), storage, len, libc::SOCK_CLOEXEC) });
             match res {
                 Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
                 Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
