@@ -26,7 +26,7 @@ use crate::{
     path::Path,
     type_ref::{Mutability, TypeRef},
     ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId, StaticLoc,
-    StructLoc, TypeAliasLoc, UnionLoc,
+    StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
 pub(super) fn lower(
@@ -522,7 +522,14 @@ where
                     let ast_id = self.expander.ast_id(&def);
                     UnionLoc { container, ast_id }.intern(self.db).into()
                 }
-                _ => continue,
+                ast::ModuleItem::TraitDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    TraitLoc { container, ast_id }.intern(self.db).into()
+                }
+                ast::ModuleItem::ImplBlock(_)
+                | ast::ModuleItem::UseItem(_)
+                | ast::ModuleItem::ExternCrateItem(_)
+                | ast::ModuleItem::Module(_) => continue,
             };
             self.body.defs.push(def)
         }

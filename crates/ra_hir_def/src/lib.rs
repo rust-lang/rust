@@ -235,7 +235,7 @@ impl_intern_key!(TraitId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitLoc {
-    pub container: ModuleId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::TraitDef>,
 }
 
@@ -499,7 +499,7 @@ impl HasModule for AssocContainerId {
         match *self {
             AssocContainerId::ContainerId(it) => it.module(db),
             AssocContainerId::ImplId(it) => it.lookup(db).container,
-            AssocContainerId::TraitId(it) => it.lookup(db).container,
+            AssocContainerId::TraitId(it) => it.lookup(db).container.module(db),
         }
     }
 }
@@ -548,7 +548,7 @@ impl HasModule for GenericDefId {
         match self {
             GenericDefId::FunctionId(it) => it.lookup(db).module(db),
             GenericDefId::AdtId(it) => it.module(db),
-            GenericDefId::TraitId(it) => it.lookup(db).container,
+            GenericDefId::TraitId(it) => it.lookup(db).container.module(db),
             GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
             GenericDefId::ImplId(it) => it.lookup(db).container,
             GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container.module(db),

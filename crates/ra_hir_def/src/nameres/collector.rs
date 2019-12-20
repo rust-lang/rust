@@ -802,7 +802,7 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Trait(ast_id) => {
-                let def = TraitLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                let def = TraitLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db);
 
                 PerNs::types(def.into())
