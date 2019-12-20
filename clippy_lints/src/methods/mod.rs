@@ -977,11 +977,11 @@ declare_clippy_lint! {
     /// ```
     ///
     /// ```rust
-    /// let _ = (0..4).filter_map(i32::checked_abs);
+    /// let _ = (0..4).filter_map(|x| Some(x + 1));
     /// ```
     /// As there is no conditional check on the argument this could be written as:
     /// ```rust
-    /// let _ = (0..4).map(i32::checked_abs);
+    /// let _ = (0..4).map(|x| x + 1);
     /// ```
     pub UNNECESSARY_FILTER_MAP,
     complexity,
