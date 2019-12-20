@@ -77,81 +77,45 @@ pub struct AssocItemLoc<N: AstNode> {
     pub ast_id: AstId<N>,
 }
 
+macro_rules! impl_intern {
+    ($id:ident, $loc:ident, $intern:ident, $lookup:ident) => {
+        impl_intern_key!($id);
+
+        impl Intern for $loc {
+            type ID = $id;
+            fn intern(self, db: &impl db::DefDatabase) -> $id {
+                db.$intern(self)
+            }
+        }
+
+        impl Lookup for $id {
+            type Data = $loc;
+            fn lookup(&self, db: &impl db::DefDatabase) -> $loc {
+                db.$lookup(*self)
+            }
+        }
+    };
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FunctionId(salsa::InternId);
-impl_intern_key!(FunctionId);
 type FunctionLoc = AssocItemLoc<ast::FnDef>;
-
-impl Intern for FunctionLoc {
-    type ID = FunctionId;
-    fn intern(self, db: &impl db::DefDatabase) -> FunctionId {
-        db.intern_function(self)
-    }
-}
-
-impl Lookup for FunctionId {
-    type Data = FunctionLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> FunctionLoc {
-        db.lookup_intern_function(*self)
-    }
-}
+impl_intern!(FunctionId, FunctionLoc, intern_function, lookup_intern_function);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructId(salsa::InternId);
-impl_intern_key!(StructId);
-pub type StructLoc = ItemLoc<ast::StructDef>;
-
-impl Intern for StructLoc {
-    type ID = StructId;
-    fn intern(self, db: &impl db::DefDatabase) -> StructId {
-        db.intern_struct(self)
-    }
-}
-
-impl Lookup for StructId {
-    type Data = StructLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> StructLoc {
-        db.lookup_intern_struct(*self)
-    }
-}
+type StructLoc = ItemLoc<ast::StructDef>;
+impl_intern!(StructId, StructLoc, intern_struct, lookup_intern_struct);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnionId(salsa::InternId);
-impl_intern_key!(UnionId);
 pub type UnionLoc = ItemLoc<ast::UnionDef>;
-
-impl Intern for UnionLoc {
-    type ID = UnionId;
-    fn intern(self, db: &impl db::DefDatabase) -> UnionId {
-        db.intern_union(self)
-    }
-}
-
-impl Lookup for UnionId {
-    type Data = UnionLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> UnionLoc {
-        db.lookup_intern_union(*self)
-    }
-}
+impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumId(salsa::InternId);
-impl_intern_key!(EnumId);
 pub type EnumLoc = ItemLoc<ast::EnumDef>;
-
-impl Intern for EnumLoc {
-    type ID = EnumId;
-    fn intern(self, db: &impl db::DefDatabase) -> EnumId {
-        db.intern_enum(self)
-    }
-}
-
-impl Lookup for EnumId {
-    type Data = EnumLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> EnumLoc {
-        db.lookup_intern_enum(*self)
-    }
-}
+impl_intern!(EnumId, EnumLoc, intern_enum, lookup_intern_enum);
 
 // FIXME: rename to `VariantId`, only enums can ave variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -176,79 +140,23 @@ impl_arena_id!(LocalStructFieldId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
-impl_intern_key!(ConstId);
 type ConstLoc = AssocItemLoc<ast::ConstDef>;
-
-impl Intern for ConstLoc {
-    type ID = ConstId;
-    fn intern(self, db: &impl db::DefDatabase) -> ConstId {
-        db.intern_const(self)
-    }
-}
-
-impl Lookup for ConstId {
-    type Data = ConstLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> ConstLoc {
-        db.lookup_intern_const(*self)
-    }
-}
+impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StaticId(salsa::InternId);
-impl_intern_key!(StaticId);
 pub type StaticLoc = ItemLoc<ast::StaticDef>;
-
-impl Intern for StaticLoc {
-    type ID = StaticId;
-    fn intern(self, db: &impl db::DefDatabase) -> StaticId {
-        db.intern_static(self)
-    }
-}
-
-impl Lookup for StaticId {
-    type Data = StaticLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> StaticLoc {
-        db.lookup_intern_static(*self)
-    }
-}
+impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TraitId(salsa::InternId);
-impl_intern_key!(TraitId);
 pub type TraitLoc = ItemLoc<ast::TraitDef>;
-
-impl Intern for TraitLoc {
-    type ID = TraitId;
-    fn intern(self, db: &impl db::DefDatabase) -> TraitId {
-        db.intern_trait(self)
-    }
-}
-
-impl Lookup for TraitId {
-    type Data = TraitLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> TraitLoc {
-        db.lookup_intern_trait(*self)
-    }
-}
+impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAliasId(salsa::InternId);
-impl_intern_key!(TypeAliasId);
 type TypeAliasLoc = AssocItemLoc<ast::TypeAliasDef>;
-
-impl Intern for TypeAliasLoc {
-    type ID = TypeAliasId;
-    fn intern(self, db: &impl db::DefDatabase) -> TypeAliasId {
-        db.intern_type_alias(self)
-    }
-}
-
-impl Lookup for TypeAliasId {
-    type Data = TypeAliasLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> TypeAliasLoc {
-        db.lookup_intern_type_alias(*self)
-    }
-}
+impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_alias);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplId(salsa::InternId);
