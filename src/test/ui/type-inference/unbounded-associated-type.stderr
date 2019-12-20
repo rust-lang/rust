@@ -8,7 +8,7 @@ LL |     S(std::marker::PhantomData).foo();
    |     ^--------------------------------
    |     |
    |     this method call resolves to `<Self as T>::A`
-   |     cannot infer type for type parameter `X`
+   |     cannot infer type for type parameter `X` declared on the struct `S`
 
 error: aborting due to previous error
 
