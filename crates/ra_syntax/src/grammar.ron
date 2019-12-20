@@ -426,7 +426,7 @@ Grammar(
         "PathExpr": (options: ["Path"]),
         "LambdaExpr": (
             options: [
-                "ParamList",
+                "ParamList", "RetType",
                 ["body", "Expr"],
             ]
         ),
