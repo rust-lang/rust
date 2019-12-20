@@ -160,27 +160,8 @@ impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_al
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplId(salsa::InternId);
-impl_intern_key!(ImplId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImplLoc {
-    pub container: ModuleId,
-    pub ast_id: AstId<ast::ImplBlock>,
-}
-
-impl Intern for ImplLoc {
-    type ID = ImplId;
-    fn intern(self, db: &impl db::DefDatabase) -> ImplId {
-        db.intern_impl(self)
-    }
-}
-
-impl Lookup for ImplId {
-    type Data = ImplLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> ImplLoc {
-        db.lookup_intern_impl(*self)
-    }
-}
+type ImplLoc = ItemLoc<ast::ImplBlock>;
+impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeParamId {
@@ -379,7 +360,7 @@ impl HasModule for AssocContainerId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match *self {
             AssocContainerId::ContainerId(it) => it.module(db),
-            AssocContainerId::ImplId(it) => it.lookup(db).container,
+            AssocContainerId::ImplId(it) => it.lookup(db).container.module(db),
             AssocContainerId::TraitId(it) => it.lookup(db).container.module(db),
         }
     }
@@ -431,7 +412,7 @@ impl HasModule for GenericDefId {
             GenericDefId::AdtId(it) => it.module(db),
             GenericDefId::TraitId(it) => it.lookup(db).container.module(db),
             GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
-            GenericDefId::ImplId(it) => it.lookup(db).container,
+            GenericDefId::ImplId(it) => it.lookup(db).container.module(db),
             GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container.module(db),
             GenericDefId::ConstId(it) => it.lookup(db).module(db),
         }

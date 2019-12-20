@@ -134,7 +134,7 @@ impl Ty {
                 LangItemTarget::ImplBlockId(it) => Some(it),
                 _ => None,
             })
-            .map(|it| it.lookup(db).container.krate)
+            .map(|it| it.lookup(db).container.module(db).krate)
             .collect();
         Some(res)
     }

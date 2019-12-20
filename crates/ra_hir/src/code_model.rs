@@ -754,7 +754,7 @@ impl ImplBlock {
         let environment = TraitEnvironment::lower(db, &resolver);
         let ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
         Type {
-            krate: self.id.lookup(db).container.krate,
+            krate: self.id.lookup(db).container.module(db).krate,
             ty: InEnvironment { value: ty, environment },
         }
     }
@@ -768,7 +768,7 @@ impl ImplBlock {
     }
 
     pub fn module(&self, db: &impl DefDatabase) -> Module {
-        self.id.lookup(db).container.into()
+        self.id.lookup(db).container.module(db).into()
     }
 
     pub fn krate(&self, db: &impl DefDatabase) -> Crate {

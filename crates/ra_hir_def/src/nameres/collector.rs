@@ -661,9 +661,10 @@ where
                             krate: self.def_collector.def_map.krate,
                             local_id: self.module_id,
                         };
+                        let container = ContainerId::ModuleId(module);
                         let ast_id = self.raw_items[imp].ast_id;
                         let impl_id =
-                            ImplLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                            ImplLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                                 .intern(self.def_collector.db);
                         self.def_collector.def_map.modules[self.module_id].impls.push(impl_id)
                     }

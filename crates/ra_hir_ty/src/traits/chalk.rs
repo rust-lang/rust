@@ -673,7 +673,7 @@ fn impl_block_datum(
     let bound_vars = Substs::bound_vars(&generic_params);
     let trait_ref = trait_ref.subst(&bound_vars);
     let trait_ = trait_ref.trait_;
-    let impl_type = if impl_id.lookup(db).container.krate == krate {
+    let impl_type = if impl_id.lookup(db).container.module(db).krate == krate {
         chalk_rust_ir::ImplType::Local
     } else {
         chalk_rust_ir::ImplType::External
