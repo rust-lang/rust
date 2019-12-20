@@ -18,9 +18,10 @@ use test_utils::tested_by;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
+    item_scope::Resolution,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
-        raw, BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, Resolution, ResolveMode,
+        raw, BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
     },
     path::{ModPath, PathKind},
     per_ns::PerNs,
