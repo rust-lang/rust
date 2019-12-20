@@ -1,3 +1,6 @@
+//! Describes items defined or visible (ie, imported) in a certain scope.
+//! This is shared between modules and blocks.
+
 use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
@@ -7,11 +10,11 @@ use crate::{per_ns::PerNs, BuiltinType, LocalImportId, MacroDefId, ModuleDefId, 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ModuleScope {
     pub(crate) items: FxHashMap<Name, Resolution>,
-    /// Macros visable in current module in legacy textual scope
+    /// Macros visible in current module in legacy textual scope
     ///
-    /// For macros invoked by an unquatified identifier like `bar!()`, `legacy_macros` will be searched in first.
+    /// For macros invoked by an unqualified identifier like `bar!()`, `legacy_macros` will be searched in first.
     /// If it yields no result, then it turns to module scoped `macros`.
-    /// It macros with name quatified with a path like `crate::foo::bar!()`, `legacy_macros` will be skipped,
+    /// It macros with name qualified with a path like `crate::foo::bar!()`, `legacy_macros` will be skipped,
     /// and only normal scoped `macros` will be searched in.
     ///
     /// Note that this automatically inherit macros defined textually before the definition of module itself.
