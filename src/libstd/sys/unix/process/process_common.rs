@@ -375,8 +375,12 @@ impl ChildStdio {
 
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.program)?;
-        for arg in &self.args {
+        if self.program != self.args[0] {
+            write!(f, "[{:?}] ", self.program)?;
+        }
+        write!(f, "{:?}", self.args[0])?;
+
+        for arg in &self.args[1..] {
             write!(f, " {:?}", arg)?;
         }
         Ok(())
