@@ -216,21 +216,30 @@ fn analyze_container(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> DynMap 
 }
 
 fn _analyze_container(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> Option<DynMap> {
-    // FIXME: this doesn't try to handle nested declarations
     for container in src.value.ancestors().skip(1) {
         let res = match_ast! {
             match container {
                 ast::TraitDef(it) => {
-                    let c = Trait::from_source(db, src.with_value(it))?;
-                    c.id.child_by_source(db)
+                    let def = Trait::from_source(db, src.with_value(it))?;
+                    def.id.child_by_source(db)
                 },
                 ast::ImplBlock(it) => {
-                    let c = ImplBlock::from_source(db, src.with_value(it))?;
-                    c.id.child_by_source(db)
+                    let def = ImplBlock::from_source(db, src.with_value(it))?;
+                    def.id.child_by_source(db)
                 },
                 ast::FnDef(it) => {
-                    let f = Function::from_source(db, src.with_value(it))?;
-                    DefWithBodyId::from(f.id)
+                    let def = Function::from_source(db, src.with_value(it))?;
+                    DefWithBodyId::from(def.id)
+                        .child_by_source(db)
+                },
+                ast::StaticDef(it) => {
+                    let def = Static::from_source(db, src.with_value(it))?;
+                    DefWithBodyId::from(def.id)
+                        .child_by_source(db)
+                },
+                ast::ConstDef(it) => {
+                    let def = Const::from_source(db, src.with_value(it))?;
+                    DefWithBodyId::from(def.id)
                         .child_by_source(db)
                 },
                 _ => { continue },
