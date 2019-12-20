@@ -226,19 +226,37 @@ fn collect_impl_items_in_macros(
     let mut res = Vec::new();
 
     for m in impl_block.value.syntax().children().filter_map(ast::MacroCall::cast) {
-        if let Some((mark, items)) = expander.enter_expand(db, m) {
-            let items: InFile<ast::MacroItems> = expander.to_source(items);
-            expander.exit(db, mark);
-            res.extend(collect_impl_items(
-                db,
-                items.value.items().filter_map(|it| ImplItem::cast(it.syntax().clone())),
-                items.file_id,
-                id,
-            ));
-        }
+        res.extend(collect_impl_items_in_macro(db, &mut expander, m, id))
     }
 
     res
+}
+
+fn collect_impl_items_in_macro(
+    db: &impl DefDatabase,
+    expander: &mut Expander,
+    m: ast::MacroCall,
+    id: ImplId,
+) -> Vec<AssocItemId> {
+    if let Some((mark, items)) = expander.enter_expand(db, m) {
+        let items: InFile<ast::MacroItems> = expander.to_source(items);
+        let mut res = collect_impl_items(
+            db,
+            items.value.items().filter_map(|it| ImplItem::cast(it.syntax().clone())),
+            items.file_id,
+            id,
+        );
+        // Recursive collect macros
+        // Note that ast::ModuleItem do not include ast::MacroCall
+        // We cannot use ModuleItemOwner::items here
+        for it in items.value.syntax().children().filter_map(ast::MacroCall::cast) {
+            res.extend(collect_impl_items_in_macro(db, expander, it, id))
+        }
+        expander.exit(db, mark);
+        res
+    } else {
+        Vec::new()
+    }
 }
 
 fn collect_impl_items(
