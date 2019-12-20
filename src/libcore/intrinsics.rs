@@ -667,6 +667,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::size_of`](../../std/mem/fn.size_of.html).
+    #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
     pub fn size_of<T>() -> usize;
 
     /// Moves a value to an uninitialized memory location.
@@ -674,7 +675,9 @@ extern "rust-intrinsic" {
     /// Drop glue is not run on the destination.
     pub fn move_val_init<T>(dst: *mut T, src: T);
 
+    #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
     pub fn min_align_of<T>() -> usize;
+    #[rustc_const_unstable(feature = "const_pref_align_of", issue = "0")]
     pub fn pref_align_of<T>() -> usize;
 
     /// The size of the referenced value in bytes.
@@ -685,11 +688,13 @@ extern "rust-intrinsic" {
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
+    #[rustc_const_unstable(feature = "const_type_name", issue = "0")]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
+    #[rustc_const_unstable(feature = "const_type_id", issue = "0")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
@@ -697,6 +702,7 @@ extern "rust-intrinsic" {
     pub fn panic_if_uninhabited<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
+    #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
     /// Creates a value initialized to zero.
@@ -951,6 +957,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::needs_drop`](../../std/mem/fn.needs_drop.html).
+    #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
     pub fn needs_drop<T>() -> bool;
 
     /// Calculates the offset from a pointer.
@@ -1150,6 +1157,7 @@ extern "rust-intrinsic" {
 
 
     /// Returns the number of bits set in an integer type `T`
+    #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
     pub fn ctpop<T>(x: T) -> T;
 
     /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
@@ -1177,6 +1185,7 @@ extern "rust-intrinsic" {
     /// let num_leading = ctlz(x);
     /// assert_eq!(num_leading, 16);
     /// ```
+    #[rustc_const_stable(feature = "const_ctlz", since = "1.40.0")]
     pub fn ctlz<T>(x: T) -> T;
 
     /// Like `ctlz`, but extra-unsafe as it returns `undef` when
@@ -1193,6 +1202,7 @@ extern "rust-intrinsic" {
     /// let num_leading = unsafe { ctlz_nonzero(x) };
     /// assert_eq!(num_leading, 3);
     /// ```
+    #[rustc_const_unstable(feature = "constctlz", issue = "0")]
     pub fn ctlz_nonzero<T>(x: T) -> T;
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
@@ -1220,6 +1230,7 @@ extern "rust-intrinsic" {
     /// let num_trailing = cttz(x);
     /// assert_eq!(num_trailing, 16);
     /// ```
+    #[rustc_const_stable(feature = "const_cttz", since = "1.40.0")]
     pub fn cttz<T>(x: T) -> T;
 
     /// Like `cttz`, but extra-unsafe as it returns `undef` when
@@ -1236,30 +1247,36 @@ extern "rust-intrinsic" {
     /// let num_trailing = unsafe { cttz_nonzero(x) };
     /// assert_eq!(num_trailing, 3);
     /// ```
+    #[rustc_const_unstable(feature = "const_cttz", issue = "0")]
     pub fn cttz_nonzero<T>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
+    #[rustc_const_stable(feature = "const_bswap", since = "1.40.0")]
     pub fn bswap<T>(x: T) -> T;
 
     /// Reverses the bits in an integer type `T`.
+    #[rustc_const_stable(feature = "const_bitreverse", since = "1.40.0")]
     pub fn bitreverse<T>(x: T) -> T;
 
     /// Performs checked integer addition.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_add` method. For example,
     /// [`std::u32::overflowing_add`](../../std/primitive.u32.html#method.overflowing_add)
+    #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
     pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer subtraction
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_sub` method. For example,
     /// [`std::u32::overflowing_sub`](../../std/primitive.u32.html#method.overflowing_sub)
+    #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
     pub fn sub_with_overflow<T>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer multiplication
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_mul` method. For example,
     /// [`std::u32::overflowing_mul`](../../std/primitive.u32.html#method.overflowing_mul)
+    #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
     pub fn mul_with_overflow<T>(x: T, y: T) -> (T, bool);
 
     /// Performs an exact division, resulting in undefined behavior where
@@ -1275,9 +1292,11 @@ extern "rust-intrinsic" {
 
     /// Performs an unchecked left shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
+    #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     pub fn unchecked_shl<T>(x: T, y: T) -> T;
     /// Performs an unchecked right shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
+    #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     pub fn unchecked_shr<T>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked addition, resulting in
@@ -1296,39 +1315,46 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
     /// [`std::u32::rotate_left`](../../std/primitive.u32.html#method.rotate_left)
+    #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     pub fn rotate_left<T>(x: T, y: T) -> T;
 
     /// Performs rotate right.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_right` method. For example,
-    /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right)
+    /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right
+    #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     pub fn rotate_right<T>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_add` method. For example,
     /// [`std::u32::wrapping_add`](../../std/primitive.u32.html#method.wrapping_add)
+    #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_add<T>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_sub` method. For example,
     /// [`std::u32::wrapping_sub`](../../std/primitive.u32.html#method.wrapping_sub)
+    #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_sub<T>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_mul` method. For example,
     /// [`std::u32::wrapping_mul`](../../std/primitive.u32.html#method.wrapping_mul)
+    #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_mul<T>(a: T, b: T) -> T;
 
     /// Computes `a + b`, while saturating at numeric bounds.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_add` method. For example,
     /// [`std::u32::saturating_add`](../../std/primitive.u32.html#method.saturating_add)
+    #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
     pub fn saturating_add<T>(a: T, b: T) -> T;
     /// Computes `a - b`, while saturating at numeric bounds.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_sub` method. For example,
     /// [`std::u32::saturating_sub`](../../std/primitive.u32.html#method.saturating_sub)
+    #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
     pub fn saturating_sub<T>(a: T, b: T) -> T;
 
     /// Returns the value of the discriminant for the variant in 'v',
@@ -1350,6 +1376,7 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
+    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "0")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// Internal hook used by Miri to implement unwinding.
