@@ -25,8 +25,10 @@ extern "platform-intrinsic" {
     pub fn simd_shuffle64<T, U>(x: T, y: T, idx: [u32; 64]) -> U;
     #[rustc_args_required_const(2)]
     pub fn simd_shuffle128<T, U>(x: T, y: T, idx: [u32; 128]) -> U;
-
+    
+    #[rustc_const_unstable(feature = "const_simd_insert", issue = "0")]
     pub fn simd_insert<T, U>(x: T, idx: u32, val: U) -> T;
+    #[rustc_const_unstable(feature = "const_simd_extract", issue = "0")]
     pub fn simd_extract<T, U>(x: T, idx: u32) -> U;
     //pub fn simd_select
     pub fn simd_bitmask<T, U>(x: T) -> U;
