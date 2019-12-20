@@ -45,7 +45,7 @@ use std::hash::Hash;
 use hir_expand::{ast_id_map::FileAstId, AstId, HirFileId, InFile, MacroDefId};
 use ra_arena::{impl_arena_id, RawId};
 use ra_db::{impl_intern_key, salsa, CrateId};
-use ra_syntax::ast;
+use ra_syntax::{ast, AstNode};
 
 use crate::builtin_type::BuiltinType;
 
@@ -65,15 +65,22 @@ pub struct ModuleId {
 pub struct LocalModuleId(RawId);
 impl_arena_id!(LocalModuleId);
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ItemLoc<N: AstNode> {
+    pub container: ContainerId,
+    pub ast_id: AstId<N>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AssocItemLoc<N: AstNode> {
+    pub container: AssocContainerId,
+    pub ast_id: AstId<N>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FunctionId(salsa::InternId);
 impl_intern_key!(FunctionId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionLoc {
-    pub container: AssocContainerId,
-    pub ast_id: AstId<ast::FnDef>,
-}
+type FunctionLoc = AssocItemLoc<ast::FnDef>;
 
 impl Intern for FunctionLoc {
     type ID = FunctionId;
@@ -92,12 +99,7 @@ impl Lookup for FunctionId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructId(salsa::InternId);
 impl_intern_key!(StructId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StructLoc {
-    pub container: ContainerId,
-    pub ast_id: AstId<ast::StructDef>,
-}
+pub type StructLoc = ItemLoc<ast::StructDef>;
 
 impl Intern for StructLoc {
     type ID = StructId;
@@ -116,12 +118,7 @@ impl Lookup for StructId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnionId(salsa::InternId);
 impl_intern_key!(UnionId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UnionLoc {
-    pub container: ContainerId,
-    pub ast_id: AstId<ast::UnionDef>,
-}
+pub type UnionLoc = ItemLoc<ast::UnionDef>;
 
 impl Intern for UnionLoc {
     type ID = UnionId;
@@ -140,12 +137,7 @@ impl Lookup for UnionId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumId(salsa::InternId);
 impl_intern_key!(EnumId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnumLoc {
-    pub container: ContainerId,
-    pub ast_id: AstId<ast::EnumDef>,
-}
+pub type EnumLoc = ItemLoc<ast::EnumDef>;
 
 impl Intern for EnumLoc {
     type ID = EnumId;
@@ -185,11 +177,7 @@ impl_arena_id!(LocalStructFieldId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
 impl_intern_key!(ConstId);
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConstLoc {
-    pub container: AssocContainerId,
-    pub ast_id: AstId<ast::ConstDef>,
-}
+type ConstLoc = AssocItemLoc<ast::ConstDef>;
 
 impl Intern for ConstLoc {
     type ID = ConstId;
@@ -208,12 +196,7 @@ impl Lookup for ConstId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StaticId(salsa::InternId);
 impl_intern_key!(StaticId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StaticLoc {
-    pub container: ContainerId,
-    pub ast_id: AstId<ast::StaticDef>,
-}
+pub type StaticLoc = ItemLoc<ast::StaticDef>;
 
 impl Intern for StaticLoc {
     type ID = StaticId;
@@ -232,12 +215,7 @@ impl Lookup for StaticId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TraitId(salsa::InternId);
 impl_intern_key!(TraitId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitLoc {
-    pub container: ContainerId,
-    pub ast_id: AstId<ast::TraitDef>,
-}
+pub type TraitLoc = ItemLoc<ast::TraitDef>;
 
 impl Intern for TraitLoc {
     type ID = TraitId;
@@ -256,12 +234,7 @@ impl Lookup for TraitId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAliasId(salsa::InternId);
 impl_intern_key!(TypeAliasId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeAliasLoc {
-    pub container: AssocContainerId,
-    pub ast_id: AstId<ast::TypeAliasDef>,
-}
+type TypeAliasLoc = AssocItemLoc<ast::TypeAliasDef>;
 
 impl Intern for TypeAliasLoc {
     type ID = TypeAliasId;
@@ -301,6 +274,16 @@ impl Lookup for ImplId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TypeParamId {
+    pub parent: GenericDefId,
+    pub local_id: LocalTypeParamId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LocalTypeParamId(RawId);
+impl_arena_id!(LocalTypeParamId);
+
 macro_rules! impl_froms {
     ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {
         $(
@@ -319,16 +302,6 @@ macro_rules! impl_froms {
         )*
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TypeParamId {
-    pub parent: GenericDefId,
-    pub local_id: LocalTypeParamId,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LocalTypeParamId(RawId);
-impl_arena_id!(LocalTypeParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContainerId {
