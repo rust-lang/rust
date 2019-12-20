@@ -1,6 +1,22 @@
 //! Compiler intrinsics.
 //!
 //! The corresponding definitions are in `librustc_codegen_llvm/intrinsic.rs`.
+//! The corresponding const implementations are in `librustc_mir/interpret/intrinsics.rs`
+//!
+//! # Const intrinsics
+//!
+//! Note: any changes to the constness of intrinsics should be discussed with the language team.
+//! This includes changes in the stability of the constness.
+//!
+//! In order to make an intrinsic usable at compile-time, one needs to copy the implementation
+//! from https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics.rs to
+//! `librustc_mir/interpret/intrinsics.rs` and add a
+//! `#[rustc_const_unstable(feature = "foo", issue = "01234")]` to the intrinsic.
+//!
+//! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
+//! the intrinsic's attribute must be `rustc_const_stable`, too. Such a change should not be done
+//! without T-lang consulation, because it bakes a feature into the language that cannot be
+//! replicated in user code without compiler support.
 //!
 //! # Volatiles
 //!
