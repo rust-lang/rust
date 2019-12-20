@@ -6,11 +6,17 @@ const DROP_FN_INDEX: usize = 0;
 const SIZE_INDEX: usize = 1;
 const ALIGN_INDEX: usize = 2;
 
+fn vtable_memflags() -> MemFlags {
+    let mut flags = MemFlags::trusted(); // A vtable access is always aligned and will never trap.
+    flags.set_readonly(); // A vtable is always read-only.
+    flags
+}
+
 pub fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
-        MemFlags::new(),
+        vtable_memflags(),
         vtable,
         (DROP_FN_INDEX * usize_size) as i32,
     )
@@ -20,7 +26,7 @@ pub fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> 
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
-        MemFlags::new(),
+        vtable_memflags(),
         vtable,
         (SIZE_INDEX * usize_size) as i32,
     )
@@ -30,7 +36,7 @@ pub fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
-        MemFlags::new(),
+        vtable_memflags(),
         vtable,
         (ALIGN_INDEX * usize_size) as i32,
     )
@@ -45,7 +51,7 @@ pub fn get_ptr_and_method_ref<'tcx>(
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes();
     let func_ref = fx.bcx.ins().load(
         pointer_ty(fx.tcx),
-        MemFlags::new(),
+        vtable_memflags(),
         vtable,
         ((idx + 3) * usize_size as usize) as i32,
     );

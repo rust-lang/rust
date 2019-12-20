@@ -91,8 +91,7 @@ pub fn trap_unreachable_ret_value<'tcx>(
     msg: impl AsRef<str>,
 ) -> CValue<'tcx> {
     trap_unimplemented(fx, msg);
-    let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
-    CValue::by_ref(zero, dest_layout)
+    CValue::by_ref(Pointer::const_addr(fx, 0), dest_layout)
 }
 
 /// Like `trap_unreachable` but returns a fake place for the specified type.
@@ -104,6 +103,5 @@ pub fn trap_unreachable_ret_place<'tcx>(
     msg: impl AsRef<str>,
 ) -> CPlace<'tcx> {
     trap_unimplemented(fx, msg);
-    let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
-    CPlace::for_addr(zero, dest_layout)
+    CPlace::for_ptr(Pointer::const_addr(fx, 0), dest_layout)
 }

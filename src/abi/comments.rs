@@ -94,14 +94,14 @@ pub fn add_local_place_comments<'tcx>(
             align.abi.bytes(),
             align.pref.bytes(),
         )),
-        CPlaceInner::Addr(addr, None) => fx.add_global_comment(format!(
-            "reuse {:5} {:20} {:4}b {}, {}              storage={}",
+        CPlaceInner::Addr(ptr, None) => fx.add_global_comment(format!(
+            "reuse {:5} {:20} {:4}b {}, {}              storage={:?}",
             format!("{:?}", local),
             format!("{:?}", ty),
             size.bytes(),
             align.abi.bytes(),
             align.pref.bytes(),
-            addr,
+            ptr,
         )),
         CPlaceInner::Addr(_, Some(_)) => unreachable!(),
     }

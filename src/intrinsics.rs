@@ -446,7 +446,7 @@ pub fn codegen_intrinsic_call<'tcx>(
         };
         discriminant_value, (c ptr) {
             let pointee_layout = fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::by_ref(ptr.load_scalar(fx), pointee_layout);
+            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), pointee_layout);
             let discr = crate::discriminant::codegen_get_discriminant(fx, val, ret.layout());
             ret.write_cvalue(fx, discr);
         };
@@ -615,6 +615,10 @@ pub fn codegen_intrinsic_call<'tcx>(
                     let clif_ty = fx.clif_type(layout.ty).unwrap();
                     let val = match clif_ty {
                         types::I8 | types::I16 | types::I32 | types::I64 => fx.bcx.ins().iconst(clif_ty, 0),
+                        types::I128 => {
+                            let zero = fx.bcx.ins().iconst(types::I64, 0);
+                            fx.bcx.ins().iconcat(zero, zero)
+                        }
                         types::F32 => {
                             let zero = fx.bcx.ins().iconst(types::I32, 0);
                             fx.bcx.ins().bitcast(types::F32, zero)
@@ -629,7 +633,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                     fx.bcx.def_var(mir_var(var), val);
                 }
                 _ => {
-                    let addr = ret.to_addr(fx);
+                    let addr = ret.to_ptr(fx).get_addr(fx);
                     let layout = ret.layout();
                     fx.bcx.emit_small_memset(fx.module.target_config(), addr, 0, layout.size.bytes(), 1);
                 }
@@ -647,6 +651,11 @@ pub fn codegen_intrinsic_call<'tcx>(
                     let clif_ty = fx.clif_type(layout.ty).unwrap();
                     let val = match clif_ty {
                         types::I8 | types::I16 | types::I32 | types::I64 => fx.bcx.ins().iconst(clif_ty, 42),
+                        types::I128 => {
+                            let zero = fx.bcx.ins().iconst(types::I64, 0);
+                            let fourty_two = fx.bcx.ins().iconst(types::I64, 42);
+                            fx.bcx.ins().iconcat(fourty_two, zero)
+                        }
                         types::F32 => {
                             let zero = fx.bcx.ins().iconst(types::I32, 0xdeadbeef);
                             fx.bcx.ins().bitcast(types::F32, zero)
@@ -681,7 +690,8 @@ pub fn codegen_intrinsic_call<'tcx>(
                 let msb_lz = fx.bcx.ins().clz(msb);
                 let msb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, msb, 0);
                 let lsb_lz_plus_64 = fx.bcx.ins().iadd_imm(lsb_lz, 64);
-                fx.bcx.ins().select(msb_is_zero, lsb_lz_plus_64, msb_lz)
+                let res = fx.bcx.ins().select(msb_is_zero, lsb_lz_plus_64, msb_lz);
+                fx.bcx.ins().uextend(types::I128, res)
             } else {
                 fx.bcx.ins().clz(arg)
             };
@@ -697,7 +707,8 @@ pub fn codegen_intrinsic_call<'tcx>(
                 let msb_tz = fx.bcx.ins().ctz(msb);
                 let lsb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, lsb, 0);
                 let msb_tz_plus_64 = fx.bcx.ins().iadd_imm(msb_tz, 64);
-                fx.bcx.ins().select(lsb_is_zero, msb_tz_plus_64, lsb_tz)
+                let res = fx.bcx.ins().select(lsb_is_zero, msb_tz_plus_64, lsb_tz);
+                fx.bcx.ins().uextend(types::I128, res)
             } else {
                 fx.bcx.ins().ctz(arg)
             };
@@ -804,12 +815,12 @@ pub fn codegen_intrinsic_call<'tcx>(
             // Cranelift treats loads as volatile by default
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::by_ref(ptr.load_scalar(fx), inner_layout);
+            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
         };
         volatile_store, (v ptr, c val) {
             // Cranelift treats stores as volatile by default
-            let dest = CPlace::for_addr(ptr, val.layout());
+            let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
             dest.write_cvalue(fx, val);
         };
 
@@ -843,11 +854,11 @@ pub fn codegen_intrinsic_call<'tcx>(
         _ if intrinsic.starts_with("atomic_load"), (c ptr) {
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::by_ref(ptr.load_scalar(fx), inner_layout);
+            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
         };
         _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
-            let dest = CPlace::for_addr(ptr, val.layout());
+            let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
             dest.write_cvalue(fx, val);
         };
         _ if intrinsic.starts_with("atomic_xchg"), <T> (v ptr, c src) {
@@ -857,7 +868,7 @@ pub fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(old, fx.layout_of(T)));
 
             // Write new
-            let dest = CPlace::for_addr(ptr, src.layout());
+            let dest = CPlace::for_ptr(Pointer::new(ptr), src.layout());
             dest.write_cvalue(fx, src);
         };
         _ if intrinsic.starts_with("atomic_cxchg"), <T> (v ptr, v test_old, v new) { // both atomic_cxchg_* and atomic_cxchgweak_*
