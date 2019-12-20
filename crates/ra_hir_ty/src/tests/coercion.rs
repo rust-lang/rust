@@ -487,3 +487,42 @@ fn foo() {
     "###
     );
 }
+
+#[test]
+fn coerce_fn_item_to_fn_ptr() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn foo(x: u32) -> isize { 1 }
+fn test() {
+    let f: fn(u32) -> isize = foo;
+}
+"#, true),
+        @r###"
+    [8; 9) 'x': u32
+    [25; 30) '{ 1 }': isize
+    [27; 28) '1': isize
+    [41; 79) '{     ...foo; }': ()
+    [51; 52) 'f': fn(u32) -> isize
+    [73; 76) 'foo': fn foo(u32) -> isize
+    "###
+    );
+}
+
+#[test]
+fn coerce_closure_to_fn_ptr() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn test() {
+    let f: fn(u32) -> isize = |x| { 1 };
+}
+"#, true),
+        @r###"
+    [11; 55) '{     ...1 }; }': ()
+    [21; 22) 'f': fn(u32) -> isize
+    [43; 52) '|x| { 1 }': |u32| -> isize
+    [44; 45) 'x': u32
+    [47; 52) '{ 1 }': isize
+    [49; 50) '1': isize
+    "###
+    );
+}
