@@ -154,7 +154,7 @@ pub use self::Expectation::*;
 use self::autoderef::Autoderef;
 use self::callee::DeferredCallResolution;
 use self::coercion::{CoerceMany, DynamicCoerceMany};
-pub use self::compare_method::{compare_impl_method, compare_const_impl};
+use self::compare_method::{compare_impl_method, compare_const_impl, compare_ty_impl};
 use self::method::{MethodCallee, SelfSource};
 use self::TupleArgumentsFlag::*;
 
@@ -2014,14 +2014,14 @@ fn check_impl_items_against_trait<'tcx>(
                     }
                 }
                 hir::ImplItemKind::Method(..) => {
-                    let trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
+                    let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
                     if ty_trait_item.kind == ty::AssocKind::Method {
                         compare_impl_method(tcx,
                                             &ty_impl_item,
                                             impl_item.span,
                                             &ty_trait_item,
                                             impl_trait_ref,
-                                            trait_span);
+                                            opt_trait_span);
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0324,
                             "item `{}` is an associated method, \
@@ -2029,7 +2029,7 @@ fn check_impl_items_against_trait<'tcx>(
                             ty_impl_item.ident,
                             impl_trait_ref.print_only_trait_path());
                          err.span_label(impl_item.span, "does not match trait");
-                         if let Some(trait_span) = tcx.hir().span_if_local(ty_trait_item.def_id) {
+                         if let Some(trait_span) = opt_trait_span {
                             err.span_label(trait_span, "item in trait");
                          }
                          err.emit()
@@ -2037,10 +2037,19 @@ fn check_impl_items_against_trait<'tcx>(
                 }
                 hir::ImplItemKind::OpaqueTy(..) |
                 hir::ImplItemKind::TyAlias(_) => {
+                    let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
                     if ty_trait_item.kind == ty::AssocKind::Type {
                         if ty_trait_item.defaultness.has_value() {
                             overridden_associated_type = Some(impl_item);
                         }
+                        compare_ty_impl(
+                            tcx,
+                            &ty_impl_item,
+                            impl_item.span,
+                            &ty_trait_item,
+                            impl_trait_ref,
+                            opt_trait_span,
+                        )
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0325,
                             "item `{}` is an associated type, \
@@ -2048,7 +2057,7 @@ fn check_impl_items_against_trait<'tcx>(
                             ty_impl_item.ident,
                             impl_trait_ref.print_only_trait_path());
                          err.span_label(impl_item.span, "does not match trait");
-                         if let Some(trait_span) = tcx.hir().span_if_local(ty_trait_item.def_id) {
+                         if let Some(trait_span) = opt_trait_span {
                             err.span_label(trait_span, "item in trait");
                          }
                          err.emit()
@@ -2604,6 +2613,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn projected_ty_from_poly_trait_ref(&self,
                                         span: Span,
                                         item_def_id: DefId,
+                                        item_segment: &hir::PathSegment,
                                         poly_trait_ref: ty::PolyTraitRef<'tcx>)
                                         -> Ty<'tcx>
     {
@@ -2613,7 +2623,16 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             &poly_trait_ref
         );
 
-        self.tcx().mk_projection(item_def_id, trait_ref.substs)
+        let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
+            self,
+            self.tcx,
+            span,
+            item_def_id,
+            item_segment,
+            trait_ref.substs,
+        );
+
+        self.tcx().mk_projection(item_def_id, item_substs)
     }
 
     fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {

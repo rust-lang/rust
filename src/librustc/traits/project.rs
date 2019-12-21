@@ -23,6 +23,7 @@ use crate::ty::subst::{Subst, InternalSubsts};
 use crate::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::util::common::FN_OUTPUT_NAME;
+use syntax_pos::DUMMY_SP;
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
@@ -1437,11 +1438,14 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     impl_vtable: VtableImplData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let VtableImplData { impl_def_id, substs, nested } = impl_vtable;
-
     let tcx = selcx.tcx();
+
+    let VtableImplData { impl_def_id, substs, nested } = impl_vtable;
+    let assoc_item_id = obligation.predicate.item_def_id;
+    let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
+
     let param_env = obligation.param_env;
-    let assoc_ty = assoc_ty_def(selcx, impl_def_id, obligation.predicate.item_def_id);
+    let assoc_ty = assoc_ty_def(selcx, impl_def_id, assoc_item_id);
 
     if !assoc_ty.item.defaultness.has_value() {
         // This means that the impl is missing a definition for the
@@ -1456,6 +1460,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             obligations: nested,
         };
     }
+    let substs = obligation.predicate.substs.rebase_onto(tcx, trait_def_id, substs);
     let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
     let ty = if let ty::AssocKind::OpaqueTy = assoc_ty.item.kind {
         let item_substs = InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
@@ -1463,9 +1468,20 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     } else {
         tcx.type_of(assoc_ty.item.def_id)
     };
-    Progress {
-        ty: ty.subst(tcx, substs),
-        obligations: nested,
+    if substs.len() != tcx.generics_of(assoc_ty.item.def_id).count() {
+        tcx.sess.delay_span_bug(
+            DUMMY_SP,
+            "impl item and trait item have different parameter counts",
+        );
+        Progress {
+            ty: tcx.types.err,
+            obligations: nested,
+        }
+    } else {
+        Progress {
+            ty: ty.subst(tcx, substs),
+            obligations: nested,
+        }
     }
 }
 

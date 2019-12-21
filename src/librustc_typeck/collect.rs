@@ -224,10 +224,19 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         &self,
         span: Span,
         item_def_id: DefId,
+        item_segment: &hir::PathSegment,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
-            self.tcx().mk_projection(item_def_id, trait_ref.substs)
+            let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
+                self,
+                self.tcx,
+                span,
+                item_def_id,
+                item_segment,
+                trait_ref.substs,
+            );
+            self.tcx().mk_projection(item_def_id, item_substs)
         } else {
             // There are no late-bound regions; we can just ignore the binder.
             span_err!(
@@ -2291,25 +2300,7 @@ fn explicit_predicates_of(
     // Add predicates from associated type bounds.
     if let Some((self_trait_ref, trait_items)) = is_trait {
         predicates.extend(trait_items.iter().flat_map(|trait_item_ref| {
-            let trait_item = tcx.hir().trait_item(trait_item_ref.id);
-            let bounds = match trait_item.kind {
-                hir::TraitItemKind::Type(ref bounds, _) => bounds,
-                _ => return Vec::new().into_iter()
-            };
-
-            let assoc_ty =
-                tcx.mk_projection(tcx.hir().local_def_id(trait_item.hir_id),
-                    self_trait_ref.substs);
-
-            let bounds = AstConv::compute_bounds(
-                &ItemCtxt::new(tcx, def_id),
-                assoc_ty,
-                bounds,
-                SizedByDefault::Yes,
-                trait_item.span,
-            );
-
-            bounds.predicates(tcx, assoc_ty).into_iter()
+            associated_item_predicates(tcx, def_id, self_trait_ref, trait_item_ref)
         }))
     }
 
@@ -2341,6 +2332,105 @@ fn explicit_predicates_of(
     };
     debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
+}
+
+fn associated_item_predicates(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_trait_ref: ty::TraitRef<'tcx>,
+    trait_item_ref: &hir::TraitItemRef,
+) -> Vec<(ty::Predicate<'tcx>, Span)> {
+    let trait_item = tcx.hir().trait_item(trait_item_ref.id);
+    let item_def_id = tcx.hir().local_def_id(trait_item_ref.id.hir_id);
+    let bounds = match trait_item.kind {
+        hir::TraitItemKind::Type(ref bounds, _) => bounds,
+        _ => return Vec::new()
+    };
+
+    let is_gat = !tcx.generics_of(item_def_id).params.is_empty();
+
+    let mut had_error = false;
+
+    let mut unimplemented_error = |arg_kind: &str| {
+        if !had_error {
+            tcx.sess.struct_span_err(
+                trait_item.span,
+                &format!("{}-generic associated types are not yet implemented", arg_kind),
+            )
+                .note("for more information, see https://github.com/rust-lang/rust/issues/44265")
+                .emit();
+            had_error = true;
+        }
+    };
+
+    let mk_bound_param = |param: &ty::GenericParamDef, _: &_| {
+        match param.kind {
+            ty::GenericParamDefKind::Lifetime => {
+                tcx.mk_region(ty::RegionKind::ReLateBound(
+                    ty::INNERMOST,
+                    ty::BoundRegion::BrNamed(param.def_id, param.name)
+                )).into()
+            }
+            // FIXME(generic_associated_types): Use bound types and constants
+            // once they are handled by the trait system.
+            ty::GenericParamDefKind::Type { .. } => {
+                unimplemented_error("type");
+                tcx.types.err.into()
+            }
+            ty::GenericParamDefKind::Const => {
+                unimplemented_error("const");
+                tcx.consts.err.into()
+            }
+        }
+    };
+
+    let bound_substs = if is_gat {
+        // Given:
+        //
+        // trait X<'a, B, const C: usize> {
+        //     type T<'d, E, const F: usize>: Default;
+        // }
+        //
+        // We need to create predicates on the trait:
+        //
+        // for<'d, E, const F: usize>
+        // <Self as X<'a, B, const C: usize>>::T<'d, E, const F: usize>: Sized + Default
+        //
+        // We substitute escaping bound parameters for the generic
+        // arguments to the associated type which are then bound by
+        // the `Binder` around the the predicate.
+        //
+        // FIXME(generic_associated_types): Currently only lifetimes are handled.
+        self_trait_ref.substs.extend_to(tcx, item_def_id, mk_bound_param)
+    } else {
+        self_trait_ref.substs
+    };
+
+    let assoc_ty = tcx.mk_projection(
+        tcx.hir().local_def_id(trait_item.hir_id),
+        bound_substs,
+    );
+
+    let bounds = AstConv::compute_bounds(
+        &ItemCtxt::new(tcx, def_id),
+        assoc_ty,
+        bounds,
+        SizedByDefault::Yes,
+        trait_item.span,
+    );
+
+    let predicates = bounds.predicates(tcx, assoc_ty);
+
+    if is_gat {
+        // We use shifts to get the regions that we're substituting to
+        // be bound by the binders in the `Predicate`s rather that
+        // escaping.
+        let shifted_in = ty::fold::shift_vars(tcx, &predicates, 1);
+        let substituted = shifted_in.subst(tcx, bound_substs);
+        ty::fold::shift_out_vars(tcx, &substituted, 1)
+    } else {
+        predicates
+    }
 }
 
 /// Converts a specific `GenericBound` from the AST into a set of
