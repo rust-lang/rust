@@ -7,6 +7,7 @@ use hir_def::{
     StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
+use ra_db::FileId;
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
@@ -206,10 +207,14 @@ impl Module {
         };
 
         let original_file = src.file_id.original_file(db);
+        Module::from_file(db, original_file)
+    }
 
-        let (krate, local_id) = db.relevant_crates(original_file).iter().find_map(|&crate_id| {
+    fn from_file(db: &impl DefDatabase, file: FileId) -> Option<Self> {
+        let _p = profile("Module::from_file");
+        let (krate, local_id) = db.relevant_crates(file).iter().find_map(|&crate_id| {
             let crate_def_map = db.crate_def_map(crate_id);
-            let local_id = crate_def_map.modules_for_file(original_file).next()?;
+            let local_id = crate_def_map.modules_for_file(file).next()?;
             Some((crate_id, local_id))
         })?;
         Some(Module { id: ModuleId { krate, local_id } })
