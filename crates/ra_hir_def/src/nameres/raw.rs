@@ -48,12 +48,6 @@ pub struct ImportSourceMap {
 
 type ImportSourcePtr = Either<AstPtr<ast::UseTree>, AstPtr<ast::ExternCrateItem>>;
 
-impl ImportSourceMap {
-    pub fn get(&self, import: LocalImportId) -> ImportSourcePtr {
-        self.map[import].clone()
-    }
-}
-
 impl RawItems {
     pub(crate) fn raw_items_query(
         db: &(impl DefDatabase + AstDatabase),
