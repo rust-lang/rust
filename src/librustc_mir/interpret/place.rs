@@ -6,12 +6,13 @@ use std::convert::TryFrom;
 use std::hash::Hash;
 
 use rustc::mir;
-use rustc::mir::interpret::truncate;
+use rustc::mir::interpret::{truncate, ConstValue};
 use rustc::ty::layout::{
     self, Align, HasDataLayout, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
 };
 use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc_macros::HashStable;
 
 use super::{
@@ -195,15 +196,34 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
             _ => bug!("vtable not supported on type {:?}", self.layout.ty),
         }
     }
+
+    #[inline(always)]
+    pub fn to_const_value(self, tcx: TyCtxt<'tcx>) -> ConstValue<'tcx> {
+        match self.mplace.ptr {
+            Scalar::Ptr(ptr) => {
+                let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+                ConstValue::ByRef { alloc, offset: ptr.offset }
+            }
+            Scalar::Raw { data, .. } => {
+                assert_eq!(data, self.layout.align.abi.bytes().into());
+                ConstValue::Scalar(Scalar::zst())
+            }
+        }
+    }
 }
 
 // These are defined here because they produce a place.
 impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
-    pub fn try_as_mplace(self, cx: &impl HasDataLayout) -> Result<MPlaceTy<'tcx, Tag>, ImmTy<'tcx, Tag>> {
+    pub fn try_as_mplace(
+        self,
+        cx: &impl HasDataLayout,
+    ) -> Result<MPlaceTy<'tcx, Tag>, ImmTy<'tcx, Tag>> {
         match *self {
             Operand::Indirect(mplace) => Ok(MPlaceTy { mplace, layout: self.layout }),
-            Operand::Immediate(_) if self.layout.is_zst() => Ok(MPlaceTy::dangling(self.layout, cx)),
+            Operand::Immediate(_) if self.layout.is_zst() => {
+                Ok(MPlaceTy::dangling(self.layout, cx))
+            }
             Operand::Immediate(imm) => Err(ImmTy { imm, layout: self.layout }),
         }
     }

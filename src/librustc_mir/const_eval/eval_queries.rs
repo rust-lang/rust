@@ -118,25 +118,11 @@ pub(super) fn op_to_const<'tcx>(
         op.try_as_mplace(ecx)
     };
     let val = match immediate {
-        Ok(mplace) => {
-            let ptr = mplace.ptr.assert_ptr();
-            let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-            ConstValue::ByRef { alloc, offset: ptr.offset }
-        }
+        Ok(mplace) => mplace.to_const_value(ecx.tcx.tcx),
         // see comment on `let try_as_immediate` above
         Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
             ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
-            ScalarMaybeUndef::Undef => {
-                // When coming out of "normal CTFE", we'll always have an `Indirect` operand as
-                // argument and we will not need this. The only way we can already have an
-                // `Immediate` is when we are called from `const_field`, and that `Immediate`
-                // comes from a constant so it can happen have `Undef`, because the indirect
-                // memory that was read had undefined bytes.
-                let mplace = op.assert_mem_place(ecx);
-                let ptr = mplace.ptr.assert_ptr();
-                let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                ConstValue::ByRef { alloc, offset: ptr.offset }
-            }
+            ScalarMaybeUndef::Undef => op.assert_mem_place(ecx).to_const_value(ecx.tcx.tcx),
         },
         Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
             let (data, start) = match a.not_undef().unwrap() {
