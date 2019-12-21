@@ -63,6 +63,9 @@ enum Trace {
 
 /// A collection of errors encountered during region inference. This is needed to efficiently
 /// report errors after borrow checking.
+///
+/// Usually we expect this to either be empty or contain a small number of items, so we can avoid
+/// allocation most of the time.
 crate type RegionErrors<'tcx> = smallvec::SmallVec<[RegionErrorKind<'tcx>; 4]>;
 
 #[derive(Clone, Debug)]

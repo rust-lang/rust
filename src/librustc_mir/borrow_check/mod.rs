@@ -1666,6 +1666,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                         db.buffer(&mut self.errors_buffer);
                     } else {
+                        // We only report the first error, so as not to overwhelm the user. See
+                        // `RegRegionErrorKind` docs.
+                        //
                         // FIXME: currently we do nothing with these, but perhaps we can do better?
                         // FIXME: try collecting these constraints on the outlives suggestion
                         // builder. Does it make the suggestions any better?
