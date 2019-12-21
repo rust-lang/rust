@@ -94,16 +94,18 @@ fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
     }
 }
 
-// TODO: Lint expressions of the form `(x + 1).ln()` and `(x + y).ln()`
-// where y > 1 and suggest usage of `(x + (y - 1)).ln_1p()` instead
+// TODO: Lint expressions of the form `(x + y).ln()` where y > 1 and
+// suggest usage of `(x + (y - 1)).ln_1p()` instead
 fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
     if_chain! {
         if let ExprKind::Binary(op, ref lhs, ref rhs) = &args[0].kind;
         if op.node == BinOpKind::Add;
-        if let Some((value, _)) = constant(cx, cx.tables, lhs);
-        if F32(1.0) == value || F64(1.0) == value;
         then {
-            let arg = sugg::Sugg::hir(cx, rhs, "..").maybe_par();
+            let recv = match (constant(cx, cx.tables, lhs), constant(cx, cx.tables, rhs)) {
+                (Some((value, _)), _) if F32(1.0) == value || F64(1.0) == value => rhs,
+                (_, Some((value, _))) if F32(1.0) == value || F64(1.0) == value => lhs,
+                _ => return,
+            };
 
             span_lint_and_sugg(
                 cx,
@@ -111,7 +113,7 @@ fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
                 expr.span,
                 "ln(1 + x) can be computed more accurately",
                 "consider using",
-                format!("{}.ln_1p()", arg),
+                format!("{}.ln_1p()", sugg::Sugg::hir(cx, recv, "..").maybe_par()),
                 Applicability::MachineApplicable,
             );
         }
