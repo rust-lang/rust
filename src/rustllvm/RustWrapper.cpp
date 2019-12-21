@@ -1545,7 +1545,7 @@ LLVMRustEnableEmscriptenCXXExceptions() {
     // of our other LLVM arguments when we initialize LLVM.
     // Unfortunately, whether or not we pass this flag depends
     // on the crate panic strategy. Determining the crate
-    // panic strategy requires us to have paresed crate arributes
+    // panic strategy requires us to have parsed crate attributes
     // (so that we can have special handling for `libpanic_abort`).
     // Parsing crate attributes actually requires us to have initialized
     // LLVM, so that we can handle cfg-gating involving LLVM target
