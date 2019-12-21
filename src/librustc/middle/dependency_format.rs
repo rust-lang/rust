@@ -19,7 +19,7 @@ pub type DependencyList = Vec<Linkage>;
 /// This is local to the tcx, and is generally relevant to one session.
 pub type Dependencies = Vec<(config::CrateType, DependencyList)>;
 
-#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable, RustcEncodable, RustcDecodable)]
 pub enum Linkage {
     NotLinked,
     IncludedFromDylib,

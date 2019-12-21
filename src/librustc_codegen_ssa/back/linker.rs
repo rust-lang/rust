@@ -20,6 +20,7 @@ use rustc_target::spec::{LinkerFlavor, LldFlavor};
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct LinkerInfo {
     exports: FxHashMap<CrateType, Vec<String>>,
 }
