@@ -26,8 +26,7 @@ use crate::{
     path::{ModPath, PathKind},
     per_ns::PerNs,
     AdtId, AstId, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
-    LocalImportId, LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitLoc,
-    TypeAliasLoc, UnionLoc,
+    LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -93,7 +92,7 @@ impl PartialResolvedImport {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ImportDirective {
     module_id: LocalModuleId,
-    import_id: LocalImportId,
+    import_id: raw::Import,
     import: raw::ImportData,
     status: PartialResolvedImport,
 }
@@ -110,7 +109,7 @@ struct MacroDirective {
 struct DefCollector<'a, DB> {
     db: &'a DB,
     def_map: CrateDefMap,
-    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, LocalImportId)>>,
+    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, raw::Import)>>,
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
     unexpanded_macros: Vec<MacroDirective>,
@@ -442,7 +441,7 @@ where
     fn update(
         &mut self,
         module_id: LocalModuleId,
-        import: Option<LocalImportId>,
+        import: Option<raw::Import>,
         resolutions: &[(Name, Resolution)],
     ) {
         self.update_recursive(module_id, import, resolutions, 0)
@@ -451,7 +450,7 @@ where
     fn update_recursive(
         &mut self,
         module_id: LocalModuleId,
-        import: Option<LocalImportId>,
+        import: Option<raw::Import>,
         resolutions: &[(Name, Resolution)],
         depth: usize,
     ) {
@@ -462,7 +461,7 @@ where
         let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            changed |= scope.push_res(name.clone(), res, import);
+            changed |= scope.push_res(name.clone(), res, import.is_some());
         }
 
         if !changed {

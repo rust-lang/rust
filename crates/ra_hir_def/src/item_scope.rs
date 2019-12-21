@@ -5,7 +5,7 @@ use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
 
-use crate::{per_ns::PerNs, BuiltinType, ImplId, LocalImportId, MacroDefId, ModuleDefId, TraitId};
+use crate::{per_ns::PerNs, BuiltinType, ImplId, MacroDefId, ModuleDefId, TraitId};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
@@ -112,28 +112,23 @@ impl ItemScope {
         self.legacy_macros.insert(name, mac);
     }
 
-    pub(crate) fn push_res(
-        &mut self,
-        name: Name,
-        res: &Resolution,
-        import: Option<LocalImportId>,
-    ) -> bool {
+    pub(crate) fn push_res(&mut self, name: Name, res: &Resolution, import: bool) -> bool {
         let mut changed = false;
         let existing = self.items.entry(name.clone()).or_default();
 
         if existing.def.types.is_none() && res.def.types.is_some() {
             existing.def.types = res.def.types;
-            existing.import = import.is_some() || res.import;
+            existing.import = import || res.import;
             changed = true;
         }
         if existing.def.values.is_none() && res.def.values.is_some() {
             existing.def.values = res.def.values;
-            existing.import = import.is_some() || res.import;
+            existing.import = import || res.import;
             changed = true;
         }
         if existing.def.macros.is_none() && res.def.macros.is_some() {
             existing.def.macros = res.def.macros;
-            existing.import = import.is_some() || res.import;
+            existing.import = import || res.import;
             changed = true;
         }
 

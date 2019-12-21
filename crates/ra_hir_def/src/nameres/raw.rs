@@ -20,9 +20,7 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
-use crate::{
-    attr::Attrs, db::DefDatabase, path::ModPath, FileAstId, HirFileId, InFile, LocalImportId,
-};
+use crate::{attr::Attrs, db::DefDatabase, path::ModPath, FileAstId, HirFileId, InFile};
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
 ///
@@ -31,7 +29,7 @@ use crate::{
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RawItems {
     modules: Arena<Module, ModuleData>,
-    imports: Arena<LocalImportId, ImportData>,
+    imports: Arena<Import, ImportData>,
     defs: Arena<Def, DefData>,
     macros: Arena<Macro, MacroData>,
     impls: Arena<Impl, ImplData>,
@@ -73,9 +71,9 @@ impl Index<Module> for RawItems {
     }
 }
 
-impl Index<LocalImportId> for RawItems {
+impl Index<Import> for RawItems {
     type Output = ImportData;
-    fn index(&self, idx: LocalImportId) -> &ImportData {
+    fn index(&self, idx: Import) -> &ImportData {
         &self.imports[idx]
     }
 }
@@ -110,7 +108,7 @@ pub(super) struct RawItem {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum RawItemKind {
     Module(Module),
-    Import(LocalImportId),
+    Import(Import),
     Def(Def),
     Macro(Macro),
     Impl(Impl),
@@ -125,6 +123,10 @@ pub(super) enum ModuleData {
     Declaration { name: Name, ast_id: FileAstId<ast::Module> },
     Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct Import(RawId);
+impl_arena_id!(Import);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
