@@ -1173,6 +1173,7 @@ fn resolve_local<'tcx>(
     ///        | VariantName(..., P&, ...)
     ///        | [ ..., P&, ... ]
     ///        | ( ..., P&, ... )
+    ///        | ... "|" P& "|" ...
     ///        | box P&
     fn is_binding_pat(pat: &hir::Pat) -> bool {
         // Note that the code below looks for *explicit* refs only, that is, it won't
@@ -1212,6 +1213,7 @@ fn resolve_local<'tcx>(
                 pats3.iter().any(|p| is_binding_pat(&p))
             }
 
+            PatKind::Or(ref subpats) |
             PatKind::TupleStruct(_, ref subpats, _) |
             PatKind::Tuple(ref subpats, _) => {
                 subpats.iter().any(|p| is_binding_pat(&p))
@@ -1221,7 +1223,13 @@ fn resolve_local<'tcx>(
                 is_binding_pat(&subpat)
             }
 
-            _ => false,
+            PatKind::Ref(_, _) |
+            PatKind::Binding(hir::BindingAnnotation::Unannotated, ..) |
+            PatKind::Binding(hir::BindingAnnotation::Mutable, ..) |
+            PatKind::Wild |
+            PatKind::Path(_) |
+            PatKind::Lit(_) |
+            PatKind::Range(_, _, _) => false,
         }
     }
 

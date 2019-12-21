@@ -1,11 +1,11 @@
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
    |
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
    |           ptr_offset_from cannot compute offset of pointers into different allocations.
-   |           inside call to `std::ptr::<impl *const Struct>::offset_from` at $DIR/offset_from_ub.rs:19:27
+   |           inside call to `std::ptr::const_ptr::<impl *const Struct>::offset_from` at $DIR/offset_from_ub.rs:19:27
    | 
   ::: $DIR/offset_from_ub.rs:13:1
    |
@@ -21,13 +21,13 @@ LL | | };
    = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
    |
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
    |           a memory access tried to interpret some bytes as a pointer
-   |           inside call to `std::ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:25:14
+   |           inside call to `std::ptr::const_ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:25:14
    | 
   ::: $DIR/offset_from_ub.rs:23:1
    |
@@ -38,13 +38,13 @@ LL | | };
    | |__-
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
    |
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
    |           exact_div: 1 cannot be divided by 2 without remainder
-   |           inside call to `std::ptr::<impl *const u16>::offset_from` at $DIR/offset_from_ub.rs:33:14
+   |           inside call to `std::ptr::const_ptr::<impl *const u16>::offset_from` at $DIR/offset_from_ub.rs:33:14
    | 
   ::: $DIR/offset_from_ub.rs:28:1
    |
@@ -58,13 +58,13 @@ LL | | };
    | |__-
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
    |
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
    |           invalid use of NULL pointer
-   |           inside call to `std::ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:39:14
+   |           inside call to `std::ptr::const_ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:39:14
    | 
   ::: $DIR/offset_from_ub.rs:36:1
    |
@@ -76,13 +76,13 @@ LL | | };
    | |__-
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
    |
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
    |           a memory access tried to interpret some bytes as a pointer
-   |           inside call to `std::ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:46:14
+   |           inside call to `std::ptr::const_ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:46:14
    | 
   ::: $DIR/offset_from_ub.rs:42:1
    |

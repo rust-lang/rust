@@ -1,10 +1,13 @@
 //! Error reporting machinery for lifetime errors.
 
 use rustc::hir::def_id::DefId;
-use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc::infer::InferCtxt;
-use rustc::infer::NLLRegionVariableOrigin;
-use rustc::mir::{ConstraintCategory, Local, Location, Body};
+use rustc::infer::{
+    error_reporting::nice_region_error::NiceRegionError,
+    InferCtxt, NLLRegionVariableOrigin,
+};
+use rustc::mir::{
+    ConstraintCategory, Local, Location, Body,
+};
 use rustc::ty::{self, RegionVid};
 use rustc_index::vec::IndexVec;
 use rustc_errors::DiagnosticBuilder;
@@ -93,6 +96,32 @@ pub struct ErrorConstraintInfo {
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
+    /// Converts a region inference variable into a `ty::Region` that
+    /// we can use for error reporting. If `r` is universally bound,
+    /// then we use the name that we have on record for it. If `r` is
+    /// existentially bound, then we check its inferred value and try
+    /// to find a good name from that. Returns `None` if we can't find
+    /// one (e.g., this is just some random part of the CFG).
+    pub fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
+        self.to_error_region_vid(r).and_then(|r| self.definitions[r].external_name)
+    }
+
+    /// Returns the [RegionVid] corresponding to the region returned by
+    /// `to_error_region`.
+    pub fn to_error_region_vid(&self, r: RegionVid) -> Option<RegionVid> {
+        if self.universal_regions.is_universal_region(r) {
+            Some(r)
+        } else {
+            let r_scc = self.constraint_sccs.scc(r);
+            let upper_bound = self.universal_upper_bound(r);
+            if self.scc_values.contains(r_scc, upper_bound) {
+                self.to_error_region_vid(upper_bound)
+            } else {
+                None
+            }
+        }
+    }
+
     /// Tries to find the best constraint to blame for the fact that
     /// `R: from_region`, where `R` is some region that meets
     /// `target_test`. This works by following the constraint graph,
