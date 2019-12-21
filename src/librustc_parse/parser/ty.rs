@@ -407,7 +407,7 @@ impl<'a> Parser<'a> {
                 }
                 new_bound_list = new_bound_list.replacen(" +", ":", 1);
             }
-            err.span_suggestion_hidden(
+            err.tool_only_span_suggestion(
                 bound_list,
                 &format!("remove the bound{}", pluralize!(negative_bounds_len)),
                 new_bound_list,
