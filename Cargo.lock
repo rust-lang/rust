@@ -620,7 +620,7 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.63.1"
+version = "0.65.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1049,7 +1049,7 @@ dependencies = [
  "jod-thread 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-server 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "lsp-types 0.63.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lsp-types 0.65.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_ide 0.1.0",
  "ra_prof 0.1.0",
@@ -1841,7 +1841,7 @@ dependencies = [
 "checksum lock_api 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e57b3997725d2b60dbec1297f6c2e2957cc383db1cebd6be812163f969c7d586"
 "checksum log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 "checksum lsp-server 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0ba36405bd742139ab79c246ca5adb7fde2fe1a0f495e2c8e2f607b607dedb12"
-"checksum lsp-types 0.63.1 (registry+https://github.com/rust-lang/crates.io-index)" = "70090cea3cd5db0aa923575e03874b33da90c4d0fe1eaf63fa51b8925a78ef03"
+"checksum lsp-types 0.65.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1fe9e427e63e6172699737b47f1044bcade7046e2404d59ebd90c459da47cd2b"
 "checksum matches 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 "checksum memchr 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "88579771288728879b57485cc7d6b07d648c9f0141eb955f8ab7f9d45394468e"
 "checksum memoffset 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "75189eb85871ea5c2e2c15abbdd541185f63b408415e5051f5cac122d8c774b9"
