@@ -219,7 +219,7 @@ where
             self.update(
                 self.def_map.root,
                 None,
-                &[(name, Resolution { def: PerNs::macros(macro_), import: None })],
+                &[(name, Resolution { def: PerNs::macros(macro_), import: false })],
             );
         }
     }
@@ -404,7 +404,7 @@ where
                             let variant = EnumVariantId { parent: e, local_id };
                             let res = Resolution {
                                 def: PerNs::both(variant.into(), variant.into()),
-                                import: Some(import_id),
+                                import: true,
                             };
                             (name, res)
                         })
@@ -431,7 +431,7 @@ where
                         }
                     }
 
-                    let resolution = Resolution { def, import: Some(import_id) };
+                    let resolution = Resolution { def, import: true };
                     self.update(module_id, Some(import_id), &[(name, resolution)]);
                 }
                 None => tested_by!(bogus_paths),
@@ -719,7 +719,7 @@ where
             def: PerNs::types(
                 ModuleId { krate: self.def_collector.def_map.krate, local_id: res }.into(),
             ),
-            import: None,
+            import: false,
         };
         self.def_collector.update(self.module_id, None, &[(name, resolution)]);
         res
@@ -791,7 +791,7 @@ where
                 PerNs::types(def.into())
             }
         };
-        let resolution = Resolution { def, import: None };
+        let resolution = Resolution { def, import: false };
         self.def_collector.update(self.module_id, None, &[(name, resolution)])
     }
 
