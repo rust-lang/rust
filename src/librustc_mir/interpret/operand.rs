@@ -219,8 +219,8 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     }
 
     #[inline]
-    pub fn try_from_uint(i: impl Into<u128>, layout: TyLayout<'tcx>) -> InterpResult<'tcx, Self> {
-        Ok(Self::from_scalar(Scalar::try_from_uint(i, layout.size)?, layout))
+    pub fn try_from_uint(i: impl Into<u128>, layout: TyLayout<'tcx>) -> Option<Self> {
+        Some(Self::from_scalar(Scalar::try_from_uint(i, layout.size)?, layout))
     }
     #[inline]
     pub fn from_uint(i: impl Into<u128>, layout: TyLayout<'tcx>) -> Self {
@@ -228,8 +228,8 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     }
 
     #[inline]
-    pub fn try_from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> InterpResult<'tcx, Self> {
-        Ok(Self::from_scalar(Scalar::try_from_int(i, layout.size)?, layout))
+    pub fn try_from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> Option<Self> {
+        Some(Self::from_scalar(Scalar::try_from_int(i, layout.size)?, layout))
     }
 
     #[inline]
