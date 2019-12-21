@@ -129,12 +129,22 @@ impl ToChalk for Ty {
             Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx as usize).intern(),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
-                let where_clauses = predicates.iter().cloned().map(|p| p.to_chalk(db)).collect();
+                let where_clauses = predicates
+                    .iter()
+                    .filter(|p| !p.is_error())
+                    .cloned()
+                    .map(|p| p.to_chalk(db))
+                    .collect();
                 let bounded_ty = chalk_ir::BoundedTy { bounds: make_binders(where_clauses, 1) };
                 chalk_ir::TyData::Dyn(bounded_ty).intern()
             }
             Ty::Opaque(predicates) => {
-                let where_clauses = predicates.iter().cloned().map(|p| p.to_chalk(db)).collect();
+                let where_clauses = predicates
+                    .iter()
+                    .filter(|p| !p.is_error())
+                    .cloned()
+                    .map(|p| p.to_chalk(db))
+                    .collect();
                 let bounded_ty = chalk_ir::BoundedTy { bounds: make_binders(where_clauses, 1) };
                 chalk_ir::TyData::Opaque(bounded_ty).intern()
             }
