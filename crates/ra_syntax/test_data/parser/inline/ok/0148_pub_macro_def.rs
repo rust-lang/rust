@@ -1,0 +1,1 @@
+pub macro m($:ident) {}

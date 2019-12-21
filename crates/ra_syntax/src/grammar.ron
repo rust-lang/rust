@@ -94,7 +94,8 @@ Grammar(
         "return",
         "try",
         "box",
-        "await"
+        "await",
+        "macro"
     ],
     contextual_keywords: [
         "auto",
@@ -140,6 +141,7 @@ Grammar(
         "TYPE_ALIAS_DEF",
         "MACRO_CALL",
         "TOKEN_TREE",
+        "MACRO_DEF",
 
         "PAREN_TYPE",
         "TUPLE_TYPE",
