@@ -21,7 +21,7 @@ use crate::option;
 
 pub mod pattern;
 
-#[unstable(feature = "str_internals", issue = "0")]
+#[unstable(feature = "str_internals", issue = "none")]
 #[allow(missing_docs)]
 pub mod lossy;
 
@@ -496,7 +496,7 @@ fn unwrap_or_0(opt: Option<&u8>) -> u8 {
 
 /// Reads the next code point out of a byte iterator (assuming a
 /// UTF-8-like encoding).
-#[unstable(feature = "str_internals", issue = "0")]
+#[unstable(feature = "str_internals", issue = "none")]
 #[inline]
 pub fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
     // Decode UTF-8
@@ -1583,7 +1583,7 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 ];
 
 /// Given a first byte, determines how many bytes are in this UTF-8 character.
-#[unstable(feature = "str_internals", issue = "0")]
+#[unstable(feature = "str_internals", issue = "none")]
 #[inline]
 pub fn utf8_char_width(b: u8) -> usize {
     UTF8_CHAR_WIDTH[b as usize] as usize

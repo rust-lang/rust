@@ -1,4 +1,4 @@
-#![unstable(issue = "0", feature = "windows_net")]
+#![unstable(issue = "none", feature = "windows_net")]
 
 use crate::cmp;
 use crate::io::{self, Read, IoSlice, IoSliceMut};
@@ -395,7 +395,7 @@ impl Socket {
     }
 }
 
-#[unstable(reason = "not public", issue = "0", feature = "fd_read")]
+#[unstable(reason = "not public", issue = "none", feature = "fd_read")]
 impl<'a> Read for &'a Socket {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)

@@ -301,7 +301,7 @@ impl<T> MaybeUninit<T> {
     /// let mut buf: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
     /// let data = read(&mut buf);
     /// ```
-    #[unstable(feature = "maybe_uninit_uninit_array", issue = "0")]
+    #[unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
     #[inline(always)]
     pub fn uninit_array<const LEN: usize>() -> [Self; LEN] {
         unsafe {
@@ -310,7 +310,7 @@ impl<T> MaybeUninit<T> {
     }
 
     /// A promotable constant, equivalent to `uninit()`.
-    #[unstable(feature = "internal_uninit_const", issue = "0",
+    #[unstable(feature = "internal_uninit_const", issue = "none",
         reason = "hack to work around promotability")]
     pub const UNINIT: Self = Self::uninit();
 
@@ -749,7 +749,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
     /// really are in an initialized state.
     /// Calling this when the content is not yet fully initialized causes undefined behavior.
-    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
+    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "none")]
     #[inline(always)]
     pub unsafe fn slice_get_ref(slice: &[Self]) -> &[T] {
         &*(slice as *const [Self] as *const [T])
@@ -762,7 +762,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
     /// really are in an initialized state.
     /// Calling this when the content is not yet fully initialized causes undefined behavior.
-    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
+    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "none")]
     #[inline(always)]
     pub unsafe fn slice_get_mut(slice: &mut [Self]) -> &mut [T] {
         &mut *(slice as *mut [Self] as *mut [T])

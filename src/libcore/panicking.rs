@@ -26,7 +26,7 @@
     feature = "core_panic",
     reason = "internal details of the implementation of the `panic!` \
               and related macros",
-    issue = "0"
+    issue = "none"
 )]
 
 use crate::fmt;

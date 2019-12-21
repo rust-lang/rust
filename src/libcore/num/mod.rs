@@ -4769,7 +4769,7 @@ impl TryFromIntError {
         feature = "int_error_internals",
         reason = "available through Error trait and this method should \
                   not be exposed publicly",
-        issue = "0"
+        issue = "none"
     )]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
@@ -4968,7 +4968,7 @@ impl ParseIntError {
         feature = "int_error_internals",
         reason = "available through Error trait and this method should \
                   not be exposed publicly",
-        issue = "0"
+        issue = "none"
     )]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {

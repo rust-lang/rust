@@ -288,7 +288,7 @@ pub macro Eq($item:item) { /* compiler built-in */ }
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "derive_eq",
            reason = "deriving hack, should not be public",
-           issue = "0")]
+           issue = "none")]
 pub struct AssertParamIsEq<T: Eq + ?Sized> { _field: crate::marker::PhantomData<T> }
 
 /// An `Ordering` is the result of a comparison between two values.

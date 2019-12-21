@@ -81,7 +81,7 @@
 #![unstable(
     feature = "dec2flt",
     reason = "internal routines only exposed for testing",
-    issue = "0"
+    issue = "none"
 )]
 
 use crate::fmt;
@@ -187,7 +187,7 @@ impl ParseFloatError {
         feature = "int_error_internals",
         reason = "available through Error trait and this method should \
                   not be exposed publicly",
-        issue = "0"
+        issue = "none"
     )]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {

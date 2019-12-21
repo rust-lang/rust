@@ -1,6 +1,6 @@
 //! Thread local storage
 
-#![unstable(feature = "thread_local_internals", issue = "0")]
+#![unstable(feature = "thread_local_internals", issue = "none")]
 
 use crate::error::Error;
 use crate::fmt;
@@ -142,7 +142,7 @@ macro_rules! thread_local {
 }
 
 #[doc(hidden)]
-#[unstable(feature = "thread_local_internals", reason = "should not be necessary", issue = "0")]
+#[unstable(feature = "thread_local_internals", reason = "should not be necessary", issue = "none")]
 #[macro_export]
 #[allow_internal_unstable(thread_local_internals, cfg_target_thread_local, thread_local)]
 #[allow_internal_unsafe]
@@ -215,7 +215,7 @@ impl<T: 'static> LocalKey<T> {
     #[unstable(
         feature = "thread_local_internals",
         reason = "recently added to create a key",
-        issue = "0"
+        issue = "none"
     )]
     pub const unsafe fn new(inner: unsafe fn() -> Option<&'static T>) -> LocalKey<T> {
         LocalKey { inner }

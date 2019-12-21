@@ -291,7 +291,7 @@ impl<T: ?Sized> !marker::Sync for Rc<T> {}
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
@@ -1090,7 +1090,7 @@ impl<T: ?Sized> Deref for Rc<T> {
     }
 }
 
-#[unstable(feature = "receiver_trait", issue = "0")]
+#[unstable(feature = "receiver_trait", issue = "none")]
 impl<T: ?Sized> Receiver for Rc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1471,7 +1471,7 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     }
 }
 
-#[unstable(feature = "boxed_slice_try_from", issue = "0")]
+#[unstable(feature = "boxed_slice_try_from", issue = "none")]
 impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]>
 where
     [T; N]: LengthAtMost32,
@@ -1621,7 +1621,7 @@ impl<T: ?Sized> !marker::Sync for Weak<T> {}
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 impl<T> Weak<T> {

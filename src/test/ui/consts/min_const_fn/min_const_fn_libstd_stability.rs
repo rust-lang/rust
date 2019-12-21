@@ -1,13 +1,13 @@
 #![unstable(feature = "humans",
             reason = "who ever let humans program computers,
             we're apparently really bad at it",
-            issue = "0")]
+            issue = "none")]
 
 #![feature(const_fn, foo, foo2)]
 #![feature(staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature="foo", issue = "0")]
+#[rustc_const_unstable(feature="foo", issue = "none")]
 const fn foo() -> u32 { 42 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -15,7 +15,7 @@ const fn foo() -> u32 { 42 }
 // can't call non-min_const_fn
 const fn bar() -> u32 { foo() } //~ ERROR can only call other `const fn`
 
-#[unstable(feature = "rust1", issue="0")]
+#[unstable(feature = "rust1", issue = "none")]
 const fn foo2() -> u32 { 42 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -29,7 +29,7 @@ const fn bar2() -> u32 { foo2() } //~ ERROR can only call other `const fn`
 const fn bar3() -> u32 { (5f32 + 6f32) as u32 } //~ ERROR only int, `bool` and `char` operations
 
 // check whether this function cannot be called even with the feature gate active
-#[unstable(feature = "foo2", issue="0")]
+#[unstable(feature = "foo2", issue = "none")]
 const fn foo2_gated() -> u32 { 42 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

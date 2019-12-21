@@ -12,6 +12,7 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
+use std::num::NonZeroU32;
 use std::path::Path;
 
 use regex::Regex;
@@ -48,7 +49,7 @@ pub struct Feature {
     pub level: Status,
     pub since: Option<Version>,
     pub has_gate_test: bool,
-    pub tracking_issue: Option<u32>,
+    pub tracking_issue: Option<NonZeroU32>,
 }
 
 pub type Features = HashMap<String, Feature>;
@@ -396,6 +397,14 @@ fn map_lib_features(base_src_path: &Path,
             return;
         }
 
+        let handle_issue_none = |s| match s {
+            "none" => None,
+            issue => {
+                let n = issue.parse().expect("issue number is not a valid integer");
+                assert_ne!(n, 0, "\"none\" should be used when there is no issue, not \"0\"");
+                NonZeroU32::new(n)
+            }
+        };
         let mut becoming_feature: Option<(&str, Feature)> = None;
         let mut iter_lines = contents.lines().enumerate().peekable();
         while let Some((i, line)) = iter_lines.next() {
@@ -407,8 +416,7 @@ fn map_lib_features(base_src_path: &Path,
             };
             if let Some((ref name, ref mut f)) = becoming_feature {
                 if f.tracking_issue.is_none() {
-                    f.tracking_issue = find_attr_val(line, "issue")
-                    .map(|s| s.parse().unwrap());
+                    f.tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);
                 }
                 if line.ends_with(']') {
                     mf(Ok((name, f.clone())), file, i + 1);
@@ -439,7 +447,7 @@ fn map_lib_features(base_src_path: &Path,
                     // FIXME(#57563): #57563 is now used as a common tracking issue,
                     // although we would like to have specific tracking issues for each
                     // `rustc_const_unstable` in the future.
-                    tracking_issue: Some(57563),
+                    tracking_issue: NonZeroU32::new(57563),
                 };
                 mf(Ok((feature_name, feature)), file, i + 1);
                 continue;
@@ -467,7 +475,7 @@ fn map_lib_features(base_src_path: &Path,
                 }
                 None => None,
             };
-            let tracking_issue = find_attr_val(line, "issue").map(|s| s.parse().unwrap());
+            let tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);
 
             let feature = Feature {
                 level,

@@ -1,4 +1,4 @@
-#![unstable(feature = "unicode_internals", issue = "0")]
+#![unstable(feature = "unicode_internals", issue = "none")]
 #![allow(missing_docs)]
 
 mod bool_trie;

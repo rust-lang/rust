@@ -169,7 +169,7 @@ impl ParseCharError {
     #[unstable(
         feature = "char_error_internals",
         reason = "this method should not be available publicly",
-        issue = "0"
+        issue = "none"
     )]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {

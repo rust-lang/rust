@@ -6,7 +6,7 @@
 #![unstable(
     feature = "core_private_diy_float",
     reason = "internal routines only exposed for testing",
-    issue = "0"
+    issue = "none"
 )]
 
 /// A custom 64-bit floating point type, representing `f * 2^e`.
