@@ -34,6 +34,7 @@ use std::ops::Index;
 use std::slice;
 use std::{iter, mem, option, u32};
 use syntax::ast::Name;
+pub use syntax::ast::Mutability;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -396,22 +397,7 @@ pub struct SourceInfo {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Mutability and borrow kinds
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
-pub enum Mutability {
-    Mut,
-    Not,
-}
-
-impl From<Mutability> for hir::Mutability {
-    fn from(m: Mutability) -> Self {
-        match m {
-            Mutability::Mut => hir::Mutability::Mutable,
-            Mutability::Not => hir::Mutability::Immutable,
-        }
-    }
-}
+// Borrow kinds
 
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, HashStable,
@@ -2886,7 +2872,6 @@ pub enum ClosureOutlivesSubject<'tcx> {
 CloneTypeFoldableAndLiftImpls! {
     BlockTailInfo,
     MirPhase,
-    Mutability,
     SourceInfo,
     FakeReadCause,
     RetagKind,

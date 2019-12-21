@@ -985,7 +985,7 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
                     // Even if the ref is mut, you can't change the ref, only
                     // the data pointed at, so showing the initialising expression
                     // is still worthwhile.
-                    ast::BindingMode::ByRef(_) => ast::Mutability::Immutable,
+                    ast::BindingMode::ByRef(_) => ast::Mutability::Not,
                     ast::BindingMode::ByValue(mt) => mt,
                 };
                 self.collected_idents

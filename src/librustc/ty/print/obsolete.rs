@@ -59,8 +59,8 @@ impl DefPathBasedNames<'tcx> {
             ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl }) => {
                 output.push('*');
                 match mutbl {
-                    hir::Mutability::Immutable => output.push_str("const "),
-                    hir::Mutability::Mutable => output.push_str("mut "),
+                    hir::Mutability::Not => output.push_str("const "),
+                    hir::Mutability::Mut => output.push_str("mut "),
                 }
 
                 self.push_type_name(inner_type, output, debug);

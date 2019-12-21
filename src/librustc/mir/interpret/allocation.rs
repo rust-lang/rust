@@ -106,7 +106,7 @@ impl<Tag> Allocation<Tag> {
             undef_mask: UndefMask::new(size, true),
             size,
             align,
-            mutability: Mutability::Immutable,
+            mutability: Mutability::Not,
             extra: (),
         }
     }
@@ -123,7 +123,7 @@ impl<Tag> Allocation<Tag> {
             undef_mask: UndefMask::new(size, false),
             size,
             align,
-            mutability: Mutability::Mutable,
+            mutability: Mutability::Mut,
             extra: (),
         }
     }

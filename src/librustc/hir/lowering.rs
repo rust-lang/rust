@@ -2253,7 +2253,7 @@ impl<'a> LoweringContext<'a> {
                     let is_mutable_pat = match arg.pat.kind {
                         PatKind::Ident(BindingMode::ByValue(mt), _, _) |
                         PatKind::Ident(BindingMode::ByRef(mt), _, _) =>
-                            mt == Mutability::Mutable,
+                            mt == Mutability::Mut,
                         _ => false,
                     };
 
@@ -2264,7 +2264,7 @@ impl<'a> LoweringContext<'a> {
                         // the case where we have a mutable pattern to a reference as that would
                         // no longer be an `ImplicitSelf`.
                         TyKind::Rptr(_, ref mt) if mt.ty.kind.is_implicit_self() &&
-                            mt.mutbl == ast::Mutability::Mutable =>
+                            mt.mutbl == ast::Mutability::Mut =>
                                 hir::ImplicitSelfKind::MutRef,
                         TyKind::Rptr(_, ref mt) if mt.ty.kind.is_implicit_self() =>
                             hir::ImplicitSelfKind::ImmRef,
@@ -3068,10 +3068,10 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_binding_mode(&mut self, b: &BindingMode) -> hir::BindingAnnotation {
         match *b {
-            BindingMode::ByValue(Mutability::Immutable) => hir::BindingAnnotation::Unannotated,
-            BindingMode::ByRef(Mutability::Immutable) => hir::BindingAnnotation::Ref,
-            BindingMode::ByValue(Mutability::Mutable) => hir::BindingAnnotation::Mutable,
-            BindingMode::ByRef(Mutability::Mutable) => hir::BindingAnnotation::RefMut,
+            BindingMode::ByValue(Mutability::Not) => hir::BindingAnnotation::Unannotated,
+            BindingMode::ByRef(Mutability::Not) => hir::BindingAnnotation::Ref,
+            BindingMode::ByValue(Mutability::Mut) => hir::BindingAnnotation::Mutable,
+            BindingMode::ByRef(Mutability::Mut) => hir::BindingAnnotation::RefMut,
         }
     }
 

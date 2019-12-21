@@ -325,7 +325,7 @@ impl<'a> Parser<'a> {
                 // Parse `ident @ pat`
                 // This can give false positives and parse nullary enums,
                 // they are dealt with later in resolve.
-                self.parse_pat_ident(BindingMode::ByValue(Mutability::Immutable))?
+                self.parse_pat_ident(BindingMode::ByValue(Mutability::Not))?
             } else if self.is_start_of_pat_with_path() {
                 // Parse pattern starting with a path
                 let (qself, path) = if self.eat_lt() {
@@ -539,7 +539,7 @@ impl<'a> Parser<'a> {
             )
             .emit();
 
-        self.parse_pat_ident(BindingMode::ByRef(Mutability::Mutable))
+        self.parse_pat_ident(BindingMode::ByRef(Mutability::Mut))
     }
 
     /// Turn all by-value immutable bindings in a pattern into mutable bindings.
@@ -552,10 +552,10 @@ impl<'a> Parser<'a> {
             }
 
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
-                if let PatKind::Ident(BindingMode::ByValue(ref mut m @ Mutability::Immutable), ..)
+                if let PatKind::Ident(BindingMode::ByValue(ref mut m @ Mutability::Not), ..)
                     = pat.kind
                 {
-                    *m = Mutability::Mutable;
+                    *m = Mutability::Mut;
                     self.0 = true;
                 }
                 noop_visit_pat(pat, self);
@@ -986,10 +986,10 @@ impl<'a> Parser<'a> {
             hi = self.prev_span;
 
             let bind_type = match (is_ref, is_mut) {
-                (true, true) => BindingMode::ByRef(Mutability::Mutable),
-                (true, false) => BindingMode::ByRef(Mutability::Immutable),
-                (false, true) => BindingMode::ByValue(Mutability::Mutable),
-                (false, false) => BindingMode::ByValue(Mutability::Immutable),
+                (true, true) => BindingMode::ByRef(Mutability::Mut),
+                (true, false) => BindingMode::ByRef(Mutability::Not),
+                (false, true) => BindingMode::ByValue(Mutability::Mut),
+                (false, false) => BindingMode::ByValue(Mutability::Not),
             };
 
             let fieldpat = self.mk_pat_ident(boxed_span.to(hi), bind_type, fieldname);

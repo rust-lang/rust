@@ -2406,22 +2406,22 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::Mutability::Mutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::Mutability::Mut })
     }
 
     #[inline]
     pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::Mutability::Immutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::Mutability::Not })
     }
 
     #[inline]
     pub fn mk_mut_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::Mutability::Mutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::Mutability::Mut })
     }
 
     #[inline]
     pub fn mk_imm_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::Mutability::Immutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::Mutability::Not })
     }
 
     #[inline]

@@ -821,7 +821,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         name = ident.name;
 
                         if let Some(&bm) = hir_tables.pat_binding_modes().get(pat.hir_id) {
-                            if bm == ty::BindByValue(hir::Mutability::Mutable) {
+                            if bm == ty::BindByValue(hir::Mutability::Mut) {
                                 mutability = Mutability::Mut;
                             } else {
                                 mutability = Mutability::Not;

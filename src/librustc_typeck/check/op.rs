@@ -206,8 +206,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if is_assign == IsAssign::Yes || by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
                         let mutbl = match mutbl {
-                            hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
-                            hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
+                            hir::Mutability::Not => AutoBorrowMutability::Not,
+                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
                                 allow_two_phase_borrow: AllowTwoPhase::Yes,
@@ -223,8 +223,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind {
                         let mutbl = match mutbl {
-                            hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
-                            hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
+                            hir::Mutability::Not => AutoBorrowMutability::Not,
+                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
                                 allow_two_phase_borrow: AllowTwoPhase::Yes,

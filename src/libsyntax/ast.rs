@@ -509,7 +509,7 @@ impl Pat {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
             // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
-            PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) => {
+            PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None) => {
                 TyKind::Path(None, Path::from_ident(*ident))
             }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
@@ -695,30 +695,30 @@ pub enum PatKind {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
          RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
 pub enum Mutability {
-    Mutable,
-    Immutable,
+    Mut,
+    Not,
 }
 
 impl Mutability {
     /// Returns `MutMutable` only if both `self` and `other` are mutable.
     pub fn and(self, other: Self) -> Self {
         match self {
-            Mutability::Mutable => other,
-            Mutability::Immutable => Mutability::Immutable,
+            Mutability::Mut => other,
+            Mutability::Not => Mutability::Not,
         }
     }
 
     pub fn invert(self) -> Self {
         match self {
-            Mutability::Mutable => Mutability::Immutable,
-            Mutability::Immutable => Mutability::Mutable,
+            Mutability::Mut => Mutability::Not,
+            Mutability::Not => Mutability::Mut,
         }
     }
 
     pub fn prefix_str(&self) -> &'static str {
         match self {
-            Mutability::Mutable => "mut ",
-            Mutability::Immutable => "",
+            Mutability::Mut => "mut ",
+            Mutability::Not => "",
         }
     }
 }
@@ -2037,7 +2037,7 @@ impl Param {
             SelfKind::Explicit(ty, mutbl) => param(mutbl, ty),
             SelfKind::Value(mutbl) => param(mutbl, infer_ty),
             SelfKind::Region(lt, mutbl) => param(
-                Mutability::Immutable,
+                Mutability::Not,
                 P(Ty {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::Rptr(

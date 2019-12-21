@@ -1239,8 +1239,8 @@ impl<'a> Parser<'a> {
         // Construct the error and stash it away with the hope
         // that typeck will later enrich the error with a type.
         let kind = match m {
-            Some(Mutability::Mutable) => "static mut",
-            Some(Mutability::Immutable) => "static",
+            Some(Mutability::Mut) => "static mut",
+            Some(Mutability::Not) => "static",
             None => "const",
         };
         let mut err = self.struct_span_err(id.span, &format!("missing type for `{}` item", kind));
@@ -1960,7 +1960,7 @@ impl<'a> Parser<'a> {
             match ty {
                 Ok(ty) => {
                     let ident = Ident::new(kw::Invalid, self.prev_span);
-                    let bm = BindingMode::ByValue(Mutability::Immutable);
+                    let bm = BindingMode::ByValue(Mutability::Not);
                     let pat = self.mk_pat_ident(ty.span, bm, ident);
                     (pat, ty)
                 }
@@ -2032,7 +2032,7 @@ impl<'a> Parser<'a> {
                 .span_label(span, msg)
                 .emit();
 
-            Ok((SelfKind::Value(Mutability::Immutable), expect_self_ident(this), this.prev_span))
+            Ok((SelfKind::Value(Mutability::Not), expect_self_ident(this), this.prev_span))
         };
 
         // Parse optional `self` parameter of a method.
@@ -2044,23 +2044,23 @@ impl<'a> Parser<'a> {
                 let eself = if is_isolated_self(self, 1) {
                     // `&self`
                     self.bump();
-                    SelfKind::Region(None, Mutability::Immutable)
+                    SelfKind::Region(None, Mutability::Not)
                 } else if is_isolated_mut_self(self, 1) {
                     // `&mut self`
                     self.bump();
                     self.bump();
-                    SelfKind::Region(None, Mutability::Mutable)
+                    SelfKind::Region(None, Mutability::Mut)
                 } else if self.look_ahead(1, |t| t.is_lifetime()) && is_isolated_self(self, 2) {
                     // `&'lt self`
                     self.bump();
                     let lt = self.expect_lifetime();
-                    SelfKind::Region(Some(lt), Mutability::Immutable)
+                    SelfKind::Region(Some(lt), Mutability::Not)
                 } else if self.look_ahead(1, |t| t.is_lifetime()) && is_isolated_mut_self(self, 2) {
                     // `&'lt mut self`
                     self.bump();
                     let lt = self.expect_lifetime();
                     self.bump();
-                    SelfKind::Region(Some(lt), Mutability::Mutable)
+                    SelfKind::Region(Some(lt), Mutability::Mut)
                 } else {
                     // `&not_self`
                     return Ok(None);
@@ -2083,12 +2083,12 @@ impl<'a> Parser<'a> {
             }
             // `self` and `self: TYPE`
             token::Ident(..) if is_isolated_self(self, 0) => {
-                parse_self_possibly_typed(self, Mutability::Immutable)?
+                parse_self_possibly_typed(self, Mutability::Not)?
             }
             // `mut self` and `mut self: TYPE`
             token::Ident(..) if is_isolated_mut_self(self, 0) => {
                 self.bump();
-                parse_self_possibly_typed(self, Mutability::Mutable)?
+                parse_self_possibly_typed(self, Mutability::Mut)?
             }
             _ => return Ok(None),
         };

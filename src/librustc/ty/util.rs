@@ -183,7 +183,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                 // Now libcore provides that impl.
                 ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Float(_) |
                 ty::Char | ty::RawPtr(..) | ty::Never |
-                ty::Ref(_, _, hir::Mutability::Immutable) => return Ok(()),
+                ty::Ref(_, _, hir::Mutability::Not) => return Ok(()),
 
                 ty::Adt(adt, substs) => (adt, substs),
 
@@ -679,7 +679,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
     pub fn is_mutable_static(&self, def_id: DefId) -> bool {
-        self.static_mutability(def_id) == Some(hir::Mutability::Mutable)
+        self.static_mutability(def_id) == Some(hir::Mutability::Mut)
     }
 
     /// Get the type of the pointer to the static that we use in MIR.

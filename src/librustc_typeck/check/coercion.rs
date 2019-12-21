@@ -101,10 +101,10 @@ fn coerce_mutbls<'tcx>(from_mutbl: hir::Mutability,
                        to_mutbl: hir::Mutability)
                        -> RelateResult<'tcx, ()> {
     match (from_mutbl, to_mutbl) {
-        (hir::Mutability::Mutable, hir::Mutability::Mutable) |
-        (hir::Mutability::Immutable, hir::Mutability::Immutable) |
-        (hir::Mutability::Mutable, hir::Mutability::Immutable) => Ok(()),
-        (hir::Mutability::Immutable, hir::Mutability::Mutable) => Err(TypeError::Mutability),
+        (hir::Mutability::Mut, hir::Mutability::Mut) |
+        (hir::Mutability::Not, hir::Mutability::Not) |
+        (hir::Mutability::Mut, hir::Mutability::Not) => Ok(()),
+        (hir::Mutability::Not, hir::Mutability::Mut) => Err(TypeError::Mutability),
     }
 }
 
@@ -412,7 +412,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        if ty == a && mt_a.mutbl == hir::Mutability::Immutable && autoderef.step_count() == 1 {
+        if ty == a && mt_a.mutbl == hir::Mutability::Not && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
             // we started with.  In that case, just skip it
@@ -424,7 +424,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // `self.x` both have `&mut `type would be a move of
             // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
             // which is a borrow.
-            assert_eq!(mt_b.mutbl, hir::Mutability::Immutable); // can only coerce &T -> &U
+            assert_eq!(mt_b.mutbl, hir::Mutability::Not); // can only coerce &T -> &U
             return success(vec![], ty, obligations);
         }
 
@@ -441,8 +441,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => span_bug!(span, "expected a ref type, got {:?}", ty),
         };
         let mutbl = match mt_b.mutbl {
-            hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
-            hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
+            hir::Mutability::Not => AutoBorrowMutability::Not,
+            hir::Mutability::Mut => AutoBorrowMutability::Mut {
                 allow_two_phase_borrow: self.allow_two_phase,
             }
         };
@@ -487,8 +487,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let coercion = Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
                 let mutbl = match mutbl_b {
-                    hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
-                    hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
+                    hir::Mutability::Not => AutoBorrowMutability::Not,
+                    hir::Mutability::Mut => AutoBorrowMutability::Mut {
                         // We don't allow two-phase borrows here, at least for initial
                         // implementation. If it happens that this coercion is a function argument,
                         // the reborrow in coerce_borrowed_ptr will pick it up.

@@ -391,7 +391,7 @@ fn make_generator_state_argument_indirect<'tcx>(
 
     let ref_gen_ty = tcx.mk_ref(region, ty::TypeAndMut {
         ty: gen_ty,
-        mutbl: hir::Mutability::Mutable
+        mutbl: hir::Mutability::Mut
     });
 
     // Replace the by value generator argument
@@ -969,7 +969,7 @@ fn create_generator_drop_shim<'tcx>(
         mutability: Mutability::Mut,
         ty: tcx.mk_ptr(ty::TypeAndMut {
             ty: gen_ty,
-            mutbl: hir::Mutability::Mutable,
+            mutbl: hir::Mutability::Mut,
         }),
         user_ty: UserTypeProjections::none(),
         source_info,

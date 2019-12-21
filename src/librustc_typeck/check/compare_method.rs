@@ -534,8 +534,8 @@ fn compare_self_type<'tcx>(
             let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty).is_ok();
             match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
                 ExplicitSelf::ByValue => "self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Immutable) => "&self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Mutable) => "&mut self".to_owned(),
+                ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
+                ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
                 _ => format!("self: {}", self_arg_ty)
             }
         })

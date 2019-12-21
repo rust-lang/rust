@@ -974,18 +974,18 @@ impl<'a> Parser<'a> {
     /// Parses mutability (`mut` or nothing).
     fn parse_mutability(&mut self) -> Mutability {
         if self.eat_keyword(kw::Mut) {
-            Mutability::Mutable
+            Mutability::Mut
         } else {
-            Mutability::Immutable
+            Mutability::Not
         }
     }
 
     /// Possibly parses mutability (`const` or `mut`).
     fn parse_const_or_mut(&mut self) -> Option<Mutability> {
         if self.eat_keyword(kw::Mut) {
-            Some(Mutability::Mutable)
+            Some(Mutability::Mut)
         } else if self.eat_keyword(kw::Const) {
-            Some(Mutability::Immutable)
+            Some(Mutability::Not)
         } else {
             None
         }

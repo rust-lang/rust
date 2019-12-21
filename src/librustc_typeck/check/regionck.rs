@@ -1255,7 +1255,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         // know whether this scenario has occurred; but I wanted to show
         // how all the types get adjusted.)
         match ref_mutability {
-            hir::Mutability::Immutable => {
+            hir::Mutability::Not => {
                 // The reference being reborrowed is a shareable ref of
                 // type `&'a T`. In this case, it doesn't matter where we
                 // *found* the `&T` pointer, the memory it references will
@@ -1263,7 +1263,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                 true
             }
 
-            hir::Mutability::Mutable => {
+            hir::Mutability::Mut => {
                 // The reference being reborrowed is either an `&mut T`. This is
                 // the case where recursion is needed.
                 false

@@ -812,13 +812,12 @@ impl ToBorrowKind for AutoBorrowMutability {
     fn to_borrow_kind(&self) -> BorrowKind {
         use rustc::ty::adjustment::AllowTwoPhase;
         match *self {
-            AutoBorrowMutability::Mutable { allow_two_phase_borrow } =>
+            AutoBorrowMutability::Mut { allow_two_phase_borrow } =>
                 BorrowKind::Mut { allow_two_phase_borrow: match allow_two_phase_borrow {
                     AllowTwoPhase::Yes => true,
                     AllowTwoPhase::No => false
                 }},
-            AutoBorrowMutability::Immutable =>
-                BorrowKind::Shared,
+            AutoBorrowMutability::Not => BorrowKind::Shared,
         }
     }
 }
@@ -826,8 +825,8 @@ impl ToBorrowKind for AutoBorrowMutability {
 impl ToBorrowKind for hir::Mutability {
     fn to_borrow_kind(&self) -> BorrowKind {
         match *self {
-            hir::Mutability::Mutable => BorrowKind::Mut { allow_two_phase_borrow: false },
-            hir::Mutability::Immutable => BorrowKind::Shared,
+            hir::Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
+            hir::Mutability::Not => BorrowKind::Shared,
         }
     }
 }
@@ -994,7 +993,7 @@ fn convert_var(
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
                                                                ty: closure_ty,
-                                                               mutbl: hir::Mutability::Immutable,
+                                                               mutbl: hir::Mutability::Not,
                                                            });
                         Expr {
                             ty: closure_ty,
@@ -1015,7 +1014,7 @@ fn convert_var(
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
                                                                ty: closure_ty,
-                                                               mutbl: hir::Mutability::Mutable,
+                                                               mutbl: hir::Mutability::Mut,
                                                            });
                         Expr {
                             ty: closure_ty,

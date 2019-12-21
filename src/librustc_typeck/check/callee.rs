@@ -217,8 +217,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if borrow {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
                         let mutbl = match mutbl {
-                            hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
-                            hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
+                            hir::Mutability::Not => AutoBorrowMutability::Not,
+                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
                                 // For initial two-phase borrow
                                 // deployment, conservatively omit
                                 // overloaded function call ops.

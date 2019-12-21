@@ -131,7 +131,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             sig: method_sig,
         };
 
-        if let Some(hir::Mutability::Mutable) = pick.autoref {
+        if let Some(hir::Mutability::Mut) = pick.autoref {
             self.convert_place_derefs_to_mutable();
         }
 
@@ -172,8 +172,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 ty: target
             });
             let mutbl = match mutbl {
-                hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
-                hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
+                hir::Mutability::Not => AutoBorrowMutability::Not,
+                hir::Mutability::Mut => AutoBorrowMutability::Mut {
                     // Method call receivers are the primary use case
                     // for two-phase borrows.
                     allow_two_phase_borrow: AllowTwoPhase::Yes,
@@ -554,8 +554,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 if let Adjust::Borrow(AutoBorrow::Ref(..)) = adjustment.kind {
                     debug!("convert_place_op_to_mutable: converting autoref {:?}", adjustment);
                     let mutbl = match mutbl {
-                        hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
-                        hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
+                        hir::Mutability::Not => AutoBorrowMutability::Not,
+                        hir::Mutability::Mut => AutoBorrowMutability::Mut {
                             // For initial two-phase borrow
                             // deployment, conservatively omit
                             // overloaded operators.

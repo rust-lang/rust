@@ -31,7 +31,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
                                                      cx.ty_ident(sp,
                                                                  Ident::new(sym::str, sp)),
                                                      Some(lt),
-                                                     ast::Mutability::Immutable))],
+                                                     ast::Mutability::Not))],
                                      ))
         }
         Ok(s) => {

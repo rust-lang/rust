@@ -279,17 +279,17 @@ impl<'tcx> BinOp {
 impl BorrowKind {
     pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
-            BorrowKind::Mut { .. } => hir::Mutability::Mutable,
-            BorrowKind::Shared => hir::Mutability::Immutable,
+            BorrowKind::Mut { .. } => hir::Mutability::Mut,
+            BorrowKind::Shared => hir::Mutability::Not,
 
             // We have no type corresponding to a unique imm borrow, so
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
-            BorrowKind::Unique => hir::Mutability::Mutable,
+            BorrowKind::Unique => hir::Mutability::Mut,
 
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
-            BorrowKind::Shallow => hir::Mutability::Immutable,
+            BorrowKind::Shallow => hir::Mutability::Not,
         }
     }
 }

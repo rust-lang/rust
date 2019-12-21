@@ -16,7 +16,7 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt<'_>,
                              push: &mut dyn FnMut(Annotatable)) {
     // &mut ::std::fmt::Formatter
     let fmtr = Ptr(Box::new(Literal(path_std!(cx, fmt::Formatter))),
-                   Borrowed(None, ast::Mutability::Mutable));
+                   Borrowed(None, ast::Mutability::Mut));
 
     let trait_def = TraitDef {
         span,

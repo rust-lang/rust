@@ -39,7 +39,7 @@ pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt<'_>,
                           },
                           explicit_self: None,
                           args: vec![(Ptr(Box::new(Literal(Path::new_local(typaram))),
-                                         Borrowed(None, Mutability::Mutable)), "d")],
+                                         Borrowed(None, Mutability::Mut)), "d")],
                           ret_ty:
                               Literal(Path::new_(pathvec_std!(cx, result::Result),
                                                  None,

@@ -887,8 +887,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                    consider instead using an UnsafeCell";
         match get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind)) {
             Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) => {
-                if to_mt == hir::Mutability::Mutable &&
-                   from_mt == hir::Mutability::Immutable {
+                if to_mt == hir::Mutability::Mut &&
+                   from_mt == hir::Mutability::Not {
                     cx.span_lint(MUTABLE_TRANSMUTES, expr.span, msg);
                 }
             }
