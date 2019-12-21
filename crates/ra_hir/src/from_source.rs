@@ -7,6 +7,7 @@ use hir_def::{
     StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
+use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     match_ast, SyntaxNode,
@@ -169,6 +170,7 @@ impl TypeParam {
 
 impl Module {
     pub fn from_declaration(db: &impl DefDatabase, src: InFile<ast::Module>) -> Option<Self> {
+        let _p = profile("Module::from_declaration");
         let parent_declaration = src.value.syntax().ancestors().skip(1).find_map(ast::Module::cast);
 
         let parent_module = match parent_declaration {
@@ -191,6 +193,7 @@ impl Module {
     }
 
     pub fn from_definition(db: &impl DefDatabase, src: InFile<ModuleSource>) -> Option<Self> {
+        let _p = profile("Module::from_definition");
         match src.value {
             ModuleSource::Module(ref module) => {
                 assert!(!module.has_semi());
@@ -214,6 +217,7 @@ impl Module {
 }
 
 fn analyze_container(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> DynMap {
+    let _p = profile("analyze_container");
     return child_by_source(db, src).unwrap_or_default();
 
     fn child_by_source(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> Option<DynMap> {

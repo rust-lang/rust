@@ -11,6 +11,7 @@ use hir_expand::{
     ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroCallKind, MacroDefId,
 };
 use ra_arena::{map::ArenaMap, Arena};
+use ra_prof::profile;
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 
@@ -168,6 +169,7 @@ impl Body {
         db: &impl DefDatabase,
         def: DefWithBodyId,
     ) -> (Arc<Body>, Arc<BodySourceMap>) {
+        let _p = profile("body_with_source_map_query");
         let mut params = None;
 
         let (file_id, module, body) = match def {
