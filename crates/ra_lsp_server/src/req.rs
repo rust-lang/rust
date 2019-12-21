@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Defines `rust-analyzer` specific custom messages.
 
 use lsp_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;

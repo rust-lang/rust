@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! This module is responsible for implementing handlers for Lanuage Server Protocol.
+//! The majority of requests are fulfilled by calling into the `ra_ide` crate.
 
 use std::{fmt::Write as _, io::Write as _};
 
