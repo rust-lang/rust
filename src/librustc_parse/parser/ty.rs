@@ -390,7 +390,7 @@ impl<'a> Parser<'a> {
         negative_bounds: Vec<Span>,
     ) {
         let negative_bounds_len = negative_bounds.len();
-        let last_span = *negative_bounds.last().unwrap();
+        let last_span = *negative_bounds.last().expect("no negative bounds, but still error?");
         let mut err = self.struct_span_err(
             negative_bounds,
             "negative bounds are not supported",
