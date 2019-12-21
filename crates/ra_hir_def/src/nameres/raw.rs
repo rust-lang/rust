@@ -7,23 +7,21 @@
 
 use std::{ops::Index, sync::Arc};
 
-use either::Either;
 use hir_expand::{
     ast_id_map::AstIdMap,
     db::AstDatabase,
     hygiene::Hygiene,
     name::{AsName, Name},
 };
-use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
+use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, AstPtr,
+    AstNode,
 };
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attrs, db::DefDatabase, path::ModPath, trace::Trace, FileAstId, HirFileId, InFile,
-    LocalImportId,
+    attr::Attrs, db::DefDatabase, path::ModPath, FileAstId, HirFileId, InFile, LocalImportId,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -41,29 +39,14 @@ pub struct RawItems {
     items: Vec<RawItem>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct ImportSourceMap {
-    map: ArenaMap<LocalImportId, ImportSourcePtr>,
-}
-
-type ImportSourcePtr = Either<AstPtr<ast::UseTree>, AstPtr<ast::ExternCrateItem>>;
-
 impl RawItems {
     pub(crate) fn raw_items_query(
         db: &(impl DefDatabase + AstDatabase),
         file_id: HirFileId,
     ) -> Arc<RawItems> {
-        db.raw_items_with_source_map(file_id).0
-    }
-
-    pub(crate) fn raw_items_with_source_map_query(
-        db: &(impl DefDatabase + AstDatabase),
-        file_id: HirFileId,
-    ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_ast_id_map: db.ast_id_map(file_id),
-            imports: Trace::new(),
             file_id,
             hygiene: Hygiene::new(db, file_id),
         };
@@ -74,11 +57,8 @@ impl RawItems {
                 collector.process_module(None, item_list);
             }
         }
-        let mut raw_items = collector.raw_items;
-        let (arena, map) = collector.imports.into_arena_and_map();
-        raw_items.imports = arena;
-        let source_map = ImportSourceMap { map };
-        (Arc::new(raw_items), Arc::new(source_map))
+        let raw_items = collector.raw_items;
+        Arc::new(raw_items)
     }
 
     pub(super) fn items(&self) -> &[RawItem] {
@@ -217,7 +197,6 @@ pub(super) struct ImplData {
 
 struct RawItemsCollector {
     raw_items: RawItems,
-    imports: Trace<LocalImportId, ImportData, ImportSourcePtr>,
     source_ast_id_map: Arc<AstIdMap>,
     file_id: HirFileId,
     hygiene: Hygiene,
@@ -324,7 +303,7 @@ impl RawItemsCollector {
         ModPath::expand_use_item(
             InFile { value: use_item, file_id: self.file_id },
             &self.hygiene,
-            |path, use_tree, is_glob, alias| {
+            |path, _use_tree, is_glob, alias| {
                 let import_data = ImportData {
                     path,
                     alias,
@@ -333,11 +312,11 @@ impl RawItemsCollector {
                     is_extern_crate: false,
                     is_macro_use: false,
                 };
-                buf.push((import_data, Either::Left(AstPtr::new(use_tree))));
+                buf.push(import_data);
             },
         );
-        for (import_data, ptr) in buf {
-            self.push_import(current_module, attrs.clone(), import_data, ptr);
+        for import_data in buf {
+            self.push_import(current_module, attrs.clone(), import_data);
         }
     }
 
@@ -360,12 +339,7 @@ impl RawItemsCollector {
                 is_extern_crate: true,
                 is_macro_use,
             };
-            self.push_import(
-                current_module,
-                attrs,
-                import_data,
-                Either::Right(AstPtr::new(&extern_crate)),
-            );
+            self.push_import(current_module, attrs, import_data);
         }
     }
 
@@ -396,14 +370,8 @@ impl RawItemsCollector {
         self.push_item(current_module, attrs, RawItemKind::Impl(imp))
     }
 
-    fn push_import(
-        &mut self,
-        current_module: Option<Module>,
-        attrs: Attrs,
-        data: ImportData,
-        source: ImportSourcePtr,
-    ) {
-        let import = self.imports.alloc(|| source, || data);
+    fn push_import(&mut self, current_module: Option<Module>, attrs: Attrs, data: ImportData) {
+        let import = self.raw_items.imports.alloc(data);
         self.push_item(current_module, attrs, RawItemKind::Import(import))
     }
 
