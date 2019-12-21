@@ -14,6 +14,7 @@ use hir_expand::{
     name::{AsName, Name},
 };
 use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
     AstNode,
@@ -42,6 +43,7 @@ impl RawItems {
         db: &(impl DefDatabase + AstDatabase),
         file_id: HirFileId,
     ) -> Arc<RawItems> {
+        let _p = profile("raw_items_query");
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_ast_id_map: db.ast_id_map(file_id),

@@ -8,6 +8,7 @@ use hir_expand::{
     InFile,
 };
 use ra_arena::{map::ArenaMap, Arena};
+use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
@@ -72,6 +73,7 @@ impl StructData {
 
 impl EnumData {
     pub(crate) fn enum_data_query(db: &impl DefDatabase, e: EnumId) -> Arc<EnumData> {
+        let _p = profile("enum_data_query");
         let src = e.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let mut trace = Trace::new_for_arena();
