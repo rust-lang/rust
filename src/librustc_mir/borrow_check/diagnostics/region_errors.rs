@@ -70,51 +70,51 @@ crate type RegionErrors<'tcx> = Vec<RegionErrorKind<'tcx>>;
 
 #[derive(Clone, Debug)]
 crate enum RegionErrorKind<'tcx> {
-    /// An error for a type test: `T: 'a` does not live long enough
+    /// An error for a type test: `T: 'a` does not live long enough.
     TypeTestDoesNotLiveLongEnough {
-        /// The span of the type test
+        /// The span of the type test.
         span: Span,
-        /// The generic type of the type test
+        /// The generic type of the type test.
         generic: GenericKind<'tcx>,
     },
 
-    /// A generic bound failure for a type test
+    /// A generic bound failure for a type test.
     TypeTestGenericBoundError {
-        /// The span of the type test
+        /// The span of the type test.
         span: Span,
-        /// The generic type of the type test
+        /// The generic type of the type test.
         generic: GenericKind<'tcx>,
-        /// The lower bound region
+        /// The lower bound region.
         lower_bound_region: ty::Region<'tcx>,
     },
 
-    /// An unexpected hidden region for an opaque type
+    /// An unexpected hidden region for an opaque type.
     UnexpectedHiddenRegion {
-        /// The def id of the opaque type
+        /// The def id of the opaque type.
         opaque_type_def_id: DefId,
-        /// The hidden type
+        /// The hidden type.
         hidden_ty: Ty<'tcx>,
-        /// The unexpected region
+        /// The unexpected region.
         member_region: ty::Region<'tcx>,
     },
 
-    /// Higher-ranked subtyping error
+    /// Higher-ranked subtyping error.
     BoundUniversalRegionError {
         /// The placeholder free region.
         longer_fr: RegionVid,
         /// The region that erroneously must be outlived by `longer_fr`.
         error_region: RegionVid,
-        /// The origin of the placeholder region
+        /// The origin of the placeholder region.
         fr_origin: NLLRegionVariableOrigin,
     },
 
-    /// Any other lifetime error
+    /// Any other lifetime error.
     RegionError {
-        /// The origin of the region
+        /// The origin of the region.
         fr_origin: NLLRegionVariableOrigin,
-        /// The region that should outlive `shorter_fr`
+        /// The region that should outlive `shorter_fr`.
         longer_fr: RegionVid,
-        /// The region that should be shorter, but we can't prove it
+        /// The region that should be shorter, but we can't prove it.
         shorter_fr: RegionVid,
         /// Indicates whether this is a reported error. We currently only report the first error
         /// encountered and leave the rest unreported so as not to overwhelm the user.
