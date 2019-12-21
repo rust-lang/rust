@@ -2,6 +2,17 @@ use core::cell::RefCell;
 use core::ptr::*;
 
 #[test]
+fn test_const_from_raw_parts() {
+    const SLICE: &[u8] = &[1, 2, 3, 4];
+    const FROM_RAW: &[u8] = unsafe { &*slice_from_raw_parts(SLICE.as_ptr(), SLICE.len()) };
+    assert_eq!(SLICE, FROM_RAW);
+
+    let slice = &[1, 2, 3, 4, 5];
+    let from_raw = unsafe { &*slice_from_raw_parts(slice.as_ptr(), 2) } ;
+    assert_eq!(&slice[..2], from_raw);
+}
+
+#[test]
 fn test() {
     unsafe {
         struct Pair {
