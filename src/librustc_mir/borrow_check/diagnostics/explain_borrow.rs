@@ -289,16 +289,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             None => {
                 if let Some(region) = regioncx.to_error_region_vid(borrow_region_vid) {
-                    let (category, from_closure, span, region_name) =
-                        self.nonlexical_regioncx.free_region_constraint_info(
-                            &self.body,
-                            &self.local_names,
-                            &self.upvars,
-                            self.mir_def_id,
-                            self.infcx,
-                            borrow_region_vid,
-                            region,
-                        );
+                    let (category, from_closure, span, region_name) = self
+                        .nonlexical_regioncx
+                        .free_region_constraint_info(self, borrow_region_vid, region);
                     if let Some(region_name) = region_name {
                         let opt_place_desc = self.describe_place(borrow.borrowed_place.as_ref());
                         BorrowExplanation::MustBeValidFor {
