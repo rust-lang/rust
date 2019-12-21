@@ -496,7 +496,6 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 /// ```
 #[unstable(feature = "type_name_of_val", issue = "66359")]
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
-pub const fn type_name_of_val<T: ?Sized>(val: &T) -> &'static str {
-    let _ = val;
+pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
     type_name::<T>()
 }
