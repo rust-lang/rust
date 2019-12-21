@@ -98,6 +98,16 @@ crate enum RegionErrorKind<'tcx> {
         member_region: ty::Region<'tcx>,
     },
 
+    /// Higher-ranked subtyping error
+    BoundUniversalRegionError {
+        /// The placeholder free region.
+        longer_fr: RegionVid,
+        /// The region that erroneously must be outlived by `longer_fr`.
+        error_region: RegionVid,
+        /// The origin of the placeholder region
+        fr_origin: NLLRegionVariableOrigin,
+    },
+
     /// Any other lifetime error
     RegionError {
         /// The origin of the region

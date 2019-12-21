@@ -9,7 +9,6 @@ use rustc::mir::{
     ConstraintCategory, Local, Location,
 };
 use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
-use rustc_errors::DiagnosticBuilder;
 use rustc_data_structures::binary_search_util;
 use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -435,7 +434,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
-    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut DiagnosticBuilder<'_>) {
+    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut rustc_errors::DiagnosticBuilder<'_>) {
         self.universal_regions.annotate(tcx, err)
     }
 
@@ -507,18 +506,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // constraints were too strong, and if so, emit or propagate those errors.
         if infcx.tcx.sess.opts.debugging_opts.polonius {
             self.check_polonius_subset_errors(
-                infcx,
                 body,
-                mir_def_id,
                 outlives_requirements.as_mut(),
                 &mut errors_buffer,
                 polonius_output.expect("Polonius output is unavailable despite `-Z polonius`"),
             );
         } else {
             self.check_universal_regions(
-                infcx,
                 body,
-                mir_def_id,
                 outlives_requirements.as_mut(),
                 &mut errors_buffer,
             );
@@ -1291,9 +1286,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// report them as errors.
     fn check_universal_regions(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
-        mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
@@ -1312,7 +1305,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 NLLRegionVariableOrigin::Placeholder(placeholder) => {
-                    self.check_bound_universal_region(infcx, body, mir_def_id, fr, placeholder);
+                    self.check_bound_universal_region(fr, placeholder, errors_buffer);
                 }
 
                 NLLRegionVariableOrigin::Existential { .. } => {
@@ -1345,9 +1338,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// report them as errors.
     fn check_polonius_subset_errors(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
-        mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
         polonius_output: Rc<PoloniusOutput>,
@@ -1413,7 +1404,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 NLLRegionVariableOrigin::Placeholder(placeholder) => {
-                    self.check_bound_universal_region(infcx, body, mir_def_id, fr, placeholder);
+                    self.check_bound_universal_region(fr, placeholder, errors_buffer);
                 }
 
                 NLLRegionVariableOrigin::Existential { .. } => {
@@ -1573,11 +1564,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     fn check_bound_universal_region(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
-        body: &Body<'tcx>,
-        _mir_def_id: DefId,
         longer_fr: RegionVid,
         placeholder: ty::PlaceholderRegion,
+        errors_buffer: &mut RegionErrors<'tcx>,
     ) {
         debug!("check_bound_universal_region(fr={:?}, placeholder={:?})", longer_fr, placeholder,);
 
@@ -1614,18 +1603,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .unwrap(),
         };
 
-        // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-        let (_, span) = self.find_outlives_blame_span(
-            body, longer_fr, NLLRegionVariableOrigin::Placeholder(placeholder), error_region
-        );
-
-        // Obviously, this error message is far from satisfactory.
-        // At present, though, it only appears in unit tests --
-        // the AST-based checker uses a more conservative check,
-        // so to even see this error, one must pass in a special
-        // flag.
-        let mut diag = infcx.tcx.sess.struct_span_err(span, "higher-ranked subtype error");
-        diag.emit();
+        errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
+            longer_fr,
+            error_region,
+            fr_origin: NLLRegionVariableOrigin::Placeholder(placeholder),
+        });
     }
 
     fn check_member_constraints(

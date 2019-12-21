@@ -1647,6 +1647,25 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     .buffer(&mut self.errors_buffer);
                 }
 
+                RegionErrorKind::BoundUniversalRegionError {
+                    longer_fr, fr_origin, error_region,
+                } => {
+                    // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
+                    let (_, span) = self.nonlexical_regioncx.find_outlives_blame_span(
+                        &self.body,
+                        longer_fr,
+                        fr_origin,
+                        error_region,
+                    );
+
+                    // FIXME: improve this error message
+                    self.infcx
+                        .tcx
+                        .sess
+                        .struct_span_err(span, "higher-ranked subtype error")
+                        .buffer(&mut self.errors_buffer);
+                }
+
                 RegionErrorKind::RegionError {
                     fr_origin, longer_fr, shorter_fr, is_reported,
                 } => {
