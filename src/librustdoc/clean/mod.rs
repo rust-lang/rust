@@ -46,7 +46,6 @@ pub use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
 pub use self::types::*;
 pub use self::types::Type::*;
-pub use self::types::Mutability::*;
 pub use self::types::ItemEnum::*;
 pub use self::types::SelfTy::*;
 pub use self::types::FunctionRetTy::*;
@@ -1321,15 +1320,14 @@ impl Clean<Type> for hir::Ty {
 
         match self.kind {
             TyKind::Never => Never,
-            TyKind::Ptr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
+            TyKind::Ptr(ref m) => RawPointer(m.mutbl, box m.ty.clean(cx)),
             TyKind::Rptr(ref l, ref m) => {
                 let lifetime = if l.is_elided() {
                     None
                 } else {
                     Some(l.clean(cx))
                 };
-                BorrowedRef {lifetime, mutability: m.mutbl.clean(cx),
-                             type_: box m.ty.clean(cx)}
+                BorrowedRef {lifetime, mutability: m.mutbl, type_: box m.ty.clean(cx)}
             }
             TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),
             TyKind::Array(ref ty, ref length) => {
@@ -1547,10 +1545,10 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let n = print_const(cx, n);
                 Array(box ty.clean(cx), n)
             }
-            ty::RawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
+            ty::RawPtr(mt) => RawPointer(mt.mutbl, box mt.ty.clean(cx)),
             ty::Ref(r, ty, mutbl) => BorrowedRef {
                 lifetime: r.clean(cx),
-                mutability: mutbl.clean(cx),
+                mutability: mutbl,
                 type_: box ty.clean(cx),
             },
             ty::FnDef(..) |
@@ -2073,7 +2071,7 @@ impl Clean<Item> for doctree::Static<'_> {
             deprecation: cx.deprecation(self.id).clean(cx),
             inner: StaticItem(Static {
                 type_: self.type_.clean(cx),
-                mutability: self.mutability.clean(cx),
+                mutability: self.mutability,
                 expr: print_const_expr(cx, self.expr),
             }),
         }
@@ -2094,15 +2092,6 @@ impl Clean<Item> for doctree::Constant<'_> {
                 type_: self.type_.clean(cx),
                 expr: print_const_expr(cx, self.expr),
             }),
-        }
-    }
-}
-
-impl Clean<Mutability> for hir::Mutability {
-    fn clean(&self, _: &DocContext<'_>) -> Mutability {
-        match self {
-            &hir::Mutability::Mut => Mutable,
-            &hir::Mutability::Not => Immutable,
         }
     }
 }
@@ -2296,7 +2285,7 @@ impl Clean<Item> for doctree::ForeignItem<'_> {
             hir::ForeignItemKind::Static(ref ty, mutbl) => {
                 ForeignStaticItem(Static {
                     type_: ty.clean(cx),
-                    mutability: mutbl.clean(cx),
+                    mutability: *mutbl,
                     expr: String::new(),
                 })
             }
