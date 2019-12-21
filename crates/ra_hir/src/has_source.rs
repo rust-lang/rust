@@ -9,8 +9,8 @@ use hir_def::{
 use ra_syntax::ast;
 
 use crate::{
-    db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, ImplBlock, Import, MacroDef,
-    Module, Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
+    db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, ImplBlock, MacroDef, Module,
+    Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
 };
 
 pub use hir_expand::InFile;
@@ -115,18 +115,6 @@ impl HasSource for ImplBlock {
     type Ast = ast::ImplBlock;
     fn source(self, db: &impl DefDatabase) -> InFile<ast::ImplBlock> {
         self.id.lookup(db).source(db)
-    }
-}
-impl HasSource for Import {
-    type Ast = Either<ast::UseTree, ast::ExternCrateItem>;
-
-    /// Returns the syntax of the last path segment corresponding to this import
-    fn source(self, db: &impl DefDatabase) -> InFile<Self::Ast> {
-        let src = self.parent.definition_source(db);
-        let (_, source_map) = db.raw_items_with_source_map(src.file_id);
-        let root = db.parse_or_expand(src.file_id).unwrap();
-        let ptr = source_map.get(self.id);
-        src.with_value(ptr.map_left(|it| it.to_node(&root)).map_right(|it| it.to_node(&root)))
     }
 }
 

@@ -18,6 +18,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) analyzer: hir::SourceAnalyzer,
     pub(super) offset: TextUnit,
     pub(super) token: SyntaxToken,
+    pub(super) name_ref: Option<ast::NameRef>,
     pub(super) module: Option<hir::Module>,
     pub(super) function_syntax: Option<ast::FnDef>,
     pub(super) use_item_syntax: Option<ast::UseItem>,
@@ -68,6 +69,7 @@ impl<'a> CompletionContext<'a> {
             analyzer,
             token,
             offset: position.offset,
+            name_ref: None,
             module,
             function_syntax: None,
             use_item_syntax: None,
@@ -142,6 +144,8 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name_ref(&mut self, original_file: SourceFile, name_ref: ast::NameRef) {
+        self.name_ref =
+            find_node_at_offset(original_file.syntax(), name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();
         if name_ref.syntax().parent().and_then(ast::RecordField::cast).is_some() {
             self.record_lit_syntax = find_node_at_offset(original_file.syntax(), self.offset);
