@@ -571,12 +571,9 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         match op.layout.ty.kind {
             ty::Str => {
-                let mplace = op.assert_mem_place(); // strings are never immediate
-                try_validation!(
-                    self.ecx.read_str(mplace),
-                    "uninitialized or non-UTF-8 data in str",
-                    self.path
-                );
+                let mplace = op.assert_mem_place(self.ecx); // strings are never immediate
+                try_validation!(self.ecx.read_str(mplace),
+                    "uninitialized or non-UTF-8 data in str", self.path);
             }
             ty::Array(tys, ..) | ty::Slice(tys)
                 if {
@@ -604,7 +601,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     return Ok(());
                 }
                 // non-ZST array cannot be immediate, slices are never immediate
-                let mplace = op.assert_mem_place();
+                let mplace = op.assert_mem_place(self.ecx);
                 // This is the length of the array/slice.
                 let len = mplace.len(self.ecx)?;
                 // zero length slices have nothing to be checked

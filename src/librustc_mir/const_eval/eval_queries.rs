@@ -115,7 +115,7 @@ pub(super) fn op_to_const<'tcx>(
         // by-val is if we are in const_field, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
         // structs containing such.
-        op.try_as_mplace()
+        op.try_as_mplace(ecx)
     };
     let val = match immediate {
         Ok(mplace) => {
@@ -132,7 +132,7 @@ pub(super) fn op_to_const<'tcx>(
                 // `Immediate` is when we are called from `const_field`, and that `Immediate`
                 // comes from a constant so it can happen have `Undef`, because the indirect
                 // memory that was read had undefined bytes.
-                let mplace = op.assert_mem_place();
+                let mplace = op.assert_mem_place(ecx);
                 let ptr = mplace.ptr.assert_ptr();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                 ConstValue::ByRef { alloc, offset: ptr.offset }

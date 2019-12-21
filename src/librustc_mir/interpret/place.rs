@@ -200,16 +200,17 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
 // These are defined here because they produce a place.
 impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
-    pub fn try_as_mplace(self) -> Result<MPlaceTy<'tcx, Tag>, ImmTy<'tcx, Tag>> {
+    pub fn try_as_mplace(self, cx: &impl HasDataLayout) -> Result<MPlaceTy<'tcx, Tag>, ImmTy<'tcx, Tag>> {
         match *self {
             Operand::Indirect(mplace) => Ok(MPlaceTy { mplace, layout: self.layout }),
+            Operand::Immediate(_) if self.layout.is_zst() => Ok(MPlaceTy::dangling(self.layout, cx)),
             Operand::Immediate(imm) => Err(ImmTy { imm, layout: self.layout }),
         }
     }
 
     #[inline(always)]
-    pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Tag> {
-        self.try_as_mplace().unwrap()
+    pub fn assert_mem_place(self, cx: &impl HasDataLayout) -> MPlaceTy<'tcx, Tag> {
+        self.try_as_mplace(cx).unwrap()
     }
 }
 
@@ -305,7 +306,7 @@ where
     /// On success, returns `None` for zero-sized accesses (where nothing else is
     /// left to do) and a `Pointer` to use for the actual access otherwise.
     #[inline]
-    pub fn check_mplace_access(
+    pub(super) fn check_mplace_access(
         &self,
         place: MPlaceTy<'tcx, M::PointerTag>,
         size: Option<Size>,
@@ -338,7 +339,7 @@ where
 
     /// Force `place.ptr` to a `Pointer`.
     /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
-    pub fn force_mplace_ptr(
+    pub(super) fn force_mplace_ptr(
         &self,
         mut place: MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
@@ -415,7 +416,7 @@ where
 
     // Iterates over all fields of an array. Much more efficient than doing the
     // same by repeatedly calling `mplace_array`.
-    pub fn mplace_array_fields(
+    pub(super) fn mplace_array_fields(
         &self,
         base: MPlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'tcx>
@@ -430,7 +431,7 @@ where
         Ok((0..len).map(move |i| base.offset(i * stride, None, layout, dl)))
     }
 
-    pub fn mplace_subslice(
+    fn mplace_subslice(
         &self,
         base: MPlaceTy<'tcx, M::PointerTag>,
         from: u64,
@@ -471,7 +472,7 @@ where
         base.offset(from_offset, meta, layout, self)
     }
 
-    pub fn mplace_downcast(
+    pub(super) fn mplace_downcast(
         &self,
         base: MPlaceTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
@@ -482,7 +483,7 @@ where
     }
 
     /// Project into an mplace
-    pub fn mplace_projection(
+    pub(super) fn mplace_projection(
         &self,
         base: MPlaceTy<'tcx, M::PointerTag>,
         proj_elem: &mir::PlaceElem<'tcx>,
