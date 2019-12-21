@@ -1,0 +1,76 @@
+error: exponent for bases 2 and e can be computed more accurately
+  --> $DIR/floating_point_powf.rs:5:13
+   |
+LL |     let _ = 2f32.powf(x);
+   |             ^^^^^^^^^^^^ help: consider using: `x.exp2()`
+   |
+   = note: `-D clippy::floating-point-improvements` implied by `-D warnings`
+
+error: exponent for bases 2 and e can be computed more accurately
+  --> $DIR/floating_point_powf.rs:6:13
+   |
+LL |     let _ = std::f32::consts::E.powf(x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.exp()`
+
+error: square-root of a number can be computed more efficiently and accurately
+  --> $DIR/floating_point_powf.rs:7:13
+   |
+LL |     let _ = x.powf(1.0 / 2.0);
+   |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.sqrt()`
+
+error: cube-root of a number can be computed more accurately
+  --> $DIR/floating_point_powf.rs:8:13
+   |
+LL |     let _ = x.powf(1.0 / 3.0);
+   |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.cbrt()`
+
+error: exponentiation with integer powers can be computed more efficiently
+  --> $DIR/floating_point_powf.rs:9:13
+   |
+LL |     let _ = x.powf(2.0);
+   |             ^^^^^^^^^^^ help: consider using: `x.powi(2)`
+
+error: exponentiation with integer powers can be computed more efficiently
+  --> $DIR/floating_point_powf.rs:10:13
+   |
+LL |     let _ = x.powf(-2.0);
+   |             ^^^^^^^^^^^^ help: consider using: `x.powi(-2)`
+
+error: exponent for bases 2 and e can be computed more accurately
+  --> $DIR/floating_point_powf.rs:17:13
+   |
+LL |     let _ = 2f64.powf(x);
+   |             ^^^^^^^^^^^^ help: consider using: `x.exp2()`
+
+error: exponent for bases 2 and e can be computed more accurately
+  --> $DIR/floating_point_powf.rs:18:13
+   |
+LL |     let _ = std::f64::consts::E.powf(x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.exp()`
+
+error: square-root of a number can be computed more efficiently and accurately
+  --> $DIR/floating_point_powf.rs:19:13
+   |
+LL |     let _ = x.powf(1.0 / 2.0);
+   |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.sqrt()`
+
+error: cube-root of a number can be computed more accurately
+  --> $DIR/floating_point_powf.rs:20:13
+   |
+LL |     let _ = x.powf(1.0 / 3.0);
+   |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.cbrt()`
+
+error: exponentiation with integer powers can be computed more efficiently
+  --> $DIR/floating_point_powf.rs:21:13
+   |
+LL |     let _ = x.powf(2.0);
+   |             ^^^^^^^^^^^ help: consider using: `x.powi(2)`
+
+error: exponentiation with integer powers can be computed more efficiently
+  --> $DIR/floating_point_powf.rs:22:13
+   |
+LL |     let _ = x.powf(-2.0);
+   |             ^^^^^^^^^^^^ help: consider using: `x.powi(-2)`
+
+error: aborting due to 12 previous errors
+

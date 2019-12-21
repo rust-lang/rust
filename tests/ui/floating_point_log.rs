@@ -40,48 +40,6 @@ fn check_ln1p() {
     let _ = (1.0 + x - 2.0).ln();
 }
 
-fn check_powf() {
-    let x = 3f32;
-    let _ = 2f32.powf(x);
-    let _ = std::f32::consts::E.powf(x);
-    let _ = x.powf(1.0 / 2.0);
-    let _ = x.powf(1.0 / 3.0);
-    let _ = x.powf(2.0);
-    let _ = x.powf(-2.0);
-    let _ = x.powf(2.1);
-    let _ = x.powf(-2.1);
-    let _ = x.powf(16_777_217.0);
-    let _ = x.powf(-16_777_217.0);
-
-    let x = 3f64;
-    let _ = 2f64.powf(x);
-    let _ = std::f64::consts::E.powf(x);
-    let _ = x.powf(1.0 / 2.0);
-    let _ = x.powf(1.0 / 3.0);
-    let _ = x.powf(2.0);
-    let _ = x.powf(-2.0);
-    let _ = x.powf(2.1);
-    let _ = x.powf(-2.1);
-    let _ = x.powf(9_007_199_254_740_993.0);
-    let _ = x.powf(-9_007_199_254_740_993.0);
-}
-
-fn check_expm1() {
-    let x = 2f32;
-    let _ = x.exp() - 1.0;
-    let _ = x.exp() - 1.0 + 2.0;
-    // Cases where the lint shouldn't be applied
-    let _ = x.exp() - 2.0;
-    let _ = x.exp() - 1.0 * 2.0;
-
-    let x = 2f64;
-    let _ = x.exp() - 1.0;
-    let _ = x.exp() - 1.0 + 2.0;
-    // Cases where the lint shouldn't be applied
-    let _ = x.exp() - 2.0;
-    let _ = x.exp() - 1.0 * 2.0;
-}
-
 fn check_log_division() {
     let x = 3f32;
     let y = 2f32;

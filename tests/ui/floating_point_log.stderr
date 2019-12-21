@@ -1,5 +1,5 @@
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:9:13
+  --> $DIR/floating_point_log.rs:9:13
    |
 LL |     let _ = x.log(2f32);
    |             ^^^^^^^^^^^ help: consider using: `x.log2()`
@@ -7,262 +7,166 @@ LL |     let _ = x.log(2f32);
    = note: `-D clippy::floating-point-improvements` implied by `-D warnings`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:10:13
+  --> $DIR/floating_point_log.rs:10:13
    |
 LL |     let _ = x.log(10f32);
    |             ^^^^^^^^^^^^ help: consider using: `x.log10()`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:11:13
+  --> $DIR/floating_point_log.rs:11:13
    |
 LL |     let _ = x.log(std::f32::consts::E);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.ln()`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:12:13
+  --> $DIR/floating_point_log.rs:12:13
    |
 LL |     let _ = x.log(TWO);
    |             ^^^^^^^^^^ help: consider using: `x.log2()`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:13:13
+  --> $DIR/floating_point_log.rs:13:13
    |
 LL |     let _ = x.log(E);
    |             ^^^^^^^^ help: consider using: `x.ln()`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:16:13
+  --> $DIR/floating_point_log.rs:16:13
    |
 LL |     let _ = x.log(2f64);
    |             ^^^^^^^^^^^ help: consider using: `x.log2()`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:17:13
+  --> $DIR/floating_point_log.rs:17:13
    |
 LL |     let _ = x.log(10f64);
    |             ^^^^^^^^^^^^ help: consider using: `x.log10()`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:18:13
+  --> $DIR/floating_point_log.rs:18:13
    |
 LL |     let _ = x.log(std::f64::consts::E);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.ln()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:23:13
+  --> $DIR/floating_point_log.rs:23:13
    |
 LL |     let _ = (1.0 + x).ln();
    |             ^^^^^^^^^^^^^^ help: consider using: `x.ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:24:13
+  --> $DIR/floating_point_log.rs:24:13
    |
 LL |     let _ = (1.0 + x * 2.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x * 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:25:13
+  --> $DIR/floating_point_log.rs:25:13
    |
 LL |     let _ = (1.0 + x.powi(2)).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(2).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:26:13
+  --> $DIR/floating_point_log.rs:26:13
    |
 LL |     let _ = (1.0 + x.powi(2) * 2.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x.powi(2) * 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:27:13
+  --> $DIR/floating_point_log.rs:27:13
    |
 LL |     let _ = (1.0 + (std::f32::consts::E - 1.0)).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `((std::f32::consts::E - 1.0)).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:34:13
+  --> $DIR/floating_point_log.rs:34:13
    |
 LL |     let _ = (1.0 + x).ln();
    |             ^^^^^^^^^^^^^^ help: consider using: `x.ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:35:13
+  --> $DIR/floating_point_log.rs:35:13
    |
 LL |     let _ = (1.0 + x * 2.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x * 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:36:13
+  --> $DIR/floating_point_log.rs:36:13
    |
 LL |     let _ = (1.0 + x.powi(2)).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(2).ln_1p()`
 
-error: exponent for bases 2 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:45:13
-   |
-LL |     let _ = 2f32.powf(x);
-   |             ^^^^^^^^^^^^ help: consider using: `x.exp2()`
-
-error: exponent for bases 2 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:46:13
-   |
-LL |     let _ = std::f32::consts::E.powf(x);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.exp()`
-
-error: square-root of a number can be computed more efficiently and accurately
-  --> $DIR/floating_point_arithmetic.rs:47:13
-   |
-LL |     let _ = x.powf(1.0 / 2.0);
-   |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.sqrt()`
-
-error: cube-root of a number can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:48:13
-   |
-LL |     let _ = x.powf(1.0 / 3.0);
-   |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.cbrt()`
-
-error: exponentiation with integer powers can be computed more efficiently
-  --> $DIR/floating_point_arithmetic.rs:49:13
-   |
-LL |     let _ = x.powf(2.0);
-   |             ^^^^^^^^^^^ help: consider using: `x.powi(2)`
-
-error: exponentiation with integer powers can be computed more efficiently
-  --> $DIR/floating_point_arithmetic.rs:50:13
-   |
-LL |     let _ = x.powf(-2.0);
-   |             ^^^^^^^^^^^^ help: consider using: `x.powi(-2)`
-
-error: exponent for bases 2 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:57:13
-   |
-LL |     let _ = 2f64.powf(x);
-   |             ^^^^^^^^^^^^ help: consider using: `x.exp2()`
-
-error: exponent for bases 2 and e can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:58:13
-   |
-LL |     let _ = std::f64::consts::E.powf(x);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.exp()`
-
-error: square-root of a number can be computed more efficiently and accurately
-  --> $DIR/floating_point_arithmetic.rs:59:13
-   |
-LL |     let _ = x.powf(1.0 / 2.0);
-   |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.sqrt()`
-
-error: cube-root of a number can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:60:13
-   |
-LL |     let _ = x.powf(1.0 / 3.0);
-   |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.cbrt()`
-
-error: exponentiation with integer powers can be computed more efficiently
-  --> $DIR/floating_point_arithmetic.rs:61:13
-   |
-LL |     let _ = x.powf(2.0);
-   |             ^^^^^^^^^^^ help: consider using: `x.powi(2)`
-
-error: exponentiation with integer powers can be computed more efficiently
-  --> $DIR/floating_point_arithmetic.rs:62:13
-   |
-LL |     let _ = x.powf(-2.0);
-   |             ^^^^^^^^^^^^ help: consider using: `x.powi(-2)`
-
-error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:71:13
-   |
-LL |     let _ = x.exp() - 1.0;
-   |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
-
-error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:72:13
-   |
-LL |     let _ = x.exp() - 1.0 + 2.0;
-   |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
-
-error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:78:13
-   |
-LL |     let _ = x.exp() - 1.0;
-   |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
-
-error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_arithmetic.rs:79:13
-   |
-LL |     let _ = x.exp() - 1.0 + 2.0;
-   |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
-
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:90:13
+  --> $DIR/floating_point_log.rs:48:13
    |
 LL |     let _ = x.log2() / y.log2();
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:91:13
+  --> $DIR/floating_point_log.rs:49:13
    |
 LL |     let _ = x.log10() / y.log10();
    |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:92:13
+  --> $DIR/floating_point_log.rs:50:13
    |
 LL |     let _ = x.ln() / y.ln();
    |             ^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:93:13
+  --> $DIR/floating_point_log.rs:51:13
    |
 LL |     let _ = x.log(4.0) / y.log(4.0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:94:13
+  --> $DIR/floating_point_log.rs:52:13
    |
 LL |     let _ = x.log(b) / y.log(b);
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:96:13
+  --> $DIR/floating_point_log.rs:54:13
    |
 LL |     let _ = x.log(b) / 2f32.log(b);
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log2()`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:102:13
+  --> $DIR/floating_point_log.rs:60:13
    |
 LL |     let _ = x.log2() / y.log2();
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:103:13
+  --> $DIR/floating_point_log.rs:61:13
    |
 LL |     let _ = x.log10() / y.log10();
    |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:104:13
+  --> $DIR/floating_point_log.rs:62:13
    |
 LL |     let _ = x.ln() / y.ln();
    |             ^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:105:13
+  --> $DIR/floating_point_log.rs:63:13
    |
 LL |     let _ = x.log(4.0) / y.log(4.0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:106:13
+  --> $DIR/floating_point_log.rs:64:13
    |
 LL |     let _ = x.log(b) / y.log(b);
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: x.log(b) / y.log(b) can be reduced to x.log(y)
-  --> $DIR/floating_point_arithmetic.rs:108:13
+  --> $DIR/floating_point_log.rs:66:13
    |
 LL |     let _ = x.log(b) / 2f64.log(b);
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log2()`
 
-error: aborting due to 44 previous errors
+error: aborting due to 28 previous errors
 
