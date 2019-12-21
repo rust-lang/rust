@@ -5,7 +5,7 @@ use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
 
-use crate::{per_ns::PerNs, BuiltinType, ImplId, LocalImportId, MacroDefId, ModuleDefId, TraitId};
+use crate::{per_ns::PerNs, BuiltinType, ImplId, MacroDefId, ModuleDefId, TraitId};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
@@ -30,7 +30,7 @@ static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
     BuiltinType::ALL
         .iter()
         .map(|(name, ty)| {
-            (name.clone(), Resolution { def: PerNs::types(ty.clone().into()), import: None })
+            (name.clone(), Resolution { def: PerNs::types(ty.clone().into()), import: false })
         })
         .collect()
 });
@@ -54,7 +54,7 @@ impl ItemScope {
 
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
         self.entries()
-            .filter_map(|(_name, res)| if res.import.is_none() { Some(res.def) } else { None })
+            .filter_map(|(_name, res)| if !res.import { Some(res.def) } else { None })
             .flat_map(|per_ns| {
                 per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
             })
@@ -112,36 +112,27 @@ impl ItemScope {
         self.legacy_macros.insert(name, mac);
     }
 
-    pub(crate) fn push_res(
-        &mut self,
-        name: Name,
-        res: &Resolution,
-        import: Option<LocalImportId>,
-    ) -> bool {
+    pub(crate) fn push_res(&mut self, name: Name, res: &Resolution, import: bool) -> bool {
         let mut changed = false;
         let existing = self.items.entry(name.clone()).or_default();
 
         if existing.def.types.is_none() && res.def.types.is_some() {
             existing.def.types = res.def.types;
-            existing.import = import.or(res.import);
+            existing.import = import || res.import;
             changed = true;
         }
         if existing.def.values.is_none() && res.def.values.is_some() {
             existing.def.values = res.def.values;
-            existing.import = import.or(res.import);
+            existing.import = import || res.import;
             changed = true;
         }
         if existing.def.macros.is_none() && res.def.macros.is_some() {
             existing.def.macros = res.def.macros;
-            existing.import = import.or(res.import);
+            existing.import = import || res.import;
             changed = true;
         }
 
-        if existing.def.is_none()
-            && res.def.is_none()
-            && existing.import.is_none()
-            && res.import.is_some()
-        {
+        if existing.def.is_none() && res.def.is_none() && !existing.import && res.import {
             existing.import = res.import;
         }
         changed
@@ -160,6 +151,5 @@ impl ItemScope {
 pub struct Resolution {
     /// None for unresolved
     pub def: PerNs,
-    /// ident by which this is imported into local scope.
-    pub(crate) import: Option<LocalImportId>,
+    pub(crate) import: bool,
 }

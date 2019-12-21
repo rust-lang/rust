@@ -52,10 +52,6 @@ use crate::body::Expander;
 use crate::builtin_type::BuiltinType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct LocalImportId(RawId);
-impl_arena_id!(LocalImportId);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
     pub krate: CrateId,
     pub local_id: LocalModuleId,
