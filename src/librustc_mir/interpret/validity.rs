@@ -596,15 +596,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             {
                 // Optimized handling for arrays of integer/float type.
 
-                // bailing out for zsts is ok, since the array element type can only be int/float
-                if op.layout.is_zst() {
-                    return Ok(());
-                }
-                // non-ZST array cannot be immediate, slices are never immediate
+                // Arrays cannot be immediate, slices are never immediate.
                 let mplace = op.assert_mem_place(self.ecx);
                 // This is the length of the array/slice.
                 let len = mplace.len(self.ecx)?;
-                // zero length slices have nothing to be checked
+                // Zero length slices have nothing to be checked.
                 if len == 0 {
                     return Ok(());
                 }
