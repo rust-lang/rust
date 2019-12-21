@@ -283,7 +283,7 @@ fn trans_stmt<'tcx>(
                     let val = trans_operand(fx, operand);
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::Ref(_, _, place) => {
+                Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
                     let place = trans_place(fx, place);
                     place.write_place_ref(fx, lval);
                 }
