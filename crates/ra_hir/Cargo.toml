@@ -14,6 +14,7 @@ either = "1.5"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_db = { path = "../ra_db" }
+ra_prof = { path = "../ra_prof" }
 hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
 hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
 hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }

@@ -948,6 +948,7 @@ dependencies = [
  "ra_hir_def 0.1.0",
  "ra_hir_expand 0.1.0",
  "ra_hir_ty 0.1.0",
+ "ra_prof 0.1.0",
  "ra_syntax 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

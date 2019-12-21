@@ -1,11 +1,14 @@
 //! FIXME: write short doc here
 
-use crate::{db::RootDatabase, FileId};
 use hir::{HirDisplay, SourceAnalyzer};
+use once_cell::unsync::Lazy;
+use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode, TypeAscriptionOwner},
     match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
 };
+
+use crate::{db::RootDatabase, FileId};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum InlayKind {
@@ -27,7 +30,7 @@ pub(crate) fn inlay_hints(
 ) -> Vec<InlayHint> {
     file.syntax()
         .descendants()
-        .map(|node| get_inlay_hints(db, file_id, &node, max_inlay_hint_length).unwrap_or_default())
+        .flat_map(|node| get_inlay_hints(db, file_id, &node, max_inlay_hint_length))
         .flatten()
         .collect()
 }
@@ -38,7 +41,9 @@ fn get_inlay_hints(
     node: &SyntaxNode,
     max_inlay_hint_length: Option<usize>,
 ) -> Option<Vec<InlayHint>> {
-    let analyzer = SourceAnalyzer::new(db, hir::InFile::new(file_id.into(), node), None);
+    let _p = profile("get_inlay_hints");
+    let analyzer =
+        Lazy::new(|| SourceAnalyzer::new(db, hir::InFile::new(file_id.into(), node), None));
     match_ast! {
         match node {
             ast::LetStmt(it) => {
