@@ -243,7 +243,7 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         ty::Float(..) |
         ty::RawPtr(..) |
         ty::Never |
-        ty::Ref(_, _, hir::Mutability::Immutable) => (),
+        ty::Ref(_, _, hir::Mutability::Not) => (),
 
         // Non parametric primitive types.
         ty::Infer(ty::IntVar(_)) |
@@ -319,7 +319,7 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         ty::Generator(..) |
         ty::Str |
         ty::Slice(..) |
-        ty::Ref(_, _, hir::Mutability::Mutable) => (),
+        ty::Ref(_, _, hir::Mutability::Mut) => (),
 
         ty::Bound(..) |
         ty::GeneratorWitness(..) |

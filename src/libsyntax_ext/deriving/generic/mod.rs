@@ -1017,7 +1017,7 @@ impl<'a> MethodDef<'a> {
                                                                  struct_path,
                                                                  struct_def,
                                                                  &format!("__self_{}", i),
-                                                                 ast::Mutability::Immutable,
+                                                                 ast::Mutability::Not,
                                                                  use_temporaries);
             patterns.push(pat);
             raw_fields.push(ident_expr);
@@ -1227,8 +1227,8 @@ impl<'a> MethodDef<'a> {
                                                      type_ident,
                                                      variant,
                                                      self_arg_name,
-                                                     ast::Mutability::Immutable);
-                    (cx.pat(sp, PatKind::Ref(p, ast::Mutability::Immutable)), idents)
+                                                     ast::Mutability::Not);
+                    (cx.pat(sp, PatKind::Ref(p, ast::Mutability::Not)), idents)
                 };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
@@ -1558,7 +1558,7 @@ impl<'a> TraitDef<'a> {
         field_paths.iter()
             .map(|path| {
                 let binding_mode = if use_temporaries {
-                    ast::BindingMode::ByValue(ast::Mutability::Immutable)
+                    ast::BindingMode::ByValue(ast::Mutability::Not)
                 } else {
                     ast::BindingMode::ByRef(mutbl)
                 };

@@ -1340,7 +1340,7 @@ impl LoweringContext<'_> {
     fn expr_mut_addr_of(&mut self, span: Span, e: P<hir::Expr>) -> hir::Expr {
         self.expr(
             span,
-            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mutable, e),
+            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e),
             ThinVec::new(),
         )
     }

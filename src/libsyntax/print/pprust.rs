@@ -1071,7 +1071,7 @@ impl<'a> State<'a> {
             }
             ast::ForeignItemKind::Static(ref t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == ast::Mutability::Mutable {
+                if m == ast::Mutability::Mut {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -1162,7 +1162,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Static(ref ty, m, ref expr) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == ast::Mutability::Mutable {
+                if m == ast::Mutability::Mut {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -2302,8 +2302,8 @@ impl<'a> State<'a> {
                         self.word_nbsp("ref");
                         self.print_mutability(mutbl, false);
                     }
-                    ast::BindingMode::ByValue(ast::Mutability::Immutable) => {}
-                    ast::BindingMode::ByValue(ast::Mutability::Mutable) => {
+                    ast::BindingMode::ByValue(ast::Mutability::Not) => {}
+                    ast::BindingMode::ByValue(ast::Mutability::Mut) => {
                         self.word_nbsp("mut");
                     }
                 }
@@ -2366,7 +2366,7 @@ impl<'a> State<'a> {
             }
             PatKind::Ref(ref inner, mutbl) => {
                 self.s.word("&");
-                if mutbl == ast::Mutability::Mutable {
+                if mutbl == ast::Mutability::Mut {
                     self.s.word("mut ");
                 }
                 self.print_pat(inner);
@@ -2667,8 +2667,8 @@ impl<'a> State<'a> {
 
     pub fn print_mutability(&mut self, mutbl: ast::Mutability, print_const: bool) {
         match mutbl {
-            ast::Mutability::Mutable => self.word_nbsp("mut"),
-            ast::Mutability::Immutable => if print_const { self.word_nbsp("const"); },
+            ast::Mutability::Mut => self.word_nbsp("mut"),
+            ast::Mutability::Not => if print_const { self.word_nbsp("const"); },
         }
     }
 

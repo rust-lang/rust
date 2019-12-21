@@ -123,7 +123,7 @@ pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt<'_>,
                 },
                 explicit_self: borrowed_explicit_self(),
                 args: vec![(Ptr(Box::new(Literal(Path::new_local(typaram))),
-                           Borrowed(None, Mutability::Mutable)), "s")],
+                           Borrowed(None, Mutability::Mut)), "s")],
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, result::Result),
                     None,

@@ -471,7 +471,7 @@ impl CloneShimBuilder<'tcx> {
             Mutability::Not,
             tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut {
                 ty,
-                mutbl: hir::Mutability::Immutable,
+                mutbl: hir::Mutability::Not,
             })
         );
 
@@ -757,7 +757,7 @@ fn build_call_shim<'tcx>(
                 Mutability::Not,
                 tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut {
                     ty: sig.inputs()[0],
-                    mutbl: hir::Mutability::Mutable
+                    mutbl: hir::Mutability::Mut
                 }),
                 span
             ));

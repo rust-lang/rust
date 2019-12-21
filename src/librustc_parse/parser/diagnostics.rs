@@ -22,7 +22,7 @@ const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify typ
 pub(super) fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
-        kind: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
+        kind: PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None),
         span: ident.span,
     });
     let ty = Ty {

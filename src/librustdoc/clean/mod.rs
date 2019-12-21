@@ -2101,8 +2101,8 @@ impl Clean<Item> for doctree::Constant<'_> {
 impl Clean<Mutability> for hir::Mutability {
     fn clean(&self, _: &DocContext<'_>) -> Mutability {
         match self {
-            &hir::Mutability::Mutable => Mutable,
-            &hir::Mutability::Immutable => Immutable,
+            &hir::Mutability::Mut => Mutable,
+            &hir::Mutability::Not => Immutable,
         }
     }
 }

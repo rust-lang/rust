@@ -108,7 +108,7 @@ pub enum Ty<'a> {
 }
 
 pub fn borrowed_ptrty() -> PtrTy {
-    Borrowed(None, ast::Mutability::Immutable)
+    Borrowed(None, ast::Mutability::Not)
 }
 pub fn borrowed(ty: Box<Ty<'_>>) -> Ty<'_> {
     Ptr(ty, borrowed_ptrty())
@@ -268,7 +268,7 @@ pub fn get_explicit_self(cx: &ExtCtxt<'_>,
     // this constructs a fresh `self` path
     let self_path = cx.expr_self(span);
     match *self_ptr {
-        None => (self_path, respan(span, SelfKind::Value(ast::Mutability::Immutable))),
+        None => (self_path, respan(span, SelfKind::Value(ast::Mutability::Not))),
         Some(ref ptr) => {
             let self_ty =
                 respan(span,

@@ -2325,7 +2325,7 @@ impl str {
         i.get_mut(self)
     }
 
-    /// Returns a unchecked subslice of `str`.
+    /// Returns an unchecked subslice of `str`.
     ///
     /// This is the unchecked alternative to indexing the `str`.
     ///

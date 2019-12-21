@@ -109,8 +109,8 @@ pub struct OverloadedDeref<'tcx> {
 impl<'tcx> OverloadedDeref<'tcx> {
     pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {
         let trait_def_id = match self.mutbl {
-            hir::Mutability::Immutable => tcx.lang_items().deref_trait(),
-            hir::Mutability::Mutable => tcx.lang_items().deref_mut_trait()
+            hir::Mutability::Not => tcx.lang_items().deref_trait(),
+            hir::Mutability::Mut => tcx.lang_items().deref_mut_trait()
         };
         let method_def_id = tcx.associated_items(trait_def_id.unwrap())
             .find(|m| m.kind == ty::AssocKind::Method).unwrap().def_id;
@@ -138,15 +138,15 @@ pub enum AllowTwoPhase {
 
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum AutoBorrowMutability {
-    Mutable { allow_two_phase_borrow: AllowTwoPhase },
-    Immutable,
+    Mut { allow_two_phase_borrow: AllowTwoPhase },
+    Not,
 }
 
 impl From<AutoBorrowMutability> for hir::Mutability {
     fn from(m: AutoBorrowMutability) -> Self {
         match m {
-            AutoBorrowMutability::Mutable { .. } => hir::Mutability::Mutable,
-            AutoBorrowMutability::Immutable => hir::Mutability::Immutable,
+            AutoBorrowMutability::Mut { .. } => hir::Mutability::Mut,
+            AutoBorrowMutability::Not => hir::Mutability::Not,
         }
     }
 }

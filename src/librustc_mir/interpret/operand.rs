@@ -444,13 +444,27 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Field(field, _) => self.operand_field(base, field.index() as u64)?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
-            Subslice { .. } | ConstantIndex { .. } | Index(_) => if base.layout.is_zst() {
+            ConstantIndex { .. } | Index(_) if base.layout.is_zst() => {
                 OpTy {
                     op: Operand::Immediate(Scalar::zst().into()),
                     // the actual index doesn't matter, so we just pick a convenient one like 0
                     layout: base.layout.field(self, 0)?,
                 }
-            } else {
+            }
+            Subslice { from, to, from_end } if base.layout.is_zst() => {
+                let elem_ty = if let ty::Array(elem_ty, _) = base.layout.ty.kind {
+                    elem_ty
+                } else {
+                    bug!("slices shouldn't be zero-sized");
+                };
+                assert!(!from_end, "arrays shouldn't be subsliced from the end");
+
+                OpTy {
+                    op: Operand::Immediate(Scalar::zst().into()),
+                    layout: self.layout_of(self.tcx.mk_array(elem_ty, (to - from) as u64))?,
+                }
+            }
+            Subslice { .. } | ConstantIndex { .. }  | Index(_) => {
                 // The rest should only occur as mplace, we do not use Immediates for types
                 // allowing such operations.  This matches place_projection forcing an allocation.
                 let mplace = base.assert_mem_place();

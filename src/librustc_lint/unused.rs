@@ -392,7 +392,7 @@ impl UnusedParens {
         avoid_or: bool,
         avoid_mut: bool,
     ) {
-        use ast::{PatKind, BindingMode::ByValue, Mutability::Mutable};
+        use ast::{PatKind, BindingMode, Mutability};
 
         if let PatKind::Paren(inner) = &value.kind {
             match inner.kind {
@@ -404,7 +404,7 @@ impl UnusedParens {
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
                 // Avoid `mut x` and `mut x @ p` if we should:
-                PatKind::Ident(ByValue(Mutable), ..) if avoid_mut => return,
+                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), ..) if avoid_mut => return,
                 // Otherwise proceed with linting.
                 _ => {}
             }
@@ -560,7 +560,7 @@ impl EarlyLintPass for UnusedParens {
             Ident(.., Some(p)) | Box(p) => self.check_unused_parens_pat(cx, p, true, false),
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
-            Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Immutable),
+            Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not),
         }
     }
 
@@ -668,9 +668,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
         for adj in cx.tables.expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 let msg = match m {
-                    adjustment::AutoBorrowMutability::Immutable =>
+                    adjustment::AutoBorrowMutability::Not =>
                         "unnecessary allocation, use `&` instead",
-                    adjustment::AutoBorrowMutability::Mutable { .. }=>
+                    adjustment::AutoBorrowMutability::Mut { .. }=>
                         "unnecessary allocation, use `&mut` instead"
                 };
                 cx.span_lint(UNUSED_ALLOCATION, e.span, msg);

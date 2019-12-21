@@ -539,7 +539,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // Need to make a copy, even if `get_static_alloc` is able
             // to give us a cheap reference.
             let alloc = Self::get_static_alloc(memory_extra, tcx, id)?;
-            if alloc.mutability == Mutability::Immutable {
+            if alloc.mutability == Mutability::Not {
                 throw_unsup!(ModifiedConstantMemory)
             }
             match M::STATIC_KIND {
@@ -553,7 +553,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Err(e) => Err(e),
             Ok(a) => {
                 let a = &mut a.1;
-                if a.mutability == Mutability::Immutable {
+                if a.mutability == Mutability::Not {
                     throw_unsup!(ModifiedConstantMemory)
                 }
                 Ok(a)
@@ -643,7 +643,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {
-        self.get_raw_mut(id)?.mutability = Mutability::Immutable;
+        self.get_raw_mut(id)?.mutability = Mutability::Not;
         Ok(())
     }
 

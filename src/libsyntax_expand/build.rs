@@ -178,7 +178,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident,
                 ex: P<ast::Expr>) -> ast::Stmt {
         let pat = if mutbl {
-            let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Mutable);
+            let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Mut);
             self.pat_ident_binding_mode(sp, ident, binding_mode)
         } else {
             self.pat_ident(sp, ident)
@@ -269,7 +269,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Immutable, e))
+        self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, e))
     }
 
     pub fn expr_call(
@@ -421,7 +421,7 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::Lit(expr))
     }
     pub fn pat_ident(&self, span: Span, ident: ast::Ident) -> P<ast::Pat> {
-        let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Immutable);
+        let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Not);
         self.pat_ident_binding_mode(span, ident, binding_mode)
     }
 
