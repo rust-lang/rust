@@ -22,7 +22,7 @@ if [ "${CROSS}" = "1" ]; then
     export CARGO_NET_RETRY=5
     export CARGO_NET_TIMEOUT=10
 
-    cargo install cross
+    cargo install --git https://github.com/rust-embedded/cross.git
     CARGO=cross
 fi
 
