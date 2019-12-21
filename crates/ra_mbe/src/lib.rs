@@ -97,7 +97,9 @@ impl Shift {
                     tt::Leaf::Literal(lit) => lit.id = self.shift(lit.id),
                 },
                 tt::TokenTree::Subtree(tt) => {
-                    tt.delimiter.as_mut().map(|it: &mut Delimiter| it.id = self.shift(it.id));
+                    if let Some(it) = tt.delimiter.as_mut() {
+                        it.id = self.shift(it.id);
+                    };
                     self.shift_all(tt)
                 }
             }

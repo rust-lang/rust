@@ -131,7 +131,7 @@ pub fn main_loop(
         let feature_flags = {
             let mut ff = FeatureFlags::default();
             for (flag, value) in config.feature_flags {
-                if let Err(_) = ff.set(flag.as_str(), value) {
+                if ff.set(flag.as_str(), value).is_err() {
                     log::error!("unknown feature flag: {:?}", flag);
                     show_message(
                         req::MessageType::Error,

@@ -239,16 +239,15 @@ impl<'a> CompletionContext<'a> {
                 .expr()
                 .map(|e| e.syntax().text_range())
                 .and_then(|r| find_node_with_range(original_file.syntax(), r));
-            self.dot_receiver_is_ambiguous_float_literal = if let Some(ast::Expr::Literal(l)) =
-                &self.dot_receiver
-            {
-                match l.kind() {
-                    ast::LiteralKind::FloatNumber { suffix: _ } => l.token().text().ends_with('.'),
-                    _ => false,
+            self.dot_receiver_is_ambiguous_float_literal =
+                if let Some(ast::Expr::Literal(l)) = &self.dot_receiver {
+                    match l.kind() {
+                        ast::LiteralKind::FloatNumber { .. } => l.token().text().ends_with('.'),
+                        _ => false,
+                    }
+                } else {
+                    false
                 }
-            } else {
-                false
-            }
         }
         if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent) {
             // As above

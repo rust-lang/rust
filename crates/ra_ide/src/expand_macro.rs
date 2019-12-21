@@ -86,21 +86,18 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
         let mut is_next = |f: fn(SyntaxKind) -> bool, default| -> bool {
             token_iter.peek().map(|it| f(it.kind())).unwrap_or(default)
         };
-        let is_last = |f: fn(SyntaxKind) -> bool, default| -> bool {
-            last.map(|it| f(it)).unwrap_or(default)
-        };
+        let is_last =
+            |f: fn(SyntaxKind) -> bool, default| -> bool { last.map(f).unwrap_or(default) };
 
         res += &match token.kind() {
-            k @ _ if is_text(k) && is_next(|it| !it.is_punct(), true) => {
-                token.text().to_string() + " "
-            }
+            k if is_text(k) && is_next(|it| !it.is_punct(), true) => token.text().to_string() + " ",
             L_CURLY if is_next(|it| it != R_CURLY, true) => {
                 indent += 1;
-                let leading_space = if is_last(|it| is_text(it), false) { " " } else { "" };
+                let leading_space = if is_last(is_text, false) { " " } else { "" };
                 format!("{}{{\n{}", leading_space, "  ".repeat(indent))
             }
             R_CURLY if is_last(|it| it != L_CURLY, true) => {
-                indent = indent.checked_sub(1).unwrap_or(0);
+                indent = indent.saturating_sub(1);
                 format!("\n{}}}", "  ".repeat(indent))
             }
             R_CURLY => format!("}}\n{}", "  ".repeat(indent)),

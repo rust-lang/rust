@@ -17,31 +17,31 @@ use crate::{
 };
 
 pub mod tags {
-    pub(crate) const FIELD: &'static str = "field";
-    pub(crate) const FUNCTION: &'static str = "function";
-    pub(crate) const MODULE: &'static str = "module";
-    pub(crate) const TYPE: &'static str = "type";
-    pub(crate) const CONSTANT: &'static str = "constant";
-    pub(crate) const MACRO: &'static str = "macro";
-    pub(crate) const VARIABLE: &'static str = "variable";
-    pub(crate) const VARIABLE_MUT: &'static str = "variable.mut";
-    pub(crate) const TEXT: &'static str = "text";
+    pub(crate) const FIELD: &str = "field";
+    pub(crate) const FUNCTION: &str = "function";
+    pub(crate) const MODULE: &str = "module";
+    pub(crate) const TYPE: &str = "type";
+    pub(crate) const CONSTANT: &str = "constant";
+    pub(crate) const MACRO: &str = "macro";
+    pub(crate) const VARIABLE: &str = "variable";
+    pub(crate) const VARIABLE_MUT: &str = "variable.mut";
+    pub(crate) const TEXT: &str = "text";
 
-    pub(crate) const TYPE_BUILTIN: &'static str = "type.builtin";
-    pub(crate) const TYPE_SELF: &'static str = "type.self";
-    pub(crate) const TYPE_PARAM: &'static str = "type.param";
-    pub(crate) const TYPE_LIFETIME: &'static str = "type.lifetime";
+    pub(crate) const TYPE_BUILTIN: &str = "type.builtin";
+    pub(crate) const TYPE_SELF: &str = "type.self";
+    pub(crate) const TYPE_PARAM: &str = "type.param";
+    pub(crate) const TYPE_LIFETIME: &str = "type.lifetime";
 
-    pub(crate) const LITERAL_BYTE: &'static str = "literal.byte";
-    pub(crate) const LITERAL_NUMERIC: &'static str = "literal.numeric";
-    pub(crate) const LITERAL_CHAR: &'static str = "literal.char";
-    pub(crate) const LITERAL_COMMENT: &'static str = "comment";
-    pub(crate) const LITERAL_STRING: &'static str = "string";
-    pub(crate) const LITERAL_ATTRIBUTE: &'static str = "attribute";
+    pub(crate) const LITERAL_BYTE: &str = "literal.byte";
+    pub(crate) const LITERAL_NUMERIC: &str = "literal.numeric";
+    pub(crate) const LITERAL_CHAR: &str = "literal.char";
+    pub(crate) const LITERAL_COMMENT: &str = "comment";
+    pub(crate) const LITERAL_STRING: &str = "string";
+    pub(crate) const LITERAL_ATTRIBUTE: &str = "attribute";
 
-    pub(crate) const KEYWORD_UNSAFE: &'static str = "keyword.unsafe";
-    pub(crate) const KEYWORD_CONTROL: &'static str = "keyword.control";
-    pub(crate) const KEYWORD: &'static str = "keyword";
+    pub(crate) const KEYWORD_UNSAFE: &str = "keyword.unsafe";
+    pub(crate) const KEYWORD_CONTROL: &str = "keyword.control";
+    pub(crate) const KEYWORD: &str = "keyword";
 }
 
 #[derive(Debug)]
@@ -258,9 +258,7 @@ fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
         SelfType(_) => tags::TYPE_SELF,
         TypeParam(_) => tags::TYPE_PARAM,
         Local(local) => {
-            if local.is_mut(db) {
-                tags::VARIABLE_MUT
-            } else if local.ty(db).is_mutable_reference() {
+            if local.is_mut(db) || local.ty(db).is_mutable_reference() {
                 tags::VARIABLE_MUT
             } else {
                 tags::VARIABLE
