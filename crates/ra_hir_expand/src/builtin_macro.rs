@@ -26,6 +26,13 @@ macro_rules! register_builtin {
                 };
                 expander(db, id, tt)
             }
+
+            fn by_name(ident: &name::Name) -> Option<BuiltinFnLikeExpander> {
+                match ident {
+                    $( id if id == &name::name![$name] => Some(BuiltinFnLikeExpander::$kind), )*
+                    _ => return None,
+                }
+            }
         }
 
         pub fn find_builtin_macro(
@@ -33,10 +40,7 @@ macro_rules! register_builtin {
             krate: CrateId,
             ast_id: AstId<ast::MacroCall>,
         ) -> Option<MacroDefId> {
-            let kind = match ident {
-                 $( id if id == &name::name![$name] => BuiltinFnLikeExpander::$kind, )*
-                 _ => return None,
-            };
+            let kind = BuiltinFnLikeExpander::by_name(ident)?;
 
             Some(MacroDefId { krate: Some(krate), ast_id: Some(ast_id), kind: MacroDefKind::BuiltIn(kind) })
         }
@@ -50,6 +54,8 @@ register_builtin! {
     (line, Line) => line_expand,
     (stringify, Stringify) => stringify_expand,
     (format_args, FormatArgs) => format_args_expand,
+    (env, Env) => env_expand,
+    (option_env, OptionEnv) => option_env_expand,
     // format_args_nl only differs in that it adds a newline in the end,
     // so we use the same stub expansion for now
     (format_args_nl, FormatArgsNl) => format_args_expand
@@ -117,6 +123,28 @@ fn stringify_expand(
     let expanded = quote! {
         #macro_content
     };
+
+    Ok(expanded)
+}
+
+fn env_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    _tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    // dummy implementation for type-checking purposes
+    let expanded = quote! { "" };
+
+    Ok(expanded)
+}
+
+fn option_env_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    _tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    // dummy implementation for type-checking purposes
+    let expanded = quote! { std::option::Option::None::<&str> };
 
     Ok(expanded)
 }
@@ -248,16 +276,20 @@ fn format_args_expand(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_db::TestDB, MacroCallKind, MacroCallLoc};
+    use crate::{name::AsName, test_db::TestDB, MacroCallKind, MacroCallLoc};
     use ra_db::{fixture::WithFixture, SourceDatabase};
+    use ra_syntax::ast::NameOwner;
 
-    fn expand_builtin_macro(s: &str, expander: BuiltinFnLikeExpander) -> String {
+    fn expand_builtin_macro(s: &str) -> String {
         let (db, file_id) = TestDB::with_single_file(&s);
         let parsed = db.parse(file_id);
         let macro_calls: Vec<_> =
             parsed.syntax_node().descendants().filter_map(|it| ast::MacroCall::cast(it)).collect();
 
         let ast_id_map = db.ast_id_map(file_id.into());
+
+        let expander =
+            BuiltinFnLikeExpander::by_name(&macro_calls[0].name().unwrap().as_name()).unwrap();
 
         // the first one should be a macro_rules
         let def = MacroDefId {
@@ -284,25 +316,23 @@ mod tests {
     fn test_column_expand() {
         let expanded = expand_builtin_macro(
             r#"
-        #[rustc_builtin_macro]
-        macro_rules! column {() => {}}
-        column!()
-"#,
-            BuiltinFnLikeExpander::Column,
+            #[rustc_builtin_macro]
+            macro_rules! column {() => {}}
+            column!()
+            "#,
         );
 
-        assert_eq!(expanded, "9");
+        assert_eq!(expanded, "13");
     }
 
     #[test]
     fn test_line_expand() {
         let expanded = expand_builtin_macro(
             r#"
-        #[rustc_builtin_macro]
-        macro_rules! line {() => {}}
-        line!()
-"#,
-            BuiltinFnLikeExpander::Line,
+            #[rustc_builtin_macro]
+            macro_rules! line {() => {}}
+            line!()
+            "#,
         );
 
         assert_eq!(expanded, "4");
@@ -312,25 +342,49 @@ mod tests {
     fn test_stringify_expand() {
         let expanded = expand_builtin_macro(
             r#"
-        #[rustc_builtin_macro]
-        macro_rules! stringify {() => {}}
-        stringify!(a b c)
-"#,
-            BuiltinFnLikeExpander::Stringify,
+            #[rustc_builtin_macro]
+            macro_rules! stringify {() => {}}
+            stringify!(a b c)
+            "#,
         );
 
         assert_eq!(expanded, "\"a b c\"");
     }
 
     #[test]
+    fn test_env_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+            #[rustc_builtin_macro]
+            macro_rules! env {() => {}}
+            env!("TEST_ENV_VAR")
+            "#,
+        );
+
+        assert_eq!(expanded, "\"\"");
+    }
+
+    #[test]
+    fn test_option_env_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+            #[rustc_builtin_macro]
+            macro_rules! option_env {() => {}}
+            option_env!("TEST_ENV_VAR")
+            "#,
+        );
+
+        assert_eq!(expanded, "std::option::Option::None:: <&str>");
+    }
+
+    #[test]
     fn test_file_expand() {
         let expanded = expand_builtin_macro(
             r#"
-        #[rustc_builtin_macro]
-        macro_rules! file {() => {}}
-        file!()
-"#,
-            BuiltinFnLikeExpander::File,
+            #[rustc_builtin_macro]
+            macro_rules! file {() => {}}
+            file!()
+            "#,
         );
 
         assert_eq!(expanded, "\"\"");
@@ -340,14 +394,13 @@ mod tests {
     fn test_compile_error_expand() {
         let expanded = expand_builtin_macro(
             r#"
-        #[rustc_builtin_macro]
-        macro_rules! compile_error {
-            ($msg:expr) => ({ /* compiler built-in */ });
-            ($msg:expr,) => ({ /* compiler built-in */ })
-        }
-        compile_error!("error!");
-"#,
-            BuiltinFnLikeExpander::CompileError,
+            #[rustc_builtin_macro]
+            macro_rules! compile_error {
+                ($msg:expr) => ({ /* compiler built-in */ });
+                ($msg:expr,) => ({ /* compiler built-in */ })
+            }
+            compile_error!("error!");
+            "#,
         );
 
         assert_eq!(expanded, r#"loop{"error!"}"#);
@@ -357,14 +410,13 @@ mod tests {
     fn test_format_args_expand() {
         let expanded = expand_builtin_macro(
             r#"
-        #[rustc_builtin_macro]
-        macro_rules! format_args {
-            ($fmt:expr) => ({ /* compiler built-in */ });
-            ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
-        }
-        format_args!("{} {:?}", arg1(a, b, c), arg2);
-"#,
-            BuiltinFnLikeExpander::FormatArgs,
+            #[rustc_builtin_macro]
+            macro_rules! format_args {
+                ($fmt:expr) => ({ /* compiler built-in */ });
+                ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+            }
+            format_args!("{} {:?}", arg1(a, b, c), arg2);
+            "#,
         );
 
         assert_eq!(
