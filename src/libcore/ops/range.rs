@@ -333,6 +333,11 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 #[derive(Clone)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
+    // Note that the fields here are not public to allow changing the
+    // representation in the future; in particular, while we could plausibly
+    // expose start/end, modifying them without changing (future/current)
+    // private fields may lead to incorrect behavior, so we don't want to
+    // support that mode.
     pub(crate) start: Idx,
     pub(crate) end: Idx,
     pub(crate) is_empty: Option<bool>,
