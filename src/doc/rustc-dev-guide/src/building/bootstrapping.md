@@ -159,3 +159,20 @@ links against.
 This `stage2/bin/rustc` compiler is shipped to end-users, along with the
 `stage 1 {std,rustc}` artifacts.
 
+## Environment Variables
+
+During bootstrapping, there are a bunch of compiler-internal environment
+variables that are used. If you are trying to run an intermediate version of
+`rustc`, sometimes you may need to set some of these environment variables
+manually. Otherwise, you get an error like the following:
+
+```text
+thread 'main' panicked at 'RUSTC_STAGE was not set: NotPresent', src/libcore/result.rs:1165:5
+```
+
+If `./stageN/bin/rustc` gives an error about environment variables, that
+usually means something is quite wrong -- or you're trying to compile e.g.
+`librustc` or `libstd` or something that depends on environment variables. In
+the unlikely case that you actually need to invoke rustc in such a situation,
+you can find the environment variable values by adding the following flag to
+your `x.py` command: `--on-fail=print-env`.
