@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
-use hir::{Adt, PathResolution, ScopeDef};
+use either::Either;
+use hir::{Adt, HasSource, PathResolution};
 use ra_syntax::AstNode;
 use test_utils::tested_by;
 
@@ -18,15 +19,17 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     match def {
         hir::ModuleDef::Module(module) => {
             let module_scope = module.scope(ctx.db);
-            for (name, def) in module_scope {
-                if ctx.use_item_syntax.is_some() {
-                    if let hir::ScopeDef::ModuleDef(hir::ModuleDef::BuiltinType(..)) = def {
+            for (name, def, import) in module_scope {
+                if let hir::ScopeDef::ModuleDef(hir::ModuleDef::BuiltinType(..)) = def {
+                    if ctx.use_item_syntax.is_some() {
                         tested_by!(dont_complete_primitive_in_use);
                         continue;
                     }
-                    if let ScopeDef::Unknown = def {
-                        if let Some(name_ref) = ctx.name_ref.as_ref() {
-                            if &name_ref.syntax().text() == name.to_string().as_str() {
+                }
+                if Some(module) == ctx.module {
+                    if let Some(import) = import {
+                        if let Either::Left(use_tree) = import.source(ctx.db).value {
+                            if use_tree.syntax().text_range().contains_inclusive(ctx.offset) {
                                 // for `use self::foo<|>`, don't suggest `foo` as a completion
                                 tested_by!(dont_complete_current_use);
                                 continue;
