@@ -58,15 +58,15 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             // Let's ignore the generated code.
             intravisit::walk_expr(self, arg);
             intravisit::walk_expr(self, body);
-        } else if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mutable, ref e) = expr.kind {
-            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mutable, _) = e.kind {
+        } else if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, ref e) = expr.kind {
+            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) = e.kind {
                 span_lint(
                     self.cx,
                     MUT_MUT,
                     expr.span,
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
-            } else if let ty::Ref(_, _, hir::Mutability::Mutable) = self.cx.tables.expr_ty(e).kind {
+            } else if let ty::Ref(_, _, hir::Mutability::Mut) = self.cx.tables.expr_ty(e).kind {
                 span_lint(
                     self.cx,
                     MUT_MUT,
@@ -82,14 +82,14 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             _,
             hir::MutTy {
                 ty: ref pty,
-                mutbl: hir::Mutability::Mutable,
+                mutbl: hir::Mutability::Mut,
             },
         ) = ty.kind
         {
             if let hir::TyKind::Rptr(
                 _,
                 hir::MutTy {
-                    mutbl: hir::Mutability::Mutable,
+                    mutbl: hir::Mutability::Mut,
                     ..
                 },
             ) = pty.kind

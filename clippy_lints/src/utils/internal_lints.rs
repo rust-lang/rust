@@ -166,7 +166,7 @@ impl_lint_pass!(LintWithoutLintPass => [LINT_WITHOUT_LINT_PASS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let hir::ItemKind::Static(ref ty, Mutability::Immutable, _) = item.kind {
+        if let hir::ItemKind::Static(ref ty, Mutability::Not, _) = item.kind {
             if is_lint_ref_type(cx, ty) {
                 self.declared_lints.insert(item.ident.name, item.span);
             }
@@ -219,7 +219,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty) -> bool {
         _,
         MutTy {
             ty: ref inner,
-            mutbl: Mutability::Immutable,
+            mutbl: Mutability::Not,
         },
     ) = ty.kind
     {

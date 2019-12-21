@@ -22,7 +22,7 @@ if_chain! {
     if let ExprKind::Path(ref path2) = func1.kind;
     if match_qpath(path2, &["{{root}}", "std", "iter", "Iterator", "next"]);
     if args1.len() == 1;
-    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mutable, ref inner) = args1[0].kind;
+    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, ref inner) = args1[0].kind;
     if let ExprKind::Path(ref path3) = inner.kind;
     if match_qpath(path3, &["iter"]);
     if arms1.len() == 2;
