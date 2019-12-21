@@ -174,18 +174,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                     // (Issue #49588)
                     continue;
                 }
-                if let PatKind::Binding(_, _, ident, None) = fieldpat.pat.kind {
+                if let PatKind::Binding(binding_annot, _, ident, None) = fieldpat.pat.kind {
                     if cx.tcx.find_field_index(ident, &variant) ==
                        Some(cx.tcx.field_index(fieldpat.hir_id, cx.tables)) {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant", ident));
-                        let subspan = cx.tcx.sess.source_map().span_through_char(fieldpat.span,
-                                                                                 ':');
-                        err.span_suggestion_short(
-                            subspan,
-                            "remove this",
-                            ident.to_string(),
+                        let binding = match binding_annot {
+                            hir::BindingAnnotation::Unannotated => None,
+                            hir::BindingAnnotation::Mutable => Some("mut"),
+                            hir::BindingAnnotation::Ref => Some("ref"),
+                            hir::BindingAnnotation::RefMut => Some("ref mut"),
+                        };
+                        let ident = if let Some(binding) = binding {
+                            format!("{} {}", binding, ident)
+                        } else {
+                            ident.to_string()
+                        };
+                        err.span_suggestion(
+                            fieldpat.span,
+                            "use shorthand field pattern",
+                            ident,
                             Applicability::MachineApplicable
                         );
                         err.emit();

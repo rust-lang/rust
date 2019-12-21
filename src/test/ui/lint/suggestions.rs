@@ -60,7 +60,7 @@ fn main() {
         match d {
             Equinox { warp_factor: warp_factor } => {}
             //~^ WARN this pattern is redundant
-            //~| HELP remove this
+            //~| HELP use shorthand field pattern
         }
         println!("{} {}", registry_no, b);
     }
