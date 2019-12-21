@@ -619,7 +619,7 @@ pub enum EntryFnType {
 
 impl_stable_hash_via_hash!(EntryFnType);
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum CrateType {
     Executable,
     Dylib,

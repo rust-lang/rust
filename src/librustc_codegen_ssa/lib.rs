@@ -87,7 +87,7 @@ impl<M> ModuleCodegen<M> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct CompiledModule {
     pub name: String,
     pub kind: ModuleKind,
@@ -101,7 +101,7 @@ pub struct CachedModuleCodegen {
     pub source: WorkProduct,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum ModuleKind {
     Regular,
     Metadata,
@@ -117,7 +117,7 @@ bitflags::bitflags! {
 }
 
 /// Misc info we load from metadata to persist beyond the tcx.
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct CrateInfo {
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
@@ -135,6 +135,7 @@ pub struct CrateInfo {
     pub dependency_formats: Lrc<Dependencies>,
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct CodegenResults {
     pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,
