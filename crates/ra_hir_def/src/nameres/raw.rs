@@ -20,9 +20,11 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
-use crate::{
-    attr::Attrs, db::DefDatabase, path::ModPath, FileAstId, HirFileId, InFile, LocalImportId,
-};
+use crate::{attr::Attrs, db::DefDatabase, path::ModPath, FileAstId, HirFileId, InFile};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(super) struct LocalImportId(RawId);
+impl_arena_id!(LocalImportId);
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
 ///
