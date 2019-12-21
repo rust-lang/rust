@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::collections::HashMap;
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::Debug;
@@ -29,9 +28,6 @@ use crate::{Build, DocTests, Mode, GitRepo};
 
 pub use crate::Compiler;
 
-use petgraph::graph::NodeIndex;
-use petgraph::Graph;
-
 pub struct Builder<'a> {
     pub build: &'a Build,
     pub top_stage: u32,
@@ -40,9 +36,6 @@ pub struct Builder<'a> {
     stack: RefCell<Vec<Box<dyn Any>>>,
     time_spent_on_dependencies: Cell<Duration>,
     pub paths: Vec<PathBuf>,
-    graph_nodes: RefCell<HashMap<String, NodeIndex>>,
-    graph: RefCell<Graph<String, bool>>,
-    parent: Cell<Option<NodeIndex>>,
 }
 
 impl<'a> Deref for Builder<'a> {
@@ -490,9 +483,6 @@ impl<'a> Builder<'a> {
             stack: RefCell::new(Vec::new()),
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
             paths: vec![],
-            graph_nodes: RefCell::new(HashMap::new()),
-            graph: RefCell::new(Graph::new()),
-            parent: Cell::new(None),
         };
 
         let builder = &builder;
@@ -535,17 +525,13 @@ impl<'a> Builder<'a> {
             stack: RefCell::new(Vec::new()),
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
             paths: paths.to_owned(),
-            graph_nodes: RefCell::new(HashMap::new()),
-            graph: RefCell::new(Graph::new()),
-            parent: Cell::new(None),
         };
 
         builder
     }
 
-    pub fn execute_cli(&self) -> Graph<String, bool> {
+    pub fn execute_cli(&self) {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
-        self.graph.borrow().clone()
     }
 
     pub fn default_doc(&self, paths: Option<&[PathBuf]>) {
@@ -1260,39 +1246,10 @@ impl<'a> Builder<'a> {
             if let Some(out) = self.cache.get(&step) {
                 self.verbose(&format!("{}c {:?}", "  ".repeat(stack.len()), step));
 
-                {
-                    let mut graph = self.graph.borrow_mut();
-                    let parent = self.parent.get();
-                    let us = *self
-                        .graph_nodes
-                        .borrow_mut()
-                        .entry(format!("{:?}", step))
-                        .or_insert_with(|| graph.add_node(format!("{:?}", step)));
-                    if let Some(parent) = parent {
-                        graph.add_edge(parent, us, false);
-                    }
-                }
-
                 return out;
             }
             self.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
-        }
-
-        let prev_parent = self.parent.get();
-
-        {
-            let mut graph = self.graph.borrow_mut();
-            let parent = self.parent.get();
-            let us = *self
-                .graph_nodes
-                .borrow_mut()
-                .entry(format!("{:?}", step))
-                .or_insert_with(|| graph.add_node(format!("{:?}", step)));
-            self.parent.set(Some(us));
-            if let Some(parent) = parent {
-                graph.add_edge(parent, us, true);
-            }
         }
 
         let (out, dur) = {
@@ -1304,8 +1261,6 @@ impl<'a> Builder<'a> {
             let deps = self.time_spent_on_dependencies.replace(parent + dur);
             (out, dur - deps)
         };
-
-        self.parent.set(prev_parent);
 
         if self.config.print_step_timings && dur > Duration::from_millis(100) {
             println!(
