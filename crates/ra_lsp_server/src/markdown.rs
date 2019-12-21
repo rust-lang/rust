@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Transforms markdown
 
 pub(crate) fn format_docs(src: &str) -> String {
     let mut processed_lines = Vec::new();

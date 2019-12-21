@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Keeps track of file subscriptions.
 
 use ra_ide::FileId;
 use rustc_hash::FxHashSet;

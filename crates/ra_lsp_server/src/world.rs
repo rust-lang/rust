@@ -1,4 +1,7 @@
-//! FIXME: write short doc here
+//! The context or environment in which the language server functions.
+//! In our server implementation this is know as the `WorldState`.
+//!
+//! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
 use std::{
     path::{Path, PathBuf},

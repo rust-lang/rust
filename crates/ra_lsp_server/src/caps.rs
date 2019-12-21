@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Advertizes the capabilities of the LSP Server.
 
 use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
