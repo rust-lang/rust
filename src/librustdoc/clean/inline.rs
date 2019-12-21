@@ -472,7 +472,7 @@ fn build_const(cx: &DocContext<'_>, did: DefId) -> clean::Constant {
 fn build_static(cx: &DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
         type_: cx.tcx.type_of(did).clean(cx),
-        mutability: if mutable { Mutability::Mutable } else { Mutability::Immutable },
+        mutability: if mutable { Mutability::Mut } else { Mutability::Not },
         expr: "\n\n\n".to_string(), // trigger the "[definition]" links
     }
 }

@@ -670,8 +670,8 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
         clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
         clean::RawPointer(m, ref t) => {
             let m = match m {
-                clean::Immutable => "const",
-                clean::Mutable => "mut",
+                hir::Mutability::Mut => "mut",
+                hir::Mutability::Not => "const",
             };
             match **t {
                 clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {
@@ -1082,6 +1082,15 @@ impl PrintWithSpace for hir::IsAsync {
     }
 }
 
+impl PrintWithSpace for hir::Mutability {
+    fn print_with_space(&self) -> &str {
+        match self {
+            hir::Mutability::Not => "",
+            hir::Mutability::Mut => "mut ",
+        }
+    }
+}
+
 impl clean::Import {
     crate fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| {
@@ -1148,15 +1157,6 @@ impl clean::TypeBinding {
             }
             Ok(())
         })
-    }
-}
-
-impl clean::Mutability {
-    crate fn print_with_space(&self) -> &str {
-        match self {
-            clean::Immutable => "",
-            clean::Mutable => "mut ",
-        }
     }
 }
 
