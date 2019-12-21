@@ -170,6 +170,8 @@ pub mod known {
         stringify,
         format_args,
         format_args_nl,
+        env,
+        option_env,
         // Builtin derives
         Copy,
         Clone,
