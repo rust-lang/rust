@@ -13,10 +13,7 @@ use crate::{
     docs::Documentation,
     generics::GenericParams,
     lang_item::{LangItemTarget, LangItems},
-    nameres::{
-        raw::{ImportSourceMap, RawItems},
-        CrateDefMap,
-    },
+    nameres::{raw::RawItems, CrateDefMap},
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
     GenericDefId, ImplId, ImplLoc, ModuleId, StaticId, StaticLoc, StructId, StructLoc, TraitId,
     TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
@@ -46,12 +43,6 @@ pub trait InternDatabase: SourceDatabase {
 
 #[salsa::query_group(DefDatabaseStorage)]
 pub trait DefDatabase: InternDatabase + AstDatabase {
-    #[salsa::invoke(RawItems::raw_items_with_source_map_query)]
-    fn raw_items_with_source_map(
-        &self,
-        file_id: HirFileId,
-    ) -> (Arc<RawItems>, Arc<ImportSourceMap>);
-
     #[salsa::invoke(RawItems::raw_items_query)]
     fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
 

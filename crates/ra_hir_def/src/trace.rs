@@ -18,10 +18,6 @@ pub(crate) struct Trace<ID: ArenaId, T, V> {
 }
 
 impl<ID: ra_arena::ArenaId + Copy, T, V> Trace<ID, T, V> {
-    pub(crate) fn new() -> Trace<ID, T, V> {
-        Trace { arena: Some(Arena::default()), map: Some(ArenaMap::default()), len: 0 }
-    }
-
     pub(crate) fn new_for_arena() -> Trace<ID, T, V> {
         Trace { arena: Some(Arena::default()), map: None, len: 0 }
     }
@@ -51,9 +47,5 @@ impl<ID: ra_arena::ArenaId + Copy, T, V> Trace<ID, T, V> {
 
     pub(crate) fn into_map(mut self) -> ArenaMap<ID, V> {
         self.map.take().unwrap()
-    }
-
-    pub(crate) fn into_arena_and_map(mut self) -> (Arena<ID, T>, ArenaMap<ID, V>) {
-        (self.arena.take().unwrap(), self.map.take().unwrap())
     }
 }
