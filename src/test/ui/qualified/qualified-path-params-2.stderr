@@ -1,16 +1,9 @@
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/qualified-path-params-2.rs:18:26
-   |
-LL | type A = <S as Tr>::A::f<u8>;
-   |                          ^^ type argument not allowed
-
 error[E0223]: ambiguous associated type
   --> $DIR/qualified-path-params-2.rs:18:10
    |
 LL | type A = <S as Tr>::A::f<u8>;
    |          ^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<<S as Tr>::A as Trait>::f`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0109, E0223.
-For more information about an error, try `rustc --explain E0109`.
+For more information about this error, try `rustc --explain E0223`.

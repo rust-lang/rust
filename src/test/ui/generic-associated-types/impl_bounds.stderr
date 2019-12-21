@@ -1,0 +1,46 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/impl_bounds.rs:15:5
+   |
+LL |     type A<'a> where Self: 'static = (&'a ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+note: ...so that the type `Fooy<T>` will meet its required lifetime bounds
+  --> $DIR/impl_bounds.rs:15:5
+   |
+LL |     type A<'a> where Self: 'static = (&'a ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/impl_bounds.rs:17:5
+   |
+LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'b` as defined on the associated item at 17:16
+  --> $DIR/impl_bounds.rs:17:16
+   |
+LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
+   |                ^^
+note: but lifetime parameter must outlive the lifetime `'a` as defined on the associated item at 17:12
+  --> $DIR/impl_bounds.rs:17:12
+   |
+LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
+   |            ^^
+
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/impl_bounds.rs:19:5
+   |
+LL | impl<T> Foo for Fooy<T> {
+   |      - help: consider restricting this bound: `T: std::marker::Copy`
+...
+LL |     type C where Self: Copy = String;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+   = note: required because of the requirements on the impl of `std::marker::Copy` for `Fooy<T>`
+   = note: the requirement `Fooy<T>: std::marker::Copy` appears on the associated impl typebut not on the corresponding associated trait type
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0310, E0478.
+For more information about an error, try `rustc --explain E0277`.

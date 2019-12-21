@@ -514,6 +514,15 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 impl_item_def_id,
                 trait_item_def_id,
             }),
+            super::CompareImplTypeObligation {
+                item_name,
+                impl_item_def_id,
+                trait_item_def_id,
+            } => Some(super::CompareImplTypeObligation {
+                item_name,
+                impl_item_def_id,
+                trait_item_def_id,
+            }),
             super::ExprAssignable => Some(super::ExprAssignable),
             super::MatchExpressionArm(box super::MatchExpressionArmCause {
                 arm_span,

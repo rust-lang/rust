@@ -270,9 +270,9 @@ pub enum CiEnv {
 impl CiEnv {
     /// Obtains the current CI environment.
     pub fn current() -> CiEnv {
-        if env::var("TF_BUILD").ok().map_or(false, |e| &*e == "True") {
+        if env::var("TF_BUILD").map_or(false, |e| e == "True") {
             CiEnv::AzurePipelines
-        } else if env::var("GITHUB_ACTIONS").ok().map_or(false, |e| &*e == "true") {
+        } else if env::var("GITHUB_ACTIONS").map_or(false, |e| e == "true") {
             CiEnv::GitHubActions
         } else {
             CiEnv::None

@@ -234,7 +234,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
                 ty::GenericParamDefKind::Const => {
                     tcx.mk_const(ty::Const {
                         val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
-                        ty: tcx.type_of(def_id),
+                        ty: tcx.type_of(param.def_id),
                     }).into()
                 }
             }
@@ -533,8 +533,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                             data.name,
                             self.root_ty,
                             data.index);
-                        self.tcx.sess.delay_span_bug(span, &msg);
-                        r
+                        span_bug!(span, "{}", msg);
                     }
                 }
             }
