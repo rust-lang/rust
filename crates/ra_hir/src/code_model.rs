@@ -12,8 +12,8 @@ use hir_def::{
     resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
     AdtId, ConstId, DefWithBodyId, EnumId, FunctionId, HasModule, ImplId, LocalEnumVariantId,
-    LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    TypeParamId, UnionId,
+    LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -180,11 +180,13 @@ impl Module {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope(self, db: &impl HirDatabase) -> Vec<(Name, ScopeDef)> {
+    pub fn scope(self, db: &impl HirDatabase) -> Vec<(Name, ScopeDef, Option<Import>)> {
         db.crate_def_map(self.id.krate)[self.id.local_id]
             .scope
             .entries()
-            .map(|(name, res)| (name.clone(), res.def.into()))
+            .map(|(name, res)| {
+                (name.clone(), res.def.into(), res.import.map(|id| Import { parent: self, id }))
+            })
             .collect()
     }
 
@@ -227,10 +229,10 @@ impl Module {
     }
 }
 
-// pub struct Import {
-//     pub(crate) parent: Module,
-//     pub(crate) id: LocalImportId,
-// }
+pub struct Import {
+    pub(crate) parent: Module,
+    pub(crate) id: LocalImportId,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructField {

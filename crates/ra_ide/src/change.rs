@@ -270,6 +270,7 @@ impl RootDatabase {
 
         self.query(hir::db::AstIdMapQuery).sweep(sweep);
 
+        self.query(hir::db::RawItemsWithSourceMapQuery).sweep(sweep);
         self.query(hir::db::BodyWithSourceMapQuery).sweep(sweep);
 
         self.query(hir::db::ExprScopesQuery).sweep(sweep);
@@ -308,6 +309,7 @@ impl RootDatabase {
             hir::db::StructDataQuery
             hir::db::EnumDataQuery
             hir::db::TraitDataQuery
+            hir::db::RawItemsWithSourceMapQuery
             hir::db::RawItemsQuery
             hir::db::CrateDefMapQuery
             hir::db::GenericParamsQuery
