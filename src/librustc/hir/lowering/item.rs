@@ -11,7 +11,6 @@ use crate::hir::def_id::DefId;
 use crate::hir::def::{Res, DefKind};
 use crate::util::nodemap::NodeMap;
 
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_target::spec::abi;
 
 use std::collections::BTreeSet;
@@ -899,7 +898,7 @@ impl LoweringContext<'_> {
 
     /// Construct `ExprKind::Err` for the given `span`.
     fn expr_err(&mut self, span: Span) -> hir::Expr {
-        self.expr(span, hir::ExprKind::Err, ThinVec::new())
+        self.expr(span, hir::ExprKind::Err, AttrVec::new())
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem {
@@ -1182,7 +1181,7 @@ impl LoweringContext<'_> {
                 //
                 // If this is the simple case, this parameter will end up being the same as the
                 // original parameter, but with a different pattern id.
-                let mut stmt_attrs = ThinVec::new();
+                let mut stmt_attrs = AttrVec::new();
                 stmt_attrs.extend(parameter.attrs.iter().cloned());
                 let (new_parameter_pat, new_parameter_id) = this.pat_ident(desugared_span, ident);
                 let new_parameter = hir::Param {
@@ -1226,7 +1225,7 @@ impl LoweringContext<'_> {
                         desugared_span, ident, hir::BindingAnnotation::Mutable);
                     let move_expr = this.expr_ident(desugared_span, ident, new_parameter_id);
                     let move_stmt = this.stmt_let_pat(
-                        ThinVec::new(),
+                        AttrVec::new(),
                         desugared_span,
                         Some(P(move_expr)),
                         move_pat,
@@ -1271,7 +1270,7 @@ impl LoweringContext<'_> {
                     let user_body = this.expr_drop_temps(
                         desugared_span,
                         P(user_body),
-                        ThinVec::new(),
+                        AttrVec::new(),
                     );
 
                     // As noted above, create the final block like
@@ -1288,9 +1287,9 @@ impl LoweringContext<'_> {
                         statements.into(),
                         Some(P(user_body)),
                     );
-                    this.expr_block(P(body), ThinVec::new())
+                    this.expr_block(P(body), AttrVec::new())
                 });
-            (HirVec::from(parameters), this.expr(body_span, async_expr, ThinVec::new()))
+            (HirVec::from(parameters), this.expr(body_span, async_expr, AttrVec::new()))
         })
     }
 

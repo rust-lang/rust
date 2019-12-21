@@ -10,7 +10,6 @@ use rustc_data_structures::jobserver;
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
@@ -24,7 +23,7 @@ use std::ops::DerefMut;
 use smallvec::SmallVec;
 use syntax::ptr::P;
 use syntax::mut_visit::{*, MutVisitor, visit_clobber};
-use syntax::ast::BlockCheckMode;
+use syntax::ast::{AttrVec, BlockCheckMode};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::source_map::{FileLoader, RealFileLoader, SourceMap};
 use syntax::symbol::{Symbol, sym};
@@ -741,7 +740,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 id: resolver.next_node_id(),
                 kind: ast::ExprKind::Block(P(b), None),
                 span: syntax_pos::DUMMY_SP,
-                attrs: ThinVec::new(),
+                attrs: AttrVec::new(),
             });
 
             ast::Stmt {
@@ -756,7 +755,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             kind: ast::ExprKind::Loop(P(empty_block), None),
             id: self.resolver.next_node_id(),
             span: syntax_pos::DUMMY_SP,
-                attrs: ThinVec::new(),
+                attrs: AttrVec::new(),
         });
 
         let loop_stmt = ast::Stmt {

@@ -53,7 +53,6 @@ use crate::util::nodemap::{DefIdMap, NodeMap};
 use errors::Applicability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::vec::IndexVec;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::sync::Lrc;
 
 use std::collections::BTreeMap;
@@ -1205,7 +1204,7 @@ impl<'a> LoweringContext<'a> {
                                 id: ty.id,
                                 kind: ExprKind::Path(qself.clone(), path.clone()),
                                 span: ty.span,
-                                attrs: ThinVec::new(),
+                                attrs: AttrVec::new(),
                             };
 
                             let ct = self.with_new_scopes(|this| {
@@ -2751,7 +2750,7 @@ impl<'a> LoweringContext<'a> {
     /// has no attributes and is not targeted by a `break`.
     fn lower_block_expr(&mut self, b: &Block) -> hir::Expr {
         let block = self.lower_block(b, false);
-        self.expr_block(block, ThinVec::new())
+        self.expr_block(block, AttrVec::new())
     }
 
     fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {
@@ -3102,7 +3101,7 @@ impl<'a> LoweringContext<'a> {
 
     fn stmt_let_pat(
         &mut self,
-        attrs: ThinVec<Attribute>,
+        attrs: AttrVec,
         span: Span,
         init: Option<P<hir::Expr>>,
         pat: P<hir::Pat>,

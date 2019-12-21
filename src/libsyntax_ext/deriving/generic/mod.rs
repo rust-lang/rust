@@ -181,7 +181,6 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
-use rustc_data_structures::thin_vec::ThinVec;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
@@ -919,7 +918,7 @@ impl<'a> MethodDef<'a> {
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
                 let ident = Ident::with_dummy_span(kw::SelfLower).with_span_pos(trait_.span);
-                ast::Param::from_self(ThinVec::default(), explicit_self, ident)
+                ast::Param::from_self(ast::AttrVec::default(), explicit_self, ident)
             });
             let nonself_args = arg_types.into_iter()
                 .map(|(name, ty)| cx.param(trait_.span, name, ty));
@@ -1608,7 +1607,7 @@ impl<'a> TraitDef<'a> {
                         ast::FieldPat {
                             ident: ident.unwrap(),
                             is_shorthand: false,
-                            attrs: ThinVec::new(),
+                            attrs: ast::AttrVec::new(),
                             id: ast::DUMMY_NODE_ID,
                             span: pat.span.with_ctxt(self.span.ctxt()),
                             pat,

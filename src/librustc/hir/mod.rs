@@ -20,7 +20,7 @@ use errors::FatalError;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
-use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
+use syntax::ast::{AttrVec, Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
 pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy};
 pub use syntax::ast::{IsAuto, ImplPolarity, BorrowKind};
 use syntax::attr::{InlineAttr, OptimizeAttr};
@@ -29,7 +29,6 @@ use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::{BTreeSet, BTreeMap};
@@ -1274,7 +1273,7 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub hir_id: HirId,
     pub span: Span,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
     /// desugaring. Otherwise will be `Normal`.
     pub source: LocalSource,
@@ -1459,7 +1458,7 @@ pub struct AnonConst {
 pub struct Expr {
     pub hir_id: HirId,
     pub kind: ExprKind,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     pub span: Span,
 }
 

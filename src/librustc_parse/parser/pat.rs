@@ -1,12 +1,11 @@
 use super::{Parser, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_errors::{PResult, Applicability, DiagnosticBuilder};
-use syntax::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
+use syntax::ast::{self, AttrVec, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
 use syntax::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
 use syntax::mut_visit::{noop_visit_pat, noop_visit_mac, MutVisitor};
 use syntax::ptr::P;
 use syntax::print::pprust;
-use syntax::ThinVec;
 use syntax::token;
 use syntax_pos::source_map::{respan, Span, Spanned};
 use syntax_pos::symbol::{kw, sym};
@@ -636,7 +635,7 @@ impl<'a> Parser<'a> {
         let op_span = self.token.span;
         // Parse range
         let span = lo.to(self.prev_span);
-        let begin = self.mk_expr(span, ExprKind::Path(qself, path), ThinVec::new());
+        let begin = self.mk_expr(span, ExprKind::Path(qself, path), AttrVec::new());
         self.bump();
         let end = self.parse_pat_range_end_opt(&begin, form)?;
         Ok(PatKind::Range(begin, end, respan(op_span, end_kind)))
@@ -693,7 +692,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_span;
         let end = self.parse_pat_range_end()?;
         let range_span = lo.to(end.span);
-        let begin = self.mk_expr(range_span, ExprKind::Err, ThinVec::new());
+        let begin = self.mk_expr(range_span, ExprKind::Err, AttrVec::new());
 
         self.diagnostic()
             .struct_span_err(range_span, &format!("`{}X` range patterns are not supported", form))
@@ -731,7 +730,7 @@ impl<'a> Parser<'a> {
                 )
                 .emit();
 
-            Ok(self.mk_expr(range_span, ExprKind::Err, ThinVec::new()))
+            Ok(self.mk_expr(range_span, ExprKind::Err, AttrVec::new()))
         }
     }
 
@@ -747,7 +746,7 @@ impl<'a> Parser<'a> {
                 (None, self.parse_path(PathStyle::Expr)?)
             };
             let hi = self.prev_span;
-            Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path), ThinVec::new()))
+            Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path), AttrVec::new()))
         } else {
             self.parse_literal_maybe_minus()
         }

@@ -338,7 +338,7 @@ pub enum GenericParamKind {
 pub struct GenericParam {
     pub id: NodeId,
     pub ident: Ident,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     pub bounds: GenericBounds,
     pub is_placeholder: bool,
     pub kind: GenericParamKind,
@@ -599,7 +599,7 @@ pub struct FieldPat {
     /// The pattern the field is destructured to
     pub pat: P<Pat>,
     pub is_shorthand: bool,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     pub id: NodeId,
     pub span: Span,
     pub is_placeholder: bool,
@@ -911,7 +911,7 @@ pub enum StmtKind {
     /// Expr with a trailing semi-colon.
     Semi(P<Expr>),
     /// Macro.
-    Mac(P<(Mac, MacStmtStyle, ThinVec<Attribute>)>),
+    Mac(P<(Mac, MacStmtStyle, AttrVec)>),
 }
 
 #[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
@@ -936,7 +936,7 @@ pub struct Local {
     /// Initializer expression to set the value, if any.
     pub init: Option<P<Expr>>,
     pub span: Span,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
 }
 
 /// An arm of a 'match'.
@@ -966,7 +966,7 @@ pub struct Arm {
 /// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct field.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Field {
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     pub id: NodeId,
     pub span: Span,
     pub ident: Ident,
@@ -1004,7 +1004,7 @@ pub struct Expr {
     pub id: NodeId,
     pub kind: ExprKind,
     pub span: Span,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -1961,7 +1961,7 @@ pub struct InlineAsm {
 /// E.g., `bar: usize` as in `fn foo(bar: usize)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Param {
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     pub ty: P<Ty>,
     pub pat: P<Pat>,
     pub id: NodeId,
@@ -2014,7 +2014,7 @@ impl Param {
     }
 
     /// Builds a `Param` object from `ExplicitSelf`.
-    pub fn from_self(attrs: ThinVec<Attribute>, eself: ExplicitSelf, eself_ident: Ident) -> Param {
+    pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
@@ -2331,6 +2331,9 @@ pub struct AttrItem {
     pub path: Path,
     pub args: MacArgs,
 }
+
+/// A list of attributes.
+pub type AttrVec = ThinVec<Attribute>;
 
 /// Metadata associated with an item.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

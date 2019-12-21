@@ -63,6 +63,30 @@ crate fn annotate_err_with_kind(
     };
 }
 
+/// Instead of e.g. `vec![a, b, c]` in a pattern context, suggest `[a, b, c]`.
+fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Parser<'_>) {
+    let mut suggestion = None;
+    if let Ok(code) = parser.sess.source_map().span_to_snippet(site_span) {
+        if let Some(bang) = code.find('!') {
+            suggestion = Some(code[bang + 1..].to_string());
+        }
+    }
+    if let Some(suggestion) = suggestion {
+        e.span_suggestion(
+            site_span,
+            "use a slice pattern here instead",
+            suggestion,
+            Applicability::MachineApplicable,
+        );
+    } else {
+        e.span_label(site_span, "use a slice pattern here instead");
+    }
+    e.help(
+        "for more information, see https://doc.rust-lang.org/edition-guide/\
+        rust-2018/slice-patterns.html"
+    );
+}
+
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
@@ -92,27 +116,7 @@ impl<'a> ParserAnyMacro<'a> {
             }
             match kind {
                 AstFragmentKind::Pat if macro_ident.name == sym::vec => {
-                    let mut suggestion = None;
-                    if let Ok(code) = parser.sess.source_map().span_to_snippet(site_span) {
-                        if let Some(bang) = code.find('!') {
-                            suggestion = Some(code[bang + 1..].to_string());
-                        }
-                    }
-                    if let Some(suggestion) = suggestion {
-                        e.span_suggestion(
-                            site_span,
-                            "use a slice pattern here instead",
-                            suggestion,
-                            Applicability::MachineApplicable,
-                        );
-                    } else {
-                        e.span_label(
-                            site_span,
-                            "use a slice pattern here instead",
-                        );
-                    }
-                    e.help("for more information, see https://doc.rust-lang.org/edition-guide/\
-                            rust-2018/slice-patterns.html");
+                    suggest_slice_pat(&mut e, site_span, parser);
                 }
                 _ => annotate_err_with_kind(&mut e, kind, site_span),
             };

@@ -4,11 +4,10 @@ use super::pat::{GateOr, PARAM_EXPECTED};
 use super::diagnostics::Error;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{PResult, Applicability};
-use syntax::ast::{self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode};
-use syntax::ast::{Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind};
-use syntax::ast::{FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit};
+use syntax::ast::{self, DUMMY_NODE_ID, AttrVec, AttrStyle, Ident, CaptureBy, Field, Lit};
+use syntax::ast::{BlockCheckMode, Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm};
+use syntax::ast::{Ty, TyKind, FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst};
 use syntax::token::{self, Token, TokenKind};
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -37,14 +36,14 @@ macro_rules! maybe_whole_expr {
                     let path = path.clone();
                     $p.bump();
                     return Ok($p.mk_expr(
-                        $p.token.span, ExprKind::Path(None, path), ThinVec::new()
+                        $p.token.span, ExprKind::Path(None, path), AttrVec::new()
                     ));
                 }
                 token::NtBlock(block) => {
                     let block = block.clone();
                     $p.bump();
                     return Ok($p.mk_expr(
-                        $p.token.span, ExprKind::Block(block, None), ThinVec::new()
+                        $p.token.span, ExprKind::Block(block, None), AttrVec::new()
                     ));
                 }
                 // N.B., `NtIdent(ident)` is normalized to `Ident` in `fn bump`.
@@ -57,16 +56,16 @@ macro_rules! maybe_whole_expr {
 #[derive(Debug)]
 pub(super) enum LhsExpr {
     NotYetParsed,
-    AttributesParsed(ThinVec<Attribute>),
+    AttributesParsed(AttrVec),
     AlreadyParsed(P<Expr>),
 }
 
-impl From<Option<ThinVec<Attribute>>> for LhsExpr {
+impl From<Option<AttrVec>> for LhsExpr {
     /// Converts `Some(attrs)` into `LhsExpr::AttributesParsed(attrs)`
     /// and `None` into `LhsExpr::NotYetParsed`.
     ///
     /// This conversion does not allocate.
-    fn from(o: Option<ThinVec<Attribute>>) -> Self {
+    fn from(o: Option<AttrVec>) -> Self {
         if let Some(attrs) = o {
             LhsExpr::AttributesParsed(attrs)
         } else {
@@ -91,24 +90,29 @@ impl<'a> Parser<'a> {
         self.parse_expr_res(Restrictions::empty(), None)
     }
 
+    fn parse_expr_catch_underscore(&mut self) -> PResult<'a, P<Expr>> {
+        match self.parse_expr() {
+            Ok(expr) => Ok(expr),
+            Err(mut err) => match self.token.kind {
+                token::Ident(name, false)
+                if name == kw::Underscore && self.look_ahead(1, |t| {
+                    t == &token::Comma
+                }) => {
+                    // Special-case handling of `foo(_, _, _)`
+                    err.emit();
+                    let sp = self.token.span;
+                    self.bump();
+                    Ok(self.mk_expr(sp, ExprKind::Err, AttrVec::new()))
+                }
+                _ => Err(err),
+            },
+        }
+    }
+
+    /// Parses a sequence of expressions bounded by parentheses.
     fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
         self.parse_paren_comma_seq(|p| {
-            match p.parse_expr() {
-                Ok(expr) => Ok(expr),
-                Err(mut err) => match p.token.kind {
-                    token::Ident(name, false)
-                    if name == kw::Underscore && p.look_ahead(1, |t| {
-                        t == &token::Comma
-                    }) => {
-                        // Special-case handling of `foo(_, _, _)`
-                        err.emit();
-                        let sp = p.token.span;
-                        p.bump();
-                        Ok(p.mk_expr(sp, ExprKind::Err, ThinVec::new()))
-                    }
-                    _ => Err(err),
-                },
-            }
+            p.parse_expr_catch_underscore()
         }).map(|(r, _)| r)
     }
 
@@ -117,7 +121,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_expr_res(
         &mut self,
         r: Restrictions,
-        already_parsed_attrs: Option<ThinVec<Attribute>>
+        already_parsed_attrs: Option<AttrVec>
     ) -> PResult<'a, P<Expr>> {
         self.with_res(r, |this| this.parse_assoc_expr(already_parsed_attrs))
     }
@@ -129,7 +133,7 @@ impl<'a> Parser<'a> {
     #[inline]
     fn parse_assoc_expr(
         &mut self,
-        already_parsed_attrs: Option<ThinVec<Attribute>>,
+        already_parsed_attrs: Option<AttrVec>,
     ) -> PResult<'a, P<Expr>> {
         self.parse_assoc_expr_with(0, already_parsed_attrs.into())
     }
@@ -155,53 +159,13 @@ impl<'a> Parser<'a> {
         };
         let last_type_ascription_set = self.last_type_ascription.is_some();
 
-        match (self.expr_is_complete(&lhs), AssocOp::from_token(&self.token)) {
-            (true, None) => {
-                self.last_type_ascription = None;
-                // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
-                return Ok(lhs);
-            }
-            (false, _) => {} // continue parsing the expression
-            // An exhaustive check is done in the following block, but these are checked first
-            // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
-            // want to keep their span info to improve diagnostics in these cases in a later stage.
-            (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
-            (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
-            (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475)
-            (true, Some(AssocOp::Add)) // `{ 42 } + 42
-            // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
-            // `if x { a } else { b } && if y { c } else { d }`
-            if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
-                self.last_type_ascription = None;
-                // These cases are ambiguous and can't be identified in the parser alone
-                let sp = self.sess.source_map().start_point(self.token.span);
-                self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
-                return Ok(lhs);
-            }
-            (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => {
-                self.last_type_ascription = None;
-                return Ok(lhs);
-            }
-            (true, Some(_)) => {
-                // We've found an expression that would be parsed as a statement, but the next
-                // token implies this should be parsed as an expression.
-                // For example: `if let Some(x) = x { x } else { 0 } / 2`
-                let mut err = self.struct_span_err(self.token.span, &format!(
-                    "expected expression, found `{}`",
-                    pprust::token_to_string(&self.token),
-                ));
-                err.span_label(self.token.span, "expected expression");
-                self.sess.expr_parentheses_needed(
-                    &mut err,
-                    lhs.span,
-                    Some(pprust::expr_to_string(&lhs),
-                ));
-                err.emit();
-            }
+        if !self.should_continue_as_assoc_expr(&lhs) {
+            self.last_type_ascription = None;
+            return Ok(lhs);
         }
-        self.expected_tokens.push(TokenType::Operator);
-        while let Some(op) = AssocOp::from_token(&self.token) {
 
+        self.expected_tokens.push(TokenType::Operator);
+        while let Some(op) = self.check_assoc_op() {
             // Adjust the span for interpolated LHS to point to the `$lhs` token and not to what
             // it refers to. Interpolated identifiers are unwrapped early and never show up here
             // as `PrevTokenKind::Interpolated` so if LHS is a single identifier we always process
@@ -272,7 +236,7 @@ impl<'a> Parser<'a> {
                 };
 
                 let r = self.mk_range(Some(lhs), rhs, limits)?;
-                lhs = self.mk_expr(lhs_span.to(rhs_span), r, ThinVec::new());
+                lhs = self.mk_expr(lhs_span.to(rhs_span), r, AttrVec::new());
                 break
             }
 
@@ -306,9 +270,9 @@ impl<'a> Parser<'a> {
                 AssocOp::Greater | AssocOp::GreaterEqual => {
                     let ast_op = op.to_ast_binop().unwrap();
                     let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
-                    self.mk_expr(span, binary, ThinVec::new())
+                    self.mk_expr(span, binary, AttrVec::new())
                 }
-                AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs), ThinVec::new()),
+                AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs), AttrVec::new()),
                 AssocOp::AssignOp(k) => {
                     let aop = match k {
                         token::Plus =>    BinOpKind::Add,
@@ -323,7 +287,7 @@ impl<'a> Parser<'a> {
                         token::Shr =>     BinOpKind::Shr,
                     };
                     let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
-                    self.mk_expr(span, aopexpr, ThinVec::new())
+                    self.mk_expr(span, aopexpr, AttrVec::new())
                 }
                 AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotEq => {
                     self.bug("AssocOp should have been handled by special case")
@@ -336,6 +300,80 @@ impl<'a> Parser<'a> {
             self.last_type_ascription = None;
         }
         Ok(lhs)
+    }
+
+    fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
+        match (self.expr_is_complete(lhs), self.check_assoc_op()) {
+            // Semi-statement forms are odd:
+            // See https://github.com/rust-lang/rust/issues/29071
+            (true, None) => false,
+            (false, _) => true, // Continue parsing the expression.
+            // An exhaustive check is done in the following block, but these are checked first
+            // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
+            // want to keep their span info to improve diagnostics in these cases in a later stage.
+            (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
+            (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
+            (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475)
+            (true, Some(AssocOp::Add)) // `{ 42 } + 42
+            // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
+            // `if x { a } else { b } && if y { c } else { d }`
+            if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
+                // These cases are ambiguous and can't be identified in the parser alone.
+                let sp = self.sess.source_map().start_point(self.token.span);
+                self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
+                false
+            }
+            (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => false,
+            (true, Some(_)) => {
+                self.error_found_expr_would_be_stmt(lhs);
+                true
+            }
+        }
+    }
+
+    /// We've found an expression that would be parsed as a statement,
+    /// but the next token implies this should be parsed as an expression.
+    /// For example: `if let Some(x) = x { x } else { 0 } / 2`.
+    fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
+        let mut err = self.struct_span_err(self.token.span, &format!(
+            "expected expression, found `{}`",
+            pprust::token_to_string(&self.token),
+        ));
+        err.span_label(self.token.span, "expected expression");
+        self.sess.expr_parentheses_needed(&mut err, lhs.span, Some(pprust::expr_to_string(&lhs)));
+        err.emit();
+    }
+
+    /// Possibly translate the current token to an associative operator.
+    /// The method does not advance the current token.
+    ///
+    /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
+    fn check_assoc_op(&self) -> Option<AssocOp> {
+        match (AssocOp::from_token(&self.token), &self.token.kind) {
+            (op @ Some(_), _) => op,
+            (None, token::Ident(sym::and, false)) => {
+                self.error_bad_logical_op("and", "&&", "conjunction");
+                Some(AssocOp::LAnd)
+            }
+            (None, token::Ident(sym::or, false)) => {
+                self.error_bad_logical_op("or", "||", "disjunction");
+                Some(AssocOp::LOr)
+            }
+            _ => None,
+        }
+    }
+
+    /// Error on `and` and `or` suggesting `&&` and `||` respectively.
+    fn error_bad_logical_op(&self, bad: &str, good: &str, english: &str) {
+        self.struct_span_err(self.token.span, &format!("`{}` is not a logical operator", bad))
+            .span_suggestion_short(
+                self.token.span,
+                &format!("use `{}` to perform logical {}", good, english),
+                good.to_string(),
+                Applicability::MachineApplicable,
+            )
+            .note("unlike in e.g., python and PHP, `&&` and `||` are used for logical operators")
+            .emit();
     }
 
     /// Checks if this expression is a successfully parsed statement.
@@ -359,7 +397,7 @@ impl<'a> Parser<'a> {
     /// Parses prefix-forms of range notation: `..expr`, `..`, `..=expr`.
     fn parse_prefix_range_expr(
         &mut self,
-        already_parsed_attrs: Option<ThinVec<Attribute>>
+        already_parsed_attrs: Option<AttrVec>
     ) -> PResult<'a, P<Expr>> {
         // Check for deprecated `...` syntax.
         if self.token == token::DotDotDot {
@@ -396,10 +434,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a prefix-unary-operator expr.
-    fn parse_prefix_expr(
-        &mut self,
-        already_parsed_attrs: Option<ThinVec<Attribute>>
-    ) -> PResult<'a, P<Expr>> {
+    fn parse_prefix_expr(&mut self, already_parsed_attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
         let lo = self.token.span;
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
@@ -510,7 +545,7 @@ impl<'a> Parser<'a> {
                            expr_kind: fn(P<Expr>, P<Ty>) -> ExprKind)
                            -> PResult<'a, P<Expr>> {
         let mk_expr = |this: &mut Self, rhs: P<Ty>| {
-            this.mk_expr(lhs_span.to(rhs.span), expr_kind(lhs, rhs), ThinVec::new())
+            this.mk_expr(lhs_span.to(rhs.span), expr_kind(lhs, rhs), AttrVec::new())
         };
 
         // Save the state of the parser before parsing type normally, in case there is a
@@ -611,7 +646,7 @@ impl<'a> Parser<'a> {
     /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.
     fn parse_dot_or_call_expr(
         &mut self,
-        already_parsed_attrs: Option<ThinVec<Attribute>>,
+        already_parsed_attrs: Option<AttrVec>,
     ) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
 
@@ -624,7 +659,7 @@ impl<'a> Parser<'a> {
         &mut self,
         e0: P<Expr>,
         lo: Span,
-        mut attrs: ThinVec<Attribute>,
+        mut attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
@@ -633,17 +668,18 @@ impl<'a> Parser<'a> {
             expr.map(|mut expr| {
                 attrs.extend::<Vec<_>>(expr.attrs.into());
                 expr.attrs = attrs;
-                match expr.kind {
-                    ExprKind::If(..) if !expr.attrs.is_empty() => {
-                        // Just point to the first attribute in there...
-                        let span = expr.attrs[0].span;
-                        self.span_err(span, "attributes are not yet allowed on `if` expressions");
-                    }
-                    _ => {}
-                }
+                self.error_attr_on_if_expr(&expr);
                 expr
             })
         )
+    }
+
+    fn error_attr_on_if_expr(&self, expr: &Expr) {
+        if let (ExprKind::If(..), [a0, ..]) = (&expr.kind, &*expr.attrs) {
+            // Just point to the first attribute in there...
+            self.struct_span_err(a0.span, "attributes are not yet allowed on `if` expressions")
+                .emit();
+        }
     }
 
     fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
@@ -653,7 +689,7 @@ impl<'a> Parser<'a> {
             // expr?
             while self.eat(&token::Question) {
                 let hi = self.prev_span;
-                e = self.mk_expr(lo.to(hi), ExprKind::Try(e), ThinVec::new());
+                e = self.mk_expr(lo.to(hi), ExprKind::Try(e), AttrVec::new());
             }
 
             // expr.f
@@ -666,7 +702,7 @@ impl<'a> Parser<'a> {
                         let span = self.token.span;
                         self.bump();
                         let field = ExprKind::Field(e, Ident::new(symbol, span));
-                        e = self.mk_expr(lo.to(span), field, ThinVec::new());
+                        e = self.mk_expr(lo.to(span), field, AttrVec::new());
 
                         self.expect_no_suffix(span, "a tuple index", suffix);
                     }
@@ -715,7 +751,7 @@ impl<'a> Parser<'a> {
                     let seq = self.parse_paren_expr_seq().map(|es| {
                         let nd = self.mk_call(e, es);
                         let hi = self.prev_span;
-                        self.mk_expr(lo.to(hi), nd, ThinVec::new())
+                        self.mk_expr(lo.to(hi), nd, AttrVec::new())
                     });
                     e = self.recover_seq_parse_error(token::Paren, lo, seq);
                 }
@@ -728,7 +764,7 @@ impl<'a> Parser<'a> {
                     hi = self.token.span;
                     self.expect(&token::CloseDelim(token::Bracket))?;
                     let index = self.mk_index(e, ix);
-                    e = self.mk_expr(lo.to(hi), index, ThinVec::new())
+                    e = self.mk_expr(lo.to(hi), index, AttrVec::new())
                 }
                 _ => return Ok(e)
             }
@@ -752,7 +788,7 @@ impl<'a> Parser<'a> {
                 args.insert(0, self_arg);
 
                 let span = lo.to(self.prev_span);
-                self.mk_expr(span, ExprKind::MethodCall(segment, args), ThinVec::new())
+                self.mk_expr(span, ExprKind::MethodCall(segment, args), AttrVec::new())
             }
             _ => {
                 // Field access `expr.f`
@@ -762,7 +798,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let span = lo.to(self.prev_span);
-                self.mk_expr(span, ExprKind::Field(self_arg, segment.ident), ThinVec::new())
+                self.mk_expr(span, ExprKind::Field(self_arg, segment.ident), AttrVec::new())
             }
         })
     }
@@ -781,305 +817,278 @@ impl<'a> Parser<'a> {
         //
         // Therefore, prevent sub-parser from parsing
         // attributes by giving them a empty "already-parsed" list.
-        let mut attrs = ThinVec::new();
-
-        let lo = self.token.span;
-        let mut hi = self.token.span;
-
-        let ex: ExprKind;
-
-        macro_rules! parse_lit {
-            () => {
-                match self.parse_opt_lit() {
-                    Some(literal) => {
-                        hi = self.prev_span;
-                        ex = ExprKind::Lit(literal);
-                    }
-                    None => {
-                        return Err(self.expected_expression_found());
-                    }
-                }
-            }
-        }
+        let attrs = AttrVec::new();
 
         // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
-        match self.token.kind {
+        let lo = self.token.span;
+        if let token::Literal(_) = self.token.kind {
             // This match arm is a special-case of the `_` match arm below and
             // could be removed without changing functionality, but it's faster
             // to have it here, especially for programs with large constants.
-            token::Literal(_) => {
-                parse_lit!()
-            }
-            token::OpenDelim(token::Paren) => {
-                self.bump();
-
-                attrs.extend(self.parse_inner_attributes()?);
-
-                // `(e)` is parenthesized `e`.
-                // `(e,)` is a tuple with only one field, `e`.
-                let mut es = vec![];
-                let mut trailing_comma = false;
-                let mut recovered = false;
-                while self.token != token::CloseDelim(token::Paren) {
-                    es.push(match self.parse_expr() {
-                        Ok(es) => es,
-                        Err(mut err) => {
-                            // Recover from parse error in tuple list.
-                            match self.token.kind {
-                                token::Ident(name, false)
-                                if name == kw::Underscore && self.look_ahead(1, |t| {
-                                    t == &token::Comma
-                                }) => {
-                                    // Special-case handling of `Foo<(_, _, _)>`
-                                    err.emit();
-                                    let sp = self.token.span;
-                                    self.bump();
-                                    self.mk_expr(sp, ExprKind::Err, ThinVec::new())
-                                }
-                                _ => return Ok(
-                                    self.recover_seq_parse_error(token::Paren, lo, Err(err)),
-                                ),
-                            }
-                        }
-                    });
-                    recovered = self.expect_one_of(
-                        &[],
-                        &[token::Comma, token::CloseDelim(token::Paren)],
-                    )?;
-                    if self.eat(&token::Comma) {
-                        trailing_comma = true;
-                    } else {
-                        trailing_comma = false;
-                        break;
-                    }
-                }
-                if !recovered {
-                    self.bump();
-                }
-
-                hi = self.prev_span;
-                ex = if es.len() == 1 && !trailing_comma {
-                    ExprKind::Paren(es.into_iter().nth(0).unwrap())
+            self.parse_lit_expr(attrs)
+        } else if self.check(&token::OpenDelim(token::Paren)) {
+            self.parse_tuple_parens_expr(attrs)
+        } else if self.check(&token::OpenDelim(token::Brace)) {
+            self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs)
+        } else if self.check(&token::BinOp(token::Or)) || self.check(&token::OrOr) {
+            self.parse_closure_expr(attrs)
+        } else if self.check(&token::OpenDelim(token::Bracket)) {
+            self.parse_array_or_repeat_expr(attrs)
+        } else if self.eat_lt() {
+            let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+            Ok(self.mk_expr(lo.to(path.span), ExprKind::Path(Some(qself), path), attrs))
+        } else if self.token.is_path_start() {
+            self.parse_path_start_expr(attrs)
+        } else if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
+            self.parse_closure_expr(attrs)
+        } else if self.eat_keyword(kw::If) {
+            self.parse_if_expr(attrs)
+        } else if self.eat_keyword(kw::For) {
+            self.parse_for_expr(None, self.prev_span, attrs)
+        } else if self.eat_keyword(kw::While) {
+            self.parse_while_expr(None, self.prev_span, attrs)
+        } else if let Some(label) = self.eat_label() {
+            self.parse_labeled_expr(label, attrs)
+        } else if self.eat_keyword(kw::Loop) {
+            self.parse_loop_expr(None, self.prev_span, attrs)
+        } else if self.eat_keyword(kw::Continue) {
+            let kind = ExprKind::Continue(self.eat_label());
+            Ok(self.mk_expr(lo.to(self.prev_span), kind, attrs))
+        } else if self.eat_keyword(kw::Match) {
+            let match_sp = self.prev_span;
+            self.parse_match_expr(attrs).map_err(|mut err| {
+                err.span_label(match_sp, "while parsing this match expression");
+                err
+            })
+        } else if self.eat_keyword(kw::Unsafe) {
+            self.parse_block_expr(None, lo, BlockCheckMode::Unsafe(ast::UserProvided), attrs)
+        } else if self.is_do_catch_block() {
+            self.recover_do_catch(attrs)
+        } else if self.is_try_block() {
+            self.expect_keyword(kw::Try)?;
+            self.parse_try_block(lo, attrs)
+        } else if self.eat_keyword(kw::Return) {
+            self.parse_return_expr(attrs)
+        } else if self.eat_keyword(kw::Break) {
+            self.parse_break_expr(attrs)
+        } else if self.eat_keyword(kw::Yield) {
+            self.parse_yield_expr(attrs)
+        } else if self.eat_keyword(kw::Let) {
+            self.parse_let_expr(attrs)
+        } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
+            // Don't complain about bare semicolons after unclosed braces
+            // recovery in order to keep the error count down. Fixing the
+            // delimiters will possibly also fix the bare semicolon found in
+            // expression context. For example, silence the following error:
+            //
+            //     error: expected expression, found `;`
+            //      --> file.rs:2:13
+            //       |
+            //     2 |     foo(bar(;
+            //       |             ^ expected expression
+            self.bump();
+            Ok(self.mk_expr_err(self.token.span))
+        } else if self.token.span.rust_2018() {
+            // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
+            if self.check_keyword(kw::Async) {
+                if self.is_async_block() { // Check for `async {` and `async move {`.
+                    self.parse_async_block(attrs)
                 } else {
-                    ExprKind::Tup(es)
+                    self.parse_closure_expr(attrs)
+                }
+            } else if self.eat_keyword(kw::Await) {
+                self.recover_incorrect_await_syntax(lo, self.prev_span, attrs)
+            } else {
+                self.parse_lit_expr(attrs)
+            }
+        } else {
+            self.parse_lit_expr(attrs)
+        }
+    }
+
+    fn parse_lit_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        let lo = self.token.span;
+        match self.parse_opt_lit() {
+            Some(literal) => {
+                let expr = self.mk_expr(lo.to(self.prev_span), ExprKind::Lit(literal), attrs);
+                self.maybe_recover_from_bad_qpath(expr, true)
+            }
+            None => return Err(self.expected_expression_found()),
+        }
+    }
+
+    fn parse_tuple_parens_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        let lo = self.token.span;
+        self.expect(&token::OpenDelim(token::Paren))?;
+        attrs.extend(self.parse_inner_attributes()?); // `(#![foo] a, b, ...)` is OK.
+        let (es, trailing_comma) = match self.parse_seq_to_end(
+            &token::CloseDelim(token::Paren),
+            SeqSep::trailing_allowed(token::Comma),
+            |p| p.parse_expr_catch_underscore(),
+        ) {
+            Ok(x) => x,
+            Err(err) => return Ok(self.recover_seq_parse_error(token::Paren, lo, Err(err))),
+        };
+        let kind = if es.len() == 1 && !trailing_comma {
+            // `(e)` is parenthesized `e`.
+            ExprKind::Paren(es.into_iter().nth(0).unwrap())
+        } else {
+            // `(e,)` is a tuple with only one field, `e`.
+            ExprKind::Tup(es)
+        };
+        let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    fn parse_array_or_repeat_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        let lo = self.token.span;
+        self.bump(); // `[`
+
+        attrs.extend(self.parse_inner_attributes()?);
+
+        let close = &token::CloseDelim(token::Bracket);
+        let kind = if self.eat(close) {
+            // Empty vector
+            ExprKind::Array(Vec::new())
+        } else {
+            // Non-empty vector
+            let first_expr = self.parse_expr()?;
+            if self.eat(&token::Semi) {
+                // Repeating array syntax: `[ 0; 512 ]`
+                let count = AnonConst {
+                    id: DUMMY_NODE_ID,
+                    value: self.parse_expr()?,
                 };
+                self.expect(close)?;
+                ExprKind::Repeat(first_expr, count)
+            } else if self.eat(&token::Comma) {
+                // Vector with two or more elements.
+                let sep = SeqSep::trailing_allowed(token::Comma);
+                let (remaining_exprs, _) = self.parse_seq_to_end(close, sep, |p| p.parse_expr())?;
+                let mut exprs = vec![first_expr];
+                exprs.extend(remaining_exprs);
+                ExprKind::Array(exprs)
+            } else {
+                // Vector with one element
+                self.expect(close)?;
+                ExprKind::Array(vec![first_expr])
             }
-            token::OpenDelim(token::Brace) => {
-                return self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs);
+        };
+        let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    fn parse_path_start_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        let lo = self.token.span;
+        let path = self.parse_path(PathStyle::Expr)?;
+
+        // `!`, as an operator, is prefix, so we know this isn't that.
+        let (hi, kind) = if self.eat(&token::Not) {
+            // MACRO INVOCATION expression
+            let mac = Mac {
+                path,
+                args: self.parse_mac_args()?,
+                prior_type_ascription: self.last_type_ascription,
+            };
+            (self.prev_span, ExprKind::Mac(mac))
+        } else if self.check(&token::OpenDelim(token::Brace)) {
+            if let Some(expr) = self.maybe_parse_struct_expr(lo, &path, &attrs) {
+                return expr;
+            } else {
+                (path.span, ExprKind::Path(None, path))
             }
-            token::BinOp(token::Or) | token::OrOr => {
-                return self.parse_closure_expr(attrs);
-            }
-            token::OpenDelim(token::Bracket) => {
-                self.bump();
+        } else {
+            (path.span, ExprKind::Path(None, path))
+        };
 
-                attrs.extend(self.parse_inner_attributes()?);
+        let expr = self.mk_expr(lo.to(hi), kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
 
-                if self.eat(&token::CloseDelim(token::Bracket)) {
-                    // Empty vector
-                    ex = ExprKind::Array(Vec::new());
-                } else {
-                    // Non-empty vector
-                    let first_expr = self.parse_expr()?;
-                    if self.eat(&token::Semi) {
-                        // Repeating array syntax: `[ 0; 512 ]`
-                        let count = AnonConst {
-                            id: DUMMY_NODE_ID,
-                            value: self.parse_expr()?,
-                        };
-                        self.expect(&token::CloseDelim(token::Bracket))?;
-                        ex = ExprKind::Repeat(first_expr, count);
-                    } else if self.eat(&token::Comma) {
-                        // Vector with two or more elements
-                        let remaining_exprs = self.parse_seq_to_end(
-                            &token::CloseDelim(token::Bracket),
-                            SeqSep::trailing_allowed(token::Comma),
-                            |p| Ok(p.parse_expr()?)
-                        )?;
-                        let mut exprs = vec![first_expr];
-                        exprs.extend(remaining_exprs);
-                        ex = ExprKind::Array(exprs);
-                    } else {
-                        // Vector with one element
-                        self.expect(&token::CloseDelim(token::Bracket))?;
-                        ex = ExprKind::Array(vec![first_expr]);
-                    }
-                }
-                hi = self.prev_span;
-            }
-            _ => {
-                if self.eat_lt() {
-                    let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-                    hi = path.span;
-                    return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
-                }
-                if self.token.is_path_start() {
-                    let path = self.parse_path(PathStyle::Expr)?;
-
-                    // `!`, as an operator, is prefix, so we know this isn't that.
-                    if self.eat(&token::Not) {
-                        // MACRO INVOCATION expression
-                        let args = self.parse_mac_args()?;
-                        hi = self.prev_span;
-                        ex = ExprKind::Mac(Mac {
-                            path,
-                            args,
-                            prior_type_ascription: self.last_type_ascription,
-                        });
-                    } else if self.check(&token::OpenDelim(token::Brace)) {
-                        if let Some(expr) = self.maybe_parse_struct_expr(lo, &path, &attrs) {
-                            return expr;
-                        } else {
-                            hi = path.span;
-                            ex = ExprKind::Path(None, path);
-                        }
-                    } else {
-                        hi = path.span;
-                        ex = ExprKind::Path(None, path);
-                    }
-
-                    let expr = self.mk_expr(lo.to(hi), ex, attrs);
-                    return self.maybe_recover_from_bad_qpath(expr, true);
-                }
-                if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
-                    return self.parse_closure_expr(attrs);
-                }
-                if self.eat_keyword(kw::If) {
-                    return self.parse_if_expr(attrs);
-                }
-                if self.eat_keyword(kw::For) {
-                    let lo = self.prev_span;
-                    return self.parse_for_expr(None, lo, attrs);
-                }
-                if self.eat_keyword(kw::While) {
-                    let lo = self.prev_span;
-                    return self.parse_while_expr(None, lo, attrs);
-                }
-                if let Some(label) = self.eat_label() {
-                    let lo = label.ident.span;
-                    self.expect(&token::Colon)?;
-                    if self.eat_keyword(kw::While) {
-                        return self.parse_while_expr(Some(label), lo, attrs)
-                    }
-                    if self.eat_keyword(kw::For) {
-                        return self.parse_for_expr(Some(label), lo, attrs)
-                    }
-                    if self.eat_keyword(kw::Loop) {
-                        return self.parse_loop_expr(Some(label), lo, attrs)
-                    }
-                    if self.token == token::OpenDelim(token::Brace) {
-                        return self.parse_block_expr(Some(label),
-                                                     lo,
-                                                     BlockCheckMode::Default,
-                                                     attrs);
-                    }
-                    let msg = "expected `while`, `for`, `loop` or `{` after a label";
-                    let mut err = self.fatal(msg);
-                    err.span_label(self.token.span, msg);
-                    return Err(err);
-                }
-                if self.eat_keyword(kw::Loop) {
-                    let lo = self.prev_span;
-                    return self.parse_loop_expr(None, lo, attrs);
-                }
-                if self.eat_keyword(kw::Continue) {
-                    let label = self.eat_label();
-                    let ex = ExprKind::Continue(label);
-                    let hi = self.prev_span;
-                    return Ok(self.mk_expr(lo.to(hi), ex, attrs));
-                }
-                if self.eat_keyword(kw::Match) {
-                    let match_sp = self.prev_span;
-                    return self.parse_match_expr(attrs).map_err(|mut err| {
-                        err.span_label(match_sp, "while parsing this match expression");
-                        err
-                    });
-                }
-                if self.eat_keyword(kw::Unsafe) {
-                    return self.parse_block_expr(
-                        None,
-                        lo,
-                        BlockCheckMode::Unsafe(ast::UserProvided),
-                        attrs);
-                }
-                if self.is_do_catch_block() {
-                    let mut db = self.fatal("found removed `do catch` syntax");
-                    db.help("following RFC #2388, the new non-placeholder syntax is `try`");
-                    return Err(db);
-                }
-                if self.is_try_block() {
-                    let lo = self.token.span;
-                    assert!(self.eat_keyword(kw::Try));
-                    return self.parse_try_block(lo, attrs);
-                }
-
-                // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
-                let is_span_rust_2018 = self.token.span.rust_2018();
-                if is_span_rust_2018 && self.check_keyword(kw::Async) {
-                    return if self.is_async_block() { // Check for `async {` and `async move {`.
-                        self.parse_async_block(attrs)
-                    } else {
-                        self.parse_closure_expr(attrs)
-                    };
-                }
-                if self.eat_keyword(kw::Return) {
-                    if self.token.can_begin_expr() {
-                        let e = self.parse_expr()?;
-                        hi = e.span;
-                        ex = ExprKind::Ret(Some(e));
-                    } else {
-                        ex = ExprKind::Ret(None);
-                    }
-                } else if self.eat_keyword(kw::Break) {
-                    let label = self.eat_label();
-                    let e = if self.token.can_begin_expr()
-                               && !(self.token == token::OpenDelim(token::Brace)
-                                    && self.restrictions.contains(
-                                           Restrictions::NO_STRUCT_LITERAL)) {
-                        Some(self.parse_expr()?)
-                    } else {
-                        None
-                    };
-                    ex = ExprKind::Break(label, e);
-                    hi = self.prev_span;
-                } else if self.eat_keyword(kw::Yield) {
-                    if self.token.can_begin_expr() {
-                        let e = self.parse_expr()?;
-                        hi = e.span;
-                        ex = ExprKind::Yield(Some(e));
-                    } else {
-                        ex = ExprKind::Yield(None);
-                    }
-
-                    let span = lo.to(hi);
-                    self.sess.gated_spans.gate(sym::generators, span);
-                } else if self.eat_keyword(kw::Let) {
-                    return self.parse_let_expr(attrs);
-                } else if is_span_rust_2018 && self.eat_keyword(kw::Await) {
-                    let (await_hi, e_kind) = self.parse_incorrect_await_syntax(lo, self.prev_span)?;
-                    hi = await_hi;
-                    ex = e_kind;
-                } else {
-                    if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
-                        // Don't complain about bare semicolons after unclosed braces
-                        // recovery in order to keep the error count down. Fixing the
-                        // delimiters will possibly also fix the bare semicolon found in
-                        // expression context. For example, silence the following error:
-                        //
-                        //     error: expected expression, found `;`
-                        //      --> file.rs:2:13
-                        //       |
-                        //     2 |     foo(bar(;
-                        //       |             ^ expected expression
-                        self.bump();
-                        return Ok(self.mk_expr(self.token.span, ExprKind::Err, ThinVec::new()));
-                    }
-                    parse_lit!()
-                }
-            }
+    fn parse_labeled_expr(&mut self, label: Label, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        let lo = label.ident.span;
+        self.expect(&token::Colon)?;
+        if self.eat_keyword(kw::While) {
+            return self.parse_while_expr(Some(label), lo, attrs)
+        }
+        if self.eat_keyword(kw::For) {
+            return self.parse_for_expr(Some(label), lo, attrs)
+        }
+        if self.eat_keyword(kw::Loop) {
+            return self.parse_loop_expr(Some(label), lo, attrs)
+        }
+        if self.token == token::OpenDelim(token::Brace) {
+            return self.parse_block_expr(Some(label), lo, BlockCheckMode::Default, attrs);
         }
 
-        let expr = self.mk_expr(lo.to(hi), ex, attrs);
+        let msg = "expected `while`, `for`, `loop` or `{` after a label";
+        self.struct_span_err(self.token.span, msg)
+            .span_label(self.token.span, msg)
+            .emit();
+        // Continue as an expression in an effort to recover on `'label: non_block_expr`.
+        self.parse_expr()
+    }
+
+    /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
+    fn recover_do_catch(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        let lo = self.token.span;
+
+        self.bump(); // `do`
+        self.bump(); // `catch`
+
+        let span_dc = lo.to(self.prev_span);
+        self.struct_span_err(span_dc, "found removed `do catch` syntax")
+            .span_suggestion(
+                span_dc,
+                "replace with the new syntax",
+                "try".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .note("following RFC #2388, the new non-placeholder syntax is `try`")
+            .emit();
+
+        self.parse_try_block(lo, attrs)
+    }
+
+    /// Parse an expression if the token can begin one.
+    fn parse_expr_opt(&mut self) -> PResult<'a, Option<P<Expr>>> {
+        Ok(if self.token.can_begin_expr() {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        })
+    }
+
+    /// Parse `"return" expr?`.
+    fn parse_return_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        let lo = self.prev_span;
+        let kind = ExprKind::Ret(self.parse_expr_opt()?);
+        let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    /// Parse `"('label ":")? break expr?`.
+    fn parse_break_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        let lo = self.prev_span;
+        let label = self.eat_label();
+        let kind = if self.token != token::OpenDelim(token::Brace)
+            || !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
+        {
+            self.parse_expr_opt()?
+        } else {
+            None
+        };
+        let expr = self.mk_expr(lo.to(self.prev_span), ExprKind::Break(label, kind), attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    /// Parse `"yield" expr?`.
+    fn parse_yield_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        let lo = self.prev_span;
+        let kind = ExprKind::Yield(self.parse_expr_opt()?);
+        let span = lo.to(self.prev_span);
+        self.sess.gated_spans.gate(sym::generators, span);
+        let expr = self.mk_expr(span, kind, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
@@ -1282,12 +1291,12 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let literal = self.parse_lit()?;
         let hi = self.prev_span;
-        let expr = self.mk_expr(lo.to(hi), ExprKind::Lit(literal), ThinVec::new());
+        let expr = self.mk_expr(lo.to(hi), ExprKind::Lit(literal), AttrVec::new());
 
         if minus_present {
             let minus_hi = self.prev_span;
             let unary = self.mk_unary(UnOp::Neg, expr);
-            Ok(self.mk_expr(minus_lo.to(minus_hi), unary, ThinVec::new()))
+            Ok(self.mk_expr(minus_lo.to(minus_hi), unary, AttrVec::new()))
         } else {
             Ok(expr)
         }
@@ -1299,7 +1308,7 @@ impl<'a> Parser<'a> {
         opt_label: Option<Label>,
         lo: Span,
         blk_mode: BlockCheckMode,
-        outer_attrs: ThinVec<Attribute>,
+        outer_attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         if let Some(label) = opt_label {
             self.sess.gated_spans.gate(sym::label_break_value, label.ident.span);
@@ -1315,7 +1324,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a closure expression (e.g., `move |args| expr`).
-    fn parse_closure_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_closure_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
 
         let movability = if self.eat_keyword(kw::Static) {
@@ -1345,7 +1354,7 @@ impl<'a> Parser<'a> {
             _ => {
                 // If an explicit return type is given, require a block to appear (RFC 968).
                 let body_lo = self.token.span;
-                self.parse_block_expr(None, body_lo, BlockCheckMode::Default, ThinVec::new())?
+                self.parse_block_expr(None, body_lo, BlockCheckMode::Default, AttrVec::new())?
             }
         };
 
@@ -1415,7 +1424,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `if` expression (`if` token already eaten).
-    fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_if_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let cond = self.parse_cond_expr()?;
 
@@ -1461,7 +1470,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `let $pat = $expr` pseudo-expression.
     /// The `let` token has already been eaten.
-    fn parse_let_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_let_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let pat = self.parse_top_pat(GateOr::No)?;
         self.expect(&token::Eq)?;
@@ -1477,10 +1486,10 @@ impl<'a> Parser<'a> {
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         if self.eat_keyword(kw::If) {
-            return self.parse_if_expr(ThinVec::new());
+            return self.parse_if_expr(AttrVec::new());
         } else {
             let blk = self.parse_block()?;
-            return Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), ThinVec::new()));
+            return Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()));
         }
     }
 
@@ -1489,7 +1498,7 @@ impl<'a> Parser<'a> {
         &mut self,
         opt_label: Option<Label>,
         span_lo: Span,
-        mut attrs: ThinVec<Attribute>
+        mut attrs: AttrVec
     ) -> PResult<'a, P<Expr>> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
@@ -1531,7 +1540,7 @@ impl<'a> Parser<'a> {
         &mut self,
         opt_label: Option<Label>,
         span_lo: Span,
-        mut attrs: ThinVec<Attribute>
+        mut attrs: AttrVec
     ) -> PResult<'a, P<Expr>> {
         let cond = self.parse_cond_expr()?;
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1545,7 +1554,7 @@ impl<'a> Parser<'a> {
         &mut self,
         opt_label: Option<Label>,
         span_lo: Span,
-        mut attrs: ThinVec<Attribute>
+        mut attrs: AttrVec
     ) -> PResult<'a, P<Expr>> {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
@@ -1564,7 +1573,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `match ... { ... }` expression (`match` token already eaten).
-    fn parse_match_expr(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_match_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_span;
         let lo = self.prev_span;
         let discriminant = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
@@ -1676,11 +1685,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `try {...}` expression (`try` token already eaten).
-    fn parse_try_block(
-        &mut self,
-        span_lo: Span,
-        mut attrs: ThinVec<Attribute>
-    ) -> PResult<'a, P<Expr>> {
+    fn parse_try_block(&mut self, span_lo: Span, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         if self.eat_keyword(kw::Catch) {
@@ -1712,7 +1717,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `async move? {...}` expression.
-    fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_async_block(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let span_lo = self.token.span;
         self.expect_keyword(kw::Async)?;
         let capture_clause = self.parse_capture_clause();
@@ -1739,7 +1744,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         path: &ast::Path,
-        attrs: &ThinVec<Attribute>,
+        attrs: &AttrVec,
     ) -> Option<PResult<'a, P<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
         let certainly_not_a_block = || self.look_ahead(1, |t| t.is_ident()) && (
@@ -1780,7 +1785,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         pth: ast::Path,
-        mut attrs: ThinVec<Attribute>
+        mut attrs: AttrVec
     ) -> PResult<'a, P<Expr>> {
         let struct_sp = lo.to(self.prev_span);
         self.bump();
@@ -1826,9 +1831,9 @@ impl<'a> Parser<'a> {
                     recovery_field = Some(ast::Field {
                         ident: Ident::new(name, self.token.span),
                         span: self.token.span,
-                        expr: self.mk_expr(self.token.span, ExprKind::Err, ThinVec::new()),
+                        expr: self.mk_expr(self.token.span, ExprKind::Err, AttrVec::new()),
                         is_shorthand: false,
-                        attrs: ThinVec::new(),
+                        attrs: AttrVec::new(),
                         id: DUMMY_NODE_ID,
                         is_placeholder: false,
                     });
@@ -1907,7 +1912,7 @@ impl<'a> Parser<'a> {
 
             // Mimic `x: x` for the `x` field shorthand.
             let path = ast::Path::from_ident(fieldname);
-            let expr = self.mk_expr(fieldname.span, ExprKind::Path(None, path), ThinVec::new());
+            let expr = self.mk_expr(fieldname.span, ExprKind::Path(None, path), AttrVec::new());
             (fieldname, expr, true)
         };
         Ok(ast::Field {
@@ -1984,16 +1989,16 @@ impl<'a> Parser<'a> {
 
     fn mk_await_expr(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         let span = lo.to(self.prev_span);
-        let await_expr = self.mk_expr(span, ExprKind::Await(self_arg), ThinVec::new());
+        let await_expr = self.mk_expr(span, ExprKind::Await(self_arg), AttrVec::new());
         self.recover_from_await_method_call();
         Ok(await_expr)
     }
 
-    crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
+    crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID })
     }
 
     pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {
-        self.mk_expr(span, ExprKind::Err, ThinVec::new())
+        self.mk_expr(span, ExprKind::Err, AttrVec::new())
     }
 }

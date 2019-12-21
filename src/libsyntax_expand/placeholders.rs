@@ -5,7 +5,6 @@ use syntax::ast;
 use syntax::source_map::{DUMMY_SP, dummy_spanned};
 use syntax::mut_visit::*;
 use syntax::ptr::P;
-use syntax::ThinVec;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -28,7 +27,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visi
     let span = DUMMY_SP;
     let expr_placeholder = || P(ast::Expr {
         id, span,
-        attrs: ThinVec::new(),
+        attrs: ast::AttrVec::new(),
         kind: ast::ExprKind::Mac(mac_placeholder()),
     });
     let ty = || P(ast::Ty {
@@ -75,7 +74,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visi
             id, span, kind: ast::TyKind::Mac(mac_placeholder()),
         })),
         AstFragmentKind::Stmts => AstFragment::Stmts(smallvec![{
-            let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ThinVec::new()));
+            let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ast::AttrVec::new()));
             ast::Stmt { id, span, kind: ast::StmtKind::Mac(mac) }
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![
