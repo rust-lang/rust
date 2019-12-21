@@ -1648,35 +1648,32 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
 
                 RegionErrorKind::RegionError {
-                    fr_origin, longer_fr, shorter_fr,
+                    fr_origin, longer_fr, shorter_fr, is_reported,
                 } => {
-                    let db = self.nonlexical_regioncx.report_error(
-                        &self.body,
-                        &self.local_names,
-                        &self.upvars,
-                        self.infcx,
-                        self.mir_def_id,
-                        longer_fr,
-                        fr_origin,
-                        shorter_fr,
-                        &mut outlives_suggestion,
-                        &mut region_naming,
-                    );
+                    if is_reported {
+                        let db = self.nonlexical_regioncx.report_error(
+                            &self.body,
+                            &self.local_names,
+                            &self.upvars,
+                            self.infcx,
+                            self.mir_def_id,
+                            longer_fr,
+                            fr_origin,
+                            shorter_fr,
+                            &mut outlives_suggestion,
+                            &mut region_naming,
+                        );
 
-                    db.buffer(&mut self.errors_buffer);
-                }
-
-                RegionErrorKind::UnreportedError {
-                    longer_fr, shorter_fr,
-                    fr_origin: _,
-                } => {
-                    // FIXME: currently we do nothing with these, but perhaps we can do better?
-                    // FIXME: try collecting these constraints on the outlives suggestion builder.
-                    // Does it make the suggestions any better?
-                    debug!(
-                        "Unreported region error: can't prove that {:?}: {:?}",
-                        longer_fr, shorter_fr
-                    );
+                        db.buffer(&mut self.errors_buffer);
+                    } else {
+                        // FIXME: currently we do nothing with these, but perhaps we can do better?
+                        // FIXME: try collecting these constraints on the outlives suggestion
+                        // builder. Does it make the suggestions any better?
+                        debug!(
+                            "Unreported region error: can't prove that {:?}: {:?}",
+                            longer_fr, shorter_fr
+                        );
+                    }
                 }
             }
         }

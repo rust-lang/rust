@@ -1399,6 +1399,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     longer_fr: *longer_fr,
                     shorter_fr: *shorter_fr,
                     fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                    is_reported: true,
                 });
             }
         }
@@ -1464,6 +1465,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     longer_fr,
                     shorter_fr: representative,
                     fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                    is_reported: true,
                 });
             }
             return;
@@ -1482,17 +1484,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // We only report the first region error. Subsequent errors are hidden so as
                 // not to overwhelm the user, but we do record them so as to potentially print
                 // better diagnostics elsewhere...
-                if error_reported {
-                    errors_buffer.push(RegionErrorKind::UnreportedError {
-                        longer_fr, shorter_fr,
-                        fr_origin: NLLRegionVariableOrigin::FreeRegion,
-                    });
-                } else {
-                    errors_buffer.push(RegionErrorKind::RegionError {
-                        longer_fr, shorter_fr,
-                        fr_origin: NLLRegionVariableOrigin::FreeRegion,
-                    });
-                }
+                errors_buffer.push(RegionErrorKind::RegionError {
+                    longer_fr, shorter_fr,
+                    fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                    is_reported: !error_reported,
+                });
 
                 error_reported = true;
             }
