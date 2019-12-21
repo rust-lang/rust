@@ -702,6 +702,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             SelectionError::Unimplemented => {
                 if let ObligationCauseCode::CompareImplMethodObligation {
                     item_name, impl_item_def_id, trait_item_def_id,
+                } | ObligationCauseCode::CompareImplTypeObligation {
+                    item_name, impl_item_def_id, trait_item_def_id,
                 } = obligation.cause.code {
                     self.report_extra_impl_obligation(
                         span,
@@ -2630,6 +2632,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     &format!("the requirement `{}` appears on the impl method \
                               but not on the corresponding trait method",
                              predicate));
+            }
+            ObligationCauseCode::CompareImplTypeObligation { .. } => {
+                err.note(&format!(
+                    "the requirement `{}` appears on the associated impl type\
+                     but not on the corresponding associated trait type",
+                     predicate));
             }
             ObligationCauseCode::ReturnType |
             ObligationCauseCode::ReturnValue(_) |

@@ -1119,7 +1119,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
                                                 visit::walk_impl_item(this, impl_item);
                                             }
-                                            AssocItemKind::TyAlias(_, Some(ref ty)) => {
+                                            AssocItemKind::TyAlias(_, _) => {
                                                 // If this is a trait impl, ensure the type
                                                 // exists in trait
                                                 this.check_trait_item(impl_item.ident,
@@ -1127,9 +1127,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                                       impl_item.span,
                                                     |n, s| TypeNotMemberOfTrait(n, s));
 
-                                                this.visit_ty(ty);
+                                                visit::walk_impl_item(this, impl_item);
                                             }
-                                            AssocItemKind::TyAlias(_, None) => {}
                                             AssocItemKind::Macro(_) =>
                                                 panic!("unexpanded macro in resolve!"),
                                         }

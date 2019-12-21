@@ -1,0 +1,10 @@
+error: type-generic associated types are not yet implemented
+  --> $DIR/pointer_family.rs:11:5
+   |
+LL |     type Pointer<T>: Deref<Target = T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+
+error: aborting due to previous error
+

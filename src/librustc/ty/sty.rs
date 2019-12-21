@@ -1026,11 +1026,11 @@ impl<'tcx> ProjectionTy<'tcx> {
     /// Extracts the underlying trait reference from this projection.
     /// For example, if this is a projection of `<T as Iterator>::Item`,
     /// then this function would return a `T: Iterator` trait reference.
-    pub fn trait_ref(&self, tcx: TyCtxt<'_>) -> ty::TraitRef<'tcx> {
+    pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
         let def_id = tcx.associated_item(self.item_def_id).container.id();
         ty::TraitRef {
             def_id,
-            substs: self.substs,
+            substs: self.substs.truncate_to(tcx, tcx.generics_of(def_id)),
         }
     }
 

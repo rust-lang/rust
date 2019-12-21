@@ -1,9 +1,10 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // compile-flags: -Z parse-only
 
 #![feature(generic_associated_types)]
 
 use std::ops::Deref;
+use std::fmt::Debug;
 
 trait Foo {
     type Bar<'a>;
