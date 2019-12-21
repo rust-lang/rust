@@ -1,46 +1,36 @@
-error: negative trait bounds are not supported
+error: negative bounds are not supported
   --> $DIR/issue-33418.rs:3:9
    |
 LL | trait Tr: !SuperA {}
-   |         ^^^^^^^^^ negative trait bounds are not supported
-   |
-   = help: remove the trait bound
+   |         ^^^^^^^^^ negative bounds are not supported
 
-error: negative trait bounds are not supported
+error: negative bounds are not supported
   --> $DIR/issue-33418.rs:5:19
    |
 LL | trait Tr2: SuperA + !SuperB {}
-   |                   ^^^^^^^^^ negative trait bounds are not supported
-   |
-   = help: remove the trait bound
+   |                   ^^^^^^^^^ negative bounds are not supported
 
-error: negative trait bounds are not supported
+error: negative bounds are not supported
   --> $DIR/issue-33418.rs:7:10
    |
 LL | trait Tr3: !SuperA + SuperB {}
-   |          ^^^^^^^^^ negative trait bounds are not supported
-   |
-   = help: remove the trait bound
+   |          ^^^^^^^^^ negative bounds are not supported
 
-error: negative trait bounds are not supported
+error: negative bounds are not supported
   --> $DIR/issue-33418.rs:9:10
    |
 LL | trait Tr4: !SuperA + SuperB
    |          ^^^^^^^^^
 LL |     + !SuperC + SuperD {}
-   |     ^^^^^^^^^ negative trait bounds are not supported
-   |
-   = help: remove the trait bounds
+   |     ^^^^^^^^^ negative bounds are not supported
 
-error: negative trait bounds are not supported
+error: negative bounds are not supported
   --> $DIR/issue-33418.rs:12:10
    |
 LL | trait Tr5: !SuperA
    |          ^^^^^^^^^
 LL |     + !SuperB {}
-   |     ^^^^^^^^^ negative trait bounds are not supported
-   |
-   = help: remove the trait bounds
+   |     ^^^^^^^^^ negative bounds are not supported
 
 error: aborting due to 5 previous errors
 

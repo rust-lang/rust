@@ -91,6 +91,10 @@ impl<'a> Parser<'a> {
         self.parse_expr_res(Restrictions::empty(), None)
     }
 
+    pub(super) fn parse_anon_const_expr(&mut self) -> PResult<'a, AnonConst> {
+        self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value })
+    }
+
     fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
         self.parse_paren_comma_seq(|p| {
             match p.parse_expr() {
@@ -883,10 +887,7 @@ impl<'a> Parser<'a> {
                     let first_expr = self.parse_expr()?;
                     if self.eat(&token::Semi) {
                         // Repeating array syntax: `[ 0; 512 ]`
-                        let count = AnonConst {
-                            id: DUMMY_NODE_ID,
-                            value: self.parse_expr()?,
-                        };
+                        let count = self.parse_anon_const_expr()?;
                         self.expect(&token::CloseDelim(token::Bracket))?;
                         ex = ExprKind::Repeat(first_expr, count);
                     } else if self.eat(&token::Comma) {
