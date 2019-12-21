@@ -66,7 +66,7 @@ enum Trace {
 ///
 /// Usually we expect this to either be empty or contain a small number of items, so we can avoid
 /// allocation most of the time.
-crate type RegionErrors<'tcx> = smallvec::SmallVec<[RegionErrorKind<'tcx>; 4]>;
+crate type RegionErrors<'tcx> = Vec<RegionErrorKind<'tcx>>;
 
 #[derive(Clone, Debug)]
 crate enum RegionErrorKind<'tcx> {
