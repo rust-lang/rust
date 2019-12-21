@@ -1,0 +1,6 @@
+warning: ignoring --out-dir flag due to -o flag
+
+error: io error modifying /dev/
+
+error: aborting due to previous error
+
