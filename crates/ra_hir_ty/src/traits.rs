@@ -291,7 +291,7 @@ impl FnTrait {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClosureFnTraitImplData {
     def: DefWithBodyId,
     expr: ExprId,
@@ -300,7 +300,7 @@ pub struct ClosureFnTraitImplData {
 
 /// An impl. Usually this comes from an impl block, but some built-in types get
 /// synthetic impls.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Impl {
     /// A normal impl from an impl block.
     ImplBlock(ImplId),

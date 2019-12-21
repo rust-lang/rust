@@ -28,24 +28,24 @@ pub(super) fn get_builtin_impls(
     trait_: TraitId,
     mut callback: impl FnMut(Impl),
 ) {
+    // Note: since impl_datum needs to be infallible, we need to make sure here
+    // that we have all prerequisites to build the respective impls.
     if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Closure { def, expr }, .. }) = ty {
         for &fn_trait in [super::FnTrait::FnOnce, super::FnTrait::FnMut, super::FnTrait::Fn].iter()
         {
             if let Some(actual_trait) = get_fn_trait(db, krate, fn_trait) {
                 if trait_ == actual_trait {
                     let impl_ = super::ClosureFnTraitImplData { def: *def, expr: *expr, fn_trait };
-                    callback(Impl::ClosureFnTraitImpl(impl_));
+                    if check_closure_fn_trait_impl_prerequisites(db, krate, impl_) {
+                        callback(Impl::ClosureFnTraitImpl(impl_));
+                    }
                 }
             }
         }
     }
 }
 
-pub(super) fn impl_datum(
-    db: &impl HirDatabase,
-    krate: CrateId,
-    impl_: Impl,
-) -> Option<BuiltinImplData> {
+pub(super) fn impl_datum(db: &impl HirDatabase, krate: CrateId, impl_: Impl) -> BuiltinImplData {
     match impl_ {
         Impl::ImplBlock(_) => unreachable!(),
         Impl::ClosureFnTraitImpl(data) => closure_fn_trait_impl_datum(db, krate, data),
@@ -65,21 +65,38 @@ pub(super) fn associated_ty_value(
     }
 }
 
+fn check_closure_fn_trait_impl_prerequisites(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    data: super::ClosureFnTraitImplData,
+) -> bool {
+    // the respective Fn/FnOnce/FnMut trait needs to exist
+    if get_fn_trait(db, krate, data.fn_trait).is_none() {
+        return false;
+    }
+
+    // FIXME: there are more assumptions that we should probably check here:
+    // the traits having no type params, FnOnce being a supertrait
+
+    // the FnOnce trait needs to exist and have an assoc type named Output
+    let fn_once_trait = match get_fn_trait(db, krate, super::FnTrait::FnOnce) {
+        Some(t) => t,
+        None => return false,
+    };
+    db.trait_data(fn_once_trait).associated_type_by_name(&name![Output]).is_some()
+}
+
 fn closure_fn_trait_impl_datum(
     db: &impl HirDatabase,
     krate: CrateId,
     data: super::ClosureFnTraitImplData,
-) -> Option<BuiltinImplData> {
+) -> BuiltinImplData {
     // for some closure |X, Y| -> Z:
     // impl<T, U, V> Fn<(T, U)> for closure<fn(T, U) -> V> { Output = V }
 
-    let trait_ = get_fn_trait(db, krate, data.fn_trait)?; // get corresponding fn trait
-
-    // validate FnOnce trait, since we need it in the assoc ty value definition
-    // and don't want to return a valid value only to find out later that FnOnce
-    // is broken
-    let fn_once_trait = get_fn_trait(db, krate, super::FnTrait::FnOnce)?;
-    let _output = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
+    let trait_ = get_fn_trait(db, krate, data.fn_trait) // get corresponding fn trait
+        // the existence of the Fn trait has been checked before
+        .expect("fn trait for closure impl missing");
 
     let num_args: u16 = match &db.body(data.def.into())[data.expr] {
         Expr::Lambda { args, .. } => args.len() as u16,
@@ -107,12 +124,12 @@ fn closure_fn_trait_impl_datum(
 
     let output_ty_id = AssocTyValue::ClosureFnTraitImplOutput(data.clone());
 
-    Some(BuiltinImplData {
+    BuiltinImplData {
         num_vars: num_args as usize + 1,
         trait_ref,
         where_clauses: Vec::new(),
         assoc_ty_values: vec![output_ty_id],
-    })
+    }
 }
 
 fn closure_fn_trait_output_assoc_ty_value(
