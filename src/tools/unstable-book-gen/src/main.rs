@@ -2,7 +2,7 @@
 
 #![deny(warnings)]
 
-use tidy::features::{Feature, Features, collect_lib_features, collect_lang_features};
+use tidy::features::{Features, collect_lib_features, collect_lang_features};
 use tidy::unstable_book::{collect_unstable_feature_names, collect_unstable_book_section_file_names,
                           PATH_STR, LANG_FEATURES_DIR, LIB_FEATURES_DIR};
 use std::collections::BTreeSet;
@@ -70,15 +70,6 @@ fn generate_summary(path: &Path, lang_features: &Features, lib_features: &Featur
 
 }
 
-fn has_valid_tracking_issue(f: &Feature) -> bool {
-    if let Some(n) = f.tracking_issue {
-        if n > 0 {
-            return true;
-        }
-    }
-    false
-}
-
 fn generate_unstable_book_files(src :&Path, out: &Path, features :&Features) {
     let unstable_features = collect_unstable_feature_names(features);
     let unstable_section_file_names = collect_unstable_book_section_file_names(src);
@@ -89,10 +80,10 @@ fn generate_unstable_book_files(src :&Path, out: &Path, features :&Features) {
         let out_file_path = out.join(&file_name);
         let feature = &features[&feature_name_underscore];
 
-        if has_valid_tracking_issue(&feature) {
+        if let Some(issue) = feature.tracking_issue {
             generate_stub_issue(&out_file_path,
                                 &feature_name_underscore,
-                                feature.tracking_issue.unwrap());
+                                issue.get());
         } else {
             generate_stub_no_issue(&out_file_path, &feature_name_underscore);
         }
