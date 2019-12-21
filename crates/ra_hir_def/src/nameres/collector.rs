@@ -218,8 +218,7 @@ where
         if export {
             self.update(
                 self.def_map.root,
-                None,
-                &[(name, Resolution { def: PerNs::macros(macro_), import: None })],
+                &[(name, Resolution { def: PerNs::macros(macro_), declaration: false })],
             );
         }
     }
@@ -374,7 +373,7 @@ where
                         // Module scoped macros is included
                         let items = scope.collect_resolutions();
 
-                        self.update(module_id, Some(import_id), &items);
+                        self.update(module_id, &items);
                     } else {
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
@@ -384,7 +383,7 @@ where
                         // Module scoped macros is included
                         let items = scope.collect_resolutions();
 
-                        self.update(module_id, Some(import_id), &items);
+                        self.update(module_id, &items);
                         // record the glob import in case we add further items
                         let glob = self.glob_imports.entry(m.local_id).or_default();
                         if !glob.iter().any(|it| *it == (module_id, import_id)) {
@@ -404,12 +403,12 @@ where
                             let variant = EnumVariantId { parent: e, local_id };
                             let res = Resolution {
                                 def: PerNs::both(variant.into(), variant.into()),
-                                import: Some(import_id),
+                                declaration: false,
                             };
                             (name, res)
                         })
                         .collect::<Vec<_>>();
-                    self.update(module_id, Some(import_id), &resolutions);
+                    self.update(module_id, &resolutions);
                 }
                 Some(d) => {
                     log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
@@ -431,27 +430,21 @@ where
                         }
                     }
 
-                    let resolution = Resolution { def, import: Some(import_id) };
-                    self.update(module_id, Some(import_id), &[(name, resolution)]);
+                    let resolution = Resolution { def, declaration: false };
+                    self.update(module_id, &[(name, resolution)]);
                 }
                 None => tested_by!(bogus_paths),
             }
         }
     }
 
-    fn update(
-        &mut self,
-        module_id: LocalModuleId,
-        import: Option<LocalImportId>,
-        resolutions: &[(Name, Resolution)],
-    ) {
-        self.update_recursive(module_id, import, resolutions, 0)
+    fn update(&mut self, module_id: LocalModuleId, resolutions: &[(Name, Resolution)]) {
+        self.update_recursive(module_id, resolutions, 0)
     }
 
     fn update_recursive(
         &mut self,
         module_id: LocalModuleId,
-        import: Option<LocalImportId>,
         resolutions: &[(Name, Resolution)],
         depth: usize,
     ) {
@@ -462,7 +455,7 @@ where
         let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            changed |= scope.push_res(name.clone(), res, import);
+            changed |= scope.push_res(name.clone(), res, depth == 0 && res.declaration);
         }
 
         if !changed {
@@ -475,9 +468,9 @@ where
             .flat_map(|v| v.iter())
             .cloned()
             .collect::<Vec<_>>();
-        for (glob_importing_module, glob_import) in glob_imports {
+        for (glob_importing_module, _glob_import) in glob_imports {
             // We pass the glob import so that the tracked import in those modules is that glob import
-            self.update_recursive(glob_importing_module, Some(glob_import), resolutions, depth + 1);
+            self.update_recursive(glob_importing_module, resolutions, depth + 1);
         }
     }
 
@@ -719,9 +712,9 @@ where
             def: PerNs::types(
                 ModuleId { krate: self.def_collector.def_map.krate, local_id: res }.into(),
             ),
-            import: None,
+            declaration: true,
         };
-        self.def_collector.update(self.module_id, None, &[(name, resolution)]);
+        self.def_collector.update(self.module_id, &[(name, resolution)]);
         res
     }
 
@@ -791,8 +784,8 @@ where
                 PerNs::types(def.into())
             }
         };
-        let resolution = Resolution { def, import: None };
-        self.def_collector.update(self.module_id, None, &[(name, resolution)])
+        let resolution = Resolution { def, declaration: true };
+        self.def_collector.update(self.module_id, &[(name, resolution)])
     }
 
     fn collect_derives(&mut self, attrs: &Attrs, def: &raw::DefData) {
