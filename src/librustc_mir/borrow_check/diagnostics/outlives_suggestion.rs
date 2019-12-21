@@ -80,9 +80,7 @@ impl OutlivesSuggestionBuilder {
         renctx: &mut RegionErrorNamingCtx,
         region: RegionVid,
     ) -> Option<RegionName> {
-        mbcx.nonlexical_regioncx
-            .give_region_a_name(mbcx, renctx, region)
-            .filter(Self::region_name_is_suggestable)
+        mbcx.give_region_a_name(renctx, region).filter(Self::region_name_is_suggestable)
     }
 
     /// Compiles a list of all suggestions to be printed in the final big suggestion.

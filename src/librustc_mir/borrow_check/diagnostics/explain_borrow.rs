@@ -274,9 +274,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
 
         let mut renctx = RegionErrorNamingCtx::new();
-        let outlived_fr_name =
-            self.nonlexical_regioncx.give_region_a_name(self, &mut renctx, outlived_region);
-        // TODO(mark-i-m): just return the region and let the caller name it
+        let outlived_fr_name = self.give_region_a_name(&mut renctx, outlived_region);
 
         (category, from_closure, span, outlived_fr_name)
     }
@@ -357,7 +355,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             None => {
-                if let Some(region) = regioncx.to_error_region_vid(borrow_region_vid) {
+                if let Some(region) = self.to_error_region_vid(borrow_region_vid) {
                     let (category, from_closure, span, region_name) =
                         self.free_region_constraint_info(borrow_region_vid, region);
                     if let Some(region_name) = region_name {

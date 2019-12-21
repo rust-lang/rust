@@ -1471,7 +1471,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Iterate through all the errors, producing a diagnostic for each one. The diagnostics are
         // buffered in the `MirBorrowckCtxt`.
 
-        // FIXME(mark-i-m): Would be great to get rid of the naming context.
+        // TODO(mark-i-m): Would be great to get rid of the naming context.
         let mut region_naming = RegionErrorNamingCtx::new();
         let mut outlives_suggestion = OutlivesSuggestionBuilder::default();
 
@@ -1479,8 +1479,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             match nll_error {
                 RegionErrorKind::TypeTestError { type_test } => {
                     // Try to convert the lower-bound region into something named we can print for the user.
-                    let lower_bound_region =
-                        self.nonlexical_regioncx.to_error_region(type_test.lower_bound);
+                    let lower_bound_region = self.to_error_region(type_test.lower_bound);
 
                     // Skip duplicate-ish errors.
                     let type_test_span = type_test.locations.span(&self.body);
@@ -1557,16 +1556,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
                     if is_reported {
-                        let db = self.nonlexical_regioncx.report_error(
-                            self,
+                        self.report_error(
                             longer_fr,
                             fr_origin,
                             shorter_fr,
                             &mut outlives_suggestion,
                             &mut region_naming,
                         );
-
-                        db.buffer(&mut self.errors_buffer);
                     } else {
                         // We only report the first error, so as not to overwhelm the user. See
                         // `RegRegionErrorKind` docs.
