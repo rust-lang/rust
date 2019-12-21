@@ -632,8 +632,8 @@ fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr, ty: &Ty) {
         if !in_constant(cx, e.hir_id);
         then {
             let (msg, sugg_fn) = match mut_ty.mutbl {
-                Mutability::Mutable => ("`0 as *mut _` detected", "std::ptr::null_mut"),
-                Mutability::Immutable => ("`0 as *const _` detected", "std::ptr::null"),
+                Mutability::Mut => ("`0 as *mut _` detected", "std::ptr::null_mut"),
+                Mutability::Not => ("`0 as *const _` detected", "std::ptr::null"),
             };
 
             let (sugg, appl) = if let TyKind::Infer = mut_ty.ty.kind {
