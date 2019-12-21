@@ -19,6 +19,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) offset: TextUnit,
     pub(super) token: SyntaxToken,
     pub(super) module: Option<hir::Module>,
+    pub(super) name_ref_syntax: Option<ast::NameRef>,
     pub(super) function_syntax: Option<ast::FnDef>,
     pub(super) use_item_syntax: Option<ast::UseItem>,
     pub(super) record_lit_syntax: Option<ast::RecordLit>,
@@ -69,6 +70,7 @@ impl<'a> CompletionContext<'a> {
             token,
             offset: position.offset,
             module,
+            name_ref_syntax: None,
             function_syntax: None,
             use_item_syntax: None,
             record_lit_syntax: None,
@@ -142,6 +144,8 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name_ref(&mut self, original_file: SourceFile, name_ref: ast::NameRef) {
+        self.name_ref_syntax =
+            find_node_at_offset(original_file.syntax(), name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();
         if name_ref.syntax().parent().and_then(ast::RecordField::cast).is_some() {
             self.record_lit_syntax = find_node_at_offset(original_file.syntax(), self.offset);

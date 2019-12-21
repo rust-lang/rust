@@ -161,5 +161,5 @@ pub struct Resolution {
     /// None for unresolved
     pub def: PerNs,
     /// ident by which this is imported into local scope.
-    pub import: Option<LocalImportId>,
+    pub(crate) import: Option<LocalImportId>,
 }
