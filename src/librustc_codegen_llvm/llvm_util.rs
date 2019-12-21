@@ -3,6 +3,7 @@ use crate::llvm;
 use syntax_pos::symbol::Symbol;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use libc::c_int;
 use std::ffi::CString;
@@ -51,20 +52,37 @@ unsafe fn configure_llvm(sess: &Session) {
 
     llvm::LLVMRustInstallFatalErrorHandler();
 
+    fn llvm_arg_to_arg_name(full_arg: &str) -> &str {
+        full_arg.trim().split(|c: char| {
+            c == '=' || c.is_whitespace()
+        }).next().unwrap_or("")
+    }
+
+    let user_specified_args: FxHashSet<_> = sess
+        .opts
+        .cg
+        .llvm_args
+        .iter()
+        .map(|s| llvm_arg_to_arg_name(s))
+        .filter(|s| s.len() > 0)
+        .collect();
+
     {
-        let mut add = |arg: &str| {
-            let s = CString::new(arg).unwrap();
-            llvm_args.push(s.as_ptr());
-            llvm_c_strs.push(s);
+        // This adds the given argument to LLVM. Unless `force` is true
+        // user specified arguments are *not* overridden.
+        let mut add = |arg: &str, force: bool| {
+            if force || !user_specified_args.contains(llvm_arg_to_arg_name(arg)) {
+                let s = CString::new(arg).unwrap();
+                llvm_args.push(s.as_ptr());
+                llvm_c_strs.push(s);
+            }
         };
-        add("rustc"); // fake program name
-        if sess.time_llvm_passes() { add("-time-passes"); }
-        if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
-        if sess.opts.debugging_opts.disable_instrumentation_preinliner {
-            add("-disable-preinline");
-        }
+        add("rustc", true); // fake program name
+        if sess.time_llvm_passes() { add("-time-passes", false); }
+        if sess.print_llvm_passes() { add("-debug-pass=Structure", false); }
+
         if sess.opts.debugging_opts.generate_arange_section {
-            add("-generate-arange-section");
+            add("-generate-arange-section", false);
         }
         if get_major_version() >= 8 {
             match sess.opts.debugging_opts.merge_functions
@@ -72,22 +90,22 @@ unsafe fn configure_llvm(sess: &Session) {
                 MergeFunctions::Disabled |
                 MergeFunctions::Trampolines => {}
                 MergeFunctions::Aliases => {
-                    add("-mergefunc-use-aliases");
+                    add("-mergefunc-use-aliases", false);
                 }
             }
         }
 
         if sess.target.target.target_os == "emscripten" &&
             sess.panic_strategy() == PanicStrategy::Unwind {
-            add("-enable-emscripten-cxx-exceptions");
+            add("-enable-emscripten-cxx-exceptions", false);
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes
         // during inlining. Unfortunately these may block other optimizations.
-        add("-preserve-alignment-assumptions-during-inlining=false");
+        add("-preserve-alignment-assumptions-during-inlining=false", false);
 
         for arg in &sess.opts.cg.llvm_args {
-            add(&(*arg));
+            add(&(*arg), true);
         }
     }
 
