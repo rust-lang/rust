@@ -209,9 +209,9 @@ fn solution_from_chalk(
             .parameters
             .into_iter()
             .map(|p| {
-                let ty = match p {
-                    chalk_ir::Parameter(chalk_ir::ParameterKind::Ty(ty)) => from_chalk(db, ty),
-                    chalk_ir::Parameter(chalk_ir::ParameterKind::Lifetime(_)) => unimplemented!(),
+                let ty = match p.ty() {
+                    Some(ty) => from_chalk(db, ty.clone()),
+                    None => unimplemented!(),
                 };
                 ty
             })

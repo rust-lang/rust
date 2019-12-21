@@ -21,10 +21,9 @@ ra_prof = { path = "../ra_prof" }
 ra_syntax = { path = "../ra_syntax" }
 test_utils = { path = "../test_utils" }
 
-# https://github.com/rust-lang/chalk/pull/294
-chalk-solve =   { git = "https://github.com/rust-lang/chalk.git", rev = "151949dece8117d180b5d197a7afa968c3ba14bb" }
-chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "151949dece8117d180b5d197a7afa968c3ba14bb" }
-chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "151949dece8117d180b5d197a7afa968c3ba14bb" }
+chalk-solve =   { git = "https://github.com/rust-lang/chalk.git", rev = "ff65b5ac9860f3c36bd892c865ab23d5ff0bbae5" }
+chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "ff65b5ac9860f3c36bd892c865ab23d5ff0bbae5" }
+chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "ff65b5ac9860f3c36bd892c865ab23d5ff0bbae5" }
 
 lalrpop-intern = "0.15.1"
 
