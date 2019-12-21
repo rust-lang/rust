@@ -2625,7 +2625,6 @@ mod test_map {
     use super::DefaultHashBuilder;
     use super::Entry::{Occupied, Vacant};
     use super::{HashMap, RawEntryMut};
-    #[cfg(not(miri))]
     use crate::CollectionAllocErr::*;
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::cell::RefCell;
@@ -2883,7 +2882,7 @@ mod test_map {
     }
 
     #[test]
-    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/654
+    #[cfg_attr(miri, ignore)] // FIXME: takes too long
     fn test_lots_of_insertions() {
         let mut m = HashMap::new();
 
@@ -3377,7 +3376,6 @@ mod test_map {
 
         let mut m = HashMap::new();
 
-        // FIXME: https://github.com/rust-lang/miri/issues/653
         let mut rng = {
             let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
             SmallRng::from_seed(seed)
@@ -3491,7 +3489,7 @@ mod test_map {
     }
 
     #[test]
-    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/655
+    #[cfg_attr(miri, ignore)] // FIXME: no OOM signalling (https://github.com/rust-lang/miri/issues/613)
     fn test_try_reserve() {
         let mut empty_bytes: HashMap<u8, u8> = HashMap::new();
 
