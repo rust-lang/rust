@@ -138,3 +138,12 @@ declare_deprecated_lint! {
     pub INTO_ITER_ON_ARRAY,
     "this lint has been uplifted to rustc and is now called `array_into_iter`"
 }
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** This lint has been uplifted to rustc and is now called
+    /// `unused_labels`.
+    pub UNUSED_LABEL,
+    "this lint has been uplifted to rustc and is now called `unused_labels`"
+}

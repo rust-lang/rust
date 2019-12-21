@@ -1,7 +1,6 @@
 // aux-build:macro_rules.rs
 
 #![warn(clippy::empty_loop)]
-#![allow(clippy::unused_label)]
 
 #[macro_use]
 extern crate macro_rules;
