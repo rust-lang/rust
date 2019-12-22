@@ -5,7 +5,7 @@ use crate::maybe_whole;
 
 use rustc_errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
 use rustc_error_codes::*;
-use syntax::ast::{self, DUMMY_NODE_ID, Ident, AttrVec, Attribute, AttrKind, AttrStyle, AnonConst};
+use syntax::ast::{self, DUMMY_NODE_ID, Ident, AttrVec, Attribute, AttrKind, AttrStyle};
 use syntax::ast::{AssocItem, AssocItemKind, Item, ItemKind, UseTree, UseTreeKind};
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
@@ -1317,10 +1317,7 @@ impl<'a> Parser<'a> {
         };
 
         let disr_expr = if self.eat(&token::Eq) {
-            Some(AnonConst {
-                id: DUMMY_NODE_ID,
-                value: self.parse_expr()?,
-            })
+            Some(self.parse_anon_const_expr()?)
         } else {
             None
         };
