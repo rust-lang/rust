@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use rustc::middle::lang_items;
 use rustc::middle::stability;
-use rustc::hir;
+use rustc::hir::{self, Mutability};
 use rustc::hir::def::Res;
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::ty::layout::VariantIdx;
@@ -1448,12 +1448,6 @@ pub struct Static {
 pub struct Constant {
     pub type_: Type,
     pub expr: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
-pub enum Mutability {
-    Mutable,
-    Immutable,
 }
 
 #[derive(Clone, PartialEq, Debug)]
