@@ -6,7 +6,7 @@ use rustc::hir::def::{DefKind, Res};
 use rustc::hir::*;
 use rustc::lint::LateContext;
 use rustc::ty::subst::{Subst, SubstsRef};
-use rustc::ty::{self, Instance, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::sync::Lrc;
 use std::cmp::Ordering::{self, Equal};
@@ -328,8 +328,6 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 
     /// Lookup a possibly constant expression from a `ExprKind::Path`.
     fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
-        use rustc::mir::interpret::GlobalId;
-
         let res = self.tables.qpath_res(qpath, id);
         match res {
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
@@ -339,13 +337,12 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 } else {
                     substs.subst(self.lcx.tcx, self.substs)
                 };
-                let instance = Instance::resolve(self.lcx.tcx, self.param_env, def_id, substs)?;
-                let gid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
 
-                let result = self.lcx.tcx.const_eval(self.param_env.and(gid)).ok()?;
+                let result = self
+                    .lcx
+                    .tcx
+                    .const_eval_resolve(self.param_env, def_id, substs, None)
+                    .ok()?;
                 let result = miri_to_const(&result);
                 if result.is_some() {
                     self.needed_resolution = true;
