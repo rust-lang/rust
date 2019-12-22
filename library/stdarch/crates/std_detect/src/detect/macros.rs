@@ -51,7 +51,7 @@ macro_rules! features {
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone)]
         #[repr(u8)]
-        #[unstable(feature = "stdsimd_internal", issue = "0")]
+        #[unstable(feature = "stdsimd_internal", issue = "none")]
         pub(crate) enum Feature {
             $(
                 $(#[$feature_comment])*

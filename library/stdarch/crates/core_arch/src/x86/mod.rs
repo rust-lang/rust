@@ -352,7 +352,7 @@ mod test;
 pub use self::test::*;
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdimd_internal", issue = "0")]
+#[unstable(feature = "stdimd_internal", issue = "none")]
 pub(crate) trait m64Ext: Sized {
     fn as_m64(self) -> __m64;
 
@@ -395,7 +395,7 @@ impl m64Ext for __m64 {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdimd_internal", issue = "0")]
+#[unstable(feature = "stdimd_internal", issue = "none")]
 pub(crate) trait m128iExt: Sized {
     fn as_m128i(self) -> __m128i;
 
@@ -448,7 +448,7 @@ impl m128iExt for __m128i {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdimd_internal", issue = "0")]
+#[unstable(feature = "stdimd_internal", issue = "none")]
 pub(crate) trait m256iExt: Sized {
     fn as_m256i(self) -> __m256i;
 
@@ -501,7 +501,7 @@ impl m256iExt for __m256i {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdimd_internal", issue = "0")]
+#[unstable(feature = "stdimd_internal", issue = "none")]
 pub(crate) trait m512iExt: Sized {
     fn as_m512i(self) -> __m512i;
 
