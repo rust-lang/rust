@@ -237,11 +237,11 @@ use super::{FieldPat, Pat, PatKind, PatRange};
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::{HirId, RangeEnd};
-use rustc::ty::layout::{Align, Integer, IntegerExt, Size, VariantIdx};
+use rustc::ty::layout::{Integer, IntegerExt, Size, VariantIdx};
 use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
 
 use rustc::lint;
-use rustc::mir::interpret::{truncate, AllocId, Allocation, ConstValue, Pointer, Scalar};
+use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc::mir::Field;
 use rustc::util::captures::Captures;
 use rustc::util::common::ErrorReported;
@@ -2366,16 +2366,18 @@ fn specialize_one_pattern<'p, 'tcx>(
             let (alloc, offset, n, ty) = match value.ty.kind {
                 ty::Array(t, n) => {
                     let n = n.eval_usize(cx.tcx, cx.param_env);
+                    // Shortcut for `n == 0` where no matter what `alloc` and `offset` we produce,
+                    // the result would be exactly what we early return here.
+                    if n == 0 {
+                        if ctor_wild_subpatterns.len() as u64 == 0 {
+                            return Some(PatStack::from_slice(&[]));
+                        } else {
+                            return None;
+                        }
+                    }
                     match value.val {
                         ty::ConstKind::Value(ConstValue::ByRef { offset, alloc, .. }) => {
                             (Cow::Borrowed(alloc), offset, n, t)
-                        }
-                        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, .. }))
-                            if n == 0 =>
-                        {
-                            let align = Align::from_bytes(data as u64).unwrap();
-                            // empty array
-                            (Cow::Owned(Allocation::zst(align)), Size::ZERO, 0, t)
                         }
                         _ => span_bug!(pat.span, "array pattern is {:?}", value,),
                     }
