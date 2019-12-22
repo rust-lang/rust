@@ -35,11 +35,13 @@ LL |     let sr: Vec<(u32, _, _) = vec![];
             found struct `std::vec::Vec<_>`
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error[E0070]: invalid left-hand side expression
-  --> $DIR/issue-34334.rs:2:13
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/issue-34334.rs:2:29
    |
 LL |     let sr: Vec<(u32, _, _) = vec![];
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^ left-hand of expression not valid
+   |             --------------- ^
+   |             |
+   |             cannot assign to this expression
 
 error[E0599]: no method named `iter` found for type `()` in the current scope
   --> $DIR/issue-34334.rs:9:36
