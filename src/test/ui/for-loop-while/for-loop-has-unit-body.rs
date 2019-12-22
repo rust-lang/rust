@@ -2,8 +2,7 @@
 fn main() {
     // Check that the tail statement in the body unifies with something
     for _ in 0..3 {
-        #[allow(deprecated)]
-        unsafe { std::mem::uninitialized() }
+        unsafe { std::mem::zeroed() }
     }
 
     // Check that the tail statement in the body can be unit

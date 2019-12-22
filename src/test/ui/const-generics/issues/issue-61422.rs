@@ -7,8 +7,8 @@ use std::mem;
 
 fn foo<const SIZE: usize>() {
     let arr: [u8; SIZE] = unsafe {
-        #[allow(deprecated)]
-        let array: [u8; SIZE] = mem::uninitialized();
+
+        let array: [u8; SIZE] = mem::zeroed();
         array
     };
 }
