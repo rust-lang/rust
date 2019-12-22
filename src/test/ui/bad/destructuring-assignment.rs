@@ -18,4 +18,8 @@ fn main() {
     //~^ ERROR binary assignment operation `+=` cannot be applied
 
     S { x: a, ..s } = S { x: 3, y: 4 }; //~ ERROR invalid left-hand side of assignment
+
+    let c = 3;
+
+    ((a, b), c) = ((3, 4), 5); //~ ERROR invalid left-hand side of assignment
 }

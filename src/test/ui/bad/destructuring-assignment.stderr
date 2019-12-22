@@ -105,7 +105,18 @@ LL |     S { x: a, ..s } = S { x: 3, y: 4 };
    = note: destructuring assignments are not yet supported
    = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
-error: aborting due to 10 previous errors
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/destructuring-assignment.rs:24:5
+   |
+LL |     ((a, b), c) = ((3, 4), 5);
+   |     -----------^^^^^^^^^^^^^^
+   |     |
+   |     cannot assign to this expression
+   |
+   = note: destructuring assignments are not yet supported
+   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
+
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0067, E0070, E0368.
 For more information about an error, try `rustc --explain E0067`.
