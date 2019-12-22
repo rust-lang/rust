@@ -993,10 +993,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             s: &mut DiagnosticStyledString,
         ) {
             let mut r = region.to_string();
-            if let ty::RegionKind::ReVar(var) = region {
-                // Show these named, not as `'_` or elide them in "expected/found" notes.
-                r = format!("'z{} ", var.index());
-            } else if r == "'_" {
+            if r == "'_" {
                 r.clear();
             } else {
                 r.push(' ');

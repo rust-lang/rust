@@ -5,7 +5,7 @@ LL |     want_F(bar);
    |            ^^^ expected concrete lifetime, found bound lifetime parameter 'cx
    |
    = note: expected fn pointer `for<'cx> fn(&'cx S) -> &'cx S`
-                 found fn item `for<'a> fn(&'a S) -> &'z2 S {bar::<'_>}`
+                 found fn item `for<'a> fn(&'a S) -> &S {bar::<'_>}`
 
 error: aborting due to previous error
 

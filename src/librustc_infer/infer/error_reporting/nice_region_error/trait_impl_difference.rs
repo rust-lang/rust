@@ -1,5 +1,6 @@
 //! Error Reporting for `impl` items that do not match the obligations from their `trait`.
 
+use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
@@ -40,7 +41,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                 var_origin.span(),
                                 sub_expected_found.expected,
                                 sub_expected_found.found,
-                                self.tcx().def_span(*trait_item_def_id),
+                                *trait_item_def_id,
                             );
                             return Some(ErrorReported);
                         }
@@ -51,23 +52,56 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         None
     }
 
-    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, impl_sp: Span) {
+    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, trait_def_id: DefId) {
+        let tcx = self.tcx();
+        let trait_sp = self.tcx().def_span(trait_def_id);
         let mut err = self
             .tcx()
             .sess
             .struct_span_err(sp, "`impl` item signature doesn't match `trait` item signature");
         err.span_label(sp, &format!("found {:?}", found));
-        err.span_label(impl_sp, &format!("expected {:?}", expected));
+        err.span_label(trait_sp, &format!("expected {:?}", expected));
+        let trait_fn_sig = tcx.fn_sig(trait_def_id);
+
+        struct AssocTypeFinder(FxHashSet<ty::ParamTy>);
+        impl<'tcx> ty::fold::TypeVisitor<'tcx> for AssocTypeFinder {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+                debug!("assoc type finder ty {:?} {:?}", ty, ty.kind);
+                match ty.kind {
+                    ty::Param(param) => {
+                        self.0.insert(param);
+                    }
+                    _ => {}
+                }
+                ty.super_visit_with(self)
+            }
+        }
+        let mut visitor = AssocTypeFinder(FxHashSet::default());
+        trait_fn_sig.output().visit_with(&mut visitor);
+
+        if let Some(id) = tcx.hir().as_local_hir_id(trait_def_id) {
+            let parent_id = tcx.hir().get_parent_item(id);
+            let trait_item = tcx.hir().expect_item(parent_id);
+            if let hir::ItemKind::Trait(_, _, generics, _, _) = &trait_item.kind {
+                for param_ty in visitor.0 {
+                    if let Some(generic) = generics.get_named(param_ty.name) {
+                        err.span_label(generic.span, &format!(
+                            "in order for `impl` items to be able to implement the method, this \
+                             type parameter might need a lifetime restriction like `{}: 'a`",
+                            param_ty.name,
+                        ));
+                    }
+                }
+            }
+        }
 
         struct EarlyBoundRegionHighlighter(FxHashSet<DefId>);
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for EarlyBoundRegionHighlighter {
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-                debug!("LateBoundRegionNameCollector visit_region {:?}", r);
                 match *r {
                     ty::ReFree(free) => {
                         self.0.insert(free.scope);
                     }
-
                     ty::ReEarlyBound(bound) => {
                         self.0.insert(bound.def_id);
                     }
@@ -94,12 +128,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         if note {
             err.note(
-                "the lifetime requirements from the `trait` could not be fulfilled by the \
-                      `impl`",
+                "the lifetime requirements from the `trait` could not be fulfilled by the `impl`",
             );
             err.help(
-                "consider adding a named lifetime to the `trait` that constrains the item's \
-                      `self` argument, its inputs and its output with it",
+                "verify the lifetime relationships in the `trait` and `impl` between the \
+                 `self` argument, the other inputs and its output",
             );
         }
         err.emit();

@@ -8,7 +8,7 @@ LL |     fn bar(&mut self, other: &dyn Foo) {}
    |                              ^^^^^^^^ types differ in mutability
    |
    = note: expected fn pointer `fn(&mut Baz, &mut dyn Foo)`
-              found fn pointer `fn(&'z0 mut Baz, &dyn Foo)`
+              found fn pointer `fn(&mut Baz, &dyn Foo)`
 help: consider change the type to match the mutability in trait
    |
 LL |     fn bar(&mut self, other: &mut dyn Foo) {}

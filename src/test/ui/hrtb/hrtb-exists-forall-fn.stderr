@@ -7,7 +7,7 @@ LL |     let _: for<'b> fn(&'b u32) = foo();
    |            expected due to this
    |
    = note: expected fn pointer `for<'b> fn(&'b u32)`
-              found fn pointer `fn(&'z0 u32)`
+              found fn pointer `fn(&u32)`
 
 error: aborting due to previous error
 

@@ -40,7 +40,7 @@ LL | |         return z;
 LL | |     }));
    | |_____^
    = note: expected `&isize`
-              found `&'z13 isize`
+              found `&isize`
 
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
   --> $DIR/regions-nested-fns.rs:14:27

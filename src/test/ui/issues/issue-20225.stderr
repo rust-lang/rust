@@ -7,7 +7,7 @@ LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&T`, found type parameter `T`
    |
    = note: expected fn pointer `extern "rust-call" fn(&Foo, (&'a T,))`
-              found fn pointer `extern "rust-call" fn(&'z0 Foo, (T,))`
+              found fn pointer `extern "rust-call" fn(&Foo, (T,))`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
@@ -20,7 +20,7 @@ LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&T`, found type parameter `T`
    |
    = note: expected fn pointer `extern "rust-call" fn(&mut Foo, (&'a T,))`
-              found fn pointer `extern "rust-call" fn(&'z0 mut Foo, (T,))`
+              found fn pointer `extern "rust-call" fn(&mut Foo, (T,))`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 

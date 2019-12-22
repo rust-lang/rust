@@ -22,8 +22,8 @@ error[E0308]: mismatched types
 LL |     test(&y);
    |          ^^ types differ in mutability
    |
-   = note: expected mutable reference `&'z2 mut std::string::String`
-                      found reference `&'z3 std::string::String`
+   = note: expected mutable reference `&mut std::string::String`
+                      found reference `&std::string::String`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:14:11

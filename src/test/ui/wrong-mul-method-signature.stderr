@@ -5,7 +5,7 @@ LL |     fn mul(self, s: &f64) -> Vec1 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `&f64`
    |
    = note: expected fn pointer `fn(Vec1, f64) -> Vec1`
-              found fn pointer `fn(Vec1, &'z0 f64) -> Vec1`
+              found fn pointer `fn(Vec1, &f64) -> Vec1`
 
 error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:33:5

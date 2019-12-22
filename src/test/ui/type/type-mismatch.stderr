@@ -211,7 +211,7 @@ LL |     want::<&Foo<foo>>(f);
    |                       expected `&Foo<foo>`, found struct `Foo`
    |                       help: consider borrowing here: `&f`
    |
-   = note: expected reference `&'z0 Foo<foo>`
+   = note: expected reference `&Foo<foo>`
                  found struct `Foo<foo>`
 
 error[E0308]: mismatched types
@@ -313,7 +313,7 @@ LL |     want::<&Foo<foo, B>>(f);
    |                          expected `&Foo<foo, B>`, found struct `Foo`
    |                          help: consider borrowing here: `&f`
    |
-   = note: expected reference `&'z1 Foo<foo, B>`
+   = note: expected reference `&Foo<foo, B>`
                  found struct `Foo<foo, B>`
 
 error[E0308]: mismatched types
