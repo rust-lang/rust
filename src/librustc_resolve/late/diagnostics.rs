@@ -253,6 +253,56 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 }
                 return (err, candidates);
             }
+
+            // Check if the first argument is `self` and suggest calling a method.
+            let mut has_self_arg = None;
+            if let PathSource::Expr(parent) = source {
+                match &parent.map(|p| &p.kind) {
+                    Some(ExprKind::Call(_, args)) if args.len() > 0 => {
+                        let mut expr_kind = &args[0].kind;
+                        loop {
+                            match expr_kind {
+                                ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
+                                    if arg_name.segments[0].ident.name == kw::SelfLower {
+                                        let call_span = parent.unwrap().span;
+                                        let args_span = if args.len() > 1 {
+                                            Some(Span::new(
+                                                args[1].span.lo(),
+                                                args.last().unwrap().span.hi(),
+                                                call_span.ctxt(),
+                                            ))
+                                        } else {
+                                            None
+                                        };
+                                        has_self_arg = Some((call_span, args_span));
+                                    }
+                                    break;
+                                },
+                                ExprKind::AddrOf(_, _, expr) => expr_kind = &expr.kind,
+                                _ => break,
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+            };
+
+            if let Some((call_span, args_span)) = has_self_arg {
+                let mut args_snippet: String = String::from("");
+                if let Some(args_span) = args_span {
+                    if let Ok(snippet) = self.r.session.source_map().span_to_snippet(args_span) {
+                        args_snippet = snippet;
+                    }
+                }
+
+                err.span_suggestion(
+                    call_span,
+                    &format!("try calling `{}` as a method", ident),
+                    format!("self.{}({})", path_str, args_snippet),
+                    Applicability::MachineApplicable,
+                );
+                return (err, candidates);
+            }
         }
 
         // Try Levenshtein algorithm.
@@ -553,13 +603,13 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref {
             if let Ok(binding) = self.r.resolve_ident_in_module(
-                    ModuleOrUniformRoot::Module(module),
-                    ident,
-                    ns,
-                    &self.parent_scope,
-                    false,
-                    module.span,
-                ) {
+                ModuleOrUniformRoot::Module(module),
+                ident,
+                ns,
+                &self.parent_scope,
+                false,
+                module.span,
+            ) {
                 let res = binding.res();
                 if filter_fn(res) {
                     return Some(if self.r.has_self.contains(&res.def_id()) {
