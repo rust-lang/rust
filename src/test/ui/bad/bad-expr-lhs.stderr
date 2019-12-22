@@ -30,7 +30,7 @@ LL |     (a, b) = (3, 4);
    |     |
    |     cannot assign to this expression
    |
-   = note: destructuring assignments are not yet supported
+   = note: destructuring assignments are not currently supported
    = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
 error[E0070]: invalid left-hand side of assignment
