@@ -723,6 +723,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
+    fn is_destructuring_place_expr(&self, expr: &'tcx hir::Expr) -> bool {
+        match &expr.kind {
+            ExprKind::Array(comps) | ExprKind::Tup(comps) => {
+                comps.iter().all(|e| self.is_destructuring_place_expr(e))
+            }
+            ExprKind::Struct(_path, fields, rest) => {
+                rest.as_ref().map(|e| self.is_destructuring_place_expr(e)).unwrap_or(true) &&
+                    fields.iter().all(|f| self.is_destructuring_place_expr(&f.expr))
+            }
+            _ => expr.is_syntactic_place_expr(),
+        }
+    }
+
     pub(crate) fn check_lhs_assignable(
         &self,
         lhs: &'tcx hir::Expr,
@@ -736,17 +749,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 DiagnosticId::Error(err_code.into()),
             );
             err.span_label(lhs.span, "cannot assign to this expression");
-            let destructuring_assignment = match &lhs.kind {
-                ExprKind::Array(comps) | ExprKind::Tup(comps) => {
-                    comps.iter().all(|e| e.is_syntactic_place_expr())
-                }
-                ExprKind::Struct(_path, fields, rest) => {
-                    rest.as_ref().map(|e| e.is_syntactic_place_expr()).unwrap_or(true) &&
-                        fields.iter().all(|f| f.expr.is_syntactic_place_expr())
-                }
-                _ => false,
-            };
-            if destructuring_assignment {
+            if self.is_destructuring_place_expr(lhs) {
                 err.note("destructuring assignments are not yet supported");
                 err.note(
                     "for more information, see https://github.com/rust-lang/rfcs/issues/372",
