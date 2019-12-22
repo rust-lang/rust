@@ -9,6 +9,7 @@ use crate::{
 };
 
 use crate::traits::*;
+use crate::CrateNum;
 use jobserver::{Acquired, Client};
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc::middle::cstore::EncodedMetadata;
@@ -994,7 +995,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         if link::ignored_for_lto(sess, crate_info, cnum) {
             return;
         }
-        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
+        each_linked_rlib_for_lto.push((cnum.into(), path.to_path_buf()));
     }));
 
     let assembler_cmd = if modules_config.no_integrated_as {

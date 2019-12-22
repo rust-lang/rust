@@ -31,7 +31,7 @@ use rustc::ty::query::Providers;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_hir::def_id::CrateNum;
+use rustc_hir::def_id;
 use rustc_span::symbol::Symbol;
 use std::path::{Path, PathBuf};
 
@@ -113,6 +113,29 @@ bitflags::bitflags! {
         const VOLATILE = 1 << 0;
         const NONTEMPORAL = 1 << 1;
         const UNALIGNED = 1 << 2;
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CrateNum(pub u32);
+impl CrateNum {
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
+    }
+}
+impl From<def_id::CrateNum> for CrateNum {
+    fn from(crate_num: def_id::CrateNum) -> Self {
+        CrateNum(crate_num.as_u32())
+    }
+}
+impl Into<def_id::CrateNum> for CrateNum {
+    fn into(self) -> def_id::CrateNum {
+        def_id::CrateNum::from_u32(self.0)
+    }
+}
+impl ::std::fmt::Debug for CrateNum {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        write!(fmt, "crate{}", self.0)
     }
 }
 

@@ -803,8 +803,14 @@ impl CrateInfo {
             used_libraries: tcx.native_libraries(LOCAL_CRATE),
             link_args: tcx.link_args(LOCAL_CRATE),
             crate_name: Default::default(),
-            used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
-            used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
+            used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic)
+                .into_iter()
+                .map(|(cnum, lib)| (cnum.into(), lib))
+                .collect(),
+            used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic)
+                .into_iter()
+                .map(|(cnum, lib)| (cnum.into(), lib))
+                .collect(),
             used_crate_source: Default::default(),
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),
@@ -821,25 +827,25 @@ impl CrateInfo {
         info.missing_lang_items.reserve(n_crates);
 
         for &cnum in crates.iter() {
-            info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
-            info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
-            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
+            info.native_libraries.insert(cnum.into(), tcx.native_libraries(cnum));
+            info.crate_name.insert(cnum.into(), tcx.crate_name(cnum).to_string());
+            info.used_crate_source.insert(cnum.into(), tcx.used_crate_source(cnum));
             if tcx.is_panic_runtime(cnum) {
-                info.panic_runtime = Some(cnum);
+                info.panic_runtime = Some(cnum.into());
             }
             if tcx.is_compiler_builtins(cnum) {
-                info.compiler_builtins = Some(cnum);
+                info.compiler_builtins = Some(cnum.into());
             }
             if tcx.is_profiler_runtime(cnum) {
-                info.profiler_runtime = Some(cnum);
+                info.profiler_runtime = Some(cnum.into());
             }
             if tcx.is_no_builtins(cnum) {
-                info.is_no_builtins.insert(cnum);
+                info.is_no_builtins.insert(cnum.into());
             }
             let missing = tcx.missing_lang_items(cnum);
             for &item in missing.iter() {
                 if let Ok(id) = lang_items.require(item) {
-                    info.lang_item_to_crate.insert(item, id.krate);
+                    info.lang_item_to_crate.insert(item, id.krate.into());
                 }
             }
 
@@ -850,7 +856,7 @@ impl CrateInfo {
                 .cloned()
                 .filter(|&l| !weak_lang_items::whitelisted(tcx, l))
                 .collect();
-            info.missing_lang_items.insert(cnum, missing);
+            info.missing_lang_items.insert(cnum.into(), missing);
         }
 
         return info;

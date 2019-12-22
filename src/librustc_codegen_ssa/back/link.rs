@@ -9,7 +9,6 @@ use rustc::session::search_paths::PathKind;
 use rustc::session::{filesearch, Session};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
-use rustc_hir::def_id::CrateNum;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
 
@@ -18,7 +17,7 @@ use super::command::Command;
 use super::linker::Linker;
 use super::rpath::{self, RPathConfig};
 use crate::{
-    looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FILENAME,
+    looks_like_rust_object_file, CodegenResults, CrateInfo, CrateNum, METADATA_FILENAME,
     RLIB_BYTECODE_EXTENSION,
 };
 
