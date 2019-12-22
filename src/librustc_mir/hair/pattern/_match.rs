@@ -620,10 +620,11 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 enum SliceKind {
     /// Patterns of length `n` (`[x, y]`).
     FixedLen(u64),
-    /// Patterns using the `..` notation (`[x, .., y]`). Captures any array constructor of `length
-    /// >= i + j`. In the case where `array_len` is `Some(_)`, this indicates that we only care
-    /// about the first `i` and the last `j` values of the array, and everything in between is a
-    /// wildcard `_`.
+    /// Patterns using the `..` notation (`[x, .., y]`).
+    /// Captures any array constructor of `length >= i + j`.
+    /// In the case where `array_len` is `Some(_)`,
+    /// this indicates that we only care about the first `i` and the last `j` values of the array,
+    /// and everything in between is a wildcard `_`.
     VarLen(u64, u64),
 }
 

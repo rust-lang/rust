@@ -445,6 +445,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat) -> Pat<'tcx> {
         let mut ty = self.tables.node_type(pat.hir_id);
 
+        if let ty::Error = ty.kind {
+            // Avoid ICEs (e.g., #50577 and #50585).
+            return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
+        }
+
         let kind = match pat.kind {
             hir::PatKind::Wild => PatKind::Wild,
 
@@ -544,57 +549,19 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Slice(ref prefix, ref slice, ref suffix) => {
-                match ty.kind {
-                    ty::Ref(_, ty, _) =>
-                        PatKind::Deref {
-                            subpattern: Pat {
-                                ty,
-                                span: pat.span,
-                                kind: Box::new(self.slice_or_array_pattern(
-                                    pat.span, ty, prefix, slice, suffix))
-                            },
-                        },
-                    ty::Slice(..) |
-                    ty::Array(..) =>
-                        self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix),
-                    ty::Error => { // Avoid ICE
-                        return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
-                    }
-                    _ =>
-                        span_bug!(
-                            pat.span,
-                            "unexpanded type for vector pattern: {:?}",
-                            ty),
-                }
+                self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
             }
 
-            hir::PatKind::Tuple(ref subpatterns, ddpos) => {
-                match ty.kind {
-                    ty::Tuple(ref tys) => {
-                        let subpatterns =
-                            subpatterns.iter()
-                                       .enumerate_and_adjust(tys.len(), ddpos)
-                                       .map(|(i, subpattern)| FieldPat {
-                                            field: Field::new(i),
-                                            pattern: self.lower_pattern(subpattern)
-                                       })
-                                       .collect();
-
-                        PatKind::Leaf { subpatterns }
-                    }
-                    ty::Error => { // Avoid ICE (#50577)
-                        return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
-                    }
+            hir::PatKind::Tuple(ref pats, ddpos) => {
+                let tys = match ty.kind {
+                    ty::Tuple(ref tys) => tys,
                     _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
-                }
+                };
+                let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
+                PatKind::Leaf { subpatterns }
             }
 
             hir::PatKind::Binding(_, id, ident, ref sub) => {
-                let var_ty = self.tables.node_type(pat.hir_id);
-                if let ty::Error = var_ty.kind {
-                    // Avoid ICE
-                    return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
-                };
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
                                                          .expect("missing binding mode");
                 let (mutability, mode) = match bm {
@@ -609,13 +576,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
+                let var_ty = ty;
                 if let ty::BindByReference(_) = bm {
                     if let ty::Ref(_, rty, _) = ty.kind {
                         ty = rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
                     }
-                }
+                };
 
                 PatKind::Binding {
                     mutability,
@@ -627,28 +595,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
             }
 
-            hir::PatKind::TupleStruct(ref qpath, ref subpatterns, ddpos) => {
+            hir::PatKind::TupleStruct(ref qpath, ref pats, ddpos) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let adt_def = match ty.kind {
                     ty::Adt(adt_def, _) => adt_def,
-                    ty::Error => { // Avoid ICE (#50585)
-                        return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
-                    }
-                    _ => span_bug!(pat.span,
-                                   "tuple struct pattern not applied to an ADT {:?}",
-                                   ty),
+                    _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty),
                 };
                 let variant_def = adt_def.variant_of_res(res);
-
-                let subpatterns =
-                        subpatterns.iter()
-                                   .enumerate_and_adjust(variant_def.fields.len(), ddpos)
-                                   .map(|(i, field)| FieldPat {
-                                       field: Field::new(i),
-                                       pattern: self.lower_pattern(field),
-                                   })
-                    .collect();
-
+                let subpatterns = self.lower_tuple_subpats(pats, variant_def.fields.len(), ddpos);
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 
@@ -668,11 +622,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 
-            hir::PatKind::Or(ref pats) => {
-                PatKind::Or {
-                    pats: pats.iter().map(|p| self.lower_pattern(p)).collect(),
-                }
-            }
+            hir::PatKind::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
         };
 
         Pat {
@@ -682,47 +632,27 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
     }
 
+    fn lower_tuple_subpats(
+        &mut self,
+        pats: &'tcx [P<hir::Pat>],
+        expected_len: usize,
+        gap_pos: Option<usize>,
+    ) -> Vec<FieldPat<'tcx>> {
+        pats.iter()
+            .enumerate_and_adjust(expected_len, gap_pos)
+            .map(|(i, subpattern)| FieldPat {
+                field: Field::new(i),
+                pattern: self.lower_pattern(subpattern)
+            })
+            .collect()
+    }
+
     fn lower_patterns(&mut self, pats: &'tcx [P<hir::Pat>]) -> Vec<Pat<'tcx>> {
         pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
-    fn lower_opt_pattern(&mut self, pat: &'tcx Option<P<hir::Pat>>) -> Option<Pat<'tcx>>
-    {
+    fn lower_opt_pattern(&mut self, pat: &'tcx Option<P<hir::Pat>>) -> Option<Pat<'tcx>> {
         pat.as_ref().map(|p| self.lower_pattern(p))
-    }
-
-    fn flatten_nested_slice_patterns(
-        &mut self,
-        prefix: Vec<Pat<'tcx>>,
-        slice: Option<Pat<'tcx>>,
-        suffix: Vec<Pat<'tcx>>)
-        -> (Vec<Pat<'tcx>>, Option<Pat<'tcx>>, Vec<Pat<'tcx>>)
-    {
-        let orig_slice = match slice {
-            Some(orig_slice) => orig_slice,
-            None => return (prefix, slice, suffix)
-        };
-        let orig_prefix = prefix;
-        let orig_suffix = suffix;
-
-        // dance because of intentional borrow-checker stupidity.
-        let kind = *orig_slice.kind;
-        match kind {
-            PatKind::Slice { prefix, slice, mut suffix } |
-            PatKind::Array { prefix, slice, mut suffix } => {
-                let mut orig_prefix = orig_prefix;
-
-                orig_prefix.extend(prefix);
-                suffix.extend(orig_suffix);
-
-                (orig_prefix, slice, suffix)
-            }
-            _ => {
-                (orig_prefix, Some(Pat {
-                    kind: box kind, ..orig_slice
-                }), orig_suffix)
-            }
-        }
     }
 
     fn slice_or_array_pattern(
@@ -731,31 +661,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         prefix: &'tcx [P<hir::Pat>],
         slice: &'tcx Option<P<hir::Pat>>,
-        suffix: &'tcx [P<hir::Pat>])
-        -> PatKind<'tcx>
-    {
+        suffix: &'tcx [P<hir::Pat>],
+    ) -> PatKind<'tcx> {
         let prefix = self.lower_patterns(prefix);
         let slice = self.lower_opt_pattern(slice);
         let suffix = self.lower_patterns(suffix);
-        let (prefix, slice, suffix) =
-            self.flatten_nested_slice_patterns(prefix, slice, suffix);
-
         match ty.kind {
-            ty::Slice(..) => {
-                // matching a slice or fixed-length array
-                PatKind::Slice { prefix: prefix, slice: slice, suffix: suffix }
-            }
-
+            // Matching a slice, `[T]`.
+            ty::Slice(..) => PatKind::Slice { prefix, slice, suffix },
+            // Fixed-length array, `[T; len]`.
             ty::Array(_, len) => {
-                // fixed-length array
                 let len = len.eval_usize(self.tcx, self.param_env);
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
-                PatKind::Array { prefix: prefix, slice: slice, suffix: suffix }
+                PatKind::Array { prefix, slice, suffix }
             }
-
-            _ => {
-                span_bug!(span, "bad slice pattern type {:?}", ty);
-            }
+            _ => span_bug!(span, "bad slice pattern type {:?}", ty),
         }
     }
 
