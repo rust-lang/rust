@@ -2,12 +2,10 @@ use crate::check::FnCtxt;
 use rustc::infer::InferOk;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 
-use syntax::symbol::sym;
 use syntax::util::parser::PREC_POSTFIX;
+use syntax_pos::symbol::sym;
 use syntax_pos::Span;
-use rustc::hir;
-use rustc::hir::Node;
-use rustc::hir::{print, lowering::is_range_literal};
+use rustc::hir::{self, Node, print, is_range_literal};
 use rustc::ty::{self, Ty, AssocItem};
 use rustc::ty::adjustment::AllowTwoPhase;
 use errors::{Applicability, DiagnosticBuilder};
@@ -466,7 +464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             hir::ExprKind::Cast(_, _) |
                             hir::ExprKind::Binary(_, _, _) => true,
                             // parenthesize borrows of range literals (Issue #54505)
-                            _ if is_range_literal(self.tcx.sess, expr) => true,
+                            _ if is_range_literal(self.tcx.sess.source_map(), expr) => true,
                             _ => false,
                         };
                         let sugg_expr = if needs_parens {
