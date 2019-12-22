@@ -214,7 +214,7 @@ fn default_hook(info: &PanicInfo<'_>) {
 
 #[cfg(not(test))]
 #[doc(hidden)]
-#[unstable(feature = "update_panic_count", issue = "0")]
+#[unstable(feature = "update_panic_count", issue = "none")]
 pub fn update_panic_count(amt: isize) -> usize {
     use crate::cell::Cell;
     thread_local! { static PANIC_COUNT: Cell<usize> = Cell::new(0) }
@@ -307,7 +307,7 @@ pub fn panicking() -> bool {
 /// the actual formatting into this shared place.
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",
-           issue = "0")]
+           issue = "none")]
 #[cold]
 // If panic_immediate_abort, inline the abort call,
 // otherwise avoid inlining because of it is cold path.
@@ -383,7 +383,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 /// arbitrary payloads, not just format strings.
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",
-           issue = "0")]
+           issue = "none")]
 #[cfg_attr(not(test), lang = "begin_panic")] // lang item for CTFE panic support
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible

@@ -723,7 +723,7 @@ impl fmt::Debug for StderrLock<'_> {
 #[unstable(feature = "set_stdio",
            reason = "this function may disappear completely or be replaced \
                      with a more general mechanism",
-           issue = "0")]
+           issue = "none")]
 #[doc(hidden)]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
@@ -746,7 +746,7 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 #[unstable(feature = "set_stdio",
            reason = "this function may disappear completely or be replaced \
                      with a more general mechanism",
-           issue = "0")]
+           issue = "none")]
 #[doc(hidden)]
 pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
@@ -795,7 +795,7 @@ where
 
 #[unstable(feature = "print_internals",
            reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
+           issue = "none")]
 #[doc(hidden)]
 #[cfg(not(test))]
 pub fn _print(args: fmt::Arguments<'_>) {
@@ -804,7 +804,7 @@ pub fn _print(args: fmt::Arguments<'_>) {
 
 #[unstable(feature = "print_internals",
            reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
+           issue = "none")]
 #[doc(hidden)]
 #[cfg(not(test))]
 pub fn _eprint(args: fmt::Arguments<'_>) {

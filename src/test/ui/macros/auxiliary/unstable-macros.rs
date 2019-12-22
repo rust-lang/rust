@@ -2,7 +2,7 @@
 #![feature(staged_api)]
 #![stable(feature = "unit_test", since = "1.0.0")]
 
-#[unstable(feature = "unstable_macros", issue = "0")]
+#[unstable(feature = "unstable_macros", issue = "none")]
 #[macro_export]
 macro_rules! unstable_macro{ () => () }
 
@@ -12,5 +12,5 @@ macro_rules! unstable_macro{ () => () }
 macro_rules! deprecated_macro{ () => () }
 
 // FIXME: Cannot use a `pub` macro 2.0 in a staged API crate due to reachability issues.
-// #[unstable(feature = "unstable_macros", issue = "0")]
+// #[unstable(feature = "unstable_macros", issue = "none")]
 // pub macro unstable_macro_modern() {}

@@ -45,7 +45,7 @@
 //! ```
 
 #![allow(non_camel_case_types)]
-#![unstable(feature = "thread_local_internals", issue = "0")]
+#![unstable(feature = "thread_local_internals", issue = "none")]
 #![allow(dead_code)] // sys isn't exported yet
 
 use crate::ptr;

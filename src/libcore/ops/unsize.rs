@@ -81,21 +81,21 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 ///     T: Unsize<U>,
 /// {}
 /// ```
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 #[lang = "dispatch_from_dyn"]
 pub trait DispatchFromDyn<T> {
     // Empty.
 }
 
 // &T -> &U
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
 // &mut T -> &mut U
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
 // *const T -> *const U
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
 // *mut T -> *mut U
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}

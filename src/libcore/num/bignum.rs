@@ -15,7 +15,7 @@
 #![unstable(
     feature = "core_private_bignum",
     reason = "internal routines only exposed for testing",
-    issue = "0"
+    issue = "none"
 )]
 #![macro_use]
 

@@ -205,7 +205,7 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for &T {}
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *const T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *mut T {}
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: UnwindSafe + ?Sized> UnwindSafe for Unique<T> {}
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for NonNull<T> {}

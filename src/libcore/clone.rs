@@ -150,7 +150,7 @@ pub macro Clone($item:item) {
 #[unstable(
     feature = "derive_clone_copy",
     reason = "deriving hack, should not be public",
-    issue = "0"
+    issue = "none"
 )]
 pub struct AssertParamIsClone<T: Clone + ?Sized> {
     _field: crate::marker::PhantomData<T>,
@@ -160,7 +160,7 @@ pub struct AssertParamIsClone<T: Clone + ?Sized> {
 #[unstable(
     feature = "derive_clone_copy",
     reason = "deriving hack, should not be public",
-    issue = "0"
+    issue = "none"
 )]
 pub struct AssertParamIsCopy<T: Copy + ?Sized> {
     _field: crate::marker::PhantomData<T>,

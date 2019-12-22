@@ -1,4 +1,4 @@
-#![unstable(feature = "process_internals", issue = "0")]
+#![unstable(feature = "process_internals", issue = "none")]
 
 use crate::collections::BTreeMap;
 use crate::env::split_paths;

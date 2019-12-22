@@ -1,4 +1,4 @@
-#![unstable(feature = "thread_local_internals", issue = "0")]
+#![unstable(feature = "thread_local_internals", issue = "none")]
 
 pub unsafe fn register_dtor(_t: *mut u8, _dtor: unsafe extern fn(*mut u8)) {
     // FIXME: right now there is no concept of "thread exit", but this is likely

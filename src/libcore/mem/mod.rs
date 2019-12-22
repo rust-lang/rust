@@ -121,7 +121,7 @@ pub fn forget<T>(t: T) {
 ///
 /// [`forget`]: fn.forget.html
 #[inline]
-#[unstable(feature = "forget_unsized", issue = "0")]
+#[unstable(feature = "forget_unsized", issue = "none")]
 pub fn forget_unsized<T: ?Sized>(t: T) {
     // SAFETY: the forget intrinsic could be safe, but there's no point in making it safe since
     // we'll be implementing this function soon via `ManuallyDrop`

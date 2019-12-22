@@ -799,7 +799,7 @@ pub(crate) mod builtin {
     /// Same as `format_args`, but adds a newline in the end.
     #[unstable(
         feature = "format_args_nl",
-        issue = "0",
+        issue = "none",
         reason = "`format_args_nl` is only for internal \
                   language use and is subject to change"
     )]

@@ -476,7 +476,7 @@ impl<T: ?Sized> Box<T> {
         Box::into_unique(b).into()
     }
 
-    #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_raw_non_null instead")]
+    #[unstable(feature = "ptr_internals", issue = "none", reason = "use into_raw_non_null instead")]
     #[inline]
     #[doc(hidden)]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
@@ -830,7 +830,7 @@ impl From<Box<str>> for Box<[u8]> {
     }
 }
 
-#[unstable(feature = "boxed_slice_try_from", issue = "0")]
+#[unstable(feature = "boxed_slice_try_from", issue = "none")]
 impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]>
 where
     [T; N]: LengthAtMost32,
@@ -946,7 +946,7 @@ impl<T: ?Sized> DerefMut for Box<T> {
     }
 }
 
-#[unstable(feature = "receiver_trait", issue = "0")]
+#[unstable(feature = "receiver_trait", issue = "none")]
 impl<T: ?Sized> Receiver for Box<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1040,7 +1040,7 @@ impl<A, F: Fn<A> + ?Sized> Fn<A> for Box<F> {
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T> {}
 
 #[stable(feature = "boxed_slice_from_iter", since = "1.32.0")]

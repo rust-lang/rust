@@ -786,7 +786,7 @@ impl<P: DerefMut<Target: Unpin>> DerefMut for Pin<P> {
     }
 }
 
-#[unstable(feature = "receiver_trait", issue = "0")]
+#[unstable(feature = "receiver_trait", issue = "none")]
 impl<P: Receiver> Receiver for Pin<P> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
