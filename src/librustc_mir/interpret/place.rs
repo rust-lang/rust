@@ -924,6 +924,10 @@ where
         }
         // We still require the sizes to match.
         if src.layout.size != dest.layout.size {
+            // FIXME: This should be an assert instead of an error, but if we transmute within an
+            // array length computation, `typeck` may not have yet been run and errored out. In fact
+            // most likey we *are* running `typeck` right now. Investigate whether we can bail out
+            // on `typeck_tables().has_errors` at all const eval entry points.
             error!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
             throw_unsup!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));
         }
