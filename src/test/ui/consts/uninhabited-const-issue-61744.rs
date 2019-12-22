@@ -1,4 +1,4 @@
-// compile-fail
+// build-fail
 
 pub const unsafe fn fake_type<T>() -> T {
     hint_unreachable()

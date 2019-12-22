@@ -1,95 +1,95 @@
 error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer type, found `bool`
-  --> $DIR/non-integer-atomic.rs:13:5
+  --> $DIR/non-integer-atomic.rs:15:5
    |
 LL |     intrinsics::atomic_load(p);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer type, found `bool`
-  --> $DIR/non-integer-atomic.rs:18:5
+  --> $DIR/non-integer-atomic.rs:20:5
    |
 LL |     intrinsics::atomic_store(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer type, found `bool`
-  --> $DIR/non-integer-atomic.rs:23:5
+  --> $DIR/non-integer-atomic.rs:25:5
    |
 LL |     intrinsics::atomic_xchg(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer type, found `bool`
-  --> $DIR/non-integer-atomic.rs:28:5
+  --> $DIR/non-integer-atomic.rs:30:5
    |
 LL |     intrinsics::atomic_cxchg(p, v, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer type, found `Foo`
-  --> $DIR/non-integer-atomic.rs:33:5
+  --> $DIR/non-integer-atomic.rs:35:5
    |
 LL |     intrinsics::atomic_load(p);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer type, found `Foo`
-  --> $DIR/non-integer-atomic.rs:38:5
+  --> $DIR/non-integer-atomic.rs:40:5
    |
 LL |     intrinsics::atomic_store(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer type, found `Foo`
-  --> $DIR/non-integer-atomic.rs:43:5
+  --> $DIR/non-integer-atomic.rs:45:5
    |
 LL |     intrinsics::atomic_xchg(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer type, found `Foo`
-  --> $DIR/non-integer-atomic.rs:48:5
+  --> $DIR/non-integer-atomic.rs:50:5
    |
 LL |     intrinsics::atomic_cxchg(p, v, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer type, found `&dyn std::ops::Fn()`
-  --> $DIR/non-integer-atomic.rs:53:5
+  --> $DIR/non-integer-atomic.rs:55:5
    |
 LL |     intrinsics::atomic_load(p);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer type, found `&dyn std::ops::Fn()`
-  --> $DIR/non-integer-atomic.rs:58:5
+  --> $DIR/non-integer-atomic.rs:60:5
    |
 LL |     intrinsics::atomic_store(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer type, found `&dyn std::ops::Fn()`
-  --> $DIR/non-integer-atomic.rs:63:5
+  --> $DIR/non-integer-atomic.rs:65:5
    |
 LL |     intrinsics::atomic_xchg(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer type, found `&dyn std::ops::Fn()`
-  --> $DIR/non-integer-atomic.rs:68:5
+  --> $DIR/non-integer-atomic.rs:70:5
    |
 LL |     intrinsics::atomic_cxchg(p, v, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer type, found `[u8; 100]`
-  --> $DIR/non-integer-atomic.rs:73:5
+  --> $DIR/non-integer-atomic.rs:75:5
    |
 LL |     intrinsics::atomic_load(p);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer type, found `[u8; 100]`
-  --> $DIR/non-integer-atomic.rs:78:5
+  --> $DIR/non-integer-atomic.rs:80:5
    |
 LL |     intrinsics::atomic_store(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer type, found `[u8; 100]`
-  --> $DIR/non-integer-atomic.rs:83:5
+  --> $DIR/non-integer-atomic.rs:85:5
    |
 LL |     intrinsics::atomic_xchg(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer type, found `[u8; 100]`
-  --> $DIR/non-integer-atomic.rs:88:5
+  --> $DIR/non-integer-atomic.rs:90:5
    |
 LL |     intrinsics::atomic_cxchg(p, v, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

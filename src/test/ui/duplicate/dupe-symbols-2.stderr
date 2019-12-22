@@ -1,5 +1,5 @@
 error: symbol `fail` is already defined
-  --> $DIR/dupe-symbols-2.rs:13:5
+  --> $DIR/dupe-symbols-2.rs:15:5
    |
 LL | /     pub extern fn fail() {
 LL | |

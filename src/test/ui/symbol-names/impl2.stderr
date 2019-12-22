@@ -1,5 +1,5 @@
 error: def-path(<[u8; _] as Foo>::baz)
-  --> $DIR/impl2.rs:9:5
+  --> $DIR/impl2.rs:11:5
    |
 LL |     #[rustc_def_path]
    |     ^^^^^^^^^^^^^^^^^

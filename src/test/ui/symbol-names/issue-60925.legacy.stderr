@@ -1,17 +1,17 @@
 error: symbol-name(_ZN11issue_609253foo37Foo$LT$issue_60925..llv$u6d$..Foo$GT$3foo17hc86312d25b60f6eeE)
-  --> $DIR/issue-60925.rs:21:9
+  --> $DIR/issue-60925.rs:22:9
    |
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo::hc86312d25b60f6ee)
-  --> $DIR/issue-60925.rs:21:9
+  --> $DIR/issue-60925.rs:22:9
    |
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo)
-  --> $DIR/issue-60925.rs:21:9
+  --> $DIR/issue-60925.rs:22:9
    |
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^

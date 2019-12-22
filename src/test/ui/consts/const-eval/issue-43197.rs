@@ -1,3 +1,5 @@
+// build-fail
+
 #![warn(const_err)]
 
 const fn foo(x: u32) -> u32 {

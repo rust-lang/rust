@@ -1,3 +1,4 @@
+// build-fail
 // compile-flags: -C overflow-checks=on -O
 
 #![deny(const_err)]

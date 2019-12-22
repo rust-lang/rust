@@ -1,3 +1,5 @@
+// build-fail
+
 #![feature(repr_simd, platform_intrinsics, rustc_attrs)]
 
 #[repr(simd)]

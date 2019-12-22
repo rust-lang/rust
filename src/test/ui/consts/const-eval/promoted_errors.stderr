@@ -1,47 +1,47 @@
 error: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:7:14
+  --> $DIR/promoted_errors.rs:8:14
    |
 LL |     let _x = 0u32 - 1;
    |              ^^^^^^^^ attempt to subtract with overflow
    |
 note: lint level defined here
-  --> $DIR/promoted_errors.rs:3:9
+  --> $DIR/promoted_errors.rs:4:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:9:20
+  --> $DIR/promoted_errors.rs:10:20
    |
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^
 
 error: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:9:20
+  --> $DIR/promoted_errors.rs:10:20
    |
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^ dividing by zero
 
 error: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:12:14
+  --> $DIR/promoted_errors.rs:13:14
    |
 LL |     let _x = 1/(1-1);
    |              ^^^^^^^
 
 error: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:14:20
+  --> $DIR/promoted_errors.rs:15:20
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^
 
 error: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:14:20
+  --> $DIR/promoted_errors.rs:15:20
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^ dividing by zero
 
 error: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:17:14
+  --> $DIR/promoted_errors.rs:18:14
    |
 LL |     let _x = 1/(false as u32);
    |              ^^^^^^^^^^^^^^^^

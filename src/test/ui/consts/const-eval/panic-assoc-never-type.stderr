@@ -1,20 +1,20 @@
 warning: any use of this value will cause an error
-  --> $DIR/panic-assoc-never-type.rs:9:21
+  --> $DIR/panic-assoc-never-type.rs:11:21
    |
 LL |     const VOID: ! = panic!();
    |     ----------------^^^^^^^^-
    |                     |
-   |                     the evaluated program panicked at 'explicit panic', $DIR/panic-assoc-never-type.rs:9:21
+   |                     the evaluated program panicked at 'explicit panic', $DIR/panic-assoc-never-type.rs:11:21
    |
 note: lint level defined here
-  --> $DIR/panic-assoc-never-type.rs:2:9
+  --> $DIR/panic-assoc-never-type.rs:4:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
    = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0080]: erroneous constant used
-  --> $DIR/panic-assoc-never-type.rs:14:13
+  --> $DIR/panic-assoc-never-type.rs:16:13
    |
 LL |     let _ = PrintName::VOID;
    |             ^^^^^^^^^^^^^^^ referenced constant has errors

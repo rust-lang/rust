@@ -1,3 +1,5 @@
+// build-fail
+
 //
 // error-pattern: entry symbol `main` defined multiple times
 

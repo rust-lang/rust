@@ -1,5 +1,5 @@
 warning: any use of this value will cause an error
-  --> $DIR/index-out-of-bounds-never-type.rs:8:61
+  --> $DIR/index-out-of-bounds-never-type.rs:10:61
    |
 LL |     const VOID: ! = { let x = 0 * std::mem::size_of::<T>(); [][x] };
    |     --------------------------------------------------------^^^^^---
@@ -7,13 +7,13 @@ LL |     const VOID: ! = { let x = 0 * std::mem::size_of::<T>(); [][x] };
    |                                                             index out of bounds: the len is 0 but the index is 0
    |
 note: lint level defined here
-  --> $DIR/index-out-of-bounds-never-type.rs:2:9
+  --> $DIR/index-out-of-bounds-never-type.rs:4:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 error: erroneous constant encountered
-  --> $DIR/index-out-of-bounds-never-type.rs:13:13
+  --> $DIR/index-out-of-bounds-never-type.rs:15:13
    |
 LL |     let _ = PrintName::<T>::VOID;
    |             ^^^^^^^^^^^^^^^^^^^^

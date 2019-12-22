@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use log::*;
 
-use crate::common::{self, CompareMode, Config, Mode, PassMode};
+use crate::common::{self, CompareMode, Config, Mode, PassMode, FailMode};
 use crate::util;
 use crate::extract_gdb_version;
 
@@ -366,6 +366,8 @@ pub struct TestProps {
     pass_mode: Option<PassMode>,
     // Ignore `--pass` overrides from the command line for this test.
     ignore_pass: bool,
+    // How far this test should proceed to start failing.
+    pub fail_mode: Option<FailMode>,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
     // Do not pass `-Z ui-testing` to UI tests
@@ -411,6 +413,7 @@ impl TestProps {
             forbid_output: vec![],
             incremental_dir: None,
             pass_mode: None,
+            fail_mode: None,
             ignore_pass: false,
             check_test_line_numbers_match: false,
             disable_ui_testing_normalization: false,
@@ -437,6 +440,13 @@ impl TestProps {
     pub fn from_file(testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
         props.load_from(testfile, cfg, config);
+
+        match (props.pass_mode, props.fail_mode) {
+            (None, None) => props.fail_mode = Some(FailMode::Check),
+            (Some(_), None) | (None, Some(_)) => {}
+            (Some(_), Some(_)) => panic!("cannot use a *-fail and *-pass mode together"),
+        }
+
         props
     }
 
@@ -548,6 +558,7 @@ impl TestProps {
             }
 
             self.update_pass_mode(ln, cfg, config);
+            self.update_fail_mode(ln, config);
 
             if !self.ignore_pass {
                 self.ignore_pass = config.parse_ignore_pass(ln);
@@ -602,6 +613,29 @@ impl TestProps {
         }
     }
 
+    fn update_fail_mode(&mut self, ln: &str, config: &Config) {
+        let check_ui = |mode: &str| if config.mode != Mode::Ui {
+            panic!("`{}-fail` header is only supported in UI tests", mode);
+        };
+        let fail_mode = if config.parse_name_directive(ln, "check-fail") {
+            check_ui("check");
+            Some(FailMode::Check)
+        } else if config.parse_name_directive(ln, "build-fail") {
+            check_ui("build");
+            Some(FailMode::Build)
+        } else if config.parse_name_directive(ln, "run-fail") {
+            check_ui("run");
+            Some(FailMode::Run)
+        } else {
+            None
+        };
+        match (self.fail_mode, fail_mode) {
+            (None, Some(_)) => self.fail_mode = fail_mode,
+            (Some(_), Some(_)) => panic!("multiple `*-fail` headers in a single test"),
+            (_, None) => {}
+        }
+    }
+
     fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
         let check_no_run = |s| {
             if config.mode != Mode::Ui && config.mode != Mode::Incremental {
@@ -624,11 +658,6 @@ impl TestProps {
                 panic!("`run-pass` header is only supported in UI tests")
             }
             Some(PassMode::Run)
-        } else if config.parse_name_directive(ln, "run-fail") {
-            if config.mode != Mode::Ui {
-                panic!("`run-fail` header is only supported in UI tests")
-            }
-            Some(PassMode::RunFail)
         } else {
             None
         };
@@ -640,7 +669,7 @@ impl TestProps {
     }
 
     pub fn pass_mode(&self, config: &Config) -> Option<PassMode> {
-        if !self.ignore_pass {
+        if !self.ignore_pass && self.fail_mode.is_none() && config.mode == Mode::Ui {
             if let (mode @ Some(_), Some(_)) = (config.force_pass_mode, self.pass_mode) {
                 return mode;
             }

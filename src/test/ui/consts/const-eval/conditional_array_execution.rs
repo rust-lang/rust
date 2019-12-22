@@ -1,3 +1,5 @@
+// build-fail
+
 #![warn(const_err)]
 
 const X: u32 = 5;

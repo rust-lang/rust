@@ -1,3 +1,4 @@
+// build-fail
 // aux-build:panic-runtime-unwind.rs
 // aux-build:panic-runtime-abort.rs
 // aux-build:wants-panic-runtime-unwind.rs

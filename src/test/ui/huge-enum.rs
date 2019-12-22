@@ -1,3 +1,4 @@
+// build-fail
 // normalize-stderr-test "std::option::Option<\[u32; \d+\]>" -> "TYPE"
 // normalize-stderr-test "\[u32; \d+\]" -> "TYPE"
 

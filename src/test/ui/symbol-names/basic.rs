@@ -1,3 +1,4 @@
+// build-fail
 // revisions: legacy v0
 //[legacy]compile-flags: -Z symbol-mangling-version=legacy
     //[v0]compile-flags: -Z symbol-mangling-version=v0

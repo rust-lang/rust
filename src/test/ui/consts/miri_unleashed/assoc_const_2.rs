@@ -1,3 +1,5 @@
+// build-fail
+
 #![allow(const_err)]
 
 // a test demonstrating that const qualification cannot prevent monomorphization time errors

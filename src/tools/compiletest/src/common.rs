@@ -100,7 +100,6 @@ pub enum PassMode {
     Check,
     Build,
     Run,
-    RunFail,
 }
 
 impl FromStr for PassMode {
@@ -121,10 +120,16 @@ impl fmt::Display for PassMode {
             PassMode::Check => "check",
             PassMode::Build => "build",
             PassMode::Run => "run",
-            PassMode::RunFail => "run-fail",
         };
         fmt::Display::fmt(s, f)
     }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+pub enum FailMode {
+    Check,
+    Build,
+    Run,
 }
 
 #[derive(Clone, Debug, PartialEq)]
