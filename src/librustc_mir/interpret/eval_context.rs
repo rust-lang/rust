@@ -769,6 +769,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env
         };
         let val = self.tcx.const_eval(param_env.and(gid))?;
+        // Even though `ecx.const_eval` is called from `eval_const_to_op` we can never have a
+        // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
+        // return `ConstValue::Unevaluated`, which is the only way that `eval_const_to_op` will call
+        // `ecx.const_eval`.
         self.eval_const_to_op(val, None)
     }
 
