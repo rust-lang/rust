@@ -39,6 +39,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
+use rustc_session::parse::feature_err;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -737,19 +738,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err_code: &'static str,
         expr_span: &Span,
     ) {
-        if !lhs.is_syntactic_place_expr() {
-            // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
-            let mut err = self.tcx.sess.struct_span_err_with_code(
-                *expr_span,
-                "invalid left-hand side of assignment",
-                DiagnosticId::Error(err_code.into()),
-            );
-            err.span_label(lhs.span, "cannot assign to this expression");
-            if self.is_destructuring_place_expr(lhs) {
-                err.note("destructuring assignments are not currently supported");
-                err.note("for more information, see https://github.com/rust-lang/rfcs/issues/372");
+        if lhs.is_syntactic_place_expr() {
+            return;
+        }
+
+        let da = self.is_destructuring_place_expr(lhs);
+        match (da, self.tcx.features().destructuring_assignment) {
+            // Valid destructuring assignment.
+            (true, true) => {}
+
+            // Destructuring assignment, but the feature is not enabled.
+            (true, false) => {
+                feature_err(
+                    &self.tcx.sess.parse_sess,
+                    sym::destructuring_assignment,
+                    *expr_span,
+                    "destructuring assignments are unstable",
+                )
+                .emit();
             }
-            err.emit();
+
+            // Invalid assignment.
+            (false, _) => {
+                // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
+                let mut err = self.tcx.sess.struct_span_err_with_code(
+                    *expr_span,
+                    "invalid left-hand side of assignment",
+                    DiagnosticId::Error(err_code.into()),
+                );
+                err.span_label(lhs.span, "cannot assign to this expression");
+                err.emit();
+            }
         }
     }
 

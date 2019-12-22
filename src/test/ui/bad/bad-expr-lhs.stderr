@@ -22,16 +22,13 @@ LL |     (1, 2) = (3, 4);
    |     |
    |     cannot assign to this expression
 
-error[E0070]: invalid left-hand side of assignment
+error[E0658]: destructuring assignments are unstable
   --> $DIR/bad-expr-lhs.rs:7:12
    |
 LL |     (a, b) = (3, 4);
-   |     ------ ^
-   |     |
-   |     cannot assign to this expression
+   |            ^
    |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/bad-expr-lhs.rs:9:10
@@ -43,5 +40,5 @@ LL |     None = Some(3);
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0067, E0070.
+Some errors have detailed explanations: E0067, E0070, E0658.
 For more information about an error, try `rustc --explain E0067`.

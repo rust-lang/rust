@@ -4,7 +4,7 @@ fn main() {
     (1, 2) = (3, 4); //~ ERROR invalid left-hand side of assignment
 
     let (a, b) = (1, 2);
-    (a, b) = (3, 4); //~ ERROR invalid left-hand side of assignment
+    (a, b) = (3, 4); //~ ERROR destructuring assignments are unstable
 
     None = Some(3); //~ ERROR invalid left-hand side of assignment
 }
