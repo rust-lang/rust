@@ -15,7 +15,7 @@ use crate::ptr;
 /// (e.g., `collections::HashMap` uses it by default).
 ///
 /// See: <https://131002.net/siphash>
-#[unstable(feature = "hashmap_internals", issue = "0")]
+#[unstable(feature = "hashmap_internals", issue = "none")]
 #[rustc_deprecated(
     since = "1.13.0",
     reason = "use `std::collections::hash_map::DefaultHasher` instead"
@@ -29,7 +29,7 @@ pub struct SipHasher13 {
 /// An implementation of SipHash 2-4.
 ///
 /// See: <https://131002.net/siphash/>
-#[unstable(feature = "hashmap_internals", issue = "0")]
+#[unstable(feature = "hashmap_internals", issue = "none")]
 #[rustc_deprecated(
     since = "1.13.0",
     reason = "use `std::collections::hash_map::DefaultHasher` instead"
@@ -172,7 +172,7 @@ impl SipHasher {
 impl SipHasher13 {
     /// Creates a new `SipHasher13` with the two initial keys set to 0.
     #[inline]
-    #[unstable(feature = "hashmap_internals", issue = "0")]
+    #[unstable(feature = "hashmap_internals", issue = "none")]
     #[rustc_deprecated(
         since = "1.13.0",
         reason = "use `std::collections::hash_map::DefaultHasher` instead"
@@ -183,7 +183,7 @@ impl SipHasher13 {
 
     /// Creates a `SipHasher13` that is keyed off the provided keys.
     #[inline]
-    #[unstable(feature = "hashmap_internals", issue = "0")]
+    #[unstable(feature = "hashmap_internals", issue = "none")]
     #[rustc_deprecated(
         since = "1.13.0",
         reason = "use `std::collections::hash_map::DefaultHasher` instead"
@@ -264,7 +264,7 @@ impl super::Hasher for SipHasher {
     }
 }
 
-#[unstable(feature = "hashmap_internals", issue = "0")]
+#[unstable(feature = "hashmap_internals", issue = "none")]
 impl super::Hasher for SipHasher13 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {

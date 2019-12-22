@@ -205,7 +205,7 @@ fn default_alloc_error_hook(layout: Layout) {
 #[cfg(not(test))]
 #[doc(hidden)]
 #[alloc_error_handler]
-#[unstable(feature = "alloc_internals", issue = "0")]
+#[unstable(feature = "alloc_internals", issue = "none")]
 pub fn rust_oom(layout: Layout) -> ! {
     let hook = HOOK.load(Ordering::SeqCst);
     let hook: fn(Layout) = if hook.is_null() {
@@ -220,7 +220,7 @@ pub fn rust_oom(layout: Layout) -> ! {
 #[cfg(not(test))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
-#[unstable(feature = "alloc_internals", issue = "0")]
+#[unstable(feature = "alloc_internals", issue = "none")]
 pub mod __default_lib_allocator {
     use super::{System, Layout, GlobalAlloc};
     // These magic symbol names are used as a fallback for implementing the

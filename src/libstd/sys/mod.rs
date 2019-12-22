@@ -69,7 +69,7 @@ cfg_if::cfg_if! {
         // On CloudABI and wasm right now the module below doesn't compile
         // (missing things in `libc` which is empty) so just omit everything
         // with an empty module
-        #[unstable(issue = "0", feature = "std_internals")]
+        #[unstable(issue = "none", feature = "std_internals")]
         #[allow(missing_docs)]
         pub mod unix_ext {}
     } else {
@@ -92,7 +92,7 @@ cfg_if::cfg_if! {
                         all(target_vendor = "fortanix", target_env = "sgx")))] {
         // On CloudABI and wasm right now the shim below doesn't compile, so
         // just omit it
-        #[unstable(issue = "0", feature = "std_internals")]
+        #[unstable(issue = "none", feature = "std_internals")]
         #[allow(missing_docs)]
         pub mod windows_ext {}
     } else {

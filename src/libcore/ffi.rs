@@ -38,14 +38,14 @@ pub enum c_void {
     #[unstable(
         feature = "c_void_variant",
         reason = "temporary implementation detail",
-        issue = "0"
+        issue = "none"
     )]
     #[doc(hidden)]
     __variant1,
     #[unstable(
         feature = "c_void_variant",
         reason = "temporary implementation detail",
-        issue = "0"
+        issue = "none"
     )]
     #[doc(hidden)]
     __variant2,

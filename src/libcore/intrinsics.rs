@@ -33,7 +33,7 @@
             reason = "intrinsics are unlikely to ever be stabilized, instead \
                       they should be used through stabilized interfaces \
                       in the rest of the standard library",
-            issue = "0")]
+            issue = "none")]
 #![allow(missing_docs)]
 
 use crate::mem;
@@ -709,7 +709,7 @@ extern "rust-intrinsic" {
                reason = "intrinsics are unlikely to ever be stabilized, instead \
                          they should be used through stabilized interfaces \
                          in the rest of the standard library",
-               issue = "0")]
+               issue = "none")]
     #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned",
                        since = "1.38.0")]
     pub fn init<T>() -> T;
@@ -725,7 +725,7 @@ extern "rust-intrinsic" {
                reason = "intrinsics are unlikely to ever be stabilized, instead \
                          they should be used through stabilized interfaces \
                          in the rest of the standard library",
-               issue = "0")]
+               issue = "none")]
     #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned",
                        since = "1.38.0")]
     pub fn uninit<T>() -> T;

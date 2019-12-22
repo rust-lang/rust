@@ -1,5 +1,5 @@
 #![cfg(target_thread_local)]
-#![unstable(feature = "thread_local_internals", issue = "0")]
+#![unstable(feature = "thread_local_internals", issue = "none")]
 
 // Since what appears to be glibc 2.18 this symbol has been shipped which
 // GCC and clang both use to invoke destructors in thread_local globals, so

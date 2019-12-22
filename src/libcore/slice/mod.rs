@@ -38,7 +38,7 @@ use crate::ptr;
 use crate::mem;
 use crate::marker::{Copy, Send, Sync, Sized, self};
 
-#[unstable(feature = "slice_internals", issue = "0",
+#[unstable(feature = "slice_internals", issue = "none",
            reason = "exposed from core to be reused in std; use the memchr crate")]
 /// Pure rust memchr implementation, taken from rust-memchr
 pub mod memchr;
@@ -2723,12 +2723,12 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
 
     /// Returns a shared reference to the output at this location, if in
     /// bounds.
-    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[unstable(feature = "slice_index_methods", issue = "none")]
     fn get(self, slice: &T) -> Option<&Self::Output>;
 
     /// Returns a mutable reference to the output at this location, if in
     /// bounds.
-    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[unstable(feature = "slice_index_methods", issue = "none")]
     fn get_mut(self, slice: &mut T) -> Option<&mut Self::Output>;
 
     /// Returns a shared reference to the output at this location, without
@@ -2736,7 +2736,7 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
     /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
-    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[unstable(feature = "slice_index_methods", issue = "none")]
     unsafe fn get_unchecked(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, without
@@ -2744,17 +2744,17 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
     /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
-    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[unstable(feature = "slice_index_methods", issue = "none")]
     unsafe fn get_unchecked_mut(self, slice: &mut T) -> &mut Self::Output;
 
     /// Returns a shared reference to the output at this location, panicking
     /// if out of bounds.
-    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[unstable(feature = "slice_index_methods", issue = "none")]
     fn index(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, panicking
     /// if out of bounds.
-    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[unstable(feature = "slice_index_methods", issue = "none")]
     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
 }
 
@@ -5382,7 +5382,7 @@ pub fn from_mut<T>(s: &mut T) -> &mut [T] {
 }
 
 // This function is public only because there is no other way to unit test heapsort.
-#[unstable(feature = "sort_internals", reason = "internal to sort module", issue = "0")]
+#[unstable(feature = "sort_internals", reason = "internal to sort module", issue = "none")]
 #[doc(hidden)]
 pub fn heapsort<T, F>(v: &mut [T], mut is_less: F)
     where F: FnMut(&T, &T) -> bool

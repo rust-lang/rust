@@ -90,7 +90,7 @@ use crate::marker;
 #[allow(deprecated)]
 pub use self::sip::SipHasher;
 
-#[unstable(feature = "hashmap_internals", issue = "0")]
+#[unstable(feature = "hashmap_internals", issue = "none")]
 #[allow(deprecated)]
 #[doc(hidden)]
 pub use self::sip::SipHasher13;

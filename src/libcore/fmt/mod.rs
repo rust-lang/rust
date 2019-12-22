@@ -35,7 +35,7 @@ pub enum Alignment {
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "0")]
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 #[doc(hidden)]
 pub mod rt {
     pub mod v1;
@@ -259,7 +259,7 @@ struct Void {
 /// types, and then this struct is used to canonicalize arguments to one type.
 #[derive(Copy, Clone)]
 #[allow(missing_debug_implementations)]
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "0")]
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 #[doc(hidden)]
 pub struct ArgumentV1<'a> {
     value: &'a Void,
@@ -273,13 +273,13 @@ impl<'a> ArgumentV1<'a> {
     }
 
     #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "0")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
         unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
     }
 
     #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "0")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
         ArgumentV1::new(x, ArgumentV1::show_usize)
     }
@@ -309,7 +309,7 @@ impl<'a> Arguments<'a> {
     /// Arguments structure.
     #[doc(hidden)]
     #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "0")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new_v1(pieces: &'a [&'a str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments { pieces, fmt: None, args }
     }
@@ -322,7 +322,7 @@ impl<'a> Arguments<'a> {
     /// unsafety, but will ignore invalid .
     #[doc(hidden)]
     #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "0")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new_v1_formatted(
         pieces: &'a [&'a str],
         args: &'a [ArgumentV1<'a>],
@@ -337,7 +337,7 @@ impl<'a> Arguments<'a> {
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[doc(hidden)]
     #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "0")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn estimated_capacity(&self) -> usize {
         let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
 

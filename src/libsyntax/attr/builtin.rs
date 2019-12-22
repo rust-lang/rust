@@ -376,11 +376,11 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     match (feature, reason, issue) {
                         (Some(feature), reason, Some(issue)) => {
                             let issue = match &*issue.as_str() {
-                                // FIXME(rossmacarthur): remove "0" because "none" should be used
-                                // See #41260
-                                "none" | "0" => None,
+                                "none" => None,
                                 issue => {
                                     if let Ok(num) = issue.parse() {
+                                        // FIXME(rossmacarthur): disallow 0
+                                        // Disallowing this requires updates to some submodules
                                         NonZeroU32::new(num)
                                     } else {
                                         span_err!(

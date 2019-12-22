@@ -89,7 +89,7 @@ mod non_null;
 pub use non_null::NonNull;
 
 mod unique;
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "ptr_internals", issue = "none")]
 pub use unique::Unique;
 
 mod const_ptr;
