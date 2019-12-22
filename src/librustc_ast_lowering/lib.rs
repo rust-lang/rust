@@ -32,45 +32,47 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
-use crate::arena::Arena;
-use crate::dep_graph::DepGraph;
-use crate::hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
-use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
-use crate::hir::map::{DefKey, DefPathData, Definitions};
-use crate::hir::{self, ParamName};
-use crate::hir::{ConstArg, GenericArg};
-use crate::lint;
-use crate::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
-use crate::middle::cstore::CrateStore;
-use crate::session::config::nightly_options;
-use crate::session::Session;
-use crate::util::captures::Captures;
-use crate::util::common::FN_OUTPUT_NAME;
-use crate::util::nodemap::{DefIdMap, NodeMap};
-use errors::Applicability;
+#![feature(array_value_iter)]
+
+use rustc::arena::Arena;
+use rustc::dep_graph::DepGraph;
+use rustc::hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
+use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::map::{DefKey, DefPathData, Definitions};
+use rustc::hir::{self, ConstArg, GenericArg, ParamName};
+use rustc::lint;
+use rustc::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
+use rustc::middle::cstore::CrateStore;
+use rustc::session::config::nightly_options;
+use rustc::session::Session;
+use rustc::util::captures::Captures;
+use rustc::util::common::FN_OUTPUT_NAME;
+use rustc::util::nodemap::{DefIdMap, NodeMap};
+use rustc::{bug, span_bug};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
+use rustc_error_codes::*;
+use rustc_errors::Applicability;
 use rustc_index::vec::IndexVec;
-
-use smallvec::SmallVec;
-use std::collections::BTreeMap;
-use std::mem;
+use rustc_span::hygiene::ExpnId;
+use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind, Spanned};
+use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::Span;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::attr;
-use syntax::errors;
 use syntax::print::pprust;
 use syntax::ptr::P as AstP;
 use syntax::sess::ParseSess;
-use syntax::source_map::{respan, DesugaringKind, ExpnData, ExpnKind, Spanned};
-use syntax::symbol::{kw, sym, Symbol};
 use syntax::token::{self, Nonterminal, Token};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::visit::{self, Visitor};
-use syntax_pos::hygiene::ExpnId;
-use syntax_pos::Span;
+use syntax::{help, struct_span_err, walk_list};
 
-use rustc_error_codes::*;
+use log::{debug, trace};
+use smallvec::{smallvec, SmallVec};
+use std::collections::BTreeMap;
+use std::mem;
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => ({
@@ -84,7 +86,7 @@ mod item;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
-pub struct LoweringContext<'a, 'hir: 'a> {
+struct LoweringContext<'a, 'hir: 'a> {
     crate_root: Option<Symbol>,
 
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
@@ -235,13 +237,13 @@ enum ImplTraitPosition {
     Other,
 }
 
-impl<'b, 'a> ImplTraitContext<'b, 'a> {
+impl<'a> ImplTraitContext<'_, 'a> {
     #[inline]
     fn disallowed() -> Self {
         ImplTraitContext::Disallowed(ImplTraitPosition::Other)
     }
 
-    fn reborrow(&'c mut self) -> ImplTraitContext<'c, 'a> {
+    fn reborrow<'this>(&'this mut self) -> ImplTraitContext<'this, 'a> {
         use self::ImplTraitContext::*;
         match self {
             Universal(params) => Universal(params),
@@ -372,8 +374,8 @@ struct ImplTraitTypeIdVisitor<'a> {
     ids: &'a mut SmallVec<[NodeId; 1]>,
 }
 
-impl<'a, 'b> Visitor<'a> for ImplTraitTypeIdVisitor<'b> {
-    fn visit_ty(&mut self, ty: &'a Ty) {
+impl Visitor<'_> for ImplTraitTypeIdVisitor<'_> {
+    fn visit_ty(&mut self, ty: &Ty) {
         match ty.kind {
             TyKind::Typeof(_) | TyKind::BareFn(_) => return,
 
@@ -383,7 +385,7 @@ impl<'a, 'b> Visitor<'a> for ImplTraitTypeIdVisitor<'b> {
         visit::walk_ty(self, ty);
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment) {
+    fn visit_path_segment(&mut self, path_span: Span, path_segment: &PathSegment) {
         if let Some(ref p) = path_segment.args {
             if let GenericArgs::Parenthesized(_) = **p {
                 return;
@@ -687,7 +689,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_import_res(id).present_items()
     }
 
-    fn diagnostic(&self) -> &errors::Handler {
+    fn diagnostic(&self) -> &rustc_errors::Handler {
         self.sess.diagnostic()
     }
 
@@ -3288,7 +3290,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 }
 
-fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'hir>>) -> Vec<hir::BodyId> {
+fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'_>>) -> Vec<hir::BodyId> {
     // Sorting by span ensures that we get things in order within a
     // file, and also puts the files in a sensible order.
     let mut body_ids: Vec<_> = bodies.keys().cloned().collect();
@@ -3303,7 +3305,7 @@ struct GenericArgsCtor<'hir> {
     parenthesized: bool,
 }
 
-impl GenericArgsCtor<'hir> {
+impl<'hir> GenericArgsCtor<'hir> {
     fn is_empty(&self) -> bool {
         self.args.is_empty() && self.bindings.is_empty() && !self.parenthesized
     }

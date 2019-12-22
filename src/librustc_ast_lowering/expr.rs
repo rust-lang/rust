@@ -1,16 +1,16 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
-use crate::hir;
-use crate::hir::def::Res;
 
+use rustc::bug;
+use rustc::hir;
+use rustc::hir::def::Res;
 use rustc_data_structures::thin_vec::ThinVec;
-
+use rustc_error_codes::*;
+use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
+use rustc_span::symbol::{sym, Symbol};
 use syntax::ast::*;
 use syntax::attr;
 use syntax::ptr::P as AstP;
-use syntax::source_map::{respan, DesugaringKind, Span, Spanned};
-use syntax::symbol::{sym, Symbol};
-
-use rustc_error_codes::*;
+use syntax::{span_err, struct_span_err};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -836,8 +836,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_label(&mut self, label: Option<Label>) -> Option<hir::Label> {
-        label.map(|label| hir::Label { ident: label.ident })
+    fn lower_label(&mut self, label: Option<Label>) -> Option<Label> {
+        label.map(|label| Label { ident: label.ident })
     }
 
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
