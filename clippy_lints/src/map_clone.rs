@@ -69,8 +69,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
-                                if ident_eq(name, inner) && !cx.tables.expr_ty(inner).is_box() {
-                                    lint(cx, e.span, args[0].span, true);
+                                if ident_eq(name, inner) {
+                                    if let ty::Ref(..) = cx.tables.expr_ty(inner).kind {
+                                        lint(cx, e.span, args[0].span, true);
+                                    }
                                 }
                             },
                             hir::ExprKind::MethodCall(ref method, _, ref obj) => {

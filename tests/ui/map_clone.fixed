@@ -23,4 +23,14 @@ fn main() {
 
     // Issue #498
     let _ = std::env::args();
+
+    // Issue #4824 item types that aren't references
+    {
+        use std::rc::Rc;
+
+        let o: Option<Rc<u32>> = Some(Rc::new(0_u32));
+        let _: Option<u32> = o.map(|x| *x);
+        let v: Vec<Rc<u32>> = vec![Rc::new(0_u32)];
+        let _: Vec<u32> = v.into_iter().map(|x| *x).collect();
+    }
 }
