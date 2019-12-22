@@ -9,7 +9,7 @@ pub struct Pointer {
 }
 
 #[derive(Copy, Clone, Debug)]
-enum PointerBase {
+pub enum PointerBase {
     Addr(Value),
     Stack(StackSlot),
 }
@@ -35,6 +35,10 @@ impl Pointer {
             base: PointerBase::Addr(addr),
             offset: Offset32::new(0),
         }
+    }
+
+    pub fn base_and_offset(self) -> (PointerBase, Offset32) {
+        (self.base, self.offset)
     }
 
     pub fn get_addr<'a, 'tcx>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value {

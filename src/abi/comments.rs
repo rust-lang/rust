@@ -45,7 +45,7 @@ pub fn add_arg_comment<'tcx>(
 pub fn add_locals_header_comment(fx: &mut FunctionCx<impl Backend>) {
     fx.add_global_comment(String::new());
     fx.add_global_comment(format!(
-        "kind  local ty                   size  align (abi,pref)"
+        "kind  local ty                              size align (abi,pref)"
     ));
 }
 
@@ -63,35 +63,33 @@ pub fn add_local_place_comments<'tcx>(
         fields: _,
         largest_niche: _,
     } = details;
-    match *place.inner() {
+
+    let (kind, extra) = match *place.inner() {
         CPlaceInner::Var(var) => {
             assert_eq!(local, var);
-            fx.add_global_comment(format!(
-                "ssa   {:5} {:20} {:4}b {}, {}",
-                format!("{:?}", local),
-                format!("{:?}", ty),
-                size.bytes(),
-                align.abi.bytes(),
-                align.pref.bytes(),
-            ));
+            ("ssa", std::borrow::Cow::Borrowed(""))
         }
-        CPlaceInner::NoPlace => fx.add_global_comment(format!(
-            "zst   {:5} {:20} {:4}b {}, {}",
-            format!("{:?}", local),
-            format!("{:?}", ty),
-            size.bytes(),
-            align.abi.bytes(),
-            align.pref.bytes(),
-        )),
-        CPlaceInner::Addr(ptr, None) => fx.add_global_comment(format!(
-            "reuse {:5} {:20} {:4}b {}, {}              storage={:?}",
-            format!("{:?}", local),
-            format!("{:?}", ty),
-            size.bytes(),
-            align.abi.bytes(),
-            align.pref.bytes(),
-            ptr,
-        )),
+        CPlaceInner::NoPlace => ("zst", "".into()),
+        CPlaceInner::Addr(ptr, None) => match ptr.base_and_offset() {
+            (crate::pointer::PointerBase::Addr(addr), offset) => {
+                ("reuse", format!("storage={}{}", addr, offset).into())
+            }
+            (crate::pointer::PointerBase::Stack(stack_slot), offset) => {
+                ("stack", format!("storage={}{}", stack_slot, offset).into())
+            }
+        },
         CPlaceInner::Addr(_, Some(_)) => unreachable!(),
-    }
+    };
+
+    fx.add_global_comment(format!(
+        "{:<5} {:5} {:30} {:4}b {}, {}{}{}",
+        kind,
+        format!("{:?}", local),
+        format!("{:?}", ty),
+        size.bytes(),
+        align.abi.bytes(),
+        align.pref.bytes(),
+        if extra.is_empty() { "" } else { "              " },
+        extra,
+    ));
 }
