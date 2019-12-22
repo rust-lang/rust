@@ -446,7 +446,7 @@ where
         let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            changed |= scope.push_res(name.clone(), res);
+            changed |= scope.push_res(name.clone(), *res);
         }
 
         if !changed {
