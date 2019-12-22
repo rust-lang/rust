@@ -26,7 +26,7 @@ fn extract_clone_suggestions<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     name: Name,
     replace: &[(&'static str, &'static str)],
-    body: &'tcx Body,
+    body: &'tcx Body<'_>,
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
     let mut visitor = PtrCloneVisitor {
         cx,

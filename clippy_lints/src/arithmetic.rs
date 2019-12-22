@@ -113,7 +113,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
         }
     }
 
-    fn check_body(&mut self, cx: &LateContext<'_, '_>, body: &hir::Body) {
+    fn check_body(&mut self, cx: &LateContext<'_, '_>, body: &hir::Body<'_>) {
         let body_owner = cx.tcx.hir().body_owner(body.id());
 
         match cx.tcx.hir().body_owner_kind(body_owner) {
@@ -131,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
         }
     }
 
-    fn check_body_post(&mut self, cx: &LateContext<'_, '_>, body: &hir::Body) {
+    fn check_body_post(&mut self, cx: &LateContext<'_, '_>, body: &hir::Body<'_>) {
         let body_owner = cx.tcx.hir().body_owner(body.id());
         let body_span = cx.tcx.hir().span(body_owner);
 

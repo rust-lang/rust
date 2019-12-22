@@ -192,7 +192,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unwrap {
         cx: &LateContext<'a, 'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        body: &'tcx Body,
+        body: &'tcx Body<'_>,
         span: Span,
         fn_id: HirId,
     ) {

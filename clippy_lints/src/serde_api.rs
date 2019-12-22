@@ -22,8 +22,8 @@ declare_clippy_lint! {
 declare_lint_pass!(SerdeAPI => [SERDE_API_MISUSE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SerdeAPI {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, ref items) = item.kind {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+        if let ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, items) = item.kind {
             let did = trait_ref.path.res.def_id();
             if let Some(visit_did) = get_trait_def_id(cx, &paths::SERDE_DE_VISITOR) {
                 if did == visit_did {

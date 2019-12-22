@@ -115,7 +115,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
 fn check_trait_method_impl_decl<'a, 'tcx>(
     cx: &'a LateContext<'a, 'tcx>,
     item_type: Ty<'tcx>,
-    impl_item: &ImplItem,
+    impl_item: &ImplItem<'_>,
     impl_decl: &'tcx FnDecl,
     impl_trait_ref: &ty::TraitRef<'_>,
 ) {
@@ -165,12 +165,12 @@ fn check_trait_method_impl_decl<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         if in_external_macro(cx.sess(), item.span) {
             return;
         }
         if_chain! {
-            if let ItemKind::Impl(.., ref item_type, ref refs) = item.kind;
+            if let ItemKind::Impl(.., ref item_type, refs) = item.kind;
             if let TyKind::Path(QPath::Resolved(_, ref item_path)) = item_type.kind;
             then {
                 let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
@@ -257,7 +257,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
         walk_path(self, path);
     }
 
-    fn visit_item(&mut self, item: &'tcx Item) {
+    fn visit_item(&mut self, item: &'tcx Item<'_>) {
         match item.kind {
             ItemKind::Use(..)
             | ItemKind::Static(..)

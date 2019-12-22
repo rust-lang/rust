@@ -34,14 +34,14 @@ declare_clippy_lint! {
 declare_lint_pass!(DeepCodeInspector => [DEEP_CODE_INSPECTION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
         if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         print_item(cx, item);
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem<'_>) {
         if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
@@ -326,7 +326,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
     }
 }
 
-fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
+fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
     let did = cx.tcx.hir().local_def_id(item.hir_id);
     println!("item `{}`", item.ident.name);
     match item.vis.node {

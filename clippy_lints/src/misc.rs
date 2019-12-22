@@ -238,7 +238,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
         cx: &LateContext<'a, 'tcx>,
         k: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        body: &'tcx Body,
+        body: &'tcx Body<'_>,
         _: Span,
         _: HirId,
     ) {

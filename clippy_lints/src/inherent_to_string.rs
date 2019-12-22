@@ -94,7 +94,7 @@ declare_clippy_lint! {
 declare_lint_pass!(InherentToString => [INHERENT_TO_STRING, INHERENT_TO_STRING_SHADOW_DISPLAY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InherentToString {
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem<'_>) {
         if impl_item.span.from_expansion() {
             return;
         }
@@ -120,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InherentToString {
     }
 }
 
-fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem) {
+fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) {
     let display_trait_id =
         get_trait_def_id(cx, &["core", "fmt", "Display"]).expect("Failed to get trait ID of `Display`!");
 

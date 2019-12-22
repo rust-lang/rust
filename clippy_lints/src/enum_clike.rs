@@ -41,12 +41,12 @@ declare_lint_pass!(UnportableVariant => [ENUM_CLIKE_UNPORTABLE_VARIANT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
     #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_sign_loss)]
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         if cx.tcx.data_layout.pointer_size.bits() != 64 {
             return;
         }
         if let ItemKind::Enum(def, _) = &item.kind {
-            for var in &def.variants {
+            for var in def.variants {
                 if let Some(anon_const) = &var.disr_expr {
                     let param_env = ty::ParamEnv::empty();
                     let def_id = cx.tcx.hir().body_owner_def_id(anon_const.body);

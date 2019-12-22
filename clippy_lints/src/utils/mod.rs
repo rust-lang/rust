@@ -901,7 +901,7 @@ pub fn is_self_ty(slf: &hir::Ty) -> bool {
     false
 }
 
-pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<Item = &'tcx Param> {
+pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body<'_>) -> impl Iterator<Item = &'tcx Param> {
     (0..decl.inputs.len()).map(move |i| &body.params[i])
 }
 

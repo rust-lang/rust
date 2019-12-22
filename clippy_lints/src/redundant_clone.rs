@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
         _: &'tcx FnDecl,
-        body: &'tcx Body,
+        body: &'tcx Body<'_>,
         _: Span,
         _: HirId,
     ) {

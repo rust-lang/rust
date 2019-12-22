@@ -35,7 +35,7 @@ pub struct MainRecursion {
 impl_lint_pass!(MainRecursion => [MAIN_RECURSION]);
 
 impl LateLintPass<'_, '_> for MainRecursion {
-    fn check_crate(&mut self, _: &LateContext<'_, '_>, krate: &Crate) {
+    fn check_crate(&mut self, _: &LateContext<'_, '_>, krate: &Crate<'_>) {
         self.has_no_std_attr = krate.attrs.iter().any(|attr| {
             if let AttrKind::Normal(ref attr) = attr.kind {
                 attr.path == sym::no_std

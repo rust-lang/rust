@@ -77,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         cx: &LateContext<'_, '_>,
         kind: FnKind<'_>,
         _: &FnDecl,
-        _: &Body,
+        _: &Body<'_>,
         span: Span,
         hir_id: HirId,
     ) {
