@@ -25,15 +25,15 @@ struct DiagnosticItemCollector<'tcx> {
 }
 
 impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         self.observe_item(&item.attrs, item.hir_id);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
         self.observe_item(&trait_item.attrs, trait_item.hir_id);
     }
 
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
         self.observe_item(&impl_item.attrs, impl_item.hir_id);
     }
 }

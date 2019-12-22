@@ -53,17 +53,17 @@ impl<'a, 'hir> OuterVisitor<'a, 'hir> {
 }
 
 impl<'a, 'hir> ItemLikeVisitor<'hir> for OuterVisitor<'a, 'hir> {
-    fn visit_item(&mut self, i: &'hir hir::Item) {
+    fn visit_item(&mut self, i: &'hir hir::Item<'hir>) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
         inner_visitor.check(i.hir_id, |this| intravisit::walk_item(this, i));
     }
 
-    fn visit_trait_item(&mut self, i: &'hir hir::TraitItem) {
+    fn visit_trait_item(&mut self, i: &'hir hir::TraitItem<'hir>) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
         inner_visitor.check(i.hir_id, |this| intravisit::walk_trait_item(this, i));
     }
 
-    fn visit_impl_item(&mut self, i: &'hir hir::ImplItem) {
+    fn visit_impl_item(&mut self, i: &'hir hir::ImplItem<'hir>) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
         inner_visitor.check(i.hir_id, |this| intravisit::walk_impl_item(this, i));
     }

@@ -46,7 +46,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn closure_analyze(&self, body: &'tcx hir::Body) {
+    pub fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {
         InferBorrowKindVisitor { fcx: self }.visit_body(body);
 
         // it's our job to process these.
@@ -81,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         closure_hir_id: hir::HirId,
         span: Span,
-        body: &hir::Body,
+        body: &hir::Body<'_>,
         capture_clause: hir::CaptureBy,
     ) {
 

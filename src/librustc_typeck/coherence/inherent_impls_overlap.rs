@@ -85,7 +85,7 @@ impl InherentOverlapChecker<'tcx> {
 }
 
 impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
-    fn visit_item(&mut self, item: &'v hir::Item) {
+    fn visit_item(&mut self, item: &'v hir::Item<'v>) {
         match item.kind {
             hir::ItemKind::Enum(..) |
             hir::ItemKind::Struct(..) |
@@ -98,9 +98,9 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'v>) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'v>) {
     }
 }

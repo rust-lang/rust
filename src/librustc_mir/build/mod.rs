@@ -552,7 +552,7 @@ fn construct_fn<'a, 'tcx, A>(
     abi: Abi,
     return_ty: Ty<'tcx>,
     return_ty_span: Span,
-    body: &'tcx hir::Body,
+    body: &'tcx hir::Body<'tcx>,
 ) -> Body<'tcx>
 where
     A: Iterator<Item=ArgInfo<'tcx>>

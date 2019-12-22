@@ -246,7 +246,13 @@ impl NonSnakeCase {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
-    fn check_mod(&mut self, cx: &LateContext<'_, '_>, _: &'tcx hir::Mod, _: Span, id: hir::HirId) {
+    fn check_mod(
+        &mut self,
+        cx: &LateContext<'_, '_>,
+        _: &'tcx hir::Mod<'tcx>,
+        _: Span,
+        id: hir::HirId,
+    ) {
         if id != hir::CRATE_HIR_ID {
             return;
         }
@@ -298,7 +304,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         cx: &LateContext<'_, '_>,
         fk: FnKind<'_>,
         _: &hir::FnDecl,
-        _: &hir::Body,
+        _: &hir::Body<'_>,
         _: Span,
         id: hir::HirId,
     ) {
@@ -325,13 +331,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Mod(_) = it.kind {
             self.check_snake_case(cx, "module", &it.ident);
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(pnames)) = &item.kind {
             self.check_snake_case(cx, "trait method", &item.ident);
             for param_name in pnames {
@@ -349,7 +355,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_struct_def(
         &mut self,
         cx: &LateContext<'_, '_>,
-        s: &hir::VariantData,
+        s: &hir::VariantData<'_>,
     ) {
         for sf in s.fields() {
             self.check_snake_case(cx, "structure field", &sf.ident);
@@ -386,7 +392,7 @@ impl NonUpperCaseGlobals {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         match it.kind {
             hir::ItemKind::Static(..) if !attr::contains_name(&it.attrs, sym::no_mangle) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", &it.ident);
@@ -398,13 +404,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, ti: &hir::TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, ti: &hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Const(..) = ti.kind {
             NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ti.ident);
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, ii: &hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, ii: &hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Const(..) = ii.kind {
             NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ii.ident);
         }

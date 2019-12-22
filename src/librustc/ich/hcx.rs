@@ -56,12 +56,12 @@ pub enum NodeIdHashingMode {
 /// We could also just store a plain reference to the `hir::Crate` but we want
 /// to avoid that the crate is used to get untracked access to all of the HIR.
 #[derive(Clone, Copy)]
-struct BodyResolver<'tcx>(&'tcx hir::Crate);
+struct BodyResolver<'tcx>(&'tcx hir::Crate<'tcx>);
 
 impl<'tcx> BodyResolver<'tcx> {
     /// Returns a reference to the `hir::Body` with the given `BodyId`.
     /// **Does not do any tracking**; use carefully.
-    fn body(self, id: hir::BodyId) -> &'tcx hir::Body {
+    fn body(self, id: hir::BodyId) -> &'tcx hir::Body<'tcx> {
         self.0.body(id)
     }
 }
@@ -72,7 +72,7 @@ impl<'a> StableHashingContext<'a> {
     /// leaking data out of the tracking system.
     #[inline]
     pub fn new(sess: &'a Session,
-               krate: &'a hir::Crate,
+               krate: &'a hir::Crate<'a>,
                definitions: &'a Definitions,
                cstore: &'a dyn CrateStore)
                -> Self {

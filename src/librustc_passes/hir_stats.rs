@@ -23,12 +23,12 @@ struct NodeData {
 }
 
 struct StatCollector<'k> {
-    krate: Option<&'k hir::Crate>,
+    krate: Option<&'k hir::Crate<'k>>,
     data: FxHashMap<&'static str, NodeData>,
     seen: FxHashSet<Id>,
 }
 
-pub fn print_hir_stats(krate: &hir::Crate) {
+pub fn print_hir_stats(krate: &hir::Crate<'_>) {
     let mut collector = StatCollector {
         krate: Some(krate),
         data: FxHashMap::default(),
@@ -123,17 +123,17 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.visit_body(nested_body)
     }
 
-    fn visit_item(&mut self, i: &'v hir::Item) {
+    fn visit_item(&mut self, i: &'v hir::Item<'v>) {
         self.record("Item", Id::Node(i.hir_id), i);
         hir_visit::walk_item(self, i)
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod, _s: Span, n: hir::HirId) {
+    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, n: hir::HirId) {
         self.record("Mod", Id::None, m);
         hir_visit::walk_mod(self, m, n)
     }
 
-    fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {
         self.record("ForeignItem", Id::Node(i.hir_id), i);
         hir_visit::walk_foreign_item(self, i)
     }
@@ -188,12 +188,12 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_where_predicate(self, predicate)
     }
 
-    fn visit_trait_item(&mut self, ti: &'v hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) {
         self.record("TraitItem", Id::Node(ti.hir_id), ti);
         hir_visit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         self.record("ImplItem", Id::Node(ii.hir_id), ii);
         hir_visit::walk_impl_item(self, ii)
     }
@@ -203,13 +203,13 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_param_bound(self, bounds)
     }
 
-    fn visit_struct_field(&mut self, s: &'v hir::StructField) {
+    fn visit_struct_field(&mut self, s: &'v hir::StructField<'v>) {
         self.record("StructField", Id::Node(s.hir_id), s);
         hir_visit::walk_struct_field(self, s)
     }
 
     fn visit_variant(&mut self,
-                     v: &'v hir::Variant,
+                     v: &'v hir::Variant<'v>,
                      g: &'v hir::Generics,
                      item_id: hir::HirId) {
         self.record("Variant", Id::None, v);
@@ -247,7 +247,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.record("Attribute", Id::Attr(attr.id), attr);
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'v hir::MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'v hir::MacroDef<'v>) {
         self.record("MacroDef", Id::Node(macro_def.hir_id), macro_def);
         hir_visit::walk_macro_def(self, macro_def)
     }

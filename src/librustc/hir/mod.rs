@@ -742,13 +742,13 @@ pub struct ModuleItems {
 ///
 /// [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct Crate {
-    pub module: Mod,
-    pub attrs: HirVec<Attribute>,
+pub struct Crate<'hir> {
+    pub module: Mod<'hir>,
+    pub attrs: &'hir [Attribute],
     pub span: Span,
-    pub exported_macros: HirVec<MacroDef>,
+    pub exported_macros: &'hir [MacroDef<'hir>],
     // Attributes from non-exported macros, kept only for collecting the library feature list.
-    pub non_exported_macro_attrs: HirVec<Attribute>,
+    pub non_exported_macro_attrs: &'hir [Attribute],
 
     // N.B., we use a `BTreeMap` here so that `visit_all_items` iterates
     // over the ids in increasing order. In principle it should not
@@ -756,11 +756,11 @@ pub struct Crate {
     // does, because it can affect the order in which errors are
     // detected, which in turn can make compile-fail tests yield
     // slightly different results.
-    pub items: BTreeMap<HirId, Item>,
+    pub items: BTreeMap<HirId, Item<'hir>>,
 
-    pub trait_items: BTreeMap<TraitItemId, TraitItem>,
-    pub impl_items: BTreeMap<ImplItemId, ImplItem>,
-    pub bodies: BTreeMap<BodyId, Body>,
+    pub trait_items: BTreeMap<TraitItemId, TraitItem<'hir>>,
+    pub impl_items: BTreeMap<ImplItemId, ImplItem<'hir>>,
+    pub bodies: BTreeMap<BodyId, Body<'hir>>,
     pub trait_impls: BTreeMap<DefId, Vec<HirId>>,
 
     /// A list of the body ids written out in the order in which they
@@ -774,19 +774,25 @@ pub struct Crate {
     pub modules: BTreeMap<HirId, ModuleItems>,
 }
 
-impl Crate {
-    pub fn item(&self, id: HirId) -> &Item {
+impl Crate<'hir> {
+    pub fn item(&self, id: HirId) -> &Item<'hir> {
         &self.items[&id]
     }
 
-    pub fn trait_item(&self, id: TraitItemId) -> &TraitItem {
+    pub fn trait_item(&self, id: TraitItemId) -> &TraitItem<'hir> {
         &self.trait_items[&id]
     }
 
-    pub fn impl_item(&self, id: ImplItemId) -> &ImplItem {
+    pub fn impl_item(&self, id: ImplItemId) -> &ImplItem<'hir> {
         &self.impl_items[&id]
     }
 
+    pub fn body(&self, id: BodyId) -> &Body<'hir> {
+        &self.bodies[&id]
+    }
+}
+
+impl Crate<'_> {
     /// Visits all items in the crate in some deterministic (but
     /// unspecified) order. If you just need to process every item,
     /// but don't care about nesting, this method is the best choice.
@@ -829,20 +835,16 @@ impl Crate {
             });
         });
     }
-
-    pub fn body(&self, id: BodyId) -> &Body {
-        &self.bodies[&id]
-    }
 }
 
 /// A macro definition, in this crate or imported from another.
 ///
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct MacroDef {
+pub struct MacroDef<'hir> {
     pub name: Name,
     pub vis: Visibility,
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
     pub span: Span,
     pub body: TokenStream,
@@ -1351,13 +1353,13 @@ pub struct BodyId {
 /// All bodies have an **owner**, which can be accessed via the HIR
 /// map using `body_owner_def_id()`.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct Body {
-    pub params: HirVec<Param>,
+pub struct Body<'hir> {
+    pub params: &'hir [Param],
     pub value: Expr,
     pub generator_kind: Option<GeneratorKind>,
 }
 
-impl Body {
+impl Body<'hir> {
     pub fn id(&self) -> BodyId {
         BodyId {
             hir_id: self.value.hir_id,
@@ -1895,12 +1897,12 @@ pub struct TraitItemId {
 /// either required (meaning it doesn't have an implementation, just a
 /// signature) or provided (meaning it has a default implementation).
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct TraitItem {
+pub struct TraitItem<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     pub generics: Generics,
-    pub kind: TraitItemKind,
+    pub kind: TraitItemKind<'hir>,
     pub span: Span,
 }
 
@@ -1916,14 +1918,14 @@ pub enum TraitMethod {
 
 /// Represents a trait method or associated constant or type
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum TraitItemKind {
+pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
-    Const(P<Ty>, Option<BodyId>),
+    Const(&'hir Ty, Option<BodyId>),
     /// A method with an optional body.
     Method(FnSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
-    Type(GenericBounds, Option<P<Ty>>),
+    Type(GenericBounds, Option<&'hir Ty>),
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -1936,27 +1938,27 @@ pub struct ImplItemId {
 
 /// Represents anything within an `impl` block.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct ImplItem {
+pub struct ImplItem<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
     pub vis: Visibility,
     pub defaultness: Defaultness,
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     pub generics: Generics,
-    pub kind: ImplItemKind,
+    pub kind: ImplItemKind<'hir>,
     pub span: Span,
 }
 
 /// Represents various kinds of content within an `impl`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum ImplItemKind {
+pub enum ImplItemKind<'hir> {
     /// An associated constant of the given type, set to the constant result
     /// of the expression.
-    Const(P<Ty>, BodyId),
+    Const(&'hir Ty, BodyId),
     /// A method implementation with the given signature and body.
     Method(FnSig, BodyId),
     /// An associated type.
-    TyAlias(P<Ty>),
+    TyAlias(&'hir Ty),
     /// An associated `type = impl Trait`.
     OpaqueTy(GenericBounds),
 }
@@ -2241,18 +2243,18 @@ impl FunctionRetTy {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct Mod {
+pub struct Mod<'hir> {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token
     /// to the last token in the external file.
     pub inner: Span,
-    pub item_ids: HirVec<ItemId>,
+    pub item_ids: &'hir [ItemId],
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct ForeignMod {
+pub struct ForeignMod<'hir> {
     pub abi: Abi,
-    pub items: HirVec<ForeignItem>,
+    pub items: &'hir [ForeignItem<'hir>],
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2261,21 +2263,21 @@ pub struct GlobalAsm {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct EnumDef {
-    pub variants: HirVec<Variant>,
+pub struct EnumDef<'hir> {
+    pub variants: &'hir [Variant<'hir>],
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Variant {
+pub struct Variant<'hir> {
     /// Name of the variant.
     #[stable_hasher(project(name))]
     pub ident: Ident,
     /// Attributes of the variant.
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
     pub id: HirId,
     /// Fields and constructor id of the variant.
-    pub data: VariantData,
+    pub data: VariantData<'hir>,
     /// Explicit discriminant (e.g., `Foo = 1`).
     pub disr_expr: Option<AnonConst>,
     /// Span
@@ -2375,17 +2377,17 @@ impl VisibilityKind {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct StructField {
+pub struct StructField<'hir> {
     pub span: Span,
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub vis: Visibility,
     pub hir_id: HirId,
-    pub ty: P<Ty>,
-    pub attrs: HirVec<Attribute>,
+    pub ty: &'hir Ty,
+    pub attrs: &'hir [Attribute],
 }
 
-impl StructField {
+impl StructField<'_> {
     // Still necessary in couple of places
     pub fn is_positional(&self) -> bool {
         let first = self.ident.as_str().as_bytes()[0];
@@ -2395,24 +2397,24 @@ impl StructField {
 
 /// Fields and constructor IDs of enum variants and structs.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum VariantData {
+pub enum VariantData<'hir> {
     /// A struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(HirVec<StructField>, /* recovered */ bool),
+    Struct(&'hir [StructField<'hir>], /* recovered */ bool),
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(HirVec<StructField>, HirId),
+    Tuple(&'hir [StructField<'hir>], HirId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
     Unit(HirId),
 }
 
-impl VariantData {
+impl VariantData<'hir> {
     /// Return the fields of this variant.
-    pub fn fields(&self) -> &[StructField] {
+    pub fn fields(&self) -> &'hir [StructField<'hir>] {
         match *self {
             VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => fields,
             _ => &[],
@@ -2440,11 +2442,11 @@ pub struct ItemId {
 ///
 /// The name might be a dummy name in case of anonymous items
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct Item {
+pub struct Item<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
-    pub attrs: HirVec<Attribute>,
-    pub kind: ItemKind,
+    pub attrs: &'hir [Attribute],
+    pub kind: ItemKind<'hir>,
     pub vis: Visibility,
     pub span: Span,
 }
@@ -2467,7 +2469,7 @@ impl FnHeader {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum ItemKind {
+pub enum ItemKind<'hir> {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
     /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
@@ -2478,32 +2480,32 @@ pub enum ItemKind {
     /// or just
     ///
     /// `use foo::bar::baz;` (with `as baz` implicitly on the right).
-    Use(P<Path>, UseKind),
+    Use(&'hir Path, UseKind),
 
     /// A `static` item.
-    Static(P<Ty>, Mutability, BodyId),
+    Static(&'hir Ty, Mutability, BodyId),
     /// A `const` item.
-    Const(P<Ty>, BodyId),
+    Const(&'hir Ty, BodyId),
     /// A function declaration.
     Fn(FnSig, Generics, BodyId),
     /// A module.
-    Mod(Mod),
+    Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod(ForeignMod),
+    ForeignMod(ForeignMod<'hir>),
     /// Module-level inline assembly (from `global_asm!`).
-    GlobalAsm(P<GlobalAsm>),
+    GlobalAsm(&'hir GlobalAsm),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
-    TyAlias(P<Ty>, Generics),
+    TyAlias(&'hir Ty, Generics),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
     OpaqueTy(OpaqueTy),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
-    Enum(EnumDef, Generics),
+    Enum(EnumDef<'hir>, Generics),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.
-    Struct(VariantData, Generics),
+    Struct(VariantData<'hir>, Generics),
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
-    Union(VariantData, Generics),
+    Union(VariantData<'hir>, Generics),
     /// A trait definition.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, &'hir [TraitItemRef]),
     /// A trait alias.
     TraitAlias(Generics, GenericBounds),
 
@@ -2513,11 +2515,11 @@ pub enum ItemKind {
          Defaultness,
          Generics,
          Option<TraitRef>, // (optional) trait this impl implements
-         P<Ty>, // self
-         HirVec<ImplItemRef>),
+         &'hir Ty, // self
+         &'hir [ImplItemRef]),
 }
 
-impl ItemKind {
+impl ItemKind<'_> {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ItemKind::ExternCrate(..) => "extern crate",
@@ -2605,11 +2607,11 @@ pub enum AssocItemKind {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct ForeignItem {
+pub struct ForeignItem<'hir> {
     #[stable_hasher(project(name))]
     pub ident: Ident,
-    pub attrs: HirVec<Attribute>,
-    pub kind: ForeignItemKind,
+    pub attrs: &'hir [Attribute],
+    pub kind: ForeignItemKind<'hir>,
     pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,
@@ -2617,16 +2619,16 @@ pub struct ForeignItem {
 
 /// An item within an `extern` block.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum ForeignItemKind {
+pub enum ForeignItemKind<'hir> {
     /// A foreign function.
-    Fn(P<FnDecl>, HirVec<Ident>, Generics),
+    Fn(&'hir FnDecl, &'hir [Ident], Generics),
     /// A foreign static item (`static ext: u8`).
-    Static(P<Ty>, Mutability),
+    Static(&'hir Ty, Mutability),
     /// A foreign type.
     Type,
 }
 
-impl ForeignItemKind {
+impl ForeignItemKind<'hir> {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ForeignItemKind::Fn(..) => "foreign function",
@@ -2785,12 +2787,12 @@ impl CodegenFnAttrs {
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'hir> {
     Param(&'hir Param),
-    Item(&'hir Item),
-    ForeignItem(&'hir ForeignItem),
-    TraitItem(&'hir TraitItem),
-    ImplItem(&'hir ImplItem),
-    Variant(&'hir Variant),
-    Field(&'hir StructField),
+    Item(&'hir Item<'hir>),
+    ForeignItem(&'hir ForeignItem<'hir>),
+    TraitItem(&'hir TraitItem<'hir>),
+    ImplItem(&'hir ImplItem<'hir>),
+    Variant(&'hir Variant<'hir>),
+    Field(&'hir StructField<'hir>),
     AnonConst(&'hir AnonConst),
     Expr(&'hir Expr),
     Stmt(&'hir Stmt),
@@ -2802,11 +2804,11 @@ pub enum Node<'hir> {
     Arm(&'hir Arm),
     Block(&'hir Block),
     Local(&'hir Local),
-    MacroDef(&'hir MacroDef),
+    MacroDef(&'hir MacroDef<'hir>),
 
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
     /// with synthesized constructors.
-    Ctor(&'hir VariantData),
+    Ctor(&'hir VariantData<'hir>),
 
     Lifetime(&'hir Lifetime),
     GenericParam(&'hir GenericParam),

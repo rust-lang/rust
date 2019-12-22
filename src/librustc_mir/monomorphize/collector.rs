@@ -987,7 +987,7 @@ struct RootCollector<'a, 'tcx> {
 }
 
 impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
-    fn visit_item(&mut self, item: &'v hir::Item) {
+    fn visit_item(&mut self, item: &'v hir::Item<'v>) {
         match item.kind {
             hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::Use(..) |
@@ -1059,12 +1059,12 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
         }
     }
 
-    fn visit_trait_item(&mut self, _: &'v hir::TraitItem) {
+    fn visit_trait_item(&mut self, _: &'v hir::TraitItem<'v>) {
         // Even if there's a default body with no explicit generics,
         // it's still generic over some `Self: Trait`, so not a root.
     }
 
-    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         match ii.kind {
             hir::ImplItemKind::Method(hir::FnSig { .. }, _) => {
                 let def_id = self.tcx.hir().local_def_id(ii.hir_id);
@@ -1145,7 +1145,7 @@ fn item_requires_monomorphization(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 fn create_mono_items_for_default_impls<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: &'tcx hir::Item,
+    item: &'tcx hir::Item<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     match item.kind {

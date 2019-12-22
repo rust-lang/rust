@@ -715,7 +715,7 @@ impl<'tcx> ScopeTree {
     pub fn yield_in_scope_for_expr(&self,
                                    scope: Scope,
                                    expr_hir_id: hir::HirId,
-                                   body: &'tcx hir::Body) -> Option<Span> {
+                                   body: &'tcx hir::Body<'tcx>) -> Option<Span> {
         self.yield_in_scope(scope).and_then(|YieldData { span, expr_and_pat_count, .. }| {
             let mut visitor = ExprLocatorVisitor {
                 hir_id: expr_hir_id,
@@ -1362,7 +1362,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         resolve_block(self, b);
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let body_id = body.id();
         let owner_id = self.tcx.hir().body_owner(body_id);
 
@@ -1387,7 +1387,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 
         // The arguments and `self` are parented to the fn.
         self.cx.var_parent = self.cx.parent.take();
-        for param in &body.params {
+        for param in body.params {
             self.visit_pat(&param.pat);
         }
 

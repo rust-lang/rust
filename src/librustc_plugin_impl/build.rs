@@ -14,7 +14,7 @@ struct RegistrarFinder {
 }
 
 impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::Fn(..) = item.kind {
             if attr::contains_name(&item.attrs, sym::plugin_registrar) {
                 self.registrars.push((item.hir_id, item.span));
@@ -22,10 +22,10 @@ impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
     }
 }
 

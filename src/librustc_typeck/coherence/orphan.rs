@@ -23,7 +23,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
     /// apply to a specific impl, so just return after reporting one
     /// to prevent inundating the user with a bunch of similar error
     /// reports.
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         // "Trait" impl
         if let hir::ItemKind::Impl(.., generics, Some(tr), impl_ty, _) = &item.kind {
@@ -218,9 +218,9 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
     }
 }

@@ -113,7 +113,7 @@ struct LanguageItemCollector<'tcx> {
 }
 
 impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let Some((value, span)) = extract(&item.attrs) {
             let actual_target = Target::from_item(item);
             match self.item_refs.get(&*value.as_str()).cloned() {
@@ -151,11 +151,11 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
         // At present, lang items are always items, not trait items.
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
         // At present, lang items are always items, not impl items.
     }
 }

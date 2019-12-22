@@ -235,7 +235,7 @@ fn check_associated_item(
     })
 }
 
-fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item) -> CheckWfFcxBuilder<'tcx> {
+fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<'tcx> {
     for_id(tcx, item.hir_id, item.span)
 }
 
@@ -252,7 +252,7 @@ fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> 
 /// In a type definition, we check that to ensure that the types of the fields are well-formed.
 fn check_type_defn<'tcx, F>(
     tcx: TyCtxt<'tcx>,
-    item: &hir::Item,
+    item: &hir::Item<'tcx>,
     all_sized: bool,
     mut lookup_fields: F,
 ) where
@@ -325,7 +325,7 @@ fn check_type_defn<'tcx, F>(
     });
 }
 
-fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item) {
+fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     debug!("check_trait: {:?}", item.hir_id);
 
     let trait_def_id = tcx.hir().local_def_id(item.hir_id);
@@ -348,7 +348,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item) {
     });
 }
 
-fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item) {
+fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     for_item(tcx, item).with_fcx(|fcx, tcx| {
         let def_id = fcx.tcx.hir().local_def_id(item.hir_id);
         let sig = fcx.tcx.fn_sig(def_id);
@@ -396,7 +396,7 @@ fn check_item_type(
 
 fn check_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: &'tcx hir::Item,
+    item: &'tcx hir::Item<'tcx>,
     ast_self_ty: &hir::Ty,
     ast_trait_ref: &Option<hir::TraitRef>,
 ) {
@@ -977,7 +977,7 @@ fn receiver_is_implemented(
 
 fn check_variances_for_type_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: &hir::Item,
+    item: &hir::Item<'tcx>,
     hir_generics: &hir::Generics,
 ) {
     let item_def_id = tcx.hir().local_def_id(item.hir_id);
@@ -1081,19 +1081,19 @@ impl CheckTypeWellFormedVisitor<'tcx> {
 }
 
 impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
-    fn visit_item(&self, i: &'tcx hir::Item) {
+    fn visit_item(&self, i: &'tcx hir::Item<'tcx>) {
         debug!("visit_item: {:?}", i);
         let def_id = self.tcx.hir().local_def_id(i.hir_id);
         self.tcx.ensure().check_item_well_formed(def_id);
     }
 
-    fn visit_trait_item(&self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         debug!("visit_trait_item: {:?}", trait_item);
         let def_id = self.tcx.hir().local_def_id(trait_item.hir_id);
         self.tcx.ensure().check_trait_item_well_formed(def_id);
     }
 
-    fn visit_impl_item(&self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         debug!("visit_impl_item: {:?}", impl_item);
         let def_id = self.tcx.hir().local_def_id(impl_item.hir_id);
         self.tcx.ensure().check_impl_item_well_formed(def_id);
@@ -1113,7 +1113,7 @@ struct AdtField<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    fn non_enum_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
+    fn non_enum_variant(&self, struct_def: &hir::VariantData<'_>) -> AdtVariant<'tcx> {
         let fields = struct_def.fields().iter().map(|field| {
             let field_ty = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
             let field_ty = self.normalize_associated_types_in(field.span,
@@ -1126,7 +1126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         AdtVariant { fields }
     }
 
-    fn enum_variants(&self, enum_def: &hir::EnumDef) -> Vec<AdtVariant<'tcx>> {
+    fn enum_variants(&self, enum_def: &hir::EnumDef<'_>) -> Vec<AdtVariant<'tcx>> {
         enum_def.variants.iter()
             .map(|variant| self.non_enum_variant(&variant.data))
             .collect()

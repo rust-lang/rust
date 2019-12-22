@@ -72,7 +72,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     pub fn visit(mut self, krate: &'tcx hir::Crate) -> Module<'tcx> {
         let mut module = self.visit_mod_contents(krate.span,
-                                              &krate.attrs,
+                                              krate.attrs,
                                               &Spanned { span: syntax_pos::DUMMY_SP,
                                                         node: hir::VisibilityKind::Public },
                                               hir::CRATE_HIR_ID,
@@ -213,9 +213,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_mod_contents(&mut self, span: Span, attrs: &'tcx hir::HirVec<ast::Attribute>,
+    fn visit_mod_contents(&mut self, span: Span, attrs: &'tcx [ast::Attribute],
                               vis: &'tcx hir::Visibility, id: hir::HirId,
-                              m: &'tcx hir::Mod,
+                              m: &'tcx hir::Mod<'tcx>,
                               name: Option<ast::Name>) -> Module<'tcx> {
         let mut om = Module::new(name, attrs, vis);
         om.where_outer = span;
@@ -224,7 +224,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
-        for i in &m.item_ids {
+        for i in m.item_ids {
             let item = self.cx.tcx.hir().expect_item(i.id);
             self.visit_item(item, None, &mut om);
         }
@@ -322,7 +322,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let ret = match tcx.hir().get(res_hir_id) {
             Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                for i in &m.item_ids {
+                for i in m.item_ids {
                     let i = self.cx.tcx.hir().expect_item(i.id);
                     self.visit_item(i, None, om);
                 }
@@ -363,7 +363,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         match item.kind {
             hir::ItemKind::ForeignMod(ref fm) => {
-                for item in &fm.items {
+                for item in fm.items {
                     self.visit_foreign_item(item, None, om);
                 }
             }
@@ -440,7 +440,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.unions.push(self.visit_union_data(item, ident.name, sd, gen)),
             hir::ItemKind::Fn(ref sig, ref gen, body) =>
                 self.visit_fn(om, item, ident.name, &sig.decl, sig.header, gen, body),
-            hir::ItemKind::TyAlias(ref ty, ref gen) => {
+            hir::ItemKind::TyAlias(ty, ref gen) => {
                 let t = Typedef {
                     ty,
                     gen,
@@ -463,7 +463,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.opaque_tys.push(t);
             },
-            hir::ItemKind::Static(ref type_, mutability, expr) => {
+            hir::ItemKind::Static(type_, mutability, expr) => {
                 let s = Static {
                     type_,
                     mutability,
@@ -476,7 +476,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.statics.push(s);
             },
-            hir::ItemKind::Const(ref type_, expr) => {
+            hir::ItemKind::Const(type_, expr) => {
                 let s = Constant {
                     type_,
                     expr,
@@ -524,7 +524,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                           defaultness,
                           ref generics,
                           ref trait_,
-                          ref for_,
+                          for_,
                           ref item_ids) => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.

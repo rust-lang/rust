@@ -21,7 +21,7 @@ use std::vec;
 pub enum AnnNode<'a> {
     Name(&'a ast::Name),
     Block(&'a hir::Block),
-    Item(&'a hir::Item),
+    Item(&'a hir::Item<'a>),
     SubItem(hir::HirId),
     Expr(&'a hir::Expr),
     Pat(&'a hir::Pat),
@@ -43,7 +43,7 @@ pub trait PpAnn {
     }
     fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {
     }
-    fn try_fetch_item(&self, _: hir::HirId) -> Option<&hir::Item> {
+    fn try_fetch_item(&self, _: hir::HirId) -> Option<&hir::Item<'_>> {
         None
     }
 }
@@ -52,8 +52,8 @@ pub struct NoAnn;
 impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
-impl PpAnn for hir::Crate {
-    fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item> {
+impl PpAnn for hir::Crate<'a> {
+    fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item<'_>> {
         Some(self.item(item))
     }
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
@@ -107,7 +107,7 @@ pub const INDENT_UNIT: usize = 4;
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
-                       krate: &hir::Crate,
+                       krate: &hir::Crate<'_>,
                        filename: FileName,
                        input: String,
                        ann: &'a dyn PpAnn) -> String {
@@ -259,19 +259,19 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(&e), |e| e.span)
     }
 
-    pub fn print_mod(&mut self, _mod: &hir::Mod, attrs: &[ast::Attribute]) {
+    pub fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &[ast::Attribute]) {
         self.print_inner_attributes(attrs);
-        for &item_id in &_mod.item_ids {
+        for &item_id in _mod.item_ids {
             self.ann.nested(self, Nested::Item(item_id));
         }
     }
 
     pub fn print_foreign_mod(&mut self,
-                             nmod: &hir::ForeignMod,
+                             nmod: &hir::ForeignMod<'_>,
                              attrs: &[ast::Attribute])
                              {
         self.print_inner_attributes(attrs);
-        for item in &nmod.items {
+        for item in nmod.items {
             self.print_foreign_item(item);
         }
     }
@@ -361,7 +361,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    pub fn print_foreign_item(&mut self, item: &hir::ForeignItem) {
+    pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
@@ -445,7 +445,7 @@ impl<'a> State<'a> {
 
     fn print_item_type(
         &mut self,
-        item: &hir::Item,
+        item: &hir::Item<'_>,
         generics: &hir::Generics,
         inner: impl Fn(&mut Self),
     ) {
@@ -462,7 +462,7 @@ impl<'a> State<'a> {
     }
 
     /// Pretty-print an item
-    pub fn print_item(&mut self, item: &hir::Item) {
+    pub fn print_item(&mut self, item: &hir::Item<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
@@ -601,7 +601,7 @@ impl<'a> State<'a> {
                           ref generics,
                           ref opt_trait,
                           ref ty,
-                          ref impl_items) => {
+                          impl_items) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);
@@ -634,7 +634,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
+            hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, trait_items) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_is_auto(is_auto);
@@ -708,7 +708,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_enum_def(&mut self,
-                          enum_definition: &hir::EnumDef,
+                          enum_definition: &hir::EnumDef<'_>,
                           generics: &hir::Generics,
                           name: ast::Name,
                           span: syntax_pos::Span,
@@ -723,7 +723,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_variants(&mut self,
-                          variants: &[hir::Variant],
+                          variants: &[hir::Variant<'_>],
                           span: syntax_pos::Span)
                           {
         self.bopen();
@@ -770,7 +770,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_struct(&mut self,
-                        struct_def: &hir::VariantData,
+                        struct_def: &hir::VariantData<'_>,
                         generics: &hir::Generics,
                         name: ast::Name,
                         span: syntax_pos::Span,
@@ -819,7 +819,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_variant(&mut self, v: &hir::Variant) {
+    pub fn print_variant(&mut self, v: &hir::Variant<'_>) {
         self.head("");
         let generics = hir::Generics::empty();
         self.print_struct(&v.data, &generics, v.ident.name, v.span, false);
@@ -846,7 +846,7 @@ impl<'a> State<'a> {
                       body_id)
     }
 
-    pub fn print_trait_item(&mut self, ti: &hir::TraitItem) {
+    pub fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
         self.ann.pre(self, AnnNode::SubItem(ti.hir_id));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
@@ -882,7 +882,7 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::SubItem(ti.hir_id))
     }
 
-    pub fn print_impl_item(&mut self, ii: &hir::ImplItem) {
+    pub fn print_impl_item(&mut self, ii: &hir::ImplItem<'_>) {
         self.ann.pre(self, AnnNode::SubItem(ii.hir_id));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());

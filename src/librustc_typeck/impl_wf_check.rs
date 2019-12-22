@@ -79,7 +79,7 @@ struct ImplWfCheck<'tcx> {
 }
 
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.kind {
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
             enforce_impl_params_are_constrained(self.tcx,
@@ -89,9 +89,9 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem) { }
+    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem<'tcx>) { }
 
-    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) { }
+    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem<'tcx>) { }
 }
 
 fn enforce_impl_params_are_constrained(

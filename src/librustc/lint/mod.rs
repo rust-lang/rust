@@ -87,17 +87,17 @@ macro_rules! late_lint_methods {
     ($macro:path, $args:tt, [$hir:tt]) => (
         $macro!($args, [$hir], [
             fn check_param(a: &$hir hir::Param);
-            fn check_body(a: &$hir hir::Body);
-            fn check_body_post(a: &$hir hir::Body);
+            fn check_body(a: &$hir hir::Body<$hir>);
+            fn check_body_post(a: &$hir hir::Body<$hir>);
             fn check_name(a: Span, b: ast::Name);
-            fn check_crate(a: &$hir hir::Crate);
-            fn check_crate_post(a: &$hir hir::Crate);
-            fn check_mod(a: &$hir hir::Mod, b: Span, c: hir::HirId);
-            fn check_mod_post(a: &$hir hir::Mod, b: Span, c: hir::HirId);
-            fn check_foreign_item(a: &$hir hir::ForeignItem);
-            fn check_foreign_item_post(a: &$hir hir::ForeignItem);
-            fn check_item(a: &$hir hir::Item);
-            fn check_item_post(a: &$hir hir::Item);
+            fn check_crate(a: &$hir hir::Crate<$hir>);
+            fn check_crate_post(a: &$hir hir::Crate<$hir>);
+            fn check_mod(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
+            fn check_mod_post(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
+            fn check_foreign_item(a: &$hir hir::ForeignItem<$hir>);
+            fn check_foreign_item_post(a: &$hir hir::ForeignItem<$hir>);
+            fn check_item(a: &$hir hir::Item<$hir>);
+            fn check_item_post(a: &$hir hir::Item<$hir>);
             fn check_local(a: &$hir hir::Local);
             fn check_block(a: &$hir hir::Block);
             fn check_block_post(a: &$hir hir::Block);
@@ -114,25 +114,25 @@ macro_rules! late_lint_methods {
             fn check_fn(
                 a: hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl,
-                c: &$hir hir::Body,
+                c: &$hir hir::Body<$hir>,
                 d: Span,
                 e: hir::HirId);
             fn check_fn_post(
                 a: hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl,
-                c: &$hir hir::Body,
+                c: &$hir hir::Body<$hir>,
                 d: Span,
                 e: hir::HirId
             );
-            fn check_trait_item(a: &$hir hir::TraitItem);
-            fn check_trait_item_post(a: &$hir hir::TraitItem);
-            fn check_impl_item(a: &$hir hir::ImplItem);
-            fn check_impl_item_post(a: &$hir hir::ImplItem);
-            fn check_struct_def(a: &$hir hir::VariantData);
-            fn check_struct_def_post(a: &$hir hir::VariantData);
-            fn check_struct_field(a: &$hir hir::StructField);
-            fn check_variant(a: &$hir hir::Variant);
-            fn check_variant_post(a: &$hir hir::Variant);
+            fn check_trait_item(a: &$hir hir::TraitItem<$hir>);
+            fn check_trait_item_post(a: &$hir hir::TraitItem<$hir>);
+            fn check_impl_item(a: &$hir hir::ImplItem<$hir>);
+            fn check_impl_item_post(a: &$hir hir::ImplItem<$hir>);
+            fn check_struct_def(a: &$hir hir::VariantData<$hir>);
+            fn check_struct_def_post(a: &$hir hir::VariantData<$hir>);
+            fn check_struct_field(a: &$hir hir::StructField<$hir>);
+            fn check_variant(a: &$hir hir::Variant<$hir>);
+            fn check_variant_post(a: &$hir hir::Variant<$hir>);
             fn check_lifetime(a: &$hir hir::Lifetime);
             fn check_path(a: &$hir hir::Path, b: hir::HirId);
             fn check_attribute(a: &$hir ast::Attribute);
@@ -562,7 +562,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
 
     let push = builder.levels.push(&krate.attrs, &store);
     builder.levels.register_id(hir::CRATE_HIR_ID);
-    for macro_def in &krate.exported_macros {
+    for macro_def in krate.exported_macros {
        builder.levels.register_id(macro_def.hir_id);
     }
     intravisit::walk_crate(&mut builder, krate);
@@ -604,13 +604,13 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         });
     }
 
-    fn visit_item(&mut self, it: &'tcx hir::Item) {
+    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         self.with_lint_attrs(it.hir_id, &it.attrs, |builder| {
             intravisit::walk_item(builder, it);
         });
     }
 
-    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
         self.with_lint_attrs(it.hir_id, &it.attrs, |builder| {
             intravisit::walk_foreign_item(builder, it);
         })
@@ -622,14 +622,14 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         })
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
         self.with_lint_attrs(s.hir_id, &s.attrs, |builder| {
             intravisit::walk_struct_field(builder, s);
         })
     }
 
     fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant,
+                     v: &'tcx hir::Variant<'tcx>,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
         self.with_lint_attrs(v.id, &v.attrs, |builder| {
@@ -649,13 +649,13 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         })
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         self.with_lint_attrs(trait_item.hir_id, &trait_item.attrs, |builder| {
             intravisit::walk_trait_item(builder, trait_item);
         });
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         self.with_lint_attrs(impl_item.hir_id, &impl_item.attrs, |builder| {
             intravisit::walk_impl_item(builder, impl_item);
         });

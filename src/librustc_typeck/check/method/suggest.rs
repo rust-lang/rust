@@ -1002,7 +1002,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
     }
 
     impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
-        fn visit_item(&mut self, i: &'v hir::Item) {
+        fn visit_item(&mut self, i: &'v hir::Item<'v>) {
             match i.kind {
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::TraitAlias(..) => {
@@ -1013,9 +1013,9 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
             }
         }
 
-        fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {}
+        fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
 
-        fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {}
+        fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
     }
 
     tcx.hir().krate().visit_all_item_likes(&mut Visitor {
@@ -1076,7 +1076,7 @@ struct UsePlacementFinder<'tcx> {
 impl UsePlacementFinder<'tcx> {
     fn check(
         tcx: TyCtxt<'tcx>,
-        krate: &'tcx hir::Crate,
+        krate: &'tcx hir::Crate<'tcx>,
         target_module: hir::HirId,
     ) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder {
@@ -1093,7 +1093,7 @@ impl UsePlacementFinder<'tcx> {
 impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
     fn visit_mod(
         &mut self,
-        module: &'tcx hir::Mod,
+        module: &'tcx hir::Mod<'tcx>,
         _: Span,
         hir_id: hir::HirId,
     ) {
@@ -1105,7 +1105,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
             return;
         }
         // Find a `use` statement.
-        for item_id in &module.item_ids {
+        for item_id in module.item_ids {
             let item = self.tcx.hir().expect_item(item_id.id);
             match item.kind {
                 hir::ItemKind::Use(..) => {
@@ -1127,7 +1127,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
                             self.span = Some(item.span.shrink_to_lo());
                         } else {
                             // Find the first attribute on the item.
-                            for attr in &item.attrs {
+                            for attr in item.attrs {
                                 if self.span.map_or(true, |span| attr.span < span) {
                                     self.span = Some(attr.span.shrink_to_lo());
                                 }

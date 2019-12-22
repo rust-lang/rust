@@ -669,22 +669,22 @@ impl Visitor<'tcx> for ClauseDumper<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         self.process_attrs(item.hir_id, &item.attrs);
         intravisit::walk_item(self, item);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         self.process_attrs(trait_item.hir_id, &trait_item.attrs);
         intravisit::walk_trait_item(self, trait_item);
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         self.process_attrs(impl_item.hir_id, &impl_item.attrs);
         intravisit::walk_impl_item(self, impl_item);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
         self.process_attrs(s.hir_id, &s.attrs);
         intravisit::walk_struct_field(self, s);
     }

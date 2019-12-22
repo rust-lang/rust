@@ -63,7 +63,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr,
         opt_kind: Option<ty::ClosureKind>,
         decl: &'tcx hir::FnDecl,
-        body: &'tcx hir::Body,
+        body: &'tcx hir::Body<'tcx>,
         gen: Option<hir::Movability>,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> Ty<'tcx> {
@@ -316,7 +316,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: DefId,
         decl: &hir::FnDecl,
-        body: &hir::Body,
+        body: &hir::Body<'_>,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> ClosureSignatures<'tcx> {
         if let Some(e) = expected_sig {
@@ -332,7 +332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: DefId,
         decl: &hir::FnDecl,
-        body: &hir::Body,
+        body: &hir::Body<'_>,
     ) -> ClosureSignatures<'tcx> {
         debug!("sig_of_closure_no_expectation()");
 
@@ -392,7 +392,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: DefId,
         decl: &hir::FnDecl,
-        body: &hir::Body,
+        body: &hir::Body<'_>,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
         debug!(
@@ -450,7 +450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: DefId,
         decl: &hir::FnDecl,
-        body: &hir::Body,
+        body: &hir::Body<'_>,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
         let expr_map_node = self.tcx.hir().get_if_local(expr_def_id).unwrap();
@@ -482,7 +482,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: DefId,
         decl: &hir::FnDecl,
-        body: &hir::Body,
+        body: &hir::Body<'_>,
         expected_sigs: &ClosureSignatures<'tcx>,
     ) -> InferResult<'tcx, ()> {
         // Get the signature S that the user gave.
@@ -590,7 +590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: DefId,
         decl: &hir::FnDecl,
-        body: &hir::Body,
+        body: &hir::Body<'_>,
     ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
 
@@ -788,7 +788,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn closure_sigs(
         &self,
         expr_def_id: DefId,
-        body: &hir::Body,
+        body: &hir::Body<'_>,
         bound_sig: ty::PolyFnSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
         let liberated_sig = self.tcx()

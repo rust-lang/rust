@@ -127,7 +127,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         debug!("add_inferreds for item {}",
                self.tcx.hir().node_to_string(item.hir_id));
 
@@ -144,7 +144,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             hir::ItemKind::Enum(ref enum_def, _) => {
                 self.add_inferreds_for_item(item.hir_id);
 
-                for variant in &enum_def.variants {
+                for variant in enum_def.variants {
                     if let hir::VariantData::Tuple(..) = variant.data {
                         self.add_inferreds_for_item(variant.data.ctor_hir_id().unwrap());
                     }
@@ -156,7 +156,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             }
 
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
-                for foreign_item in &foreign_mod.items {
+                for foreign_item in foreign_mod.items {
                     if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
                         self.add_inferreds_for_item(foreign_item.hir_id);
                     }
@@ -167,13 +167,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Method(..) = trait_item.kind {
             self.add_inferreds_for_item(trait_item.hir_id);
         }
     }
 
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Method(..) = impl_item.kind {
             self.add_inferreds_for_item(impl_item.hir_id);
         }

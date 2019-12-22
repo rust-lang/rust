@@ -254,7 +254,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, i: &'tcx Item) {
+    fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
         let orig_in_trait_impl = self.in_trait_impl;
         let mut kind = AnnotationKind::Required;
         match i.kind {
@@ -283,13 +283,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         self.in_trait_impl = orig_in_trait_impl;
     }
 
-    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
         self.annotate(ti.hir_id, &ti.attrs, ti.span, AnnotationKind::Required, |v| {
             intravisit::walk_trait_item(v, ti);
         });
     }
 
-    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         let kind = if self.in_trait_impl {
             AnnotationKind::Prohibited
         } else {
@@ -300,7 +300,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         });
     }
 
-    fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
+    fn visit_variant(&mut self, var: &'tcx Variant<'tcx>, g: &'tcx Generics, item_id: HirId) {
         self.annotate(var.id, &var.attrs, var.span, AnnotationKind::Required,
             |v| {
                 if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
@@ -312,19 +312,19 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             })
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx StructField<'tcx>) {
         self.annotate(s.hir_id, &s.attrs, s.span, AnnotationKind::Required, |v| {
             intravisit::walk_struct_field(v, s);
         });
     }
 
-    fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
         self.annotate(i.hir_id, &i.attrs, i.span, AnnotationKind::Required, |v| {
             intravisit::walk_foreign_item(v, i);
         });
     }
 
-    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
+    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         self.annotate(md.hir_id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
     }
 }
@@ -354,7 +354,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, i: &'tcx Item) {
+    fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
         match i.kind {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
@@ -368,12 +368,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_item(self, i)
     }
 
-    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
         self.check_missing_stability(ti.hir_id, ti.span, "item");
         intravisit::walk_trait_item(self, ti);
     }
 
-    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         let impl_def_id = self.tcx.hir().local_def_id(
             self.tcx.hir().get_parent_item(ii.hir_id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
@@ -382,22 +382,22 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_impl_item(self, ii);
     }
 
-    fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
+    fn visit_variant(&mut self, var: &'tcx Variant<'tcx>, g: &'tcx Generics, item_id: HirId) {
         self.check_missing_stability(var.id, var.span, "variant");
         intravisit::walk_variant(self, var, g, item_id);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx StructField<'tcx>) {
         self.check_missing_stability(s.hir_id, s.span, "field");
         intravisit::walk_struct_field(self, s);
     }
 
-    fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
         self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant());
         intravisit::walk_foreign_item(self, i);
     }
 
-    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
+    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         self.check_missing_stability(md.hir_id, md.span, "macro");
     }
 }
@@ -816,7 +816,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             hir::ItemKind::ExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
@@ -834,7 +834,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(.., Some(ref t), _, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., Some(ref t), _, impl_item_refs) => {
                 if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
                     for impl_item_ref in impl_item_refs {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);

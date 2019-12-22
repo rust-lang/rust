@@ -35,6 +35,7 @@
 mod expr;
 mod item;
 
+use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::hir::{self, ParamName};
 use crate::hir::HirVec;
@@ -77,7 +78,7 @@ use rustc_error_codes::*;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
-pub struct LoweringContext<'a> {
+pub struct LoweringContext<'a, 'hir: 'a> {
     crate_root: Option<Symbol>,
 
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
@@ -90,13 +91,16 @@ pub struct LoweringContext<'a> {
     /// librustc is independent of the parser, we use dynamic dispatch here.
     nt_to_tokenstream: NtToTokenstream,
 
-    /// The items being lowered are collected here.
-    items: BTreeMap<hir::HirId, hir::Item>,
+    /// Used to allocate HIR nodes
+    arena: &'hir Arena<'hir>,
 
-    trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
-    impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
-    bodies: BTreeMap<hir::BodyId, hir::Body>,
-    exported_macros: Vec<hir::MacroDef>,
+    /// The items being lowered are collected here.
+    items: BTreeMap<hir::HirId, hir::Item<'hir>>,
+
+    trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem<'hir>>,
+    impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem<'hir>>,
+    bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
+    exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,
 
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
@@ -240,13 +244,14 @@ impl<'a> ImplTraitContext<'a> {
     }
 }
 
-pub fn lower_crate(
-    sess: &Session,
-    dep_graph: &DepGraph,
-    krate: &Crate,
-    resolver: &mut dyn Resolver,
+pub fn lower_crate<'a, 'hir>(
+    sess: &'a Session,
+    dep_graph: &'a DepGraph,
+    krate: &'a Crate,
+    resolver: &'a mut dyn Resolver,
     nt_to_tokenstream: NtToTokenstream,
-) -> hir::Crate {
+    arena: &'hir Arena<'hir>,
+) -> hir::Crate<'hir> {
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
@@ -259,6 +264,7 @@ pub fn lower_crate(
         sess,
         resolver,
         nt_to_tokenstream,
+        arena,
         items: BTreeMap::new(),
         trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
@@ -382,19 +388,19 @@ impl<'a, 'b> Visitor<'a> for ImplTraitTypeIdVisitor<'b> {
     }
 }
 
-impl<'a> LoweringContext<'a> {
-    fn lower_crate(mut self, c: &Crate) -> hir::Crate {
+impl<'a, 'hir> LoweringContext<'a, 'hir> {
+    fn lower_crate(mut self, c: &Crate) -> hir::Crate<'hir> {
         /// Full-crate AST visitor that inserts into a fresh
         /// `LoweringContext` any information that may be
         /// needed from arbitrary locations in the crate,
         /// e.g., the number of lifetime generic parameters
         /// declared for every type and trait definition.
-        struct MiscCollector<'tcx, 'interner> {
-            lctx: &'tcx mut LoweringContext<'interner>,
+        struct MiscCollector<'tcx, 'lowering, 'hir> {
+            lctx: &'tcx mut LoweringContext<'lowering, 'hir>,
             hir_id_owner: Option<NodeId>,
         }
 
-        impl MiscCollector<'_, '_> {
+        impl MiscCollector<'_, '_, '_> {
             fn allocate_use_tree_hir_id_counters(
                 &mut self,
                 tree: &UseTree,
@@ -434,7 +440,7 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        impl<'tcx, 'interner> Visitor<'tcx> for MiscCollector<'tcx, 'interner> {
+        impl<'tcx, 'lowering, 'hir> Visitor<'tcx> for MiscCollector<'tcx, 'lowering, 'hir> {
             fn visit_pat(&mut self, p: &'tcx Pat) {
                 if let PatKind::Paren(..) | PatKind::Rest = p.kind {
                     // Doesn't generate a HIR node
@@ -537,7 +543,7 @@ impl<'a> LoweringContext<'a> {
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
         let module = self.lower_mod(&c.module);
-        let attrs = self.lower_attrs(&c.attrs);
+        let attrs = self.arena.alloc_from_iter(self.lower_attrs(&c.attrs).into_iter());
         let body_ids = body_ids(&self.bodies);
 
         self.resolver
@@ -548,8 +554,8 @@ impl<'a> LoweringContext<'a> {
             module,
             attrs,
             span: c.span,
-            exported_macros: hir::HirVec::from(self.exported_macros),
-            non_exported_macro_attrs: hir::HirVec::from(self.non_exported_macro_attrs),
+            exported_macros: self.arena.alloc_from_iter(self.exported_macros),
+            non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             items: self.items,
             trait_items: self.trait_items,
             impl_items: self.impl_items,
@@ -560,7 +566,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn insert_item(&mut self, item: hir::Item) {
+    fn insert_item(&mut self, item: hir::Item<'hir>) {
         let id = item.hir_id;
         // FIXME: Use `debug_asset-rt`.
         assert_eq!(id.local_id, hir::ItemLocalId::from_u32(0));
@@ -750,7 +756,7 @@ impl<'a> LoweringContext<'a> {
         f: F,
     ) -> (Vec<hir::GenericParam>, T)
     where
-        F: FnOnce(&mut LoweringContext<'_>) -> (Vec<hir::GenericParam>, T),
+        F: FnOnce(&mut LoweringContext<'_, '_>) -> (Vec<hir::GenericParam>, T),
     {
         assert!(!self.is_collecting_in_band_lifetimes);
         assert!(self.lifetimes_to_define.is_empty());
@@ -867,7 +873,7 @@ impl<'a> LoweringContext<'a> {
     // for them.
     fn with_in_scope_lifetime_defs<T, F>(&mut self, params: &[GenericParam], f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext<'_>) -> T,
+        F: FnOnce(&mut LoweringContext<'_, 'hir>) -> T,
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
@@ -896,7 +902,7 @@ impl<'a> LoweringContext<'a> {
         f: F,
     ) -> (hir::Generics, T)
     where
-        F: FnOnce(&mut LoweringContext<'_>, &mut Vec<hir::GenericParam>) -> T,
+        F: FnOnce(&mut LoweringContext<'_, '_>, &mut Vec<hir::GenericParam>) -> T,
     {
         let (in_band_defs, (mut lowered_generics, res)) = self.with_in_scope_lifetime_defs(
             &generics.params,
@@ -945,7 +951,7 @@ impl<'a> LoweringContext<'a> {
 
     fn with_dyn_type_scope<T, F>(&mut self, in_scope: bool, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext<'_>) -> T,
+        F: FnOnce(&mut LoweringContext<'_, '_>) -> T,
     {
         let was_in_dyn_type = self.is_in_dyn_type;
         self.is_in_dyn_type = in_scope;
@@ -959,7 +965,7 @@ impl<'a> LoweringContext<'a> {
 
     fn with_new_scopes<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext<'_>) -> T,
+        F: FnOnce(&mut LoweringContext<'_, '_>) -> T,
     {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
@@ -983,15 +989,14 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_attrs_extendable(&mut self, attrs: &[Attribute]) -> Vec<Attribute> {
-        attrs
-            .iter()
-            .map(|a| self.lower_attr(a))
-            .collect()
+    fn lower_attrs_arena(&mut self, attrs: &[Attribute]) -> &'hir [Attribute] {
+        self.arena.alloc_from_iter(
+            attrs.iter().map(|a| self.lower_attr(a))
+        )
     }
 
     fn lower_attrs(&mut self, attrs: &[Attribute]) -> hir::HirVec<Attribute> {
-        self.lower_attrs_extendable(attrs).into()
+        attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into()
     }
 
     fn lower_attr(&mut self, attr: &Attribute) -> Attribute {
@@ -1446,7 +1451,7 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         fn_def_id: Option<DefId>,
         opaque_ty_node_id: NodeId,
-        lower_bounds: impl FnOnce(&mut LoweringContext<'_>) -> hir::GenericBounds,
+        lower_bounds: impl FnOnce(&mut LoweringContext<'_, '_>) -> hir::GenericBounds,
     ) -> hir::TyKind {
         debug!(
             "lower_opaque_impl_trait(fn_def_id={:?}, opaque_ty_node_id={:?}, span={:?})",
@@ -1563,8 +1568,8 @@ impl<'a> LoweringContext<'a> {
         // This visitor walks over `impl Trait` bounds and creates defs for all lifetimes that
         // appear in the bounds, excluding lifetimes that are created within the bounds.
         // E.g., `'a`, `'b`, but not `'c` in `impl for<'c> SomeTrait<'a, 'b, 'c>`.
-        struct ImplTraitLifetimeCollector<'r, 'a> {
-            context: &'r mut LoweringContext<'a>,
+        struct ImplTraitLifetimeCollector<'r, 'a, 'hir> {
+            context: &'r mut LoweringContext<'a, 'hir>,
             parent: DefIndex,
             opaque_ty_id: NodeId,
             collect_elided_lifetimes: bool,
@@ -1574,7 +1579,9 @@ impl<'a> LoweringContext<'a> {
             output_lifetime_params: Vec<hir::GenericParam>,
         }
 
-        impl<'r, 'a, 'v> hir::intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a> {
+        impl<'r, 'a, 'v, 'hir> hir::intravisit::Visitor<'v>
+        for ImplTraitLifetimeCollector<'r, 'a, 'hir>
+        {
             fn nested_visit_map<'this>(
                 &'this mut self,
             ) -> hir::intravisit::NestedVisitorMap<'this, 'v> {
@@ -2757,8 +2764,9 @@ impl<'a> LoweringContext<'a> {
         let node = match p.kind {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
-                let lower_sub = |this: &mut Self| sub.as_ref().map(|x| this.lower_pat(x));
-                self.lower_pat_ident(p, binding_mode, ident, lower_sub)
+                let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(&*s));
+                let node = self.lower_pat_ident(p, binding_mode, ident, lower_sub);
+                node
             }
             PatKind::Lit(ref e) => hir::PatKind::Lit(P(self.lower_expr(e))),
             PatKind::TupleStruct(ref path, ref pats) => {
@@ -3422,7 +3430,7 @@ impl<'a> LoweringContext<'a> {
     }
 }
 
-fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body>) -> Vec<hir::BodyId> {
+fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'hir>>) -> Vec<hir::BodyId> {
     // Sorting by span ensures that we get things in order within a
     // file, and also puts the files in a sensible order.
     let mut body_ids: Vec<_> = bodies.keys().cloned().collect();

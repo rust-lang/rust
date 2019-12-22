@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
-    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem<'_>) {
         let mut vis = ImproperCTypesVisitor { cx };
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id);
         if let Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
@@ -1031,7 +1031,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
 declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
             let item_def_id = cx.tcx.hir().local_def_id(it.hir_id);
             let t = cx.tcx.type_of(item_def_id);

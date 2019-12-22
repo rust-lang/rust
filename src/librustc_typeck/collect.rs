@@ -111,7 +111,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         convert_item(self.tcx, item.hir_id);
         intravisit::walk_item(self, item);
     }
@@ -145,12 +145,12 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         convert_trait_item(self.tcx, trait_item.hir_id);
         intravisit::walk_trait_item(self, trait_item);
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         convert_impl_item(self.tcx, impl_item.hir_id);
         intravisit::walk_impl_item(self, impl_item);
     }
@@ -426,7 +426,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
         | hir::ItemKind::Mod(_)
         | hir::ItemKind::GlobalAsm(_) => {}
         hir::ItemKind::ForeignMod(ref foreign_mod) => {
-            for item in &foreign_mod.items {
+            for item in foreign_mod.items {
                 let def_id = tcx.hir().local_def_id(item.hir_id);
                 tcx.generics_of(def_id);
                 tcx.type_of(def_id);
@@ -538,7 +538,7 @@ fn convert_variant_ctor(tcx: TyCtxt<'_>, ctor_id: hir::HirId) {
 fn convert_enum_variant_types(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-    variants: &[hir::Variant]
+    variants: &[hir::Variant<'_>]
 ) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
@@ -593,7 +593,7 @@ fn convert_variant(
     ctor_did: Option<DefId>,
     ident: Ident,
     discr: ty::VariantDiscr,
-    def: &hir::VariantData,
+    def: &hir::VariantData<'_>,
     adt_kind: ty::AdtKind,
     parent_did: DefId,
 ) -> ty::VariantDef {
@@ -1702,7 +1702,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
             intravisit::NestedVisitorMap::All(&self.tcx.hir())
         }
-        fn visit_item(&mut self, it: &'tcx Item) {
+        fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
             // The opaque type itself or its children are not within its reveal scope.
@@ -1711,7 +1711,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 intravisit::walk_item(self, it);
             }
         }
-        fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
+        fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
             // The opaque type itself or its children are not within its reveal scope.
@@ -1720,7 +1720,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 intravisit::walk_impl_item(self, it);
             }
         }
-        fn visit_trait_item(&mut self, it: &'tcx TraitItem) {
+        fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
             self.check(def_id);
@@ -2061,8 +2061,6 @@ fn explicit_predicates_of(
 
     const NO_GENERICS: &hir::Generics = &hir::Generics::empty();
 
-    let empty_trait_items = HirVec::new();
-
     let mut predicates = UniquePredicates::new();
 
     let ast_generics = match node {
@@ -2107,12 +2105,12 @@ fn explicit_predicates_of(
                 | ItemKind::Struct(_, ref generics)
                 | ItemKind::Union(_, ref generics) => generics,
 
-                ItemKind::Trait(_, _, ref generics, .., ref items) => {
+                ItemKind::Trait(_, _, ref generics, .., items) => {
                     is_trait = Some((ty::TraitRef::identity(tcx, def_id), items));
                     generics
                 }
                 ItemKind::TraitAlias(ref generics, _) => {
-                    is_trait = Some((ty::TraitRef::identity(tcx, def_id), &empty_trait_items));
+                    is_trait = Some((ty::TraitRef::identity(tcx, def_id), &[]));
                     generics
                 }
                 ItemKind::OpaqueTy(OpaqueTy {

@@ -153,20 +153,20 @@ impl<'hir> Entry<'hir> {
 }
 
 /// Stores a crate and any number of inlined items from other crates.
-pub struct Forest {
-    krate: Crate,
+pub struct Forest<'hir> {
+    krate: Crate<'hir>,
     pub dep_graph: DepGraph,
 }
 
-impl Forest {
-    pub fn new(krate: Crate, dep_graph: &DepGraph) -> Forest {
+impl Forest<'hir> {
+    pub fn new(krate: Crate<'hir>, dep_graph: &DepGraph) -> Forest<'hir> {
         Forest {
             krate,
             dep_graph: dep_graph.clone(),
         }
     }
 
-    pub fn krate(&self) -> &Crate {
+    pub fn krate(&self) -> &Crate<'hir> {
         self.dep_graph.read(DepNode::new_no_params(DepKind::Krate));
         &self.krate
     }
@@ -174,7 +174,7 @@ impl Forest {
     /// This is used internally in the dependency tracking system.
     /// Use the `krate` method to ensure your dependency on the
     /// crate is tracked.
-    pub fn untracked_krate(&self) -> &Crate {
+    pub fn untracked_krate(&self) -> &Crate<'hir> {
         &self.krate
     }
 }
@@ -189,7 +189,7 @@ pub(super) type HirEntryMap<'hir> = IndexVec<DefIndex, IndexVec<ItemLocalId, Opt
 #[derive(Clone)]
 pub struct Map<'hir> {
     /// The backing storage for all the AST nodes.
-    pub forest: &'hir Forest,
+    pub forest: &'hir Forest<'hir>,
 
     /// Same as the dep_graph in forest, just available with one fewer
     /// deref. This is a gratuitous micro-optimization.
@@ -439,11 +439,11 @@ impl<'hir> Map<'hir> {
         self.lookup(id).cloned()
     }
 
-    pub fn krate(&self) -> &'hir Crate {
+    pub fn krate(&self) -> &'hir Crate<'hir> {
         self.forest.krate()
     }
 
-    pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem {
+    pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
         self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
@@ -451,7 +451,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate.trait_item(id)
     }
 
-    pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem {
+    pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
         self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
@@ -459,7 +459,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate.impl_item(id)
     }
 
-    pub fn body(&self, id: BodyId) -> &'hir Body {
+    pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
@@ -580,7 +580,7 @@ impl<'hir> Map<'hir> {
         &self.forest.krate.attrs
     }
 
-    pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, HirId) {
+    pub fn get_module(&self, module: DefId) -> (&'hir Mod<'hir>, Span, HirId) {
         let hir_id = self.as_local_hir_id(module).unwrap();
         self.read(hir_id);
         match self.find_entry(hir_id).unwrap().node {
@@ -959,28 +959,28 @@ impl<'hir> Map<'hir> {
         bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
     }
 
-    pub fn expect_item(&self, id: HirId) -> &'hir Item {
+    pub fn expect_item(&self, id: HirId) -> &'hir Item<'hir> {
         match self.find(id) { // read recorded by `find`
             Some(Node::Item(item)) => item,
             _ => bug!("expected item, found {}", self.node_to_string(id))
         }
     }
 
-    pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem {
+    pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem<'hir> {
         match self.find(id) {
             Some(Node::ImplItem(item)) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(id))
         }
     }
 
-    pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem {
+    pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem<'hir> {
         match self.find(id) {
             Some(Node::TraitItem(item)) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(id))
         }
     }
 
-    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData {
+    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData<'hir> {
         match self.find(id) {
             Some(Node::Item(i)) => {
                 match i.kind {
@@ -995,14 +995,14 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant(&self, id: HirId) -> &'hir Variant {
+    pub fn expect_variant(&self, id: HirId) -> &'hir Variant<'hir> {
         match self.find(id) {
             Some(Node::Variant(variant)) => variant,
             _ => bug!("expected variant, found {}", self.node_to_string(id)),
         }
     }
 
-    pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem {
+    pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem<'hir> {
         match self.find(id) {
             Some(Node::ForeignItem(item)) => item,
             _ => bug!("expected foreign item, found {}", self.node_to_string(id))
@@ -1213,7 +1213,7 @@ impl<'a> NodesMatchingSuffix<'a> {
                 id = parent;
             }
 
-            fn item_is_mod(item: &Item) -> bool {
+            fn item_is_mod(item: &Item<'_>) -> bool {
                 match item.kind {
                     ItemKind::Mod(_) => true,
                     _ => false,
@@ -1248,16 +1248,16 @@ trait Named {
 
 impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
 
-impl Named for Item { fn name(&self) -> Name { self.ident.name } }
-impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
-impl Named for Variant { fn name(&self) -> Name { self.ident.name } }
-impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
-impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
-impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for Item<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for ForeignItem<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for Variant<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for StructField<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for TraitItem<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for ImplItem<'_> { fn name(&self) -> Name { self.ident.name } }
 
 pub fn map_crate<'hir>(sess: &crate::session::Session,
                        cstore: &CrateStoreDyn,
-                       forest: &'hir Forest,
+                       forest: &'hir Forest<'hir>,
                        definitions: Definitions)
                        -> Map<'hir> {
     let _prof_timer = sess.prof.generic_activity("build_hir_map");

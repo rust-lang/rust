@@ -33,18 +33,18 @@ struct EntryContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &'tcx Item) {
+    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let def_id = self.map.local_def_id(item.hir_id);
         let def_key = self.map.def_key(def_id);
         let at_root = def_key.parent == Some(CRATE_DEF_INDEX);
         find_item(item, self, at_root);
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &'tcx TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &'tcx TraitItem<'tcx>) {
         // Entry fn is never a trait item.
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem<'tcx>) {
         // Entry fn is never a trait item.
     }
 }
@@ -81,7 +81,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
 
 // Beware, this is duplicated in `libsyntax/entry.rs`, so make sure to keep
 // them in sync.
-fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
+fn entry_point_type(item: &Item<'_>, at_root: bool) -> EntryPointType {
     match item.kind {
         ItemKind::Fn(..) => {
             if attr::contains_name(&item.attrs, sym::start) {
@@ -104,7 +104,7 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
 }
 
 
-fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
+fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
     match entry_point_type(item, at_root) {
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {

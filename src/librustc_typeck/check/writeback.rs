@@ -32,7 +32,9 @@ use std::mem;
 // resolve_type_vars_in_body, which creates a new TypeTables which
 // doesn't contain any inference types.
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn resolve_type_vars_in_body(&self, body: &'tcx hir::Body) -> &'tcx ty::TypeckTables<'tcx> {
+    pub fn resolve_type_vars_in_body(&self, body: &'tcx hir::Body<'tcx>)
+        -> &'tcx ty::TypeckTables<'tcx>
+    {
         let item_id = self.tcx.hir().body_owner(body.id());
         let item_def_id = self.tcx.hir().local_def_id(item_id);
 
@@ -41,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_substs);
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
-        for param in &body.params {
+        for param in body.params {
             wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
         // Type only exists for constants and statics, not functions.
@@ -102,7 +104,7 @@ struct WritebackCx<'cx, 'tcx> {
 
     tables: ty::TypeckTables<'tcx>,
 
-    body: &'tcx hir::Body,
+    body: &'tcx hir::Body<'tcx>,
 
     rustc_dump_user_substs: bool,
 }
@@ -110,7 +112,7 @@ struct WritebackCx<'cx, 'tcx> {
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn new(
         fcx: &'cx FnCtxt<'cx, 'tcx>,
-        body: &'tcx hir::Body,
+        body: &'tcx hir::Body<'tcx>,
         rustc_dump_user_substs: bool,
     ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id;
@@ -265,7 +267,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         match e.kind {
             hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir().body(body);
-                for param in &body.params {
+                for param in body.params {
                     self.visit_node_id(e.span, param.hir_id);
                 }
 
@@ -698,14 +700,14 @@ struct Resolver<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     span: &'cx dyn Locatable,
-    body: &'tcx hir::Body,
+    body: &'tcx hir::Body<'tcx>,
 }
 
 impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn new(
         fcx: &'cx FnCtxt<'cx, 'tcx>,
         span: &'cx dyn Locatable,
-        body: &'tcx hir::Body,
+        body: &'tcx hir::Body<'tcx>,
     ) -> Resolver<'cx, 'tcx> {
         Resolver {
             tcx: fcx.tcx,

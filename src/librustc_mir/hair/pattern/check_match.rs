@@ -76,10 +76,10 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
         self.check_patterns(false, &loc.pat);
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         intravisit::walk_body(self, body);
 
-        for param in &body.params {
+        for param in body.params {
             self.check_irrefutable(&param.pat, "function argument", None);
             self.check_patterns(false, &param.pat);
         }

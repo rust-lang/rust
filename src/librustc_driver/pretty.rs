@@ -73,7 +73,7 @@ where
 }
 fn call_with_pp_support_hir<A, F>(ppmode: &PpSourceMode, tcx: TyCtxt<'_>, f: F) -> A
 where
-    F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate) -> A,
+    F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate<'_>) -> A,
 {
     match *ppmode {
         PpmNormal => {

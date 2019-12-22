@@ -18,7 +18,7 @@ struct UnsafetyChecker<'tcx> {
 
 impl UnsafetyChecker<'tcx> {
     fn check_unsafety_coherence(&mut self,
-                                item: &'v hir::Item,
+                                item: &'v hir::Item<'v>,
                                 impl_generics: Option<&hir::Generics>,
                                 unsafety: hir::Unsafety,
                                 polarity: hir::ImplPolarity)
@@ -72,15 +72,15 @@ impl UnsafetyChecker<'tcx> {
 }
 
 impl ItemLikeVisitor<'v> for UnsafetyChecker<'tcx> {
-    fn visit_item(&mut self, item: &'v hir::Item) {
+    fn visit_item(&mut self, item: &'v hir::Item<'v>) {
         if let hir::ItemKind::Impl(unsafety, polarity, _, ref generics, ..) = item.kind {
             self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
     }
 }

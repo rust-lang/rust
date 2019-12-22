@@ -446,17 +446,18 @@ fn configure_and_expand_inner<'a>(
     Ok((krate, resolver))
 }
 
-pub fn lower_to_hir(
-    sess: &Session,
+pub fn lower_to_hir<'res, 'tcx>(
+    sess: &'tcx Session,
     lint_store: &lint::LintStore,
-    resolver: &mut Resolver<'_>,
-    dep_graph: &DepGraph,
-    krate: &ast::Crate,
-) -> Result<hir::map::Forest> {
+    resolver: &'res mut Resolver<'_>,
+    dep_graph: &'res DepGraph,
+    krate: &'res ast::Crate,
+    arena: &'tcx Arena<'tcx>,
+) -> Result<hir::map::Forest<'tcx>> {
     // Lower AST to HIR.
     let hir_forest = time(sess, "lowering AST -> HIR", || {
         let nt_to_tokenstream = rustc_parse::nt_to_tokenstream;
-        let hir_crate = lower_crate(sess, &dep_graph, &krate, resolver, nt_to_tokenstream);
+        let hir_crate = lower_crate(sess, &dep_graph, &krate, resolver, nt_to_tokenstream, arena);
 
         if sess.opts.debugging_opts.hir_stats {
             hir_stats::print_hir_stats(&hir_crate);
@@ -738,7 +739,7 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<lint::LintStore>,
-    hir_forest: &'tcx hir::map::Forest,
+    hir_forest: &'tcx hir::map::Forest<'tcx>,
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,

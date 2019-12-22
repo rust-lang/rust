@@ -93,7 +93,6 @@ macro_rules! arena_types {
                         rustc::hir::def_id::CrateNum
                     >
                 >,
-            [few] hir_forest: rustc::hir::map::Forest,
             [few] diagnostic_items: rustc_data_structures::fx::FxHashMap<
                 syntax::symbol::Symbol,
                 rustc::hir::def_id::DefId,
@@ -123,6 +122,21 @@ macro_rules! arena_types {
             [few] crate_variances: rustc::ty::CrateVariancesMap<'tcx>,
             [few] inferred_outlives_crate: rustc::ty::CratePredicatesMap<'tcx>,
             [] upvars: rustc_data_structures::fx::FxIndexMap<rustc::hir::HirId, rustc::hir::Upvar>,
+
+            // HIR types
+            [few] hir_forest: rustc::hir::map::Forest<$tcx>,
+            [] attribute: syntax::ast::Attribute,
+            [few] global_asm: rustc::hir::GlobalAsm,
+            [] fn_decl: rustc::hir::FnDecl,
+            [] foreign_item: rustc::hir::ForeignItem<$tcx>,
+            [] impl_item_ref: rustc::hir::ImplItemRef,
+            [few] macro_def: rustc::hir::MacroDef<$tcx>,
+            [] param: rustc::hir::Param,
+            [] path: rustc::hir::Path,
+            [] struct_field: rustc::hir::StructField<$tcx>,
+            [] trait_item_ref: rustc::hir::TraitItemRef,
+            [] ty: rustc::hir::Ty,
+            [] variant: rustc::hir::Variant<$tcx>,
         ], $tcx);
     )
 }

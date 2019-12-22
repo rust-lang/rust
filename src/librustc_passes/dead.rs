@@ -223,7 +223,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         self.tables = old_tables;
     }
 
-    fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
+    fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>, _: ast::Name,
                           _: &hir::Generics, _: hir::HirId, _: syntax_pos::Span) {
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
@@ -355,14 +355,14 @@ fn has_allow_dead_code_or_lang_attr(
 //     * Implementation of a trait method
 struct LifeSeeder<'k, 'tcx> {
     worklist: Vec<hir::HirId>,
-    krate: &'k hir::Crate,
+    krate: &'k hir::Crate<'k>,
     tcx: TyCtxt<'tcx>,
     // see `MarkSymbolVisitor::struct_constructors`
     struct_constructors: FxHashMap<hir::HirId, hir::HirId>,
 }
 
 impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         let allow_dead_code = has_allow_dead_code_or_lang_attr(self.tcx,
                                                                item.hir_id,
                                                                &item.attrs);
@@ -375,13 +375,13 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     self.worklist.extend(enum_def.variants.iter().map(|variant| variant.id));
                 }
 
-                for variant in &enum_def.variants {
+                for variant in enum_def.variants {
                     if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
                         self.struct_constructors.insert(ctor_hir_id, variant.id);
                     }
                 }
             }
-            hir::ItemKind::Trait(.., ref trait_item_refs) => {
+            hir::ItemKind::Trait(.., trait_item_refs) => {
                 for trait_item_ref in trait_item_refs {
                     let trait_item = self.krate.trait_item(trait_item_ref.id);
                     match trait_item.kind {
@@ -397,7 +397,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Impl(.., ref opt_trait, _, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., ref opt_trait, _, impl_item_refs) => {
                 for impl_item_ref in impl_item_refs {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
                     if opt_trait.is_some() ||
@@ -417,11 +417,11 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _item: &hir::TraitItem<'_>) {
         // ignore: we are handling this in `visit_item` above
     }
 
-    fn visit_impl_item(&mut self, _item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _item: &hir::ImplItem<'_>) {
         // ignore: we are handling this in `visit_item` above
     }
 }
@@ -429,7 +429,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
 fn create_and_seed_worklist<'tcx>(
     tcx: TyCtxt<'tcx>,
     access_levels: &privacy::AccessLevels,
-    krate: &hir::Crate,
+    krate: &hir::Crate<'_>,
 ) -> (Vec<hir::HirId>, FxHashMap<hir::HirId, hir::HirId>) {
     let worklist = access_levels.map.iter().filter_map(|(&id, level)| {
         if level >= &privacy::AccessLevel::Reachable {
@@ -457,7 +457,7 @@ fn create_and_seed_worklist<'tcx>(
 fn find_live<'tcx>(
     tcx: TyCtxt<'tcx>,
     access_levels: &privacy::AccessLevels,
-    krate: &hir::Crate,
+    krate: &hir::Crate<'_>,
 ) -> FxHashSet<hir::HirId> {
     let (worklist, struct_constructors) = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor {
@@ -481,7 +481,7 @@ struct DeadVisitor<'tcx> {
 }
 
 impl DeadVisitor<'tcx> {
-    fn should_warn_about_item(&mut self, item: &hir::Item) -> bool {
+    fn should_warn_about_item(&mut self, item: &hir::Item<'_>) -> bool {
         let should_warn = match item.kind {
             hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
@@ -495,7 +495,7 @@ impl DeadVisitor<'tcx> {
         should_warn && !self.symbol_is_live(item.hir_id)
     }
 
-    fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
+    fn should_warn_about_field(&mut self, field: &hir::StructField<'_>) -> bool {
         let field_type = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
         !field.is_positional()
             && !self.symbol_is_live(field.hir_id)
@@ -503,14 +503,14 @@ impl DeadVisitor<'tcx> {
             && !has_allow_dead_code_or_lang_attr(self.tcx, field.hir_id, &field.attrs)
     }
 
-    fn should_warn_about_variant(&mut self, variant: &hir::Variant) -> bool {
+    fn should_warn_about_variant(&mut self, variant: &hir::Variant<'_>) -> bool {
         !self.symbol_is_live(variant.id)
             && !has_allow_dead_code_or_lang_attr(self.tcx,
                                                  variant.id,
                                                  &variant.attrs)
     }
 
-    fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem) -> bool {
+    fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem<'_>) -> bool {
         !self.symbol_is_live(fi.hir_id)
             && !has_allow_dead_code_or_lang_attr(self.tcx, fi.hir_id, &fi.attrs)
     }
@@ -567,7 +567,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if self.should_warn_about_item(item) {
             // For most items, we want to highlight its identifier
             let span = match item.kind {
@@ -610,7 +610,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     }
 
     fn visit_variant(&mut self,
-                     variant: &'tcx hir::Variant,
+                     variant: &'tcx hir::Variant<'tcx>,
                      g: &'tcx hir::Generics,
                      id: hir::HirId) {
         if self.should_warn_about_variant(&variant) {
@@ -621,7 +621,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         }
     }
 
-    fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem<'tcx>) {
         if self.should_warn_about_foreign_item(fi) {
             self.warn_dead_code(fi.hir_id, fi.span, fi.ident.name,
                                 fi.kind.descriptive_variant(), "used");
@@ -629,14 +629,14 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         intravisit::walk_foreign_item(self, fi);
     }
 
-    fn visit_struct_field(&mut self, field: &'tcx hir::StructField) {
+    fn visit_struct_field(&mut self, field: &'tcx hir::StructField<'tcx>) {
         if self.should_warn_about_field(&field) {
             self.warn_dead_code(field.hir_id, field.span, field.ident.name, "field", "read");
         }
         intravisit::walk_struct_field(self, field);
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         match impl_item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id) {
@@ -662,7 +662,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     }
 
     // Overwrite so that we don't warn the trait item itself.
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         match trait_item.kind {
             hir::TraitItemKind::Const(_, Some(body_id)) |
             hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {

@@ -342,7 +342,7 @@ impl<'tcx> EncodeContext<'tcx> {
         let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Public };
         self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.module, &krate.attrs, &vis);
         krate.visit_all_item_likes(&mut self.as_deep_visitor());
-        for macro_def in &krate.exported_macros {
+        for macro_def in krate.exported_macros {
             self.visit_macro_def(macro_def);
         }
     }
@@ -682,7 +682,7 @@ impl EncodeContext<'tcx> {
     fn encode_info_for_mod(
         &mut self,
         id: hir::HirId,
-        md: &hir::Mod,
+        md: &hir::Mod<'_>,
         attrs: &[ast::Attribute],
         vis: &hir::Visibility,
     ) {
@@ -727,7 +727,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.kind[def_id] <- EntryKind::Field);
         record!(self.per_def.visibility[def_id] <- field.vis);
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
-        record!(self.per_def.attributes[def_id] <- &variant_data.fields()[field_index].attrs);
+        record!(self.per_def.attributes[def_id] <- variant_data.fields()[field_index].attrs);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -864,7 +864,7 @@ impl EncodeContext<'tcx> {
         });
         record!(self.per_def.visibility[def_id] <- trait_item.vis);
         record!(self.per_def.span[def_id] <- ast_item.span);
-        record!(self.per_def.attributes[def_id] <- &ast_item.attrs);
+        record!(self.per_def.attributes[def_id] <- ast_item.attrs);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
@@ -945,7 +945,7 @@ impl EncodeContext<'tcx> {
         });
         record!(self.per_def.visibility[def_id] <- impl_item.vis);
         record!(self.per_def.span[def_id] <- ast_item.span);
-        record!(self.per_def.attributes[def_id] <- &ast_item.attrs);
+        record!(self.per_def.attributes[def_id] <- ast_item.attrs);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
@@ -1048,7 +1048,7 @@ impl EncodeContext<'tcx> {
         self.lazy(rendered_const)
     }
 
-    fn encode_info_for_item(&mut self, def_id: DefId, item: &'tcx hir::Item) {
+    fn encode_info_for_item(&mut self, def_id: DefId, item: &'tcx hir::Item<'tcx>) {
         let tcx = self.tcx;
 
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
@@ -1160,7 +1160,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.visibility[def_id] <-
             ty::Visibility::from_hir(&item.vis, item.hir_id, tcx));
         record!(self.per_def.span[def_id] <- item.span);
-        record!(self.per_def.attributes[def_id] <- &item.attrs);
+        record!(self.per_def.attributes[def_id] <- item.attrs);
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
             hir::ItemKind::ForeignMod(ref fm) => record!(self.per_def.children[def_id] <-
@@ -1271,7 +1271,7 @@ impl EncodeContext<'tcx> {
     }
 
     /// Serialize the text of exported macros
-    fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) {
+    fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef<'_>) {
         use syntax::print::pprust;
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id);
         record!(self.per_def.kind[def_id] <- EntryKind::MacroDef(self.lazy(MacroDef {
@@ -1280,7 +1280,7 @@ impl EncodeContext<'tcx> {
         })));
         record!(self.per_def.visibility[def_id] <- ty::Visibility::Public);
         record!(self.per_def.span[def_id] <- macro_def.span);
-        record!(self.per_def.attributes[def_id] <- &macro_def.attrs);
+        record!(self.per_def.attributes[def_id] <- macro_def.attrs);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
     }
@@ -1525,7 +1525,7 @@ impl EncodeContext<'tcx> {
     fn encode_info_for_foreign_item(
         &mut self,
         def_id: DefId,
-        nitem: &hir::ForeignItem,
+        nitem: &hir::ForeignItem<'_>,
     )  {
         let tcx = self.tcx;
 
@@ -1551,7 +1551,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.visibility[def_id] <-
             ty::Visibility::from_hir(&nitem.vis, nitem.hir_id, self.tcx));
         record!(self.per_def.span[def_id] <- nitem.span);
-        record!(self.per_def.attributes[def_id] <- &nitem.attrs);
+        record!(self.per_def.attributes[def_id] <- nitem.attrs);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
@@ -1580,7 +1580,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         let def_id = self.tcx.hir().local_def_id(c.hir_id);
         self.encode_info_for_anon_const(def_id);
     }
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         intravisit::walk_item(self, item);
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         match item.kind {
@@ -1590,7 +1590,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         }
         self.encode_addl_info_for_item(item);
     }
-    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem<'tcx>) {
         intravisit::walk_foreign_item(self, ni);
         let def_id = self.tcx.hir().local_def_id(ni.hir_id);
         self.encode_info_for_foreign_item(def_id, ni);
@@ -1599,7 +1599,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         intravisit::walk_generics(self, generics);
         self.encode_info_for_generics(generics);
     }
-    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
         self.encode_info_for_macro_def(macro_def);
     }
 }
@@ -1649,7 +1649,7 @@ impl EncodeContext<'tcx> {
     /// encode some sub-items. Usually we want some info from the item
     /// so it's easier to do that here then to wait until we would encounter
     /// normally in the visitor walk.
-    fn encode_addl_info_for_item(&mut self, item: &hir::Item) {
+    fn encode_addl_info_for_item(&mut self, item: &hir::Item<'_>) {
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         match item.kind {
             hir::ItemKind::Static(..) |
@@ -1713,7 +1713,7 @@ struct ImplVisitor<'tcx> {
 }
 
 impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::Impl(..) = item.kind {
             let impl_id = self.tcx.hir().local_def_id(item.hir_id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
@@ -1725,9 +1725,9 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &'v hir::TraitItem) {}
+    fn visit_trait_item(&mut self, _trait_item: &'v hir::TraitItem<'v>) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem<'v>) {
         // handled in `visit_item` above
     }
 }

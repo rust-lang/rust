@@ -4,7 +4,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::hir::{self, HirId, HirVec, Attribute, Item, ItemKind, TraitItem, TraitItemKind};
+use crate::hir::{self, HirId, Attribute, Item, ItemKind, TraitItem, TraitItemKind};
 use crate::hir::DUMMY_HIR_ID;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -86,7 +86,7 @@ impl Display for Target {
 }
 
 impl Target {
-    pub(crate) fn from_item(item: &Item) -> Target {
+    pub(crate) fn from_item(item: &Item<'_>) -> Target {
         match item.kind {
             ItemKind::ExternCrate(..) => Target::ExternCrate,
             ItemKind::Use(..) => Target::Use,
@@ -107,7 +107,7 @@ impl Target {
         }
     }
 
-    fn from_trait_item(trait_item: &TraitItem) -> Target {
+    fn from_trait_item(trait_item: &TraitItem<'_>) -> Target {
         match trait_item.kind {
             TraitItemKind::Const(..) => Target::AssocConst,
             TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
@@ -120,7 +120,7 @@ impl Target {
         }
     }
 
-    fn from_foreign_item(foreign_item: &hir::ForeignItem) -> Target {
+    fn from_foreign_item(foreign_item: &hir::ForeignItem<'_>) -> Target {
         match foreign_item.kind {
             hir::ForeignItemKind::Fn(..) => Target::ForeignFn,
             hir::ForeignItemKind::Static(..) => Target::ForeignStatic,
@@ -128,7 +128,7 @@ impl Target {
         }
     }
 
-    fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem) -> Target {
+    fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
         match impl_item.kind {
             hir::ImplItemKind::Const(..) => Target::AssocConst,
             hir::ImplItemKind::Method(..) => {
@@ -158,10 +158,10 @@ impl CheckAttrVisitor<'tcx> {
     fn check_attributes(
         &self,
         hir_id: HirId,
-        attrs: &HirVec<Attribute>,
+        attrs: &'hir [Attribute],
         span: &Span,
         target: Target,
-        item: Option<&Item>,
+        item: Option<&Item<'_>>,
     ) {
         let mut is_valid = true;
         for attr in attrs {
@@ -241,7 +241,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_track_caller(
         &self,
         attr_span: &Span,
-        attrs: &HirVec<Attribute>,
+        attrs: &'hir [Attribute],
         span: &Span,
         target: Target,
     ) -> bool {
@@ -332,10 +332,10 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if the `#[repr]` attributes on `item` are valid.
     fn check_repr(
         &self,
-        attrs: &HirVec<Attribute>,
+        attrs: &'hir [Attribute],
         span: &Span,
         target: Target,
-        item: Option<&Item>,
+        item: Option<&Item<'_>>,
     ) {
         // Extract the names of all repr hints, e.g., [foo, bar, align] for:
         // ```
@@ -477,7 +477,7 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_used(&self, attrs: &HirVec<Attribute>, target: Target) {
+    fn check_used(&self, attrs: &'hir [Attribute], target: Target) {
         for attr in attrs {
             if attr.check_name(sym::used) && target != Target::Static {
                 self.tcx.sess
@@ -492,25 +492,25 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx Item) {
+    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let target = Target::from_item(item);
-        self.check_attributes(item.hir_id, &item.attrs, &item.span, target, Some(item));
+        self.check_attributes(item.hir_id, item.attrs, &item.span, target, Some(item));
         intravisit::walk_item(self, item)
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
         let target = Target::from_trait_item(trait_item);
         self.check_attributes(trait_item.hir_id, &trait_item.attrs, &trait_item.span, target, None);
         intravisit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_foreign_item(&mut self, f_item: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, f_item: &'tcx hir::ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(f_item.hir_id, &f_item.attrs, &f_item.span, target, None);
         intravisit::walk_foreign_item(self, f_item)
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let target = Target::from_impl_item(self.tcx, impl_item);
         self.check_attributes(impl_item.hir_id, &impl_item.attrs, &impl_item.span, target, None);
         intravisit::walk_impl_item(self, impl_item)
@@ -527,9 +527,9 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 }
 
-fn is_c_like_enum(item: &Item) -> bool {
+fn is_c_like_enum(item: &Item<'_>) -> bool {
     if let ItemKind::Enum(ref def, _) = item.kind {
-        for variant in &def.variants {
+        for variant in def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }
                 _ => return false,

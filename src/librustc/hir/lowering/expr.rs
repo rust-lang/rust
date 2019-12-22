@@ -13,7 +13,7 @@ use syntax::symbol::{sym, Symbol};
 
 use rustc_error_codes::*;
 
-impl LoweringContext<'_> {
+impl LoweringContext<'_, '_> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> HirVec<hir::Expr> {
         exprs.iter().map(|x| self.lower_expr(x)).collect()
     }
@@ -473,7 +473,7 @@ impl LoweringContext<'_> {
         ret_ty: Option<AstP<Ty>>,
         span: Span,
         async_gen_kind: hir::AsyncGeneratorKind,
-        body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
+        body: impl FnOnce(&mut LoweringContext<'_, '_>) -> hir::Expr,
     ) -> hir::ExprKind {
         let output = match ret_ty {
             Some(ty) => FunctionRetTy::Ty(ty),
@@ -909,7 +909,7 @@ impl LoweringContext<'_> {
 
     fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext<'_>) -> T,
+        F: FnOnce(&mut LoweringContext<'_, '_>) -> T,
     {
         let len = self.catch_scopes.len();
         self.catch_scopes.push(catch_id);
@@ -928,7 +928,7 @@ impl LoweringContext<'_> {
 
     fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext<'_>) -> T,
+        F: FnOnce(&mut LoweringContext<'_, '_>) -> T,
     {
         // We're no longer in the base loop's condition; we're in another loop.
         let was_in_loop_condition = self.is_in_loop_condition;
@@ -953,7 +953,7 @@ impl LoweringContext<'_> {
 
     fn with_loop_condition_scope<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext<'_>) -> T,
+        F: FnOnce(&mut LoweringContext<'_, '_>) -> T,
     {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = true;

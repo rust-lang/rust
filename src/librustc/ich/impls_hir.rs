@@ -150,7 +150,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::TraitItem {
             hir_id: _,
@@ -172,7 +172,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
 }
 
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::ImplItem {
             hir_id: _,
@@ -218,7 +218,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Mod {
             inner: ref inner_span,
@@ -245,7 +245,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Item<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Item {
             ident,
@@ -266,7 +266,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Body {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Body<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Body {
             params,

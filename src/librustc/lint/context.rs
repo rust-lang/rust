@@ -883,7 +883,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
         self.context.param_env = old_param_env;
     }
 
-    fn process_mod(&mut self, m: &'tcx hir::Mod, s: Span, n: hir::HirId) {
+    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
         lint_callback!(self, check_mod, m, s, n);
         hir_visit::walk_mod(self, m, n);
         lint_callback!(self, check_mod_post, m, s, n);
@@ -924,13 +924,13 @@ for LateContextAndPass<'a, 'tcx, T> {
         });
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         lint_callback!(self, check_body, body);
         hir_visit::walk_body(self, body);
         lint_callback!(self, check_body_post, body);
     }
 
-    fn visit_item(&mut self, it: &'tcx hir::Item) {
+    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = it.kind.generics();
         self.with_lint_attrs(it.hir_id, &it.attrs, |cx| {
@@ -943,7 +943,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         self.context.generics = generics;
     }
 
-    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
         self.with_lint_attrs(it.hir_id, &it.attrs, |cx| {
             cx.with_param_env(it.hir_id, |cx| {
                 lint_callback!(cx, check_foreign_item, it);
@@ -990,7 +990,7 @@ for LateContextAndPass<'a, 'tcx, T> {
     }
 
     fn visit_variant_data(&mut self,
-                        s: &'tcx hir::VariantData,
+                        s: &'tcx hir::VariantData<'tcx>,
                         _: ast::Name,
                         _: &'tcx hir::Generics,
                         _: hir::HirId,
@@ -1000,7 +1000,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         lint_callback!(self, check_struct_def_post, s);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
         self.with_lint_attrs(s.hir_id, &s.attrs, |cx| {
             lint_callback!(cx, check_struct_field, s);
             hir_visit::walk_struct_field(cx, s);
@@ -1008,7 +1008,7 @@ for LateContextAndPass<'a, 'tcx, T> {
     }
 
     fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant,
+                     v: &'tcx hir::Variant<'tcx>,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
         self.with_lint_attrs(v.id, &v.attrs, |cx| {
@@ -1027,7 +1027,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         lint_callback!(self, check_name, sp, name);
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod, s: Span, n: hir::HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
         if !self.context.only_module {
             self.process_mod(m, s, n);
         }
@@ -1072,7 +1072,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         hir_visit::walk_poly_trait_ref(self, t, m);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = Some(&trait_item.generics);
         self.with_lint_attrs(trait_item.hir_id, &trait_item.attrs, |cx| {
@@ -1085,7 +1085,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         self.context.generics = generics;
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = Some(&impl_item.generics);
         self.with_lint_attrs(impl_item.hir_id, &impl_item.attrs, |cx| {

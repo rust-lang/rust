@@ -751,11 +751,11 @@ struct CheckItemTypesVisitor<'tcx> {
 }
 
 impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
-    fn visit_item(&mut self, i: &'tcx hir::Item) {
+    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
         check_item_type(self.tcx, i);
     }
-    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) { }
-    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) { }
+    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) { }
+    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) { }
 }
 
 pub fn check_wf_new(tcx: TyCtxt<'_>) {
@@ -1260,7 +1260,7 @@ fn check_fn<'a, 'tcx>(
     fn_sig: ty::FnSig<'tcx>,
     decl: &'tcx hir::FnDecl,
     fn_id: hir::HirId,
-    body: &'tcx hir::Body,
+    body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
     let mut fn_sig = fn_sig.clone();
@@ -1327,7 +1327,7 @@ fn check_fn<'a, 'tcx>(
     for (param_ty, param) in
         fn_sig.inputs().iter().copied()
             .chain(maybe_va_list)
-            .zip(&body.params)
+            .zip(body.params)
     {
         // Check the pattern.
         fcx.check_pat_top(&param.pat, param_ty, None);
@@ -1696,7 +1696,7 @@ fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     }
 }
 
-pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
+pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
     debug!(
         "check_item_type(it.hir_id={}, it.name={})",
         it.hir_id,
@@ -1766,15 +1766,15 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
             check_abi(tcx, it.span, m.abi);
 
             if m.abi == Abi::RustIntrinsic {
-                for item in &m.items {
+                for item in m.items {
                     intrinsic::check_intrinsic_type(tcx, item);
                 }
             } else if m.abi == Abi::PlatformIntrinsic {
-                for item in &m.items {
+                for item in m.items {
                     intrinsic::check_platform_intrinsic_type(tcx, item);
                 }
             } else {
-                for item in &m.items {
+                for item in m.items {
                     let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {
@@ -1857,7 +1857,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
     }
 }
 
-fn check_on_unimplemented(tcx: TyCtxt<'_>, trait_def_id: DefId, item: &hir::Item) {
+fn check_on_unimplemented(tcx: TyCtxt<'_>, trait_def_id: DefId, item: &hir::Item<'_>) {
     let item_def_id = tcx.hir().local_def_id(item.hir_id);
     // an error would be reported if this fails.
     let _ = traits::OnUnimplementedDirective::of_item(tcx, trait_def_id, item_def_id);
@@ -1865,7 +1865,7 @@ fn check_on_unimplemented(tcx: TyCtxt<'_>, trait_def_id: DefId, item: &hir::Item
 
 fn report_forbidden_specialization(
     tcx: TyCtxt<'_>,
-    impl_item: &hir::ImplItem,
+    impl_item: &hir::ImplItem<'_>,
     parent_impl: DefId,
 ) {
     let mut err = struct_span_err!(
@@ -1895,7 +1895,7 @@ fn check_specialization_validity<'tcx>(
     trait_def: &ty::TraitDef,
     trait_item: &ty::AssocItem,
     impl_id: DefId,
-    impl_item: &hir::ImplItem,
+    impl_item: &hir::ImplItem<'_>,
 ) {
     let kind = match impl_item.kind {
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
@@ -2444,7 +2444,12 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
 }
 
 #[allow(trivial_numeric_casts)]
-pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], id: hir::HirId) {
+pub fn check_enum<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sp: Span,
+    vs: &'tcx [hir::Variant<'tcx>],
+    id: hir::HirId,
+) {
     let def_id = tcx.hir().local_def_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
@@ -2481,12 +2486,12 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
 
     if tcx.adt_def(def_id).repr.int.is_none() && tcx.features().arbitrary_enum_discriminant {
         let is_unit =
-            |var: &hir::Variant| match var.data {
+            |var: &hir::Variant<'_>| match var.data {
                 hir::VariantData::Unit(..) => true,
                 _ => false
             };
 
-        let has_disr = |var: &hir::Variant| var.disr_expr.is_some();
+        let has_disr = |var: &hir::Variant<'_>| var.disr_expr.is_some();
         let has_non_units = vs.iter().any(|var| !is_unit(var));
         let disr_units = vs.iter().any(|var| is_unit(&var) && has_disr(&var));
         let disr_non_unit = vs.iter().any(|var| !is_unit(&var) && has_disr(&var));
@@ -4708,7 +4713,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(Node::ForeignItem(hir::ForeignItem {
                     kind: hir::ForeignItemKind::Fn(_, idents, _),
                     ..
-                })) |
+                })) => sugg_call = idents.iter()
+                        .map(|ident| if ident.name != kw::SelfLower {
+                            ident.to_string()
+                        } else {
+                            "_".to_string()
+                        }).collect::<Vec<_>>()
+                        .join(", "),
                 Some(Node::TraitItem(hir::TraitItem {
                     kind: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
                     ..

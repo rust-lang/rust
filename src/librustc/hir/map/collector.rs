@@ -22,7 +22,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
     /// The crate
-    krate: &'hir Crate,
+    krate: &'hir Crate<'hir>,
 
     /// Source map
     source_map: &'a SourceMap,
@@ -99,7 +99,7 @@ where
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
     pub(super) fn root(sess: &'a Session,
-                       krate: &'hir Crate,
+                       krate: &'hir Crate<'hir>,
                        dep_graph: &'a DepGraph,
                        definitions: &'a definitions::Definitions,
                        hir_to_node_id: &'a FxHashMap<HirId, NodeId>,
@@ -367,7 +367,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_item(&mut self, i: &'hir Item) {
+    fn visit_item(&mut self, i: &'hir Item<'hir>) {
         debug!("visit_item: {:?}", i);
         debug_assert_eq!(i.hir_id.owner,
                          self.definitions.opt_def_index(self.hir_to_node_id[&i.hir_id]).unwrap());
@@ -385,7 +385,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
         self.insert(foreign_item.span, foreign_item.hir_id, Node::ForeignItem(foreign_item));
 
         self.with_parent(foreign_item.hir_id, |this| {
@@ -398,7 +398,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         intravisit::walk_generic_param(self, param);
     }
 
-    fn visit_trait_item(&mut self, ti: &'hir TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
         debug_assert_eq!(ti.hir_id.owner,
                          self.definitions.opt_def_index(self.hir_to_node_id[&ti.hir_id]).unwrap());
         self.with_dep_node_owner(ti.hir_id.owner, ti, |this| {
@@ -410,7 +410,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_impl_item(&mut self, ii: &'hir ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) {
         debug_assert_eq!(ii.hir_id.owner,
                          self.definitions.opt_def_index(self.hir_to_node_id[&ii.hir_id]).unwrap());
         self.with_dep_node_owner(ii.hir_id.owner, ii, |this| {
@@ -530,7 +530,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         }
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'hir MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'hir MacroDef<'hir>) {
         let node_id = self.hir_to_node_id[&macro_def.hir_id];
         let def_index = self.definitions.opt_def_index(node_id).unwrap();
 
@@ -539,7 +539,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_variant(&mut self, v: &'hir Variant, g: &'hir Generics, item_id: HirId) {
+    fn visit_variant(&mut self, v: &'hir Variant<'hir>, g: &'hir Generics, item_id: HirId) {
         self.insert(v.span, v.id, Node::Variant(v));
         self.with_parent(v.id, |this| {
             // Register the constructor of this variant.
@@ -550,7 +550,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_struct_field(&mut self, field: &'hir StructField) {
+    fn visit_struct_field(&mut self, field: &'hir StructField<'hir>) {
         self.insert(field.span, field.hir_id, Node::Field(field));
         self.with_parent(field.hir_id, |this| {
             intravisit::walk_struct_field(this, field);

@@ -70,6 +70,12 @@ impl<T: Clean<U>, U, V: Idx> Clean<IndexVec<V, U>> for IndexVec<V, T> {
     }
 }
 
+impl<T: Clean<U>, U> Clean<U> for &T {
+    fn clean(&self, cx: &DocContext<'_>) -> U {
+        (**self).clean(cx)
+    }
+}
+
 impl<T: Clean<U>, U> Clean<U> for P<T> {
     fn clean(&self, cx: &DocContext<'_>) -> U {
         (**self).clean(cx)
@@ -1081,7 +1087,7 @@ impl Clean<PolyTrait> for hir::PolyTraitRef {
     }
 }
 
-impl Clean<Item> for hir::TraitItem {
+impl Clean<Item> for hir::TraitItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let inner = match self.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
@@ -1122,7 +1128,7 @@ impl Clean<Item> for hir::TraitItem {
     }
 }
 
-impl Clean<Item> for hir::ImplItem {
+impl Clean<Item> for hir::ImplItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let inner = match self.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
@@ -1738,7 +1744,7 @@ impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     }
 }
 
-impl Clean<Item> for hir::StructField {
+impl Clean<Item> for hir::StructField<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let local_did = cx.tcx.hir().local_def_id(self.hir_id);
 
@@ -1831,7 +1837,7 @@ impl Clean<Item> for doctree::Union<'_> {
     }
 }
 
-impl Clean<VariantStruct> for ::rustc::hir::VariantData {
+impl Clean<VariantStruct> for ::rustc::hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
@@ -1918,7 +1924,7 @@ impl Clean<Item> for ty::VariantDef {
     }
 }
 
-impl Clean<VariantKind> for hir::VariantData {
+impl Clean<VariantKind> for hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantKind {
         match self {
             hir::VariantData::Struct(..) => VariantKind::Struct(self.clean(cx)),
@@ -2384,12 +2390,6 @@ impl Clean<Stability> for attr::Stability {
                 _ => None,
             }
         }
-    }
-}
-
-impl<'a> Clean<Stability> for &'a attr::Stability {
-    fn clean(&self, dc: &DocContext<'_>) -> Stability {
-        (**self).clean(dc)
     }
 }
 

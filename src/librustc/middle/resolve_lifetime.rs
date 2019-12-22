@@ -421,7 +421,7 @@ fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {
 /// In traits, there is an implicit `Self` type parameter which comes before the generics.
 /// We have to account for this when computing the index of the other generic parameters.
 /// This function returns whether there is such an implicit parameter defined on the given item.
-fn sub_items_have_self_param(node: &hir::ItemKind) -> bool {
+fn sub_items_have_self_param(node: &hir::ItemKind<'_>) -> bool {
     match *node {
         hir::ItemKind::Trait(..) |
         hir::ItemKind::TraitAlias(..) => true,
@@ -454,7 +454,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         replace(&mut self.labels_in_fn, saved);
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
                 self.visit_early_late(None, &sig.decl, generics, |this| {
@@ -536,7 +536,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, _, ref generics) => {
                 self.visit_early_late(None, decl, generics, |this| {
@@ -771,7 +771,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         use self::hir::TraitItemKind::*;
         match trait_item.kind {
             Method(ref sig, _) => {
@@ -823,7 +823,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
         match impl_item.kind {
             Method(ref sig, _) => {
@@ -1167,7 +1167,7 @@ fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: ast::Name, orig: Original, sh
 
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
 // if one of the label shadows a lifetime or another label.
-fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
+fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
     struct GatherLabels<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         scope: ScopeRef<'a>,

@@ -28,7 +28,7 @@ struct VarianceTest<'tcx> {
 }
 
 impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let item_def_id = self.tcx.hir().local_def_id(item.hir_id);
 
         if let ItemKind::TyAlias(..) = item.kind {
@@ -40,12 +40,12 @@ impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) {}
-    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) {}
+    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) {}
+    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
 }
 
 impl VarianceTest<'tcx> {
-    fn dump_layout_of(&self, item_def_id: DefId, item: &hir::Item, attr: &Attribute) {
+    fn dump_layout_of(&self, item_def_id: DefId, item: &hir::Item<'tcx>, attr: &Attribute) {
         let tcx = self.tcx;
         let param_env = self.tcx.param_env(item_def_id);
         let ty = self.tcx.type_of(item_def_id);
