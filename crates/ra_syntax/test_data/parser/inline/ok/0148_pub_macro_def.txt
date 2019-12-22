@@ -5,7 +5,8 @@ SOURCE_FILE@[0; 24)
     WHITESPACE@[3; 4) " "
     MACRO_KW@[4; 9) "macro"
     WHITESPACE@[9; 10) " "
-    IDENT@[10; 11) "m"
+    NAME@[10; 11)
+      IDENT@[10; 11) "m"
     TOKEN_TREE@[11; 23)
       TOKEN_TREE@[11; 20)
         L_PAREN@[11; 12) "("

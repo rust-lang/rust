@@ -2,7 +2,8 @@ SOURCE_FILE@[0; 349)
   MACRO_DEF@[0; 93)
     MACRO_KW@[0; 5) "macro"
     WHITESPACE@[5; 6) " "
-    IDENT@[6; 21) "parse_use_trees"
+    NAME@[6; 21)
+      IDENT@[6; 21) "parse_use_trees"
     TOKEN_TREE@[21; 93)
       TOKEN_TREE@[21; 41)
         L_PAREN@[21; 22) "("
@@ -75,7 +76,8 @@ SOURCE_FILE@[0; 349)
         MACRO_DEF@[134; 346)
           MACRO_KW@[134; 139) "macro"
           WHITESPACE@[139; 140) " "
-          IDENT@[140; 150) "test_merge"
+          NAME@[140; 150)
+            IDENT@[140; 150) "test_merge"
           TOKEN_TREE@[150; 346)
             TOKEN_TREE@[150; 203)
               L_PAREN@[150; 151) "("
