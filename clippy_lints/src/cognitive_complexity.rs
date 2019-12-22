@@ -1,14 +1,15 @@
 //! calculate cognitive complexity and warn about overly complex functions
 
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_session::declare_tool_lint;
 use syntax::ast::Attribute;
 use syntax::source_map::Span;
+use syntax_pos::BytePos;
 
-use crate::utils::{match_type, paths, span_help_and_lint, LimitStack};
+use crate::utils::{match_type, paths, snippet_opt, span_help_and_lint, LimitStack};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for methods with high cognitive complexity.
@@ -41,8 +42,16 @@ impl CognitiveComplexity {
 impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
-    fn check<'a, 'tcx>(&mut self, cx: &'a LateContext<'a, 'tcx>, body: &'tcx Body, span: Span) {
-        if span.from_expansion() {
+    #[allow(clippy::cast_possible_truncation)]
+    fn check<'a, 'tcx>(
+        &mut self,
+        cx: &'a LateContext<'a, 'tcx>,
+        kind: FnKind<'tcx>,
+        decl: &'tcx FnDecl,
+        body: &'tcx Body,
+        body_span: Span,
+    ) {
+        if body_span.from_expansion() {
             return;
         }
 
@@ -64,11 +73,33 @@ impl CognitiveComplexity {
         if rust_cc >= ret_adjust {
             rust_cc -= ret_adjust;
         }
+
         if rust_cc > self.limit.limit() {
+            let fn_span = match kind {
+                FnKind::ItemFn(ident, _, _, _, _) | FnKind::Method(ident, _, _, _) => ident.span,
+                FnKind::Closure(_) => {
+                    let header_span = body_span.with_hi(decl.output.span().lo());
+                    let pos = snippet_opt(cx, header_span).and_then(|snip| {
+                        let low_offset = snip.find('|')?;
+                        let high_offset = 1 + snip.get(low_offset + 1..)?.find('|')?;
+                        let low = header_span.lo() + BytePos(low_offset as u32);
+                        let high = low + BytePos(high_offset as u32 + 1);
+
+                        Some((low, high))
+                    });
+
+                    if let Some((low, high)) = pos {
+                        Span::new(low, high, header_span.ctxt())
+                    } else {
+                        return;
+                    }
+                },
+            };
+
             span_help_and_lint(
                 cx,
                 COGNITIVE_COMPLEXITY,
-                span,
+                fn_span,
                 &format!(
                     "the function has a cognitive complexity of ({}/{})",
                     rust_cc,
@@ -84,15 +115,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CognitiveComplexity {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
-        _: intravisit::FnKind<'tcx>,
-        _: &'tcx FnDecl,
+        kind: FnKind<'tcx>,
+        decl: &'tcx FnDecl,
         body: &'tcx Body,
         span: Span,
         hir_id: HirId,
     ) {
         let def_id = cx.tcx.hir().local_def_id(hir_id);
         if !cx.tcx.has_attr(def_id, sym!(test)) {
-            self.check(cx, body, span);
+            self.check(cx, kind, decl, body, span);
         }
     }
 

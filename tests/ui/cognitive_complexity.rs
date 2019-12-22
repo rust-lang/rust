@@ -371,3 +371,25 @@ fn early_ret() -> i32 {
         _ => return 6,
     }
 }
+
+#[clippy::cognitive_complexity = "1"]
+fn closures() {
+    let x = |a: i32, b: i32| -> i32 {
+        if true {
+            println!("moo");
+        }
+
+        a + b
+    };
+}
+
+struct Moo;
+
+#[clippy::cognitive_complexity = "1"]
+impl Moo {
+    fn moo(&self) {
+        if true {
+            println!("moo");
+        }
+    }
+}
