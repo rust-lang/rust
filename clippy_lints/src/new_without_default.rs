@@ -94,7 +94,7 @@ impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
-        if let hir::ItemKind::Impl(_, _, _, _, None, _, ref items) = item.kind {
+        if let hir::ItemKind::Impl(_, _, _, _, None, _, items) = item.kind {
             for assoc_item in items {
                 if let hir::AssocItemKind::Method { has_self: false } = assoc_item.kind {
                     let impl_item = cx.tcx.hir().impl_item(assoc_item.id);

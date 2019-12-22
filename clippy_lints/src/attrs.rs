@@ -232,7 +232,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
                 let skip_unused_imports = item.attrs.iter().any(|attr| attr.check_name(sym!(macro_use)));
 
-                for attr in &item.attrs {
+                for attr in item.attrs {
                     if in_external_macro(cx.sess(), attr.span) {
                         return;
                     }

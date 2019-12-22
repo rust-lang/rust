@@ -32,7 +32,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
     fn check_mod(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx Mod<'_>, _: Span, _: HirId) {
         let map = cx.tcx.hir();
         // only check top level `use` statements
-        for item in &m.item_ids {
+        for item in m.item_ids {
             lint_item(cx, map.expect_item(item.id));
         }
     }
