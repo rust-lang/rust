@@ -37,8 +37,13 @@ pub fn format(build: &Build, check: bool) {
     builder.add_defaults();
     builder.select("rust");
     let matcher = builder.build().unwrap();
-
-    let rustfmt_config = t!(std::fs::read_to_string(build.src.join("rustfmt.toml")));
+    let rustfmt_config = build.src.join("rustfmt.toml");
+    if !rustfmt_config.exists() {
+        eprintln!("Not running formatting checks; rustfmt.toml does not exist.");
+        eprintln!("This may happen in distributed tarballs.");
+        return;
+    }
+    let rustfmt_config = t!(std::fs::read_to_string(&rustfmt_config));
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
     let mut ignore_fmt = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
