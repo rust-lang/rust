@@ -29,10 +29,10 @@ use syntax::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, 
 pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use syntax::ast::{CaptureBy, Constness, Movability, Mutability, Unsafety};
 use syntax::attr::{InlineAttr, OptimizeAttr};
-use syntax::source_map::Spanned;
-use syntax::symbol::{kw, Symbol};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
+use syntax_pos::source_map::{SourceMap, Spanned};
+use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
 /// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
@@ -1566,9 +1566,7 @@ impl fmt::Debug for Expr {
 
 /// Checks if the specified expression is a built-in range literal.
 /// (See: `LoweringContext::lower_expr()`).
-pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
-    use hir::{Path, QPath, ExprKind, TyKind};
-
+pub fn is_range_literal(sm: &SourceMap, expr: &Expr) -> bool {
     // Returns whether the given path represents a (desugared) range,
     // either in std or core, i.e. has either a `::std::ops::Range` or
     // `::core::ops::Range` prefix.
@@ -1586,11 +1584,10 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
 
     // Check whether a span corresponding to a range expression is a
     // range literal, rather than an explicit struct or `new()` call.
-    fn is_lit(sess: &Session, span: &Span) -> bool {
-        let source_map = sess.source_map();
-        let end_point = source_map.end_point(*span);
+    fn is_lit(sm: &SourceMap, span: &Span) -> bool {
+        let end_point = sm.end_point(*span);
 
-        if let Ok(end_string) = source_map.span_to_snippet(end_point) {
+        if let Ok(end_string) = sm.span_to_snippet(end_point) {
             !(end_string.ends_with("}") || end_string.ends_with(")"))
         } else {
             false
@@ -1601,13 +1598,13 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
         // All built-in range literals but `..=` and `..` desugar to `Struct`s.
         ExprKind::Struct(ref qpath, _, _) => {
             if let QPath::Resolved(None, ref path) = **qpath {
-                return is_range_path(&path) && is_lit(sess, &expr.span);
+                return is_range_path(&path) && is_lit(sm, &expr.span);
             }
         }
 
         // `..` desugars to its struct path.
         ExprKind::Path(QPath::Resolved(None, ref path)) => {
-            return is_range_path(&path) && is_lit(sess, &expr.span);
+            return is_range_path(&path) && is_lit(sm, &expr.span);
         }
 
         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
@@ -1615,7 +1612,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.kind {
                 if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.kind {
                     let new_call = segment.ident.name == sym::new;
-                    return is_range_path(&path) && is_lit(sess, &expr.span) && new_call;
+                    return is_range_path(&path) && is_lit(sm, &expr.span) && new_call;
                 }
             }
         }
