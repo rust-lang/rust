@@ -3,10 +3,11 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::{BorrowKind, Expr, ExprKind, HirVec, Mutability, QPath};
+use rustc::hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `mem::replace()` on an `Option` with
@@ -94,8 +95,8 @@ declare_clippy_lint! {
 declare_lint_pass!(MemReplace =>
     [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
 
-fn check_replace_option_with_none(cx: &LateContext<'_, '_>, expr: &'_ Expr, args: &HirVec<Expr>) {
-    if let ExprKind::Path(ref replacement_qpath) = args[1].kind {
+fn check_replace_option_with_none(cx: &LateContext<'_, '_>, src: &Expr, dest: &Expr, expr_span: Span) {
+    if let ExprKind::Path(ref replacement_qpath) = src.kind {
         // Check that second argument is `Option::None`
         if match_qpath(replacement_qpath, &paths::OPTION_NONE) {
             // Since this is a late pass (already type-checked),
@@ -103,7 +104,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_, '_>, expr: &'_ Expr, args
             // `Option`, we do not need to check the first
             // argument's type. All that's left is to get
             // replacee's path.
-            let replaced_path = match args[0].kind {
+            let replaced_path = match dest.kind {
                 ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, ref replaced) => {
                     if let ExprKind::Path(QPath::Resolved(None, ref replaced_path)) = replaced.kind {
                         replaced_path
@@ -119,7 +120,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_, '_>, expr: &'_ Expr, args
             span_lint_and_sugg(
                 cx,
                 MEM_REPLACE_OPTION_WITH_NONE,
-                expr.span,
+                expr_span,
                 "replacing an `Option` with `None`",
                 "consider `Option::take()` instead",
                 format!(
@@ -132,8 +133,8 @@ fn check_replace_option_with_none(cx: &LateContext<'_, '_>, expr: &'_ Expr, args
     }
 }
 
-fn check_replace_with_uninit(cx: &LateContext<'_, '_>, expr: &'_ Expr, args: &HirVec<Expr>) {
-    if let ExprKind::Call(ref repl_func, ref repl_args) = args[1].kind {
+fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr, expr_span: Span) {
+    if let ExprKind::Call(ref repl_func, ref repl_args) = src.kind {
         if_chain! {
             if repl_args.is_empty();
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
@@ -143,16 +144,16 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, expr: &'_ Expr, args: &Hi
                     span_help_and_lint(
                         cx,
                         MEM_REPLACE_WITH_UNINIT,
-                        expr.span,
+                        expr_span,
                         "replacing with `mem::uninitialized()`",
                         "consider using the `take_mut` crate instead",
                     );
                 } else if match_def_path(cx, repl_def_id, &paths::MEM_ZEROED) &&
-                        !cx.tables.expr_ty(&args[1]).is_primitive() {
+                        !cx.tables.expr_ty(src).is_primitive() {
                     span_help_and_lint(
                         cx,
                         MEM_REPLACE_WITH_UNINIT,
-                        expr.span,
+                        expr_span,
                         "replacing with `mem::zeroed()`",
                         "consider using a default value or the `take_mut` crate instead",
                     );
@@ -162,10 +163,10 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, expr: &'_ Expr, args: &Hi
     }
 }
 
-fn check_replace_with_default(cx: &LateContext<'_, '_>, expr: &'_ Expr, args: &HirVec<Expr>) {
-    if let ExprKind::Call(ref repl_func, _) = args[1].kind {
+fn check_replace_with_default(cx: &LateContext<'_, '_>, src: &Expr, dest: &Expr, expr_span: Span) {
+    if let ExprKind::Call(ref repl_func, _) = src.kind {
         if_chain! {
-            if !in_macro(expr.span) && !in_external_macro(cx.tcx.sess, expr.span);
+            if !in_macro(expr_span) && !in_external_macro(cx.tcx.sess, expr_span);
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
             if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
             if match_def_path(cx, repl_def_id, &paths::DEFAULT_TRAIT_METHOD);
@@ -175,12 +176,12 @@ fn check_replace_with_default(cx: &LateContext<'_, '_>, expr: &'_ Expr, args: &H
                 span_lint_and_sugg(
                     cx,
                     MEM_REPLACE_WITH_DEFAULT,
-                    expr.span,
+                    expr_span,
                     "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
                     "consider using",
                     format!(
                         "std::mem::take({})",
-                        snippet_with_applicability(cx, args[0].span, "", &mut applicability)
+                        snippet_with_applicability(cx, dest.span, "", &mut applicability)
                     ),
                     applicability,
                 );
@@ -194,15 +195,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
         if_chain! {
             // Check that `expr` is a call to `mem::replace()`
             if let ExprKind::Call(ref func, ref func_args) = expr.kind;
-            if func_args.len() == 2;
             if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.tables.qpath_res(func_qpath, func.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::MEM_REPLACE);
-
+            if let [dest, src] = &**func_args;
             then {
-                check_replace_option_with_none(cx, expr, &func_args);
-                check_replace_with_uninit(cx, expr, &func_args);
-                check_replace_with_default(cx, expr, &func_args);
+                check_replace_option_with_none(cx, src, dest, expr.span);
+                check_replace_with_uninit(cx, src, expr.span);
+                check_replace_with_default(cx, src, dest, expr.span);
             }
         }
     }
