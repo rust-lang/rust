@@ -194,7 +194,7 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
                 // Validation has already errored on an invalid vtable pointer so we can safely not
                 // do anything if this is not a real pointer.
                 if let Scalar::Ptr(vtable) = mplace.meta.unwrap() {
-                    // Explitly choose `Immutable` here, since vtables are immutable, even
+                    // Explicitly choose `Immutable` here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
                     self.intern_shallow(vtable.alloc_id, Mutability::Not, None)?;
                 } else {
