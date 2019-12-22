@@ -1,14 +1,8 @@
 error: the function has a cognitive complexity of (3/0)
-  --> $DIR/cognitive_complexity_attr_used.rs:9:1
+  --> $DIR/cognitive_complexity_attr_used.rs:9:4
    |
-LL | / fn kaboom() {
-LL | |     if 42 == 43 {
-LL | |         panic!();
-LL | |     } else if "cake" == "lie" {
-LL | |         println!("what?");
-LL | |     }
-LL | | }
-   | |_^
+LL | fn kaboom() {
+   |    ^^^^^^
    |
    = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
    = help: you could split it up into multiple smaller functions
