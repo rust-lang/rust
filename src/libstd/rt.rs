@@ -10,7 +10,7 @@
     feature = "rt",
     reason = "this public module should not exist and is highly likely \
               to disappear",
-    issue = "0"
+    issue = "none"
 )]
 #![doc(hidden)]
 

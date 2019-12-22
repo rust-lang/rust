@@ -1,4 +1,4 @@
-// Check that an issue value can be explicitly set to "none" instead of "0"
+// Check that an issue value can be explicitly set to "0" instead of "none"
 #![crate_type = "lib"]
 #![feature(staged_api)]
 #![stable(feature = "stable_test_feature", since = "1.0.0")]

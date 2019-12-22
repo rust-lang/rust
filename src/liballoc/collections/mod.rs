@@ -57,7 +57,7 @@ pub enum TryReserveError {
         layout: Layout,
 
         #[doc(hidden)]
-        #[unstable(feature = "container_error_extra", issue = "0", reason = "\
+        #[unstable(feature = "container_error_extra", issue = "none", reason = "\
             Enable exposing the allocator’s custom error value \
             if an associated type is added in the future: \
             https://github.com/rust-lang/wg-allocators/issues/23")]

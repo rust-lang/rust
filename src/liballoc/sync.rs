@@ -206,7 +206,7 @@ unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
@@ -263,7 +263,7 @@ unsafe impl<T: ?Sized + Sync + Send> Sync for Weak<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -993,7 +993,7 @@ impl<T: ?Sized> Deref for Arc<T> {
     }
 }
 
-#[unstable(feature = "receiver_trait", issue = "0")]
+#[unstable(feature = "receiver_trait", issue = "none")]
 impl<T: ?Sized> Receiver for Arc<T> {}
 
 impl<T: Clone> Arc<T> {
@@ -2032,7 +2032,7 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     }
 }
 
-#[unstable(feature = "boxed_slice_try_from", issue = "0")]
+#[unstable(feature = "boxed_slice_try_from", issue = "none")]
 impl<T, const N: usize> TryFrom<Arc<[T]>> for Arc<[T; N]>
 where
     [T; N]: LengthAtMost32,
@@ -2161,6 +2161,8 @@ impl<T: ?Sized> Unpin for Arc<T> { }
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Align the unsized value to the end of the `ArcInner`.
     // Because it is `?Sized`, it will always be the last field in memory.
+    // Note: This is a detail of the current implementation of the compiler,
+    // and is not a guaranteed language detail. Do not rely on it outside of std.
     data_offset_align(align_of_val(&*ptr))
 }
 

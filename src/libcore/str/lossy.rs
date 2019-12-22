@@ -6,7 +6,7 @@ use crate::mem;
 // ignore-tidy-undocumented-unsafe
 
 /// Lossy UTF-8 string.
-#[unstable(feature = "str_internals", issue = "0")]
+#[unstable(feature = "str_internals", issue = "none")]
 pub struct Utf8Lossy {
     bytes: [u8]
 }
@@ -27,13 +27,13 @@ impl Utf8Lossy {
 
 
 /// Iterator over lossy UTF-8 string
-#[unstable(feature = "str_internals", issue = "0")]
+#[unstable(feature = "str_internals", issue = "none")]
 #[allow(missing_debug_implementations)]
 pub struct Utf8LossyChunksIter<'a> {
     source: &'a [u8],
 }
 
-#[unstable(feature = "str_internals", issue = "0")]
+#[unstable(feature = "str_internals", issue = "none")]
 #[derive(PartialEq, Eq, Debug)]
 pub struct Utf8LossyChunk<'a> {
     /// Sequence of valid chars.

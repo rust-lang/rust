@@ -2,7 +2,7 @@
 
 #![allow(nonstandard_style)]
 #![cfg_attr(test, allow(dead_code))]
-#![unstable(issue = "0", feature = "windows_c")]
+#![unstable(issue = "none", feature = "windows_c")]
 
 use crate::os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
 use crate::ptr;

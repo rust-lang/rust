@@ -1,4 +1,4 @@
-#![unstable(issue = "0", feature = "windows_handle")]
+#![unstable(issue = "none", feature = "windows_handle")]
 
 use crate::cmp;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read};

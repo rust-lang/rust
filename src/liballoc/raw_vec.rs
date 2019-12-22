@@ -1,4 +1,4 @@
-#![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "0")]
+#![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
 #![doc(hidden)]
 
 use core::cmp;

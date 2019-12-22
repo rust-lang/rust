@@ -1,4 +1,4 @@
-#![unstable(issue = "0", feature = "windows_stdio")]
+#![unstable(issue = "none", feature = "windows_stdio")]
 
 use crate::io;
 use crate::mem::ManuallyDrop;

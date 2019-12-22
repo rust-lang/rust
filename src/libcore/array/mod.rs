@@ -74,7 +74,7 @@ impl TryFromSliceError {
     #[unstable(feature = "array_error_internals",
            reason = "available through Error trait and this method should not \
                      be exposed publicly",
-           issue = "0")]
+           issue = "none")]
     #[inline]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
@@ -388,14 +388,14 @@ where
 #[rustc_on_unimplemented(
     message="arrays only have std trait implementations for lengths 0..=32",
 )]
-#[unstable(feature = "const_generic_impls_guard", issue = "0",
+#[unstable(feature = "const_generic_impls_guard", issue = "none",
     reason = "will never be stable, just a temporary step until const generics are stable")]
 pub trait LengthAtMost32 {}
 
 macro_rules! array_impls {
     ($($N:literal)+) => {
         $(
-            #[unstable(feature = "const_generic_impls_guard", issue = "0")]
+            #[unstable(feature = "const_generic_impls_guard", issue = "none")]
             impl<T> LengthAtMost32 for [T; $N] {}
         )+
     }

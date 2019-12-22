@@ -31,8 +31,8 @@ LL |     #[stable(feature(b), since = "a")]
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-sanity.rs:25:5
    |
-LL |     #[unstable(issue = "0")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[unstable(issue = "none")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0547]: missing 'issue'
   --> $DIR/stability-attribute-sanity.rs:28:5
@@ -73,8 +73,8 @@ LL | #[stable(feature = "a", since = "b")]
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:53:1
    |
-LL | #[unstable(feature = "b", issue = "0")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[unstable(feature = "b", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:57:1
@@ -91,8 +91,8 @@ LL | pub const fn multiple4() { }
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:64:1
    |
-LL | #[rustc_const_unstable(feature = "d", issue = "0")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_const_unstable(feature = "d", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Invalid stability or deprecation version found
   --> $DIR/stability-attribute-sanity.rs:65:1
