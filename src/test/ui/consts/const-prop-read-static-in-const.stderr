@@ -10,7 +10,7 @@ error: any use of this value will cause an error
 LL | const TEST: u8 = MY_STATIC;
    | -----------------^^^^^^^^^-
    |                  |
-   |                  "constants accessing static items" needs an rfc before being allowed inside constants
+   |                  constant accesses static
    |
    = note: `#[deny(const_err)]` on by default
 

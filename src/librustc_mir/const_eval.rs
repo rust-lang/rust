@@ -182,6 +182,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 #[derive(Clone, Debug)]
 pub enum ConstEvalError {
     NeedsRfc(String),
+    ConstAccessesStatic,
 }
 
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
@@ -201,6 +202,7 @@ impl fmt::Display for ConstEvalError {
                     msg
                 )
             }
+            ConstAccessesStatic => write!(f, "constant accesses static"),
         }
     }
 }
@@ -210,6 +212,7 @@ impl Error for ConstEvalError {
         use self::ConstEvalError::*;
         match *self {
             NeedsRfc(_) => "this feature needs an rfc before being allowed inside constants",
+            ConstAccessesStatic => "constant accesses static",
         }
     }
 
@@ -547,9 +550,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         if memory_extra.can_access_statics {
             Ok(())
         } else {
-            Err(ConstEvalError::NeedsRfc(
-                "constants accessing static items".to_string(),
-            ).into())
+            Err(ConstEvalError::ConstAccessesStatic.into())
         }
     }
 }
