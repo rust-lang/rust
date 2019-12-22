@@ -727,7 +727,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                 if (gutils->isConstantInstruction(inst)) continue;
 
 
-                if (!isIntPointerASecretFloat(op->getOperand(0)) ) {
+                if (!isIntPointerASecretFloat(op->getOperand(0), false) ) {
 
                     //It is questionable how the following case would even occur, but if the dst is constant, we shouldn't do anything extra
                     if (gutils->isConstantValue(op->getOperand(0))) continue;
@@ -1098,7 +1098,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
           if (gutils->isConstantValue(op->getPointerOperand())) continue;
 
-          if ( !( isKnownFloatTBAA(op) || op->getValueOperand()->getType()->isFPOrFPVectorTy() || (op->getValueOperand()->getType()->isIntOrIntVectorTy() && isIntASecretFloat(op->getValueOperand()) == IntType::Float ) ) ) {
+          if ( !( isKnownFloatTBAA(op) || op->getValueOperand()->getType()->isFPOrFPVectorTy() || (op->getValueOperand()->getType()->isIntOrIntVectorTy() && isIntPointerASecretFloat(op->getPointerOperand(), true)) ) ) {
             IRBuilder <> storeBuilder(op);
             
             Value* valueop = nullptr;
@@ -2753,7 +2753,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             if (isa<ConstantPointerNull>(op->getOperand(0))) continue;
 
             // If destination (operand 0) is constant 
-                if (Type* secretty = isIntPointerASecretFloat(op->getOperand(0)) ) {
+                if (Type* secretty = isIntPointerASecretFloat(op->getOperand(0), false) ) {
                     SmallVector<Value*, 4> args;
                     auto secretpt = PointerType::getUnqual(secretty);
 
@@ -2800,7 +2800,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         }
         case Intrinsic::memmove: {
             if (gutils->isConstantInstruction(inst)) continue;
-                if (Type* secretty = isIntPointerASecretFloat(op->getOperand(0)) ) {
+                if (Type* secretty = isIntPointerASecretFloat(op->getOperand(0), false) ) {
                     SmallVector<Value*, 4> args;
                     auto secretpt = PointerType::getUnqual(secretty);
 
@@ -3158,12 +3158,17 @@ realcall:
        //TODO IF OP IS POINTER
       Value* tostore = op->getValueOperand();
       Type* tostoreType = tostore->getType();
-      //llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
-      //if (tostoreType->isIntOrIntVectorTy())
-      //    llvm::errs() << " + ip " << isIntASecretFloat(op->getValueOperand()) << "\n";
+      llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
+      if (tostoreType->isIntOrIntVectorTy()) {
+          auto val = isIntPointerASecretFloat(op->getPointerOperand(), true);
+          if (val) 
+              llvm::errs() << " + ip " << *val << "\n";
+          else
+              llvm::errs() << " + ip " << val << "\n";
+      }
 
       //TODO allow recognition of other types that could contain pointers [e.g. {void*, void*} or <2 x i64> ]
-      if ( isKnownFloatTBAA(op) || tostoreType->isFPOrFPVectorTy() || (tostoreType->isIntOrIntVectorTy() && isIntASecretFloat(op->getValueOperand()) == IntType::Float ) ) {
+      if ( isKnownFloatTBAA(op) || tostoreType->isFPOrFPVectorTy() || (tostoreType->isIntOrIntVectorTy() && isIntPointerASecretFloat(op->getPointerOperand(), true) ) ) {
           StoreInst* ts;
           //llvm::errs() << "  considering adding to value:" << *op->getValueOperand() << " " << *op << " " << gutils->isConstantValue(op->getValueOperand()) << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
           if (!gutils->isConstantValue(op->getValueOperand())) {

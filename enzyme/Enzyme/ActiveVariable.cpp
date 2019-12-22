@@ -264,6 +264,33 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
             }
             if (auto si = dyn_cast<StoreInst>(use)) {
                 if (si->getPointerOperand() == inst && si->getValueOperand()->getType()->isIntOrIntVectorTy()) {
+                    //! If TBAA lets us ascertain information, let's use it
+                    if (isKnownIntegerTBAA(si)) {
+                        intUse = true;  
+                        if (fast_tracking) return true;
+                    }
+
+                    if (isKnownPointerTBAA(si)) {
+                        pointerUse = true;
+                        if (fast_tracking) return true;
+                    }
+
+                    if (Type* t = isKnownFloatTBAA(si)) {
+                        if (floatingUse == nullptr) {
+                            floatingUse = t;
+                        } else {
+                            assert(floatingUse == t);
+                        }
+                        if (fast_tracking) return true;
+                    }
+
+
+                    //! Storing a constant integer into memory does not tell us that this memory must be integral
+                    //  since we may store the constant representation of a floating point (in hex). It is, however, unlikely
+                    //  to be a pointer (but unclear whether it is an integer vs float)
+                    if (isa<Constant>(si->getValueOperand())) {
+                        continue;
+                    }
                     bool unknownuse;
                     if (trackInt(si->getValueOperand(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknownuse*/false)) {
                         if (fast_tracking) return true; 
@@ -488,7 +515,11 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
             }
 
             if (Type* t = isKnownFloatTBAA(si)) {
-                floatingUse = t;
+                if (floatingUse == nullptr) {
+                    floatingUse = t;
+                } else {
+                    assert(floatingUse == t);
+                }
                 if (fast_tracking) return true;
             }
 
@@ -779,7 +810,7 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
 }
 
 //! return the secret float type if found, otherwise nullptr
-Type* isIntPointerASecretFloat(Value* val) {
+Type* isIntPointerASecretFloat(Value* val, bool onlyFirst) {
     assert(val->getType()->isPointerTy());
     assert(cast<PointerType>(val->getType())->getElementType()->isIntOrIntVectorTy());
 
@@ -800,7 +831,7 @@ Type* isIntPointerASecretFloat(Value* val) {
 
     SmallPtrSet<Value*, 4> seen;
 
-    trackPointer(val, intseen, seen, typeseen, floatingUse, pointerUse, intUse, false);
+    trackPointer(val, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst);
 
     if (pointerUse && (floatingUse == nullptr) && !intUse) return nullptr; 
     if (!pointerUse && (floatingUse != nullptr) && !intUse) return floatingUse;

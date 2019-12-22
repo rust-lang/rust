@@ -50,8 +50,10 @@ llvm::Type* isKnownFloatTBAA(llvm::Instruction* inst);
 
 IntType isIntASecretFloat(llvm::Value* val, IntType defaultType=IntType::Unknown);
 
-//! return the secret float type if found, otherwise nullptr
-llvm::Type* isIntPointerASecretFloat(llvm::Value* val);
+//! return the secret float type of val if found, otherwise nullptr
+//!   if onlyFirst is set, consider only the first element of the pointer val (e.g. if we have {int, double, double}, consider only the int)
+//    onlyFirst should typically be used for store operands, whereas not used for memcpy
+llvm::Type* isIntPointerASecretFloat(llvm::Value* val, bool onlyFirst);
 
 bool isconstantValueM(llvm::Value* val, llvm::SmallPtrSetImpl<llvm::Value*> &constants, llvm::SmallPtrSetImpl<llvm::Value*> &nonconstant, llvm::SmallPtrSetImpl<llvm::Value*> &constantvals, llvm::SmallPtrSetImpl<llvm::Value*> &retvals, const llvm::SmallPtrSetImpl<llvm::Instruction*> &originalInstructions, uint8_t directions=3);
 
