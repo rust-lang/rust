@@ -17,7 +17,7 @@ use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 
-use errors::{pluralize, Applicability, DiagnosticBuilder};
+use errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir;
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::DefId;
@@ -723,6 +723,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
+    pub(crate) fn check_lhs_assignable(
+        &self,
+        lhs: &'tcx hir::Expr,
+        err_code: &'static str,
+        expr_span: &Span,
+    ) {
+        if !lhs.is_syntactic_place_expr() {
+            let mut err = self.tcx.sess.struct_span_err_with_code(
+                *expr_span,
+                "invalid left-hand side of assignment",
+                DiagnosticId::Error(err_code.into()),
+            );
+            err.span_label(lhs.span, "cannot assign to this expression");
+            let destructuring_assignment = match &lhs.kind {
+                ExprKind::Array(comps) | ExprKind::Tup(comps) => {
+                    comps.iter().all(|e| e.is_syntactic_place_expr())
+                }
+                ExprKind::Struct(_path, fields, rest) => {
+                    rest.as_ref().map(|e| e.is_syntactic_place_expr()).unwrap_or(true) &&
+                        fields.iter().all(|f| f.expr.is_syntactic_place_expr())
+                }
+                _ => false,
+            };
+            if destructuring_assignment {
+                err.note("destructuring assignments are not yet supported");
+                err.note(
+                    "for more information, see https://github.com/rust-lang/rfcs/issues/372",
+                );
+            }
+            err.emit();
+        }
+    }
+
     /// Type check assignment expression `expr` of form `lhs = rhs`.
     /// The expected type is `()` and is passsed to the function for the purposes of diagnostics.
     fn check_expr_assign(
@@ -752,13 +785,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.help(msg);
             }
             err.emit();
-        } else if !lhs.is_syntactic_place_expr() {
-            struct_span_err!(
-                self.tcx.sess,
-                expr.span,
-                E0070,
-                "invalid left-hand side of assignment",
-            ).span_label(lhs.span, "cannot assign to this expression").emit();
+        } else {
+            self.check_lhs_assignable(lhs, "E0070", &expr.span);
         }
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);

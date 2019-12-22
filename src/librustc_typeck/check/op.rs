@@ -19,28 +19,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr,
         op: hir::BinOp,
-        lhs_expr: &'tcx hir::Expr,
-        rhs_expr: &'tcx hir::Expr,
+        lhs: &'tcx hir::Expr,
+        rhs: &'tcx hir::Expr,
     ) -> Ty<'tcx> {
         let (lhs_ty, rhs_ty, return_ty) =
-            self.check_overloaded_binop(expr, lhs_expr, rhs_expr, op, IsAssign::Yes);
+            self.check_overloaded_binop(expr, lhs, rhs, op, IsAssign::Yes);
 
         let ty =
-            if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
-                self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
+            if !lhs.is_ty_var() && !rhs.is_ty_var() && is_builtin_binop(lhs, rhs, op) {
+                self.enforce_builtin_binop_types(lhs_expr, lhs, rhs_expr, rhs, op);
                 self.tcx.mk_unit()
             } else {
                 return_ty
             };
 
-        if !lhs_expr.is_syntactic_place_expr() {
-            struct_span_err!(
-                self.tcx.sess,
-                op.span,
-                E0067,
-                "invalid left-hand side of assignment",
-            ).span_label(lhs_expr.span, "cannot assign to this expression").emit();
-        }
+        self.check_lhs_assignable(lhs, "E0067", &op.span);
+
         ty
     }
 
