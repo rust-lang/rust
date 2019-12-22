@@ -44,12 +44,6 @@ LL | | }
    |
    = help: a `loop` may express intention better if this is on purpose
 
-error: higher-ranked subtype error
-  --> $DIR/hrtb-perfect-forwarding.rs:46:5
-   |
-LL |     foo_hrtb_bar_not(&mut t);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: lifetime may not live long enough
   --> $DIR/hrtb-perfect-forwarding.rs:46:5
    |
@@ -60,6 +54,12 @@ LL |     foo_hrtb_bar_not(&mut t);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
    |
    = help: consider replacing `'b` with `'static`
+
+error: higher-ranked subtype error
+  --> $DIR/hrtb-perfect-forwarding.rs:46:5
+   |
+LL |     foo_hrtb_bar_not(&mut t);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function cannot return without recursing
   --> $DIR/hrtb-perfect-forwarding.rs:49:1
