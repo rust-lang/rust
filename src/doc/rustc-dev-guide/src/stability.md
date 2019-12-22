@@ -14,6 +14,10 @@ attribute explicitly marks an item as unstable. Items that are marked as
 the crate, even on a nightly compiler. This restriction only applies across
 crate boundaries, unstable items may be used within the crate they are defined.
 
+The `issue` field specifies the associated GitHub [issue number]. This field is
+required and all unstable features should have an associated tracking issue. In
+rare cases where there is no sensible value `issue = "none"` is used.
+
 The `unstable` attribute infects all sub-items, where the attribute doesn't
 have to be reapplied. So if you apply this to a module, all items in the module
 will be unstable.
@@ -33,6 +37,7 @@ future-incompatible deny-by-default lint instead of a hard error. This is used
 by the `bench` attribute which was accidentally accepted in the past. This
 prevents breaking dependencies by leveraging Cargo's lint capping.
 
+[issue number]: https://github.com/rust-lang/rust/issues
 [rustc bug]: https://github.com/rust-lang/rust/issues/15702
 
 ## stable
