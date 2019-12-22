@@ -98,10 +98,10 @@ LL |         || (0 = 0);
    |            help: try comparing for equality: `0 == 0`
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/assignment-expected-bool.rs:31:20
+  --> $DIR/assignment-expected-bool.rs:31:22
    |
 LL |     let _: usize = 0 = 0;
-   |                    -^^^^
+   |                    - ^
    |                    |
    |                    cannot assign to this expression
 

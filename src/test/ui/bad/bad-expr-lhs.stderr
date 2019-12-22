@@ -1,8 +1,8 @@
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/bad-expr-lhs.rs:2:5
+  --> $DIR/bad-expr-lhs.rs:2:7
    |
 LL |     1 = 2;
-   |     -^^^^
+   |     - ^
    |     |
    |     cannot assign to this expression
 
@@ -15,18 +15,18 @@ LL |     1 += 2;
    |     cannot assign to this expression
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/bad-expr-lhs.rs:4:5
+  --> $DIR/bad-expr-lhs.rs:4:12
    |
 LL |     (1, 2) = (3, 4);
-   |     ------^^^^^^^^^
+   |     ------ ^
    |     |
    |     cannot assign to this expression
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/bad-expr-lhs.rs:7:5
+  --> $DIR/bad-expr-lhs.rs:7:12
    |
 LL |     (a, b) = (3, 4);
-   |     ------^^^^^^^^^
+   |     ------ ^
    |     |
    |     cannot assign to this expression
    |
@@ -34,10 +34,10 @@ LL |     (a, b) = (3, 4);
    = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/bad-expr-lhs.rs:9:5
+  --> $DIR/bad-expr-lhs.rs:9:10
    |
 LL |     None = Some(3);
-   |     ----^^^^^^^^^^
+   |     ---- ^
    |     |
    |     cannot assign to this expression
 

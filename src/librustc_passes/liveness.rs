@@ -1079,7 +1079,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     .unwrap_or_else(|| span_bug!(expr.span, "continue to unknown label"))
             }
 
-            hir::ExprKind::Assign(ref l, ref r) => {
+            hir::ExprKind::Assign(ref l, ref r, _) => {
                 // see comment on places in
                 // propagate_through_place_components()
                 let succ = self.write_place(&l, succ, ACC_WRITE);
@@ -1373,7 +1373,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
 
 fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr) {
     match expr.kind {
-        hir::ExprKind::Assign(ref l, _) => {
+        hir::ExprKind::Assign(ref l, ..) => {
             this.check_place(&l);
         }
 

@@ -490,7 +490,7 @@ impl EarlyLintPass for UnusedParens {
                 (value, "`return` value", false, Some(left), None)
             }
 
-            Assign(_, ref value) => (value, "assigned value", false, None, None),
+            Assign(_, ref value, _) => (value, "assigned value", false, None, None),
             AssignOp(.., ref value) => (value, "assigned value", false, None, None),
             // either function/method call, or something this lint doesn't care about
             ref call_or_other => {

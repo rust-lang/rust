@@ -1289,7 +1289,7 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block(&blk);
             }
-            hir::ExprKind::Assign(ref lhs, ref rhs) => {
+            hir::ExprKind::Assign(ref lhs, ref rhs, _) => {
                 let prec = AssocOp::Assign.precedence() as i8;
                 self.print_expr_maybe_paren(&lhs, prec + 1);
                 self.s.space();
@@ -2265,7 +2265,7 @@ fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
     match value.kind {
         hir::ExprKind::Struct(..) => true,
 
-        hir::ExprKind::Assign(ref lhs, ref rhs)
+        hir::ExprKind::Assign(ref lhs, ref rhs, _)
         | hir::ExprKind::AssignOp(_, ref lhs, ref rhs)
         | hir::ExprKind::Binary(_, ref lhs, ref rhs) => {
             // `X { y: 1 } + X { y: 2 }`

@@ -219,7 +219,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Box(ref subexpr) => self.check_expr_box(subexpr, expected),
             ExprKind::Lit(ref lit) => self.check_lit(&lit, expected),
             ExprKind::Binary(op, ref lhs, ref rhs) => self.check_binop(expr, op, lhs, rhs),
-            ExprKind::AssignOp(op, ref lhs, ref rhs) => self.check_binop_assign(expr, op, lhs, rhs),
+            ExprKind::Assign(ref lhs, ref rhs, ref span) => {
+                self.check_binop_assign(expr, op, lhs, rhs)
+            }
             ExprKind::Unary(unop, ref oprnd) => {
                 self.check_expr_unary(unop, oprnd, expected, needs, expr)
             }
@@ -245,7 +247,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
-            ExprKind::Assign(ref lhs, ref rhs) => self.check_expr_assign(expr, expected, lhs, rhs),
             ExprKind::Loop(ref body, _, source) => {
                 self.check_expr_loop(body, source, expected, expr)
             }
@@ -767,6 +768,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         lhs: &'tcx hir::Expr,
         rhs: &'tcx hir::Expr,
+        span: &Span,
     ) -> Ty<'tcx> {
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
         let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
@@ -789,7 +791,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             err.emit();
         } else {
-            self.check_lhs_assignable(lhs, "E0070", &expr.span);
+            self.check_lhs_assignable(lhs, "E0070", span);
         }
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
