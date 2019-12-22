@@ -14,7 +14,6 @@ use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::base::{to_immediate, wants_msvc_seh, compare_simd_types};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, FnAbiExt, LayoutOf, HasTyCtxt, Primitive};
-use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
 use rustc_target::abi::HasDataLayout;
@@ -202,11 +201,9 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "needs_drop" |
             "type_id" |
             "type_name" => {
-                let gid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                let ty_name = self.tcx.const_eval(ty::ParamEnv::reveal_all().and(gid)).unwrap();
+                let ty_name = self.tcx
+                    .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
+                    .unwrap();
                 OperandRef::from_const(self, ty_name).immediate_or_packed_pair(self)
             }
             "init" => {

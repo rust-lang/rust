@@ -626,11 +626,6 @@ where
                 let ty = place_static.ty;
                 assert!(!ty.needs_subst());
                 let layout = self.layout_of(ty)?;
-                let instance = ty::Instance::mono(*self.tcx, place_static.def_id);
-                let cid = GlobalId {
-                    instance,
-                    promoted: None
-                };
                 // Just create a lazy reference, so we can support recursive statics.
                 // tcx takes care of assigning every static one and only one unique AllocId.
                 // When the data here is ever actually used, memory will notice,
@@ -646,7 +641,7 @@ where
                 // Notice that statics have *two* AllocIds: the lazy one, and the resolved
                 // one.  Here we make sure that the interpreted program never sees the
                 // resolved ID.  Also see the doc comment of `Memory::get_static_alloc`.
-                let alloc_id = self.tcx.alloc_map.lock().create_static_alloc(cid.instance.def_id());
+                let alloc_id = self.tcx.alloc_map.lock().create_static_alloc(place_static.def_id);
                 let ptr = self.tag_static_base_pointer(Pointer::from(alloc_id));
                 MPlaceTy::from_aligned_ptr(ptr, layout)
             }

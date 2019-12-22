@@ -1,5 +1,4 @@
 use crate::infer::{InferCtxt, ShallowResolver};
-use crate::mir::interpret::{GlobalId, ErrorHandled};
 use crate::ty::{self, Ty, TypeFoldable, ToPolyTraitRef};
 use crate::ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
@@ -501,27 +500,13 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         ProcessResult::Unchanged
                 } else {
                     if !substs.has_local_value() {
-                        let instance = ty::Instance::resolve(
-                            self.selcx.tcx(),
-                            obligation.param_env,
-                            def_id,
-                            substs,
-                        );
-                        if let Some(instance) = instance {
-                            let cid = GlobalId {
-                                instance,
-                                promoted: None,
-                            };
-                            match self.selcx.tcx().at(obligation.cause.span)
-                                                    .const_eval(obligation.param_env.and(cid)) {
-                                Ok(_) => ProcessResult::Changed(vec![]),
-                                Err(err) => ProcessResult::Error(
-                                    CodeSelectionError(ConstEvalFailure(err)))
-                            }
-                        } else {
-                            ProcessResult::Error(CodeSelectionError(
-                                ConstEvalFailure(ErrorHandled::TooGeneric)
-                            ))
+                        match self.selcx.tcx().const_eval_resolve(obligation.param_env,
+                                                                  def_id,
+                                                                  substs,
+                                                                  Some(obligation.cause.span)) {
+                            Ok(_) => ProcessResult::Changed(vec![]),
+                            Err(err) => ProcessResult::Error(
+                                CodeSelectionError(ConstEvalFailure(err)))
                         }
                     } else {
                         pending_obligation.stalled_on =

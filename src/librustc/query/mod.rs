@@ -448,7 +448,8 @@ rustc_queries! {
         ///
         /// **Do not use this** outside const eval. Const eval uses this to break query cycles
         /// during validation. Please add a comment to every use site explaining why using
-        /// `const_eval` isn't sufficient.
+        /// `const_eval_validated` isn't sufficient. The returned constant also isn't in a suitable
+        /// form to be used outside of const eval.
         query const_eval_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalRawResult<'tcx> {
             no_force
@@ -460,7 +461,13 @@ rustc_queries! {
 
         /// Results of evaluating const items or constants embedded in
         /// other items (such as enum variant explicit discriminants).
-        query const_eval(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+        ///
+        /// In contrast to `const_eval_raw` this performs some validation on the constant, and
+        /// returns a proper constant that is usable by the rest of the compiler.
+        ///
+        /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
+        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_promoted`.
+        query const_eval_validated(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx> {
             no_force
             desc { |tcx|
