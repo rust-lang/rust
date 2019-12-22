@@ -112,8 +112,8 @@ impl LoweringContext<'_, '_> {
                                                       opt_label.is_some()),
                                                       self.lower_label(opt_label))
             }
-            ExprKind::Assign(ref el, ref er) => {
-                hir::ExprKind::Assign(P(self.lower_expr(el)), P(self.lower_expr(er)))
+            ExprKind::Assign(ref el, ref er, span) => {
+                hir::ExprKind::Assign(P(self.lower_expr(el)), P(self.lower_expr(er)), span)
             }
             ExprKind::AssignOp(op, ref el, ref er) => hir::ExprKind::AssignOp(
                 self.lower_binop(op),
@@ -1084,7 +1084,7 @@ impl LoweringContext<'_, '_> {
             let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat_hid));
             let assign = P(self.expr(
                 pat.span,
-                hir::ExprKind::Assign(next_expr, val_expr),
+                hir::ExprKind::Assign(next_expr, val_expr, pat.span),
                 ThinVec::new(),
             ));
             let some_pat = self.pat_some(pat.span, val_pat);

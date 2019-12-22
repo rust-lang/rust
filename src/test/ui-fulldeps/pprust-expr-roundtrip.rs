@@ -126,8 +126,8 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                                           DUMMY_SP)));
             },
             12 => {
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(e, make_x())));
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(make_x(), e)));
+                iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(e, make_x(), DUMMY_SP)));
+                iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(make_x(), e, DUMMY_SP)));
             },
             13 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Field(e, Ident::from_str("f"))));

@@ -291,7 +291,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 }
             }
 
-            hir::ExprKind::Assign(ref lhs, ref rhs) => {
+            hir::ExprKind::Assign(ref lhs, ref rhs, _) => {
                 self.mutate_expr(lhs);
                 self.consume_expr(rhs);
             }
