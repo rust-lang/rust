@@ -2,7 +2,8 @@ SOURCE_FILE@[0; 50)
   MACRO_DEF@[0; 28)
     MACRO_KW@[0; 5) "macro"
     WHITESPACE@[5; 6) " "
-    IDENT@[6; 7) "m"
+    NAME@[6; 7)
+      IDENT@[6; 7) "m"
     WHITESPACE@[7; 8) " "
     TOKEN_TREE@[8; 28)
       L_CURLY@[8; 9) "{"
@@ -27,7 +28,8 @@ SOURCE_FILE@[0; 50)
   MACRO_DEF@[29; 49)
     MACRO_KW@[29; 34) "macro"
     WHITESPACE@[34; 35) " "
-    IDENT@[35; 36) "m"
+    NAME@[35; 36)
+      IDENT@[35; 36) "m"
     TOKEN_TREE@[36; 49)
       TOKEN_TREE@[36; 46)
         L_PAREN@[36; 37) "("

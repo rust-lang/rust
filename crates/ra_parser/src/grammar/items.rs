@@ -389,7 +389,7 @@ pub(crate) fn mod_item_list(p: &mut Parser) {
 // macro m($i:ident) {}
 fn macro_def(p: &mut Parser, m: Marker) {
     p.expect(T![macro]);
-    p.expect(IDENT);
+    name_r(p, ITEM_RECOVERY_SET);
     if p.at(T!['{']) {
         token_tree(p);
     } else if !p.at(T!['(']) {
