@@ -588,6 +588,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     self.param_env
                 };
+                // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.
+                // The reason we use `const_eval_raw` everywhere else is to prevent cycles during
+                // validation, because validation automatically reads through any references, thus
+                // potentially requiring the current static to be evaluated again. This is not a
+                // problem here, because we need an operand and operands are always reads.
+                // FIXME(oli-obk): eliminate all the `const_eval_raw` usages when we get rid of
+                // `StaticKind` once and for all.
                 let val =
                     self.tcx.const_eval(param_env.and(GlobalId { instance, promoted: None }))?;
                 // "recurse". This is only ever going into a recusion depth of 1, because after
