@@ -509,3 +509,45 @@ fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
         .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
     Ok(&OsStr::new(s))
 }
+
+// FIXME: change `ImmTy::from_int` so it returns an `InterpResult` instead and remove this
+// function.
+pub fn immty_from_int_checked<'tcx>(
+    int: impl Into<i128>,
+    layout: TyLayout<'tcx>,
+) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
+    let int = int.into();
+    // If `int` does not fit in `size` bits, we error instead of letting
+    // `ImmTy::from_int` panic.
+    let size = layout.size;
+    let truncated = truncate(int as u128, size);
+    if sign_extend(truncated, size) as i128 != int {
+        throw_unsup_format!(
+            "Signed value {:#x} does not fit in {} bits",
+            int,
+            size.bits()
+        )
+    }
+    Ok(ImmTy::from_int(int, layout))
+}
+
+// FIXME: change `ImmTy::from_uint` so it returns an `InterpResult` instead and remove this
+// function.
+pub fn immty_from_uint_checked<'tcx>(
+    int: impl Into<u128>,
+    layout: TyLayout<'tcx>,
+) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
+    let int = int.into();
+    // If `int` does not fit in `size` bits, we error instead of letting
+    // `ImmTy::from_int` panic.
+    let size = layout.size;
+    if truncate(int, size) != int {
+        throw_unsup_format!(
+            "Unsigned value {:#x} does not fit in {} bits",
+            int,
+            size.bits()
+        )
+    }
+    Ok(ImmTy::from_uint(int, layout))
+}
+
