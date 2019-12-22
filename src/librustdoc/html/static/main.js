@@ -1722,6 +1722,10 @@ function getSearchElement() {
                 search();
             };
             search_input.onchange = function(e) {
+                if (e.target !== document.activeElement) {
+                    // To prevent doing anything when it's from a blur event.
+                    return;
+                }
                 // Do NOT e.preventDefault() here. It will prevent pasting.
                 clearTimeout(searchTimeout);
                 // zero-timeout necessary here because at the time of event handler execution the
