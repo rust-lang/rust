@@ -148,10 +148,11 @@ fn test_sysroot_consistency() {
             .unwrap_or_else(|_| panic!("Failed to canonicalize sysroot: {}", stdout))
     }
 
-    // We let the user skip this check if they really want to.
-    // (`bootstrap` needs this because Miri gets built by the stage1 compiler
-    // but run with the stage2 sysroot.)
-    if std::env::var("MIRI_SKIP_SYSROOT_CHECK").is_ok() {
+    // Do not check sysroots if we got built as part of a Rust distribution.
+    // During `bootstrap`, the sysroot does not match anyway, and then some distros
+    // play symlink tricks so the sysroots may be different even for the final stage
+    // (see <https://github.com/mozilla/nixpkgs-mozilla/issues/198>).
+    if option_env!("RUSTC_STAGE").is_some() {
         return;
     }
 
