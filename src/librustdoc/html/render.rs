@@ -54,12 +54,12 @@ use syntax_pos::hygiene::MacroKind;
 use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
-use rustc::hir;
+use rustc::hir::{self, Mutability};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 use rustc_feature::UnstableFeatures;
 
-use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, Mutability};
+use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy};
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
@@ -3298,7 +3298,7 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
         let (by_mut_ref, by_box, by_value) = match self_ty {
             SelfTy::SelfBorrowed(_, mutability) |
             SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
-                (mutability == Mutability::Mutable, false, false)
+                (mutability == Mutability::Mut, false, false)
             },
             SelfTy::SelfExplicit(clean::ResolvedPath { did, .. }) => {
                 (false, Some(did) == cache().owned_box_did, false)

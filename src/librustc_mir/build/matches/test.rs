@@ -30,7 +30,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Switch {
-                        adt_def: adt_def.clone(),
+                        adt_def,
                         variants: BitSet::new_empty(adt_def.variants.len()),
                     },
                 }

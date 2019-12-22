@@ -56,7 +56,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     shim::provide(providers);
     transform::provide(providers);
     monomorphize::partitioning::provide(providers);
-    providers.const_eval = const_eval::const_eval_provider;
+    providers.const_eval_validated = const_eval::const_eval_validated_provider;
     providers.const_eval_raw = const_eval::const_eval_raw_provider;
     providers.check_match = hair::pattern::check_match;
     providers.const_caller_location = const_eval::const_caller_location;

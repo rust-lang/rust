@@ -8,7 +8,7 @@ use crate::value::Value;
 use libc::c_uint;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
-    Pointer, ErrorHandled, GlobalId};
+    Pointer, ErrorHandled};
 use rustc::mir::mono::MonoItem;
 use rustc::hir::Node;
 use rustc_target::abi::HasDataLayout;
@@ -81,13 +81,7 @@ pub fn codegen_static_initializer(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
 ) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled> {
-    let instance = ty::Instance::mono(cx.tcx, def_id);
-    let cid = GlobalId {
-        instance,
-        promoted: None,
-    };
-    let param_env = ty::ParamEnv::reveal_all();
-    let static_ = cx.tcx.const_eval(param_env.and(cid))?;
+    let static_ = cx.tcx.const_eval_poly(def_id)?;
 
     let alloc = match static_.val {
         ty::ConstKind::Value(ConstValue::ByRef {

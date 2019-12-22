@@ -74,6 +74,16 @@ use crate::intrinsics;
 /// See the [module-level documentation][mod] for more details.
 ///
 /// [mod]: index.html
+// This trait is not unsafe, though we rely on the specifics of it's sole impl's
+// `type_id` function in unsafe code (e.g., `downcast`). Normally, that would be
+// a problem, but because the only impl of `Any` is a blanket implementation, no
+// other code can implement `Any`.
+//
+// We could plausibly make this trait unsafe -- it would not cause breakage,
+// since we control all the implementations -- but we choose not to as that's
+// both not really necessary and may confuse users about the distinction of
+// unsafe traits and unsafe methods (i.e., `type_id` would still be safe to call,
+// but we would likely want to indicate as such in documentation).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Any: 'static {
     /// Gets the `TypeId` of `self`.

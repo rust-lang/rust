@@ -7,7 +7,7 @@ use syntax::symbol::sym;
 use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
 
-use rustc::hir;
+use rustc::hir::{self, Mutability};
 use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc_metadata::creader::LoadedMacro;
@@ -472,7 +472,7 @@ fn build_const(cx: &DocContext<'_>, did: DefId) -> clean::Constant {
 fn build_static(cx: &DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
         type_: cx.tcx.type_of(did).clean(cx),
-        mutability: if mutable {clean::Mutable} else {clean::Immutable},
+        mutability: if mutable { Mutability::Mut } else { Mutability::Not },
         expr: "\n\n\n".to_string(), // trigger the "[definition]" links
     }
 }

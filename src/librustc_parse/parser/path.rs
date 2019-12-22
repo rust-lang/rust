@@ -173,7 +173,7 @@ impl<'a> Parser<'a> {
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
                 let (args, constraints) =
-                    self.parse_generic_args_with_leaning_angle_bracket_recovery(style, lo)?;
+                    self.parse_generic_args_with_leading_angle_bracket_recovery(style, lo)?;
                 self.expect_gt()?;
                 let span = lo.to(self.prev_span);
                 AngleBracketedArgs { args, constraints, span }.into()
@@ -212,7 +212,7 @@ impl<'a> Parser<'a> {
     /// bar::<<<<T as Foo>::Output>();
     ///      ^^ help: remove extra angle brackets
     /// ```
-    fn parse_generic_args_with_leaning_angle_bracket_recovery(
+    fn parse_generic_args_with_leading_angle_bracket_recovery(
         &mut self,
         style: PathStyle,
         lo: Span,

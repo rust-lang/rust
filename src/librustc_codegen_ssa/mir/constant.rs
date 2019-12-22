@@ -43,17 +43,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match constant.literal.val {
             ty::ConstKind::Unevaluated(def_id, substs) => {
                 let substs = self.monomorphize(&substs);
-                let instance = ty::Instance::resolve(
-                    self.cx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs,
-                ).unwrap();
-                let cid = mir::interpret::GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                self.cx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid)).map_err(|err| {
-                    self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
-                    err
-                })
+                self.cx.tcx()
+                    .const_eval_resolve(ty::ParamEnv::reveal_all(), def_id, substs, None)
+                    .map_err(|err| {
+                        self.cx.tcx().sess.span_err(
+                            constant.span,
+                            "erroneous constant encountered");
+                        err
+                    })
             },
             _ => Ok(self.monomorphize(&constant.literal)),
         }
