@@ -543,11 +543,11 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
             return;
         }
 
-        let mut message = "wildcard match will miss any future added variants.";
+        let mut message = "wildcard match will miss any future added variants";
 
         if let ty::Adt(def, _) = ty.kind {
             if def.is_variant_list_non_exhaustive() {
-                message = "match on non-exhaustive enum doesn't explicitly match all known variants.";
+                message = "match on non-exhaustive enum doesn't explicitly match all known variants";
                 suggestion.push(String::from("_"));
             }
         }
