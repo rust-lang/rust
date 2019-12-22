@@ -33,8 +33,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.ast_block_stmts(destination, block, span, stmts, expr,
                                                  safety_mode)
                         });
-                    this.cfg.terminate(unpack!(block_exit), source_info,
-                                       TerminatorKind::Goto { target: exit_block });
+                    this.cfg.goto(unpack!(block_exit), source_info, exit_block);
                     exit_block.unit()
                 } else {
                     this.ast_block_stmts(destination, block, span, stmts, expr,

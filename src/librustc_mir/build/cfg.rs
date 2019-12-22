@@ -85,4 +85,9 @@ impl<'tcx> CFG<'tcx> {
             kind,
         });
     }
+
+    /// In the `origin` block, push a `goto -> target` terminator.
+    pub fn goto(&mut self, origin: BasicBlock, source_info: SourceInfo, target: BasicBlock) {
+        self.terminate(origin, source_info, TerminatorKind::Goto { target })
+    }
 }
