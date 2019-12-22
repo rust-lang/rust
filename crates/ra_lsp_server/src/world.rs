@@ -145,10 +145,10 @@ impl WorldState {
     /// FIXME: better API here
     pub fn process_changes(
         &mut self,
-    ) -> Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)> {
+    ) -> Option<Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>> {
         let changes = self.vfs.write().commit_changes();
         if changes.is_empty() {
-            return Vec::new();
+            return None;
         }
         let mut libs = Vec::new();
         let mut change = AnalysisChange::new();
@@ -182,7 +182,7 @@ impl WorldState {
             }
         }
         self.analysis_host.apply_change(change);
-        libs
+        Some(libs)
     }
 
     pub fn add_lib(&mut self, data: LibraryData) {
