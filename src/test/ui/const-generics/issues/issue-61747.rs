@@ -12,5 +12,5 @@ impl<const C: usize> Const<{C}> {
 }
 
 fn main() {
-    Const::<1>::successor();
+    let _x: Const::<2> = Const::<1>::successor();
 }
