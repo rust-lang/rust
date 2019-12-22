@@ -753,9 +753,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             err.emit();
         } else if !lhs.is_syntactic_place_expr() {
-            struct_span_err!(self.tcx.sess, expr.span, E0070, "invalid left-hand side expression")
-                .span_label(expr.span, "left-hand of expression not valid")
-                .emit();
+            struct_span_err!(
+                self.tcx.sess,
+                expr.span,
+                E0070,
+                "invalid left-hand side of assignment",
+            ).span_label(lhs.span, "cannot assign to this expression").emit();
         }
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);

@@ -30,5 +30,5 @@ fn main() {
     // A test to check that not expecting `bool` behaves well:
     let _: usize = 0 = 0;
     //~^ ERROR mismatched types [E0308]
-    //~| ERROR invalid left-hand side expression [E0070]
+    //~| ERROR invalid left-hand side of assignment [E0070]
 }
