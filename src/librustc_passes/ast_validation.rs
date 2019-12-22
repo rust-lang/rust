@@ -737,8 +737,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {
                 self.err_handler()
-                    .span_err(predicate.span, "equality constraints are not yet \
-                                               supported in where clauses (see #20041)");
+                    .struct_span_err(
+                        predicate.span,
+                        "equality constraints are not yet supported in `where` clauses",
+                    )
+                    .note(
+                        "for more information, see https://github.com/rust-lang/rust/issues/20041",
+                    )
+                    .emit();
             }
         }
 
