@@ -52,7 +52,8 @@ $RUSTC example/alloc_example.rs --crate-type bin
 jit std_example example/std_example.rs
 
 echo "[AOT] dst_field_align"
-$RUSTC example/dst-field-align.rs -Zmir-opt-level=2 --crate-name dst_field_align --crate-type bin
+# FIXME Re-add -Zmir-opt-level=2 once rust-lang/rust#67529 is fixed.
+$RUSTC example/dst-field-align.rs --crate-name dst_field_align --crate-type bin
 ./target/out/dst_field_align
 
 echo "[AOT] std_example"

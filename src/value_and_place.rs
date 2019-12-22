@@ -346,8 +346,6 @@ impl<'tcx> CPlace<'tcx> {
     }
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, from: CValue<'tcx>) {
-        use rustc::hir::Mutability::*;
-
         let from_ty = from.layout().ty;
         let to_ty = self.layout().ty;
 
@@ -357,14 +355,14 @@ impl<'tcx> CPlace<'tcx> {
             to_ty: Ty<'tcx>,
         ) {
             match (&from_ty.kind, &to_ty.kind) {
-                (ty::Ref(_, t, Immutable), ty::Ref(_, u, Immutable))
-                | (ty::Ref(_, t, Mutable), ty::Ref(_, u, Immutable))
-                | (ty::Ref(_, t, Mutable), ty::Ref(_, u, Mutable)) => {
+                (ty::Ref(_, t, Mutability::Not), ty::Ref(_, u, Mutability::Not))
+                | (ty::Ref(_, t, Mutability::Mut), ty::Ref(_, u, Mutability::Not))
+                | (ty::Ref(_, t, Mutability::Mut), ty::Ref(_, u, Mutability::Mut)) => {
                     assert_assignable(fx, t, u);
                     // &mut T -> &T is allowed
                     // &'a T -> &'b T is allowed
                 }
-                (ty::Ref(_, _, Immutable), ty::Ref(_, _, Mutable)) => panic!(
+                (ty::Ref(_, _, Mutability::Not), ty::Ref(_, _, Mutability::Mut)) => panic!(
                     "Cant assign value of type {} to place of type {}",
                     from_ty, to_ty
                 ),
