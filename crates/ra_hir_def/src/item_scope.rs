@@ -9,7 +9,7 @@ use crate::{per_ns::PerNs, AdtId, BuiltinType, ImplId, MacroDefId, ModuleDefId, 
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
-    visible: FxHashMap<Name, Resolution>,
+    visible: FxHashMap<Name, PerNs>,
     defs: Vec<ModuleDefId>,
     impls: Vec<ImplId>,
     /// Macros visible in current module in legacy textual scope
@@ -27,10 +27,10 @@ pub struct ItemScope {
     legacy_macros: FxHashMap<Name, MacroDefId>,
 }
 
-static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
+static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
     BuiltinType::ALL
         .iter()
-        .map(|(name, ty)| (name.clone(), Resolution { def: PerNs::types(ty.clone().into()) }))
+        .map(|(name, ty)| (name.clone(), PerNs::types(ty.clone().into())))
         .collect()
 });
 
@@ -46,9 +46,9 @@ pub(crate) enum BuiltinShadowMode {
 /// Legacy macros can only be accessed through special methods like `get_legacy_macros`.
 /// Other methods will only resolve values, types and module scoped macros only.
 impl ItemScope {
-    pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, &'a Resolution)> + 'a {
+    pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, PerNs)> + 'a {
         //FIXME: shadowing
-        self.visible.iter().chain(BUILTIN_SCOPE.iter())
+        self.visible.iter().chain(BUILTIN_SCOPE.iter()).map(|(n, def)| (n, *def))
     }
 
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
@@ -61,9 +61,7 @@ impl ItemScope {
 
     /// Iterate over all module scoped macros
     pub(crate) fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
-        self.visible
-            .iter()
-            .filter_map(|(name, res)| res.def.take_macros().map(|macro_| (name, macro_)))
+        self.visible.iter().filter_map(|(name, def)| def.take_macros().map(|macro_| (name, macro_)))
     }
 
     /// Iterate over all legacy textual scoped macros visible at the end of the module
@@ -72,13 +70,13 @@ impl ItemScope {
     }
 
     /// Get a name from current module scope, legacy macros are not included
-    pub(crate) fn get(&self, name: &Name, shadow: BuiltinShadowMode) -> Option<&Resolution> {
+    pub(crate) fn get(&self, name: &Name, shadow: BuiltinShadowMode) -> Option<&PerNs> {
         match shadow {
             BuiltinShadowMode::Module => self.visible.get(name).or_else(|| BUILTIN_SCOPE.get(name)),
             BuiltinShadowMode::Other => {
                 let item = self.visible.get(name);
-                if let Some(res) = item {
-                    if let Some(ModuleDefId::ModuleId(_)) = res.def.take_types() {
+                if let Some(def) = item {
+                    if let Some(ModuleDefId::ModuleId(_)) = def.take_types() {
                         return BUILTIN_SCOPE.get(name).or(item);
                     }
                 }
@@ -89,7 +87,7 @@ impl ItemScope {
     }
 
     pub(crate) fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
-        self.visible.values().filter_map(|r| match r.def.take_types() {
+        self.visible.values().filter_map(|def| match def.take_types() {
             Some(ModuleDefId::TraitId(t)) => Some(t),
             _ => None,
         })
@@ -111,39 +109,33 @@ impl ItemScope {
         self.legacy_macros.insert(name, mac);
     }
 
-    pub(crate) fn push_res(&mut self, name: Name, res: &Resolution) -> bool {
+    pub(crate) fn push_res(&mut self, name: Name, def: &PerNs) -> bool {
         let mut changed = false;
         let existing = self.visible.entry(name.clone()).or_default();
 
-        if existing.def.types.is_none() && res.def.types.is_some() {
-            existing.def.types = res.def.types;
+        if existing.types.is_none() && def.types.is_some() {
+            existing.types = def.types;
             changed = true;
         }
-        if existing.def.values.is_none() && res.def.values.is_some() {
-            existing.def.values = res.def.values;
+        if existing.values.is_none() && def.values.is_some() {
+            existing.values = def.values;
             changed = true;
         }
-        if existing.def.macros.is_none() && res.def.macros.is_some() {
-            existing.def.macros = res.def.macros;
+        if existing.macros.is_none() && def.macros.is_some() {
+            existing.macros = def.macros;
             changed = true;
         }
 
         changed
     }
 
-    pub(crate) fn collect_resolutions(&self) -> Vec<(Name, Resolution)> {
+    pub(crate) fn collect_resolutions(&self) -> Vec<(Name, PerNs)> {
         self.visible.iter().map(|(name, res)| (name.clone(), res.clone())).collect()
     }
 
     pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroDefId> {
         self.legacy_macros.clone()
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Resolution {
-    /// None for unresolved
-    pub def: PerNs,
 }
 
 impl From<ModuleDefId> for PerNs {

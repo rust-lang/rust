@@ -18,7 +18,6 @@ use test_utils::tested_by;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    item_scope::Resolution,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
         raw, BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
@@ -215,7 +214,7 @@ where
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
         if export {
-            self.update(self.def_map.root, &[(name, Resolution { def: PerNs::macros(macro_) })]);
+            self.update(self.def_map.root, &[(name, PerNs::macros(macro_))]);
         }
     }
 
@@ -397,8 +396,7 @@ where
                         .map(|(local_id, variant_data)| {
                             let name = variant_data.name.clone();
                             let variant = EnumVariantId { parent: e, local_id };
-                            let res =
-                                Resolution { def: PerNs::both(variant.into(), variant.into()) };
+                            let res = PerNs::both(variant.into(), variant.into());
                             (name, res)
                         })
                         .collect::<Vec<_>>();
@@ -424,22 +422,21 @@ where
                         }
                     }
 
-                    let resolution = Resolution { def };
-                    self.update(module_id, &[(name, resolution)]);
+                    self.update(module_id, &[(name, def)]);
                 }
                 None => tested_by!(bogus_paths),
             }
         }
     }
 
-    fn update(&mut self, module_id: LocalModuleId, resolutions: &[(Name, Resolution)]) {
+    fn update(&mut self, module_id: LocalModuleId, resolutions: &[(Name, PerNs)]) {
         self.update_recursive(module_id, resolutions, 0)
     }
 
     fn update_recursive(
         &mut self,
         module_id: LocalModuleId,
-        resolutions: &[(Name, Resolution)],
+        resolutions: &[(Name, PerNs)],
         depth: usize,
     ) {
         if depth > 100 {
@@ -705,8 +702,7 @@ where
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
         let def: ModuleDefId = module.into();
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        let resolution = Resolution { def: def.into() };
-        self.def_collector.update(self.module_id, &[(name, resolution)]);
+        self.def_collector.update(self.module_id, &[(name, def.into())]);
         res
     }
 
@@ -765,8 +761,7 @@ where
             .into(),
         };
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        let resolution = Resolution { def: def.into() };
-        self.def_collector.update(self.module_id, &[(name, resolution)])
+        self.def_collector.update(self.module_id, &[(name, def.into())])
     }
 
     fn collect_derives(&mut self, attrs: &Attrs, def: &raw::DefData) {

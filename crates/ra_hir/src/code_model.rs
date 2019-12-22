@@ -184,7 +184,7 @@ impl Module {
         db.crate_def_map(self.id.krate)[self.id.local_id]
             .scope
             .entries()
-            .map(|(name, res)| (name.clone(), res.def.into()))
+            .map(|(name, def)| (name.clone(), def.into()))
             .collect()
     }
 

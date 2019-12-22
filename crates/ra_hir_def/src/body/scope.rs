@@ -183,8 +183,8 @@ mod tests {
         let crate_def_map = db.crate_def_map(krate);
 
         let module = crate_def_map.modules_for_file(file_id).next().unwrap();
-        let (_, res) = crate_def_map[module].scope.entries().next().unwrap();
-        match res.def.take_values().unwrap() {
+        let (_, def) = crate_def_map[module].scope.entries().next().unwrap();
+        match def.take_values().unwrap() {
             ModuleDefId::FunctionId(it) => it,
             _ => panic!(),
         }
