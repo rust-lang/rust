@@ -1,7 +1,9 @@
 // run-rustfix
 
 #![deny(clippy::wildcard_enum_match_arm)]
-#![allow(unreachable_code, unused_variables, dead_code)]
+#![allow(unreachable_code, unused_variables, dead_code, clippy::single_match)]
+
+use std::io::ErrorKind;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Color {
@@ -62,4 +64,32 @@ fn main() {
         140 => {},
         _ => {},
     };
+    // We need to use an enum not defined in this test because non_exhaustive is ignored for the
+    // purposes of dead code analysis within a crate.
+    let error_kind = ErrorKind::NotFound;
+    match error_kind {
+        ErrorKind::NotFound => {},
+        _ => {},
+    }
+    match error_kind {
+        ErrorKind::NotFound => {},
+        ErrorKind::PermissionDenied => {},
+        ErrorKind::ConnectionRefused => {},
+        ErrorKind::ConnectionReset => {},
+        ErrorKind::ConnectionAborted => {},
+        ErrorKind::NotConnected => {},
+        ErrorKind::AddrInUse => {},
+        ErrorKind::AddrNotAvailable => {},
+        ErrorKind::BrokenPipe => {},
+        ErrorKind::AlreadyExists => {},
+        ErrorKind::WouldBlock => {},
+        ErrorKind::InvalidInput => {},
+        ErrorKind::InvalidData => {},
+        ErrorKind::TimedOut => {},
+        ErrorKind::WriteZero => {},
+        ErrorKind::Interrupted => {},
+        ErrorKind::Other => {},
+        ErrorKind::UnexpectedEof => {},
+        _ => {},
+    }
 }
