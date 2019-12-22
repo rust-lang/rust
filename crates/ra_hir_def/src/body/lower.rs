@@ -46,7 +46,7 @@ pub(super) fn lower(
             pats: Arena::default(),
             params: Vec::new(),
             body_expr: ExprId::dummy(),
-            defs: Vec::new(),
+            item_scope: Default::default(),
         },
     }
     .collect(params, body)
@@ -532,7 +532,7 @@ where
                 | ast::ModuleItem::ExternCrateItem(_)
                 | ast::ModuleItem::Module(_) => continue,
             };
-            self.body.defs.push(def)
+            self.body.item_scope.define_def(def)
         }
     }
 

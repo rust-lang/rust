@@ -19,10 +19,11 @@ use crate::{
     db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId},
     item_scope::BuiltinShadowMode,
+    item_scope::ItemScope,
     nameres::CrateDefMap,
     path::{ModPath, Path},
     src::HasSource,
-    DefWithBodyId, HasModule, Lookup, ModuleDefId, ModuleId,
+    DefWithBodyId, HasModule, Lookup, ModuleId,
 };
 
 pub(crate) struct Expander {
@@ -135,7 +136,7 @@ pub struct Body {
     pub params: Vec<PatId>,
     /// The `ExprId` of the actual body expression.
     pub body_expr: ExprId,
-    pub defs: Vec<ModuleDefId>,
+    pub item_scope: ItemScope,
 }
 
 pub type ExprPtr = Either<AstPtr<ast::Expr>, AstPtr<ast::RecordField>>;
