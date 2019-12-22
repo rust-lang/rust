@@ -248,7 +248,10 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
-        Self::try_from_uint(i, size).unwrap()
+        let i = i.into();
+        Self::try_from_uint(i, size).unwrap_or_else(|| {
+            bug!("Unsigned value {:#x} does not fit in {} bits", i, size.bits())
+        })
     }
 
     #[inline]
@@ -285,7 +288,10 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_int(i: impl Into<i128>, size: Size) -> Self {
-        Self::try_from_int(i, size).unwrap()
+        let i = i.into();
+        Self::try_from_int(i, size).unwrap_or_else(|| {
+            bug!("Signed value {:#x} does not fit in {} bits", i, size.bits())
+        })
     }
 
     #[inline]

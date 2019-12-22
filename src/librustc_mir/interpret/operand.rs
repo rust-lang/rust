@@ -224,7 +224,7 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     }
     #[inline]
     pub fn from_uint(i: impl Into<u128>, layout: TyLayout<'tcx>) -> Self {
-        Self::try_from_uint(i, layout).unwrap()
+        Self::from_scalar(Scalar::from_uint(i, layout.size), layout)
     }
 
     #[inline]
@@ -234,7 +234,7 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
 
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> Self {
-        Self::try_from_int(i, layout).unwrap()
+        Self::from_scalar(Scalar::from_int(i, layout.size), layout)
     }
 
     #[inline]
