@@ -1,7 +1,4 @@
-use super::{
-    Substitution as S,
-    parse_next_substitution as pns,
-};
+use super::{parse_next_substitution as pns, Substitution as S};
 
 macro_rules! assert_eq_pnsat {
     ($lhs:expr, $rhs:expr) => {

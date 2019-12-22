@@ -7,7 +7,7 @@
 
 use std::env;
 
-use bootstrap::{Config, Build};
+use bootstrap::{Build, Config};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();

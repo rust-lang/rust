@@ -9,19 +9,19 @@
 
 pub use self::LangItem::*;
 
-use crate::hir::def_id::DefId;
 use crate::hir::check_attr::Target;
-use crate::ty::{self, TyCtxt};
-use crate::middle::weak_lang_items;
+use crate::hir::def_id::DefId;
 use crate::middle::cstore::ExternCrate;
+use crate::middle::weak_lang_items;
+use crate::ty::{self, TyCtxt};
 use crate::util::nodemap::FxHashMap;
 
-use syntax::ast;
-use syntax::symbol::{Symbol, sym};
-use syntax_pos::Span;
-use rustc_macros::HashStable;
-use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir;
+use crate::hir::itemlikevisit::ItemLikeVisitor;
+use rustc_macros::HashStable;
+use syntax::ast;
+use syntax::symbol::{sym, Symbol};
+use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

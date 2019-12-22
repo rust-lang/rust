@@ -3,11 +3,15 @@ use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Msvc,
-                vec!["/NOLOGO".to_string(),
-                     "/NXCOMPAT".to_string(),
-                     "/APPCONTAINER".to_string(),
-                     "mincore.lib".to_string()]);
+    args.insert(
+        LinkerFlavor::Msvc,
+        vec![
+            "/NOLOGO".to_string(),
+            "/NXCOMPAT".to_string(),
+            "/APPCONTAINER".to_string(),
+            "mincore.lib".to_string(),
+        ],
+    );
 
     TargetOptions {
         function_sections: true,
@@ -28,6 +32,6 @@ pub fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,
 
-        .. Default::default()
+        ..Default::default()
     }
 }

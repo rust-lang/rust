@@ -2,7 +2,7 @@
 
 use crate::dep_graph::DepNode;
 use crate::ich::Fingerprint;
-use rustc_index::vec::{IndexVec, Idx};
+use rustc_index::vec::{Idx, IndexVec};
 
 rustc_index::newtype_index! {
     pub struct SerializedDepNodeIndex { .. }
@@ -27,9 +27,7 @@ pub struct SerializedDepGraph {
 
 impl SerializedDepGraph {
     #[inline]
-    pub fn edge_targets_from(&self,
-                             source: SerializedDepNodeIndex)
-                             -> &[SerializedDepNodeIndex] {
+    pub fn edge_targets_from(&self, source: SerializedDepNodeIndex) -> &[SerializedDepNodeIndex] {
         let targets = self.edge_list_indices[source];
         &self.edge_list_data[targets.0 as usize..targets.1 as usize]
     }

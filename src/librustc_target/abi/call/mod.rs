@@ -17,11 +17,11 @@ mod riscv;
 mod s390x;
 mod sparc;
 mod sparc64;
+mod wasm32;
+mod wasm32_bindgen_compat;
 mod x86;
 mod x86_64;
 mod x86_win64;
-mod wasm32;
-mod wasm32_bindgen_compat;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PassMode {
@@ -72,7 +72,7 @@ pub struct ArgAttributes {
     /// The minimum size of the pointee, guaranteed to be valid for the duration of the whole call
     /// (corresponding to LLVM's dereferenceable and dereferenceable_or_null attributes).
     pub pointee_size: Size,
-    pub pointee_align: Option<Align>
+    pub pointee_align: Option<Align>,
 }
 
 impl ArgAttributes {
@@ -98,7 +98,7 @@ impl ArgAttributes {
 pub enum RegKind {
     Integer,
     Float,
-    Vector
+    Vector,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -110,12 +110,9 @@ pub struct Reg {
 macro_rules! reg_ctor {
     ($name:ident, $kind:ident, $bits:expr) => {
         pub fn $name() -> Reg {
-            Reg {
-                kind: RegKind::$kind,
-                size: Size::from_bits($bits)
-            }
+            Reg { kind: RegKind::$kind, size: Size::from_bits($bits) }
         }
-    }
+    };
 }
 
 impl Reg {
@@ -132,24 +129,20 @@ impl Reg {
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         let dl = cx.data_layout();
         match self.kind {
-            RegKind::Integer => {
-                match self.size.bits() {
-                    1 => dl.i1_align.abi,
-                    2..=8 => dl.i8_align.abi,
-                    9..=16 => dl.i16_align.abi,
-                    17..=32 => dl.i32_align.abi,
-                    33..=64 => dl.i64_align.abi,
-                    65..=128 => dl.i128_align.abi,
-                    _ => panic!("unsupported integer: {:?}", self)
-                }
-            }
-            RegKind::Float => {
-                match self.size.bits() {
-                    32 => dl.f32_align.abi,
-                    64 => dl.f64_align.abi,
-                    _ => panic!("unsupported float: {:?}", self)
-                }
-            }
+            RegKind::Integer => match self.size.bits() {
+                1 => dl.i1_align.abi,
+                2..=8 => dl.i8_align.abi,
+                9..=16 => dl.i16_align.abi,
+                17..=32 => dl.i32_align.abi,
+                33..=64 => dl.i64_align.abi,
+                65..=128 => dl.i128_align.abi,
+                _ => panic!("unsupported integer: {:?}", self),
+            },
+            RegKind::Float => match self.size.bits() {
+                32 => dl.f32_align.abi,
+                64 => dl.f64_align.abi,
+                _ => panic!("unsupported float: {:?}", self),
+            },
             RegKind::Vector => dl.vector_align(self.size).abi,
         }
     }
@@ -172,10 +165,7 @@ pub struct Uniform {
 
 impl From<Reg> for Uniform {
     fn from(unit: Reg) -> Uniform {
-        Uniform {
-            unit,
-            total: unit.size
-        }
+        Uniform { unit, total: unit.size }
     }
 }
 
@@ -200,11 +190,7 @@ impl From<Reg> for CastTarget {
 
 impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
-        CastTarget {
-            prefix: [None; 8],
-            prefix_chunk: Size::ZERO,
-            rest: uniform
-        }
+        CastTarget { prefix: [None; 8], prefix_chunk: Size::ZERO, rest: uniform }
     }
 }
 
@@ -213,20 +199,23 @@ impl CastTarget {
         CastTarget {
             prefix: [Some(a.kind), None, None, None, None, None, None, None],
             prefix_chunk: a.size,
-            rest: Uniform::from(b)
+            rest: Uniform::from(b),
         }
     }
 
     pub fn size<C: HasDataLayout>(&self, cx: &C) -> Size {
         (self.prefix_chunk * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
-             .align_to(self.rest.align(cx)) + self.rest.total
+            .align_to(self.rest.align(cx))
+            + self.rest.total
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
-        self.prefix.iter()
+        self.prefix
+            .iter()
             .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk }.align(cx)))
-            .fold(cx.data_layout().aggregate_align.abi.max(self.rest.align(cx)),
-                |acc, align| acc.max(align))
+            .fold(cx.data_layout().aggregate_align.abi.max(self.rest.align(cx)), |acc, align| {
+                acc.max(align)
+            })
     }
 }
 
@@ -249,22 +238,15 @@ impl HomogeneousAggregate {
     /// If this is a homogeneous aggregate, returns the homogeneous
     /// unit, else `None`.
     pub fn unit(self) -> Option<Reg> {
-        if let HomogeneousAggregate::Homogeneous(r) = self {
-            Some(r)
-        } else {
-            None
-        }
+        if let HomogeneousAggregate::Homogeneous(r) = self { Some(r) } else { None }
     }
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
     fn is_aggregate(&self) -> bool {
         match self.abi {
-            Abi::Uninhabited |
-            Abi::Scalar(_) |
-            Abi::Vector { .. } => false,
-            Abi::ScalarPair(..) |
-            Abi::Aggregate { .. } => true
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } => false,
+            Abi::ScalarPair(..) | Abi::Aggregate { .. } => true,
         }
     }
 
@@ -279,7 +261,9 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// should generally only be relevant to the ABI details of
     /// specific targets.
     pub fn homogeneous_aggregate<C>(&self, cx: &C) -> HomogeneousAggregate
-        where Ty: TyLayoutMethods<'a, C> + Copy, C: LayoutOf<Ty = Ty, TyLayout = Self>
+    where
+        Ty: TyLayoutMethods<'a, C> + Copy,
+        C: LayoutOf<Ty = Ty, TyLayout = Self>,
     {
         match self.abi {
             Abi::Uninhabited => HomogeneousAggregate::Heterogeneous,
@@ -287,26 +271,18 @@ impl<'a, Ty> TyLayout<'a, Ty> {
             // The primitive for this algorithm.
             Abi::Scalar(ref scalar) => {
                 let kind = match scalar.value {
-                    abi::Int(..) |
-                    abi::Pointer => RegKind::Integer,
+                    abi::Int(..) | abi::Pointer => RegKind::Integer,
                     abi::F32 | abi::F64 => RegKind::Float,
                 };
-                HomogeneousAggregate::Homogeneous(Reg {
-                    kind,
-                    size: self.size
-                })
+                HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size })
             }
 
             Abi::Vector { .. } => {
                 assert!(!self.is_zst());
-                HomogeneousAggregate::Homogeneous(Reg {
-                    kind: RegKind::Vector,
-                    size: self.size
-                })
+                HomogeneousAggregate::Homogeneous(Reg { kind: RegKind::Vector, size: self.size })
             }
 
-            Abi::ScalarPair(..) |
-            Abi::Aggregate { .. } => {
+            Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
                 let mut total = Size::ZERO;
                 let mut result = None;
 
@@ -319,7 +295,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                         }
                     }
                     FieldPlacement::Union(_) => true,
-                    FieldPlacement::Arbitrary { .. } => false
+                    FieldPlacement::Arbitrary { .. } => false,
                 };
 
                 for i in 0..self.fields.count() {
@@ -392,11 +368,7 @@ pub struct ArgAbi<'a, Ty> {
 
 impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn new(layout: TyLayout<'a, Ty>) -> Self {
-        ArgAbi {
-            layout,
-            pad: None,
-            mode: PassMode::Direct(ArgAttributes::new()),
-        }
+        ArgAbi { layout, pad: None, mode: PassMode::Direct(ArgAttributes::new()) }
     }
 
     pub fn make_indirect(&mut self) {
@@ -408,9 +380,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         // For non-immediate arguments the callee gets its own copy of
         // the value on the stack, so there are no aliases. It's also
         // program-invisible so can't possibly capture
-        attrs.set(ArgAttribute::NoAlias)
-             .set(ArgAttribute::NoCapture)
-             .set(ArgAttribute::NonNull);
+        attrs.set(ArgAttribute::NoAlias).set(ArgAttribute::NoCapture).set(ArgAttribute::NonNull);
         attrs.pointee_size = self.layout.size;
         // FIXME(eddyb) We should be doing this, but at least on
         // i686-pc-windows-msvc, it results in wrong stack offsets.
@@ -427,7 +397,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Indirect(ref mut attrs, _) => {
                 attrs.set(ArgAttribute::ByVal);
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -437,11 +407,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             if let abi::Int(i, signed) = scalar.value {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {
-                        attrs.set(if signed {
-                            ArgAttribute::SExt
-                        } else {
-                            ArgAttribute::ZExt
-                        });
+                        attrs.set(if signed { ArgAttribute::SExt } else { ArgAttribute::ZExt });
                     }
                 }
             }
@@ -460,28 +426,28 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn is_indirect(&self) -> bool {
         match self.mode {
             PassMode::Indirect(..) => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_sized_indirect(&self) -> bool {
         match self.mode {
             PassMode::Indirect(_, None) => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_unsized_indirect(&self) -> bool {
         match self.mode {
             PassMode::Indirect(_, Some(_)) => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_ignore(&self) -> bool {
         match self.mode {
             PassMode::Ignore => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -494,7 +460,6 @@ pub enum Conv {
     Rust,
 
     // Target-specific calling conventions.
-
     ArmAapcs,
 
     Msp430Intr,
@@ -533,8 +498,9 @@ pub struct FnAbi<'a, Ty> {
 
 impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
-        where Ty: TyLayoutMethods<'a, C> + Copy,
-              C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
+    where
+        Ty: TyLayoutMethods<'a, C> + Copy,
+        C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
     {
         match &cx.target_spec().arch[..] {
             "x86" => {
@@ -544,14 +510,16 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     x86::Flavor::General
                 };
                 x86::compute_abi_info(cx, self, flavor);
-            },
-            "x86_64" => if abi == spec::abi::Abi::SysV64 {
-                x86_64::compute_abi_info(cx, self);
-            } else if abi == spec::abi::Abi::Win64 || cx.target_spec().options.is_like_windows {
-                x86_win64::compute_abi_info(self);
-            } else {
-                x86_64::compute_abi_info(cx, self);
-            },
+            }
+            "x86_64" => {
+                if abi == spec::abi::Abi::SysV64 {
+                    x86_64::compute_abi_info(cx, self);
+                } else if abi == spec::abi::Abi::Win64 || cx.target_spec().options.is_like_windows {
+                    x86_win64::compute_abi_info(self);
+                } else {
+                    x86_64::compute_abi_info(cx, self);
+                }
+            }
             "aarch64" => aarch64::compute_abi_info(cx, self),
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
@@ -568,10 +536,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" => riscv::compute_abi_info(self, 32),
             "riscv64" => riscv::compute_abi_info(self, 64),
-            "wasm32" if cx.target_spec().target_os != "emscripten"
-                => wasm32_bindgen_compat::compute_abi_info(self),
+            "wasm32" if cx.target_spec().target_os != "emscripten" => {
+                wasm32_bindgen_compat::compute_abi_info(self)
+            }
             "wasm32" | "asmjs" => wasm32::compute_abi_info(cx, self),
-            a => return Err(format!("unrecognized arch \"{}\" in target specification", a))
+            a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
         }
 
         if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {

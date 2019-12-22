@@ -27,14 +27,17 @@ pub mod condvar;
 pub mod env;
 pub mod fd;
 pub mod fs;
+pub mod io;
 #[path = "../wasm/memchr.rs"]
 pub mod memchr;
 #[path = "../wasm/mutex.rs"]
 pub mod mutex;
 pub mod net;
-pub mod io;
 pub mod os;
 pub use crate::sys_common::os_str_bytes as os_str;
+pub mod ext;
+#[path = "../wasm/fast_thread_local.rs"]
+pub mod fast_thread_local;
 pub mod path;
 pub mod pipe;
 pub mod process;
@@ -46,24 +49,17 @@ pub mod stdio;
 pub mod thread;
 #[path = "../wasm/thread_local.rs"]
 pub mod thread_local;
-#[path = "../wasm/fast_thread_local.rs"]
-pub mod fast_thread_local;
 pub mod time;
-pub mod ext;
 
 #[cfg(not(test))]
-pub fn init() {
-}
+pub fn init() {}
 
 pub fn unsupported<T>() -> std_io::Result<T> {
     Err(unsupported_err())
 }
 
 pub fn unsupported_err() -> std_io::Error {
-    std_io::Error::new(
-        std_io::ErrorKind::Other,
-        "operation not supported on wasm yet",
-    )
+    std_io::Error::new(std_io::ErrorKind::Other, "operation not supported on wasm yet")
 }
 
 pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
@@ -101,7 +97,7 @@ pub unsafe fn strlen(mut s: *const c_char) -> usize {
         n += 1;
         s = s.offset(1);
     }
-    return n
+    return n;
 }
 
 pub unsafe fn abort_internal() -> ! {
@@ -115,7 +111,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
         let len = mem::size_of_val(&ret);
         wasi::random_get(base, len).expect("random_get failure");
     }
-    return ret
+    return ret;
 }
 
 fn err2io(err: wasi::Error) -> std_io::Error {

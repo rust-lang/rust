@@ -1,40 +1,40 @@
 use crate::{build, shim};
-use rustc_index::vec::IndexVec;
+use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::{BodyAndCache, MirPhase, Promoted, ConstQualifs};
-use rustc::ty::{TyCtxt, InstanceDef, TypeFoldable};
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
-use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::ty::{InstanceDef, TyCtxt, TypeFoldable};
 use rustc::util::nodemap::DefIdSet;
+use rustc_index::vec::IndexVec;
 use std::borrow::Cow;
 use syntax::ast;
 use syntax_pos::Span;
 
-pub mod add_retag;
+pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
-pub mod cleanup_post_borrowck;
+pub mod add_retag;
 pub mod check_consts;
 pub mod check_unsafety;
-pub mod simplify_branches;
-pub mod simplify_try;
-pub mod simplify;
-pub mod erase_regions;
-pub mod no_landing_pads;
-pub mod rustc_peek;
+pub mod cleanup_post_borrowck;
+pub mod const_prop;
+pub mod copy_prop;
+pub mod deaggregator;
+pub mod dump_mir;
 pub mod elaborate_drops;
-pub mod add_call_guards;
+pub mod erase_regions;
+pub mod generator;
+pub mod inline;
+pub mod instcombine;
+pub mod no_landing_pads;
 pub mod promote_consts;
 pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
-pub mod dump_mir;
-pub mod deaggregator;
-pub mod instcombine;
-pub mod copy_prop;
-pub mod const_prop;
-pub mod generator;
-pub mod inline;
+pub mod rustc_peek;
+pub mod simplify;
+pub mod simplify_branches;
+pub mod simplify_try;
 pub mod uninhabited_enum_branching;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
@@ -73,12 +73,14 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
         set: &'a mut DefIdSet,
     }
     impl<'a, 'tcx> Visitor<'tcx> for GatherCtors<'a, 'tcx> {
-        fn visit_variant_data(&mut self,
-                              v: &'tcx hir::VariantData<'tcx>,
-                              _: ast::Name,
-                              _: &'tcx hir::Generics,
-                              _: hir::HirId,
-                              _: Span) {
+        fn visit_variant_data(
+            &mut self,
+            v: &'tcx hir::VariantData<'tcx>,
+            _: ast::Name,
+            _: &'tcx hir::Generics,
+            _: hir::HirId,
+            _: Span,
+        ) {
             if let hir::VariantData::Tuple(_, hir_id) = *v {
                 self.set.insert(self.tcx.hir().local_def_id(hir_id));
             }
@@ -88,10 +90,9 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
             NestedVisitorMap::None
         }
     }
-    tcx.hir().krate().visit_all_item_likes(&mut GatherCtors {
-        tcx,
-        set: &mut set,
-    }.as_deep_visitor());
+    tcx.hir()
+        .krate()
+        .visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set }.as_deep_visitor());
 
     tcx.arena.alloc(set)
 }
@@ -112,10 +113,7 @@ pub struct MirSource<'tcx> {
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource {
-            instance: InstanceDef::Item(def_id),
-            promoted: None
-        }
+        MirSource { instance: InstanceDef::Item(def_id), promoted: None }
     }
 
     #[inline]
@@ -128,11 +126,7 @@ impl<'tcx> MirSource<'tcx> {
 /// type `T`.
 pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
     let name = ::std::any::type_name::<T>();
-    if let Some(tail) = name.rfind(":") {
-        Cow::from(&name[tail+1..])
-    } else {
-        Cow::from(name)
-    }
+    if let Some(tail) = name.rfind(":") { Cow::from(&name[tail + 1..]) } else { Cow::from(name) }
 }
 
 /// A streamlined trait that you can implement to create a pass; the
@@ -160,15 +154,18 @@ pub fn run_passes(
         return;
     }
 
-    let source = MirSource {
-        instance,
-        promoted,
-    };
+    let source = MirSource { instance, promoted };
     let mut index = 0;
     let mut run_pass = |pass: &dyn MirPass<'tcx>| {
         let run_hooks = |body: &_, index, is_after| {
-            dump_mir::on_mir_pass(tcx, &format_args!("{:03}-{:03}", phase_index, index),
-                                    &pass.name(), source, body, is_after);
+            dump_mir::on_mir_pass(
+                tcx,
+                &format_args!("{:03}-{:03}", phase_index, index),
+                &pass.name(),
+                source,
+                body,
+                is_after,
+            );
         };
         run_hooks(body, index, false);
         pass.run_pass(tcx, source, body);
@@ -224,11 +221,18 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut body = tcx.mir_built(def_id).steal();
-    run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Const, &[
-        // What we need to do constant evaluation.
-        &simplify::SimplifyCfg::new("initial"),
-        &rustc_peek::SanityCheck,
-    ]);
+    run_passes(
+        tcx,
+        &mut body,
+        InstanceDef::Item(def_id),
+        None,
+        MirPhase::Const,
+        &[
+            // What we need to do constant evaluation.
+            &simplify::SimplifyCfg::new("initial"),
+            &rustc_peek::SanityCheck,
+        ],
+    );
     body.ensure_predecessors();
     tcx.alloc_steal_mir(body)
 }
@@ -243,11 +247,18 @@ fn mir_validated(
 
     let mut body = tcx.mir_const(def_id).steal();
     let promote_pass = promote_consts::PromoteTemps::default();
-    run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Validated, &[
-        // What we need to run borrowck etc.
-        &promote_pass,
-        &simplify::SimplifyCfg::new("qualify-consts"),
-    ]);
+    run_passes(
+        tcx,
+        &mut body,
+        InstanceDef::Item(def_id),
+        None,
+        MirPhase::Validated,
+        &[
+            // What we need to run borrowck etc.
+            &promote_pass,
+            &simplify::SimplifyCfg::new("qualify-consts"),
+        ],
+    );
 
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
@@ -259,61 +270,59 @@ fn run_optimization_passes<'tcx>(
     def_id: DefId,
     promoted: Option<Promoted>,
 ) {
-    run_passes(tcx, body, InstanceDef::Item(def_id), promoted, MirPhase::Optimized, &[
-        // Remove all things only needed by analysis
-        &no_landing_pads::NoLandingPads::new(tcx),
-        &simplify_branches::SimplifyBranches::new("initial"),
-        &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &cleanup_post_borrowck::CleanupNonCodegenStatements,
+    run_passes(
+        tcx,
+        body,
+        InstanceDef::Item(def_id),
+        promoted,
+        MirPhase::Optimized,
+        &[
+            // Remove all things only needed by analysis
+            &no_landing_pads::NoLandingPads::new(tcx),
+            &simplify_branches::SimplifyBranches::new("initial"),
+            &remove_noop_landing_pads::RemoveNoopLandingPads,
+            &cleanup_post_borrowck::CleanupNonCodegenStatements,
+            &simplify::SimplifyCfg::new("early-opt"),
+            // These next passes must be executed together
+            &add_call_guards::CriticalCallEdges,
+            &elaborate_drops::ElaborateDrops,
+            &no_landing_pads::NoLandingPads::new(tcx),
+            // AddMovesForPackedDrops needs to run after drop
+            // elaboration.
+            &add_moves_for_packed_drops::AddMovesForPackedDrops,
+            // AddRetag needs to run after ElaborateDrops, and it needs
+            // an AllCallEdges pass right before it.  Otherwise it should
+            // run fairly late, but before optimizations begin.
+            &add_call_guards::AllCallEdges,
+            &add_retag::AddRetag,
+            &simplify::SimplifyCfg::new("elaborate-drops"),
+            // No lifetime analysis based on borrowing can be done from here on out.
 
-        &simplify::SimplifyCfg::new("early-opt"),
-
-        // These next passes must be executed together
-        &add_call_guards::CriticalCallEdges,
-        &elaborate_drops::ElaborateDrops,
-        &no_landing_pads::NoLandingPads::new(tcx),
-        // AddMovesForPackedDrops needs to run after drop
-        // elaboration.
-        &add_moves_for_packed_drops::AddMovesForPackedDrops,
-        // AddRetag needs to run after ElaborateDrops, and it needs
-        // an AllCallEdges pass right before it.  Otherwise it should
-        // run fairly late, but before optimizations begin.
-        &add_call_guards::AllCallEdges,
-        &add_retag::AddRetag,
-
-        &simplify::SimplifyCfg::new("elaborate-drops"),
-
-        // No lifetime analysis based on borrowing can be done from here on out.
-
-        // From here on out, regions are gone.
-        &erase_regions::EraseRegions,
-
-
-        // Optimizations begin.
-        &uninhabited_enum_branching::UninhabitedEnumBranching,
-        &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
-        &inline::Inline,
-
-        // Lowering generator control-flow and variables
-        // has to happen before we do anything else to them.
-        &generator::StateTransform,
-
-        &instcombine::InstCombine,
-        &const_prop::ConstProp,
-        &simplify_branches::SimplifyBranches::new("after-const-prop"),
-        &deaggregator::Deaggregator,
-        &copy_prop::CopyPropagation,
-        &simplify_branches::SimplifyBranches::new("after-copy-prop"),
-        &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
-        &simplify_try::SimplifyArmIdentity,
-        &simplify_try::SimplifyBranchSame,
-        &simplify::SimplifyCfg::new("final"),
-        &simplify::SimplifyLocals,
-
-        &add_call_guards::CriticalCallEdges,
-        &dump_mir::Marker("PreCodegen"),
-    ]);
+            // From here on out, regions are gone.
+            &erase_regions::EraseRegions,
+            // Optimizations begin.
+            &uninhabited_enum_branching::UninhabitedEnumBranching,
+            &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
+            &inline::Inline,
+            // Lowering generator control-flow and variables
+            // has to happen before we do anything else to them.
+            &generator::StateTransform,
+            &instcombine::InstCombine,
+            &const_prop::ConstProp,
+            &simplify_branches::SimplifyBranches::new("after-const-prop"),
+            &deaggregator::Deaggregator,
+            &copy_prop::CopyPropagation,
+            &simplify_branches::SimplifyBranches::new("after-copy-prop"),
+            &remove_noop_landing_pads::RemoveNoopLandingPads,
+            &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
+            &simplify_try::SimplifyArmIdentity,
+            &simplify_try::SimplifyBranchSame,
+            &simplify::SimplifyCfg::new("final"),
+            &simplify::SimplifyLocals,
+            &add_call_guards::CriticalCallEdges,
+            &dump_mir::Marker("PreCodegen"),
+        ],
+    );
 }
 
 fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyAndCache<'_> {

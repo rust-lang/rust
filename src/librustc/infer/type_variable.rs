@@ -1,14 +1,14 @@
+use crate::hir::def_id::DefId;
+use crate::ty::{self, Ty, TyVid};
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use crate::ty::{self, Ty, TyVid};
-use crate::hir::def_id::DefId;
 
-use std::cmp;
-use std::marker::PhantomData;
-use std::u32;
-use std::ops::Range;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
+use std::cmp;
+use std::marker::PhantomData;
+use std::ops::Range;
+use std::u32;
 
 pub struct TypeVariableTable<'tcx> {
     values: sv::SnapshotVec<Delegate>,
@@ -153,9 +153,13 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
         let vid = self.root_var(vid);
         debug_assert!(self.probe(vid).is_unknown());
-        debug_assert!(self.eq_relations.probe_value(vid).is_unknown(),
-                      "instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
-                      vid, ty, self.eq_relations.probe_value(vid));
+        debug_assert!(
+            self.eq_relations.probe_value(vid).is_unknown(),
+            "instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
+            vid,
+            ty,
+            self.eq_relations.probe_value(vid)
+        );
         self.eq_relations.union_value(vid, TypeVariableValue::Known { value: ty });
 
         // Hack: we only need this so that `types_escaping_snapshot`
@@ -174,28 +178,23 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// - `origin`: indicates *why* the type variable was created.
     ///   The code in this module doesn't care, but it can be useful
     ///   for improving error messages.
-    pub fn new_var(&mut self,
-                   universe: ty::UniverseIndex,
-                   diverging: bool,
-                   origin: TypeVariableOrigin)
-                   -> ty::TyVid {
+    pub fn new_var(
+        &mut self,
+        universe: ty::UniverseIndex,
+        diverging: bool,
+        origin: TypeVariableOrigin,
+    ) -> ty::TyVid {
         let eq_key = self.eq_relations.new_key(TypeVariableValue::Unknown { universe });
 
         let sub_key = self.sub_relations.new_key(());
         assert_eq!(eq_key.vid, sub_key);
 
-        let index = self.values.push(TypeVariableData {
-            origin,
-            diverging,
-        });
+        let index = self.values.push(TypeVariableData { origin, diverging });
         assert_eq!(eq_key.vid.index, index as u32);
 
         debug!(
             "new_var(index={:?}, universe={:?}, diverging={:?}, origin={:?}",
-            eq_key.vid,
-            universe,
-            diverging,
-            origin,
+            eq_key.vid, universe, diverging, origin,
         );
 
         eq_key.vid
@@ -249,12 +248,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// instantiated. Otherwise, returns `t`.
     pub fn replace_if_possible(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.kind {
-            ty::Infer(ty::TyVar(v)) => {
-                match self.probe(v) {
-                    TypeVariableValue::Unknown { .. } => t,
-                    TypeVariableValue::Known { value } => value,
-                }
-            }
+            ty::Infer(ty::TyVar(v)) => match self.probe(v) {
+                TypeVariableValue::Unknown { .. } => t,
+                TypeVariableValue::Known { value } => value,
+            },
             _ => t,
         }
     }
@@ -306,9 +303,12 @@ impl<'tcx> TypeVariableTable<'tcx> {
         s: &Snapshot<'tcx>,
     ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
         let range = self.eq_relations.vars_since_snapshot(&s.eq_snapshot);
-        (range.start.vid..range.end.vid, (range.start.vid.index..range.end.vid.index).map(|index| {
-            self.values.get(index as usize).origin.clone()
-        }).collect())
+        (
+            range.start.vid..range.end.vid,
+            (range.start.vid.index..range.end.vid.index)
+                .map(|index| self.values.get(index as usize).origin.clone())
+                .collect(),
+        )
     }
 
     /// Finds the set of type variables that existed *before* `s`
@@ -347,7 +347,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     debug!("SpecifyVar({:?}) new_elem_threshold={}", vid, new_elem_threshold);
                 }
 
-                _ => { }
+                _ => {}
             }
         }
 
@@ -410,9 +410,15 @@ impl<'tcx> From<ty::TyVid> for TyVidEqKey<'tcx> {
 
 impl<'tcx> ut::UnifyKey for TyVidEqKey<'tcx> {
     type Value = TypeVariableValue<'tcx>;
-    fn index(&self) -> u32 { self.vid.index }
-    fn from_index(i: u32) -> Self { TyVidEqKey::from(ty::TyVid { index: i }) }
-    fn tag() -> &'static str { "TyVidEqKey" }
+    fn index(&self) -> u32 {
+        self.vid.index
+    }
+    fn from_index(i: u32) -> Self {
+        TyVidEqKey::from(ty::TyVid { index: i })
+    }
+    fn tag() -> &'static str {
+        "TyVidEqKey"
+    }
 }
 
 impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
@@ -432,8 +438,10 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
             (&TypeVariableValue::Unknown { .. }, &TypeVariableValue::Known { .. }) => Ok(*value2),
 
             // If both sides are *unknown*, it hardly matters, does it?
-            (&TypeVariableValue::Unknown { universe: universe1 },
-             &TypeVariableValue::Unknown { universe: universe2 }) =>  {
+            (
+                &TypeVariableValue::Unknown { universe: universe1 },
+                &TypeVariableValue::Unknown { universe: universe2 },
+            ) => {
                 // If we unify two unbound variables, ?T and ?U, then whatever
                 // value they wind up taking (which must be the same value) must
                 // be nameable by both universes. Therefore, the resulting
@@ -450,7 +458,13 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
 /// they carry no values.
 impl ut::UnifyKey for ty::TyVid {
     type Value = ();
-    fn index(&self) -> u32 { self.index }
-    fn from_index(i: u32) -> ty::TyVid { ty::TyVid { index: i } }
-    fn tag() -> &'static str { "TyVid" }
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> ty::TyVid {
+        ty::TyVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "TyVid"
+    }
 }

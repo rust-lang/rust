@@ -11,21 +11,17 @@ pub enum Namespace {
 impl From<ty::AssocKind> for Namespace {
     fn from(a_kind: ty::AssocKind) -> Self {
         match a_kind {
-            ty::AssocKind::OpaqueTy |
-            ty::AssocKind::Type => Namespace::Type,
-            ty::AssocKind::Const |
-            ty::AssocKind::Method => Namespace::Value,
+            ty::AssocKind::OpaqueTy | ty::AssocKind::Type => Namespace::Type,
+            ty::AssocKind::Const | ty::AssocKind::Method => Namespace::Value,
         }
     }
 }
 
-impl<'a> From <&'a hir::ImplItemKind<'_>> for Namespace {
+impl<'a> From<&'a hir::ImplItemKind<'_>> for Namespace {
     fn from(impl_kind: &'a hir::ImplItemKind<'_>) -> Self {
         match *impl_kind {
-            hir::ImplItemKind::OpaqueTy(..) |
-            hir::ImplItemKind::TyAlias(..) => Namespace::Type,
-            hir::ImplItemKind::Const(..) |
-            hir::ImplItemKind::Method(..) => Namespace::Value,
+            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => Namespace::Type,
+            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Method(..) => Namespace::Value,
         }
     }
 }

@@ -55,11 +55,15 @@ pub static ALLOCATOR_METHODS: &[AllocatorMethod] = &[
 ];
 
 pub fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {
-    struct Finder { name: Symbol, spans: Vec<Span> }
+    struct Finder {
+        name: Symbol,
+        spans: Vec<Span>,
+    }
     impl<'ast> visit::Visitor<'ast> for Finder {
         fn visit_item(&mut self, item: &'ast ast::Item) {
-            if item.ident.name == self.name &&
-               attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol) {
+            if item.ident.name == self.name
+                && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+            {
                 self.spans.push(item.span);
             }
             visit::walk_item(self, item)

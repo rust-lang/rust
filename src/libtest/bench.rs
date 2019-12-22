@@ -2,20 +2,16 @@
 pub use std::hint::black_box;
 
 use super::{
-    event::CompletedTest,
-    helpers::sink::Sink,
-    options::BenchMode,
-    types::TestDesc,
-    test_result::TestResult,
-    Sender,
+    event::CompletedTest, helpers::sink::Sink, options::BenchMode, test_result::TestResult,
+    types::TestDesc, Sender,
 };
 
 use crate::stats;
-use std::time::{Duration, Instant};
 use std::cmp;
 use std::io;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 /// Manager of the benchmarking runs.
 ///
@@ -73,9 +69,7 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
         ))
         .unwrap();
     if bs.mb_s != 0 {
-        output
-            .write_fmt(format_args!(" = {} MB/s", bs.mb_s))
-            .unwrap();
+        output.write_fmt(format_args!(" = {} MB/s", bs.mb_s)).unwrap();
     }
     output
 }
@@ -192,11 +186,7 @@ pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<CompletedTest>, nocapture
 where
     F: FnMut(&mut Bencher),
 {
-    let mut bs = Bencher {
-        mode: BenchMode::Auto,
-        summary: None,
-        bytes: 0,
-    };
+    let mut bs = Bencher { mode: BenchMode::Auto, summary: None, bytes: 0 };
 
     let data = Arc::new(Mutex::new(Vec::new()));
     let oldio = if !nocapture {
@@ -221,20 +211,14 @@ where
             let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
             let mb_s = bs.bytes * 1000 / ns_iter;
 
-            let bs = BenchSamples {
-                ns_iter_summ,
-                mb_s: mb_s as usize,
-            };
+            let bs = BenchSamples { ns_iter_summ, mb_s: mb_s as usize };
             TestResult::TrBench(bs)
         }
         Ok(None) => {
             // iter not called, so no data.
             // FIXME: error in this case?
             let samples: &mut [f64] = &mut [0.0_f64; 1];
-            let bs = BenchSamples {
-                ns_iter_summ: stats::Summary::new(samples),
-                mb_s: 0,
-            };
+            let bs = BenchSamples { ns_iter_summ: stats::Summary::new(samples), mb_s: 0 };
             TestResult::TrBench(bs)
         }
         Err(_) => TestResult::TrFailed,
@@ -249,10 +233,6 @@ pub fn run_once<F>(f: F)
 where
     F: FnMut(&mut Bencher),
 {
-    let mut bs = Bencher {
-        mode: BenchMode::Single,
-        summary: None,
-        bytes: 0,
-    };
+    let mut bs = Bencher { mode: BenchMode::Single, summary: None, bytes: 0 };
     bs.bench(f);
 }

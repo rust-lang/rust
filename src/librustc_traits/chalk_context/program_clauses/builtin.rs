@@ -1,15 +1,10 @@
-use rustc::traits::{
-    GoalKind,
-    Clause,
-    ProgramClause,
-    ProgramClauseCategory,
-};
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{GenericArg, InternalSubsts, Subst};
+use crate::generic_types;
+use crate::lowering::Lower;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use crate::lowering::Lower;
-use crate::generic_types;
+use rustc::traits::{Clause, GoalKind, ProgramClause, ProgramClauseCategory};
+use rustc::ty::subst::{GenericArg, InternalSubsts, Subst};
+use rustc::ty::{self, Ty, TyCtxt};
 
 /// Returns a predicate of the form
 /// `Implemented(ty: Trait) :- Implemented(nested: Trait)...`
@@ -22,13 +17,12 @@ fn builtin_impl_clause(
 ) -> ProgramClause<'tcx> {
     ProgramClause {
         goal: ty::TraitPredicate {
-            trait_ref: ty::TraitRef {
-                def_id: trait_def_id,
-                substs: tcx.mk_substs_trait(ty, &[]),
-            },
-        }.lower(),
+            trait_ref: ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, &[]) },
+        }
+        .lower(),
         hypotheses: tcx.mk_goals(
-            nested.iter()
+            nested
+                .iter()
                 .cloned()
                 .map(|nested_ty| ty::TraitRef {
                     def_id: trait_def_id,
@@ -36,7 +30,7 @@ fn builtin_impl_clause(
                 })
                 .map(|trait_ref| ty::TraitPredicate { trait_ref })
                 .map(|pred| GoalKind::DomainGoal(pred.lower()))
-                .map(|goal_kind| tcx.mk_goal(goal_kind))
+                .map(|goal_kind| tcx.mk_goal(goal_kind)),
         ),
         category: ProgramClauseCategory::Other,
     }
@@ -84,9 +78,10 @@ crate fn assemble_builtin_unsize_impls<'tcx>(
                 goal: ty::TraitPredicate {
                     trait_ref: ty::TraitRef {
                         def_id: unsize_def_id,
-                        substs: tcx.mk_substs_trait(array_ty, &[slice_ty.into()])
+                        substs: tcx.mk_substs_trait(array_ty, &[slice_ty.into()]),
                     },
-                }.lower(),
+                }
+                .lower(),
                 hypotheses: ty::List::empty(),
                 category: ProgramClauseCategory::Other,
             };
@@ -132,15 +127,15 @@ crate fn assemble_builtin_sized_impls<'tcx>(
 
     match &ty.kind {
         // Non parametric primitive types.
-        ty::Bool |
-        ty::Char |
-        ty::Int(..) |
-        ty::Uint(..) |
-        ty::Float(..) |
-        ty::Infer(ty::IntVar(_)) |
-        ty::Infer(ty::FloatVar(_)) |
-        ty::Error |
-        ty::Never => push_builtin_impl(ty, &[]),
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::Infer(ty::IntVar(_))
+        | ty::Infer(ty::FloatVar(_))
+        | ty::Error
+        | ty::Never => push_builtin_impl(ty, &[]),
 
         // These ones are always `Sized`.
         &ty::Array(_, length) => {
@@ -159,7 +154,7 @@ crate fn assemble_builtin_sized_impls<'tcx>(
                 fn_ptr.inputs_and_output.len(),
                 fn_ptr.c_variadic,
                 fn_ptr.unsafety,
-                fn_ptr.abi
+                fn_ptr.abi,
             );
             push_builtin_impl(fn_ptr, &[]);
         }
@@ -183,7 +178,8 @@ crate fn assemble_builtin_sized_impls<'tcx>(
         ty::Adt(adt_def, _) => {
             let substs = InternalSubsts::bound_vars_for_item(tcx, adt_def.did);
             let adt = tcx.mk_ty(ty::Adt(adt_def, substs));
-            let sized_constraint = adt_def.sized_constraint(tcx)
+            let sized_constraint = adt_def
+                .sized_constraint(tcx)
                 .iter()
                 .map(|ty| GenericArg::from(ty.subst(tcx, substs)))
                 .collect::<Vec<_>>();
@@ -203,22 +199,16 @@ crate fn assemble_builtin_sized_impls<'tcx>(
         }
 
         // The `Sized` bound can only come from the environment.
-        ty::Param(..) |
-        ty::Placeholder(..) |
-        ty::UnnormalizedProjection(..) => (),
+        ty::Param(..) | ty::Placeholder(..) | ty::UnnormalizedProjection(..) => (),
 
         // Definitely not `Sized`.
-        ty::Foreign(..) |
-        ty::Str |
-        ty::Slice(..) |
-        ty::Dynamic(..) |
-        ty::Opaque(..) => (),
+        ty::Foreign(..) | ty::Str | ty::Slice(..) | ty::Dynamic(..) | ty::Opaque(..) => (),
 
-        ty::Bound(..) |
-        ty::GeneratorWitness(..) |
-        ty::Infer(ty::FreshTy(_)) |
-        ty::Infer(ty::FreshIntTy(_)) |
-        ty::Infer(ty::FreshFloatTy(_)) => bug!("unexpected type {:?}", ty),
+        ty::Bound(..)
+        | ty::GeneratorWitness(..)
+        | ty::Infer(ty::FreshTy(_))
+        | ty::Infer(ty::FreshIntTy(_))
+        | ty::Infer(ty::FreshFloatTy(_)) => bug!("unexpected type {:?}", ty),
     }
 }
 
@@ -236,19 +226,19 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
 
     match &ty.kind {
         // Implementations provided in libcore.
-        ty::Bool |
-        ty::Char |
-        ty::Int(..) |
-        ty::Uint(..) |
-        ty::Float(..) |
-        ty::RawPtr(..) |
-        ty::Never |
-        ty::Ref(_, _, hir::Mutability::Not) => (),
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::RawPtr(..)
+        | ty::Never
+        | ty::Ref(_, _, hir::Mutability::Not) => (),
 
         // Non parametric primitive types.
-        ty::Infer(ty::IntVar(_)) |
-        ty::Infer(ty::FloatVar(_)) |
-        ty::Error => push_builtin_impl(ty, &[]),
+        ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) | ty::Error => {
+            push_builtin_impl(ty, &[])
+        }
 
         // These implement `Copy`/`Clone` if their element types do.
         &ty::Array(_, length) => {
@@ -265,12 +255,11 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         &ty::Closure(def_id, ..) => {
             let closure_ty = generic_types::closure(tcx, def_id);
             let upvar_tys: Vec<_> = match &closure_ty.kind {
-                ty::Closure(_, substs) => {
-                    substs.as_closure()
-                          .upvar_tys(def_id, tcx)
-                          .map(|ty| GenericArg::from(ty))
-                          .collect()
-                },
+                ty::Closure(_, substs) => substs
+                    .as_closure()
+                    .upvar_tys(def_id, tcx)
+                    .map(|ty| GenericArg::from(ty))
+                    .collect(),
                 _ => bug!(),
             };
             push_builtin_impl(closure_ty, &upvar_tys);
@@ -284,7 +273,7 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
                 fn_ptr.inputs_and_output.len(),
                 fn_ptr.c_variadic,
                 fn_ptr.unsafety,
-                fn_ptr.abi
+                fn_ptr.abi,
             );
             push_builtin_impl(fn_ptr, &[]);
         }
@@ -308,23 +297,20 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         }
 
         // The `Copy`/`Clone` bound can only come from the environment.
-        ty::Param(..) |
-        ty::Placeholder(..) |
-        ty::UnnormalizedProjection(..) |
-        ty::Opaque(..) => (),
+        ty::Param(..) | ty::Placeholder(..) | ty::UnnormalizedProjection(..) | ty::Opaque(..) => (),
 
         // Definitely not `Copy`/`Clone`.
-        ty::Dynamic(..) |
-        ty::Foreign(..) |
-        ty::Generator(..) |
-        ty::Str |
-        ty::Slice(..) |
-        ty::Ref(_, _, hir::Mutability::Mut) => (),
+        ty::Dynamic(..)
+        | ty::Foreign(..)
+        | ty::Generator(..)
+        | ty::Str
+        | ty::Slice(..)
+        | ty::Ref(_, _, hir::Mutability::Mut) => (),
 
-        ty::Bound(..) |
-        ty::GeneratorWitness(..) |
-        ty::Infer(ty::FreshTy(_)) |
-        ty::Infer(ty::FreshIntTy(_)) |
-        ty::Infer(ty::FreshFloatTy(_)) => bug!("unexpected type {:?}", ty),
+        ty::Bound(..)
+        | ty::GeneratorWitness(..)
+        | ty::Infer(ty::FreshTy(_))
+        | ty::Infer(ty::FreshIntTy(_))
+        | ty::Infer(ty::FreshFloatTy(_)) => bug!("unexpected type {:?}", ty),
     }
 }

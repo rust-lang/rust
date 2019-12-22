@@ -1,6 +1,6 @@
 use rustc::mir::*;
-use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
+use rustc::ty::{Ty, TyCtxt};
 use rustc_index::vec::Idx;
 
 use std::iter::TrustedLen;
@@ -14,18 +14,18 @@ use std::iter::TrustedLen;
 /// discriminant(lhs) = variant_index;  // If lhs is an enum or generator.
 pub fn expand_aggregate<'tcx>(
     mut lhs: Place<'tcx>,
-    operands: impl Iterator<Item=(Operand<'tcx>, Ty<'tcx>)> + TrustedLen,
+    operands: impl Iterator<Item = (Operand<'tcx>, Ty<'tcx>)> + TrustedLen,
     kind: AggregateKind<'tcx>,
     source_info: SourceInfo,
     tcx: TyCtxt<'tcx>,
-) -> impl Iterator<Item=Statement<'tcx>> + TrustedLen {
+) -> impl Iterator<Item = Statement<'tcx>> + TrustedLen {
     let mut set_discriminant = None;
     let active_field_index = match kind {
         AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
             if adt_def.is_enum() {
                 set_discriminant = Some(Statement {
                     kind: StatementKind::SetDiscriminant {
-                        place: box(lhs.clone()),
+                        place: box (lhs.clone()),
                         variant_index,
                     },
                     source_info,
@@ -39,10 +39,7 @@ pub fn expand_aggregate<'tcx>(
             // variant 0 (Unresumed).
             let variant_index = VariantIdx::new(0);
             set_discriminant = Some(Statement {
-                kind: StatementKind::SetDiscriminant {
-                    place: box(lhs.clone()),
-                    variant_index,
-                },
+                kind: StatementKind::SetDiscriminant { place: box (lhs.clone()), variant_index },
                 source_info,
             });
 
@@ -51,27 +48,31 @@ pub fn expand_aggregate<'tcx>(
 
             None
         }
-        _ => None
+        _ => None,
     };
 
-    operands.into_iter().enumerate().map(move |(i, (op, ty))| {
-        let lhs_field = if let AggregateKind::Array(_) = kind {
-            // FIXME(eddyb) `offset` should be u64.
-            let offset = i as u32;
-            assert_eq!(offset as usize, i);
-            tcx.mk_place_elem(lhs.clone(), ProjectionElem::ConstantIndex {
-                offset,
-                // FIXME(eddyb) `min_length` doesn't appear to be used.
-                min_length: offset + 1,
-                from_end: false
-            })
-        } else {
-            let field = Field::new(active_field_index.unwrap_or(i));
-            tcx.mk_place_field(lhs.clone(), field, ty)
-        };
-        Statement {
-            source_info,
-            kind: StatementKind::Assign(box(lhs_field, Rvalue::Use(op))),
-        }
-    }).chain(set_discriminant)
+    operands
+        .into_iter()
+        .enumerate()
+        .map(move |(i, (op, ty))| {
+            let lhs_field = if let AggregateKind::Array(_) = kind {
+                // FIXME(eddyb) `offset` should be u64.
+                let offset = i as u32;
+                assert_eq!(offset as usize, i);
+                tcx.mk_place_elem(
+                    lhs.clone(),
+                    ProjectionElem::ConstantIndex {
+                        offset,
+                        // FIXME(eddyb) `min_length` doesn't appear to be used.
+                        min_length: offset + 1,
+                        from_end: false,
+                    },
+                )
+            } else {
+                let field = Field::new(active_field_index.unwrap_or(i));
+                tcx.mk_place_field(lhs.clone(), field, ty)
+            };
+            Statement { source_info, kind: StatementKind::Assign(box (lhs_field, Rvalue::Use(op))) }
+        })
+        .chain(set_discriminant)
 }

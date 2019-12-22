@@ -1,18 +1,18 @@
-use crate::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
+use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
+use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use crate::hir::HirId;
-use syntax::symbol::Symbol;
-use syntax::attr::InlineAttr;
-use syntax::source_map::Span;
-use crate::ty::{Instance, InstanceDef, TyCtxt, SymbolName, subst::InternalSubsts};
-use crate::util::nodemap::FxHashMap;
+use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
+use crate::session::config::OptLevel;
 use crate::ty::print::obsolete::DefPathBasedNames;
-use crate::dep_graph::{WorkProductId, DepNode, WorkProduct, DepConstructor};
+use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
+use crate::util::nodemap::FxHashMap;
 use rustc_data_structures::base_n;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use crate::ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
-use crate::session::config::OptLevel;
 use std::fmt;
 use std::hash::Hash;
+use syntax::attr::InlineAttr;
+use syntax::source_map::Span;
+use syntax::symbol::Symbol;
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]
@@ -53,62 +53,57 @@ impl<'tcx> MonoItem<'tcx> {
                 // Estimate the size of a function based on how many statements
                 // it contains.
                 tcx.instance_def_size_estimate(instance.def)
-            },
+            }
             // Conservatively estimate the size of a static declaration
             // or assembly to be 1.
-            MonoItem::Static(_) |
-            MonoItem::GlobalAsm(_) => 1,
+            MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
         }
     }
 
     pub fn is_generic_fn(&self) -> bool {
         match *self {
-            MonoItem::Fn(ref instance) => {
-                instance.substs.non_erasable_generics().next().is_some()
-            }
-            MonoItem::Static(..) |
-            MonoItem::GlobalAsm(..) => false,
+            MonoItem::Fn(ref instance) => instance.substs.non_erasable_generics().next().is_some(),
+            MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
         }
     }
 
     pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> SymbolName {
         match *self {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
-            MonoItem::Static(def_id) => {
-                tcx.symbol_name(Instance::mono(tcx, def_id))
-            }
+            MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(hir_id) => {
                 let def_id = tcx.hir().local_def_id(hir_id);
-                SymbolName {
-                    name: Symbol::intern(&format!("global_asm_{:?}", def_id))
-                }
+                SymbolName { name: Symbol::intern(&format!("global_asm_{:?}", def_id)) }
             }
         }
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
-        let inline_in_all_cgus =
-            tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or_else(|| {
-                tcx.sess.opts.optimize != OptLevel::No
-            }) && !tcx.sess.opts.cg.link_dead_code;
+        let inline_in_all_cgus = tcx
+            .sess
+            .opts
+            .debugging_opts
+            .inline_in_all_cgus
+            .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
+            && !tcx.sess.opts.cg.link_dead_code;
 
         match *self {
             MonoItem::Fn(ref instance) => {
                 let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
-                if self.explicit_linkage(tcx).is_some() ||
-                    !instance.def.requires_local(tcx) ||
-                    Some(instance.def_id()) == entry_def_id
+                if self.explicit_linkage(tcx).is_some()
+                    || !instance.def.requires_local(tcx)
+                    || Some(instance.def_id()) == entry_def_id
                 {
-                    return InstantiationMode::GloballyShared  { may_conflict: false }
+                    return InstantiationMode::GloballyShared { may_conflict: false };
                 }
 
                 // At this point we don't have explicit linkage and we're an
                 // inlined function. If we're inlining into all CGUs then we'll
                 // be creating a local copy per CGU
                 if inline_in_all_cgus {
-                    return InstantiationMode::LocalCopy
+                    return InstantiationMode::LocalCopy;
                 }
 
                 // Finally, if this is `#[inline(always)]` we're sure to respect
@@ -118,13 +113,10 @@ impl<'tcx> MonoItem<'tcx> {
                 // symbol.
                 match tcx.codegen_fn_attrs(instance.def_id()).inline {
                     InlineAttr::Always => InstantiationMode::LocalCopy,
-                    _ => {
-                        InstantiationMode::GloballyShared  { may_conflict: true }
-                    }
+                    _ => InstantiationMode::GloballyShared { may_conflict: true },
                 }
             }
-            MonoItem::Static(..) |
-            MonoItem::GlobalAsm(..) => {
+            MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
                 InstantiationMode::GloballyShared { may_conflict: false }
             }
         }
@@ -172,7 +164,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
             MonoItem::Static(def_id) => (def_id, InternalSubsts::empty()),
             // global asm never has predicates
-            MonoItem::GlobalAsm(..) => return true
+            MonoItem::GlobalAsm(..) => return true,
         };
 
         tcx.substitute_normalize_and_test_predicates((def_id, &substs))
@@ -180,16 +172,12 @@ impl<'tcx> MonoItem<'tcx> {
 
     pub fn to_string(&self, tcx: TyCtxt<'tcx>, debug: bool) -> String {
         return match *self {
-            MonoItem::Fn(instance) => {
-                to_string_internal(tcx, "fn ", instance, debug)
-            },
+            MonoItem::Fn(instance) => to_string_internal(tcx, "fn ", instance, debug),
             MonoItem::Static(def_id) => {
                 let instance = Instance::new(def_id, tcx.intern_substs(&[]));
                 to_string_internal(tcx, "static ", instance, debug)
-            },
-            MonoItem::GlobalAsm(..) => {
-                "global_asm".to_string()
             }
+            MonoItem::GlobalAsm(..) => "global_asm".to_string(),
         };
 
         fn to_string_internal<'tcx>(
@@ -208,16 +196,11 @@ impl<'tcx> MonoItem<'tcx> {
 
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
         match *self {
-            MonoItem::Fn(Instance { def, .. }) => {
-                tcx.hir().as_local_hir_id(def.def_id())
-            }
-            MonoItem::Static(def_id) => {
-                tcx.hir().as_local_hir_id(def_id)
-            }
-            MonoItem::GlobalAsm(hir_id) => {
-                Some(hir_id)
-            }
-        }.map(|hir_id| tcx.hir().span(hir_id))
+            MonoItem::Fn(Instance { def, .. }) => tcx.hir().as_local_hir_id(def.def_id()),
+            MonoItem::Static(def_id) => tcx.hir().as_local_hir_id(def_id),
+            MonoItem::GlobalAsm(hir_id) => Some(hir_id),
+        }
+        .map(|hir_id| tcx.hir().span(hir_id))
     }
 }
 
@@ -275,11 +258,7 @@ pub enum Visibility {
 
 impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
-        CodegenUnit {
-            name: name,
-            items: Default::default(),
-            size_estimate: None,
-        }
+        CodegenUnit { name: name, items: Default::default(), size_estimate: None }
     }
 
     pub fn name(&self) -> Symbol {
@@ -294,9 +273,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         &self.items
     }
 
-    pub fn items_mut(&mut self)
-        -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>
-    {
+    pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &mut self.items
     }
 
@@ -339,10 +316,8 @@ impl<'tcx> CodegenUnit<'tcx> {
     pub fn work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
         let work_product_id = self.work_product_id();
         tcx.dep_graph
-           .previous_work_product(&work_product_id)
-           .unwrap_or_else(|| {
-                panic!("Could not find work-product for CGU `{}`", self.name())
-            })
+            .previous_work_product(&work_product_id)
+            .unwrap_or_else(|| panic!("Could not find work-product for CGU `{}`", self.name()))
     }
 
     pub fn items_in_deterministic_order(
@@ -355,35 +330,30 @@ impl<'tcx> CodegenUnit<'tcx> {
         pub struct ItemSortKey(Option<HirId>, SymbolName);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey {
-            ItemSortKey(match item {
-                MonoItem::Fn(ref instance) => {
-                    match instance.def {
-                        // We only want to take HirIds of user-defined
-                        // instances into account. The others don't matter for
-                        // the codegen tests and can even make item order
-                        // unstable.
-                        InstanceDef::Item(def_id) => {
-                            tcx.hir().as_local_hir_id(def_id)
-                        }
-                        InstanceDef::VtableShim(..) |
-                        InstanceDef::ReifyShim(..) |
-                        InstanceDef::Intrinsic(..) |
-                        InstanceDef::FnPtrShim(..) |
-                        InstanceDef::Virtual(..) |
-                        InstanceDef::ClosureOnceShim { .. } |
-                        InstanceDef::DropGlue(..) |
-                        InstanceDef::CloneShim(..) => {
-                            None
+            ItemSortKey(
+                match item {
+                    MonoItem::Fn(ref instance) => {
+                        match instance.def {
+                            // We only want to take HirIds of user-defined
+                            // instances into account. The others don't matter for
+                            // the codegen tests and can even make item order
+                            // unstable.
+                            InstanceDef::Item(def_id) => tcx.hir().as_local_hir_id(def_id),
+                            InstanceDef::VtableShim(..)
+                            | InstanceDef::ReifyShim(..)
+                            | InstanceDef::Intrinsic(..)
+                            | InstanceDef::FnPtrShim(..)
+                            | InstanceDef::Virtual(..)
+                            | InstanceDef::ClosureOnceShim { .. }
+                            | InstanceDef::DropGlue(..)
+                            | InstanceDef::CloneShim(..) => None,
                         }
                     }
-                }
-                MonoItem::Static(def_id) => {
-                    tcx.hir().as_local_hir_id(def_id)
-                }
-                MonoItem::GlobalAsm(hir_id) => {
-                    Some(hir_id)
-                }
-            }, item.symbol_name(tcx))
+                    MonoItem::Static(def_id) => tcx.hir().as_local_hir_id(def_id),
+                    MonoItem::GlobalAsm(hir_id) => Some(hir_id),
+                },
+                item.symbol_name(tcx),
+            )
         }
 
         let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
@@ -407,12 +377,15 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
 
         name.hash_stable(hcx, hasher);
 
-        let mut items: Vec<(Fingerprint, _)> = items.iter().map(|(mono_item, &attrs)| {
-            let mut hasher = StableHasher::new();
-            mono_item.hash_stable(hcx, &mut hasher);
-            let mono_item_fingerprint = hasher.finish();
-            (mono_item_fingerprint, attrs)
-        }).collect();
+        let mut items: Vec<(Fingerprint, _)> = items
+            .iter()
+            .map(|(mono_item, &attrs)| {
+                let mut hasher = StableHasher::new();
+                mono_item.hash_stable(hcx, &mut hasher);
+                let mono_item_fingerprint = hasher.finish();
+                (mono_item_fingerprint, attrs)
+            })
+            .collect();
 
         items.sort_unstable_by_key(|i| i.0);
         items.hash_stable(hcx, hasher);
@@ -426,10 +399,7 @@ pub struct CodegenUnitNameBuilder<'tcx> {
 
 impl CodegenUnitNameBuilder<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-        CodegenUnitNameBuilder {
-            tcx,
-            cache: Default::default(),
-        }
+        CodegenUnitNameBuilder { tcx, cache: Default::default() }
     }
 
     /// CGU names should fulfill the following requirements:
@@ -450,18 +420,18 @@ impl CodegenUnitNameBuilder<'tcx> {
     /// The '.' before `<special-suffix>` makes sure that names with a special
     /// suffix can never collide with a name built out of regular Rust
     /// identifiers (e.g., module paths).
-    pub fn build_cgu_name<I, C, S>(&mut self,
-                                   cnum: CrateNum,
-                                   components: I,
-                                   special_suffix: Option<S>)
-                                   -> Symbol
-        where I: IntoIterator<Item=C>,
-              C: fmt::Display,
-              S: fmt::Display,
+    pub fn build_cgu_name<I, C, S>(
+        &mut self,
+        cnum: CrateNum,
+        components: I,
+        special_suffix: Option<S>,
+    ) -> Symbol
+    where
+        I: IntoIterator<Item = C>,
+        C: fmt::Display,
+        S: fmt::Display,
     {
-        let cgu_name = self.build_cgu_name_no_mangle(cnum,
-                                                     components,
-                                                     special_suffix);
+        let cgu_name = self.build_cgu_name_no_mangle(cnum, components, special_suffix);
 
         if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
             cgu_name
@@ -473,14 +443,16 @@ impl CodegenUnitNameBuilder<'tcx> {
 
     /// Same as `CodegenUnit::build_cgu_name()` but will never mangle the
     /// resulting name.
-    pub fn build_cgu_name_no_mangle<I, C, S>(&mut self,
-                                             cnum: CrateNum,
-                                             components: I,
-                                             special_suffix: Option<S>)
-                                             -> Symbol
-        where I: IntoIterator<Item=C>,
-              C: fmt::Display,
-              S: fmt::Display,
+    pub fn build_cgu_name_no_mangle<I, C, S>(
+        &mut self,
+        cnum: CrateNum,
+        components: I,
+        special_suffix: Option<S>,
+    ) -> Symbol
+    where
+        I: IntoIterator<Item = C>,
+        C: fmt::Display,
+        S: fmt::Display,
     {
         use std::fmt::Write;
 
@@ -493,21 +465,15 @@ impl CodegenUnitNameBuilder<'tcx> {
             // local crate's ID. Otherwise there can be collisions between CGUs
             // instantiating stuff for upstream crates.
             let local_crate_id = if cnum != LOCAL_CRATE {
-                let local_crate_disambiguator =
-                    format!("{}", tcx.crate_disambiguator(LOCAL_CRATE));
-                format!("-in-{}.{}",
-                        tcx.crate_name(LOCAL_CRATE),
-                        &local_crate_disambiguator[0 .. 8])
+                let local_crate_disambiguator = format!("{}", tcx.crate_disambiguator(LOCAL_CRATE));
+                format!("-in-{}.{}", tcx.crate_name(LOCAL_CRATE), &local_crate_disambiguator[0..8])
             } else {
                 String::new()
             };
 
             let crate_disambiguator = tcx.crate_disambiguator(cnum).to_string();
             // Using a shortened disambiguator of about 40 bits
-            format!("{}.{}{}",
-                tcx.crate_name(cnum),
-                &crate_disambiguator[0 .. 8],
-                local_crate_id)
+            format!("{}.{}{}", tcx.crate_name(cnum), &crate_disambiguator[0..8], local_crate_id)
         });
 
         write!(cgu_name, "{}", crate_prefix).unwrap();

@@ -1,13 +1,16 @@
-use syntax_pos::{MultiSpan, Symbol, sym};
-use syntax_pos::edition::Edition;
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 pub use self::Level::*;
 use crate::node_id::NodeId;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use syntax_pos::edition::Edition;
+use syntax_pos::{sym, MultiSpan, Symbol};
 
 /// Setting for how to handle a lint.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Level {
-    Allow, Warn, Deny, Forbid,
+    Allow,
+    Warn,
+    Deny,
+    Forbid,
 }
 
 rustc_data_structures::impl_stable_hash_via_hash!(Level);
@@ -130,7 +133,7 @@ impl PartialEq for LintId {
     }
 }
 
-impl Eq for LintId { }
+impl Eq for LintId {}
 
 impl std::hash::Hash for LintId {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -142,9 +145,7 @@ impl std::hash::Hash for LintId {
 impl LintId {
     /// Gets the `LintId` for a `Lint`.
     pub fn of(lint: &'static Lint) -> LintId {
-        LintId {
-            lint,
-        }
+        LintId { lint }
     }
 
     pub fn lint_name_raw(&self) -> &'static str {
@@ -176,16 +177,16 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
 /// Stores buffered lint info which can later be passed to `librustc`.
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
-   pub span: MultiSpan,
+    pub span: MultiSpan,
 
-   /// The lint message.
-   pub msg: String,
+    /// The lint message.
+    pub msg: String,
 
-   /// The `NodeId` of the AST node that generated the lint.
-   pub id: NodeId,
+    /// The `NodeId` of the AST node that generated the lint.
+    pub id: NodeId,
 
-   /// A lint Id that can be passed to `rustc::lint::Lint::from_parser_lint_id`.
-   pub lint_id: &'static Lint,
+    /// A lint Id that can be passed to `rustc::lint::Lint::from_parser_lint_id`.
+    pub lint_id: &'static Lint,
 }
 
 /// Declares a static item of type `&'static Lint`.

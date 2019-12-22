@@ -93,11 +93,7 @@ pub struct OutlivesConstraint {
 
 impl fmt::Debug for OutlivesConstraint {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            formatter,
-            "({:?}: {:?}) due to {:?}",
-            self.sup, self.sub, self.locations
-        )
+        write!(formatter, "({:?}: {:?}) due to {:?}", self.sup, self.sub, self.locations)
     }
 }
 

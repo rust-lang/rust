@@ -126,8 +126,7 @@ fn parse_expected(
 
     match (cfg, captures.name("cfgs")) {
         // Only error messages that contain our `cfg` betweeen the square brackets apply to us.
-        (Some(cfg), Some(filter)) if !filter.as_str().split(',').any(|s| s == cfg)
-            => return None,
+        (Some(cfg), Some(filter)) if !filter.as_str().split(',').any(|s| s == cfg) => return None,
         (Some(_), Some(_)) => {}
 
         (None, Some(_)) => panic!("Only tests with revisions should use `//[X]~`"),
@@ -145,10 +144,7 @@ fn parse_expected(
     let whole_match = captures.get(0).unwrap();
     let (_, mut msg) = line.split_at(whole_match.end());
 
-    let first_word = msg
-        .split_whitespace()
-        .next()
-        .expect("Encountered unexpected empty comment");
+    let first_word = msg.split_whitespace().next().expect("Encountered unexpected empty comment");
 
     // If we find `//~ ERROR foo` or something like that, skip the first word.
     let kind = first_word.parse::<ErrorKind>().ok();
@@ -166,25 +162,18 @@ fn parse_expected(
         );
         (FollowPrevious(line_num), line_num)
     } else {
-        let which = if adjusts > 0 {
-            AdjustBackward(adjusts)
-        } else {
-            ThisLine
-        };
+        let which = if adjusts > 0 { AdjustBackward(adjusts) } else { ThisLine };
         let line_num = line_num - adjusts;
         (which, line_num)
     };
 
     debug!(
         "line={} tag={:?} which={:?} kind={:?} msg={:?}",
-        line_num, whole_match.as_str(), which, kind, msg
-    );
-    Some((
+        line_num,
+        whole_match.as_str(),
         which,
-        Error {
-            line_num,
-            kind,
-            msg,
-        },
-    ))
+        kind,
+        msg
+    );
+    Some((which, Error { line_num, kind, msg }))
 }

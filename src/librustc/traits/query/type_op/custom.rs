@@ -1,12 +1,12 @@
 use crate::infer::{InferCtxt, InferOk};
-use std::fmt;
 use crate::traits::query::Fallible;
+use std::fmt;
 
 use crate::infer::canonical::query_response;
 use crate::infer::canonical::QueryRegionConstraints;
+use crate::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use std::rc::Rc;
 use syntax::source_map::DUMMY_SP;
-use crate::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 
 pub struct CustomTypeOp<F, G> {
     closure: F,
@@ -19,10 +19,7 @@ impl<F, G> CustomTypeOp<F, G> {
         F: FnOnce(&InferCtxt<'_, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
         G: Fn() -> String,
     {
-        CustomTypeOp {
-            closure,
-            description,
-        }
+        CustomTypeOp { closure, description }
     }
 }
 

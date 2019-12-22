@@ -1,7 +1,7 @@
 use crate::util::check_builtin_macro_attribute;
 
+use syntax::ast::{self, Attribute, Expr, FnHeader, FnSig, Generics, Ident, Param};
 use syntax::ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafety};
-use syntax::ast::{self, Param, Attribute, Expr, FnSig, FnHeader, Generics, Ident};
 use syntax::expand::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
@@ -24,18 +24,13 @@ pub fn expand(
         Annotatable::Item(item) => match item.kind {
             ItemKind::Static(..) => item,
             _ => return not_static(Annotatable::Item(item)),
-        }
+        },
         _ => return not_static(item),
     };
 
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
-    let f = AllocFnFactory {
-        span,
-        kind: AllocatorKind::Global,
-        global: item.ident,
-        cx: ecx,
-    };
+    let f = AllocFnFactory { span, kind: AllocatorKind::Global, global: item.ident, cx: ecx };
 
     // Generate item statements for the allocator methods.
     let stmts = ALLOCATOR_METHODS.iter().map(|method| f.allocator_fn(method)).collect();
@@ -43,8 +38,7 @@ pub fn expand(
     // Generate anonymous constant serving as container for the allocator methods.
     let const_ty = ecx.ty(span, TyKind::Tup(Vec::new()));
     let const_body = ecx.expr_block(ecx.block(span, stmts));
-    let const_item =
-        ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
+    let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
 
     // Return the original item and the new methods.
     vec![Annotatable::Item(item), Annotatable::Item(const_item)]
@@ -66,11 +60,7 @@ impl AllocFnFactory<'_, '_> {
             i += 1;
             name
         };
-        let args = method
-            .inputs
-            .iter()
-            .map(|ty| self.arg_ty(ty, &mut abi_args, mk))
-            .collect();
+        let args = method.inputs.iter().map(|ty| self.arg_ty(ty, &mut abi_args, mk)).collect();
         let result = self.call_allocator(method.name, args);
         let (output_ty, output_expr) = self.ret_ty(&method.output, result);
         let decl = self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty));

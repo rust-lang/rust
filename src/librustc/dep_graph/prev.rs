@@ -1,7 +1,7 @@
-use crate::ich::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
 use super::dep_node::DepNode;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
+use crate::ich::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
 
 #[derive(Debug, RustcEncodable, RustcDecodable, Default)]
 pub struct PreviousDepGraph {
@@ -11,17 +11,15 @@ pub struct PreviousDepGraph {
 
 impl PreviousDepGraph {
     pub fn new(data: SerializedDepGraph) -> PreviousDepGraph {
-        let index: FxHashMap<_, _> = data.nodes
-            .iter_enumerated()
-            .map(|(idx, &dep_node)| (dep_node, idx))
-            .collect();
+        let index: FxHashMap<_, _> =
+            data.nodes.iter_enumerated().map(|(idx, &dep_node)| (dep_node, idx)).collect();
         PreviousDepGraph { data, index }
     }
 
     #[inline]
     pub fn edge_targets_from(
         &self,
-        dep_node_index: SerializedDepNodeIndex
+        dep_node_index: SerializedDepNodeIndex,
     ) -> &[SerializedDepNodeIndex] {
         self.data.edge_targets_from(dep_node_index)
     }
@@ -43,15 +41,11 @@ impl PreviousDepGraph {
 
     #[inline]
     pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
-        self.index
-            .get(dep_node)
-            .map(|&node_index| self.data.fingerprints[node_index])
+        self.index.get(dep_node).map(|&node_index| self.data.fingerprints[node_index])
     }
 
     #[inline]
-    pub fn fingerprint_by_index(&self,
-                                dep_node_index: SerializedDepNodeIndex)
-                                -> Fingerprint {
+    pub fn fingerprint_by_index(&self, dep_node_index: SerializedDepNodeIndex) -> Fingerprint {
         self.data.fingerprints[dep_node_index]
     }
 

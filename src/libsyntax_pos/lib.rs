@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
@@ -14,38 +13,38 @@
 #![feature(specialization)]
 #![feature(step_trait)]
 
-use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_macros::HashStable_Generic;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-pub mod source_map;
 mod caching_source_map_view;
+pub mod source_map;
 pub use self::caching_source_map_view::CachingSourceMapView;
 
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;
-pub use hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind, MacroKind, DesugaringKind};
 use hygiene::Transparency;
+pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, MacroKind, SyntaxContext};
 
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
 pub mod symbol;
-pub use symbol::{Symbol, sym};
+pub use symbol::{sym, Symbol};
 
 mod analyze_source_file;
 pub mod fatal_error;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::sync::{Lrc, Lock};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::{Lock, Lrc};
 
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::cmp::{self, Ordering};
 use std::fmt;
-use std::hash::{Hasher, Hash};
+use std::hash::{Hash, Hasher};
 use std::ops::{Add, Sub};
 use std::path::PathBuf;
 
@@ -71,8 +70,18 @@ impl Globals {
 scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 /// Differentiates between real files and common virtual files.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash,
-         RustcDecodable, RustcEncodable, HashStable_Generic)]
+#[derive(
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    Hash,
+    RustcDecodable,
+    RustcEncodable,
+    HashStable_Generic
+)]
 pub enum FileName {
     Real(PathBuf),
     /// A macro. This includes the full name of the macro, so that there are no clashes.
@@ -103,8 +112,7 @@ impl std::fmt::Display for FileName {
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
             Anon(_) => write!(fmt, "<anon>"),
-            ProcMacroSourceCode(_) =>
-                write!(fmt, "<proc-macro source code>"),
+            ProcMacroSourceCode(_) => write!(fmt, "<proc-macro source code>"),
             CfgSpec(_) => write!(fmt, "<cfgspec>"),
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{}>", s),
@@ -125,30 +133,30 @@ impl FileName {
         use FileName::*;
         match *self {
             Real(_) => true,
-            Macros(_) |
-            Anon(_) |
-            MacroExpansion(_) |
-            ProcMacroSourceCode(_) |
-            CfgSpec(_) |
-            CliCrateAttr(_) |
-            Custom(_) |
-            QuoteExpansion(_) |
-            DocTest(_, _) => false,
+            Macros(_)
+            | Anon(_)
+            | MacroExpansion(_)
+            | ProcMacroSourceCode(_)
+            | CfgSpec(_)
+            | CliCrateAttr(_)
+            | Custom(_)
+            | QuoteExpansion(_)
+            | DocTest(_, _) => false,
         }
     }
 
     pub fn is_macros(&self) -> bool {
         use FileName::*;
         match *self {
-            Real(_) |
-            Anon(_) |
-            MacroExpansion(_) |
-            ProcMacroSourceCode(_) |
-            CfgSpec(_) |
-            CliCrateAttr(_) |
-            Custom(_) |
-            QuoteExpansion(_) |
-            DocTest(_, _) => false,
+            Real(_)
+            | Anon(_)
+            | MacroExpansion(_)
+            | ProcMacroSourceCode(_)
+            | CfgSpec(_)
+            | CliCrateAttr(_)
+            | Custom(_)
+            | QuoteExpansion(_)
+            | DocTest(_, _) => false,
             Macros(_) => true,
         }
     }
@@ -189,7 +197,7 @@ impl FileName {
         FileName::CliCrateAttr(hasher.finish())
     }
 
-    pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName{
+    pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName {
         FileName::DocTest(path, line)
     }
 }
@@ -351,11 +359,7 @@ impl Span {
     pub fn trim_start(self, other: Span) -> Option<Span> {
         let span = self.data();
         let other = other.data();
-        if span.hi > other.hi {
-            Some(span.with_lo(cmp::max(span.lo, other.hi)))
-        } else {
-            None
-        }
+        if span.hi > other.hi { Some(span.with_lo(cmp::max(span.lo, other.hi))) } else { None }
     }
 
     /// Returns the source span -- this is either the supplied span, or the span for
@@ -406,9 +410,9 @@ impl Span {
     /// `#[allow_internal_unstable]`).
     pub fn allows_unstable(&self, feature: Symbol) -> bool {
         self.ctxt().outer_expn_data().allow_internal_unstable.map_or(false, |features| {
-            features.iter().any(|&f| {
-                f == feature || f == sym::allow_internal_unstable_backcompat_hack
-            })
+            features
+                .iter()
+                .any(|&f| f == feature || f == sym::allow_internal_unstable_backcompat_hack)
         })
     }
 
@@ -425,7 +429,7 @@ impl Span {
     pub fn desugaring_kind(&self) -> Option<DesugaringKind> {
         match self.ctxt().outer_expn_data().kind {
             ExpnKind::Desugaring(k) => Some(k),
-            _ => None
+            _ => None,
         }
     }
 
@@ -454,7 +458,7 @@ impl Span {
                         MacroKind::Bang => ("", "!"),
                         MacroKind::Attr => ("#[", "]"),
                         MacroKind::Derive => ("#[derive(", ")]"),
-                    }
+                    },
                 };
                 result.push(MacroBacktrace {
                     call_site: expn_data.call_site,
@@ -516,9 +520,11 @@ impl Span {
 
     pub fn from_inner(self, inner: InnerSpan) -> Span {
         let span = self.data();
-        Span::new(span.lo + BytePos::from_usize(inner.start),
-                  span.lo + BytePos::from_usize(inner.end),
-                  span.ctxt)
+        Span::new(
+            span.lo + BytePos::from_usize(inner.start),
+            span.lo + BytePos::from_usize(inner.end),
+            span.ctxt,
+        )
     }
 
     /// Equivalent of `Span::def_site` from the proc macro API,
@@ -585,8 +591,11 @@ impl Span {
     }
 
     #[inline]
-    pub fn reverse_glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span)
-                               -> Option<Option<ExpnId>> {
+    pub fn reverse_glob_adjust(
+        &mut self,
+        expn_id: ExpnId,
+        glob_span: Span,
+    ) -> Option<Option<ExpnId>> {
         let mut span = self.data();
         let mark = span.ctxt.reverse_glob_adjust(expn_id, glob_span);
         *self = Span::new(span.lo, span.hi, span.ctxt);
@@ -629,13 +638,9 @@ impl rustc_serialize::UseSpecializedEncodable for Span {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let span = self.data();
         s.emit_struct("Span", 2, |s| {
-            s.emit_struct_field("lo", 0, |s| {
-                span.lo.encode(s)
-            })?;
+            s.emit_struct_field("lo", 0, |s| span.lo.encode(s))?;
 
-            s.emit_struct_field("hi", 1, |s| {
-                span.hi.encode(s)
-            })
+            s.emit_struct_field("hi", 1, |s| span.hi.encode(s))
         })
     }
 }
@@ -673,24 +678,15 @@ impl fmt::Debug for SpanData {
 impl MultiSpan {
     #[inline]
     pub fn new() -> MultiSpan {
-        MultiSpan {
-            primary_spans: vec![],
-            span_labels: vec![]
-        }
+        MultiSpan { primary_spans: vec![], span_labels: vec![] }
     }
 
     pub fn from_span(primary_span: Span) -> MultiSpan {
-        MultiSpan {
-            primary_spans: vec![primary_span],
-            span_labels: vec![]
-        }
+        MultiSpan { primary_spans: vec![primary_span], span_labels: vec![] }
     }
 
     pub fn from_spans(vec: Vec<Span>) -> MultiSpan {
-        MultiSpan {
-            primary_spans: vec,
-            span_labels: vec![]
-        }
+        MultiSpan { primary_spans: vec, span_labels: vec![] }
     }
 
     pub fn push_span_label(&mut self, span: Span, label: String) {
@@ -750,21 +746,19 @@ impl MultiSpan {
     pub fn span_labels(&self) -> Vec<SpanLabel> {
         let is_primary = |span| self.primary_spans.contains(&span);
 
-        let mut span_labels = self.span_labels.iter().map(|&(span, ref label)|
-            SpanLabel {
+        let mut span_labels = self
+            .span_labels
+            .iter()
+            .map(|&(span, ref label)| SpanLabel {
                 span,
                 is_primary: is_primary(span),
-                label: Some(label.clone())
-            }
-        ).collect::<Vec<_>>();
+                label: Some(label.clone()),
+            })
+            .collect::<Vec<_>>();
 
         for &span in &self.primary_spans {
             if !span_labels.iter().any(|sl| sl.span == span) {
-                span_labels.push(SpanLabel {
-                    span,
-                    is_primary: true,
-                    label: None
-                });
+                span_labels.push(SpanLabel { span, is_primary: true, label: None });
             }
         }
 
@@ -822,9 +816,7 @@ impl NonNarrowChar {
     /// Returns the absolute offset of the character in the `SourceMap`.
     pub fn pos(&self) -> BytePos {
         match *self {
-            NonNarrowChar::ZeroWidth(p) |
-            NonNarrowChar::Wide(p) |
-            NonNarrowChar::Tab(p) => p,
+            NonNarrowChar::ZeroWidth(p) | NonNarrowChar::Wide(p) | NonNarrowChar::Tab(p) => p,
         }
     }
 
@@ -962,17 +954,13 @@ impl Encodable for SourceFile {
                     let max_line_length = if lines.len() == 1 {
                         0
                     } else {
-                        lines.windows(2)
-                             .map(|w| w[1] - w[0])
-                             .map(|bp| bp.to_usize())
-                             .max()
-                             .unwrap()
+                        lines.windows(2).map(|w| w[1] - w[0]).map(|bp| bp.to_usize()).max().unwrap()
                     };
 
                     let bytes_per_diff: u8 = match max_line_length {
-                        0 ..= 0xFF => 1,
-                        0x100 ..= 0xFFFF => 2,
-                        _ => 4
+                        0..=0xFF => 1,
+                        0x100..=0xFFFF => 2,
+                        _ => 4,
                     };
 
                     // Encode the number of bytes used per diff.
@@ -981,31 +969,34 @@ impl Encodable for SourceFile {
                     // Encode the first element.
                     lines[0].encode(s)?;
 
-                    let diff_iter = (&lines[..]).windows(2)
-                                                .map(|w| (w[1] - w[0]));
+                    let diff_iter = (&lines[..]).windows(2).map(|w| (w[1] - w[0]));
 
                     match bytes_per_diff {
-                        1 => for diff in diff_iter { (diff.0 as u8).encode(s)? },
-                        2 => for diff in diff_iter { (diff.0 as u16).encode(s)? },
-                        4 => for diff in diff_iter { diff.0.encode(s)? },
-                        _ => unreachable!()
+                        1 => {
+                            for diff in diff_iter {
+                                (diff.0 as u8).encode(s)?
+                            }
+                        }
+                        2 => {
+                            for diff in diff_iter {
+                                (diff.0 as u16).encode(s)?
+                            }
+                        }
+                        4 => {
+                            for diff in diff_iter {
+                                diff.0.encode(s)?
+                            }
+                        }
+                        _ => unreachable!(),
                     }
                 }
 
                 Ok(())
             })?;
-            s.emit_struct_field("multibyte_chars", 6, |s| {
-                self.multibyte_chars.encode(s)
-            })?;
-            s.emit_struct_field("non_narrow_chars", 7, |s| {
-                self.non_narrow_chars.encode(s)
-            })?;
-            s.emit_struct_field("name_hash", 8, |s| {
-                self.name_hash.encode(s)
-            })?;
-            s.emit_struct_field("normalized_pos", 9, |s| {
-                self.normalized_pos.encode(s)
-            })
+            s.emit_struct_field("multibyte_chars", 6, |s| self.multibyte_chars.encode(s))?;
+            s.emit_struct_field("non_narrow_chars", 7, |s| self.non_narrow_chars.encode(s))?;
+            s.emit_struct_field("name_hash", 8, |s| self.name_hash.encode(s))?;
+            s.emit_struct_field("normalized_pos", 9, |s| self.normalized_pos.encode(s))
         })
     }
 }
@@ -1016,8 +1007,7 @@ impl Decodable for SourceFile {
             let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
-            let src_hash: u128 =
-                d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
+            let src_hash: u128 = d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
                 d.read_struct_field("start_pos", 3, |d| Decodable::decode(d))?;
             let end_pos: BytePos = d.read_struct_field("end_pos", 4, |d| Decodable::decode(d))?;
@@ -1038,7 +1028,7 @@ impl Decodable for SourceFile {
                             1 => d.read_u8()? as u32,
                             2 => d.read_u16()? as u32,
                             4 => d.read_u32()?,
-                            _ => unreachable!()
+                            _ => unreachable!(),
                         };
 
                         line_start = line_start + BytePos(diff);
@@ -1053,8 +1043,7 @@ impl Decodable for SourceFile {
                 d.read_struct_field("multibyte_chars", 6, |d| Decodable::decode(d))?;
             let non_narrow_chars: Vec<NonNarrowChar> =
                 d.read_struct_field("non_narrow_chars", 7, |d| Decodable::decode(d))?;
-            let name_hash: u128 =
-                d.read_struct_field("name_hash", 8, |d| Decodable::decode(d))?;
+            let name_hash: u128 = d.read_struct_field("name_hash", 8, |d| Decodable::decode(d))?;
             let normalized_pos: Vec<NormalizedPos> =
                 d.read_struct_field("normalized_pos", 9, |d| Decodable::decode(d))?;
             Ok(SourceFile {
@@ -1087,11 +1076,13 @@ impl fmt::Debug for SourceFile {
 }
 
 impl SourceFile {
-    pub fn new(name: FileName,
-               name_was_remapped: bool,
-               unmapped_path: FileName,
-               mut src: String,
-               start_pos: BytePos) -> Result<SourceFile, OffsetOverflowError> {
+    pub fn new(
+        name: FileName,
+        name_was_remapped: bool,
+        unmapped_path: FileName,
+        mut src: String,
+        start_pos: BytePos,
+    ) -> Result<SourceFile, OffsetOverflowError> {
         let normalized_pos = normalize_src(&mut src, start_pos);
 
         let src_hash = {
@@ -1141,7 +1132,8 @@ impl SourceFile {
     /// it is interpreted as an error and the corresponding enum variant is set.
     /// The return value signifies whether some kind of source is present.
     pub fn add_external_src<F>(&self, get_src: F) -> bool
-        where F: FnOnce() -> Option<String>
+    where
+        F: FnOnce() -> Option<String>,
     {
         if *self.external_src.borrow() == ExternalSource::AbsentOk {
             let src = get_src();
@@ -1179,7 +1171,7 @@ impl SourceFile {
             let slice = &src[begin..];
             match slice.find('\n') {
                 Some(e) => &slice[..e],
-                None => slice
+                None => slice,
             }
         }
 
@@ -1228,11 +1220,7 @@ impl SourceFile {
 
         let line_index = lookup_line(&self.lines[..], pos);
         assert!(line_index < self.lines.len() as isize);
-        if line_index >= 0 {
-            Some(line_index as usize)
-        } else {
-            None
-        }
+        if line_index >= 0 { Some(line_index as usize) } else { None }
     }
 
     pub fn line_bounds(&self, line_index: usize) -> (BytePos, BytePos) {
@@ -1256,15 +1244,13 @@ impl SourceFile {
     /// Calculates the original byte position relative to the start of the file
     /// based on the given byte position.
     pub fn original_relative_byte_pos(&self, pos: BytePos) -> BytePos {
-
         // Diff before any records is 0. Otherwise use the previously recorded
         // diff as that applies to the following characters until a new diff
         // is recorded.
-        let diff = match self.normalized_pos.binary_search_by(
-                            |np| np.pos.cmp(&pos)) {
+        let diff = match self.normalized_pos.binary_search_by(|np| np.pos.cmp(&pos)) {
             Ok(i) => self.normalized_pos[i].diff,
             Err(i) if i == 0 => 0,
-            Err(i) => self.normalized_pos[i-1].diff,
+            Err(i) => self.normalized_pos[i - 1].diff,
         };
 
         BytePos::from_u32(pos.0 - self.start_pos.0 + diff)
@@ -1292,7 +1278,6 @@ fn remove_bom(src: &mut String, normalized_pos: &mut Vec<NormalizedPos>) {
         normalized_pos.push(NormalizedPos { pos: BytePos(0), diff: 3 });
     }
 }
-
 
 /// Replaces `\r\n` with `\n` in-place in `src`.
 ///
@@ -1382,16 +1367,24 @@ pub struct CharPos(pub usize);
 
 impl Pos for BytePos {
     #[inline(always)]
-    fn from_usize(n: usize) -> BytePos { BytePos(n as u32) }
+    fn from_usize(n: usize) -> BytePos {
+        BytePos(n as u32)
+    }
 
     #[inline(always)]
-    fn to_usize(&self) -> usize { self.0 as usize }
+    fn to_usize(&self) -> usize {
+        self.0 as usize
+    }
 
     #[inline(always)]
-    fn from_u32(n: u32) -> BytePos { BytePos(n) }
+    fn from_u32(n: u32) -> BytePos {
+        BytePos(n)
+    }
 
     #[inline(always)]
-    fn to_u32(&self) -> u32 { self.0 }
+    fn to_u32(&self) -> u32 {
+        self.0
+    }
 }
 
 impl Add for BytePos {
@@ -1426,16 +1419,24 @@ impl Decodable for BytePos {
 
 impl Pos for CharPos {
     #[inline(always)]
-    fn from_usize(n: usize) -> CharPos { CharPos(n) }
+    fn from_usize(n: usize) -> CharPos {
+        CharPos(n)
+    }
 
     #[inline(always)]
-    fn to_usize(&self) -> usize { self.0 }
+    fn to_usize(&self) -> usize {
+        self.0
+    }
 
     #[inline(always)]
-    fn from_u32(n: u32) -> CharPos { CharPos(n as usize) }
+    fn from_u32(n: u32) -> CharPos {
+        CharPos(n as usize)
+    }
 
     #[inline(always)]
-    fn to_u32(&self) -> u32 { self.0 as u32}
+    fn to_u32(&self) -> u32 {
+        self.0 as u32
+    }
 }
 
 impl Add for CharPos {
@@ -1475,9 +1476,15 @@ pub struct Loc {
 
 // Used to be structural records.
 #[derive(Debug)]
-pub struct SourceFileAndLine { pub sf: Lrc<SourceFile>, pub line: usize }
+pub struct SourceFileAndLine {
+    pub sf: Lrc<SourceFile>,
+    pub line: usize,
+}
 #[derive(Debug)]
-pub struct SourceFileAndBytePos { pub sf: Lrc<SourceFile>, pub pos: BytePos }
+pub struct SourceFileAndBytePos {
+    pub sf: Lrc<SourceFile>,
+    pub pos: BytePos,
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LineInfo {
@@ -1493,7 +1500,7 @@ pub struct LineInfo {
 
 pub struct FileLines {
     pub file: Lrc<SourceFile>,
-    pub lines: Vec<LineInfo>
+    pub lines: Vec<LineInfo>,
 }
 
 thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
@@ -1527,13 +1534,13 @@ pub enum SpanSnippetError {
     IllFormedSpan(Span),
     DistinctSources(DistinctSources),
     MalformedForSourcemap(MalformedSourceMapPositions),
-    SourceNotAvailable { filename: FileName }
+    SourceNotAvailable { filename: FileName },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct DistinctSources {
     pub begin: (FileName, BytePos),
-    pub end: (FileName, BytePos)
+    pub end: (FileName, BytePos),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -1541,7 +1548,7 @@ pub struct MalformedSourceMapPositions {
     pub name: FileName,
     pub source_len: usize,
     pub begin_pos: BytePos,
-    pub end_pos: BytePos
+    pub end_pos: BytePos,
 }
 
 /// Range inside of a `Span` used for diagnostics when we only have access to relative positions.
@@ -1563,7 +1570,7 @@ impl InnerSpan {
 fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
     match lines.binary_search(&pos) {
         Ok(line) => line as isize,
-        Err(line) => line as isize - 1
+        Err(line) => line as isize - 1,
     }
 }
 
@@ -1572,12 +1579,15 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// instead of implementing everything in librustc.
 pub trait HashStableContext {
     fn hash_spans(&self) -> bool;
-    fn byte_pos_to_line_and_col(&mut self, byte: BytePos)
-        -> Option<(Lrc<SourceFile>, usize, BytePos)>;
+    fn byte_pos_to_line_and_col(
+        &mut self,
+        byte: BytePos,
+    ) -> Option<(Lrc<SourceFile>, usize, BytePos)>;
 }
 
 impl<CTX> HashStable<CTX> for Span
-    where CTX: HashStableContext
+where
+    CTX: HashStableContext,
 {
     /// Hashes a span in a stable way. We can't directly hash the span's `BytePos`
     /// fields (that would be similar to hashing pointers, since those are just
@@ -1595,7 +1605,7 @@ impl<CTX> HashStable<CTX> for Span
         const TAG_NO_EXPANSION: u8 = 1;
 
         if !ctx.hash_spans() {
-            return
+            return;
         }
 
         if *self == DUMMY_SP {

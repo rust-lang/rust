@@ -37,10 +37,12 @@ pub struct PanicInfo<'a> {
 }
 
 impl<'a> PanicInfo<'a> {
-    #[unstable(feature = "panic_internals",
-               reason = "internal details of the implementation of the `panic!` \
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
                          and related macros",
-               issue = "none")]
+        issue = "none"
+    )]
     #[doc(hidden)]
     #[inline]
     pub fn internal_constructor(
@@ -48,17 +50,15 @@ impl<'a> PanicInfo<'a> {
         location: &'a Location<'a>,
     ) -> Self {
         struct NoPayload;
-        PanicInfo {
-            location,
-            message,
-            payload: &NoPayload,
-        }
+        PanicInfo { location, message, payload: &NoPayload }
     }
 
-    #[unstable(feature = "panic_internals",
-               reason = "internal details of the implementation of the `panic!` \
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
                          and related macros",
-               issue = "none")]
+        issue = "none"
+    )]
     #[doc(hidden)]
     #[inline]
     pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
@@ -222,9 +222,11 @@ impl<'a> Location<'a> {
     /// assert_ne!(this_location.line(), another_location.line());
     /// assert_ne!(this_location.column(), another_location.column());
     /// ```
-    #[unstable(feature = "track_caller",
-               reason = "uses #[track_caller] which is not yet stable",
-               issue = "47809")]
+    #[unstable(
+        feature = "track_caller",
+        reason = "uses #[track_caller] which is not yet stable",
+        issue = "47809"
+    )]
     #[track_caller]
     pub const fn caller() -> &'static Location<'static> {
         crate::intrinsics::caller_location()
@@ -232,10 +234,12 @@ impl<'a> Location<'a> {
 }
 
 impl<'a> Location<'a> {
-    #![unstable(feature = "panic_internals",
-                reason = "internal details of the implementation of the `panic!` \
+    #![unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
                           and related macros",
-                issue = "none")]
+        issue = "none"
+    )]
     #[doc(hidden)]
     pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
         Location { file, line, col }

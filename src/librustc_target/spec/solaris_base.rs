@@ -10,6 +10,6 @@ pub fn opts() -> TargetOptions {
         is_like_solaris: true,
         limit_rdylib_exports: false, // Linker doesn't support this
 
-        .. Default::default()
+        ..Default::default()
     }
 }

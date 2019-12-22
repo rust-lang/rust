@@ -1,9 +1,9 @@
-use super::{Parser, TokenType, PathStyle};
+use super::{Parser, PathStyle, TokenType};
 use rustc_errors::PResult;
-use syntax::attr;
 use syntax::ast;
-use syntax::util::comments;
+use syntax::attr;
 use syntax::token::{self, Nonterminal};
+use syntax::util::comments;
 use syntax_pos::{Span, Symbol};
 
 use log::debug;
@@ -33,12 +33,11 @@ impl<'a> Parser<'a> {
                     } else {
                         DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG
                     };
-                    let inner_parse_policy =
-                        InnerAttributeParsePolicy::NotPermitted {
-                            reason: inner_error_reason,
-                            saw_doc_comment: just_parsed_doc_comment,
-                            prev_attr_sp: attrs.last().and_then(|a| Some(a.span))
-                        };
+                    let inner_parse_policy = InnerAttributeParsePolicy::NotPermitted {
+                        reason: inner_error_reason,
+                        saw_doc_comment: just_parsed_doc_comment,
+                        prev_attr_sp: attrs.last().and_then(|a| Some(a.span)),
+                    };
                     let attr = self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?;
                     attrs.push(attr);
                     just_parsed_doc_comment = false;
@@ -47,8 +46,10 @@ impl<'a> Parser<'a> {
                     let attr = self.mk_doc_comment(s);
                     if attr.style != ast::AttrStyle::Outer {
                         let mut err = self.fatal("expected outer doc comment");
-                        err.note("inner doc comments like this (starting with \
-                                  `//!` or `/*!`) can only appear before items");
+                        err.note(
+                            "inner doc comments like this (starting with \
+                                  `//!` or `/*!`) can only appear before items",
+                        );
                         return Err(err);
                     }
                     attrs.push(attr);
@@ -71,16 +72,14 @@ impl<'a> Parser<'a> {
     /// If `permit_inner` is `true`, then a leading `!` indicates an inner
     /// attribute.
     pub fn parse_attribute(&mut self, permit_inner: bool) -> PResult<'a, ast::Attribute> {
-        debug!("parse_attribute: permit_inner={:?} self.token={:?}",
-               permit_inner,
-               self.token);
+        debug!("parse_attribute: permit_inner={:?} self.token={:?}", permit_inner, self.token);
         let inner_parse_policy = if permit_inner {
             InnerAttributeParsePolicy::Permitted
         } else {
             InnerAttributeParsePolicy::NotPermitted {
                 reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG,
                 saw_doc_comment: false,
-                prev_attr_sp: None
+                prev_attr_sp: None,
             }
         };
         self.parse_attribute_with_inner_parse_policy(inner_parse_policy)
@@ -90,11 +89,12 @@ impl<'a> Parser<'a> {
     /// that prescribes how to handle inner attributes.
     fn parse_attribute_with_inner_parse_policy(
         &mut self,
-        inner_parse_policy: InnerAttributeParsePolicy<'_>
+        inner_parse_policy: InnerAttributeParsePolicy<'_>,
     ) -> PResult<'a, ast::Attribute> {
-        debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
-               inner_parse_policy,
-               self.token);
+        debug!(
+            "parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
+            inner_parse_policy, self.token
+        );
         let (span, item, style) = match self.token.kind {
             token::Pound => {
                 let lo = self.token.span;
@@ -120,17 +120,19 @@ impl<'a> Parser<'a> {
 
                 // Emit error if inner attribute is encountered and not permitted
                 if style == ast::AttrStyle::Inner {
-                    if let InnerAttributeParsePolicy::NotPermitted { reason,
-                        saw_doc_comment, prev_attr_sp } = inner_parse_policy {
+                    if let InnerAttributeParsePolicy::NotPermitted {
+                        reason,
+                        saw_doc_comment,
+                        prev_attr_sp,
+                    } = inner_parse_policy
+                    {
                         let prev_attr_note = if saw_doc_comment {
                             "previous doc comment"
                         } else {
                             "previous outer attribute"
                         };
 
-                        let mut diagnostic = self
-                            .diagnostic()
-                            .struct_span_err(attr_sp, reason);
+                        let mut diagnostic = self.diagnostic().struct_span_err(attr_sp, reason);
 
                         if let Some(prev_attr_sp) = prev_attr_sp {
                             diagnostic
@@ -139,10 +141,12 @@ impl<'a> Parser<'a> {
                         }
 
                         diagnostic
-                            .note("inner attributes, like `#![no_std]`, annotate the item \
+                            .note(
+                                "inner attributes, like `#![no_std]`, annotate the item \
                                    enclosing them, and are usually found at the beginning of \
                                    source files. Outer attributes, like `#[test]`, annotate the \
-                                   item following them.")
+                                   item following them.",
+                            )
                             .emit()
                     }
                 }
@@ -226,11 +230,14 @@ impl<'a> Parser<'a> {
 
         if !lit.kind.is_unsuffixed() {
             let msg = "suffixed literals are not allowed in attributes";
-            self.diagnostic().struct_span_err(lit.span, msg)
-                             .help("instead of using a suffixed literal \
+            self.diagnostic()
+                .struct_span_err(lit.span, msg)
+                .help(
+                    "instead of using a suffixed literal \
                                     (1u8, 1.0f32, etc.), use an unsuffixed version \
-                                    (1, 1.0, etc.).")
-                             .emit()
+                                    (1, 1.0, etc.).",
+                )
+                .emit()
         }
 
         Ok(lit)
@@ -288,7 +295,7 @@ impl<'a> Parser<'a> {
                     Ok(meta)
                 }
                 None => self.unexpected(),
-            }
+            };
         }
 
         let lo = self.token.span;

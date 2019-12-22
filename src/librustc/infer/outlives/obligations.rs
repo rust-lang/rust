@@ -59,15 +59,15 @@
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 
+use crate::hir;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
-use rustc_data_structures::fx::FxHashMap;
-use crate::hir;
 use crate::traits::ObligationCause;
 use crate::ty::outlives::Component;
-use crate::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::GenericArgKind;
+use crate::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
+use rustc_data_structures::fx::FxHashMap;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Registers that the given region obligation must be resolved
@@ -80,14 +80,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         body_id: hir::HirId,
         obligation: RegionObligation<'tcx>,
     ) {
-        debug!(
-            "register_region_obligation(body_id={:?}, obligation={:?})",
-            body_id, obligation
-        );
+        debug!("register_region_obligation(body_id={:?}, obligation={:?})", body_id, obligation);
 
-        self.region_obligations
-            .borrow_mut()
-            .push((body_id, obligation));
+        self.region_obligations.borrow_mut().push((body_id, obligation));
     }
 
     pub fn register_region_obligation_with_cause(
@@ -102,11 +97,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         self.register_region_obligation(
             cause.body_id,
-            RegionObligation {
-                sup_type,
-                sub_region,
-                origin,
-            },
+            RegionObligation { sup_type, sub_region, origin },
         );
     }
 
@@ -163,15 +154,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         let my_region_obligations = self.take_registered_region_obligations();
 
-        for (
-            body_id,
-            RegionObligation {
-                sup_type,
-                sub_region,
-                origin,
-            },
-        ) in my_region_obligations
-        {
+        for (body_id, RegionObligation { sup_type, sub_region, origin }) in my_region_obligations {
             debug!(
                 "process_registered_region_obligations: sup_type={:?} sub_region={:?} origin={:?}",
                 sup_type, sub_region, origin
@@ -291,10 +274,7 @@ where
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
     ) {
-        debug!(
-            "type_must_outlive(ty={:?}, region={:?}, origin={:?})",
-            ty, region, origin
-        );
+        debug!("type_must_outlive(ty={:?}, region={:?}, origin={:?})", ty, region, origin);
 
         assert!(!ty.has_escaping_bound_vars());
 
@@ -313,8 +293,7 @@ where
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
-                    self.delegate
-                        .push_sub_region_constraint(origin, region, region1);
+                    self.delegate.push_sub_region_constraint(origin, region, region1);
                 }
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);
@@ -351,8 +330,7 @@ where
 
         let generic = GenericKind::Param(param_ty);
         let verify_bound = self.verify_bound.generic_bound(generic);
-        self.delegate
-            .push_verify(origin, generic, region, verify_bound);
+        self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 
     fn projection_must_outlive(
@@ -383,34 +361,28 @@ where
         // Compute the bounds we can derive from the trait definition.
         // These are guaranteed to apply, no matter the inference
         // results.
-        let trait_bounds: Vec<_> = self.verify_bound
-            .projection_declared_bounds_from_trait(projection_ty)
-            .collect();
+        let trait_bounds: Vec<_> =
+            self.verify_bound.projection_declared_bounds_from_trait(projection_ty).collect();
 
         // Compute the bounds we can derive from the environment. This
         // is an "approximate" match -- in some cases, these bounds
         // may not apply.
-        let mut approx_env_bounds = self.verify_bound
-            .projection_approx_declared_bounds_from_env(projection_ty);
-        debug!(
-            "projection_must_outlive: approx_env_bounds={:?}",
-            approx_env_bounds
-        );
+        let mut approx_env_bounds =
+            self.verify_bound.projection_approx_declared_bounds_from_env(projection_ty);
+        debug!("projection_must_outlive: approx_env_bounds={:?}", approx_env_bounds);
 
         // Remove outlives bounds that we get from the environment but
         // which are also deducable from the trait. This arises (cc
         // #55756) in cases where you have e.g., `<T as Foo<'a>>::Item:
         // 'a` in the environment but `trait Foo<'b> { type Item: 'b
         // }` in the trait definition.
-        approx_env_bounds.retain(|bound| {
-            match bound.0.kind {
-                ty::Projection(projection_ty) => {
-                    self.verify_bound.projection_declared_bounds_from_trait(projection_ty)
-                        .all(|r| r != bound.1)
-                }
+        approx_env_bounds.retain(|bound| match bound.0.kind {
+            ty::Projection(projection_ty) => self
+                .verify_bound
+                .projection_declared_bounds_from_trait(projection_ty)
+                .all(|r| r != bound.1),
 
-                _ => panic!("expected only projection types from env, not {:?}", bound.0),
-            }
+            _ => panic!("expected only projection types from env, not {:?}", bound.0),
         });
 
         // If declared bounds list is empty, the only applicable rule is
@@ -465,13 +437,9 @@ where
                 .all(|b| *b == trait_bounds[0])
         {
             let unique_bound = trait_bounds[0];
-            debug!(
-                "projection_must_outlive: unique trait bound = {:?}",
-                unique_bound
-            );
+            debug!("projection_must_outlive: unique trait bound = {:?}", unique_bound);
             debug!("projection_must_outlive: unique declared bound appears in trait ref");
-            self.delegate
-                .push_sub_region_constraint(origin, region, unique_bound);
+            self.delegate.push_sub_region_constraint(origin, region, unique_bound);
             return;
         }
 
@@ -482,8 +450,7 @@ where
         // even though a satisfactory solution exists.
         let generic = GenericKind::Projection(projection_ty);
         let verify_bound = self.verify_bound.generic_bound(generic);
-        self.delegate
-            .push_verify(origin, generic.clone(), region, verify_bound);
+        self.delegate.push_verify(origin, generic.clone(), region, verify_bound);
     }
 }
 

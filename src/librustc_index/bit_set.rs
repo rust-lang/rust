@@ -37,22 +37,14 @@ impl<T: Idx> BitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        BitSet {
-            domain_size,
-            words: vec![0; num_words],
-            marker: PhantomData,
-        }
+        BitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        let mut result = BitSet {
-            domain_size,
-            words: vec![!0; num_words],
-            marker: PhantomData,
-        };
+        let mut result = BitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
         result.clear_excess_bits();
         result
     }
@@ -160,7 +152,7 @@ impl<T: Idx> BitSet<T> {
     /// (i.e., if any bits were removed).
     pub fn intersect(&mut self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut self.words, &other.words, |a, b| { a & b })
+        bitwise(&mut self.words, &other.words, |a, b| a & b)
     }
 
     /// Gets a slice of the underlying words.
@@ -200,7 +192,7 @@ impl<T: Idx> BitSet<T> {
                 // Were there any bits in the old word that did not occur in the sparse set?
                 not_already |= (self.words[current_index] ^ new_bit_mask) != 0;
                 // Check all words we skipped for any set bit.
-                not_already |= self.words[current_index+1..word_index].iter().any(|&x| x != 0);
+                not_already |= self.words[current_index + 1..word_index].iter().any(|&x| x != 0);
                 // Update next word.
                 current_index = word_index;
                 // Reset bit mask, no bits have been merged yet.
@@ -214,7 +206,7 @@ impl<T: Idx> BitSet<T> {
         // Any bits in the last inspected word that were not in the sparse set?
         not_already |= (self.words[current_index] ^ new_bit_mask) != 0;
         // Any bits in the tail? Note `clear_excess_bits` before.
-        not_already |= self.words[current_index+1..].iter().any(|&x| x != 0);
+        not_already |= self.words[current_index + 1..].iter().any(|&x| x != 0);
 
         not_already
     }
@@ -237,22 +229,20 @@ pub trait SubtractFromBitSet<T: Idx> {
 impl<T: Idx> UnionIntoBitSet<T> for BitSet<T> {
     fn union_into(&self, other: &mut BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| { a | b })
+        bitwise(&mut other.words, &self.words, |a, b| a | b)
     }
 }
 
 impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
     fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| { a & !b })
+        bitwise(&mut other.words, &self.words, |a, b| a & !b)
     }
 }
 
 impl<T: Idx> fmt::Debug for BitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
-        w.debug_list()
-         .entries(self.iter())
-         .finish()
+        w.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -267,7 +257,8 @@ impl<T: Idx> ToString for BitSet<T> {
         let mut i = 0;
         for word in &self.words {
             let mut word = *word;
-            for _ in 0..WORD_BYTES { // for each byte in `word`:
+            for _ in 0..WORD_BYTES {
+                // for each byte in `word`:
                 let remain = self.domain_size - i;
                 // If less than a byte remains, then mask just that many bits.
                 let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
@@ -276,7 +267,9 @@ impl<T: Idx> ToString for BitSet<T> {
 
                 result.push_str(&format!("{}{:02x}", sep, byte));
 
-                if remain <= 8 { break; }
+                if remain <= 8 {
+                    break;
+                }
                 word >>= 8;
                 i += 8;
                 sep = '-';
@@ -301,7 +294,7 @@ pub struct BitIter<'a, T: Idx> {
     /// Underlying iterator over the words.
     iter: slice::Iter<'a, Word>,
 
-    marker: PhantomData<T>
+    marker: PhantomData<T>,
 }
 
 impl<'a, T: Idx> BitIter<'a, T> {
@@ -331,7 +324,7 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
                 let bit_pos = self.word.trailing_zeros() as usize;
                 let bit = 1 << bit_pos;
                 self.word ^= bit;
-                return Some(T::new(bit_pos + self.offset))
+                return Some(T::new(bit_pos + self.offset));
             }
 
             // Move onto the next word. `wrapping_add()` is needed to handle
@@ -345,7 +338,8 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
 
 #[inline]
 fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
-    where Op: Fn(Word, Word) -> Word
+where
+    Op: Fn(Word, Word) -> Word,
 {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
@@ -374,10 +368,7 @@ pub struct SparseBitSet<T: Idx> {
 
 impl<T: Idx> SparseBitSet<T> {
     fn new_empty(domain_size: usize) -> Self {
-        SparseBitSet {
-            domain_size,
-            elems: SmallVec::new()
-        }
+        SparseBitSet { domain_size, elems: SmallVec::new() }
     }
 
     fn len(&self) -> usize {
@@ -698,11 +689,7 @@ impl<T: Idx> GrowableBitSet<T> {
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        if let Some(word) = self.bit_set.words.get(word_index) {
-            (word & mask) != 0
-        } else {
-            false
-        }
+        if let Some(word) = self.bit_set.words.get(word_index) { (word & mask) != 0 } else { false }
     }
 }
 
@@ -913,10 +900,7 @@ where
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Creates a new empty sparse bit matrix with no rows or columns.
     pub fn new(num_columns: usize) -> Self {
-        Self {
-            num_columns,
-            rows: IndexVec::new(),
-        }
+        Self { num_columns, rows: IndexVec::new() }
     }
 
     fn ensure_row(&mut self, row: R) -> &mut HybridBitSet<C> {
@@ -986,11 +970,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     }
 
     pub fn row(&self, row: R) -> Option<&HybridBitSet<C>> {
-        if let Some(Some(row)) = self.rows.get(row) {
-            Some(row)
-        } else {
-            None
-        }
+        if let Some(Some(row)) = self.rows.get(row) { Some(row) } else { None }
     }
 }
 

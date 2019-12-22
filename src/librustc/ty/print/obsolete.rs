@@ -137,8 +137,7 @@ impl DefPathBasedNames<'tcx> {
                     self.push_type_name(sig.output(), output, debug);
                 }
             }
-            ty::Generator(def_id,  substs, _)
-            | ty::Closure(def_id, substs) => {
+            ty::Generator(def_id, substs, _) | ty::Closure(def_id, substs) => {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = substs.truncate_to(self.tcx, generics);
@@ -175,10 +174,7 @@ impl DefPathBasedNames<'tcx> {
         } else if debug {
             write!(output, "{:?}", c).unwrap()
         } else {
-            bug!(
-                "DefPathBasedNames: trying to create const name for unexpected const: {:?}",
-                c,
-            );
+            bug!("DefPathBasedNames: trying to create const name for unexpected const: {:?}", c,);
         }
         output.push_str(": ");
         self.push_type_name(c.ty, output, debug);
@@ -198,8 +194,7 @@ impl DefPathBasedNames<'tcx> {
             if self.omit_disambiguators {
                 write!(output, "{}::", part.data.as_symbol()).unwrap();
             } else {
-                write!(output, "{}[{}]::", part.data.as_symbol(), part.disambiguator)
-                    .unwrap();
+                write!(output, "{}[{}]::", part.data.as_symbol(), part.disambiguator).unwrap();
             }
         }
 

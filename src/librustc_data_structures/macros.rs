@@ -7,7 +7,7 @@ macro_rules! static_assert {
         // is out-of-bounds.
         #[allow(dead_code)]
         const _: () = [()][!($test: bool) as usize];
-    }
+    };
 }
 
 /// Type size assertion. The first argument is a type and the second argument is its expected size.
@@ -15,5 +15,5 @@ macro_rules! static_assert {
 macro_rules! static_assert_size {
     ($ty:ty, $size:expr) => {
         const _: [(); $size] = [(); ::std::mem::size_of::<$ty>()];
-    }
+    };
 }

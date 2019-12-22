@@ -1,5 +1,5 @@
-use crate::hir::BindingAnnotation::*;
 use crate::hir::BindingAnnotation;
+use crate::hir::BindingAnnotation::*;
 use crate::hir::Mutability;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable)]

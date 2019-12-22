@@ -1,10 +1,10 @@
+use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use super::Pass;
 
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::util::nodemap::FxHashSet;
-use rustc::hir::def_id::{LOCAL_CRATE, DefId};
 use syntax::symbol::sym;
 
 pub const COLLECT_TRAIT_IMPLS: Pass = Pass {
@@ -17,8 +17,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     let mut synth = SyntheticImplCollector::new(cx);
     let mut krate = synth.fold_crate(krate);
 
-    let prims: FxHashSet<PrimitiveType> =
-        krate.primitives.iter().map(|p| p.1).collect();
+    let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
 
     let crate_items = {
         let mut coll = ItemCollector::new();
@@ -80,21 +79,20 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         }
     }
 
-    let mut cleaner = BadImplStripper {
-        prims,
-        items: crate_items,
-    };
+    let mut cleaner = BadImplStripper { prims, items: crate_items };
 
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in &new_items {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = it.inner {
             if cleaner.keep_item(for_) && trait_.def_id() == cx.tcx.lang_items().deref_trait() {
-                let target = items.iter().filter_map(|item| {
-                    match item.inner {
+                let target = items
+                    .iter()
+                    .filter_map(|item| match item.inner {
                         TypedefItem(ref t, true) => Some(&t.type_),
                         _ => None,
-                    }
-                }).next().expect("Deref impl without Target type");
+                    })
+                    .next()
+                    .expect("Deref impl without Target type");
 
                 if let Some(prim) = target.primitive_type() {
                     cleaner.prims.insert(prim);
@@ -107,9 +105,9 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
     new_items.retain(|it| {
         if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = it.inner {
-            cleaner.keep_item(for_) ||
-                trait_.as_ref().map_or(false, |t| cleaner.keep_item(t)) ||
-                blanket_impl.is_some()
+            cleaner.keep_item(for_)
+                || trait_.as_ref().map_or(false, |t| cleaner.keep_item(t))
+                || blanket_impl.is_some()
         } else {
             true
         }
@@ -145,10 +143,7 @@ struct SyntheticImplCollector<'a, 'tcx> {
 
 impl<'a, 'tcx> SyntheticImplCollector<'a, 'tcx> {
     fn new(cx: &'a DocContext<'tcx>) -> Self {
-        SyntheticImplCollector {
-            cx,
-            impls: Vec::new(),
-        }
+        SyntheticImplCollector { cx, impls: Vec::new() }
     }
 }
 

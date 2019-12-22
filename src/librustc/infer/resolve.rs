@@ -1,7 +1,7 @@
-use super::{InferCtxt, FixupError, FixupResult, Span};
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::ty::{self, Ty, Const, TyCtxt, TypeFoldable, InferConst};
+use super::{FixupError, FixupResult, InferCtxt, Span};
 use crate::ty::fold::{TypeFolder, TypeVisitor};
+use crate::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC VAR RESOLVER
@@ -75,11 +75,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticTypeAndRegionResolver<'a, 'tcx>
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(rid) =>
-                self.infcx.borrow_region_constraints()
-                          .opportunistic_resolve_var(self.tcx(), rid),
-            _ =>
-                r,
+            ty::ReVar(rid) => {
+                self.infcx.borrow_region_constraints().opportunistic_resolve_var(self.tcx(), rid)
+            }
+            _ => r,
         }
     }
 
@@ -120,8 +119,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
             if let ty::Infer(infer_ty) = t.kind {
                 // Since we called `shallow_resolve` above, this must
                 // be an (as yet...) unresolved inference variable.
-                let ty_var_span =
-                if let ty::TyVar(ty_vid) = infer_ty {
+                let ty_var_span = if let ty::TyVar(ty_vid) = infer_ty {
                     let ty_vars = self.infcx.type_variables.borrow();
                     if let TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeParameterDefinition(_, _),
@@ -136,7 +134,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
                     None
                 };
                 self.first_unresolved = Some((t, ty_var_span));
-                true  // Halt visiting.
+                true // Halt visiting.
             } else {
                 // Otherwise, visit its contents.
                 t.super_visit_with(self)
@@ -148,7 +146,6 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
         }
     }
 }
-
 
 ///////////////////////////////////////////////////////////////////////////
 // FULL TYPE RESOLUTION
@@ -183,8 +180,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !t.needs_infer() && !ty::keep_local(&t) {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
-              // ^ we need to have the `keep_local` check to un-default
-              // defaulted tuples.
+        // ^ we need to have the `keep_local` check to un-default
+        // defaulted tuples.
         } else {
             let t = self.infcx.shallow_resolve(t);
             match t.kind {
@@ -203,20 +200,20 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
                 ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
                 }
-                _ => {
-                    t.super_fold_with(self)
-                }
+                _ => t.super_fold_with(self),
             }
         }
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(rid) => self.infcx.lexical_region_resolutions
-                                        .borrow()
-                                        .as_ref()
-                                        .expect("region resolution not performed")
-                                        .resolve_var(rid),
+            ty::ReVar(rid) => self
+                .infcx
+                .lexical_region_resolutions
+                .borrow()
+                .as_ref()
+                .expect("region resolution not performed")
+                .resolve_var(rid),
             _ => r,
         }
     }
@@ -224,8 +221,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         if !c.needs_infer() && !ty::keep_local(&c) {
             c // micro-optimize -- if there is nothing in this const that this fold affects...
-              // ^ we need to have the `keep_local` check to un-default
-              // defaulted tuples.
+        // ^ we need to have the `keep_local` check to un-default
+        // defaulted tuples.
         } else {
             let c = self.infcx.shallow_resolve(c);
             match c.val {

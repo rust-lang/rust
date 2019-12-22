@@ -1,12 +1,12 @@
-use crate::ty::{self, FloatVarValue, IntVarValue, Ty, TyCtxt, InferConst};
-use rustc_data_structures::unify::{NoError, EqUnifyValue, UnifyKey, UnifyValue, UnificationTable};
+use crate::ty::{self, FloatVarValue, InferConst, IntVarValue, Ty, TyCtxt};
 use rustc_data_structures::unify::InPlace;
-use syntax_pos::{Span, DUMMY_SP};
+use rustc_data_structures::unify::{EqUnifyValue, NoError, UnificationTable, UnifyKey, UnifyValue};
 use syntax::symbol::Symbol;
+use syntax_pos::{Span, DUMMY_SP};
 
+use std::cell::RefMut;
 use std::cmp;
 use std::marker::PhantomData;
-use std::cell::RefMut;
 
 pub trait ToType {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
@@ -14,9 +14,15 @@ pub trait ToType {
 
 impl UnifyKey for ty::IntVid {
     type Value = Option<IntVarValue>;
-    fn index(&self) -> u32 { self.index }
-    fn from_index(i: u32) -> ty::IntVid { ty::IntVid { index: i } }
-    fn tag() -> &'static str { "IntVid" }
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> ty::IntVid {
+        ty::IntVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "IntVid"
+    }
 }
 
 impl EqUnifyValue for IntVarValue {}
@@ -26,7 +32,7 @@ pub struct RegionVidKey {
     /// The minimum region vid in the unification set. This is needed
     /// to have a canonical name for a type to prevent infinite
     /// recursion.
-    pub min_vid: ty::RegionVid
+    pub min_vid: ty::RegionVid,
 }
 
 impl UnifyValue for RegionVidKey {
@@ -45,9 +51,15 @@ impl UnifyValue for RegionVidKey {
 
 impl UnifyKey for ty::RegionVid {
     type Value = RegionVidKey;
-    fn index(&self) -> u32 { u32::from(*self) }
-    fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid::from(i) }
-    fn tag() -> &'static str { "RegionVid" }
+    fn index(&self) -> u32 {
+        u32::from(*self)
+    }
+    fn from_index(i: u32) -> ty::RegionVid {
+        ty::RegionVid::from(i)
+    }
+    fn tag() -> &'static str {
+        "RegionVid"
+    }
 }
 
 impl ToType for IntVarValue {
@@ -63,9 +75,15 @@ impl ToType for IntVarValue {
 
 impl UnifyKey for ty::FloatVid {
     type Value = Option<FloatVarValue>;
-    fn index(&self) -> u32 { self.index }
-    fn from_index(i: u32) -> ty::FloatVid { ty::FloatVid { index: i } }
-    fn tag() -> &'static str { "FloatVid" }
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> ty::FloatVid {
+        ty::FloatVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "FloatVid"
+    }
 }
 
 impl EqUnifyValue for FloatVarValue {}
@@ -125,9 +143,15 @@ pub struct ConstVarValue<'tcx> {
 
 impl<'tcx> UnifyKey for ty::ConstVid<'tcx> {
     type Value = ConstVarValue<'tcx>;
-    fn index(&self) -> u32 { self.index }
-    fn from_index(i: u32) -> Self { ty::ConstVid { index: i, phantom: PhantomData } }
-    fn tag() -> &'static str { "ConstVid" }
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> Self {
+        ty::ConstVid { index: i, phantom: PhantomData }
+    }
+    fn tag() -> &'static str {
+        "ConstVid"
+    }
 }
 
 impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
@@ -135,10 +159,7 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
         let val = match (value1.val, value2.val) {
-            (
-                ConstVariableValue::Known { .. },
-                ConstVariableValue::Known { .. }
-            ) => {
+            (ConstVariableValue::Known { .. }, ConstVariableValue::Known { .. }) => {
                 bug!("equating two const variables, both of which have known values")
             }
 
@@ -151,8 +172,10 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
             }
 
             // If both sides are *unknown*, it hardly matters, does it?
-            (ConstVariableValue::Unknown { universe: universe1 },
-             ConstVariableValue::Unknown { universe: universe2 }) =>  {
+            (
+                ConstVariableValue::Unknown { universe: universe1 },
+                ConstVariableValue::Unknown { universe: universe2 },
+            ) => {
                 // If we unify two unbound variables, ?T and ?U, then whatever
                 // value they wind up taking (which must be the same value) must
                 // be nameable by both universes. Therefore, the resulting
@@ -177,7 +200,7 @@ impl<'tcx> EqUnifyValue for &'tcx ty::Const<'tcx> {}
 
 pub fn replace_if_possible(
     mut table: RefMut<'_, UnificationTable<InPlace<ty::ConstVid<'tcx>>>>,
-    c: &'tcx ty::Const<'tcx>
+    c: &'tcx ty::Const<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
     if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = c {
         match table.probe_value(*vid).val.known() {

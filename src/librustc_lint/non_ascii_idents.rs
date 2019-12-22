@@ -16,7 +16,8 @@ impl EarlyLintPass for NonAsciiIdents {
                 NON_ASCII_IDENTS,
                 ident.span,
                 "identifier contains non-ASCII characters",
-            ).emit();
+            )
+            .emit();
         }
     }
 }

@@ -5,8 +5,8 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc::hir;
-use rustc::ty::{TyCtxt, Instance};
-use syntax::symbol::{Symbol, sym};
+use rustc::ty::{Instance, TyCtxt};
+use syntax::symbol::{sym, Symbol};
 
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
 const DEF_PATH: Symbol = sym::rustc_def_path;
@@ -30,8 +30,7 @@ struct SymbolNamesTest<'tcx> {
 }
 
 impl SymbolNamesTest<'tcx> {
-    fn process_attrs(&mut self,
-                     hir_id: hir::HirId) {
+    fn process_attrs(&mut self, hir_id: hir::HirId) {
         let tcx = self.tcx;
         let def_id = tcx.hir().local_def_id(hir_id);
         for attr in tcx.get_attrs(def_id).iter() {

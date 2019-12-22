@@ -1,21 +1,17 @@
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::{Canonical, QueryResponse};
-use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use rustc::traits::query::dropck_outlives::trivial_dropck_outlives;
+use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
-use rustc::traits::{TraitEngine, Normalized, ObligationCause, TraitEngineExt};
+use rustc::traits::{Normalized, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{Subst, InternalSubsts};
+use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashSet;
 use syntax::source_map::{Span, DUMMY_SP};
 
 crate fn provide(p: &mut Providers<'_>) {
-    *p = Providers {
-        dropck_outlives,
-        adt_dtorck_constraint,
-        ..*p
-    };
+    *p = Providers { dropck_outlives, adt_dtorck_constraint, ..*p };
 }
 
 fn dropck_outlives<'tcx>(
@@ -29,15 +25,9 @@ fn dropck_outlives<'tcx>(
         &canonical_goal,
         |ref infcx, goal, canonical_inference_vars| {
             let tcx = infcx.tcx;
-            let ParamEnvAnd {
-                param_env,
-                value: for_ty,
-            } = goal;
+            let ParamEnvAnd { param_env, value: for_ty } = goal;
 
-            let mut result = DropckOutlivesResult {
-                kinds: vec![],
-                overflows: vec![],
-            };
+            let mut result = DropckOutlivesResult { kinds: vec![], overflows: vec![] };
 
             // A stack of types left to process. Each round, we pop
             // something from the stack and invoke
@@ -83,8 +73,12 @@ fn dropck_outlives<'tcx>(
             let cause = ObligationCause::dummy();
             let mut constraints = DtorckConstraint::empty();
             while let Some((ty, depth)) = ty_stack.pop() {
-                info!("{} kinds, {} overflows, {} ty_stack",
-                    result.kinds.len(), result.overflows.len(), ty_stack.len());
+                info!(
+                    "{} kinds, {} overflows, {} ty_stack",
+                    result.kinds.len(),
+                    result.overflows.len(),
+                    ty_stack.len()
+                );
                 dtorck_constraint_for_ty(tcx, DUMMY_SP, for_ty, depth, ty, &mut constraints)?;
 
                 // "outlives" represent types/regions that may be touched
@@ -106,10 +100,7 @@ fn dropck_outlives<'tcx>(
                 // to push them onto the stack to be expanded.
                 for ty in constraints.dtorck_types.drain(..) {
                     match infcx.at(&cause, param_env).normalize(&ty) {
-                        Ok(Normalized {
-                            value: ty,
-                            obligations,
-                        }) => {
+                        Ok(Normalized { value: ty, obligations }) => {
                             fulfill_cx.register_predicate_obligations(infcx, obligations);
 
                             debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
@@ -147,7 +138,7 @@ fn dropck_outlives<'tcx>(
             infcx.make_canonicalized_query_response(
                 canonical_inference_vars,
                 result,
-                &mut *fulfill_cx
+                &mut *fulfill_cx,
             )
         },
     )
@@ -163,10 +154,7 @@ fn dtorck_constraint_for_ty<'tcx>(
     ty: Ty<'tcx>,
     constraints: &mut DtorckConstraint<'tcx>,
 ) -> Result<(), NoSolution> {
-    debug!(
-        "dtorck_constraint_for_ty({:?}, {:?}, {:?}, {:?})",
-        span, for_ty, depth, ty
-    );
+    debug!("dtorck_constraint_for_ty({:?}, {:?}, {:?}, {:?})", span, for_ty, depth, ty);
 
     if depth >= *tcx.sess.recursion_limit.get() {
         constraints.overflows.push(ty);
@@ -199,12 +187,23 @@ fn dtorck_constraint_for_ty<'tcx>(
             dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)?;
         }
 
-        ty::Tuple(tys) => for ty in tys.iter() {
-            dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty.expect_ty(), constraints)?;
-        },
+        ty::Tuple(tys) => {
+            for ty in tys.iter() {
+                dtorck_constraint_for_ty(
+                    tcx,
+                    span,
+                    for_ty,
+                    depth + 1,
+                    ty.expect_ty(),
+                    constraints,
+                )?;
+            }
+        }
 
-        ty::Closure(def_id, substs) => for ty in substs.as_closure().upvar_tys(def_id, tcx) {
-            dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
+        ty::Closure(def_id, substs) => {
+            for ty in substs.as_closure().upvar_tys(def_id, tcx) {
+                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
+            }
         }
 
         ty::Generator(def_id, substs, _movability) => {
@@ -231,16 +230,17 @@ fn dtorck_constraint_for_ty<'tcx>(
             // derived from lifetimes attached to the upvars, and we
             // *do* incorporate the upvars here.
 
-            constraints.outlives.extend(substs.as_generator().upvar_tys(def_id, tcx)
-                .map(|t| -> ty::subst::GenericArg<'tcx> { t.into() }));
+            constraints.outlives.extend(
+                substs
+                    .as_generator()
+                    .upvar_tys(def_id, tcx)
+                    .map(|t| -> ty::subst::GenericArg<'tcx> { t.into() }),
+            );
         }
 
         ty::Adt(def, substs) => {
-            let DtorckConstraint {
-                dtorck_types,
-                outlives,
-                overflows,
-            } = tcx.at(span).adt_dtorck_constraint(def.did)?;
+            let DtorckConstraint { dtorck_types, outlives, overflows } =
+                tcx.at(span).adt_dtorck_constraint(def.did)?;
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
             constraints.dtorck_types.extend(dtorck_types.subst(tcx, substs));
@@ -252,19 +252,19 @@ fn dtorck_constraint_for_ty<'tcx>(
         // to be called.
         ty::Dynamic(..) => {
             constraints.outlives.push(ty.into());
-        },
+        }
 
         // Types that can't be resolved. Pass them forward.
         ty::Projection(..) | ty::Opaque(..) | ty::Param(..) => {
             constraints.dtorck_types.push(ty);
-        },
+        }
 
         ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error => {
             // By the time this code runs, all type variables ought to
             // be fully resolved.
-            return Err(NoSolution)
+            return Err(NoSolution);
         }
     }
 
@@ -312,6 +312,5 @@ fn dedup_dtorck_constraint(c: &mut DtorckConstraint<'_>) {
     let mut dtorck_types = FxHashSet::default();
 
     c.outlives.retain(|&val| outlives.replace(val).is_none());
-    c.dtorck_types
-        .retain(|&val| dtorck_types.replace(val).is_none());
+    c.dtorck_types.retain(|&val| dtorck_types.replace(val).is_none());
 }

@@ -31,23 +31,23 @@
 use crate::io::{self, Error, ErrorKind};
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::tcp::{TcpStream, TcpListener, Incoming};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::udp::UdpSocket;
+pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::parser::AddrParseError;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::tcp::{Incoming, TcpListener, TcpStream};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::udp::UdpSocket;
 
-mod ip;
 mod addr;
-mod tcp;
-mod udp;
+mod ip;
 mod parser;
+mod tcp;
 #[cfg(test)]
 mod test;
+mod udp;
 
 /// Possible values which can be passed to the [`shutdown`] method of
 /// [`TcpStream`].
@@ -86,16 +86,21 @@ pub enum Shutdown {
 }
 
 #[inline]
-const fn htons(i: u16) -> u16 { i.to_be() }
+const fn htons(i: u16) -> u16 {
+    i.to_be()
+}
 #[inline]
-const fn ntohs(i: u16) -> u16 { u16::from_be(i) }
+const fn ntohs(i: u16) -> u16 {
+    u16::from_be(i)
+}
 
 fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
-    where F: FnMut(io::Result<&SocketAddr>) -> io::Result<T>
+where
+    F: FnMut(io::Result<&SocketAddr>) -> io::Result<T>,
 {
     let addrs = match addr.to_socket_addrs() {
         Ok(addrs) => addrs,
-        Err(e) => return f(Err(e))
+        Err(e) => return f(Err(e)),
     };
     let mut last_err = None;
     for addr in addrs {
@@ -105,7 +110,6 @@ fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
         }
     }
     Err(last_err.unwrap_or_else(|| {
-        Error::new(ErrorKind::InvalidInput,
-                   "could not resolve to any addresses")
+        Error::new(ErrorKind::InvalidInput, "could not resolve to any addresses")
     }))
 }

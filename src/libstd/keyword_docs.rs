@@ -27,7 +27,7 @@
 ///
 /// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
 /// [`crate`]: keyword.crate.html
-mod as_keyword { }
+mod as_keyword {}
 
 #[doc(keyword = "break")]
 //
@@ -99,7 +99,7 @@ mod as_keyword { }
 /// [Reference on "break and loop values"]:
 /// ../reference/expressions/loop-expr.html#break-and-loop-values
 ///
-mod break_keyword { }
+mod break_keyword {}
 
 #[doc(keyword = "const")]
 //
@@ -153,7 +153,7 @@ mod break_keyword { }
 /// [Rust Book]:
 /// ../book/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
 /// [Reference]: ../reference/items/constant-items.html
-mod const_keyword { }
+mod const_keyword {}
 
 #[doc(keyword = "continue")]
 //
@@ -193,7 +193,7 @@ mod const_keyword { }
 /// See [continue expressions] from the reference for more details.
 ///
 /// [continue expressions]: ../reference/expressions/loop-expr.html#continue-expressions
-mod continue_keyword { }
+mod continue_keyword {}
 
 #[doc(keyword = "crate")]
 //
@@ -230,7 +230,7 @@ mod continue_keyword { }
 /// module `foo`, from anywhere else in the same crate.
 ///
 /// [Reference]: ../reference/items/extern-crates.html
-mod crate_keyword { }
+mod crate_keyword {}
 
 #[doc(keyword = "else")]
 //
@@ -240,7 +240,7 @@ mod crate_keyword { }
 ///
 /// [`if`]: keyword.if.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod else_keyword { }
+mod else_keyword {}
 
 #[doc(keyword = "enum")]
 //
@@ -296,7 +296,7 @@ mod else_keyword { }
 /// [`Option`]: option/enum.Option.html
 /// [Rust Book]: ../book/ch06-01-defining-an-enum.html
 /// [Reference]: ../reference/items/enumerations.html
-mod enum_keyword { }
+mod enum_keyword {}
 
 #[doc(keyword = "extern")]
 //
@@ -338,7 +338,7 @@ mod enum_keyword { }
 /// [Rust book]:
 /// ../book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
 /// [Reference]: ../reference/items/external-blocks.html
-mod extern_keyword { }
+mod extern_keyword {}
 
 #[doc(keyword = "false")]
 //
@@ -348,7 +348,7 @@ mod extern_keyword { }
 ///
 /// [`bool`]: primitive.bool.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod false_keyword { }
+mod false_keyword {}
 
 #[doc(keyword = "fn")]
 //
@@ -415,7 +415,7 @@ mod false_keyword { }
 /// [`extern`]: keyword.extern.html
 /// [Rust book]: ../book/ch03-03-how-functions-work.html
 /// [Reference]: ../reference/items/functions.html
-mod fn_keyword { }
+mod fn_keyword {}
 
 #[doc(keyword = "for")]
 //
@@ -494,7 +494,7 @@ mod fn_keyword { }
 /// [Rust book]:
 /// ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
 /// [Reference]: ../reference/expressions/loop-expr.html#iterator-loops
-mod for_keyword { }
+mod for_keyword {}
 
 #[doc(keyword = "if")]
 //
@@ -568,7 +568,7 @@ mod for_keyword { }
 ///
 /// [Rust book]: ../book/ch03-05-control-flow.html#if-expressions
 /// [Reference]: ../reference/expressions/if-expr.html
-mod if_keyword { }
+mod if_keyword {}
 
 #[doc(keyword = "impl")]
 //
@@ -631,7 +631,7 @@ mod if_keyword { }
 /// [book1]: ../book/ch05-03-method-syntax.html
 /// [Reference]: ../reference/items/implementations.html
 /// [book2]: ../book/ch10-02-traits.html#returning-types-that-implement-traits
-mod impl_keyword { }
+mod impl_keyword {}
 
 #[doc(keyword = "in")]
 //
@@ -641,7 +641,7 @@ mod impl_keyword { }
 ///
 /// [`for`]: keyword.for.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod in_keyword { }
+mod in_keyword {}
 
 #[doc(keyword = "let")]
 //
@@ -704,7 +704,7 @@ mod in_keyword { }
 /// [`if`]: keyword.if.html
 /// [book2]: ../book/ch18-01-all-the-places-for-patterns.html#let-statements
 /// [Reference]: ../reference/statements.html#let-statements
-mod let_keyword { }
+mod let_keyword {}
 
 #[doc(keyword = "while")]
 //
@@ -760,7 +760,7 @@ mod let_keyword { }
 /// [`for`]: keyword.for.html
 /// [`loop`]: keyword.loop.html
 /// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
-mod while_keyword { }
+mod while_keyword {}
 
 #[doc(keyword = "loop")]
 //
@@ -806,7 +806,7 @@ mod while_keyword { }
 /// For more information on `loop` and loops in general, see the [Reference].
 ///
 /// [Reference]: ../reference/expressions/loop-expr.html
-mod loop_keyword { }
+mod loop_keyword {}
 
 #[doc(keyword = "match")]
 //
@@ -856,7 +856,7 @@ mod loop_keyword { }
 /// For more information on `match` and matching in general, see the [Reference].
 ///
 /// [Reference]: ../reference/expressions/match-expr.html
-mod match_keyword { }
+mod match_keyword {}
 
 #[doc(keyword = "mod")]
 //
@@ -866,7 +866,7 @@ mod match_keyword { }
 ///
 /// [modules]: ../reference/items/modules.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod mod_keyword { }
+mod mod_keyword {}
 
 #[doc(keyword = "move")]
 //
@@ -901,7 +901,7 @@ mod mod_keyword { }
 /// [`Fn` trait]: ../std/ops/trait.Fn.html
 /// [closure]: ../book/ch13-01-closures.html
 /// [threads]: ../book/ch16-01-threads.html#using-move-closures-with-threads
-mod move_keyword { }
+mod move_keyword {}
 
 #[doc(keyword = "mut")]
 //
@@ -910,7 +910,7 @@ mod move_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod mut_keyword { }
+mod mut_keyword {}
 
 #[doc(keyword = "pub")]
 //
@@ -919,7 +919,7 @@ mod mut_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod pub_keyword { }
+mod pub_keyword {}
 
 #[doc(keyword = "ref")]
 //
@@ -928,7 +928,7 @@ mod pub_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod ref_keyword { }
+mod ref_keyword {}
 
 #[doc(keyword = "return")]
 //
@@ -937,7 +937,7 @@ mod ref_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod return_keyword { }
+mod return_keyword {}
 
 #[doc(keyword = "self")]
 //
@@ -946,7 +946,7 @@ mod return_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod self_keyword { }
+mod self_keyword {}
 
 #[doc(keyword = "Self")]
 //
@@ -958,7 +958,7 @@ mod self_keyword { }
 /// [`impl`]: keyword.impl.html
 /// [`trait`]: keyword.trait.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod self_upper_keyword { }
+mod self_upper_keyword {}
 
 #[doc(keyword = "static")]
 //
@@ -967,7 +967,7 @@ mod self_upper_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod static_keyword { }
+mod static_keyword {}
 
 #[doc(keyword = "struct")]
 //
@@ -1075,7 +1075,7 @@ mod static_keyword { }
 /// [`PhantomData`]: marker/struct.PhantomData.html
 /// [book]: ../book/ch05-01-defining-structs.html
 /// [reference]: ../reference/items/structs.html
-mod struct_keyword { }
+mod struct_keyword {}
 
 #[doc(keyword = "super")]
 //
@@ -1085,7 +1085,7 @@ mod struct_keyword { }
 ///
 /// [module]: ../reference/items/modules.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod super_keyword { }
+mod super_keyword {}
 
 #[doc(keyword = "trait")]
 //
@@ -1094,7 +1094,7 @@ mod super_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod trait_keyword { }
+mod trait_keyword {}
 
 #[doc(keyword = "true")]
 //
@@ -1104,7 +1104,7 @@ mod trait_keyword { }
 ///
 /// [`bool`]: primitive.bool.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod true_keyword { }
+mod true_keyword {}
 
 #[doc(keyword = "type")]
 //
@@ -1113,7 +1113,7 @@ mod true_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod type_keyword { }
+mod type_keyword {}
 
 #[doc(keyword = "unsafe")]
 //
@@ -1123,7 +1123,7 @@ mod type_keyword { }
 ///
 /// [memory safety]: ../book/ch19-01-unsafe-rust.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod unsafe_keyword { }
+mod unsafe_keyword {}
 
 #[doc(keyword = "use")]
 //
@@ -1132,7 +1132,7 @@ mod unsafe_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod use_keyword { }
+mod use_keyword {}
 
 #[doc(keyword = "where")]
 //
@@ -1141,7 +1141,7 @@ mod use_keyword { }
 /// The documentation for this keyword is [not yet complete]. Pull requests welcome!
 ///
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod where_keyword { }
+mod where_keyword {}
 
 // 2018 Edition keywords
 
@@ -1153,7 +1153,7 @@ mod where_keyword { }
 ///
 /// [`Future`]: ./future/trait.Future.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod async_keyword { }
+mod async_keyword {}
 
 #[doc(keyword = "await")]
 //
@@ -1163,7 +1163,7 @@ mod async_keyword { }
 ///
 /// [`Future`]: ./future/trait.Future.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod await_keyword { }
+mod await_keyword {}
 
 #[doc(keyword = "dyn")]
 //
@@ -1173,7 +1173,7 @@ mod await_keyword { }
 ///
 /// [trait object]: ../book/ch17-02-trait-objects.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod dyn_keyword { }
+mod dyn_keyword {}
 
 #[doc(keyword = "union")]
 //
@@ -1183,4 +1183,4 @@ mod dyn_keyword { }
 ///
 /// [union]: ../reference/items/unions.html
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
-mod union_keyword { }
+mod union_keyword {}

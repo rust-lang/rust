@@ -1,21 +1,21 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use log::debug;
-use smallvec::{smallvec, SmallVec};
 use rustc_feature::Features;
 use rustc_target::spec::PanicStrategy;
+use smallvec::{smallvec, SmallVec};
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::entry::{self, EntryPointType};
-use syntax_expand::base::{ExtCtxt, Resolver};
-use syntax_expand::expand::{AstFragment, ExpansionConfig};
-use syntax::mut_visit::{*, ExpectOne};
+use syntax::mut_visit::{ExpectOne, *};
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::source_map::respan;
 use syntax::symbol::{sym, Symbol};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_expand::base::{ExtCtxt, Resolver};
+use syntax_expand::expand::{AstFragment, ExpansionConfig};
 use syntax_pos::hygiene::{AstPass, SyntaxContext, Transparency};
+use syntax_pos::{Span, DUMMY_SP};
 
 use std::{iter, mem};
 
@@ -59,22 +59,30 @@ pub fn inject(
 
     if should_test {
         let panic_strategy = match (panic_strategy, enable_panic_abort_tests) {
-            (PanicStrategy::Abort, true) =>
-                PanicStrategy::Abort,
+            (PanicStrategy::Abort, true) => PanicStrategy::Abort,
             (PanicStrategy::Abort, false) if panic_strategy == platform_panic_strategy => {
                 // Silently allow compiling with panic=abort on these platforms,
                 // but with old behavior (abort if a test fails).
                 PanicStrategy::Unwind
             }
             (PanicStrategy::Abort, false) => {
-                span_diagnostic.err("building tests with panic=abort is not supported \
-                                     without `-Zpanic_abort_tests`");
+                span_diagnostic.err(
+                    "building tests with panic=abort is not supported \
+                                     without `-Zpanic_abort_tests`",
+                );
                 PanicStrategy::Unwind
             }
             (PanicStrategy::Unwind, _) => PanicStrategy::Unwind,
         };
-        generate_test_harness(sess, resolver, reexport_test_harness_main,
-                              krate, features, panic_strategy, test_runner)
+        generate_test_harness(
+            sess,
+            resolver,
+            reexport_test_harness_main,
+            krate,
+            features,
+            panic_strategy,
+            test_runner,
+        )
     }
 }
 
@@ -96,10 +104,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         if is_test_case(&item) {
             debug!("this is a test item");
 
-            let test = Test {
-                span: item.span,
-                ident: item.ident,
-            };
+            let test = Test { span: item.span, ident: item.ident };
             self.tests.push(test);
         }
 
@@ -111,11 +116,8 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             let mut tests = mem::replace(&mut self.tests, tests);
 
             if !tests.is_empty() {
-                let parent = if item.id == ast::DUMMY_NODE_ID {
-                    ast::CRATE_NODE_ID
-                } else {
-                    item.id
-                };
+                let parent =
+                    if item.id == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { item.id };
                 // Create an identifier that will hygienically resolve the test
                 // case name, even in another module.
                 let expn_id = self.cx.ext_cx.resolver.expansion_for_ast_pass(
@@ -159,21 +161,21 @@ impl MutVisitor for EntryPointCleaner {
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
         let item = match entry::entry_point_type(&item, self.depth) {
-            EntryPointType::MainNamed |
-            EntryPointType::MainAttr |
-            EntryPointType::Start =>
-                item.map(|ast::Item {id, ident, attrs, kind, vis, span, tokens}| {
+            EntryPointType::MainNamed | EntryPointType::MainAttr | EntryPointType::Start => item
+                .map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
                     let allow_ident = Ident::new(sym::allow, self.def_site);
-                    let dc_nested = attr::mk_nested_word_item(
-                        Ident::from_str_and_span("dead_code", self.def_site),
-                    );
+                    let dc_nested = attr::mk_nested_word_item(Ident::from_str_and_span(
+                        "dead_code",
+                        self.def_site,
+                    ));
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
 
                     ast::Item {
                         id,
                         ident,
-                        attrs: attrs.into_iter()
+                        attrs: attrs
+                            .into_iter()
                             .filter(|attr| {
                                 !attr.check_name(sym::main) && !attr.check_name(sym::start)
                             })
@@ -185,8 +187,7 @@ impl MutVisitor for EntryPointCleaner {
                         tokens,
                     }
                 }),
-            EntryPointType::None |
-            EntryPointType::OtherMain => item,
+            EntryPointType::None | EntryPointType::OtherMain => item,
         };
 
         smallvec![item]
@@ -198,13 +199,15 @@ impl MutVisitor for EntryPointCleaner {
 }
 
 /// Crawl over the crate, inserting test reexports and the test main function
-fn generate_test_harness(sess: &ParseSess,
-                         resolver: &mut dyn Resolver,
-                         reexport_test_harness_main: Option<Symbol>,
-                         krate: &mut ast::Crate,
-                         features: &Features,
-                         panic_strategy: PanicStrategy,
-                         test_runner: Option<ast::Path>) {
+fn generate_test_harness(
+    sess: &ParseSess,
+    resolver: &mut dyn Resolver,
+    reexport_test_harness_main: Option<Symbol>,
+    krate: &mut ast::Crate,
+    features: &Features,
+    panic_strategy: PanicStrategy,
+    test_runner: Option<ast::Path>,
+) {
     let mut econfig = ExpansionConfig::default("test".to_string());
     econfig.features = Some(features);
 
@@ -228,13 +231,10 @@ fn generate_test_harness(sess: &ParseSess,
         def_site,
         test_cases: Vec::new(),
         reexport_test_harness_main,
-        test_runner
+        test_runner,
     };
 
-    TestHarnessGenerator {
-        cx,
-        tests: Vec::new(),
-    }.visit_crate(krate);
+    TestHarnessGenerator { cx, tests: Vec::new() }.visit_crate(krate);
 }
 
 /// Creates a function item for use as the main function of a test build.
@@ -276,22 +276,20 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     };
 
     // test::test_main_static(...)
-    let mut test_runner = cx.test_runner.clone().unwrap_or(
-        ecx.path(sp, vec![test_id, ecx.ident_of(runner_name, sp)]));
+    let mut test_runner = cx
+        .test_runner
+        .clone()
+        .unwrap_or(ecx.path(sp, vec![test_id, ecx.ident_of(runner_name, sp)]));
 
     test_runner.span = sp;
 
     let test_main_path_expr = ecx.expr_path(test_runner);
-    let call_test_main = ecx.expr_call(sp, test_main_path_expr,
-                                       vec![mk_tests_slice(cx, sp)]);
+    let call_test_main = ecx.expr_call(sp, test_main_path_expr, vec![mk_tests_slice(cx, sp)]);
     let call_test_main = ecx.stmt_expr(call_test_main);
 
     // extern crate test
-    let test_extern_stmt = ecx.stmt_item(sp, ecx.item(sp,
-        test_id,
-        vec![],
-        ast::ItemKind::ExternCrate(None)
-    ));
+    let test_extern_stmt =
+        ecx.stmt_item(sp, ecx.item(sp, test_id, vec![], ast::ItemKind::ExternCrate(None)));
 
     // #[main]
     let main_meta = ecx.meta_word(sp, sym::main);
@@ -338,12 +336,15 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ref ecx = cx.ext_cx;
 
-
-    ecx.expr_vec_slice(sp,
-        cx.test_cases.iter().map(|test| {
-            ecx.expr_addr_of(test.span,
-                ecx.expr_path(ecx.path(test.span, vec![test.ident])))
-        }).collect())
+    ecx.expr_vec_slice(
+        sp,
+        cx.test_cases
+            .iter()
+            .map(|test| {
+                ecx.expr_addr_of(test.span, ecx.expr_path(ecx.path(test.span, vec![test.ident])))
+            })
+            .collect(),
+    )
 }
 
 fn is_test_case(i: &ast::Item) -> bool {
@@ -354,12 +355,12 @@ fn get_test_runner(sd: &errors::Handler, krate: &ast::Crate) -> Option<ast::Path
     let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
     test_attr.meta_item_list().map(|meta_list| {
         if meta_list.len() != 1 {
-            sd.span_fatal(test_attr.span,
-                "`#![test_runner(..)]` accepts exactly 1 argument").raise()
+            sd.span_fatal(test_attr.span, "`#![test_runner(..)]` accepts exactly 1 argument")
+                .raise()
         }
         match meta_list[0].meta_item() {
             Some(meta_item) if meta_item.is_word() => meta_item.path.clone(),
-            _ => sd.span_fatal(test_attr.span, "`test_runner` argument must be a path").raise()
+            _ => sd.span_fatal(test_attr.span, "`test_runner` argument must be a path").raise(),
         }
     })
 }

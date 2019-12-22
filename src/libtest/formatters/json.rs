@@ -1,16 +1,12 @@
-use std::{
-    io,
-    io::prelude::Write,
-    borrow::Cow,
-};
+use std::{borrow::Cow, io, io::prelude::Write};
 
-use crate::{
-    types::TestDesc,
-    time,
-    test_result::TestResult,
-    console::{ConsoleTestState, OutputLocation},
-};
 use super::OutputFormatter;
+use crate::{
+    console::{ConsoleTestState, OutputLocation},
+    test_result::TestResult,
+    time,
+    types::TestDesc,
+};
 
 pub(crate) struct JsonFormatter<T> {
     out: OutputLocation<T>,
@@ -48,22 +44,13 @@ impl<T: Write> JsonFormatter<T> {
             ty, name, evt
         ))?;
         if let Some(exec_time) = exec_time {
-            self.write_message(&*format!(
-                r#", "exec_time": "{}""#,
-                exec_time
-            ))?;
+            self.write_message(&*format!(r#", "exec_time": "{}""#, exec_time))?;
         }
         if let Some(stdout) = stdout {
-            self.write_message(&*format!(
-                r#", "stdout": "{}""#,
-                EscapedString(stdout)
-            ))?;
+            self.write_message(&*format!(r#", "stdout": "{}""#, EscapedString(stdout)))?;
         }
         if let Some(extra) = extra {
-            self.write_message(&*format!(
-                r#", {}"#,
-                extra
-            ))?;
+            self.write_message(&*format!(r#", {}"#, extra))?;
         }
         self.writeln_message(" }")
     }

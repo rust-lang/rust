@@ -78,7 +78,7 @@ impl Condvar {
         // `false` as we weren't actually notified.
         let ret = wasm32::i32_atomic_wait(self.ptr(), ticket, nanos as i64) != 2;
         mutex.lock();
-        return ret
+        return ret;
     }
 
     #[inline]

@@ -25,11 +25,7 @@ crate trait UserAnnotatedTyHelpers<'tcx> {
                 Some(user_ty)
             }
             ty::FnDef(..) => Some(user_ty),
-            _ => bug!(
-                "ty: {:?} should not have user provided type {:?} recorded ",
-                ty,
-                user_ty
-            ),
+            _ => bug!("ty: {:?} should not have user provided type {:?} recorded ", ty, user_ty),
         }
     }
 }

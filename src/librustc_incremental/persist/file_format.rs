@@ -9,10 +9,10 @@
 //! compiler versions don't change frequently for the typical user, being
 //! conservative here practically has no downside.
 
+use std::env;
+use std::fs;
 use std::io::{self, Read};
 use std::path::Path;
-use std::fs;
-use std::env;
 
 use rustc::session::config::nightly_options;
 use rustc_serialize::opaque::Encoder;
@@ -30,8 +30,8 @@ const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
 
 pub fn write_file_header(stream: &mut Encoder) {
     stream.emit_raw_bytes(FILE_MAGIC);
-    stream.emit_raw_bytes(&[(HEADER_FORMAT_VERSION >> 0) as u8,
-                       (HEADER_FORMAT_VERSION >> 8) as u8]);
+    stream
+        .emit_raw_bytes(&[(HEADER_FORMAT_VERSION >> 0) as u8, (HEADER_FORMAT_VERSION >> 8) as u8]);
 
     let rustc_version = rustc_version();
     assert_eq!(rustc_version.len(), (rustc_version.len() as u8) as usize);
@@ -48,9 +48,10 @@ pub fn write_file_header(stream: &mut Encoder) {
 ///   incompatible version of the compiler.
 /// - Returns `Err(..)` if some kind of IO error occurred while reading the
 ///   file.
-pub fn read_file(report_incremental_info: bool, path: &Path)
-    -> io::Result<Option<(Vec<u8>, usize)>>
-{
+pub fn read_file(
+    report_incremental_info: bool,
+    path: &Path,
+) -> io::Result<Option<(Vec<u8>, usize)>> {
     if !path.exists() {
         return Ok(None);
     }
@@ -66,7 +67,7 @@ pub fn read_file(report_incremental_info: bool, path: &Path)
         file.read_exact(&mut file_magic)?;
         if file_magic != FILE_MAGIC {
             report_format_mismatch(report_incremental_info, path, "Wrong FILE_MAGIC");
-            return Ok(None)
+            return Ok(None);
         }
     }
 
@@ -75,12 +76,12 @@ pub fn read_file(report_incremental_info: bool, path: &Path)
         debug_assert!(::std::mem::size_of_val(&HEADER_FORMAT_VERSION) == 2);
         let mut header_format_version = [0u8; 2];
         file.read_exact(&mut header_format_version)?;
-        let header_format_version = (header_format_version[0] as u16) |
-                                    ((header_format_version[1] as u16) << 8);
+        let header_format_version =
+            (header_format_version[0] as u16) | ((header_format_version[1] as u16) << 8);
 
         if header_format_version != HEADER_FORMAT_VERSION {
             report_format_mismatch(report_incremental_info, path, "Wrong HEADER_FORMAT_VERSION");
-            return Ok(None)
+            return Ok(None);
         }
     }
 
@@ -107,20 +108,25 @@ fn report_format_mismatch(report_incremental_info: bool, file: &Path, message: &
     debug!("read_file: {}", message);
 
     if report_incremental_info {
-        println!("[incremental] ignoring cache artifact `{}`: {}",
-                  file.file_name().unwrap().to_string_lossy(),
-                  message);
+        println!(
+            "[incremental] ignoring cache artifact `{}`: {}",
+            file.file_name().unwrap().to_string_lossy(),
+            message
+        );
     }
 }
 
 fn rustc_version() -> String {
     if nightly_options::is_nightly_build() {
         if let Some(val) = env::var_os("RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER") {
-            return val.to_string_lossy().into_owned()
+            return val.to_string_lossy().into_owned();
         }
     }
 
-    RUSTC_VERSION.expect("Cannot use rustc without explicit version for \
-                          incremental compilation")
-                 .to_string()
+    RUSTC_VERSION
+        .expect(
+            "Cannot use rustc without explicit version for \
+                          incremental compilation",
+        )
+        .to_string()
 }

@@ -32,7 +32,8 @@ fn test_hash() {
 }
 
 fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
-    where F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut dyn FnMut(&i32) -> bool) -> bool
+where
+    F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut dyn FnMut(&i32) -> bool) -> bool,
 {
     let mut set_a = BTreeSet::new();
     let mut set_b = BTreeSet::new();
@@ -45,15 +46,13 @@ fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
     }
 
     let mut i = 0;
-    f(&set_a,
-      &set_b,
-      &mut |&x| {
-          if i < expected.len() {
-              assert_eq!(x, expected[i]);
-          }
-          i += 1;
-          true
-      });
+    f(&set_a, &set_b, &mut |&x| {
+        if i < expected.len() {
+            assert_eq!(x, expected[i]);
+        }
+        i += 1;
+        true
+    });
     assert_eq!(i, expected.len());
 }
 
@@ -68,11 +67,10 @@ fn test_intersection() {
     check_intersection(&[], &[1, 2, 3], &[]);
     check_intersection(&[2], &[1, 2, 3], &[2]);
     check_intersection(&[1, 2, 3], &[2], &[2]);
-    check_intersection(&[11, 1, 3, 77, 103, 5, -5],
-                       &[2, 11, 77, -9, -42, 5, 3],
-                       &[3, 5, 11, 77]);
+    check_intersection(&[11, 1, 3, 77, 103, 5, -5], &[2, 11, 77, -9, -42, 5, 3], &[3, 5, 11, 77]);
 
-    if cfg!(miri) { // Miri is too slow
+    if cfg!(miri) {
+        // Miri is too slow
         return;
     }
 
@@ -87,9 +85,7 @@ fn test_intersection() {
     check_intersection(&large, &[99], &[99]);
     check_intersection(&[100], &large, &[]);
     check_intersection(&large, &[100], &[]);
-    check_intersection(&[11, 5000, 1, 3, 77, 8924],
-                       &large,
-                       &[1, 3, 11, 77]);
+    check_intersection(&[11, 5000, 1, 3, 77, 8924], &large, &[1, 3, 11, 77]);
 }
 
 #[test]
@@ -121,11 +117,14 @@ fn test_difference() {
     check_difference(&[1, 3, 5, 9, 11], &[3, 6, 9], &[1, 5, 11]);
     check_difference(&[1, 3, 5, 9, 11], &[0, 1], &[3, 5, 9, 11]);
     check_difference(&[1, 3, 5, 9, 11], &[11, 12], &[1, 3, 5, 9]);
-    check_difference(&[-5, 11, 22, 33, 40, 42],
-                     &[-12, -5, 14, 23, 34, 38, 39, 50],
-                     &[11, 22, 33, 40, 42]);
+    check_difference(
+        &[-5, 11, 22, 33, 40, 42],
+        &[-12, -5, 14, 23, 34, 38, 39, 50],
+        &[11, 22, 33, 40, 42],
+    );
 
-    if cfg!(miri) { // Miri is too slow
+    if cfg!(miri) {
+        // Miri is too slow
         return;
     }
 
@@ -135,9 +134,7 @@ fn test_difference() {
     check_difference(&[0], &large, &[]);
     check_difference(&[99], &large, &[]);
     check_difference(&[100], &large, &[100]);
-    check_difference(&[11, 5000, 1, 3, 77, 8924],
-                     &large,
-                     &[5000, 8924]);
+    check_difference(&[11, 5000, 1, 3, 77, 8924], &large, &[5000, 8924]);
     check_difference(&large, &[], &large);
     check_difference(&large, &[-1], &large);
     check_difference(&large, &[100], &large);
@@ -216,9 +213,7 @@ fn test_symmetric_difference() {
     check_symmetric_difference(&[], &[], &[]);
     check_symmetric_difference(&[1, 2, 3], &[2], &[1, 3]);
     check_symmetric_difference(&[2], &[1, 2, 3], &[1, 3]);
-    check_symmetric_difference(&[1, 3, 5, 9, 11],
-                               &[-2, 3, 9, 14, 22],
-                               &[-2, 1, 5, 11, 14, 22]);
+    check_symmetric_difference(&[1, 3, 5, 9, 11], &[-2, 3, 9, 14, 22], &[-2, 1, 5, 11, 14, 22]);
 }
 
 #[test]
@@ -242,9 +237,11 @@ fn test_union() {
     check_union(&[], &[], &[]);
     check_union(&[1, 2, 3], &[2], &[1, 2, 3]);
     check_union(&[2], &[1, 2, 3], &[1, 2, 3]);
-    check_union(&[1, 3, 5, 9, 11, 16, 19, 24],
-                &[-2, 1, 5, 9, 13, 19],
-                &[-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
+    check_union(
+        &[1, 3, 5, 9, 11, 16, 19, 24],
+        &[-2, 1, 5, 9, 13, 19],
+        &[-2, 1, 3, 5, 9, 11, 13, 16, 19, 24],
+    );
 }
 
 #[test]
@@ -285,14 +282,14 @@ fn test_is_subset() {
     assert_eq!(is_subset(&[1, 2], &[1]), false);
     assert_eq!(is_subset(&[1, 2], &[1, 2]), true);
     assert_eq!(is_subset(&[1, 2], &[2, 3]), false);
-    assert_eq!(is_subset(&[-5, 11, 22, 33, 40, 42],
-                         &[-12, -5, 11, 14, 22, 23, 33, 34, 38, 39, 40, 42]),
-               true);
-    assert_eq!(is_subset(&[-5, 11, 22, 33, 40, 42],
-                         &[-12, -5, 11, 14, 22, 23, 34, 38]),
-               false);
+    assert_eq!(
+        is_subset(&[-5, 11, 22, 33, 40, 42], &[-12, -5, 11, 14, 22, 23, 33, 34, 38, 39, 40, 42]),
+        true
+    );
+    assert_eq!(is_subset(&[-5, 11, 22, 33, 40, 42], &[-12, -5, 11, 14, 22, 23, 34, 38]), false);
 
-    if cfg!(miri) { // Miri is too slow
+    if cfg!(miri) {
+        // Miri is too slow
         return;
     }
 

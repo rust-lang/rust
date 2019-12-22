@@ -6,14 +6,12 @@ use std::ffi::CString;
 use std::path::Path;
 
 pub struct DynamicLibrary {
-    handle: *mut u8
+    handle: *mut u8,
 }
 
 impl Drop for DynamicLibrary {
     fn drop(&mut self) {
-        unsafe {
-            dl::close(self.handle)
-        }
+        unsafe { dl::close(self.handle) }
     }
 }
 
@@ -28,7 +26,7 @@ impl DynamicLibrary {
         // run.
         match maybe_library {
             Err(err) => Err(err),
-            Ok(handle) => Ok(DynamicLibrary { handle })
+            Ok(handle) => Ok(DynamicLibrary { handle }),
         }
     }
 
@@ -44,7 +42,7 @@ impl DynamicLibrary {
         // the destructor does not run.
         match maybe_symbol_value {
             Err(err) => Err(err),
-            Ok(symbol_value) => Ok(symbol_value as *mut T)
+            Ok(symbol_value) => Ok(symbol_value as *mut T),
         }
     }
 }
@@ -54,18 +52,16 @@ mod tests;
 
 #[cfg(unix)]
 mod dl {
-    use std::ffi::{CStr, OsStr, CString};
+    use std::ffi::{CStr, CString, OsStr};
     use std::os::unix::prelude::*;
     use std::ptr;
     use std::str;
 
     pub(super) fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
-        check_for_errors_in(|| {
-            unsafe {
-                match filename {
-                    Some(filename) => open_external(filename),
-                    None => open_internal(),
-                }
+        check_for_errors_in(|| unsafe {
+            match filename {
+                Some(filename) => open_external(filename),
+                None => open_internal(),
             }
         })
     }
@@ -80,7 +76,8 @@ mod dl {
     }
 
     fn check_for_errors_in<T, F>(f: F) -> Result<T, String>
-        where F: FnOnce() -> T,
+    where
+        F: FnOnce() -> T,
     {
         use std::sync::{Mutex, Once};
         static INIT: Once = Once::new();
@@ -112,12 +109,11 @@ mod dl {
         handle: *mut u8,
         symbol: *const libc::c_char,
     ) -> Result<*mut u8, String> {
-        check_for_errors_in(|| {
-            libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8
-        })
+        check_for_errors_in(|| libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8)
     }
     pub(super) unsafe fn close(handle: *mut u8) {
-        libc::dlclose(handle as *mut libc::c_void); ()
+        libc::dlclose(handle as *mut libc::c_void);
+        ()
     }
 }
 
@@ -128,7 +124,7 @@ mod dl {
     use std::os::windows::prelude::*;
     use std::ptr;
 
-    use libc::{c_uint, c_void, c_char};
+    use libc::{c_char, c_uint, c_void};
 
     type DWORD = u32;
     type HMODULE = *mut u8;
@@ -137,14 +133,10 @@ mod dl {
     type LPCSTR = *const i8;
 
     extern "system" {
-        fn SetThreadErrorMode(dwNewMode: DWORD,
-                              lpOldMode: *mut DWORD) -> c_uint;
+        fn SetThreadErrorMode(dwNewMode: DWORD, lpOldMode: *mut DWORD) -> c_uint;
         fn LoadLibraryW(name: LPCWSTR) -> HMODULE;
-        fn GetModuleHandleExW(dwFlags: DWORD,
-                              name: LPCWSTR,
-                              handle: *mut HMODULE) -> BOOL;
-        fn GetProcAddress(handle: HMODULE,
-                          name: LPCSTR) -> *mut c_void;
+        fn GetModuleHandleExW(dwFlags: DWORD, name: LPCWSTR, handle: *mut HMODULE) -> BOOL;
+        fn GetProcAddress(handle: HMODULE, name: LPCSTR) -> *mut c_void;
         fn FreeLibrary(handle: HMODULE) -> BOOL;
     }
 
@@ -154,28 +146,22 @@ mod dl {
             // SEM_FAILCRITICALERRORS 0x01
             let new_error_mode = 1;
             let mut prev_error_mode = 0;
-            let result = SetThreadErrorMode(new_error_mode,
-                                            &mut prev_error_mode);
+            let result = SetThreadErrorMode(new_error_mode, &mut prev_error_mode);
             if result == 0 {
-                return Err(io::Error::last_os_error().to_string())
+                return Err(io::Error::last_os_error().to_string());
             }
             prev_error_mode
         };
 
         let result = match filename {
             Some(filename) => {
-                let filename_str: Vec<_> =
-                    filename.encode_wide().chain(Some(0)).collect();
-                let result = unsafe {
-                    LoadLibraryW(filename_str.as_ptr())
-                };
+                let filename_str: Vec<_> = filename.encode_wide().chain(Some(0)).collect();
+                let result = unsafe { LoadLibraryW(filename_str.as_ptr()) };
                 ptr_result(result)
             }
             None => {
                 let mut handle = ptr::null_mut();
-                let succeeded = unsafe {
-                    GetModuleHandleExW(0 as DWORD, ptr::null(), &mut handle)
-                };
+                let succeeded = unsafe { GetModuleHandleExW(0 as DWORD, ptr::null(), &mut handle) };
                 if succeeded == 0 {
                     Err(io::Error::last_os_error().to_string())
                 } else {
@@ -191,10 +177,7 @@ mod dl {
         result
     }
 
-    pub(super) unsafe fn symbol(
-        handle: *mut u8,
-        symbol: *const c_char,
-    ) -> Result<*mut u8, String> {
+    pub(super) unsafe fn symbol(handle: *mut u8, symbol: *const c_char) -> Result<*mut u8, String> {
         let ptr = GetProcAddress(handle as HMODULE, symbol) as *mut u8;
         ptr_result(ptr)
     }
@@ -204,10 +187,6 @@ mod dl {
     }
 
     fn ptr_result<T>(ptr: *mut T) -> Result<*mut T, String> {
-        if ptr.is_null() {
-            Err(io::Error::last_os_error().to_string())
-        } else {
-            Ok(ptr)
-        }
+        if ptr.is_null() { Err(io::Error::last_os_error().to_string()) } else { Ok(ptr) }
     }
 }

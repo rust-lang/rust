@@ -1,23 +1,25 @@
+use crate::util::elaborate_drops::DropFlagState;
 use rustc::mir::{self, Body, Location};
 use rustc::ty::{self, TyCtxt};
-use crate::util::elaborate_drops::DropFlagState;
 
-use super::{MoveDataParamEnv};
 use super::indexes::MovePathIndex;
-use super::move_paths::{MoveData, LookupResult, InitKind};
+use super::move_paths::{InitKind, LookupResult, MoveData};
+use super::MoveDataParamEnv;
 
-pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
-                                        path: MovePathIndex,
-                                        mut cond: F)
-                                        -> Option<MovePathIndex>
-    where F: FnMut(&mir::PlaceElem<'tcx>) -> bool
+pub fn move_path_children_matching<'tcx, F>(
+    move_data: &MoveData<'tcx>,
+    path: MovePathIndex,
+    mut cond: F,
+) -> Option<MovePathIndex>
+where
+    F: FnMut(&mir::PlaceElem<'tcx>) -> bool,
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {
         let move_path_children = &move_data.move_paths[child_index];
         if let Some(elem) = move_path_children.place.projection.last() {
             if cond(elem) {
-                return Some(child_index)
+                return Some(child_index);
             }
         }
         next_child = move_path_children.next_sibling;
@@ -52,23 +54,27 @@ fn place_contents_drop_state_cannot_differ<'tcx>(
     let ty = place.ty(body, tcx).ty;
     match ty.kind {
         ty::Array(..) => {
-            debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} => false",
-                   place, ty);
+            debug!(
+                "place_contents_drop_state_cannot_differ place: {:?} ty: {:?} => false",
+                place, ty
+            );
             false
         }
         ty::Slice(..) | ty::Ref(..) | ty::RawPtr(..) => {
-            debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} refd => true",
-                   place, ty);
+            debug!(
+                "place_contents_drop_state_cannot_differ place: {:?} ty: {:?} refd => true",
+                place, ty
+            );
             true
         }
         ty::Adt(def, _) if (def.has_dtor(tcx) && !def.is_box()) || def.is_union() => {
-            debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} Drop => true",
-                   place, ty);
+            debug!(
+                "place_contents_drop_state_cannot_differ place: {:?} ty: {:?} Drop => true",
+                place, ty
+            );
             true
         }
-        _ => {
-            false
-        }
+        _ => false,
     }
 }
 
@@ -85,9 +91,7 @@ pub(crate) fn on_lookup_result_bits<'tcx, F>(
         LookupResult::Parent(..) => {
             // access to untracked value - do not touch children
         }
-        LookupResult::Exact(e) => {
-            on_all_children_bits(tcx, body, move_data, e, each_child)
-        }
+        LookupResult::Exact(e) => on_all_children_bits(tcx, body, move_data, e, each_child),
     }
 }
 
@@ -106,8 +110,7 @@ pub(crate) fn on_all_children_bits<'tcx, F>(
         move_data: &MoveData<'tcx>,
         path: MovePathIndex,
     ) -> bool {
-        place_contents_drop_state_cannot_differ(
-            tcx, body, &move_data.move_paths[path].place)
+        place_contents_drop_state_cannot_differ(tcx, body, &move_data.move_paths[path].place)
     }
 
     fn on_all_children_bits<'tcx, F>(
@@ -122,7 +125,7 @@ pub(crate) fn on_all_children_bits<'tcx, F>(
         each_child(move_path_index);
 
         if is_terminal_path(tcx, body, move_data, move_path_index) {
-            return
+            return;
         }
 
         let mut next_child_index = move_data.move_paths[move_path_index].first_child;
@@ -169,9 +172,9 @@ pub(crate) fn drop_flag_effects_for_function_entry<'tcx, F>(
     for arg in body.args_iter() {
         let place = mir::Place::from(arg);
         let lookup_result = move_data.rev_lookup.find(place.as_ref());
-        on_lookup_result_bits(tcx, body, move_data,
-                              lookup_result,
-                              |mpi| callback(mpi, DropFlagState::Present));
+        on_lookup_result_bits(tcx, body, move_data, lookup_result, |mpi| {
+            callback(mpi, DropFlagState::Present)
+        });
     }
 }
 
@@ -192,20 +195,12 @@ pub(crate) fn drop_flag_effects_for_location<'tcx, F>(
         let path = mi.move_path_index(move_data);
         debug!("moving out of path {:?}", move_data.move_paths[path]);
 
-        on_all_children_bits(tcx, body, move_data,
-                             path,
-                             |mpi| callback(mpi, DropFlagState::Absent))
+        on_all_children_bits(tcx, body, move_data, path, |mpi| callback(mpi, DropFlagState::Absent))
     }
 
     debug!("drop_flag_effects: assignment for location({:?})", loc);
 
-    for_location_inits(
-        tcx,
-        body,
-        move_data,
-        loc,
-        |mpi| callback(mpi, DropFlagState::Present)
-    );
+    for_location_inits(tcx, body, move_data, loc, |mpi| callback(mpi, DropFlagState::Present));
 }
 
 pub(crate) fn for_location_inits<'tcx, F>(
@@ -223,10 +218,8 @@ pub(crate) fn for_location_inits<'tcx, F>(
             InitKind::Deep => {
                 let path = init.path;
 
-                on_all_children_bits(tcx, body, move_data,
-                                    path,
-                                    &mut callback)
-            },
+                on_all_children_bits(tcx, body, move_data, path, &mut callback)
+            }
             InitKind::Shallow => {
                 let mpi = init.path;
                 callback(mpi);

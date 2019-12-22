@@ -4,9 +4,9 @@
 // The encoding format for inline spans were obtained by optimizing over crates in rustc/libstd.
 // See https://internals.rust-lang.org/t/rfc-compiler-refactoring-spans/1357/28
 
+use crate::hygiene::SyntaxContext;
 use crate::GLOBALS;
 use crate::{BytePos, SpanData};
-use crate::hygiene::SyntaxContext;
 
 use rustc_data_structures::fx::FxHashMap;
 
@@ -61,7 +61,7 @@ use rustc_data_structures::fx::FxHashMap;
 pub struct Span {
     base_or_index: u32,
     len_or_tag: u16,
-    ctxt_or_zero: u16
+    ctxt_or_zero: u16,
 }
 
 const LEN_TAG: u16 = 0b1000_0000_0000_0000;

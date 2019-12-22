@@ -1,20 +1,20 @@
-use super::{RawConst, Pointer, CheckInAllocMsg, ScalarMaybeUndef};
+use super::{CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
 
 use crate::hir;
 use crate::hir::map::definitions::DefPathData;
 use crate::mir;
-use crate::ty::{self, Ty, layout};
-use crate::ty::layout::{Size, Align, LayoutError};
+use crate::ty::layout::{Align, LayoutError, Size};
 use crate::ty::query::TyCtxtAt;
+use crate::ty::{self, layout, Ty};
 
 use backtrace::Backtrace;
 use errors::DiagnosticBuilder;
+use hir::GeneratorKind;
 use rustc_macros::HashStable;
 use rustc_target::spec::abi::Abi;
-use syntax_pos::{Pos, Span};
+use std::{any::Any, env, fmt};
 use syntax::symbol::Symbol;
-use hir::GeneratorKind;
-use std::{fmt, env, any::Any};
+use syntax_pos::{Pos, Span};
 
 use rustc_error_codes::*;
 
@@ -30,9 +30,11 @@ pub enum ErrorHandled {
 impl ErrorHandled {
     pub fn assert_reported(self) {
         match self {
-            ErrorHandled::Reported => {},
-            ErrorHandled::TooGeneric => bug!("MIR interpretation failed without reporting an error \
-                                              even though it was fully monomorphized"),
+            ErrorHandled::Reported => {}
+            ErrorHandled::TooGeneric => bug!(
+                "MIR interpretation failed without reporting an error \
+                                              even though it was fully monomorphized"
+            ),
         }
     }
 }
@@ -93,7 +95,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
             Ok(mut err) => {
                 err.emit();
                 ErrorHandled::Reported
-            },
+            }
             Err(err) => err,
         }
     }
@@ -105,11 +107,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
         lint_root: hir::HirId,
         span: Option<Span>,
     ) -> ErrorHandled {
-        let lint = self.struct_generic(
-            tcx,
-            message,
-            Some(lint_root),
-        );
+        let lint = self.struct_generic(tcx, message, Some(lint_root));
         match lint {
             Ok(mut lint) => {
                 if let Some(span) = span {
@@ -126,7 +124,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 }
                 lint.emit();
                 ErrorHandled::Reported
-            },
+            }
             Err(err) => err,
         }
     }
@@ -139,17 +137,17 @@ impl<'tcx> ConstEvalErr<'tcx> {
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         let must_error = match self.error {
             InterpError::MachineStop(_) => bug!("CTFE does not stop"),
-            err_inval!(Layout(LayoutError::Unknown(_))) |
-            err_inval!(TooGeneric) =>
-                return Err(ErrorHandled::TooGeneric),
-            err_inval!(TypeckError) =>
-                return Err(ErrorHandled::Reported),
+            err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
+                return Err(ErrorHandled::TooGeneric);
+            }
+            err_inval!(TypeckError) => return Err(ErrorHandled::Reported),
             err_inval!(Layout(LayoutError::SizeOverflow(_))) => true,
             _ => false,
         };
         trace!("reporting const eval failure at {:?}", self.span);
         let mut err = if let (Some(lint_root), false) = (lint_root, must_error) {
-            let hir_id = self.stacktrace
+            let hir_id = self
+                .stacktrace
                 .iter()
                 .rev()
                 .filter_map(|frame| frame.lint_root)
@@ -173,7 +171,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
         // is sometimes empty because we create "fake" eval contexts in CTFE to do work
         // on constant values.
         if self.stacktrace.len() > 0 {
-            for frame_info in &self.stacktrace[..self.stacktrace.len()-1] {
+            for frame_info in &self.stacktrace[..self.stacktrace.len() - 1] {
                 err.span_label(frame_info.call_site, frame_info.to_string());
             }
         }
@@ -195,7 +193,6 @@ pub struct InterpErrorInfo<'tcx> {
     pub kind: InterpError<'tcx>,
     backtrace: Option<Box<Backtrace>>,
 }
-
 
 impl fmt::Display for InterpErrorInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -221,7 +218,8 @@ impl From<ErrorHandled> for InterpErrorInfo<'tcx> {
         match err {
             ErrorHandled::Reported => err_inval!(ReferencedConstant),
             ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -239,28 +237,17 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
                 } else {
                     Some(Box::new(backtrace))
                 }
-            },
+            }
             _ => None,
         };
-        InterpErrorInfo {
-            kind,
-            backtrace,
-        }
+        InterpErrorInfo { kind, backtrace }
     }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
 pub enum PanicInfo<O> {
-    Panic {
-        msg: Symbol,
-        line: u32,
-        col: u32,
-        file: Symbol,
-    },
-    BoundsCheck {
-        len: O,
-        index: O,
-    },
+    Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
+    BoundsCheck { len: O, index: O },
     Overflow(mir::BinOp),
     OverflowNeg,
     DivisionByZero,
@@ -279,38 +266,22 @@ impl<O> PanicInfo<O> {
     pub fn description(&self) -> &'static str {
         use PanicInfo::*;
         match self {
-            Overflow(mir::BinOp::Add) =>
-                "attempt to add with overflow",
-            Overflow(mir::BinOp::Sub) =>
-                "attempt to subtract with overflow",
-            Overflow(mir::BinOp::Mul) =>
-                "attempt to multiply with overflow",
-            Overflow(mir::BinOp::Div) =>
-                "attempt to divide with overflow",
-            Overflow(mir::BinOp::Rem) =>
-                "attempt to calculate the remainder with overflow",
-            OverflowNeg =>
-                "attempt to negate with overflow",
-            Overflow(mir::BinOp::Shr) =>
-                "attempt to shift right with overflow",
-            Overflow(mir::BinOp::Shl) =>
-                "attempt to shift left with overflow",
-            Overflow(op) =>
-                bug!("{:?} cannot overflow", op),
-            DivisionByZero =>
-                "attempt to divide by zero",
-            RemainderByZero =>
-                "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(GeneratorKind::Gen) =>
-                "generator resumed after completion",
-            ResumedAfterReturn(GeneratorKind::Async(_)) =>
-                "`async fn` resumed after completion",
-            ResumedAfterPanic(GeneratorKind::Gen) =>
-                "generator resumed after panicking",
-            ResumedAfterPanic(GeneratorKind::Async(_)) =>
-                "`async fn` resumed after panicking",
-            Panic { .. } | BoundsCheck { .. } =>
-                bug!("Unexpected PanicInfo"),
+            Overflow(mir::BinOp::Add) => "attempt to add with overflow",
+            Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",
+            Overflow(mir::BinOp::Mul) => "attempt to multiply with overflow",
+            Overflow(mir::BinOp::Div) => "attempt to divide with overflow",
+            Overflow(mir::BinOp::Rem) => "attempt to calculate the remainder with overflow",
+            OverflowNeg => "attempt to negate with overflow",
+            Overflow(mir::BinOp::Shr) => "attempt to shift right with overflow",
+            Overflow(mir::BinOp::Shl) => "attempt to shift left with overflow",
+            Overflow(op) => bug!("{:?} cannot overflow", op),
+            DivisionByZero => "attempt to divide by zero",
+            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
+            ResumedAfterReturn(GeneratorKind::Gen) => "generator resumed after completion",
+            ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
+            ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
+            ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
+            Panic { .. } | BoundsCheck { .. } => bug!("Unexpected PanicInfo"),
         }
     }
 }
@@ -319,12 +290,13 @@ impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use PanicInfo::*;
         match self {
-            Panic { ref msg, line, col, ref file } =>
-                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
-            BoundsCheck { ref len, ref index } =>
-                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
-            _ =>
-                write!(f, "{}", self.description()),
+            Panic { ref msg, line, col, ref file } => {
+                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
+            }
+            BoundsCheck { ref len, ref index } => {
+                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
+            }
+            _ => write!(f, "{}", self.description()),
         }
     }
 }
@@ -348,14 +320,10 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InvalidProgramInfo::*;
         match self {
-            TooGeneric =>
-                write!(f, "encountered overly generic constant"),
-            ReferencedConstant =>
-                write!(f, "referenced constant has errors"),
-            TypeckError =>
-                write!(f, "encountered constants with type errors, stopping evaluation"),
-            Layout(ref err) =>
-                write!(f, "{}", err),
+            TooGeneric => write!(f, "encountered overly generic constant"),
+            ReferencedConstant => write!(f, "referenced constant has errors"),
+            TypeckError => write!(f, "encountered constants with type errors, stopping evaluation"),
+            Layout(ref err) => write!(f, "{}", err),
         }
     }
 }
@@ -384,21 +352,17 @@ impl fmt::Debug for UndefinedBehaviorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UndefinedBehaviorInfo::*;
         match self {
-            Ub(msg) | UbExperimental(msg) =>
-                write!(f, "{}", msg),
-            Unreachable =>
-                write!(f, "entering unreachable code"),
-            InvalidDiscriminant(val) =>
-                write!(f, "encountering invalid enum discriminant {}", val),
-            BoundsCheckFailed { ref len, ref index } =>
-                write!(f, "indexing out of bounds: the len is {:?} but the index is {:?}",
-                    len, index),
-            DivisionByZero =>
-                write!(f, "dividing by zero"),
-            RemainderByZero =>
-                write!(f, "calculating the remainder with a divisor of zero"),
-            PointerArithOverflow =>
-                write!(f, "overflowing in-bounds pointer arithmetic"),
+            Ub(msg) | UbExperimental(msg) => write!(f, "{}", msg),
+            Unreachable => write!(f, "entering unreachable code"),
+            InvalidDiscriminant(val) => write!(f, "encountering invalid enum discriminant {}", val),
+            BoundsCheckFailed { ref len, ref index } => write!(
+                f,
+                "indexing out of bounds: the len is {:?} but the index is {:?}",
+                len, index
+            ),
+            DivisionByZero => write!(f, "dividing by zero"),
+            RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
+            PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
         }
     }
 }
@@ -474,112 +438,133 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UnsupportedOpInfo::*;
         match self {
-            PointerOutOfBounds { ptr, msg, allocation_size } => {
-                write!(f, "{} failed: pointer must be in-bounds at offset {}, \
+            PointerOutOfBounds { ptr, msg, allocation_size } => write!(
+                f,
+                "{} failed: pointer must be in-bounds at offset {}, \
                            but is outside bounds of allocation {} which has size {}",
-                    msg, ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
-            },
-            ValidationFailure(ref err) => {
-                write!(f, "type validation failed: {}", err)
-            }
+                msg,
+                ptr.offset.bytes(),
+                ptr.alloc_id,
+                allocation_size.bytes()
+            ),
+            ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
             NoMirFor(ref func) => write!(f, "no MIR for `{}`", func),
-            FunctionAbiMismatch(caller_abi, callee_abi) =>
-                write!(f, "tried to call a function with ABI {:?} using caller ABI {:?}",
-                    callee_abi, caller_abi),
-            FunctionArgMismatch(caller_ty, callee_ty) =>
-                write!(f, "tried to call a function with argument of type {:?} \
+            FunctionAbiMismatch(caller_abi, callee_abi) => write!(
+                f,
+                "tried to call a function with ABI {:?} using caller ABI {:?}",
+                callee_abi, caller_abi
+            ),
+            FunctionArgMismatch(caller_ty, callee_ty) => write!(
+                f,
+                "tried to call a function with argument of type {:?} \
                            passing data of type {:?}",
-                    callee_ty, caller_ty),
-            FunctionRetMismatch(caller_ty, callee_ty) =>
-                write!(f, "tried to call a function with return type {:?} \
+                callee_ty, caller_ty
+            ),
+            FunctionRetMismatch(caller_ty, callee_ty) => write!(
+                f,
+                "tried to call a function with return type {:?} \
                            passing return place of type {:?}",
-                    callee_ty, caller_ty),
-            FunctionArgCountMismatch =>
-                write!(f, "tried to call a function with incorrect number of arguments"),
-            ReallocatedWrongMemoryKind(ref old, ref new) =>
-                write!(f, "tried to reallocate memory from `{}` to `{}`", old, new),
-            DeallocatedWrongMemoryKind(ref old, ref new) =>
-                write!(f, "tried to deallocate `{}` memory but gave `{}` as the kind", old, new),
-            InvalidChar(c) =>
-                write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
-            AlignmentCheckFailed { required, has } =>
-               write!(f, "tried to access memory with alignment {}, but alignment {} is required",
-                      has.bytes(), required.bytes()),
-            TypeNotPrimitive(ty) =>
-                write!(f, "expected primitive type, got {}", ty),
-            PathNotFound(ref path) =>
-                write!(f, "cannot find path {:?}", path),
-            IncorrectAllocationInformation(size, size2, align, align2) =>
-                write!(f, "incorrect alloc info: expected size {} and align {}, \
+                callee_ty, caller_ty
+            ),
+            FunctionArgCountMismatch => {
+                write!(f, "tried to call a function with incorrect number of arguments")
+            }
+            ReallocatedWrongMemoryKind(ref old, ref new) => {
+                write!(f, "tried to reallocate memory from `{}` to `{}`", old, new)
+            }
+            DeallocatedWrongMemoryKind(ref old, ref new) => {
+                write!(f, "tried to deallocate `{}` memory but gave `{}` as the kind", old, new)
+            }
+            InvalidChar(c) => {
+                write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c)
+            }
+            AlignmentCheckFailed { required, has } => write!(
+                f,
+                "tried to access memory with alignment {}, but alignment {} is required",
+                has.bytes(),
+                required.bytes()
+            ),
+            TypeNotPrimitive(ty) => write!(f, "expected primitive type, got {}", ty),
+            PathNotFound(ref path) => write!(f, "cannot find path {:?}", path),
+            IncorrectAllocationInformation(size, size2, align, align2) => write!(
+                f,
+                "incorrect alloc info: expected size {} and align {}, \
                            got size {} and align {}",
-                    size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
-            InvalidMemoryAccess =>
-                write!(f, "tried to access memory through an invalid pointer"),
-            DanglingPointerDeref =>
-                write!(f, "dangling pointer was dereferenced"),
-            DoubleFree =>
-                write!(f, "tried to deallocate dangling pointer"),
-            InvalidFunctionPointer =>
-                write!(f, "tried to use a function pointer after offsetting it"),
-            InvalidBool =>
-                write!(f, "invalid boolean value read"),
-            InvalidNullPointerUsage =>
-                write!(f, "invalid use of NULL pointer"),
-            ReadPointerAsBytes =>
-                write!(f, "a raw memory access tried to access part of a pointer value as raw \
-                    bytes"),
-            ReadBytesAsPointer =>
-                write!(f, "a memory access tried to interpret some bytes as a pointer"),
-            ReadForeignStatic =>
-                write!(f, "tried to read from foreign (extern) static"),
-            InvalidPointerMath =>
-                write!(f, "attempted to do invalid arithmetic on pointers that would leak base \
-                    addresses, e.g., comparing pointers into different allocations"),
-            DeadLocal =>
-                write!(f, "tried to access a dead local variable"),
-            DerefFunctionPointer =>
-                write!(f, "tried to dereference a function pointer"),
-            ExecuteMemory =>
-                write!(f, "tried to treat a memory pointer as a function pointer"),
-            OutOfTls =>
-                write!(f, "reached the maximum number of representable TLS keys"),
-            TlsOutOfBounds =>
-                write!(f, "accessed an invalid (unallocated) TLS key"),
-            CalledClosureAsFunction =>
-                write!(f, "tried to call a closure through a function pointer"),
-            VtableForArgumentlessMethod =>
-                write!(f, "tried to call a vtable function without arguments"),
-            ModifiedConstantMemory =>
-                write!(f, "tried to modify constant memory"),
-            ModifiedStatic =>
-                write!(f, "tried to modify a static's initial value from another static's \
-                    initializer"),
-            ReallocateNonBasePtr =>
-                write!(f, "tried to reallocate with a pointer not to the beginning of an \
-                    existing object"),
-            DeallocateNonBasePtr =>
-                write!(f, "tried to deallocate with a pointer not to the beginning of an \
-                    existing object"),
-            HeapAllocZeroBytes =>
-                write!(f, "tried to re-, de- or allocate zero bytes on the heap"),
-            ReadFromReturnPointer =>
-                write!(f, "tried to read from the return pointer"),
-            UnimplementedTraitSelection =>
-                write!(f, "there were unresolved type arguments during trait selection"),
-            InvalidBoolOp(_) =>
-                write!(f, "invalid boolean operation"),
-            UnterminatedCString(_) =>
-                write!(f, "attempted to get length of a null-terminated string, but no null \
-                    found before end of allocation"),
-            ReadUndefBytes(_) =>
-                write!(f, "attempted to read undefined bytes"),
-            HeapAllocNonPowerOfTwoAlignment(_) =>
-                write!(f, "tried to re-, de-, or allocate heap memory with alignment that is \
-                    not a power of two"),
-            Unsupported(ref msg) =>
-                write!(f, "{}", msg),
-            ConstPropUnsupported(ref msg) =>
-                write!(f, "Constant propagation encountered an unsupported situation: {}", msg),
+                size.bytes(),
+                align.bytes(),
+                size2.bytes(),
+                align2.bytes()
+            ),
+            InvalidMemoryAccess => write!(f, "tried to access memory through an invalid pointer"),
+            DanglingPointerDeref => write!(f, "dangling pointer was dereferenced"),
+            DoubleFree => write!(f, "tried to deallocate dangling pointer"),
+            InvalidFunctionPointer => {
+                write!(f, "tried to use a function pointer after offsetting it")
+            }
+            InvalidBool => write!(f, "invalid boolean value read"),
+            InvalidNullPointerUsage => write!(f, "invalid use of NULL pointer"),
+            ReadPointerAsBytes => write!(
+                f,
+                "a raw memory access tried to access part of a pointer value as raw \
+                    bytes"
+            ),
+            ReadBytesAsPointer => {
+                write!(f, "a memory access tried to interpret some bytes as a pointer")
+            }
+            ReadForeignStatic => write!(f, "tried to read from foreign (extern) static"),
+            InvalidPointerMath => write!(
+                f,
+                "attempted to do invalid arithmetic on pointers that would leak base \
+                    addresses, e.g., comparing pointers into different allocations"
+            ),
+            DeadLocal => write!(f, "tried to access a dead local variable"),
+            DerefFunctionPointer => write!(f, "tried to dereference a function pointer"),
+            ExecuteMemory => write!(f, "tried to treat a memory pointer as a function pointer"),
+            OutOfTls => write!(f, "reached the maximum number of representable TLS keys"),
+            TlsOutOfBounds => write!(f, "accessed an invalid (unallocated) TLS key"),
+            CalledClosureAsFunction => {
+                write!(f, "tried to call a closure through a function pointer")
+            }
+            VtableForArgumentlessMethod => {
+                write!(f, "tried to call a vtable function without arguments")
+            }
+            ModifiedConstantMemory => write!(f, "tried to modify constant memory"),
+            ModifiedStatic => write!(
+                f,
+                "tried to modify a static's initial value from another static's \
+                    initializer"
+            ),
+            ReallocateNonBasePtr => write!(
+                f,
+                "tried to reallocate with a pointer not to the beginning of an \
+                    existing object"
+            ),
+            DeallocateNonBasePtr => write!(
+                f,
+                "tried to deallocate with a pointer not to the beginning of an \
+                    existing object"
+            ),
+            HeapAllocZeroBytes => write!(f, "tried to re-, de- or allocate zero bytes on the heap"),
+            ReadFromReturnPointer => write!(f, "tried to read from the return pointer"),
+            UnimplementedTraitSelection => {
+                write!(f, "there were unresolved type arguments during trait selection")
+            }
+            InvalidBoolOp(_) => write!(f, "invalid boolean operation"),
+            UnterminatedCString(_) => write!(
+                f,
+                "attempted to get length of a null-terminated string, but no null \
+                    found before end of allocation"
+            ),
+            ReadUndefBytes(_) => write!(f, "attempted to read undefined bytes"),
+            HeapAllocNonPowerOfTwoAlignment(_) => write!(
+                f,
+                "tried to re-, de-, or allocate heap memory with alignment that is \
+                    not a power of two"
+            ),
+            Unsupported(ref msg) => write!(f, "{}", msg),
+            ConstPropUnsupported(ref msg) => {
+                write!(f, "Constant propagation encountered an unsupported situation: {}", msg)
+            }
         }
     }
 }
@@ -597,11 +582,14 @@ impl fmt::Debug for ResourceExhaustionInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use ResourceExhaustionInfo::*;
         match self {
-            StackFrameLimitReached =>
-                write!(f, "reached the configured maximum number of stack frames"),
-            InfiniteLoop =>
-                write!(f, "duplicate interpreter state observed here, const evaluation will never \
-                    terminate"),
+            StackFrameLimitReached => {
+                write!(f, "reached the configured maximum number of stack frames")
+            }
+            InfiniteLoop => write!(
+                f,
+                "duplicate interpreter state observed here, const evaluation will never \
+                    terminate"
+            ),
         }
     }
 }
@@ -637,18 +625,12 @@ impl fmt::Debug for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InterpError::*;
         match *self {
-            Unsupported(ref msg) =>
-                write!(f, "{:?}", msg),
-            InvalidProgram(ref msg) =>
-                write!(f, "{:?}", msg),
-            UndefinedBehavior(ref msg) =>
-                write!(f, "{:?}", msg),
-            ResourceExhaustion(ref msg) =>
-                write!(f, "{:?}", msg),
-            Panic(ref msg) =>
-                write!(f, "{:?}", msg),
-            MachineStop(_) =>
-                write!(f, "machine caused execution to stop"),
+            Unsupported(ref msg) => write!(f, "{:?}", msg),
+            InvalidProgram(ref msg) => write!(f, "{:?}", msg),
+            UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
+            ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
+            Panic(ref msg) => write!(f, "{:?}", msg),
+            MachineStop(_) => write!(f, "machine caused execution to stop"),
         }
     }
 }

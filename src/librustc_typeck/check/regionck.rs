@@ -80,7 +80,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, RegionObligation, SuppressRegionErrors};
 use rustc::ty::adjustment;
-use rustc::ty::subst::{SubstsRef, GenericArgKind};
+use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::{self, Ty};
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -109,13 +109,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn regionck_expr(&self, body: &'tcx hir::Body<'tcx>) {
         let subject = self.tcx.hir().body_owner_def_id(body.id());
         let id = body.value.hir_id;
-        let mut rcx = RegionCtxt::new(
-            self,
-            RepeatingScope(id),
-            id,
-            Subject(subject),
-            self.param_env,
-        );
+        let mut rcx =
+            RegionCtxt::new(self, RepeatingScope(id), id, Subject(subject), self.param_env);
 
         // There are no add'l implied bounds when checking a
         // standalone expr (e.g., the `E` in a type like `[u32; E]`).
@@ -144,8 +139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Subject(subject),
             self.param_env,
         );
-        rcx.outlives_environment
-            .add_implied_bounds(self, wf_tys, item_id, span);
+        rcx.outlives_environment.add_implied_bounds(self, wf_tys, item_id, span);
         rcx.outlives_environment.save_implied_bounds(item_id);
         rcx.visit_region_obligations(item_id);
         rcx.resolve_regions_and_report_errors(SuppressRegionErrors::default());
@@ -163,13 +157,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("regionck_fn(id={})", fn_id);
         let subject = self.tcx.hir().body_owner_def_id(body.id());
         let hir_id = body.value.hir_id;
-        let mut rcx = RegionCtxt::new(
-            self,
-            RepeatingScope(hir_id),
-            hir_id,
-            Subject(subject),
-            self.param_env,
-        );
+        let mut rcx =
+            RegionCtxt::new(self, RepeatingScope(hir_id), hir_id, Subject(subject), self.param_env);
 
         if !self.errors_reported_since_creation() {
             // regionck assumes typeck succeeded
@@ -310,10 +299,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.body_id = body_id.hir_id;
         self.body_owner = self.tcx.hir().body_owner_def_id(body_id);
 
-        let call_site = region::Scope {
-            id: body.value.hir_id.local_id,
-            data: region::ScopeData::CallSite,
-        };
+        let call_site =
+            region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite };
         self.call_site_scope = Some(call_site);
 
         let fn_sig = {
@@ -330,12 +317,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         // because it will have no effect.
         //
         // FIXME(#27579) return types should not be implied bounds
-        let fn_sig_tys: Vec<_> = fn_sig
-            .inputs()
-            .iter()
-            .cloned()
-            .chain(Some(fn_sig.output()))
-            .collect();
+        let fn_sig_tys: Vec<_> =
+            fn_sig.inputs().iter().cloned().chain(Some(fn_sig.output())).collect();
 
         self.outlives_environment.add_implied_bounds(
             self.fcx,
@@ -343,18 +326,13 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             body_id.hir_id,
             span,
         );
-        self.outlives_environment
-            .save_implied_bounds(body_id.hir_id);
+        self.outlives_environment.save_implied_bounds(body_id.hir_id);
         self.link_fn_params(&body.params);
         self.visit_body(body);
         self.visit_region_obligations(body_id.hir_id);
 
         let call_site_scope = self.call_site_scope.unwrap();
-        debug!(
-            "visit_fn_body body.id {:?} call_site_scope: {:?}",
-            body.id(),
-            call_site_scope
-        );
+        debug!("visit_fn_body body.id {:?} call_site_scope: {:?}", body.id(), call_site_scope);
         let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope));
 
         self.type_of_node_must_outlive(infer::CallReturn(span), body_id.hir_id, call_site_region);
@@ -422,9 +400,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
             let typ = self.resolve_node_type(hir_id);
             let body_id = self.body_id;
-            let _ = dropck::check_drop_obligations(
-                self, typ, span, body_id,
-            );
+            let _ = dropck::check_drop_obligations(self, typ, span, body_id);
         })
     }
 }
@@ -469,8 +445,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         self.visit_fn_body(hir_id, body, span);
 
         // Restore state from previous function.
-        self.outlives_environment
-            .pop_snapshot_post_closure(env_snapshot);
+        self.outlives_environment.pop_snapshot_post_closure(env_snapshot);
         self.call_site_scope = old_call_site_scope;
         self.body_id = old_body_id;
         self.body_owner = old_body_owner;
@@ -492,10 +467,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        debug!(
-            "regionck::visit_expr(e={:?}, repeating_scope={:?})",
-            expr, self.repeating_scope
-        );
+        debug!("regionck::visit_expr(e={:?}, repeating_scope={:?})", expr, self.repeating_scope);
 
         // No matter what, the type of each expression must outlive the
         // scope of that expression. This also guarantees basic WF.
@@ -699,10 +671,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
 impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn constrain_cast(&mut self, cast_expr: &hir::Expr, source_expr: &hir::Expr) {
-        debug!(
-            "constrain_cast(cast_expr={:?}, source_expr={:?})",
-            cast_expr, source_expr
-        );
+        debug!("constrain_cast(cast_expr={:?}, source_expr={:?})", cast_expr, source_expr);
 
         let source_ty = self.resolve_node_type(source_expr.hir_id);
         let target_ty = self.resolve_node_type(cast_expr.hir_id);
@@ -771,19 +740,14 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         //! in the type of the function. Also constrains the regions that
         //! appear in the arguments appropriately.
 
-        debug!(
-            "constrain_call(call_expr={:?}, receiver={:?})",
-            call_expr, receiver
-        );
+        debug!("constrain_call(call_expr={:?}, receiver={:?})", call_expr, receiver);
 
         // `callee_region` is the scope representing the time in which the
         // call occurs.
         //
         // FIXME(#6268) to support nested method calls, should be callee_id
-        let callee_scope = region::Scope {
-            id: call_expr.hir_id.local_id,
-            data: region::ScopeData::Node,
-        };
+        let callee_scope =
+            region::Scope { id: call_expr.hir_id.local_id, data: region::ScopeData::Node };
         let callee_region = self.tcx.mk_region(ty::ReScope(callee_scope));
 
         debug!("callee_region={:?}", callee_region);
@@ -844,29 +808,19 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             data: region::ScopeData::Node,
         }));
         for adjustment in adjustments {
-            debug!(
-                "constrain_adjustments: adjustment={:?}, cmt={:?}",
-                adjustment, cmt
-            );
+            debug!("constrain_adjustments: adjustment={:?}, cmt={:?}", adjustment, cmt);
 
             if let adjustment::Adjust::Deref(Some(deref)) = adjustment.kind {
                 debug!("constrain_adjustments: overloaded deref: {:?}", deref);
 
                 // Treat overloaded autoderefs as if an AutoBorrow adjustment
                 // was applied on the base type, as that is always the case.
-                let input = self.tcx.mk_ref(
-                    deref.region,
-                    ty::TypeAndMut {
-                        ty: cmt.ty,
-                        mutbl: deref.mutbl,
-                    },
-                );
+                let input = self
+                    .tcx
+                    .mk_ref(deref.region, ty::TypeAndMut { ty: cmt.ty, mutbl: deref.mutbl });
                 let output = self.tcx.mk_ref(
                     deref.region,
-                    ty::TypeAndMut {
-                        ty: adjustment.target,
-                        mutbl: deref.mutbl,
-                    },
+                    ty::TypeAndMut { ty: adjustment.target, mutbl: deref.mutbl },
                 );
 
                 self.link_region(
@@ -907,11 +861,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         minimum_lifetime: ty::Region<'tcx>,
         maximum_lifetime: ty::Region<'tcx>,
     ) {
-        self.sub_regions(
-            infer::DerefPointer(deref_span),
-            minimum_lifetime,
-            maximum_lifetime,
-        )
+        self.sub_regions(infer::DerefPointer(deref_span), minimum_lifetime, maximum_lifetime)
     }
 
     fn check_safety_of_rvalue_destructor_if_necessary(
@@ -923,12 +873,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             if place.projections.is_empty() {
                 let typ = self.resolve_type(place.ty);
                 let body_id = self.body_id;
-                let _ = dropck::check_drop_obligations(
-                    self,
-                    typ,
-                    span,
-                    body_id,
-                );
+                let _ = dropck::check_drop_obligations(self, typ, span, body_id);
             }
         }
     }
@@ -936,10 +881,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// Invoked on any index expression that occurs. Checks that if this is a slice
     /// being indexed, the lifetime of the pointer includes the deref expr.
     fn constrain_index(&mut self, index_expr: &hir::Expr, indexed_ty: Ty<'tcx>) {
-        debug!(
-            "constrain_index(index_expr=?, indexed_ty={}",
-            self.ty_to_string(indexed_ty)
-        );
+        debug!("constrain_index(index_expr=?, indexed_ty={}", self.ty_to_string(indexed_ty));
 
         let r_index_expr = ty::ReScope(region::Scope {
             id: index_expr.hir_id.local_id,
@@ -972,7 +914,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         // report errors later on in the writeback phase.
         let ty0 = self.resolve_node_type(hir_id);
 
-        let ty = self.tables
+        let ty = self
+            .tables
             .borrow()
             .adjustments()
             .get(hir_id)
@@ -1003,11 +946,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     ) {
         self.infcx.register_region_obligation(
             self.body_id,
-            RegionObligation {
-                sub_region: region,
-                sup_type: ty,
-                origin,
-            },
+            RegionObligation { sub_region: region, sup_type: ty, origin },
         );
     }
 
@@ -1056,9 +995,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn link_fn_params(&self, params: &[hir::Param]) {
         for param in params {
             let param_ty = self.node_ty(param.hir_id);
-            let param_cmt = self.with_mc(|mc| {
-                mc.cat_rvalue(param.hir_id, param.pat.span, param_ty)
-            });
+            let param_cmt =
+                self.with_mc(|mc| mc.cat_rvalue(param.hir_id, param.pat.span, param_ty));
             debug!("param_ty={:?} param_cmt={:?} param={:?}", param_ty, param_cmt, param);
             self.link_pattern(param_cmt, &param.pat);
         }
@@ -1067,10 +1005,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// Link lifetimes of any ref bindings in `root_pat` to the pointers found
     /// in the discriminant, if needed.
     fn link_pattern(&self, discr_cmt: mc::Place<'tcx>, root_pat: &hir::Pat) {
-        debug!(
-            "link_pattern(discr_cmt={:?}, root_pat={:?})",
-            discr_cmt, root_pat
-        );
+        debug!("link_pattern(discr_cmt={:?}, root_pat={:?})", discr_cmt, root_pat);
         ignore_err!(self.with_mc(|mc| {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, sub_pat| {
                 // `ref x` pattern
@@ -1085,9 +1020,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                             );
                         }
                     } else {
-                        self.tcx
-                            .sess
-                            .delay_span_bug(sub_pat.span, "missing binding mode");
+                        self.tcx.sess.delay_span_bug(sub_pat.span, "missing binding mode");
                     }
                 }
             })
@@ -1102,10 +1035,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         expr_cmt: &mc::Place<'tcx>,
         autoref: &adjustment::AutoBorrow<'tcx>,
     ) {
-        debug!(
-            "link_autoref(autoref={:?}, expr_cmt={:?})",
-            autoref, expr_cmt
-        );
+        debug!("link_autoref(autoref={:?}, expr_cmt={:?})", autoref, expr_cmt);
 
         match *autoref {
             adjustment::AutoBorrow::Ref(r, m) => {
@@ -1165,17 +1095,12 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             match pointer_ty.kind {
                 ty::RawPtr(_) => return,
                 ty::Ref(ref_region, _, ref_mutability) => {
-                    if self.link_reborrowed_region(
-                        span,
-                        borrow_region,
-                        ref_region,
-                        ref_mutability,
-                    ) {
+                    if self.link_reborrowed_region(span, borrow_region, ref_region, ref_mutability)
+                    {
                         return;
                     }
-
                 }
-                _ => assert!(pointer_ty.is_box(), "unexpected built-in deref type {}", pointer_ty)
+                _ => assert!(pointer_ty.is_box(), "unexpected built-in deref type {}", pointer_ty),
             }
         }
         if let mc::PlaceBase::Upvar(upvar_id) = borrow_place.base {
@@ -1221,10 +1146,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         ref_region: ty::Region<'tcx>,
         ref_mutability: hir::Mutability,
     ) -> bool {
-        debug!(
-            "link_reborrowed_region: {:?} <= {:?}",
-            borrow_region, ref_region
-        );
+        debug!("link_reborrowed_region: {:?} <= {:?}", borrow_region, ref_region);
         self.sub_regions(infer::Reborrow(span), borrow_region, ref_region);
 
         // Decide whether we need to recurse and link any regions within
@@ -1319,7 +1241,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                     // Region of environment pointer
                     let env_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
                         scope: upvar_id.closure_expr_id.to_def_id(),
-                        bound_region: ty::BrEnv
+                        bound_region: ty::BrEnv,
                     }));
                     self.sub_regions(
                         infer::ReborrowUpvar(span, upvar_id),

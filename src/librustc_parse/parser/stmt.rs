@@ -1,18 +1,18 @@
-use super::{Parser, Restrictions, PrevTokenKind, SemiColonMode, BlockMode};
-use super::expr::LhsExpr;
-use super::path::PathStyle;
-use super::pat::GateOr;
 use super::diagnostics::Error;
+use super::expr::LhsExpr;
+use super::pat::GateOr;
+use super::path::PathStyle;
+use super::{BlockMode, Parser, PrevTokenKind, Restrictions, SemiColonMode};
 use crate::maybe_whole;
 use crate::DirectoryOwnership;
 
-use rustc_errors::{PResult, Applicability};
-use syntax::ptr::P;
+use rustc_errors::{Applicability, PResult};
 use syntax::ast;
-use syntax::ast::{DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
-use syntax::ast::{AttrVec, Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac};
-use syntax::util::classify;
+use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle, VisibilityKind};
+use syntax::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
+use syntax::ptr::P;
 use syntax::token;
+use syntax::util::classify;
 use syntax_pos::source_map::{respan, Span};
 use syntax_pos::symbol::{kw, sym, Symbol};
 
@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
 
         if self.eat_keyword(kw::Let) {
-            return self.parse_local_mk(lo, attrs.into()).map(Some)
+            return self.parse_local_mk(lo, attrs.into()).map(Some);
         }
         if self.is_kw_followed_by_ident(kw::Mut) {
             return self.recover_stmt_local(lo, attrs.into(), "missing keyword", "let mut");
@@ -115,7 +115,7 @@ impl<'a> Parser<'a> {
             let kind = StmtKind::Semi(self.mk_expr(
                 lo.to(last_semi),
                 ExprKind::Tup(Vec::new()),
-                AttrVec::new()
+                AttrVec::new(),
             ));
             return Ok(Some(self.mk_stmt(lo.to(last_semi), kind)));
         }
@@ -143,21 +143,12 @@ impl<'a> Parser<'a> {
         let delim = args.delim();
         let hi = self.prev_span;
 
-        let style = if delim == token::Brace {
-            MacStmtStyle::Braces
-        } else {
-            MacStmtStyle::NoBraces
-        };
+        let style =
+            if delim == token::Brace { MacStmtStyle::Braces } else { MacStmtStyle::NoBraces };
 
-        let mac = Mac {
-            path,
-            args,
-            prior_type_ascription: self.last_type_ascription,
-        };
+        let mac = Mac { path, args, prior_type_ascription: self.last_type_ascription };
 
-        let kind = if delim == token::Brace
-            || self.token == token::Semi
-            || self.token == token::Eof
+        let kind = if delim == token::Brace || self.token == token::Semi || self.token == token::Eof
         {
             StmtKind::Mac(P((mac, style, attrs.into())))
         }
@@ -168,11 +159,17 @@ impl<'a> Parser<'a> {
             && self.token.can_begin_expr()
             && match self.token.kind {
                 // These can continue an expression, so we can't stop parsing and warn.
-                token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
-                token::BinOp(token::Minus) | token::BinOp(token::Star) |
-                token::BinOp(token::And) | token::BinOp(token::Or) |
-                token::AndAnd | token::OrOr |
-                token::DotDot | token::DotDotDot | token::DotDotEq => false,
+                token::OpenDelim(token::Paren)
+                | token::OpenDelim(token::Bracket)
+                | token::BinOp(token::Minus)
+                | token::BinOp(token::Star)
+                | token::BinOp(token::And)
+                | token::BinOp(token::Or)
+                | token::AndAnd
+                | token::OrOr
+                | token::DotDot
+                | token::DotDotDot
+                | token::DotDotEq => false,
                 _ => true,
             }
         {
@@ -202,8 +199,7 @@ impl<'a> Parser<'a> {
     }
 
     fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
-        self.token.is_keyword(kw)
-            && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
+        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
     }
 
     fn recover_stmt_local(
@@ -251,17 +247,19 @@ impl<'a> Parser<'a> {
             (None, None)
         };
         let init = match (self.parse_initializer(err.is_some()), err) {
-            (Ok(init), None) => {  // init parsed, ty parsed
+            (Ok(init), None) => {
+                // init parsed, ty parsed
                 init
             }
-            (Ok(init), Some((_, colon_sp, mut err))) => {  // init parsed, ty error
+            (Ok(init), Some((_, colon_sp, mut err))) => {
+                // init parsed, ty error
                 // Could parse the type as if it were the initializer, it is likely there was a
                 // typo in the code: `:` instead of `=`. Add suggestion and emit the error.
                 err.span_suggestion_short(
                     colon_sp,
                     "use `=` if you meant to assign",
                     " =".to_string(),
-                    Applicability::MachineApplicable
+                    Applicability::MachineApplicable,
                 );
                 err.emit();
                 // As this was parsed successfully, continue as if the code has been fixed for the
@@ -269,7 +267,8 @@ impl<'a> Parser<'a> {
                 // extra noise.
                 init
             }
-            (Err(mut init_err), Some((snapshot, _, ty_err))) => {  // init error, ty error
+            (Err(mut init_err), Some((snapshot, _, ty_err))) => {
+                // init error, ty error
                 init_err.cancel();
                 // Couldn't parse the type nor the initializer, only raise the type error and
                 // return to the parser state before parsing the type as the initializer.
@@ -277,25 +276,15 @@ impl<'a> Parser<'a> {
                 mem::replace(self, snapshot);
                 return Err(ty_err);
             }
-            (Err(err), None) => {  // init error, ty parsed
+            (Err(err), None) => {
+                // init error, ty parsed
                 // Couldn't parse the initializer and we're not attempting to recover a failed
                 // parse of the type, return the error.
                 return Err(err);
             }
         };
-        let hi = if self.token == token::Semi {
-            self.token.span
-        } else {
-            self.prev_span
-        };
-        Ok(P(ast::Local {
-            ty,
-            pat,
-            init,
-            id: DUMMY_NODE_ID,
-            span: lo.to(hi),
-            attrs,
-        }))
+        let hi = if self.token == token::Semi { self.token.span } else { self.prev_span };
+        Ok(P(ast::Local { ty, pat, init, id: DUMMY_NODE_ID, span: lo.to(hi), attrs }))
     }
 
     /// Parses the RHS of a local variable declaration (e.g., '= 14;').
@@ -382,14 +371,13 @@ impl<'a> Parser<'a> {
 
     /// Parses a block. Inner attributes are allowed.
     pub(super) fn parse_inner_attrs_and_block(
-        &mut self
+        &mut self,
     ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         let lo = self.token.span;
         self.expect(&token::OpenDelim(token::Brace))?;
-        Ok((self.parse_inner_attributes()?,
-            self.parse_block_tail(lo, BlockCheckMode::Default)?))
+        Ok((self.parse_inner_attributes()?, self.parse_block_tail(lo, BlockCheckMode::Default)?))
     }
 
     /// Parses the rest of a block expression or function body.
@@ -397,7 +385,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_block_tail(
         &mut self,
         lo: Span,
-        s: BlockCheckMode
+        s: BlockCheckMode,
     ) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
@@ -423,12 +411,7 @@ impl<'a> Parser<'a> {
                 continue;
             };
         }
-        Ok(P(ast::Block {
-            stmts,
-            id: DUMMY_NODE_ID,
-            rules: s,
-            span: lo.to(self.prev_span),
-        }))
+        Ok(P(ast::Block { stmts, id: DUMMY_NODE_ID, rules: s, span: lo.to(self.prev_span) }))
     }
 
     /// Parses a statement, including the trailing semicolon.
@@ -478,11 +461,14 @@ impl<'a> Parser<'a> {
     }
 
     fn warn_missing_semicolon(&self) {
-        self.diagnostic().struct_span_warn(self.token.span, {
-            &format!("expected `;`, found {}", self.this_token_descr())
-        }).note({
-            "this was erroneously allowed and will become a hard error in a future release"
-        }).emit();
+        self.diagnostic()
+            .struct_span_warn(self.token.span, {
+                &format!("expected `;`, found {}", self.this_token_descr())
+            })
+            .note({
+                "this was erroneously allowed and will become a hard error in a future release"
+            })
+            .emit();
     }
 
     fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {

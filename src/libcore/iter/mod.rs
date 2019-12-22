@@ -309,56 +309,58 @@ use crate::ops::Try;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
 
-#[unstable(feature = "step_trait",
-           reason = "likely to be replaced by finer-grained traits",
-           issue = "42168")]
+#[unstable(
+    feature = "step_trait",
+    reason = "likely to be replaced by finer-grained traits",
+    issue = "42168"
+)]
 pub use self::range::Step;
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::sources::{Repeat, repeat};
-#[stable(feature = "iterator_repeat_with", since = "1.28.0")]
-pub use self::sources::{RepeatWith, repeat_with};
 #[stable(feature = "iter_empty", since = "1.2.0")]
-pub use self::sources::{Empty, empty};
-#[stable(feature = "iter_once", since = "1.2.0")]
-pub use self::sources::{Once, once};
-#[unstable(feature = "iter_once_with", issue = "57581")]
-pub use self::sources::{OnceWith, once_with};
+pub use self::sources::{empty, Empty};
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
-pub use self::sources::{FromFn, from_fn};
+pub use self::sources::{from_fn, FromFn};
+#[stable(feature = "iter_once", since = "1.2.0")]
+pub use self::sources::{once, Once};
+#[unstable(feature = "iter_once_with", issue = "57581")]
+pub use self::sources::{once_with, OnceWith};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::sources::{repeat, Repeat};
+#[stable(feature = "iterator_repeat_with", since = "1.28.0")]
+pub use self::sources::{repeat_with, RepeatWith};
 #[stable(feature = "iter_successors", since = "1.34.0")]
-pub use self::sources::{Successors, successors};
+pub use self::sources::{successors, Successors};
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::traits::{ExactSizeIterator, Sum, Product};
 #[stable(feature = "fused", since = "1.26.0")]
 pub use self::traits::FusedIterator;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::traits::{DoubleEndedIterator, Extend, FromIterator, IntoIterator};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::traits::{ExactSizeIterator, Product, Sum};
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::adapters::{Rev, Cycle, Chain, Zip, Map, Filter, FilterMap, Enumerate};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::adapters::{Peekable, SkipWhile, TakeWhile, Skip, Take, Scan, FlatMap};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::adapters::{Fuse, Inspect};
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;
-#[stable(feature = "iterator_step_by", since = "1.28.0")]
-pub use self::adapters::StepBy;
-#[stable(feature = "iterator_flatten", since = "1.29.0")]
-pub use self::adapters::Flatten;
 #[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::adapters::Copied;
+#[stable(feature = "iterator_flatten", since = "1.29.0")]
+pub use self::adapters::Flatten;
+#[stable(feature = "iterator_step_by", since = "1.28.0")]
+pub use self::adapters::StepBy;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::adapters::{Chain, Cycle, Enumerate, Filter, FilterMap, Map, Rev, Zip};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::adapters::{FlatMap, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::adapters::{Fuse, Inspect};
 
-pub(crate) use self::adapters::{TrustedRandomAccess, process_results};
+pub(crate) use self::adapters::{process_results, TrustedRandomAccess};
 
+mod adapters;
 mod range;
 mod sources;
 mod traits;
-mod adapters;
 
 /// Used to make try_fold closures more like normal loops
 #[derive(PartialEq)]
@@ -378,9 +380,13 @@ impl<C, B> Try for LoopState<C, B> {
         }
     }
     #[inline]
-    fn from_error(v: Self::Error) -> Self { LoopState::Break(v) }
+    fn from_error(v: Self::Error) -> Self {
+        LoopState::Break(v)
+    }
     #[inline]
-    fn from_ok(v: Self::Ok) -> Self { LoopState::Continue(v) }
+    fn from_ok(v: Self::Ok) -> Self {
+        LoopState::Continue(v)
+    }
 }
 
 impl<C, B> LoopState<C, B> {

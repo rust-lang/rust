@@ -531,7 +531,6 @@ fn drain_filter_complex() {
     }
 }
 
-
 #[test]
 fn test_drop() {
     static mut DROPS: i32 = 0;

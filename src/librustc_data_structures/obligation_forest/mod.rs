@@ -85,19 +85,20 @@ mod graphviz;
 #[cfg(test)]
 mod tests;
 
-pub trait ForestObligation : Clone + Debug {
-    type Predicate : Clone + hash::Hash + Eq + Debug;
+pub trait ForestObligation: Clone + Debug {
+    type Predicate: Clone + hash::Hash + Eq + Debug;
 
     fn as_predicate(&self) -> &Self::Predicate;
 }
 
 pub trait ObligationProcessor {
-    type Obligation : ForestObligation;
-    type Error : Debug;
+    type Obligation: ForestObligation;
+    type Error: Debug;
 
-    fn process_obligation(&mut self,
-                          obligation: &mut Self::Obligation)
-                          -> ProcessResult<Self::Obligation, Self::Error>;
+    fn process_obligation(
+        &mut self,
+        obligation: &mut Self::Obligation,
+    ) -> ProcessResult<Self::Obligation, Self::Error>;
 
     /// As we do the cycle check, we invoke this callback when we
     /// encounter an actual cycle. `cycle` is an iterator that starts
@@ -107,10 +108,9 @@ pub trait ObligationProcessor {
     /// In other words, if we had O1 which required O2 which required
     /// O3 which required O1, we would give an iterator yielding O1,
     /// O2, O3 (O1 is not yielded twice).
-    fn process_backedge<'c, I>(&mut self,
-                               cycle: I,
-                               _marker: PhantomData<&'c Self::Obligation>)
-        where I: Clone + Iterator<Item=&'c Self::Obligation>;
+    fn process_backedge<'c, I>(&mut self, cycle: I, _marker: PhantomData<&'c Self::Obligation>)
+    where
+        I: Clone + Iterator<Item = &'c Self::Obligation>;
 }
 
 /// The result type used by `process_obligation`.
@@ -185,20 +185,11 @@ struct Node<O> {
 }
 
 impl<O> Node<O> {
-    fn new(
-        parent: Option<usize>,
-        obligation: O,
-        obligation_tree_id: ObligationTreeId
-    ) -> Node<O> {
+    fn new(parent: Option<usize>, obligation: O, obligation_tree_id: ObligationTreeId) -> Node<O> {
         Node {
             obligation,
             state: Cell::new(NodeState::Pending),
-            dependents:
-                if let Some(parent_index) = parent {
-                    vec![parent_index]
-                } else {
-                    vec![]
-                },
+            dependents: if let Some(parent_index) = parent { vec![parent_index] } else { vec![] },
             has_parent: parent.is_some(),
             obligation_tree_id,
         }
@@ -339,11 +330,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                         node.dependents.push(parent_index);
                     }
                 }
-                if let NodeState::Error = node.state.get() {
-                    Err(())
-                } else {
-                    Ok(())
-                }
+                if let NodeState::Error = node.state.get() { Err(()) } else { Ok(()) }
             }
             Entry::Vacant(v) => {
                 let obligation_tree_id = match parent {
@@ -351,12 +338,12 @@ impl<O: ForestObligation> ObligationForest<O> {
                     None => self.obligation_tree_id_generator.next().unwrap(),
                 };
 
-                let already_failed =
-                    parent.is_some()
-                        && self.error_cache
-                            .get(&obligation_tree_id)
-                            .map(|errors| errors.contains(obligation.as_predicate()))
-                            .unwrap_or(false);
+                let already_failed = parent.is_some()
+                    && self
+                        .error_cache
+                        .get(&obligation_tree_id)
+                        .map(|errors| errors.contains(obligation.as_predicate()))
+                        .unwrap_or(false);
 
                 if already_failed {
                     Err(())
@@ -372,14 +359,12 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Converts all remaining obligations to the given error.
     pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
-        let errors = self.nodes.iter().enumerate()
+        let errors = self
+            .nodes
+            .iter()
+            .enumerate()
             .filter(|(_index, node)| node.state.get() == NodeState::Pending)
-            .map(|(index, _node)| {
-                Error {
-                    error: error.clone(),
-                    backtrace: self.error_at(index),
-                }
-            })
+            .map(|(index, _node)| Error { error: error.clone(), backtrace: self.error_at(index) })
             .collect();
 
         let successful_obligations = self.compress(DoCompleted::Yes);
@@ -389,9 +374,11 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Returns the set of obligations that are in a pending state.
     pub fn map_pending_obligations<P, F>(&self, f: F) -> Vec<P>
-        where F: Fn(&O) -> P
+    where
+        F: Fn(&O) -> P,
     {
-        self.nodes.iter()
+        self.nodes
+            .iter()
             .filter(|node| node.state.get() == NodeState::Pending)
             .map(|node| f(&node.obligation))
             .collect()
@@ -421,9 +408,13 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// be called in a loop until `outcome.stalled` is false.
     ///
     /// This _cannot_ be unrolled (presently, at least).
-    pub fn process_obligations<P>(&mut self, processor: &mut P, do_completed: DoCompleted)
-                                  -> Outcome<O, P::Error>
-        where P: ObligationProcessor<Obligation=O>
+    pub fn process_obligations<P>(
+        &mut self,
+        processor: &mut P,
+        do_completed: DoCompleted,
+    ) -> Outcome<O, P::Error>
+    where
+        P: ObligationProcessor<Obligation = O>,
     {
         self.gen += 1;
 
@@ -462,10 +453,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     node.state.set(NodeState::Success(Self::not_waiting()));
 
                     for child in children {
-                        let st = self.register_obligation_at(
-                            child,
-                            Some(index)
-                        );
+                        let st = self.register_obligation_at(child, Some(index));
                         if let Err(()) = st {
                             // Error already reported - propagate it
                             // to our node.
@@ -475,10 +463,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 }
                 ProcessResult::Error(err) => {
                     stalled = false;
-                    errors.push(Error {
-                        error: err,
-                        backtrace: self.error_at(index),
-                    });
+                    errors.push(Error { error: err, backtrace: self.error_at(index) });
                 }
             }
             index += 1;
@@ -498,11 +483,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.process_cycles(processor);
         let completed = self.compress(do_completed);
 
-        Outcome {
-            completed,
-            errors,
-            stalled,
-        }
+        Outcome { completed, errors, stalled }
     }
 
     /// Returns a vector of obligations for `p` and all of its
@@ -574,7 +555,8 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// Report cycles between all `Success` nodes that aren't still waiting.
     /// This must be called after `mark_still_waiting_nodes`.
     fn process_cycles<P>(&self, processor: &mut P)
-        where P: ObligationProcessor<Obligation=O>
+    where
+        P: ObligationProcessor<Obligation = O>,
     {
         let mut stack = vec![];
 
@@ -592,9 +574,14 @@ impl<O: ForestObligation> ObligationForest<O> {
         debug_assert!(stack.is_empty());
     }
 
-    fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>, processor: &mut P, min_index: usize,
-                                index: usize)
-        where P: ObligationProcessor<Obligation=O>
+    fn find_cycles_from_node<P>(
+        &self,
+        stack: &mut Vec<usize>,
+        processor: &mut P,
+        min_index: usize,
+        index: usize,
+    ) where
+        P: ObligationProcessor<Obligation = O>,
     {
         let node = &self.nodes[index];
         if let NodeState::Success(waiting) = node.state.get() {
@@ -614,7 +601,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                         // Cycle detected.
                         processor.process_backedge(
                             stack[rpos..].iter().map(GetObligation(&self.nodes)),
-                            PhantomData
+                            PhantomData,
                         );
                     }
                 }
@@ -697,11 +684,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         node_rewrites.truncate(0);
         self.node_rewrites.replace(node_rewrites);
 
-        if do_completed == DoCompleted::Yes {
-            Some(removed_success_obligations)
-        } else {
-            None
-        }
+        if do_completed == DoCompleted::Yes { Some(removed_success_obligations) } else { None }
     }
 
     fn apply_rewrites(&mut self, node_rewrites: &[usize]) {

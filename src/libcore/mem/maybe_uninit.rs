@@ -304,14 +304,15 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
     #[inline(always)]
     pub fn uninit_array<const LEN: usize>() -> [Self; LEN] {
-        unsafe {
-            MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init()
-        }
+        unsafe { MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init() }
     }
 
     /// A promotable constant, equivalent to `uninit()`.
-    #[unstable(feature = "internal_uninit_const", issue = "none",
-        reason = "hack to work around promotability")]
+    #[unstable(
+        feature = "internal_uninit_const",
+        issue = "none",
+        reason = "hack to work around promotability"
+    )]
     pub const UNINIT: Self = Self::uninit();
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being

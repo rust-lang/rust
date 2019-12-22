@@ -69,10 +69,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // In MIR, argument N is stored in local N+1.
             let local = Local::new(argument_index + 1);
 
-            debug!(
-                "equate_inputs_and_outputs: normalized_input_ty = {:?}",
-                normalized_input_ty
-            );
+            debug!("equate_inputs_and_outputs: normalized_input_ty = {:?}", normalized_input_ty);
 
             let mir_input_ty = body.local_decls[local].ty;
             let mir_input_span = body.local_decls[local].source_info.span;
@@ -145,7 +142,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 user_provided_output_ty,
                 self.mir_def_id,
                 Locations::All(output_span),
-                ConstraintCategory::BoringNoLocation
+                ConstraintCategory::BoringNoLocation,
             ) {
                 span_mirbug!(
                     self,
@@ -162,12 +159,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
         debug!("equate_normalized_input_or_output(a={:?}, b={:?})", a, b);
 
-        if let Err(terr) = self.eq_types(
-            a,
-            b,
-            Locations::All(span),
-            ConstraintCategory::BoringNoLocation,
-        ) {
+        if let Err(terr) =
+            self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
+        {
             span_mirbug!(
                 self,
                 Location::START,

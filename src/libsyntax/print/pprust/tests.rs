@@ -6,12 +6,20 @@ use crate::with_default_globals;
 use syntax_pos;
 
 fn fun_to_string(
-    decl: &ast::FnDecl, header: ast::FnHeader, name: ast::Ident, generics: &ast::Generics
+    decl: &ast::FnDecl,
+    header: ast::FnHeader,
+    name: ast::Ident,
+    generics: &ast::Generics,
 ) -> String {
     to_string(|s| {
         s.head("");
-        s.print_fn(decl, header, Some(name),
-                   generics, &source_map::dummy_spanned(ast::VisibilityKind::Inherited));
+        s.print_fn(
+            decl,
+            header,
+            Some(name),
+            generics,
+            &source_map::dummy_spanned(ast::VisibilityKind::Inherited),
+        );
         s.end(); // Close the head box.
         s.end(); // Close the outer box.
     })
@@ -32,12 +40,7 @@ fn test_fun_to_string() {
         };
         let generics = ast::Generics::default();
         assert_eq!(
-            fun_to_string(
-                &decl,
-                ast::FnHeader::default(),
-                abba_ident,
-                &generics
-            ),
+            fun_to_string(&decl, ast::FnHeader::default(), abba_ident, &generics),
             "fn abba()"
         );
     })

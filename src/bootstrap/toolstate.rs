@@ -1,14 +1,14 @@
-use serde::{Deserialize, Serialize};
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use build_helper::t;
-use std::time;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::env;
+use std::fmt;
 use std::fs;
 use std::io::{Seek, SeekFrom};
-use std::collections::HashMap;
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
-use std::fmt;
-use std::process::Command;
 use std::path::PathBuf;
-use std::env;
+use std::process::Command;
+use std::time;
 
 // Each cycle is 42 days long (6 weeks); the last week is 35..=42 then.
 const BETA_WEEK_START: u64 = 35;
@@ -38,11 +38,15 @@ pub enum ToolState {
 
 impl fmt::Display for ToolState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            ToolState::TestFail => "test-fail",
-            ToolState::TestPass => "test-pass",
-            ToolState::BuildFail => "build-fail",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                ToolState::TestFail => "test-fail",
+                ToolState::TestPass => "test-pass",
+                ToolState::BuildFail => "build-fail",
+            }
+        )
     }
 }
 
@@ -120,9 +124,7 @@ fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
     let output = t!(String::from_utf8(output.stdout));
 
     for (tool, submodule) in STABLE_TOOLS.iter().chain(NIGHTLY_TOOLS.iter()) {
-        let changed = output.lines().any(|l| {
-            l.starts_with("M") && l.ends_with(submodule)
-        });
+        let changed = output.lines().any(|l| l.starts_with("M") && l.ends_with(submodule));
         eprintln!("Verifying status of {}...", tool);
         if !changed {
             continue;
@@ -179,8 +181,10 @@ impl Step for ToolStateCheck {
                     eprintln!("error: Tool `{}` should be test-pass but is {}", tool, state);
                 } else if in_beta_week {
                     did_error = true;
-                    eprintln!("error: Tool `{}` should be test-pass but is {} during beta week.",
-                        tool, state);
+                    eprintln!(
+                        "error: Tool `{}` should be test-pass but is {} during beta week.",
+                        tool, state
+                    );
                 }
             }
         }
@@ -210,11 +214,8 @@ impl Builder<'_> {
                 // Ensure the parent directory always exists
                 t!(std::fs::create_dir_all(parent));
             }
-            let mut file = t!(fs::OpenOptions::new()
-                .create(true)
-                .write(true)
-                .read(true)
-                .open(path));
+            let mut file =
+                t!(fs::OpenOptions::new().create(true).write(true).read(true).open(path));
 
             serde_json::from_reader(&mut file).unwrap_or_default()
         } else {
@@ -233,11 +234,8 @@ impl Builder<'_> {
                 // Ensure the parent directory always exists
                 t!(std::fs::create_dir_all(parent));
             }
-            let mut file = t!(fs::OpenOptions::new()
-                .create(true)
-                .read(true)
-                .write(true)
-                .open(path));
+            let mut file =
+                t!(fs::OpenOptions::new().create(true).read(true).write(true).open(path));
 
             let mut current_toolstates: HashMap<Box<str>, ToolState> =
                 serde_json::from_reader(&mut file).unwrap_or_default();
@@ -275,10 +273,7 @@ impl Builder<'_> {
 ///
 ///       * See <https://help.github.com/articles/about-commit-email-addresses/>
 ///           if a private email by GitHub is wanted.
-fn commit_toolstate_change(
-    current_toolstate: &ToolstateData,
-    in_beta_week: bool,
-) {
+fn commit_toolstate_change(current_toolstate: &ToolstateData, in_beta_week: bool) {
     fn git_config(key: &str, value: &str) {
         let status = Command::new("git").arg("config").arg("--global").arg(key).arg(value).status();
         let success = match status {
@@ -303,7 +298,8 @@ fn commit_toolstate_change(
     let git_credential_path = PathBuf::from(t!(env::var("HOME"))).join(".git-credentials");
     t!(fs::write(&git_credential_path, credential));
 
-    let status = Command::new("git").arg("clone")
+    let status = Command::new("git")
+        .arg("clone")
         .arg("--depth=1")
         .arg(t!(env::var("TOOLSTATE_REPO")))
         .status();
@@ -402,10 +398,7 @@ fn change_toolstate(
         std::process::exit(1);
     }
 
-    let commit = t!(std::process::Command::new("git")
-        .arg("rev-parse")
-        .arg("HEAD")
-        .output());
+    let commit = t!(std::process::Command::new("git").arg("rev-parse").arg("HEAD").output());
     let commit = t!(String::from_utf8(commit.stdout));
 
     let toolstate_serialized = t!(serde_json::to_string(&current_toolstate));

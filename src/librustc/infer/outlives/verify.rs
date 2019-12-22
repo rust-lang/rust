@@ -2,7 +2,7 @@ use crate::hir::def_id::DefId;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use crate::traits;
-use crate::ty::subst::{Subst, InternalSubsts};
+use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::util::captures::Captures;
 
@@ -26,12 +26,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
-        Self {
-            tcx,
-            region_bound_pairs,
-            implicit_region_bound,
-            param_env,
-        }
+        Self { tcx, region_bound_pairs, implicit_region_bound, param_env }
     }
 
     /// Returns a "verify bound" that encodes what we know about
@@ -56,7 +51,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
         // Start with anything like `T: 'a` we can scrape from the
         // environment
-        let param_bounds = self.declared_generic_bounds_from_env(GenericKind::Param(param_ty))
+        let param_bounds = self
+            .declared_generic_bounds_from_env(GenericKind::Param(param_ty))
             .into_iter()
             .map(|outlives| outlives.1);
 
@@ -113,7 +109,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
 
         // Search the env for where clauses like `P: 'a`.
-        let env_bounds = self.projection_approx_declared_bounds_from_env(projection_ty)
+        let env_bounds = self
+            .projection_approx_declared_bounds_from_env(projection_ty)
             .into_iter()
             .map(|ty::OutlivesPredicate(ty, r)| {
                 let vb = VerifyBound::OutlivedBy(r);
@@ -128,41 +125,32 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             });
 
         // Extend with bounds that we can find from the trait.
-        let trait_bounds = self.projection_declared_bounds_from_trait(projection_ty)
+        let trait_bounds = self
+            .projection_declared_bounds_from_trait(projection_ty)
             .into_iter()
             .map(|r| VerifyBound::OutlivedBy(r));
 
         // see the extensive comment in projection_must_outlive
-        let ty = self.tcx
-            .mk_projection(projection_ty.item_def_id, projection_ty.substs);
+        let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
         let recursive_bound = self.recursive_type_bound(ty);
 
         VerifyBound::AnyBound(env_bounds.chain(trait_bounds).collect()).or(recursive_bound)
     }
 
     fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
-        let mut bounds = ty.walk_shallow()
-            .map(|subty| self.type_bound(subty))
-            .collect::<Vec<_>>();
+        let mut bounds = ty.walk_shallow().map(|subty| self.type_bound(subty)).collect::<Vec<_>>();
 
         let mut regions = smallvec![];
         ty.push_regions(&mut regions);
         regions.retain(|r| !r.is_late_bound()); // ignore late-bound regions
         bounds.push(VerifyBound::AllBounds(
-            regions
-                .into_iter()
-                .map(|r| VerifyBound::OutlivedBy(r))
-                .collect(),
+            regions.into_iter().map(|r| VerifyBound::OutlivedBy(r)).collect(),
         ));
 
         // remove bounds that must hold, since they are not interesting
         bounds.retain(|b| !b.must_hold());
 
-        if bounds.len() == 1 {
-            bounds.pop().unwrap()
-        } else {
-            VerifyBound::AllBounds(bounds)
-        }
+        if bounds.len() == 1 { bounds.pop().unwrap() } else { VerifyBound::AllBounds(bounds) }
     }
 
     /// Searches the environment for where-clauses like `G: 'a` where
@@ -284,16 +272,15 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();
-        let trait_predicates = tcx.predicates_of(trait_def_id).predicates
-            .iter()
-            .map(|(p, _)| *p)
-            .collect();
+        let trait_predicates =
+            tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p).collect();
         let identity_substs = InternalSubsts::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,
             traits::elaborate_predicates(tcx, trait_predicates),
-        ).map(|b| b.1)
+        )
+        .map(|b| b.1)
     }
 
     /// Searches through a predicate list for a predicate `T: 'a`.

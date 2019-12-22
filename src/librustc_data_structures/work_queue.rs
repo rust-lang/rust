@@ -17,19 +17,13 @@ impl<T: Idx> WorkQueue<T> {
     /// Creates a new work queue with all the elements from (0..len).
     #[inline]
     pub fn with_all(len: usize) -> Self {
-        WorkQueue {
-            deque: (0..len).map(T::new).collect(),
-            set: BitSet::new_filled(len),
-        }
+        WorkQueue { deque: (0..len).map(T::new).collect(), set: BitSet::new_filled(len) }
     }
 
     /// Creates a new work queue that starts empty, where elements range from (0..len).
     #[inline]
     pub fn with_none(len: usize) -> Self {
-        WorkQueue {
-            deque: VecDeque::with_capacity(len),
-            set: BitSet::new_empty(len),
-        }
+        WorkQueue { deque: VecDeque::with_capacity(len), set: BitSet::new_empty(len) }
     }
 
     /// Attempt to enqueue `element` in the work queue. Returns false if it was already present.

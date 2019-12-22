@@ -1,25 +1,22 @@
 use std::fmt::{self, Display};
 
 use rustc::hir;
-use rustc::hir::def::{Res, DefKind};
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::{Local, Body};
-use rustc::ty::subst::{SubstsRef, GenericArgKind};
-use rustc::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc::mir::{Body, Local};
 use rustc::ty::print::RegionHighlightMode;
-use rustc_index::vec::IndexVec;
-use rustc_errors::DiagnosticBuilder;
-use syntax::symbol::kw;
+use rustc::ty::subst::{GenericArgKind, SubstsRef};
+use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::{Span, symbol::Symbol, DUMMY_SP};
+use rustc_errors::DiagnosticBuilder;
+use rustc_index::vec::IndexVec;
+use syntax::symbol::kw;
+use syntax_pos::{symbol::Symbol, Span, DUMMY_SP};
 
 use crate::borrow_check::{
-    diagnostics::region_errors::ErrorReportingCtx,
-    region_infer::RegionInferenceContext,
-    universal_regions::DefiningTy,
-    nll::ToRegionVid,
-    Upvar,
+    diagnostics::region_errors::ErrorReportingCtx, nll::ToRegionVid,
+    region_infer::RegionInferenceContext, universal_regions::DefiningTy, Upvar,
 };
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
@@ -76,10 +73,7 @@ crate struct RegionErrorNamingCtx {
 
 impl RegionErrorNamingCtx {
     crate fn new() -> Self {
-        Self {
-            counter: 1,
-            renctx: FxHashMap::default(),
-        }
+        Self { counter: 1, renctx: FxHashMap::default() }
     }
 
     /// Get the name of `region` if it has previously been named.
@@ -108,17 +102,17 @@ impl RegionErrorNamingCtx {
 impl RegionName {
     crate fn was_named(&self) -> bool {
         match self.source {
-            RegionNameSource::NamedEarlyBoundRegion(..) |
-            RegionNameSource::NamedFreeRegion(..) |
-            RegionNameSource::Static => true,
-            RegionNameSource::SynthesizedFreeEnvRegion(..) |
-            RegionNameSource::CannotMatchHirTy(..) |
-            RegionNameSource::MatchedHirTy(..) |
-            RegionNameSource::MatchedAdtAndSegment(..) |
-            RegionNameSource::AnonRegionFromUpvar(..) |
-            RegionNameSource::AnonRegionFromOutput(..) |
-            RegionNameSource::AnonRegionFromYieldTy(..) |
-            RegionNameSource::AnonRegionFromAsyncFn(..) => false,
+            RegionNameSource::NamedEarlyBoundRegion(..)
+            | RegionNameSource::NamedFreeRegion(..)
+            | RegionNameSource::Static => true,
+            RegionNameSource::SynthesizedFreeEnvRegion(..)
+            | RegionNameSource::CannotMatchHirTy(..)
+            | RegionNameSource::MatchedHirTy(..)
+            | RegionNameSource::MatchedAdtAndSegment(..)
+            | RegionNameSource::AnonRegionFromUpvar(..)
+            | RegionNameSource::AnonRegionFromOutput(..)
+            | RegionNameSource::AnonRegionFromYieldTy(..)
+            | RegionNameSource::AnonRegionFromAsyncFn(..) => false,
         }
     }
 
@@ -138,8 +132,8 @@ impl RegionName {
             RegionNameSource::CannotMatchHirTy(span, type_name) => {
                 diag.span_label(*span, format!("has type `{}`", type_name));
             }
-            RegionNameSource::MatchedHirTy(span) |
-            RegionNameSource::AnonRegionFromAsyncFn(span) => {
+            RegionNameSource::MatchedHirTy(span)
+            | RegionNameSource::AnonRegionFromAsyncFn(span) => {
                 diag.span_label(
                     *span,
                     format!("let's call the lifetime of this reference `{}`", self),
@@ -151,25 +145,16 @@ impl RegionName {
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
                 diag.span_label(
                     *span,
-                    format!(
-                        "lifetime `{}` appears in the type of `{}`",
-                        self, upvar_name
-                    ),
+                    format!("lifetime `{}` appears in the type of `{}`", self, upvar_name),
                 );
             }
             RegionNameSource::AnonRegionFromOutput(span, mir_description, type_name) => {
-                diag.span_label(
-                    *span,
-                    format!("return type{} is {}", mir_description, type_name),
-                );
-            },
-            RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
-                diag.span_label(
-                    *span,
-                    format!("yield type is {}", type_name),
-                );
+                diag.span_label(*span, format!("return type{} is {}", mir_description, type_name));
             }
-            RegionNameSource::Static => {},
+            RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
+                diag.span_label(*span, format!("yield type is {}", type_name));
+            }
+            RegionNameSource::Static => {}
         }
     }
 }
@@ -212,9 +197,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         renctx: &mut RegionErrorNamingCtx,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let ErrorReportingCtx {
-            infcx, body, mir_def_id, local_names, upvars, ..
-        } = errctx;
+        let ErrorReportingCtx { infcx, body, mir_def_id, local_names, upvars, .. } = errctx;
 
         debug!("give_region_a_name(fr={:?}, counter={:?})", fr, renctx.counter);
 
@@ -228,22 +211,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .give_name_from_error_region(infcx.tcx, *mir_def_id, fr, renctx)
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_arguments(
-                    infcx, body, local_names, *mir_def_id, fr, renctx,
+                    infcx,
+                    body,
+                    local_names,
+                    *mir_def_id,
+                    fr,
+                    renctx,
                 )
             })
             .or_else(|| {
-                self.give_name_if_anonymous_region_appears_in_upvars(
-                    infcx.tcx, upvars, fr, renctx
-                )
+                self.give_name_if_anonymous_region_appears_in_upvars(infcx.tcx, upvars, fr, renctx)
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_output(
-                    infcx, body, *mir_def_id, fr, renctx,
+                    infcx,
+                    body,
+                    *mir_def_id,
+                    fr,
+                    renctx,
                 )
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_yield_ty(
-                    infcx, body, *mir_def_id, fr, renctx,
+                    infcx,
+                    body,
+                    *mir_def_id,
+                    fr,
+                    renctx,
                 )
             });
 
@@ -282,24 +276,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             }
 
-            ty::ReStatic => Some(RegionName {
-                name: kw::StaticLifetime,
-                source: RegionNameSource::Static
-            }),
+            ty::ReStatic => {
+                Some(RegionName { name: kw::StaticLifetime, source: RegionNameSource::Static })
+            }
 
             ty::ReFree(free_region) => match free_region.bound_region {
                 ty::BoundRegion::BrNamed(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
                     let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
-                    debug!("bound region named: {:?}, is_named: {:?}",
-                        name, free_region.bound_region.is_named());
+                    debug!(
+                        "bound region named: {:?}, is_named: {:?}",
+                        name,
+                        free_region.bound_region.is_named()
+                    );
 
                     if free_region.bound_region.is_named() {
                         // A named region that is actually named.
-                        Some(RegionName {
-                            name,
-                            source: RegionNameSource::NamedFreeRegion(span),
-                        })
+                        Some(RegionName { name, source: RegionNameSource::NamedFreeRegion(span) })
                     } else {
                         // If we spuriously thought that the region is named, we should let the
                         // system generate a true name for error messages. Currently this can
@@ -557,15 +550,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         // FIXME: We should be able to do something similar to
                         // match_adt_and_segment in this case.
                         Res::Def(DefKind::TyAlias, _) => (),
-                        _ => if let Some(last_segment) = path.segments.last() {
-                            if let Some(name) = self.match_adt_and_segment(
-                                substs,
-                                needle_fr,
-                                last_segment,
-                                renctx,
-                                search_stack,
-                            ) {
-                                return Some(name);
+                        _ => {
+                            if let Some(last_segment) = path.segments.last() {
+                                if let Some(name) = self.match_adt_and_segment(
+                                    substs,
+                                    needle_fr,
+                                    last_segment,
+                                    renctx,
+                                    search_stack,
+                                ) {
+                                    return Some(name);
+                                }
                             }
                         }
                     }
@@ -626,8 +621,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 })
             }
 
-            hir::LifetimeName::ImplicitObjectLifetimeDefault
-            | hir::LifetimeName::Implicit => {
+            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Implicit => {
                 // In this case, the user left off the lifetime; so
                 // they wrote something like:
                 //
@@ -733,10 +727,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let tcx = infcx.tcx;
 
         let return_ty = self.universal_regions.unnormalized_output_ty;
-        debug!(
-            "give_name_if_anonymous_region_appears_in_output: return_ty = {:?}",
-            return_ty
-        );
+        debug!("give_name_if_anonymous_region_appears_in_output: return_ty = {:?}", return_ty);
         if !tcx.any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr) {
             return None;
         }
@@ -756,11 +747,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     hir::FunctionRetTy::DefaultReturn(_) => tcx.sess.source_map().end_point(*span),
                     hir::FunctionRetTy::Return(_) => return_ty.output.span(),
                 },
-                if gen_move.is_some() {
-                    " of generator"
-                } else {
-                    " of closure"
-                },
+                if gen_move.is_some() { " of generator" } else { " of closure" },
             ),
             hir::Node::ImplItem(hir::ImplItem {
                 kind: hir::ImplItemKind::Method(method_sig, _),
@@ -793,10 +780,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Note: generators from `async fn` yield `()`, so we don't have to
         // worry about them here.
         let yield_ty = self.universal_regions.yield_ty?;
-        debug!(
-            "give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}",
-            yield_ty,
-        );
+        debug!("give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}", yield_ty,);
 
         let tcx = infcx.tcx;
 
@@ -812,19 +796,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let yield_span = match tcx.hir().get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(_, _, _, span, _),
-                ..
-            }) => (
-                tcx.sess.source_map().end_point(*span)
-            ),
+                kind: hir::ExprKind::Closure(_, _, _, span, _), ..
+            }) => (tcx.sess.source_map().end_point(*span)),
             _ => body.span,
         };
 
         debug!(
             "give_name_if_anonymous_region_appears_in_yield_ty: \
              type_name = {:?}, yield_span = {:?}",
-            yield_span,
-            type_name,
+            yield_span, type_name,
         );
 
         Some(RegionName {

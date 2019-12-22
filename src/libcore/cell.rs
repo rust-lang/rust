@@ -195,7 +195,7 @@ use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
 use crate::marker::Unsize;
 use crate::mem;
-use crate::ops::{Deref, DerefMut, CoerceUnsized};
+use crate::ops::{CoerceUnsized, Deref, DerefMut};
 use crate::ptr;
 
 /// A mutable memory location.
@@ -243,7 +243,7 @@ unsafe impl<T: ?Sized> Send for Cell<T> where T: Send {}
 impl<T: ?Sized> !Sync for Cell<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Copy> Clone for Cell<T> {
+impl<T: Copy> Clone for Cell<T> {
     #[inline]
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
@@ -327,9 +327,7 @@ impl<T> Cell<T> {
     #[rustc_const_stable(feature = "const_cell_new", since = "1.32.0")]
     #[inline]
     pub const fn new(value: T) -> Cell<T> {
-        Cell {
-            value: UnsafeCell::new(value),
-        }
+        Cell { value: UnsafeCell::new(value) }
     }
 
     /// Sets the contained value.
@@ -410,7 +408,7 @@ impl<T> Cell<T> {
     }
 }
 
-impl<T:Copy> Cell<T> {
+impl<T: Copy> Cell<T> {
     /// Returns a copy of the contained value.
     ///
     /// # Examples
@@ -425,7 +423,7 @@ impl<T:Copy> Cell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> T {
-        unsafe{ *self.value.get() }
+        unsafe { *self.value.get() }
     }
 
     /// Updates the contained value using a function and returns the new value.
@@ -493,9 +491,7 @@ impl<T: ?Sized> Cell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        unsafe {
-            &mut *self.value.get()
-        }
+        unsafe { &mut *self.value.get() }
     }
 
     /// Returns a `&Cell<T>` from a `&mut T`
@@ -514,9 +510,7 @@ impl<T: ?Sized> Cell<T> {
     #[inline]
     #[stable(feature = "as_cell", since = "1.37.0")]
     pub fn from_mut(t: &mut T) -> &Cell<T> {
-        unsafe {
-            &*(t as *mut T as *const Cell<T>)
-        }
+        unsafe { &*(t as *mut T as *const Cell<T>) }
     }
 }
 
@@ -559,9 +553,7 @@ impl<T> Cell<[T]> {
     /// ```
     #[stable(feature = "as_cell", since = "1.37.0")]
     pub fn as_slice_of_cells(&self) -> &[Cell<T>] {
-        unsafe {
-            &*(self as *const Cell<[T]> as *const [Cell<T>])
-        }
+        unsafe { &*(self as *const Cell<[T]> as *const [Cell<T>]) }
     }
 }
 
@@ -654,10 +646,7 @@ impl<T> RefCell<T> {
     #[rustc_const_stable(feature = "const_refcell_new", since = "1.32.0")]
     #[inline]
     pub const fn new(value: T) -> RefCell<T> {
-        RefCell {
-            value: UnsafeCell::new(value),
-            borrow: Cell::new(UNUSED),
-        }
+        RefCell { value: UnsafeCell::new(value), borrow: Cell::new(UNUSED) }
     }
 
     /// Consumes the `RefCell`, returning the wrapped value.
@@ -700,7 +689,7 @@ impl<T> RefCell<T> {
     /// assert_eq!(cell, RefCell::new(6));
     /// ```
     #[inline]
-    #[stable(feature = "refcell_replace", since="1.24.0")]
+    #[stable(feature = "refcell_replace", since = "1.24.0")]
     pub fn replace(&self, t: T) -> T {
         mem::replace(&mut *self.borrow_mut(), t)
     }
@@ -722,7 +711,7 @@ impl<T> RefCell<T> {
     /// assert_eq!(cell, RefCell::new(6));
     /// ```
     #[inline]
-    #[stable(feature = "refcell_replace_swap", since="1.35.0")]
+    #[stable(feature = "refcell_replace_swap", since = "1.35.0")]
     pub fn replace_with<F: FnOnce(&mut T) -> T>(&self, f: F) -> T {
         let mut_borrow = &mut *self.borrow_mut();
         let replacement = f(mut_borrow);
@@ -749,7 +738,7 @@ impl<T> RefCell<T> {
     /// assert_eq!(d, RefCell::new(5));
     /// ```
     #[inline]
-    #[stable(feature = "refcell_swap", since="1.24.0")]
+    #[stable(feature = "refcell_swap", since = "1.24.0")]
     pub fn swap(&self, other: &Self) {
         mem::swap(&mut *self.borrow_mut(), &mut *other.borrow_mut())
     }
@@ -827,10 +816,7 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     pub fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
         match BorrowRef::new(&self.borrow) {
-            Some(b) => Ok(Ref {
-                value: unsafe { &*self.value.get() },
-                borrow: b,
-            }),
+            Some(b) => Ok(Ref { value: unsafe { &*self.value.get() }, borrow: b }),
             None => Err(BorrowError { _private: () }),
         }
     }
@@ -905,10 +891,7 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
         match BorrowRefMut::new(&self.borrow) {
-            Some(b) => Ok(RefMut {
-                value: unsafe { &mut *self.value.get() },
-                borrow: b,
-            }),
+            Some(b) => Ok(RefMut { value: unsafe { &mut *self.value.get() }, borrow: b }),
             None => Err(BorrowMutError { _private: () }),
         }
     }
@@ -957,9 +940,7 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        unsafe {
-            &mut *self.value.get()
-        }
+        unsafe { &mut *self.value.get() }
     }
 
     /// Immutably borrows the wrapped value, returning an error if the value is
@@ -1189,10 +1170,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     #[stable(feature = "cell_extras", since = "1.15.0")]
     #[inline]
     pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
-        Ref {
-            value: orig.value,
-            borrow: orig.borrow.clone(),
-        }
+        Ref { value: orig.value, borrow: orig.borrow.clone() }
     }
 
     /// Makes a new `Ref` for a component of the borrowed data.
@@ -1216,12 +1194,10 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     #[stable(feature = "cell_map", since = "1.8.0")]
     #[inline]
     pub fn map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Ref<'b, U>
-        where F: FnOnce(&T) -> &U
+    where
+        F: FnOnce(&T) -> &U,
     {
-        Ref {
-            value: f(orig.value),
-            borrow: orig.borrow,
-        }
+        Ref { value: f(orig.value), borrow: orig.borrow }
     }
 
     /// Splits a `Ref` into multiple `Ref`s for different components of the
@@ -1247,7 +1223,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     #[stable(feature = "refcell_map_split", since = "1.35.0")]
     #[inline]
     pub fn map_split<U: ?Sized, V: ?Sized, F>(orig: Ref<'b, T>, f: F) -> (Ref<'b, U>, Ref<'b, V>)
-        where F: FnOnce(&T) -> (&U, &V)
+    where
+        F: FnOnce(&T) -> (&U, &V),
     {
         let (a, b) = f(orig.value);
         let borrow = orig.borrow.clone();
@@ -1292,14 +1269,12 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     #[stable(feature = "cell_map", since = "1.8.0")]
     #[inline]
     pub fn map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> RefMut<'b, U>
-        where F: FnOnce(&mut T) -> &mut U
+    where
+        F: FnOnce(&mut T) -> &mut U,
     {
         // FIXME(nll-rfc#40): fix borrow-check
         let RefMut { value, borrow } = orig;
-        RefMut {
-            value: f(value),
-            borrow,
-        }
+        RefMut { value: f(value), borrow }
     }
 
     /// Splits a `RefMut` into multiple `RefMut`s for different components of the
@@ -1330,9 +1305,11 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     #[stable(feature = "refcell_map_split", since = "1.35.0")]
     #[inline]
     pub fn map_split<U: ?Sized, V: ?Sized, F>(
-        orig: RefMut<'b, T>, f: F
+        orig: RefMut<'b, T>,
+        f: F,
     ) -> (RefMut<'b, U>, RefMut<'b, V>)
-        where F: FnOnce(&mut T) -> (&mut U, &mut V)
+    where
+        F: FnOnce(&mut T) -> (&mut U, &mut V),
     {
         let (a, b) = f(orig.value);
         let borrow = orig.borrow.clone();
@@ -1364,7 +1341,7 @@ impl<'b> BorrowRefMut<'b> {
             UNUSED => {
                 borrow.set(UNUSED - 1);
                 Some(BorrowRefMut { borrow })
-            },
+            }
             _ => None,
         }
     }

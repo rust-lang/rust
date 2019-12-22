@@ -1,7 +1,7 @@
-use syntax::ast;
-use rustc::ty::{self, Ty, TyCtxt, ParamEnv, layout::Size};
-use syntax_pos::symbol::Symbol;
 use rustc::mir::interpret::{ConstValue, Scalar};
+use rustc::ty::{self, layout::Size, ParamEnv, Ty, TyCtxt};
+use syntax::ast;
+use syntax_pos::symbol::Symbol;
 
 #[derive(PartialEq)]
 crate enum LitToConstError {
@@ -33,22 +33,22 @@ crate fn lit_to_const<'tcx>(
             let allocation = Allocation::from_byte_aligned_bytes(s.as_bytes());
             let allocation = tcx.intern_const_alloc(allocation);
             ConstValue::Slice { data: allocation, start: 0, end: s.len() }
-        },
+        }
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::Ptr(id.into()))
-        },
+        }
         LitKind::Byte(n) => ConstValue::Scalar(Scalar::from_uint(n, Size::from_bytes(1))),
         LitKind::Int(n, _) if neg => {
             let n = n as i128;
             let n = n.overflowing_neg().0;
             trunc(n as u128)?
-        },
+        }
         LitKind::Int(n, _) => trunc(n)?,
         LitKind::Float(n, _) => {
             let fty = match ty.kind {
                 ty::Float(fty) => fty,
-                _ => bug!()
+                _ => bug!(),
             };
             parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
         }
@@ -59,13 +59,9 @@ crate fn lit_to_const<'tcx>(
     Ok(tcx.mk_const(ty::Const { val: ty::ConstKind::Value(lit), ty }))
 }
 
-fn parse_float<'tcx>(
-    num: Symbol,
-    fty: ast::FloatTy,
-    neg: bool,
-) -> Result<ConstValue<'tcx>, ()> {
+fn parse_float<'tcx>(num: Symbol, fty: ast::FloatTy, neg: bool) -> Result<ConstValue<'tcx>, ()> {
     let num = num.as_str();
-    use rustc_apfloat::ieee::{Single, Double};
+    use rustc_apfloat::ieee::{Double, Single};
     let scalar = match fty {
         ast::FloatTy::F32 => {
             num.parse::<f32>().map_err(|_| ())?;

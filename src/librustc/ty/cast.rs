@@ -3,8 +3,8 @@
 
 use crate::ty::{self, Ty};
 
-use syntax::ast;
 use rustc_macros::HashStable;
+use syntax::ast;
 
 /// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -13,7 +13,7 @@ pub enum IntTy {
     I,
     CEnum,
     Bool,
-    Char
+    Char,
 }
 
 // Valid types for the result of a non-coercion cast
@@ -43,7 +43,7 @@ pub enum CastKind {
     U8CharCast,
     ArrayPtrCast,
     FnPtrPtrCast,
-    FnPtrAddrCast
+    FnPtrAddrCast,
 }
 
 impl<'tcx> CastTy<'tcx> {
@@ -58,8 +58,7 @@ impl<'tcx> CastTy<'tcx> {
             ty::Infer(ty::InferTy::FloatVar(_)) => Some(CastTy::Float),
             ty::Uint(u) => Some(CastTy::Int(IntTy::U(u))),
             ty::Float(_) => Some(CastTy::Float),
-            ty::Adt(d,_) if d.is_enum() && d.is_payloadfree() =>
-                Some(CastTy::Int(IntTy::CEnum)),
+            ty::Adt(d, _) if d.is_enum() && d.is_payloadfree() => Some(CastTy::Int(IntTy::CEnum)),
             ty::RawPtr(mt) => Some(CastTy::Ptr(mt)),
             ty::FnPtr(..) => Some(CastTy::FnPtr),
             _ => None,

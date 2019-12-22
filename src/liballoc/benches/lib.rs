@@ -6,8 +6,8 @@ extern crate test;
 
 mod btree;
 mod linked_list;
-mod string;
-mod str;
 mod slice;
+mod str;
+mod string;
 mod vec;
 mod vec_deque;

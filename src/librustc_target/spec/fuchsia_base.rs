@@ -1,14 +1,18 @@
-use crate::spec::{LldFlavor, LinkArgs, LinkerFlavor, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), vec![
-        "--build-id".to_string(),
-        "--eh-frame-hdr".to_string(),
-        "--hash-style=gnu".to_string(),
-        "-z".to_string(), "rodynamic".to_string(),
-    ]);
+    pre_link_args.insert(
+        LinkerFlavor::Lld(LldFlavor::Ld),
+        vec![
+            "--build-id".to_string(),
+            "--eh-frame-hdr".to_string(),
+            "--hash-style=gnu".to_string(),
+            "-z".to_string(),
+            "rodynamic".to_string(),
+        ],
+    );
 
     TargetOptions {
         linker: Some("rust-lld".to_owned()),
@@ -20,11 +24,9 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         has_rpath: false,
         pre_link_args,
-        pre_link_objects_exe: vec![
-            "Scrt1.o".to_string()
-        ],
+        pre_link_objects_exe: vec!["Scrt1.o".to_string()],
         position_independent_executables: true,
         has_elf_tls: true,
-        .. Default::default()
+        ..Default::default()
     }
 }

@@ -1,9 +1,9 @@
 // Benchmarks and tests that require private items
 
 extern crate test;
-use test::Bencher;
-use super::{from_str, Parser, StackElement, Stack};
+use super::{from_str, Parser, Stack, StackElement};
 use std::string;
+use test::Bencher;
 
 #[test]
 fn test_stack() {
@@ -38,19 +38,25 @@ fn test_stack() {
     stack.push_key("bar".to_string());
 
     assert!(stack.len() == 3);
-    assert!(stack.is_equal_to(&[StackElement::Index(1),
-                                StackElement::Key("foo"),
-                                StackElement::Key("bar")]));
+    assert!(stack.is_equal_to(&[
+        StackElement::Index(1),
+        StackElement::Key("foo"),
+        StackElement::Key("bar")
+    ]));
     assert!(stack.starts_with(&[StackElement::Index(1)]));
     assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
-    assert!(stack.starts_with(&[StackElement::Index(1),
-                                StackElement::Key("foo"),
-                                StackElement::Key("bar")]));
+    assert!(stack.starts_with(&[
+        StackElement::Index(1),
+        StackElement::Key("foo"),
+        StackElement::Key("bar")
+    ]));
     assert!(stack.ends_with(&[StackElement::Key("bar")]));
     assert!(stack.ends_with(&[StackElement::Key("foo"), StackElement::Key("bar")]));
-    assert!(stack.ends_with(&[StackElement::Index(1),
-                              StackElement::Key("foo"),
-                              StackElement::Key("bar")]));
+    assert!(stack.ends_with(&[
+        StackElement::Index(1),
+        StackElement::Key("foo"),
+        StackElement::Key("bar")
+    ]));
     assert!(!stack.last_is_index());
     assert!(stack.get(0) == StackElement::Index(1));
     assert!(stack.get(1) == StackElement::Key("foo"));
@@ -71,7 +77,7 @@ fn test_stack() {
 
 #[bench]
 fn bench_streaming_small(b: &mut Bencher) {
-    b.iter( || {
+    b.iter(|| {
         let mut parser = Parser::new(
             r#"{
                 "a": 1.0,
@@ -80,7 +86,8 @@ fn bench_streaming_small(b: &mut Bencher) {
                     "foo\nbar",
                     { "c": {"d": null} }
                 ]
-            }"#.chars()
+            }"#
+            .chars(),
         );
         loop {
             match parser.next() {
@@ -92,23 +99,27 @@ fn bench_streaming_small(b: &mut Bencher) {
 }
 #[bench]
 fn bench_small(b: &mut Bencher) {
-    b.iter( || {
-        let _ = from_str(r#"{
+    b.iter(|| {
+        let _ = from_str(
+            r#"{
             "a": 1.0,
             "b": [
                 true,
                 "foo\nbar",
                 { "c": {"d": null} }
             ]
-        }"#);
+        }"#,
+        );
     });
 }
 
 fn big_json() -> string::String {
     let mut src = "[\n".to_string();
     for _ in 0..500 {
-        src.push_str(r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
-                        [1,2,3]},"#);
+        src.push_str(
+            r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
+                        [1,2,3]},"#,
+        );
     }
     src.push_str("{}]");
     return src;
@@ -117,7 +128,7 @@ fn big_json() -> string::String {
 #[bench]
 fn bench_streaming_large(b: &mut Bencher) {
     let src = big_json();
-    b.iter( || {
+    b.iter(|| {
         let mut parser = Parser::new(src.chars());
         loop {
             match parser.next() {
@@ -130,5 +141,7 @@ fn bench_streaming_large(b: &mut Bencher) {
 #[bench]
 fn bench_large(b: &mut Bencher) {
     let src = big_json();
-    b.iter( || { let _ = from_str(&src); });
+    b.iter(|| {
+        let _ = from_str(&src);
+    });
 }

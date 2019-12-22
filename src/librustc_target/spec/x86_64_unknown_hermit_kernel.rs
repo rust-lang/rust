@@ -1,4 +1,4 @@
-use crate::spec::{LldFlavor, LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::hermit_kernel_base::opts();
@@ -6,7 +6,7 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(64);
     base.features =
         "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"
-        .to_string();
+            .to_string();
     base.stack_probes = true;
 
     Ok(Target {

@@ -1,7 +1,7 @@
-use crate::infer::InferCtxt;
-use crate::ty::{self, Ty, TyCtxt, ToPredicate};
-use crate::traits::Obligation;
 use crate::hir::def_id::DefId;
+use crate::infer::InferCtxt;
+use crate::traits::Obligation;
+use crate::ty::{self, ToPredicate, Ty, TyCtxt};
 
 use super::{ChalkFulfillmentContext, FulfillmentContext, FulfillmentError};
 use super::{ObligationCause, PredicateObligation};
@@ -26,16 +26,16 @@ pub trait TraitEngine<'tcx>: 'tcx {
         def_id: DefId,
         cause: ObligationCause<'tcx>,
     ) {
-        let trait_ref = ty::TraitRef {
-            def_id,
-            substs: infcx.tcx.mk_substs_trait(ty, &[]),
-        };
-        self.register_predicate_obligation(infcx, Obligation {
-            cause,
-            recursion_depth: 0,
-            param_env,
-            predicate: trait_ref.to_predicate()
-        });
+        let trait_ref = ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) };
+        self.register_predicate_obligation(
+            infcx,
+            Obligation {
+                cause,
+                recursion_depth: 0,
+                param_env,
+                predicate: trait_ref.to_predicate(),
+            },
+        );
     }
 
     fn register_predicate_obligation(

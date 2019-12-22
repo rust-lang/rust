@@ -19,13 +19,13 @@
 //! over a `LatticeValue`, which is a value defined with respect to
 //! a lattice.
 
-use super::InferCtxt;
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use super::InferCtxt;
 
 use crate::traits::ObligationCause;
+use crate::ty::relate::{RelateResult, TypeRelation};
 use crate::ty::TyVar;
 use crate::ty::{self, Ty};
-use crate::ty::relate::{RelateResult, TypeRelation};
 
 pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
@@ -49,10 +49,7 @@ pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
 where
     L: LatticeDir<'a, 'tcx>,
 {
-    debug!("{}.lattice_tys({:?}, {:?})",
-           this.tag(),
-           a,
-           b);
+    debug!("{}.lattice_tys({:?}, {:?})", this.tag(), a, b);
 
     if a == b {
         return Ok(a);
@@ -97,8 +94,6 @@ where
             Ok(v)
         }
 
-        _ => {
-            infcx.super_combine_tys(this, a, b)
-        }
+        _ => infcx.super_combine_tys(this, a, b),
     }
 }

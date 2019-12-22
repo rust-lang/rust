@@ -1,27 +1,27 @@
 #![unstable(issue = "none", feature = "windows_net")]
 
 use crate::cmp;
-use crate::io::{self, Read, IoSlice, IoSliceMut};
+use crate::io::{self, IoSlice, IoSliceMut, Read};
 use crate::mem;
-use crate::net::{SocketAddr, Shutdown};
+use crate::net::{Shutdown, SocketAddr};
 use crate::ptr;
 use crate::sync::Once;
-use crate::sys::c;
 use crate::sys;
-use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::sys::c;
 use crate::sys_common::net;
+use crate::sys_common::{self, AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
-use libc::{c_int, c_void, c_ulong, c_long};
+use libc::{c_int, c_long, c_ulong, c_void};
 
 pub type wrlen_t = i32;
 
 pub mod netc {
-    pub use crate::sys::c::*;
+    pub use crate::sys::c::ADDRESS_FAMILY as sa_family_t;
+    pub use crate::sys::c::ADDRINFOA as addrinfo;
     pub use crate::sys::c::SOCKADDR as sockaddr;
     pub use crate::sys::c::SOCKADDR_STORAGE_LH as sockaddr_storage;
-    pub use crate::sys::c::ADDRINFOA as addrinfo;
-    pub use crate::sys::c::ADDRESS_FAMILY as sa_family_t;
+    pub use crate::sys::c::*;
 }
 
 pub struct Socket(c::SOCKET);
@@ -33,11 +33,15 @@ pub fn init() {
 
     START.call_once(|| unsafe {
         let mut data: c::WSADATA = mem::zeroed();
-        let ret = c::WSAStartup(0x202, // version 2.2
-                                &mut data);
+        let ret = c::WSAStartup(
+            0x202, // version 2.2
+            &mut data,
+        );
         assert_eq!(ret, 0);
 
-        let _ = sys_common::at_exit(|| { c::WSACleanup(); });
+        let _ = sys_common::at_exit(|| {
+            c::WSACleanup();
+        });
     });
 }
 
@@ -65,26 +69,19 @@ impl_is_minus_one! { i8 i16 i32 i64 isize }
 /// and if so, returns the last error from the Windows socket interface. This
 /// function must be called before another call to the socket API is made.
 pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
-    if t.is_minus_one() {
-        Err(last_error())
-    } else {
-        Ok(t)
-    }
+    if t.is_minus_one() { Err(last_error()) } else { Ok(t) }
 }
 
 /// A variant of `cvt` for `getaddrinfo` which return 0 for a success.
 pub fn cvt_gai(err: c_int) -> io::Result<()> {
-    if err == 0 {
-        Ok(())
-    } else {
-        Err(last_error())
-    }
+    if err == 0 { Ok(()) } else { Err(last_error()) }
 }
 
 /// Just to provide the same interface as sys/unix/net.rs
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
-    where T: IsMinusOne,
-          F: FnMut() -> T
+where
+    T: IsMinusOne,
+    F: FnMut() -> T,
 {
     cvt(f())
 }
@@ -96,23 +93,27 @@ impl Socket {
             SocketAddr::V6(..) => c::AF_INET6,
         };
         let socket = unsafe {
-            match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0,
-                                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT) {
-                c::INVALID_SOCKET => {
-                    match c::WSAGetLastError() {
-                        c::WSAEPROTOTYPE | c::WSAEINVAL => {
-                            match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0,
-                                                c::WSA_FLAG_OVERLAPPED) {
-                                c::INVALID_SOCKET => Err(last_error()),
-                                n => {
-                                    let s = Socket(n);
-                                    s.set_no_inherit()?;
-                                    Ok(s)
-                                },
+            match c::WSASocketW(
+                fam,
+                ty,
+                0,
+                ptr::null_mut(),
+                0,
+                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT,
+            ) {
+                c::INVALID_SOCKET => match c::WSAGetLastError() {
+                    c::WSAEPROTOTYPE | c::WSAEINVAL => {
+                        match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0, c::WSA_FLAG_OVERLAPPED)
+                        {
+                            c::INVALID_SOCKET => Err(last_error()),
+                            n => {
+                                let s = Socket(n);
+                                s.set_no_inherit()?;
+                                Ok(s)
                             }
-                        },
-                        n => Err(io::Error::from_raw_os_error(n)),
+                        }
                     }
+                    n => Err(io::Error::from_raw_os_error(n)),
                 },
                 n => Ok(Socket(n)),
             }
@@ -135,8 +136,10 @@ impl Socket {
         }
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                      "cannot set a 0 duration timeout"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "cannot set a 0 duration timeout",
+            ));
         }
 
         let mut timeout = c::timeval {
@@ -157,9 +160,8 @@ impl Socket {
         let mut writefds = fds;
         let mut errorfds = fds;
 
-        let n = unsafe {
-            cvt(c::select(1, ptr::null_mut(), &mut writefds, &mut errorfds, &timeout))?
-        };
+        let n =
+            unsafe { cvt(c::select(1, ptr::null_mut(), &mut writefds, &mut errorfds, &timeout))? };
 
         match n {
             0 => Err(io::Error::new(io::ErrorKind::TimedOut, "connection timed out")),
@@ -174,8 +176,7 @@ impl Socket {
         }
     }
 
-    pub fn accept(&self, storage: *mut c::SOCKADDR,
-                  len: *mut c_int) -> io::Result<Socket> {
+    pub fn accept(&self, storage: *mut c::SOCKADDR, len: *mut c_int) -> io::Result<Socket> {
         let socket = unsafe {
             match c::accept(self.0, storage, len) {
                 c::INVALID_SOCKET => Err(last_error()),
@@ -188,33 +189,35 @@ impl Socket {
     pub fn duplicate(&self) -> io::Result<Socket> {
         let socket = unsafe {
             let mut info: c::WSAPROTOCOL_INFO = mem::zeroed();
-            cvt(c::WSADuplicateSocketW(self.0,
-                                            c::GetCurrentProcessId(),
-                                            &mut info))?;
+            cvt(c::WSADuplicateSocketW(self.0, c::GetCurrentProcessId(), &mut info))?;
 
-            match c::WSASocketW(info.iAddressFamily,
-                                info.iSocketType,
-                                info.iProtocol,
-                                &mut info, 0,
-                                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT) {
-                c::INVALID_SOCKET => {
-                    match c::WSAGetLastError() {
-                        c::WSAEPROTOTYPE | c::WSAEINVAL => {
-                            match c::WSASocketW(info.iAddressFamily,
-                                                info.iSocketType,
-                                                info.iProtocol,
-                                                &mut info, 0,
-                                                c::WSA_FLAG_OVERLAPPED) {
-                                c::INVALID_SOCKET => Err(last_error()),
-                                n => {
-                                    let s = Socket(n);
-                                    s.set_no_inherit()?;
-                                    Ok(s)
-                                },
+            match c::WSASocketW(
+                info.iAddressFamily,
+                info.iSocketType,
+                info.iProtocol,
+                &mut info,
+                0,
+                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT,
+            ) {
+                c::INVALID_SOCKET => match c::WSAGetLastError() {
+                    c::WSAEPROTOTYPE | c::WSAEINVAL => {
+                        match c::WSASocketW(
+                            info.iAddressFamily,
+                            info.iSocketType,
+                            info.iProtocol,
+                            &mut info,
+                            0,
+                            c::WSA_FLAG_OVERLAPPED,
+                        ) {
+                            c::INVALID_SOCKET => Err(last_error()),
+                            n => {
+                                let s = Socket(n);
+                                s.set_no_inherit()?;
+                                Ok(s)
                             }
-                        },
-                        n => Err(io::Error::from_raw_os_error(n)),
+                        }
                     }
+                    n => Err(io::Error::from_raw_os_error(n)),
                 },
                 n => Ok(Socket(n)),
             }
@@ -230,7 +233,7 @@ impl Socket {
             match c::recv(self.0, buf.as_mut_ptr() as *mut c_void, len, flags) {
                 -1 if c::WSAGetLastError() == c::WSAESHUTDOWN => Ok(0),
                 -1 => Err(last_error()),
-                n => Ok(n as usize)
+                n => Ok(n as usize),
             }
         }
     }
@@ -267,8 +270,11 @@ impl Socket {
         self.recv_with_flags(buf, c::MSG_PEEK)
     }
 
-    fn recv_from_with_flags(&self, buf: &mut [u8], flags: c_int)
-                            -> io::Result<(usize, SocketAddr)> {
+    fn recv_from_with_flags(
+        &self,
+        buf: &mut [u8],
+        flags: c_int,
+    ) -> io::Result<(usize, SocketAddr)> {
         let mut storage: c::SOCKADDR_STORAGE_LH = unsafe { mem::zeroed() };
         let mut addrlen = mem::size_of_val(&storage) as c::socklen_t;
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
@@ -276,15 +282,17 @@ impl Socket {
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.
         unsafe {
-            match c::recvfrom(self.0,
-                              buf.as_mut_ptr() as *mut c_void,
-                              len,
-                              flags,
-                              &mut storage as *mut _ as *mut _,
-                              &mut addrlen) {
+            match c::recvfrom(
+                self.0,
+                buf.as_mut_ptr() as *mut c_void,
+                len,
+                flags,
+                &mut storage as *mut _ as *mut _,
+                &mut addrlen,
+            ) {
                 -1 if c::WSAGetLastError() == c::WSAESHUTDOWN => {
                     Ok((0, net::sockaddr_to_addr(&storage, addrlen as usize)?))
-                },
+                }
                 -1 => Err(last_error()),
                 n => Ok((n as usize, net::sockaddr_to_addr(&storage, addrlen as usize)?)),
             }
@@ -316,18 +324,19 @@ impl Socket {
         Ok(nwritten as usize)
     }
 
-    pub fn set_timeout(&self, dur: Option<Duration>,
-                       kind: c_int) -> io::Result<()> {
+    pub fn set_timeout(&self, dur: Option<Duration>, kind: c_int) -> io::Result<()> {
         let timeout = match dur {
             Some(dur) => {
                 let timeout = sys::dur2timeout(dur);
                 if timeout == 0 {
-                    return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                              "cannot set a 0 duration timeout"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "cannot set a 0 duration timeout",
+                    ));
                 }
                 timeout
             }
-            None => 0
+            None => 0,
         };
         net::setsockopt(self, c::SOL_SOCKET, kind, timeout)
     }
@@ -345,10 +354,8 @@ impl Socket {
 
     #[cfg(not(target_vendor = "uwp"))]
     fn set_no_inherit(&self) -> io::Result<()> {
-        sys::cvt(unsafe {
-            c::SetHandleInformation(self.0 as c::HANDLE,
-                                    c::HANDLE_FLAG_INHERIT, 0)
-        }).map(|_| ())
+        sys::cvt(unsafe { c::SetHandleInformation(self.0 as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0) })
+            .map(|_| ())
     }
 
     #[cfg(target_vendor = "uwp")]
@@ -369,11 +376,7 @@ impl Socket {
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as c_ulong;
         let r = unsafe { c::ioctlsocket(self.0, c::FIONBIO as c_int, &mut nonblocking) };
-        if r == 0 {
-            Ok(())
-        } else {
-            Err(io::Error::last_os_error())
-        }
+        if r == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
@@ -387,11 +390,7 @@ impl Socket {
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         let raw: c_int = net::getsockopt(self, c::SOL_SOCKET, c::SO_ERROR)?;
-        if raw == 0 {
-            Ok(None)
-        } else {
-            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
-        }
+        if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 }
 
@@ -409,11 +408,15 @@ impl Drop for Socket {
 }
 
 impl AsInner<c::SOCKET> for Socket {
-    fn as_inner(&self) -> &c::SOCKET { &self.0 }
+    fn as_inner(&self) -> &c::SOCKET {
+        &self.0
+    }
 }
 
 impl FromInner<c::SOCKET> for Socket {
-    fn from_inner(sock: c::SOCKET) -> Socket { Socket(sock) }
+    fn from_inner(sock: c::SOCKET) -> Socket {
+        Socket(sock)
+    }
 }
 
 impl IntoInner<c::SOCKET> for Socket {

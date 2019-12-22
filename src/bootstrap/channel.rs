@@ -29,31 +29,28 @@ impl GitInfo {
     pub fn new(ignore_git: bool, dir: &Path) -> GitInfo {
         // See if this even begins to look like a git dir
         if ignore_git || !dir.join(".git").exists() {
-            return GitInfo { inner: None }
+            return GitInfo { inner: None };
         }
 
         // Make sure git commands work
-        match Command::new("git")
-            .arg("rev-parse")
-            .current_dir(dir)
-            .output()
-        {
+        match Command::new("git").arg("rev-parse").current_dir(dir).output() {
             Ok(ref out) if out.status.success() => {}
             _ => return GitInfo { inner: None },
         }
 
         // Ok, let's scrape some info
-        let ver_date = output(Command::new("git").current_dir(dir)
-                                      .arg("log").arg("-1")
-                                      .arg("--date=short")
-                                      .arg("--pretty=format:%cd"));
-        let ver_hash = output(Command::new("git").current_dir(dir)
-                                      .arg("rev-parse").arg("HEAD"));
-        let short_ver_hash = output(Command::new("git")
-                                            .current_dir(dir)
-                                            .arg("rev-parse")
-                                            .arg("--short=9")
-                                            .arg("HEAD"));
+        let ver_date = output(
+            Command::new("git")
+                .current_dir(dir)
+                .arg("log")
+                .arg("-1")
+                .arg("--date=short")
+                .arg("--pretty=format:%cd"),
+        );
+        let ver_hash = output(Command::new("git").current_dir(dir).arg("rev-parse").arg("HEAD"));
+        let short_ver_hash = output(
+            Command::new("git").current_dir(dir).arg("rev-parse").arg("--short=9").arg("HEAD"),
+        );
         GitInfo {
             inner: Some(Info {
                 commit_date: ver_date.trim().to_string(),

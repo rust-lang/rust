@@ -6,10 +6,10 @@ use crate::ich::StableHashingContext;
 use syntax::ast;
 use syntax_pos::SourceFile;
 
-use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
+use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 
-use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use smallvec::SmallVec;
 
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 
@@ -24,15 +24,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         if self.len() == 0 {
             self.len().hash_stable(hcx, hasher);
-            return
+            return;
         }
 
         // Some attributes are always ignored during hashing.
         let filtered: SmallVec<[&ast::Attribute; 8]> = self
             .iter()
             .filter(|attr| {
-                !attr.is_doc_comment() &&
-                !attr.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name))
+                !attr.is_doc_comment()
+                    && !attr.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name))
             })
             .collect();
 
@@ -85,10 +85,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         (name_hash as u64).hash_stable(hcx, hasher);
         name_was_remapped.hash_stable(hcx, hasher);
 
-        DefId {
-            krate: CrateNum::from_u32(crate_of_origin),
-            index: CRATE_DEF_INDEX,
-        }.hash_stable(hcx, hasher);
+        DefId { krate: CrateNum::from_u32(crate_of_origin), index: CRATE_DEF_INDEX }
+            .hash_stable(hcx, hasher);
 
         src_hash.hash_stable(hcx, hasher);
 
@@ -113,47 +111,40 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         for &char_pos in normalized_pos.iter() {
             stable_normalized_pos(char_pos, start_pos).hash_stable(hcx, hasher);
         }
-
     }
 }
 
-fn stable_byte_pos(pos: ::syntax_pos::BytePos,
-                   source_file_start: ::syntax_pos::BytePos)
-                   -> u32 {
+fn stable_byte_pos(pos: ::syntax_pos::BytePos, source_file_start: ::syntax_pos::BytePos) -> u32 {
     pos.0 - source_file_start.0
 }
 
-fn stable_multibyte_char(mbc: ::syntax_pos::MultiByteChar,
-                         source_file_start: ::syntax_pos::BytePos)
-                         -> (u32, u32) {
-    let ::syntax_pos::MultiByteChar {
-        pos,
-        bytes,
-    } = mbc;
+fn stable_multibyte_char(
+    mbc: ::syntax_pos::MultiByteChar,
+    source_file_start: ::syntax_pos::BytePos,
+) -> (u32, u32) {
+    let ::syntax_pos::MultiByteChar { pos, bytes } = mbc;
 
     (pos.0 - source_file_start.0, bytes as u32)
 }
 
-fn stable_non_narrow_char(swc: ::syntax_pos::NonNarrowChar,
-                          source_file_start: ::syntax_pos::BytePos)
-                          -> (u32, u32) {
+fn stable_non_narrow_char(
+    swc: ::syntax_pos::NonNarrowChar,
+    source_file_start: ::syntax_pos::BytePos,
+) -> (u32, u32) {
     let pos = swc.pos();
     let width = swc.width();
 
     (pos.0 - source_file_start.0, width as u32)
 }
 
-fn stable_normalized_pos(np: ::syntax_pos::NormalizedPos,
-                         source_file_start: ::syntax_pos::BytePos)
-                         -> (u32, u32) {
-    let ::syntax_pos::NormalizedPos {
-        pos,
-        diff
-    } = np;
+fn stable_normalized_pos(
+    np: ::syntax_pos::NormalizedPos,
+    source_file_start: ::syntax_pos::BytePos,
+) -> (u32, u32) {
+    let ::syntax_pos::NormalizedPos { pos, diff } = np;
 
     (pos.0 - source_file_start.0, diff)
 }
-
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {

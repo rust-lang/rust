@@ -1,10 +1,4 @@
-use super::{
-    Format as F,
-    Num as N,
-    Substitution as S,
-    iter_subs,
-    parse_next_substitution as pns,
-};
+use super::{iter_subs, parse_next_substitution as pns, Format as F, Num as N, Substitution as S};
 
 macro_rules! assert_eq_pnsat {
     ($lhs:expr, $rhs:expr) => {
@@ -19,7 +13,7 @@ macro_rules! assert_eq_pnsat {
 fn test_escape() {
     assert_eq!(pns("has no escapes"), None);
     assert_eq!(pns("has no escapes, either %"), None);
-    assert_eq!(pns("*so* has a %% escape"), Some((S::Escape," escape")));
+    assert_eq!(pns("*so* has a %% escape"), Some((S::Escape, " escape")));
     assert_eq!(pns("%% leading escape"), Some((S::Escape, " leading escape")));
     assert_eq!(pns("trailing escape %%"), Some((S::Escape, "")));
 }
@@ -127,25 +121,25 @@ fn test_translation() {
     assert_eq_pnsat!("%s", Some("{}"));
     assert_eq_pnsat!("%p", Some("{:p}"));
 
-    assert_eq_pnsat!("%06d",        Some("{:06}"));
-    assert_eq_pnsat!("%4.2f",       Some("{:4.2}"));
-    assert_eq_pnsat!("%#x",         Some("{:#x}"));
-    assert_eq_pnsat!("%-10s",       Some("{:<10}"));
-    assert_eq_pnsat!("%*s",         None);
-    assert_eq_pnsat!("%-10.*s",     Some("{:<10.*}"));
-    assert_eq_pnsat!("%-*.*s",      None);
-    assert_eq_pnsat!("%.6i",        Some("{:06}"));
-    assert_eq_pnsat!("%+i",         Some("{:+}"));
-    assert_eq_pnsat!("%08X",        Some("{:08X}"));
-    assert_eq_pnsat!("%lu",         Some("{}"));
-    assert_eq_pnsat!("%Iu",         Some("{}"));
-    assert_eq_pnsat!("%I32u",       Some("{}"));
-    assert_eq_pnsat!("%I64u",       Some("{}"));
-    assert_eq_pnsat!("%'d",         None);
-    assert_eq_pnsat!("%10s",        Some("{:>10}"));
-    assert_eq_pnsat!("%-10.10s",    Some("{:<10.10}"));
-    assert_eq_pnsat!("%1$d",        Some("{0}"));
-    assert_eq_pnsat!("%2$.*3$d",    Some("{1:02$}"));
+    assert_eq_pnsat!("%06d", Some("{:06}"));
+    assert_eq_pnsat!("%4.2f", Some("{:4.2}"));
+    assert_eq_pnsat!("%#x", Some("{:#x}"));
+    assert_eq_pnsat!("%-10s", Some("{:<10}"));
+    assert_eq_pnsat!("%*s", None);
+    assert_eq_pnsat!("%-10.*s", Some("{:<10.*}"));
+    assert_eq_pnsat!("%-*.*s", None);
+    assert_eq_pnsat!("%.6i", Some("{:06}"));
+    assert_eq_pnsat!("%+i", Some("{:+}"));
+    assert_eq_pnsat!("%08X", Some("{:08X}"));
+    assert_eq_pnsat!("%lu", Some("{}"));
+    assert_eq_pnsat!("%Iu", Some("{}"));
+    assert_eq_pnsat!("%I32u", Some("{}"));
+    assert_eq_pnsat!("%I64u", Some("{}"));
+    assert_eq_pnsat!("%'d", None);
+    assert_eq_pnsat!("%10s", Some("{:>10}"));
+    assert_eq_pnsat!("%-10.10s", Some("{:<10.10}"));
+    assert_eq_pnsat!("%1$d", Some("{0}"));
+    assert_eq_pnsat!("%2$.*3$d", Some("{1:02$}"));
     assert_eq_pnsat!("%1$*2$.*3$s", Some("{0:>1$.2$}"));
-    assert_eq_pnsat!("%-8ld",       Some("{:<8}"));
+    assert_eq_pnsat!("%-8ld", Some("{:<8}"));
 }

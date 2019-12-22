@@ -2,16 +2,19 @@ use crate::base::ExtCtxt;
 use crate::expand::{AstFragment, AstFragmentKind};
 
 use syntax::ast;
-use syntax::source_map::{DUMMY_SP, dummy_spanned};
 use syntax::mut_visit::*;
 use syntax::ptr::P;
+use syntax::source_map::{dummy_spanned, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::fx::FxHashMap;
 
-pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visibility>)
-                   -> AstFragment {
+pub fn placeholder(
+    kind: AstFragmentKind,
+    id: ast::NodeId,
+    vis: Option<ast::Visibility>,
+) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
         ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
@@ -25,91 +28,97 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visi
     let generics = ast::Generics::default();
     let vis = vis.unwrap_or_else(|| dummy_spanned(ast::VisibilityKind::Inherited));
     let span = DUMMY_SP;
-    let expr_placeholder = || P(ast::Expr {
-        id, span,
-        attrs: ast::AttrVec::new(),
-        kind: ast::ExprKind::Mac(mac_placeholder()),
-    });
-    let ty = || P(ast::Ty {
-        id,
-        kind: ast::TyKind::Mac(mac_placeholder()),
-        span,
-    });
-    let pat = || P(ast::Pat {
-        id,
-        kind: ast::PatKind::Mac(mac_placeholder()),
-        span,
-    });
+    let expr_placeholder = || {
+        P(ast::Expr {
+            id,
+            span,
+            attrs: ast::AttrVec::new(),
+            kind: ast::ExprKind::Mac(mac_placeholder()),
+        })
+    };
+    let ty = || P(ast::Ty { id, kind: ast::TyKind::Mac(mac_placeholder()), span });
+    let pat = || P(ast::Pat { id, kind: ast::PatKind::Mac(mac_placeholder()), span });
 
     match kind {
         AstFragmentKind::Expr => AstFragment::Expr(expr_placeholder()),
         AstFragmentKind::OptExpr => AstFragment::OptExpr(Some(expr_placeholder())),
         AstFragmentKind::Items => AstFragment::Items(smallvec![P(ast::Item {
-            id, span, ident, vis, attrs,
+            id,
+            span,
+            ident,
+            vis,
+            attrs,
             kind: ast::ItemKind::Mac(mac_placeholder()),
             tokens: None,
         })]),
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::AssocItem {
-            id, span, ident, vis, attrs, generics,
+            id,
+            span,
+            ident,
+            vis,
+            attrs,
+            generics,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
         }]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![ast::AssocItem {
-            id, span, ident, vis, attrs, generics,
+            id,
+            span,
+            ident,
+            vis,
+            attrs,
+            generics,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
         }]),
-        AstFragmentKind::ForeignItems =>
-            AstFragment::ForeignItems(smallvec![ast::ForeignItem {
-                id, span, ident, vis, attrs,
-                kind: ast::ForeignItemKind::Macro(mac_placeholder()),
-                tokens: None,
-            }]),
-        AstFragmentKind::Pat => AstFragment::Pat(P(ast::Pat {
-            id, span, kind: ast::PatKind::Mac(mac_placeholder()),
-        })),
-        AstFragmentKind::Ty => AstFragment::Ty(P(ast::Ty {
-            id, span, kind: ast::TyKind::Mac(mac_placeholder()),
-        })),
+        AstFragmentKind::ForeignItems => AstFragment::ForeignItems(smallvec![ast::ForeignItem {
+            id,
+            span,
+            ident,
+            vis,
+            attrs,
+            kind: ast::ForeignItemKind::Macro(mac_placeholder()),
+            tokens: None,
+        }]),
+        AstFragmentKind::Pat => {
+            AstFragment::Pat(P(ast::Pat { id, span, kind: ast::PatKind::Mac(mac_placeholder()) }))
+        }
+        AstFragmentKind::Ty => {
+            AstFragment::Ty(P(ast::Ty { id, span, kind: ast::TyKind::Mac(mac_placeholder()) }))
+        }
         AstFragmentKind::Stmts => AstFragment::Stmts(smallvec![{
             let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ast::AttrVec::new()));
             ast::Stmt { id, span, kind: ast::StmtKind::Mac(mac) }
         }]),
-        AstFragmentKind::Arms => AstFragment::Arms(smallvec![
-            ast::Arm {
-                attrs: Default::default(),
-                body: expr_placeholder(),
-                guard: None,
-                id,
-                pat: pat(),
-                span,
-                is_placeholder: true,
-            }
-        ]),
-        AstFragmentKind::Fields => AstFragment::Fields(smallvec![
-            ast::Field {
-                attrs: Default::default(),
-                expr: expr_placeholder(),
-                id,
-                ident,
-                is_shorthand: false,
-                span,
-                is_placeholder: true,
-            }
-        ]),
-        AstFragmentKind::FieldPats => AstFragment::FieldPats(smallvec![
-            ast::FieldPat {
-                attrs: Default::default(),
-                id,
-                ident,
-                is_shorthand: false,
-                pat: pat(),
-                span,
-                is_placeholder: true,
-            }
-        ]),
+        AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
+            attrs: Default::default(),
+            body: expr_placeholder(),
+            guard: None,
+            id,
+            pat: pat(),
+            span,
+            is_placeholder: true,
+        }]),
+        AstFragmentKind::Fields => AstFragment::Fields(smallvec![ast::Field {
+            attrs: Default::default(),
+            expr: expr_placeholder(),
+            id,
+            ident,
+            is_shorthand: false,
+            span,
+            is_placeholder: true,
+        }]),
+        AstFragmentKind::FieldPats => AstFragment::FieldPats(smallvec![ast::FieldPat {
+            attrs: Default::default(),
+            id,
+            ident,
+            is_shorthand: false,
+            pat: pat(),
+            span,
+            is_placeholder: true,
+        }]),
         AstFragmentKind::GenericParams => AstFragment::GenericParams(smallvec![{
             ast::GenericParam {
                 attrs: Default::default(),
@@ -120,39 +129,33 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visi
                 kind: ast::GenericParamKind::Lifetime,
             }
         }]),
-        AstFragmentKind::Params => AstFragment::Params(smallvec![
-            ast::Param {
-                attrs: Default::default(),
-                id,
-                pat: pat(),
-                span,
-                ty: ty(),
-                is_placeholder: true,
-            }
-        ]),
-        AstFragmentKind::StructFields => AstFragment::StructFields(smallvec![
-            ast::StructField {
-                attrs: Default::default(),
-                id,
-                ident: None,
-                span,
-                ty: ty(),
-                vis,
-                is_placeholder: true,
-            }
-        ]),
-        AstFragmentKind::Variants => AstFragment::Variants(smallvec![
-            ast::Variant {
-                attrs: Default::default(),
-                data: ast::VariantData::Struct(Default::default(), false),
-                disr_expr: None,
-                id,
-                ident,
-                span,
-                vis,
-                is_placeholder: true,
-            }
-        ])
+        AstFragmentKind::Params => AstFragment::Params(smallvec![ast::Param {
+            attrs: Default::default(),
+            id,
+            pat: pat(),
+            span,
+            ty: ty(),
+            is_placeholder: true,
+        }]),
+        AstFragmentKind::StructFields => AstFragment::StructFields(smallvec![ast::StructField {
+            attrs: Default::default(),
+            id,
+            ident: None,
+            span,
+            ty: ty(),
+            vis,
+            is_placeholder: true,
+        }]),
+        AstFragmentKind::Variants => AstFragment::Variants(smallvec![ast::Variant {
+            attrs: Default::default(),
+            data: ast::VariantData::Struct(Default::default(), false),
+            disr_expr: None,
+            id,
+            ident,
+            span,
+            vis,
+            is_placeholder: true,
+        }]),
     }
 }
 
@@ -164,11 +167,7 @@ pub struct PlaceholderExpander<'a, 'b> {
 
 impl<'a, 'b> PlaceholderExpander<'a, 'b> {
     pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
-        PlaceholderExpander {
-            cx,
-            expanded_fragments: FxHashMap::default(),
-            monotonic,
-        }
+        PlaceholderExpander { cx, expanded_fragments: FxHashMap::default(), monotonic }
     }
 
     pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment) {
@@ -208,9 +207,8 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
 
     fn flat_map_generic_param(
         &mut self,
-        param: ast::GenericParam
-    ) -> SmallVec<[ast::GenericParam; 1]>
-    {
+        param: ast::GenericParam,
+    ) -> SmallVec<[ast::GenericParam; 1]> {
         if param.is_placeholder {
             self.remove(param.id).make_generic_params()
         } else {

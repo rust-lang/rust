@@ -79,109 +79,102 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
         }
 
-        let br_string = |br: ty::BoundRegion| {
-            match br {
-                ty::BrNamed(_, name) => format!(" {}", name),
-                _ => String::new(),
-            }
+        let br_string = |br: ty::BoundRegion| match br {
+            ty::BrNamed(_, name) => format!(" {}", name),
+            _ => String::new(),
         };
 
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
             UnsafetyMismatch(values) => {
-                write!(f, "expected {} fn, found {} fn",
-                       values.expected,
-                       values.found)
+                write!(f, "expected {} fn, found {} fn", values.expected, values.found)
             }
             AbiMismatch(values) => {
-                write!(f, "expected {} fn, found {} fn",
-                       values.expected,
-                       values.found)
+                write!(f, "expected {} fn, found {} fn", values.expected, values.found)
             }
             Mutability => write!(f, "types differ in mutability"),
-            TupleSize(values) => {
-                write!(f, "expected a tuple with {} element{}, \
+            TupleSize(values) => write!(
+                f,
+                "expected a tuple with {} element{}, \
                            found one with {} element{}",
-                       values.expected,
-                       pluralize!(values.expected),
-                       values.found,
-                       pluralize!(values.found))
-            }
-            FixedArraySize(values) => {
-                write!(f, "expected an array with a fixed size of {} element{}, \
+                values.expected,
+                pluralize!(values.expected),
+                values.found,
+                pluralize!(values.found)
+            ),
+            FixedArraySize(values) => write!(
+                f,
+                "expected an array with a fixed size of {} element{}, \
                            found one with {} element{}",
-                       values.expected,
-                       pluralize!(values.expected),
-                       values.found,
-                       pluralize!(values.found))
-            }
-            ArgCount => {
-                write!(f, "incorrect number of function parameters")
-            }
-            RegionsDoesNotOutlive(..) => {
-                write!(f, "lifetime mismatch")
-            }
-            RegionsInsufficientlyPolymorphic(br, _) => {
-                write!(f,
-                       "expected bound lifetime parameter{}, found concrete lifetime",
-                       br_string(br))
-            }
-            RegionsOverlyPolymorphic(br, _) => {
-                write!(f,
-                       "expected concrete lifetime, found bound lifetime parameter{}",
-                       br_string(br))
-            }
-            RegionsPlaceholderMismatch => {
-                write!(f, "one type is more general than the other")
-            }
+                values.expected,
+                pluralize!(values.expected),
+                values.found,
+                pluralize!(values.found)
+            ),
+            ArgCount => write!(f, "incorrect number of function parameters"),
+            RegionsDoesNotOutlive(..) => write!(f, "lifetime mismatch"),
+            RegionsInsufficientlyPolymorphic(br, _) => write!(
+                f,
+                "expected bound lifetime parameter{}, found concrete lifetime",
+                br_string(br)
+            ),
+            RegionsOverlyPolymorphic(br, _) => write!(
+                f,
+                "expected concrete lifetime, found bound lifetime parameter{}",
+                br_string(br)
+            ),
+            RegionsPlaceholderMismatch => write!(f, "one type is more general than the other"),
             Sorts(values) => ty::tls::with(|tcx| {
-                report_maybe_different(f, &values.expected.sort_string(tcx),
-                                       &values.found.sort_string(tcx))
+                report_maybe_different(
+                    f,
+                    &values.expected.sort_string(tcx),
+                    &values.found.sort_string(tcx),
+                )
             }),
             Traits(values) => ty::tls::with(|tcx| {
-                report_maybe_different(f,
-                                       &format!("trait `{}`",
-                                                tcx.def_path_str(values.expected)),
-                                       &format!("trait `{}`",
-                                                tcx.def_path_str(values.found)))
+                report_maybe_different(
+                    f,
+                    &format!("trait `{}`", tcx.def_path_str(values.expected)),
+                    &format!("trait `{}`", tcx.def_path_str(values.found)),
+                )
             }),
             IntMismatch(ref values) => {
-                write!(f, "expected `{:?}`, found `{:?}`",
-                       values.expected,
-                       values.found)
+                write!(f, "expected `{:?}`, found `{:?}`", values.expected, values.found)
             }
             FloatMismatch(ref values) => {
-                write!(f, "expected `{:?}`, found `{:?}`",
-                       values.expected,
-                       values.found)
+                write!(f, "expected `{:?}`, found `{:?}`", values.expected, values.found)
             }
-            VariadicMismatch(ref values) => {
-                write!(f, "expected {} fn, found {} function",
-                       if values.expected { "variadic" } else { "non-variadic" },
-                       if values.found { "variadic" } else { "non-variadic" })
-            }
+            VariadicMismatch(ref values) => write!(
+                f,
+                "expected {} fn, found {} function",
+                if values.expected { "variadic" } else { "non-variadic" },
+                if values.found { "variadic" } else { "non-variadic" }
+            ),
             ProjectionMismatched(ref values) => ty::tls::with(|tcx| {
-                write!(f, "expected {}, found {}",
-                       tcx.def_path_str(values.expected),
-                       tcx.def_path_str(values.found))
+                write!(
+                    f,
+                    "expected {}, found {}",
+                    tcx.def_path_str(values.expected),
+                    tcx.def_path_str(values.found)
+                )
             }),
-            ProjectionBoundsLength(ref values) => {
-                write!(f, "expected {} associated type binding{}, found {}",
-                       values.expected,
-                       pluralize!(values.expected),
-                       values.found)
-            },
-            ExistentialMismatch(ref values) => {
-                report_maybe_different(f, &format!("trait `{}`", values.expected),
-                                       &format!("trait `{}`", values.found))
-            }
+            ProjectionBoundsLength(ref values) => write!(
+                f,
+                "expected {} associated type binding{}, found {}",
+                values.expected,
+                pluralize!(values.expected),
+                values.found
+            ),
+            ExistentialMismatch(ref values) => report_maybe_different(
+                f,
+                &format!("trait `{}`", values.expected),
+                &format!("trait `{}`", values.found),
+            ),
             ConstMismatch(ref values) => {
                 write!(f, "expected `{}`, found `{}`", values.expected, values.found)
             }
-            IntrinsicCast => {
-                write!(f, "cannot coerce intrinsics to function pointers")
-            }
+            IntrinsicCast => write!(f, "cannot coerce intrinsics to function pointers"),
             ObjectUnsafeCoercion(_) => write!(f, "coercion to object-unsafe trait object"),
         }
     }
@@ -191,30 +184,23 @@ impl<'tcx> TypeError<'tcx> {
     pub fn must_include_note(&self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) |
-            UnsafetyMismatch(_) |
-            Mismatch |
-            AbiMismatch(_) |
-            FixedArraySize(_) |
-            Sorts(_) |
-            IntMismatch(_) |
-            FloatMismatch(_) |
-            VariadicMismatch(_) => false,
+            CyclicTy(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
+            | Sorts(_) | IntMismatch(_) | FloatMismatch(_) | VariadicMismatch(_) => false,
 
-            Mutability |
-            TupleSize(_) |
-            ArgCount |
-            RegionsDoesNotOutlive(..) |
-            RegionsInsufficientlyPolymorphic(..) |
-            RegionsOverlyPolymorphic(..) |
-            RegionsPlaceholderMismatch |
-            Traits(_) |
-            ProjectionMismatched(_) |
-            ProjectionBoundsLength(_) |
-            ExistentialMismatch(_) |
-            ConstMismatch(_) |
-            IntrinsicCast |
-            ObjectUnsafeCoercion(_) => true,
+            Mutability
+            | TupleSize(_)
+            | ArgCount
+            | RegionsDoesNotOutlive(..)
+            | RegionsInsufficientlyPolymorphic(..)
+            | RegionsOverlyPolymorphic(..)
+            | RegionsPlaceholderMismatch
+            | Traits(_)
+            | ProjectionMismatched(_)
+            | ProjectionBoundsLength(_)
+            | ExistentialMismatch(_)
+            | ConstMismatch(_)
+            | IntrinsicCast
+            | ObjectUnsafeCoercion(_) => true,
         }
     }
 }
@@ -222,8 +208,9 @@ impl<'tcx> TypeError<'tcx> {
 impl<'tcx> ty::TyS<'tcx> {
     pub fn sort_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match self.kind {
-            ty::Bool | ty::Char | ty::Int(_) |
-            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => format!("`{}`", self).into(),
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
+                format!("`{}`", self).into()
+            }
             ty::Tuple(ref tys) if tys.is_empty() => format!("`{}`", self).into(),
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
@@ -242,15 +229,17 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Ref(_, ty, mutbl) => {
                 let tymut = ty::TypeAndMut { ty, mutbl };
                 let tymut_string = tymut.to_string();
-                if tymut_string != "_" && (
-                    ty.is_simple_text() || tymut_string.len() < "mutable reference".len()
-                ) {
+                if tymut_string != "_"
+                    && (ty.is_simple_text() || tymut_string.len() < "mutable reference".len())
+                {
                     format!("`&{}`", tymut_string).into()
-                } else { // Unknown type name, it's long or has type arguments
+                } else {
+                    // Unknown type name, it's long or has type arguments
                     match mutbl {
                         hir::Mutability::Mut => "mutable reference",
                         _ => "reference",
-                    }.into()
+                    }
+                    .into()
                 }
             }
             ty::FnDef(..) => "fn item".into(),
@@ -284,8 +273,15 @@ impl<'tcx> ty::TyS<'tcx> {
 
     pub fn prefix_string(&self) -> Cow<'static, str> {
         match self.kind {
-            ty::Infer(_) | ty::Error | ty::Bool | ty::Char | ty::Int(_) |
-            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => "type".into(),
+            ty::Infer(_)
+            | ty::Error
+            | ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Never => "type".into(),
             ty::Tuple(ref tys) if tys.is_empty() => "unit type".into(),
             ty::Adt(def, _) => def.descr().into(),
             ty::Foreign(_) => "extern type".into(),
@@ -294,8 +290,9 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::RawPtr(_) => "raw pointer".into(),
             ty::Ref(.., mutbl) => match mutbl {
                 hir::Mutability::Mut => "mutable reference",
-                _ => "reference"
-            }.into(),
+                _ => "reference",
+            }
+            .into(),
             ty::FnDef(..) => "fn item".into(),
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(..) => "trait object".into(),
@@ -331,29 +328,36 @@ impl<'tcx> TyCtxt<'tcx> {
                     db.note("no two closures, even if identical, have the same type");
                     db.help("consider boxing your closure and/or using it as a trait object");
                 }
-                if expected_str == found_str && expected_str == "opaque type" { // Issue #63167
+                if expected_str == found_str && expected_str == "opaque type" {
+                    // Issue #63167
                     db.note("distinct uses of `impl Trait` result in different opaque types");
                     let e_str = values.expected.to_string();
                     let f_str = values.found.to_string();
                     if &e_str == &f_str && &e_str == "impl std::future::Future" {
                         // FIXME: use non-string based check.
-                        db.help("if both `Future`s have the same `Output` type, consider \
-                                 `.await`ing on both of them");
+                        db.help(
+                            "if both `Future`s have the same `Output` type, consider \
+                                 `.await`ing on both of them",
+                        );
                     }
                 }
                 match (&values.expected.kind, &values.found.kind) {
-                    (ty::Float(_), ty::Infer(ty::IntVar(_))) => if let Ok( // Issue #53280
-                        snippet,
-                    ) = self.sess.source_map().span_to_snippet(sp) {
-                        if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
-                            db.span_suggestion(
-                                sp,
-                                "use a float literal",
-                                format!("{}.0", snippet),
-                                Applicability::MachineApplicable
-                            );
+                    (ty::Float(_), ty::Infer(ty::IntVar(_))) => {
+                        if let Ok(
+                            // Issue #53280
+                            snippet,
+                        ) = self.sess.source_map().span_to_snippet(sp)
+                        {
+                            if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
+                                db.span_suggestion(
+                                    sp,
+                                    "use a float literal",
+                                    format!("{}.0", snippet),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
                         }
-                    },
+                    }
                     (ty::Param(expected), ty::Param(found)) => {
                         let generics = self.generics_of(body_owner_def_id);
                         let e_span = self.def_span(generics.type_param(expected, self).def_id);
@@ -364,11 +368,15 @@ impl<'tcx> TyCtxt<'tcx> {
                         if !sp.contains(f_span) {
                             db.span_label(f_span, "found type parameter");
                         }
-                        db.note("a type parameter was expected, but a different one was found; \
-                                 you might be missing a type parameter or trait bound");
-                        db.note("for more information, visit \
+                        db.note(
+                            "a type parameter was expected, but a different one was found; \
+                                 you might be missing a type parameter or trait bound",
+                        );
+                        db.note(
+                            "for more information, visit \
                                  https://doc.rust-lang.org/book/ch10-02-traits.html\
-                                 #traits-as-parameters");
+                                 #traits-as-parameters",
+                        );
                     }
                     (ty::Projection(_), ty::Projection(_)) => {
                         db.note("an associated type was expected, but a different one was found");
@@ -384,7 +392,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         }
                         db.help("type parameters must be constrained to match other types");
                         if self.sess.teach(&db.get_code().unwrap()) {
-                            db.help("given a type parameter `T` and a method `foo`:
+                            db.help(
+                                "given a type parameter `T` and a method `foo`:
 ```
 trait Trait<T> { fn foo(&self) -> T; }
 ```
@@ -406,22 +415,24 @@ impl<T: std::default::Default> Trait<T> for X {
 impl<T> Trait<T> for X {
     fn foo(&self, x: T) -> T { x }
 }
-```");
+```",
+                            );
                         }
-                        db.note("for more information, visit \
+                        db.note(
+                            "for more information, visit \
                                  https://doc.rust-lang.org/book/ch10-02-traits.html\
-                                 #traits-as-parameters");
+                                 #traits-as-parameters",
+                        );
                     }
                     (ty::Projection(_), _) => {
                         db.note(&format!(
                             "consider constraining the associated type `{}` to `{}` or calling a \
                              method that returns `{}`",
-                            values.expected,
-                            values.found,
-                            values.expected,
+                            values.expected, values.found, values.expected,
                         ));
                         if self.sess.teach(&db.get_code().unwrap()) {
-                            db.help("given an associated type `T` and a method `foo`:
+                            db.help(
+                                "given an associated type `T` and a method `foo`:
 ```
 trait Trait {
     type T;
@@ -434,36 +445,39 @@ impl Trait for X {
     type T = String;
     fn foo(&self) -> Self::T { String::new() }
 }
-```");
+```",
+                            );
                         }
-                        db.note("for more information, visit \
-                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html");
+                        db.note(
+                            "for more information, visit \
+                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
+                        );
                     }
                     (_, ty::Projection(_)) => {
                         db.note(&format!(
                             "consider constraining the associated type `{}` to `{}`",
-                            values.found,
-                            values.expected,
+                            values.found, values.expected,
                         ));
-                        db.note("for more information, visit \
-                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html");
+                        db.note(
+                            "for more information, visit \
+                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
+                        );
                     }
                     _ => {}
                 }
                 debug!(
                     "note_and_explain_type_err expected={:?} ({:?}) found={:?} ({:?})",
-                    values.expected,
-                    values.expected.kind,
-                    values.found,
-                    values.found.kind,
+                    values.expected, values.expected.kind, values.found, values.found.kind,
                 );
-            },
+            }
             CyclicTy(ty) => {
                 // Watch out for various cases of cyclic types and try to explain.
                 if ty.is_closure() || ty.is_generator() {
-                    db.note("closures cannot capture themselves or take themselves as argument;\n\
+                    db.note(
+                        "closures cannot capture themselves or take themselves as argument;\n\
                              this error may be the result of a recent compiler bug-fix,\n\
-                             see https://github.com/rust-lang/rust/issues/46062 for more details");
+                             see https://github.com/rust-lang/rust/issues/46062 for more details",
+                    );
                 }
             }
             _ => {}

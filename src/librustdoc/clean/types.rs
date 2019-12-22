@@ -1,43 +1,43 @@
+use std::cell::RefCell;
+use std::default::Default;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::default::Default;
-use std::{slice, vec};
-use std::num::NonZeroU32;
 use std::iter::FromIterator;
+use std::num::NonZeroU32;
 use std::rc::Rc;
-use std::cell::RefCell;
 use std::sync::Arc;
+use std::{slice, vec};
 
-use rustc::middle::lang_items;
-use rustc::middle::stability;
-use rustc::hir::{self, Mutability};
 use rustc::hir::def::Res;
 use rustc::hir::def_id::{CrateNum, DefId};
+use rustc::hir::{self, Mutability};
+use rustc::middle::lang_items;
+use rustc::middle::stability;
 use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, Attribute, AttrStyle, AttrKind, Ident};
+use syntax::ast::{self, AttrKind, AttrStyle, Attribute, Ident};
 use syntax::attr;
-use syntax::util::comments;
 use syntax::source_map::DUMMY_SP;
+use syntax::util::comments;
 use syntax_pos::hygiene::MacroKind;
-use syntax_pos::symbol::{Symbol, sym};
+use syntax_pos::symbol::{sym, Symbol};
 use syntax_pos::{self, FileName};
 
-use crate::core::DocContext;
 use crate::clean::cfg::Cfg;
-use crate::clean::inline;
 use crate::clean::external_path;
+use crate::clean::inline;
 use crate::clean::types::Type::{QPath, ResolvedPath};
+use crate::core::DocContext;
 use crate::doctree;
 use crate::html::item_type::ItemType;
 use crate::html::render::{cache, ExternalLocation};
 
-use self::Type::*;
+use self::FunctionRetTy::*;
 use self::ItemEnum::*;
 use self::SelfTy::*;
-use self::FunctionRetTy::*;
+use self::Type::*;
 
 thread_local!(pub static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Default::default());
 
@@ -84,8 +84,9 @@ pub struct Item {
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let fake = MAX_DEF_ID.with(|m| m.borrow().get(&self.def_id.krate)
-                                   .map(|id| self.def_id >= *id).unwrap_or(false));
+        let fake = MAX_DEF_ID.with(|m| {
+            m.borrow().get(&self.def_id.krate).map(|id| self.def_id >= *id).unwrap_or(false)
+        });
         let def_id: &dyn fmt::Debug = if fake { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
@@ -120,8 +121,8 @@ impl Item {
 
     pub fn is_crate(&self) -> bool {
         match self.inner {
-            StrippedItem(box ModuleItem(Module { is_crate: true, ..})) |
-            ModuleItem(Module { is_crate: true, ..}) => true,
+            StrippedItem(box ModuleItem(Module { is_crate: true, .. }))
+            | ModuleItem(Module { is_crate: true, .. }) => true,
             _ => false,
         }
     }
@@ -171,15 +172,18 @@ impl Item {
         self.type_() == ItemType::Keyword
     }
     pub fn is_stripped(&self) -> bool {
-        match self.inner { StrippedItem(..) => true, _ => false }
+        match self.inner {
+            StrippedItem(..) => true,
+            _ => false,
+        }
     }
     pub fn has_stripped_fields(&self) -> Option<bool> {
         match self.inner {
             StructItem(ref _struct) => Some(_struct.fields_stripped),
             UnionItem(ref union) => Some(union.fields_stripped),
-            VariantItem(Variant { kind: VariantKind::Struct(ref vstruct)} ) => {
+            VariantItem(Variant { kind: VariantKind::Struct(ref vstruct) }) => {
                 Some(vstruct.fields_stripped)
-            },
+            }
             _ => None,
         }
     }
@@ -196,11 +200,7 @@ impl Item {
                 classes.push("deprecated");
             }
 
-            if classes.len() != 0 {
-                Some(classes.join(" "))
-            } else {
-                None
-            }
+            if classes.len() != 0 { Some(classes.join(" ")) } else { None }
         })
     }
 
@@ -209,8 +209,7 @@ impl Item {
     }
 
     pub fn is_non_exhaustive(&self) -> bool {
-        self.attrs.other_attrs.iter()
-            .any(|a| a.check_name(sym::non_exhaustive))
+        self.attrs.other_attrs.iter().any(|a| a.check_name(sym::non_exhaustive))
     }
 
     /// Returns a documentation-level item type from the item.
@@ -282,8 +281,7 @@ pub enum ItemEnum {
 impl ItemEnum {
     pub fn is_associated(&self) -> bool {
         match *self {
-            ItemEnum::TypedefItem(_, _) |
-            ItemEnum::AssocTypeItem(_, _) => true,
+            ItemEnum::TypedefItem(_, _) | ItemEnum::AssocTypeItem(_, _) => true,
             _ => false,
         }
     }
@@ -336,11 +334,7 @@ pub trait AttributesExt {
 
 impl AttributesExt for [ast::Attribute] {
     fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
-        ListAttributesIter {
-            attrs: self.iter(),
-            current_list: Vec::new().into_iter(),
-            name,
-        }
+        ListAttributesIter { attrs: self.iter(), current_list: Vec::new().into_iter(), name }
     }
 }
 
@@ -349,7 +343,7 @@ pub trait NestedAttributesExt {
     fn has_word(self, word: Symbol) -> bool;
 }
 
-impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {
+impl<I: IntoIterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
     fn has_word(self, word: Symbol) -> bool {
         self.into_iter().any(|attr| attr.is_word() && attr.check_name(word))
     }
@@ -385,9 +379,9 @@ impl DocFragment {
 
     pub fn span(&self) -> syntax_pos::Span {
         match *self {
-            DocFragment::SugaredDoc(_, span, _) |
-                DocFragment::RawDoc(_, span, _) |
-                DocFragment::Include(_, span, _, _) => span,
+            DocFragment::SugaredDoc(_, span, _)
+            | DocFragment::RawDoc(_, span, _)
+            | DocFragment::Include(_, span, _, _) => span,
         }
     }
 }
@@ -395,7 +389,7 @@ impl DocFragment {
 impl<'a> FromIterator<&'a DocFragment> for String {
     fn from_iter<T>(iter: T) -> Self
     where
-        T: IntoIterator<Item = &'a DocFragment>
+        T: IntoIterator<Item = &'a DocFragment>,
     {
         iter.into_iter().fold(String::new(), |mut acc, frag| {
             if !acc.is_empty() {
@@ -403,9 +397,8 @@ impl<'a> FromIterator<&'a DocFragment> for String {
             }
             match *frag {
                 DocFragment::SugaredDoc(_, _, ref docs)
-                    | DocFragment::RawDoc(_, _, ref docs)
-                    | DocFragment::Include(_, _, _, ref docs) =>
-                    acc.push_str(docs),
+                | DocFragment::RawDoc(_, _, ref docs)
+                | DocFragment::Include(_, _, _, ref docs) => acc.push_str(docs),
             }
 
             acc
@@ -489,7 +482,9 @@ impl Attributes {
 
     pub fn has_doc_flag(&self, flag: Symbol) -> bool {
         for attr in &self.other_attrs {
-            if !attr.check_name(sym::doc) { continue; }
+            if !attr.check_name(sym::doc) {
+                continue;
+            }
 
             if let Some(items) = attr.meta_item_list() {
                 if items.iter().filter_map(|i| i.meta_item()).any(|it| it.check_name(flag)) {
@@ -515,9 +510,7 @@ impl Attributes {
             f: impl FnOnce(&Attribute) -> T,
         ) -> T {
             match attr.kind {
-                AttrKind::Normal(_) => {
-                    f(attr)
-                }
+                AttrKind::Normal(_) => f(attr),
                 AttrKind::DocComment(comment) => {
                     let comment =
                         Symbol::intern(&comments::strip_doc_comment_decoration(&comment.as_str()));
@@ -531,47 +524,51 @@ impl Attributes {
             }
         }
 
-        let other_attrs = attrs.iter().filter_map(|attr| {
-            with_doc_comment_markers_stripped(attr, |attr| {
-                if attr.check_name(sym::doc) {
-                    if let Some(mi) = attr.meta() {
-                        if let Some(value) = mi.value_str() {
-                            // Extracted #[doc = "..."]
-                            let value = value.to_string();
-                            let line = doc_line;
-                            doc_line += value.lines().count();
+        let other_attrs = attrs
+            .iter()
+            .filter_map(|attr| {
+                with_doc_comment_markers_stripped(attr, |attr| {
+                    if attr.check_name(sym::doc) {
+                        if let Some(mi) = attr.meta() {
+                            if let Some(value) = mi.value_str() {
+                                // Extracted #[doc = "..."]
+                                let value = value.to_string();
+                                let line = doc_line;
+                                doc_line += value.lines().count();
 
-                            if attr.is_doc_comment() {
-                                doc_strings.push(DocFragment::SugaredDoc(line, attr.span, value));
-                            } else {
-                                doc_strings.push(DocFragment::RawDoc(line, attr.span, value));
-                            }
+                                if attr.is_doc_comment() {
+                                    doc_strings
+                                        .push(DocFragment::SugaredDoc(line, attr.span, value));
+                                } else {
+                                    doc_strings.push(DocFragment::RawDoc(line, attr.span, value));
+                                }
 
-                            if sp.is_none() {
-                                sp = Some(attr.span);
+                                if sp.is_none() {
+                                    sp = Some(attr.span);
+                                }
+                                return None;
+                            } else if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
+                                // Extracted #[doc(cfg(...))]
+                                match Cfg::parse(cfg_mi) {
+                                    Ok(new_cfg) => cfg &= new_cfg,
+                                    Err(e) => diagnostic.span_err(e.span, e.msg),
+                                }
+                                return None;
+                            } else if let Some((filename, contents)) =
+                                Attributes::extract_include(&mi)
+                            {
+                                let line = doc_line;
+                                doc_line += contents.lines().count();
+                                doc_strings.push(DocFragment::Include(
+                                    line, attr.span, filename, contents,
+                                ));
                             }
-                            return None;
-                        } else if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
-                            // Extracted #[doc(cfg(...))]
-                            match Cfg::parse(cfg_mi) {
-                                Ok(new_cfg) => cfg &= new_cfg,
-                                Err(e) => diagnostic.span_err(e.span, e.msg),
-                            }
-                            return None;
-                        } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
-                        {
-                            let line = doc_line;
-                            doc_line += contents.lines().count();
-                            doc_strings.push(DocFragment::Include(line,
-                                                                  attr.span,
-                                                                  filename,
-                                                                  contents));
                         }
                     }
-                }
-                Some(attr.clone())
+                    Some(attr.clone())
+                })
             })
-        }).collect();
+            .collect();
 
         // treat #[target_feature(enable = "feat")] attributes as if they were
         // #[doc(cfg(target_feature = "feat"))] attributes as well
@@ -579,7 +576,9 @@ impl Attributes {
             if attr.check_name(sym::enable) {
                 if let Some(feat) = attr.value_str() {
                     let meta = attr::mk_name_value_item_str(
-                        Ident::with_dummy_span(sym::target_feature), feat, DUMMY_SP
+                        Ident::with_dummy_span(sym::target_feature),
+                        feat,
+                        DUMMY_SP,
                     );
                     if let Ok(feat_cfg) = Cfg::parse(&meta) {
                         cfg &= feat_cfg;
@@ -588,10 +587,11 @@ impl Attributes {
             }
         }
 
-        let inner_docs = attrs.iter()
-                              .filter(|a| a.check_name(sym::doc))
-                              .next()
-                              .map_or(true, |a| a.style == AttrStyle::Inner);
+        let inner_docs = attrs
+            .iter()
+            .filter(|a| a.check_name(sym::doc))
+            .next()
+            .map_or(true, |a| a.style == AttrStyle::Inner);
 
         Attributes {
             doc_strings,
@@ -612,11 +612,7 @@ impl Attributes {
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
     pub fn collapsed_doc_value(&self) -> Option<String> {
-        if !self.doc_strings.is_empty() {
-            Some(self.doc_strings.iter().collect())
-        } else {
-            None
-        }
+        if !self.doc_strings.is_empty() { Some(self.doc_strings.iter().collect()) } else { None }
     }
 
     /// Gets links as a vector
@@ -625,53 +621,66 @@ impl Attributes {
     pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
         use crate::html::format::href;
 
-        self.links.iter().filter_map(|&(ref s, did, ref fragment)| {
-            match did {
-                Some(did) => {
-                    if let Some((mut href, ..)) = href(did) {
-                        if let Some(ref fragment) = *fragment {
-                            href.push_str("#");
-                            href.push_str(fragment);
+        self.links
+            .iter()
+            .filter_map(|&(ref s, did, ref fragment)| {
+                match did {
+                    Some(did) => {
+                        if let Some((mut href, ..)) = href(did) {
+                            if let Some(ref fragment) = *fragment {
+                                href.push_str("#");
+                                href.push_str(fragment);
+                            }
+                            Some((s.clone(), href))
+                        } else {
+                            None
                         }
-                        Some((s.clone(), href))
-                    } else {
-                        None
+                    }
+                    None => {
+                        if let Some(ref fragment) = *fragment {
+                            let cache = cache();
+                            let url = match cache.extern_locations.get(krate) {
+                                Some(&(_, ref src, ExternalLocation::Local)) => {
+                                    src.to_str().expect("invalid file path")
+                                }
+                                Some(&(_, _, ExternalLocation::Remote(ref s))) => s,
+                                Some(&(_, _, ExternalLocation::Unknown)) | None => {
+                                    "https://doc.rust-lang.org/nightly"
+                                }
+                            };
+                            // This is a primitive so the url is done "by hand".
+                            let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
+                            Some((
+                                s.clone(),
+                                format!(
+                                    "{}{}std/primitive.{}.html{}",
+                                    url,
+                                    if !url.ends_with('/') { "/" } else { "" },
+                                    &fragment[..tail],
+                                    &fragment[tail..]
+                                ),
+                            ))
+                        } else {
+                            panic!("This isn't a primitive?!");
+                        }
                     }
                 }
-                None => {
-                    if let Some(ref fragment) = *fragment {
-                        let cache = cache();
-                        let url = match cache.extern_locations.get(krate) {
-                            Some(&(_, ref src, ExternalLocation::Local)) =>
-                                src.to_str().expect("invalid file path"),
-                            Some(&(_, _, ExternalLocation::Remote(ref s))) => s,
-                            Some(&(_, _, ExternalLocation::Unknown)) | None =>
-                                "https://doc.rust-lang.org/nightly",
-                        };
-                        // This is a primitive so the url is done "by hand".
-                        let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
-                        Some((s.clone(),
-                              format!("{}{}std/primitive.{}.html{}",
-                                      url,
-                                      if !url.ends_with('/') { "/" } else { "" },
-                                      &fragment[..tail],
-                                      &fragment[tail..])))
-                    } else {
-                        panic!("This isn't a primitive?!");
-                    }
-                }
-            }
-        }).collect()
+            })
+            .collect()
     }
 }
 
 impl PartialEq for Attributes {
     fn eq(&self, rhs: &Self) -> bool {
-        self.doc_strings == rhs.doc_strings &&
-        self.cfg == rhs.cfg &&
-        self.span == rhs.span &&
-        self.links == rhs.links &&
-        self.other_attrs.iter().map(|attr| attr.id).eq(rhs.other_attrs.iter().map(|attr| attr.id))
+        self.doc_strings == rhs.doc_strings
+            && self.cfg == rhs.cfg
+            && self.span == rhs.span
+            && self.links == rhs.links
+            && self
+                .other_attrs
+                .iter()
+                .map(|attr| attr.id)
+                .eq(rhs.other_attrs.iter().map(|attr| attr.id))
     }
 }
 
@@ -705,18 +714,15 @@ impl GenericBound {
     pub fn maybe_sized(cx: &DocContext<'_>) -> GenericBound {
         let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
         let empty = cx.tcx.intern_substs(&[]);
-        let path = external_path(cx, cx.tcx.item_name(did),
-            Some(did), false, vec![], empty);
+        let path = external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
         inline::record_extern_fqn(cx, did, TypeKind::Trait);
-        GenericBound::TraitBound(PolyTrait {
-            trait_: ResolvedPath {
-                path,
-                param_names: None,
-                did,
-                is_generic: false,
+        GenericBound::TraitBound(
+            PolyTrait {
+                trait_: ResolvedPath { path, param_names: None, did, is_generic: false },
+                generic_params: Vec::new(),
             },
-            generic_params: Vec::new(),
-        }, hir::TraitBoundModifier::Maybe)
+            hir::TraitBoundModifier::Maybe,
+        )
     }
 
     pub fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
@@ -731,7 +737,7 @@ impl GenericBound {
 
     pub fn get_poly_trait(&self) -> Option<PolyTrait> {
         if let GenericBound::TraitBound(ref p, _) = *self {
-            return Some(p.clone())
+            return Some(p.clone());
         }
         None
     }
@@ -821,8 +827,7 @@ pub struct GenericParamDef {
 impl GenericParamDef {
     pub fn is_synthetic_type_param(&self) -> bool {
         match self.kind {
-            GenericParamDefKind::Lifetime |
-            GenericParamDefKind::Const { .. } => false,
+            GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => false,
             GenericParamDefKind::Type { ref synthetic, .. } => synthetic.is_some(),
         }
     }
@@ -902,15 +907,13 @@ impl FnDecl {
     /// functions.
     pub fn sugared_async_return_type(&self) -> FunctionRetTy {
         match &self.output {
-            FunctionRetTy::Return(Type::ImplTrait(bounds)) => {
-                match &bounds[0] {
-                    GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
-                        let bindings = trait_.bindings().unwrap();
-                        FunctionRetTy::Return(bindings[0].ty().clone())
-                    }
-                    _ => panic!("unexpected desugaring of async function"),
+            FunctionRetTy::Return(Type::ImplTrait(bounds)) => match &bounds[0] {
+                GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
+                    let bindings = trait_.bindings().unwrap();
+                    FunctionRetTy::Return(bindings[0].ty().clone())
                 }
-            }
+                _ => panic!("unexpected desugaring of async function"),
+            },
             _ => panic!("unexpected desugaring of async function"),
         }
     }
@@ -943,10 +946,10 @@ impl Argument {
             return Some(SelfValue);
         }
         match self.type_ {
-            BorrowedRef{ref lifetime, mutability, ref type_} if type_.is_self_type() => {
+            BorrowedRef { ref lifetime, mutability, ref type_ } if type_.is_self_type() => {
                 Some(SelfBorrowed(lifetime.clone(), mutability))
             }
-            _ => Some(SelfExplicit(self.type_.clone()))
+            _ => Some(SelfExplicit(self.type_.clone())),
         }
     }
 }
@@ -1026,7 +1029,7 @@ pub enum Type {
     QPath {
         name: String,
         self_type: Box<Type>,
-        trait_: Box<Type>
+        trait_: Box<Type>,
     },
 
     // `_`
@@ -1038,9 +1041,20 @@ pub enum Type {
 
 #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
 pub enum PrimitiveType {
-    Isize, I8, I16, I32, I64, I128,
-    Usize, U8, U16, U32, U64, U128,
-    F32, F64,
+    Isize,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    Usize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+    F32,
+    F64,
     Char,
     Bool,
     Str,
@@ -1085,14 +1099,16 @@ impl<T: GetDefId> GetDefId for Option<T> {
 impl Type {
     pub fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
-            Primitive(p) | BorrowedRef { type_: box Primitive(p), ..} => Some(p),
+            Primitive(p) | BorrowedRef { type_: box Primitive(p), .. } => Some(p),
             Slice(..) | BorrowedRef { type_: box Slice(..), .. } => Some(PrimitiveType::Slice),
             Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
-            Tuple(ref tys) => if tys.is_empty() {
-                Some(PrimitiveType::Unit)
-            } else {
-                Some(PrimitiveType::Tuple)
-            },
+            Tuple(ref tys) => {
+                if tys.is_empty() {
+                    Some(PrimitiveType::Unit)
+                } else {
+                    Some(PrimitiveType::Tuple)
+                }
+            }
             RawPointer(..) => Some(PrimitiveType::RawPointer),
             BorrowedRef { type_: box Generic(..), .. } => Some(PrimitiveType::Reference),
             BareFunction(..) => Some(PrimitiveType::Fn),
@@ -1111,40 +1127,40 @@ impl Type {
     pub fn is_self_type(&self) -> bool {
         match *self {
             Generic(ref name) => name == "Self",
-            _ => false
+            _ => false,
         }
     }
 
     pub fn generics(&self) -> Option<Vec<Type>> {
         match *self {
-            ResolvedPath { ref path, .. } => {
-                path.segments.last().and_then(|seg| {
-                    if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
-                        Some(args.iter().filter_map(|arg| match arg {
-                            GenericArg::Type(ty) => Some(ty.clone()),
-                            _ => None,
-                        }).collect())
-                    } else {
-                        None
-                    }
-                })
-            }
+            ResolvedPath { ref path, .. } => path.segments.last().and_then(|seg| {
+                if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
+                    Some(
+                        args.iter()
+                            .filter_map(|arg| match arg {
+                                GenericArg::Type(ty) => Some(ty.clone()),
+                                _ => None,
+                            })
+                            .collect(),
+                    )
+                } else {
+                    None
+                }
+            }),
             _ => None,
         }
     }
 
     pub fn bindings(&self) -> Option<&[TypeBinding]> {
         match *self {
-            ResolvedPath { ref path, .. } => {
-                path.segments.last().and_then(|seg| {
-                    if let GenericArgs::AngleBracketed { ref bindings, .. } = seg.args {
-                        Some(&**bindings)
-                    } else {
-                        None
-                    }
-                })
-            }
-            _ => None
+            ResolvedPath { ref path, .. } => path.segments.last().and_then(|seg| {
+                if let GenericArgs::AngleBracketed { ref bindings, .. } = seg.args {
+                    Some(&**bindings)
+                } else {
+                    None
+                }
+            }),
+            _ => None,
         }
     }
 
@@ -1157,9 +1173,7 @@ impl Type {
 
     pub fn projection(&self) -> Option<(&Type, DefId, &str)> {
         let (self_, trait_, name) = match self {
-            QPath { ref self_type, ref trait_, ref name } => {
-                (self_type, trait_, name)
-            }
+            QPath { ref self_type, ref trait_, ref name } => (self_type, trait_, name),
             _ => return None,
         };
         let trait_did = match **trait_ {
@@ -1168,7 +1182,6 @@ impl Type {
         };
         Some((&self_, trait_did, name))
     }
-
 }
 
 impl GetDefId for Type {
@@ -1176,14 +1189,17 @@ impl GetDefId for Type {
         match *self {
             ResolvedPath { did, .. } => Some(did),
             Primitive(p) => crate::html::render::cache().primitive_locations.get(&p).cloned(),
-            BorrowedRef { type_: box Generic(..), .. } =>
-                Primitive(PrimitiveType::Reference).def_id(),
+            BorrowedRef { type_: box Generic(..), .. } => {
+                Primitive(PrimitiveType::Reference).def_id()
+            }
             BorrowedRef { ref type_, .. } => type_.def_id(),
-            Tuple(ref tys) => if tys.is_empty() {
-                Primitive(PrimitiveType::Unit).def_id()
-            } else {
-                Primitive(PrimitiveType::Tuple).def_id()
-            },
+            Tuple(ref tys) => {
+                if tys.is_empty() {
+                    Primitive(PrimitiveType::Unit).def_id()
+                } else {
+                    Primitive(PrimitiveType::Tuple).def_id()
+                }
+            }
             BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(),
             Never => Primitive(PrimitiveType::Never).def_id(),
             Slice(..) => Primitive(PrimitiveType::Slice).def_id(),
@@ -1365,8 +1381,10 @@ impl Span {
     pub fn empty() -> Span {
         Span {
             filename: FileName::Anon(0),
-            loline: 0, locol: 0,
-            hiline: 0, hicol: 0,
+            loline: 0,
+            locol: 0,
+            hiline: 0,
+            hicol: 0,
             original: syntax_pos::DUMMY_SP,
         }
     }
@@ -1398,14 +1416,8 @@ pub enum GenericArg {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum GenericArgs {
-    AngleBracketed {
-        args: Vec<GenericArg>,
-        bindings: Vec<TypeBinding>,
-    },
-    Parenthesized {
-        inputs: Vec<Type>,
-        output: Option<Type>,
-    }
+    AngleBracketed { args: Vec<GenericArg>, bindings: Vec<TypeBinding> },
+    Parenthesized { inputs: Vec<Type>, output: Option<Type> },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1474,7 +1486,7 @@ pub enum Import {
     // use source as str;
     Simple(String, ImportSource),
     // use source::*;
-    Glob(ImportSource)
+    Glob(ImportSource),
 }
 
 #[derive(Clone, Debug)]
@@ -1521,12 +1533,8 @@ pub struct TypeBinding {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum TypeBindingKind {
-    Equality {
-        ty: Type,
-    },
-    Constraint {
-        bounds: Vec<GenericBound>,
-    },
+    Equality { ty: Type },
+    Constraint { bounds: Vec<GenericBound> },
 }
 
 impl TypeBinding {

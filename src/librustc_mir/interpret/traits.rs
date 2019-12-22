@@ -1,8 +1,8 @@
-use super::{InterpCx, Machine, MemoryKind, FnVal};
+use super::{FnVal, InterpCx, Machine, MemoryKind};
 
-use rustc::ty::{self, Ty, Instance, TypeFoldable};
-use rustc::ty::layout::{Size, Align, LayoutOf, HasDataLayout};
-use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic,};
+use rustc::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
+use rustc::ty::layout::{Align, HasDataLayout, LayoutOf, Size};
+use rustc::ty::{self, Instance, Ty, TypeFoldable};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -77,17 +77,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
                 // resolve for vtable: insert shims where needed
-                let instance = ty::Instance::resolve_for_vtable(
-                    *tcx,
-                    self.param_env,
-                    def_id,
-                    substs,
-                ).ok_or_else(|| err_inval!(TooGeneric))?;
+                let instance =
+                    ty::Instance::resolve_for_vtable(*tcx, self.param_env, def_id, substs)
+                        .ok_or_else(|| err_inval!(TooGeneric))?;
                 let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                 // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), tcx)?;
-                self.memory.get_raw_mut(vtable.alloc_id)?
-                    .write_ptr_sized(tcx, method_ptr, fn_ptr.into())?;
+                self.memory.get_raw_mut(vtable.alloc_id)?.write_ptr_sized(
+                    tcx,
+                    method_ptr,
+                    fn_ptr.into(),
+                )?;
             }
         }
 
@@ -103,18 +103,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn get_vtable_slot(
         &self,
         vtable: Scalar<M::PointerTag>,
-        idx: usize
+        idx: usize,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         let ptr_size = self.pointer_size();
         // Skip over the 'drop_ptr', 'size', and 'align' fields.
         let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
-        let vtable_slot = self.memory.check_ptr_access(
-            vtable_slot,
-            ptr_size,
-            self.tcx.data_layout.pointer_align.abi,
-        )?.expect("cannot be a ZST");
-        let fn_ptr = self.memory.get_raw(vtable_slot.alloc_id)?
-            .read_ptr_sized(self, vtable_slot)?.not_undef()?;
+        let vtable_slot = self
+            .memory
+            .check_ptr_access(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
+            .expect("cannot be a ZST");
+        let fn_ptr = self
+            .memory
+            .get_raw(vtable_slot.alloc_id)?
+            .read_ptr_sized(self, vtable_slot)?
+            .not_undef()?;
         Ok(self.memory.get_fn(fn_ptr)?)
     }
 
@@ -124,15 +126,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         vtable: Scalar<M::PointerTag>,
     ) -> InterpResult<'tcx, (ty::Instance<'tcx>, Ty<'tcx>)> {
         // We don't care about the pointee type; we just want a pointer.
-        let vtable = self.memory.check_ptr_access(
-            vtable,
-            self.tcx.data_layout.pointer_size,
-            self.tcx.data_layout.pointer_align.abi,
-        )?.expect("cannot be a ZST");
-        let drop_fn = self.memory
-            .get_raw(vtable.alloc_id)?
-            .read_ptr_sized(self, vtable)?
-            .not_undef()?;
+        let vtable = self
+            .memory
+            .check_ptr_access(
+                vtable,
+                self.tcx.data_layout.pointer_size,
+                self.tcx.data_layout.pointer_align.abi,
+            )?
+            .expect("cannot be a ZST");
+        let drop_fn =
+            self.memory.get_raw(vtable.alloc_id)?.read_ptr_sized(self, vtable)?.not_undef()?;
         // We *need* an instance here, no other kind of function value, to be able
         // to determine the type.
         let drop_instance = self.memory.get_fn(drop_fn)?.as_instance()?;
@@ -142,15 +145,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // The drop function takes `*mut T` where `T` is the type being dropped, so get that.
         let args = fn_sig.inputs();
         if args.len() != 1 {
-            throw_ub_format!(
-                "drop fn should have 1 argument, but signature is {:?}", fn_sig
-            );
+            throw_ub_format!("drop fn should have 1 argument, but signature is {:?}", fn_sig);
         }
-        let ty = args[0].builtin_deref(true)
-            .ok_or_else(|| err_ub_format!(
-                "drop fn argument type {} is not a pointer type",
-                args[0]
-            ))?
+        let ty = args[0]
+            .builtin_deref(true)
+            .ok_or_else(|| {
+                err_ub_format!("drop fn argument type {} is not a pointer type", args[0])
+            })?
             .ty;
         Ok((drop_instance, ty))
     }
@@ -162,26 +163,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let pointer_size = self.pointer_size();
         // We check for `size = 3 * ptr_size`, which covers the drop fn (unused here),
         // the size, and the align (which we read below).
-        let vtable = self.memory.check_ptr_access(
-            vtable,
-            3*pointer_size,
-            self.tcx.data_layout.pointer_align.abi,
-        )?.expect("cannot be a ZST");
+        let vtable = self
+            .memory
+            .check_ptr_access(vtable, 3 * pointer_size, self.tcx.data_layout.pointer_align.abi)?
+            .expect("cannot be a ZST");
         let alloc = self.memory.get_raw(vtable.alloc_id)?;
-        let size = alloc.read_ptr_sized(
-            self,
-            vtable.offset(pointer_size, self)?
-        )?.not_undef()?;
+        let size = alloc.read_ptr_sized(self, vtable.offset(pointer_size, self)?)?.not_undef()?;
         let size = self.force_bits(size, pointer_size)? as u64;
-        let align = alloc.read_ptr_sized(
-            self,
-            vtable.offset(pointer_size * 2, self)?,
-        )?.not_undef()?;
+        let align =
+            alloc.read_ptr_sized(self, vtable.offset(pointer_size * 2, self)?)?.not_undef()?;
         let align = self.force_bits(align, pointer_size)? as u64;
 
         if size >= self.tcx.data_layout().obj_size_bound() {
-            throw_ub_format!("invalid vtable: \
-                size is bigger than largest supported object");
+            throw_ub_format!(
+                "invalid vtable: \
+                size is bigger than largest supported object"
+            );
         }
         Ok((Size::from_bytes(size), Align::from_bytes(align).unwrap()))
     }

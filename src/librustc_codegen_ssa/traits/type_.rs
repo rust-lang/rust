@@ -3,8 +3,8 @@ use super::Backend;
 use super::HasCodegen;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
-use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, TyLayout};
+use rustc::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 use syntax_pos::DUMMY_SP;
 

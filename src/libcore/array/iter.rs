@@ -1,5 +1,6 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
+use super::LengthAtMost32;
 use crate::{
     fmt,
     iter::{ExactSizeIterator, FusedIterator, TrustedLen},
@@ -7,8 +8,6 @@ use crate::{
     ops::Range,
     ptr,
 };
-use super::LengthAtMost32;
-
 
 /// A by-value [array] iterator.
 ///
@@ -40,7 +39,7 @@ where
     alive: Range<usize>,
 }
 
-impl<T, const N: usize> IntoIter<T, {N}>
+impl<T, const N: usize> IntoIter<T, { N }>
 where
     [T; N]: LengthAtMost32,
 {
@@ -75,10 +74,7 @@ where
             data
         };
 
-        Self {
-            data,
-            alive: 0..N,
-        }
+        Self { data, alive: 0..N }
     }
 
     /// Returns an immutable slice of all elements that have not been yielded
@@ -88,9 +84,7 @@ where
         // SAFETY: This transmute is safe. As mentioned in `new`, `MaybeUninit` retains
         // the size and alignment of `T`. Furthermore, we know that all
         // elements within `alive` are properly initialized.
-        unsafe {
-            mem::transmute::<&[MaybeUninit<T>], &[T]>(slice)
-        }
+        unsafe { mem::transmute::<&[MaybeUninit<T>], &[T]>(slice) }
     }
 
     /// Returns a mutable slice of all elements that have not been yielded yet.
@@ -100,15 +94,12 @@ where
         // SAFETY: This transmute is safe. As mentioned in `new`, `MaybeUninit` retains
         // the size and alignment of `T`. Furthermore, we know that all
         // elements within `alive` are properly initialized.
-        unsafe {
-            mem::transmute::<&mut [MaybeUninit<T>], &mut [T]>(slice)
-        }
+        unsafe { mem::transmute::<&mut [MaybeUninit<T>], &mut [T]>(slice) }
     }
 }
 
-
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> Iterator for IntoIter<T, {N}>
+impl<T, const N: usize> Iterator for IntoIter<T, { N }>
 where
     [T; N]: LengthAtMost32,
 {
@@ -155,7 +146,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, {N}>
+impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, { N }>
 where
     [T; N]: LengthAtMost32,
 {
@@ -191,7 +182,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> Drop for IntoIter<T, {N}>
+impl<T, const N: usize> Drop for IntoIter<T, { N }>
 where
     [T; N]: LengthAtMost32,
 {
@@ -199,14 +190,12 @@ where
         // SAFETY: This is safe: `as_mut_slice` returns exactly the sub-slice
         // of elements that have not been moved out yet and that remain
         // to be dropped.
-        unsafe {
-            ptr::drop_in_place(self.as_mut_slice())
-        }
+        unsafe { ptr::drop_in_place(self.as_mut_slice()) }
     }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> ExactSizeIterator for IntoIter<T, {N}>
+impl<T, const N: usize> ExactSizeIterator for IntoIter<T, { N }>
 where
     [T; N]: LengthAtMost32,
 {
@@ -221,23 +210,17 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> FusedIterator for IntoIter<T, {N}>
-where
-    [T; N]: LengthAtMost32,
-{}
+impl<T, const N: usize> FusedIterator for IntoIter<T, { N }> where [T; N]: LengthAtMost32 {}
 
 // The iterator indeed reports the correct length. The number of "alive"
 // elements (that will still be yielded) is the length of the range `alive`.
 // This range is decremented in length in either `next` or `next_back`. It is
 // always decremented by 1 in those methods, but only if `Some(_)` is returned.
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, {N}>
-where
-    [T; N]: LengthAtMost32,
-{}
+unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, { N }> where [T; N]: LengthAtMost32 {}
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T: Clone, const N: usize> Clone for IntoIter<T, {N}>
+impl<T: Clone, const N: usize> Clone for IntoIter<T, { N }>
 where
     [T; N]: LengthAtMost32,
 {
@@ -260,24 +243,19 @@ where
                 new_data.get_unchecked_mut(idx).write(clone);
             }
 
-            Self {
-                data: new_data,
-                alive: self.alive.clone(),
-            }
+            Self { data: new_data, alive: self.alive.clone() }
         }
     }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T: fmt::Debug, const N: usize> fmt::Debug for IntoIter<T, {N}>
+impl<T: fmt::Debug, const N: usize> fmt::Debug for IntoIter<T, { N }>
 where
     [T; N]: LengthAtMost32,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Only print the elements that were not yielded yet: we cannot
         // access the yielded elements anymore.
-        f.debug_tuple("IntoIter")
-            .field(&self.as_slice())
-            .finish()
+        f.debug_tuple("IntoIter").field(&self.as_slice()).finish()
     }
 }

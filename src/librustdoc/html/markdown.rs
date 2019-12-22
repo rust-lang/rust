@@ -20,17 +20,17 @@
 #![allow(non_camel_case_types)]
 
 use rustc_data_structures::fx::FxHashMap;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Write;
-use std::borrow::Cow;
 use std::ops::Range;
 use std::str;
 use syntax::edition::Edition;
 
-use crate::html::toc::TocBuilder;
 use crate::html::highlight;
+use crate::html::toc::TocBuilder;
 use crate::test;
 
 use pulldown_cmark::{html, CowStr, Event, Options, Parser, Tag};
@@ -146,11 +146,7 @@ fn map_line(s: &str) -> Line<'_> {
 /// "Hello, world!" -> "hello-world"
 fn slugify(c: char) -> Option<char> {
     if c.is_alphanumeric() || c == '-' || c == '_' {
-        if c.is_ascii() {
-            Some(c.to_ascii_lowercase())
-        } else {
-            Some(c)
-        }
+        if c.is_ascii() { Some(c.to_ascii_lowercase()) } else { Some(c) }
     } else if c.is_whitespace() && c.is_ascii() {
         Some('-')
     } else {
@@ -181,12 +177,7 @@ impl<'p, 'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'p, 'a, I> {
         edition: Edition,
         playground: &'p Option<Playground>,
     ) -> Self {
-        CodeBlocks {
-            inner: iter,
-            check_error_codes: error_codes,
-            edition,
-            playground,
-        }
+        CodeBlocks { inner: iter, check_error_codes: error_codes, edition, playground }
     }
 }
 
@@ -234,29 +225,32 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             if url.is_empty() {
                 return None;
             }
-            let test = origtext.lines()
+            let test = origtext
+                .lines()
                 .map(|l| map_line(l).for_code())
-                .collect::<Vec<Cow<'_, str>>>().join("\n");
+                .collect::<Vec<Cow<'_, str>>>()
+                .join("\n");
             let krate = krate.as_ref().map(|s| &**s);
-            let (test, _) = test::make_test(&test, krate, false,
-                                        &Default::default(), edition);
-            let channel = if test.contains("#![feature(") {
-                "&amp;version=nightly"
-            } else {
-                ""
-            };
+            let (test, _) = test::make_test(&test, krate, false, &Default::default(), edition);
+            let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let edition_string = format!("&amp;edition={}", edition);
 
             // These characters don't need to be escaped in a URI.
             // FIXME: use a library function for percent encoding.
             fn dont_escape(c: u8) -> bool {
-                (b'a' <= c && c <= b'z') ||
-                (b'A' <= c && c <= b'Z') ||
-                (b'0' <= c && c <= b'9') ||
-                c == b'-' || c == b'_' || c == b'.' ||
-                c == b'~' || c == b'!' || c == b'\'' ||
-                c == b'(' || c == b')' || c == b'*'
+                (b'a' <= c && c <= b'z')
+                    || (b'A' <= c && c <= b'Z')
+                    || (b'0' <= c && c <= b'9')
+                    || c == b'-'
+                    || c == b'_'
+                    || c == b'.'
+                    || c == b'~'
+                    || c == b'!'
+                    || c == b'\''
+                    || c == b'('
+                    || c == b')'
+                    || c == b'*'
             }
             let mut test_escaped = String::new();
             for b in test.bytes() {
@@ -285,24 +279,40 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         if let Some((s1, s2)) = tooltip {
             s.push_str(&highlight::render_with_highlighting(
                 &text,
-                Some(&format!("rust-example-rendered{}",
-                                if ignore != Ignore::None { " ignore" }
-                                else if compile_fail { " compile_fail" }
-                                else if explicit_edition { " edition " }
-                                else { "" })),
+                Some(&format!(
+                    "rust-example-rendered{}",
+                    if ignore != Ignore::None {
+                        " ignore"
+                    } else if compile_fail {
+                        " compile_fail"
+                    } else if explicit_edition {
+                        " edition "
+                    } else {
+                        ""
+                    }
+                )),
                 playground_button.as_ref().map(String::as_str),
-                Some((s1.as_str(), s2))));
+                Some((s1.as_str(), s2)),
+            ));
             Some(Event::Html(s.into()))
         } else {
             s.push_str(&highlight::render_with_highlighting(
                 &text,
-                Some(&format!("rust-example-rendered{}",
-                                if ignore != Ignore::None { " ignore" }
-                                else if compile_fail { " compile_fail" }
-                                else if explicit_edition { " edition " }
-                                else { "" })),
+                Some(&format!(
+                    "rust-example-rendered{}",
+                    if ignore != Ignore::None {
+                        " ignore"
+                    } else if compile_fail {
+                        " compile_fail"
+                    } else if explicit_edition {
+                        " edition "
+                    } else {
+                        ""
+                    }
+                )),
                 playground_button.as_ref().map(String::as_str),
-                None));
+                None,
+            ));
             Some(Event::Html(s.into()))
         }
     }
@@ -316,10 +326,7 @@ struct LinkReplacer<'a, 'b, I: Iterator<Item = Event<'a>>> {
 
 impl<'a, 'b, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, 'b, I> {
     fn new(iter: I, links: &'b [(String, String)]) -> Self {
-        LinkReplacer {
-            inner: iter,
-            links,
-        }
+        LinkReplacer { inner: iter, links }
     }
 }
 
@@ -350,12 +357,7 @@ struct HeadingLinks<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> {
 
 impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> HeadingLinks<'a, 'b, 'ids, I> {
     fn new(iter: I, toc: Option<&'b mut TocBuilder>, ids: &'ids mut IdMap) -> Self {
-        HeadingLinks {
-            inner: iter,
-            toc,
-            buf: VecDeque::new(),
-            id_map: ids,
-        }
+        HeadingLinks { inner: iter, toc, buf: VecDeque::new(), id_map: ids }
     }
 }
 
@@ -376,7 +378,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
                     Event::Text(text) | Event::Code(text) => {
                         id.extend(text.chars().filter_map(slugify));
                     }
-                    _ => {},
+                    _ => {}
                 }
                 self.buf.push_back(event);
             }
@@ -391,10 +393,12 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
 
             self.buf.push_back(Event::InlineHtml(format!("</a></h{}>", level).into()));
 
-            let start_tags = format!("<h{level} id=\"{id}\" class=\"section-header\">\
+            let start_tags = format!(
+                "<h{level} id=\"{id}\" class=\"section-header\">\
                                       <a href=\"#{id}\">",
-                                     id = id,
-                                     level = level);
+                id = id,
+                level = level
+            );
             return Some(Event::InlineHtml(start_tags.into()));
         }
         event
@@ -410,11 +414,7 @@ struct SummaryLine<'a, I: Iterator<Item = Event<'a>>> {
 
 impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
     fn new(iter: I) -> Self {
-        SummaryLine {
-            inner: iter,
-            started: false,
-            depth: 0,
-        }
+        SummaryLine { inner: iter, started: false, depth: 0 }
     }
 }
 
@@ -455,9 +455,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                     is_start = false;
                     check_if_allowed_tag(c)
                 }
-                _ => {
-                    true
-                }
+                _ => true,
             };
             return if is_allowed_tag == false {
                 if is_start {
@@ -482,10 +480,7 @@ struct Footnotes<'a, I: Iterator<Item = Event<'a>>> {
 
 impl<'a, I: Iterator<Item = Event<'a>>> Footnotes<'a, I> {
     fn new(iter: I) -> Self {
-        Footnotes {
-            inner: iter,
-            footnotes: FxHashMap::default(),
-        }
+        Footnotes { inner: iter, footnotes: FxHashMap::default() }
     }
     fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
         let new_id = self.footnotes.keys().count() + 1;
@@ -502,9 +497,11 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
             match self.inner.next() {
                 Some(Event::FootnoteReference(ref reference)) => {
                     let entry = self.get_entry(&reference);
-                    let reference = format!("<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{0}\
+                    let reference = format!(
+                        "<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{0}\
                                              </a></sup>",
-                                            (*entry).1);
+                        (*entry).1
+                    );
                     return Some(Event::Html(reference.into()));
                 }
                 Some(Event::Start(Tag::FootnoteDefinition(def))) => {
@@ -532,9 +529,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
                                 is_paragraph = true;
                             }
                             html::push_html(&mut ret, content.into_iter());
-                            write!(ret,
-                                   "&nbsp;<a href=\"#fnref{}\" rev=\"footnote\">↩</a>",
-                                   id).unwrap();
+                            write!(ret, "&nbsp;<a href=\"#fnref{}\" rev=\"footnote\">↩</a>", id)
+                                .unwrap();
                             if is_paragraph {
                                 ret.push_str("</p>");
                             }
@@ -551,8 +547,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes: ErrorCodes,
-                                           enable_per_target_ignores: bool) {
+pub fn find_testable_code<T: test::Tester>(
+    doc: &str,
+    tests: &mut T,
+    error_codes: ErrorCodes,
+    enable_per_target_ignores: bool,
+) {
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
     let mut nb_lines = 0;
@@ -614,7 +614,7 @@ pub struct LangString {
     pub compile_fail: bool,
     pub error_codes: Vec<String>,
     pub allow_fail: bool,
-    pub edition: Option<Edition>
+    pub edition: Option<Edition>,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -631,7 +631,7 @@ impl LangString {
             should_panic: false,
             no_run: false,
             ignore: Ignore::None,
-            rust: true,  // NB This used to be `notrust = false`
+            rust: true, // NB This used to be `notrust = false`
             test_harness: false,
             compile_fail: false,
             error_codes: Vec::new(),
@@ -643,7 +643,7 @@ impl LangString {
     fn parse(
         string: &str,
         allow_error_code_check: ErrorCodes,
-        enable_per_target_ignores: bool
+        enable_per_target_ignores: bool,
     ) -> LangString {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
@@ -652,25 +652,37 @@ impl LangString {
         let mut ignores = vec![];
 
         data.original = string.to_owned();
-        let tokens = string.split(|c: char|
-            !(c == '_' || c == '-' || c.is_alphanumeric())
-        );
+        let tokens = string.split(|c: char| !(c == '_' || c == '-' || c.is_alphanumeric()));
 
         for token in tokens {
             match token.trim() {
-                "" => {},
+                "" => {}
                 "should_panic" => {
                     data.should_panic = true;
                     seen_rust_tags = seen_other_tags == false;
                 }
-                "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
-                "ignore" => { data.ignore = Ignore::All; seen_rust_tags = !seen_other_tags; }
-                x if x.starts_with("ignore-") => if enable_per_target_ignores {
-                    ignores.push(x.trim_start_matches("ignore-").to_owned());
+                "no_run" => {
+                    data.no_run = true;
                     seen_rust_tags = !seen_other_tags;
                 }
-                "allow_fail" => { data.allow_fail = true; seen_rust_tags = !seen_other_tags; }
-                "rust" => { data.rust = true; seen_rust_tags = true; }
+                "ignore" => {
+                    data.ignore = Ignore::All;
+                    seen_rust_tags = !seen_other_tags;
+                }
+                x if x.starts_with("ignore-") => {
+                    if enable_per_target_ignores {
+                        ignores.push(x.trim_start_matches("ignore-").to_owned());
+                        seen_rust_tags = !seen_other_tags;
+                    }
+                }
+                "allow_fail" => {
+                    data.allow_fail = true;
+                    seen_rust_tags = !seen_other_tags;
+                }
+                "rust" => {
+                    data.rust = true;
+                    seen_rust_tags = true;
+                }
                 "test_harness" => {
                     data.test_harness = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
@@ -691,7 +703,7 @@ impl LangString {
                         seen_other_tags = true;
                     }
                 }
-                _ => { seen_other_tags = true }
+                _ => seen_other_tags = true,
             }
         }
         // ignore-foo overrides ignore
@@ -710,7 +722,9 @@ impl Markdown<'_> {
         let Markdown(md, links, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
-        if md.is_empty() { return String::new(); }
+        if md.is_empty() {
+            return String::new();
+        }
         let replacer = |_: &str, s: &str| {
             if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
                 Some((replace.clone(), s.to_owned()))
@@ -759,13 +773,15 @@ impl MarkdownHtml<'_> {
         let MarkdownHtml(md, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
-        if md.is_empty() { return String::new(); }
+        if md.is_empty() {
+            return String::new();
+        }
         let p = Parser::new_ext(md, opts());
 
         // Treat inline HTML as plain text.
         let p = p.map(|event| match event {
             Event::Html(text) | Event::InlineHtml(text) => Event::Text(text),
-            _ => event
+            _ => event,
         });
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
@@ -783,7 +799,9 @@ impl MarkdownSummaryLine<'_> {
     pub fn to_string(self) -> String {
         let MarkdownSummaryLine(md, links) = self;
         // This is actually common enough to special-case
-        if md.is_empty() { return String::new(); }
+        if md.is_empty() {
+            return String::new();
+        }
 
         let replacer = |_: &str, s: &str| {
             if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
@@ -816,7 +834,7 @@ pub fn plain_summary_line(md: &str) -> String {
         fn next(&mut self) -> Option<String> {
             let next_event = self.inner.next();
             if next_event.is_none() {
-                return None
+                return None;
             }
             let next_event = next_event.unwrap();
             let (ret, is_in) = match next_event {
@@ -839,11 +857,7 @@ pub fn plain_summary_line(md: &str) -> String {
         }
     }
     let mut s = String::with_capacity(md.len() * 3 / 2);
-    let mut p = ParserWrapper {
-        inner: Parser::new(md),
-        is_in: 0,
-        is_first: true,
-    };
+    let mut p = ParserWrapper { inner: Parser::new(md), is_in: 0, is_first: true };
     while let Some(t) = p.next() {
         if !t.is_empty() {
             s.push_str(&t);
@@ -961,46 +975,24 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
                 in_rust_code_block = false;
 
                 let code_block_end = if is_fenced {
-                    let fence_str = &md[previous_offset..offset]
-                        .chars()
-                        .rev()
-                        .collect::<String>();
+                    let fence_str = &md[previous_offset..offset].chars().rev().collect::<String>();
                     fence_str
                         .find("```")
                         .map(|fence_idx| offset - fence_idx)
                         .unwrap_or_else(|| offset)
-                } else if md
-                    .as_bytes()
-                    .get(offset)
-                    .map(|b| *b == b'\n')
-                    .unwrap_or_default()
-                {
+                } else if md.as_bytes().get(offset).map(|b| *b == b'\n').unwrap_or_default() {
                     offset - 1
                 } else {
                     offset
                 };
 
-                let code_end = if is_fenced {
-                    previous_offset
-                } else {
-                    code_block_end
-                };
+                let code_end = if is_fenced { previous_offset } else { code_block_end };
 
                 code_blocks.push(RustCodeBlock {
                     is_fenced,
-                    range: Range {
-                        start: code_block_start,
-                        end: code_block_end,
-                    },
-                    code: Range {
-                        start: code_start,
-                        end: code_end,
-                    },
-                    syntax: if !syntax.is_empty() {
-                        Some(syntax.into_string())
-                    } else {
-                        None
-                    },
+                    range: Range { start: code_block_start, end: code_block_end },
+                    code: Range { start: code_start, end: code_end },
+                    syntax: if !syntax.is_empty() { Some(syntax.into_string()) } else { None },
                 });
             }
             _ => (),
@@ -1022,7 +1014,7 @@ impl IdMap {
         IdMap::default()
     }
 
-    pub fn populate<I: IntoIterator<Item=String>>(&mut self, ids: I) {
+    pub fn populate<I: IntoIterator<Item = String>>(&mut self, ids: I) {
         for id in ids {
             let _ = self.derive(id);
         }

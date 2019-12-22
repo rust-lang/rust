@@ -24,10 +24,7 @@ extern "Rust" {
     #[rustc_allocator_nounwind]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
     #[rustc_allocator_nounwind]
-    fn __rust_realloc(ptr: *mut u8,
-                      old_size: usize,
-                      align: usize,
-                      new_size: usize) -> *mut u8;
+    fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
     #[rustc_allocator_nounwind]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 }
@@ -178,12 +175,12 @@ unsafe impl Alloc for Global {
     }
 
     #[inline]
-    unsafe fn realloc(&mut self,
-                      ptr: NonNull<u8>,
-                      layout: Layout,
-                      new_size: usize)
-                      -> Result<NonNull<u8>, AllocErr>
-    {
+    unsafe fn realloc(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<NonNull<u8>, AllocErr> {
         NonNull::new(realloc(ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
     }
 
@@ -204,11 +201,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     } else {
         let layout = Layout::from_size_align_unchecked(size, align);
         let ptr = alloc(layout);
-        if !ptr.is_null() {
-            ptr
-        } else {
-            handle_alloc_error(layout)
-        }
+        if !ptr.is_null() { ptr } else { handle_alloc_error(layout) }
     }
 }
 

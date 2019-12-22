@@ -8,12 +8,12 @@ use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 
 use crate::borrow_check::{
-    location::LocationTable,
     constraints::OutlivesConstraintSet,
     facts::{AllFacts, AllFactsExt},
+    location::LocationTable,
+    nll::ToRegionVid,
     region_infer::values::RegionValueElements,
     universal_regions::UniversalRegions,
-    nll::ToRegionVid,
 };
 
 use super::TypeChecker;
@@ -50,13 +50,7 @@ pub(super) fn generate<'tcx>(
 
     let polonius_drop_used = if facts_enabled {
         let mut drop_used = Vec::new();
-        polonius::populate_access_facts(
-            typeck,
-            body,
-            location_table,
-            move_data,
-            &mut drop_used,
-        );
+        polonius::populate_access_facts(typeck, body, location_table, move_data, &mut drop_used);
         Some(drop_used)
     } else {
         None

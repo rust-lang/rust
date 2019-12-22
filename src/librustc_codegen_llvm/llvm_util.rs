@@ -1,18 +1,18 @@
 use crate::back::write::create_informational_target_machine;
 use crate::llvm;
-use syntax_pos::symbol::Symbol;
-use rustc::session::Session;
-use rustc::session::config::PrintRequest;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use libc::c_int;
-use std::ffi::CString;
-use rustc_feature::UnstableFeatures;
-use syntax::symbol::sym;
 use rustc::bug;
+use rustc::session::config::PrintRequest;
+use rustc::session::Session;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_feature::UnstableFeatures;
+use rustc_target::spec::{MergeFunctions, PanicStrategy};
+use std::ffi::CString;
+use syntax::symbol::sym;
+use syntax_pos::symbol::Symbol;
 
-use std::str;
 use std::slice;
+use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
 
@@ -53,9 +53,7 @@ unsafe fn configure_llvm(sess: &Session) {
     llvm::LLVMRustInstallFatalErrorHandler();
 
     fn llvm_arg_to_arg_name(full_arg: &str) -> &str {
-        full_arg.trim().split(|c: char| {
-            c == '=' || c.is_whitespace()
-        }).next().unwrap_or("")
+        full_arg.trim().split(|c: char| c == '=' || c.is_whitespace()).next().unwrap_or("")
     }
 
     let user_specified_args: FxHashSet<_> = sess
@@ -78,25 +76,33 @@ unsafe fn configure_llvm(sess: &Session) {
             }
         };
         add("rustc", true); // fake program name
-        if sess.time_llvm_passes() { add("-time-passes", false); }
-        if sess.print_llvm_passes() { add("-debug-pass=Structure", false); }
+        if sess.time_llvm_passes() {
+            add("-time-passes", false);
+        }
+        if sess.print_llvm_passes() {
+            add("-debug-pass=Structure", false);
+        }
 
         if sess.opts.debugging_opts.generate_arange_section {
             add("-generate-arange-section", false);
         }
         if get_major_version() >= 8 {
-            match sess.opts.debugging_opts.merge_functions
-                  .unwrap_or(sess.target.target.options.merge_functions) {
-                MergeFunctions::Disabled |
-                MergeFunctions::Trampolines => {}
+            match sess
+                .opts
+                .debugging_opts
+                .merge_functions
+                .unwrap_or(sess.target.target.options.merge_functions)
+            {
+                MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
                 MergeFunctions::Aliases => {
                     add("-mergefunc-use-aliases", false);
                 }
             }
         }
 
-        if sess.target.target.target_os == "emscripten" &&
-            sess.panic_strategy() == PanicStrategy::Unwind {
+        if sess.target.target.target_os == "emscripten"
+            && sess.panic_strategy() == PanicStrategy::Unwind
+        {
             add("-enable-emscripten-cxx-exceptions", false);
         }
 
@@ -113,8 +119,7 @@ unsafe fn configure_llvm(sess: &Session) {
 
     ::rustc_llvm::initialize_available_targets();
 
-    llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
-                                 llvm_args.as_ptr());
+    llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
 }
 
 // WARNING: the features after applying `to_llvm_feature` must be known
@@ -215,23 +220,21 @@ const POWERPC_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("vsx", Some(sym::powerpc_target_feature)),
 ];
 
-const MIPS_WHITELIST: &[(&str, Option<Symbol>)] = &[
-    ("fp64", Some(sym::mips_target_feature)),
-    ("msa", Some(sym::mips_target_feature)),
-];
+const MIPS_WHITELIST: &[(&str, Option<Symbol>)] =
+    &[("fp64", Some(sym::mips_target_feature)), ("msa", Some(sym::mips_target_feature))];
 
-const WASM_WHITELIST: &[(&str, Option<Symbol>)] = &[
-    ("simd128", Some(sym::wasm_target_feature)),
-    ("atomics", Some(sym::wasm_target_feature)),
-];
+const WASM_WHITELIST: &[(&str, Option<Symbol>)] =
+    &[("simd128", Some(sym::wasm_target_feature)), ("atomics", Some(sym::wasm_target_feature))];
 
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
 /// IMPORTANT: If you're adding another whitelist to the above lists, make sure to add it to this
 /// iterator!
-pub fn all_known_features() -> impl Iterator<Item=(&'static str, Option<Symbol>)> {
-    ARM_WHITELIST.iter().cloned()
+pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol>)> {
+    ARM_WHITELIST
+        .iter()
+        .cloned()
         .chain(AARCH64_WHITELIST.iter().cloned())
         .chain(X86_WHITELIST.iter().cloned())
         .chain(HEXAGON_WHITELIST.iter().cloned())
@@ -241,11 +244,7 @@ pub fn all_known_features() -> impl Iterator<Item=(&'static str, Option<Symbol>)
 }
 
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
-    let arch = if sess.target.target.arch == "x86_64" {
-        "x86"
-    } else {
-        &*sess.target.target.arch
-    };
+    let arch = if sess.target.target.arch == "x86_64" { "x86" } else { &*sess.target.target.arch };
     match (arch, s) {
         ("x86", "pclmulqdq") => "pclmul",
         ("x86", "rdrand") => "rdrnd",
@@ -273,12 +272,11 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
             let cstr = CString::new(llvm_feature).unwrap();
             unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) }
         })
-        .map(|feature| Symbol::intern(feature)).collect()
+        .map(|feature| Symbol::intern(feature))
+        .collect()
 }
 
-pub fn target_feature_whitelist(sess: &Session)
-    -> &'static [(&'static str, Option<Symbol>)]
-{
+pub fn target_feature_whitelist(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
     match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "aarch64" => AARCH64_WHITELIST,
@@ -294,8 +292,7 @@ pub fn target_feature_whitelist(sess: &Session)
 pub fn print_version() {
     // Can be called without initializing LLVM
     unsafe {
-        println!("LLVM version: {}.{}",
-                 llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
+        println!("LLVM version: {}.{}", llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
     }
 }
 
@@ -305,7 +302,9 @@ pub fn get_major_version() -> u32 {
 
 pub fn print_passes() {
     // Can be called without initializing LLVM
-    unsafe { llvm::LLVMRustPrintPasses(); }
+    unsafe {
+        llvm::LLVMRustPrintPasses();
+    }
 }
 
 pub(crate) fn print(req: PrintRequest, sess: &Session) {
@@ -323,10 +322,10 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
 pub fn target_cpu(sess: &Session) -> &str {
     let name = match sess.opts.cg.target_cpu {
         Some(ref s) => &**s,
-        None => &*sess.target.target.options.cpu
+        None => &*sess.target.target.options.cpu,
     };
     if name != "native" {
-        return name
+        return name;
     }
 
     unsafe {

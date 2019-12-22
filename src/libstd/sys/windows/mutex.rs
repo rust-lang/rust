@@ -95,12 +95,12 @@ impl Mutex {
     pub unsafe fn destroy(&self) {
         match kind() {
             Kind::SRWLock => {}
-            Kind::CriticalSection => {
-                match self.lock.load(Ordering::SeqCst) {
-                    0 => {}
-                    n => { Box::from_raw(n as *mut ReentrantMutex).destroy(); }
+            Kind::CriticalSection => match self.lock.load(Ordering::SeqCst) {
+                0 => {}
+                n => {
+                    Box::from_raw(n as *mut ReentrantMutex).destroy();
                 }
-            }
+            },
         }
     }
 
@@ -114,7 +114,10 @@ impl Mutex {
         let re = Box::into_raw(re);
         match self.lock.compare_and_swap(0, re as usize, Ordering::SeqCst) {
             0 => re,
-            n => { Box::from_raw(re).destroy(); n as *mut _ }
+            n => {
+                Box::from_raw(re).destroy();
+                n as *mut _
+            }
         }
     }
 
@@ -125,7 +128,6 @@ impl Mutex {
             *self.held.get() = true;
             true
         }
-
     }
 }
 
@@ -134,9 +136,9 @@ fn kind() -> Kind {
 
     let val = KIND.load(Ordering::SeqCst);
     if val == Kind::SRWLock as usize {
-        return Kind::SRWLock
+        return Kind::SRWLock;
     } else if val == Kind::CriticalSection as usize {
-        return Kind::CriticalSection
+        return Kind::CriticalSection;
     }
 
     let ret = match compat::lookup("kernel32", "AcquireSRWLockExclusive") {
@@ -147,7 +149,9 @@ fn kind() -> Kind {
     ret
 }
 
-pub struct ReentrantMutex { inner: UnsafeCell<MaybeUninit<c::CRITICAL_SECTION>> }
+pub struct ReentrantMutex {
+    inner: UnsafeCell<MaybeUninit<c::CRITICAL_SECTION>>,
+}
 
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}

@@ -1,5 +1,5 @@
-use std::{hash, ptr};
 use std::ops::Deref;
+use std::{hash, ptr};
 
 /// A wrapper around reference that compares and hashes like a pointer.
 /// Can be used as a key in sets/maps indexed by pointers to avoid `unsafe`.
@@ -7,7 +7,9 @@ use std::ops::Deref;
 pub struct PtrKey<'a, T>(pub &'a T);
 
 impl<'a, T> Clone for PtrKey<'a, T> {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<'a, T> Copy for PtrKey<'a, T> {}

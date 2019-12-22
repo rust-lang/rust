@@ -1,10 +1,10 @@
+use crate::hir;
 use crate::infer::outlives::free_region_map::FreeRegionMap;
 use crate::infer::{GenericKind, InferCtxt};
-use crate::hir;
-use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::Span;
 use crate::traits::query::outlives_bounds::{self, OutlivesBound};
 use crate::ty::{self, Ty};
+use rustc_data_structures::fx::FxHashMap;
+use syntax_pos::Span;
 
 /// The `OutlivesEnvironment` collects information about what outlives
 /// what in a given type-checking setting. For example, if we have a
@@ -177,10 +177,8 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
 
     /// Save the current set of region-bound pairs under the given `body_id`.
     pub fn save_implied_bounds(&mut self, body_id: hir::HirId) {
-        let old = self.region_bound_pairs_map.insert(
-            body_id,
-            self.region_bound_pairs_accum.clone(),
-        );
+        let old =
+            self.region_bound_pairs_map.insert(body_id, self.region_bound_pairs_accum.clone());
         assert!(old.is_none());
     }
 
@@ -201,13 +199,10 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
             match outlives_bound {
                 OutlivesBound::RegionSubRegion(r_a @ &ty::ReEarlyBound(_), &ty::ReVar(vid_b))
                 | OutlivesBound::RegionSubRegion(r_a @ &ty::ReFree(_), &ty::ReVar(vid_b)) => {
-                    infcx
-                        .expect("no infcx provided but region vars found")
-                        .add_given(r_a, vid_b);
+                    infcx.expect("no infcx provided but region vars found").add_given(r_a, vid_b);
                 }
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
-                    self.region_bound_pairs_accum
-                        .push((r_a, GenericKind::Param(param_b)));
+                    self.region_bound_pairs_accum.push((r_a, GenericKind::Param(param_b)));
                 }
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
                     self.region_bound_pairs_accum

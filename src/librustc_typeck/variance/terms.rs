@@ -9,12 +9,12 @@
 // `InferredIndex` is a newtype'd int representing the index of such
 // a variable.
 
+use crate::util::nodemap::HirIdMap;
 use arena::TypedArena;
-use rustc::ty::{self, TyCtxt};
-use std::fmt;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use crate::util::nodemap::HirIdMap;
+use rustc::ty::{self, TyCtxt};
+use std::fmt;
 
 use self::VarianceTerm::*;
 
@@ -35,12 +35,10 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
         match *self {
             ConstantTerm(c1) => write!(f, "{:?}", c1),
             TransformTerm(v1, v2) => write!(f, "({:?} \u{00D7} {:?})", v1, v2),
-            InferredTerm(id) => {
-                write!(f, "[{}]", {
-                    let InferredIndex(i) = id;
-                    i
-                })
-            }
+            InferredTerm(id) => write!(f, "[{}]", {
+                let InferredIndex(i) = id;
+                i
+            }),
         }
     }
 }
@@ -91,13 +89,13 @@ fn lang_items(tcx: TyCtxt<'_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
     let all = vec![
         (lang_items.phantom_data(), vec![ty::Covariant]),
         (lang_items.unsafe_cell_type(), vec![ty::Invariant]),
-        ];
+    ];
 
     all.into_iter() // iterating over (Option<DefId>, Variance)
-       .filter(|&(ref d,_)| d.is_some())
-       .map(|(d, v)| (d.unwrap(), v)) // (DefId, Variance)
-       .filter_map(|(d, v)| tcx.hir().as_local_hir_id(d).map(|n| (n, v))) // (HirId, Variance)
-       .collect()
+        .filter(|&(ref d, _)| d.is_some())
+        .map(|(d, v)| (d.unwrap(), v)) // (DefId, Variance)
+        .filter_map(|(d, v)| tcx.hir().as_local_hir_id(d).map(|n| (n, v))) // (HirId, Variance)
+        .collect()
 }
 
 impl<'a, 'tcx> TermsContext<'a, 'tcx> {
@@ -120,20 +118,18 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // for a particular item are assigned continuous indices.
 
         let arena = self.arena;
-        self.inferred_terms.extend((start..(start + count)).map(|i| {
-            &*arena.alloc(InferredTerm(InferredIndex(i)))
-        }));
+        self.inferred_terms.extend(
+            (start..(start + count)).map(|i| &*arena.alloc(InferredTerm(InferredIndex(i)))),
+        );
     }
 }
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        debug!("add_inferreds for item {}",
-               self.tcx.hir().node_to_string(item.hir_id));
+        debug!("add_inferreds for item {}", self.tcx.hir().node_to_string(item.hir_id));
 
         match item.kind {
-            hir::ItemKind::Struct(ref struct_def, _) |
-            hir::ItemKind::Union(ref struct_def, _) => {
+            hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
                 self.add_inferreds_for_item(item.hir_id);
 
                 if let hir::VariantData::Tuple(..) = *struct_def {

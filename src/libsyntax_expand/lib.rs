@@ -12,9 +12,9 @@ extern crate proc_macro as pm;
 // normal try.
 #[macro_export]
 macro_rules! panictry {
-    ($e:expr) => ({
-        use std::result::Result::{Ok, Err};
+    ($e:expr) => {{
         use errors::FatalError;
+        use std::result::Result::{Err, Ok};
         match $e {
             Ok(e) => e,
             Err(mut e) => {
@@ -22,14 +22,14 @@ macro_rules! panictry {
                 FatalError.raise()
             }
         }
-    })
+    }};
 }
 
 mod placeholders;
 mod proc_macro_server;
 
-crate use syntax_pos::hygiene;
 pub use mbe::macro_rules::compile_declarative_macro;
+crate use syntax_pos::hygiene;
 pub mod base;
 pub mod build;
 pub mod expand;

@@ -28,16 +28,15 @@ pub mod pipe;
 pub mod process;
 pub mod rwlock;
 pub mod stack_overflow;
+pub mod stdio;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
-pub mod stdio;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
 #[cfg(not(test))]
-pub fn init() {
-}
+pub fn init() {}
 
 /// This function is used to implement functionality that simply doesn't exist.
 /// Programs relying on this functionality will need to deal with the error.
@@ -46,8 +45,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::new(ErrorKind::Other,
-                   "operation not supported on SGX yet")
+    crate::io::Error::new(ErrorKind::Other, "operation not supported on SGX yet")
 }
 
 /// This function is used to implement various functions that doesn't exist,
@@ -58,8 +56,10 @@ pub fn unsupported_err() -> crate::io::Error {
 pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
     static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
-        Err(crate::io::Error::new(ErrorKind::Other,
-                       "operation can't be trusted to have any effect on SGX"))
+        Err(crate::io::Error::new(
+            ErrorKind::Other,
+            "operation can't be trusted to have any effect on SGX",
+        ))
     } else {
         Ok(v)
     }
@@ -121,7 +121,7 @@ pub unsafe fn strlen(mut s: *const c_char) -> usize {
         n += 1;
         s = s.offset(1);
     }
-    return n
+    return n;
 }
 
 pub unsafe fn abort_internal() -> ! {

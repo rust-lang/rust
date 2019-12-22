@@ -1,16 +1,17 @@
 //! ICH - Incremental Compilation Hash
 
+pub use self::hcx::{
+    hash_stable_trait_impls, NodeIdHashingMode, StableHashingContext, StableHashingContextProvider,
+};
 crate use rustc_data_structures::fingerprint::Fingerprint;
+use syntax::symbol::{sym, Symbol};
 pub use syntax_pos::CachingSourceMapView;
-pub use self::hcx::{StableHashingContextProvider, StableHashingContext, NodeIdHashingMode,
-                    hash_stable_trait_impls};
-use syntax::symbol::{Symbol, sym};
 
 mod hcx;
 
 mod impls_hir;
-mod impls_ty;
 mod impls_syntax;
+mod impls_ty;
 
 pub const IGNORED_ATTRIBUTES: &[Symbol] = &[
     sym::cfg,

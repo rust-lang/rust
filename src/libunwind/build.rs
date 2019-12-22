@@ -4,9 +4,9 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let target = env::var("TARGET").expect("TARGET was not set");
 
-    if cfg!(feature = "llvm-libunwind") &&
-        ((target.contains("linux") && !target.contains("musl")) ||
-         target.contains("fuchsia")) {
+    if cfg!(feature = "llvm-libunwind")
+        && ((target.contains("linux") && !target.contains("musl")) || target.contains("fuchsia"))
+    {
         // Build the unwinding from libunwind C/C++ source code.
         llvm_libunwind::compile();
     } else if target.contains("linux") {

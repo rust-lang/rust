@@ -1,8 +1,8 @@
+use crate::borrow_check::borrow_set::LocalsStateAtExit;
 use rustc::hir;
 use rustc::mir::ProjectionElem;
-use rustc::mir::{Body, Place, PlaceBase, Mutability};
+use rustc::mir::{Body, Mutability, Place, PlaceBase};
 use rustc::ty::{self, TyCtxt};
-use crate::borrow_check::borrow_set::LocalsStateAtExit;
 
 /// Extension methods for the `Place` type.
 crate trait PlaceExt<'tcx> {
@@ -34,21 +34,19 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
             //
             // In particular, the variable cannot be mutated -- the "access checks" will fail --
             // so we don't have to worry about mutation while borrowed.
-            PlaceBase::Local(local) => {
-                match locals_state_at_exit {
-                    LocalsStateAtExit::AllAreInvalidated => local,
-                    LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } => {
-                        let ignore = !has_storage_dead_or_moved.contains(local) &&
-                            body.local_decls[local].mutability == Mutability::Not;
-                        debug!("ignore_borrow: local {:?} => {:?}", local, ignore);
-                        if ignore {
-                            return true;
-                        } else {
-                            local
-                        }
+            PlaceBase::Local(local) => match locals_state_at_exit {
+                LocalsStateAtExit::AllAreInvalidated => local,
+                LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } => {
+                    let ignore = !has_storage_dead_or_moved.contains(local)
+                        && body.local_decls[local].mutability == Mutability::Not;
+                    debug!("ignore_borrow: local {:?} => {:?}", local, ignore);
+                    if ignore {
+                        return true;
+                    } else {
+                        local
                     }
                 }
-            }
+            },
             PlaceBase::Static(_) => return true,
         };
 

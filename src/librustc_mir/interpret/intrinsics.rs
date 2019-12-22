@@ -2,21 +2,20 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
-use syntax_pos::symbol::{sym, Symbol};
-use syntax_pos::Span;
+use rustc::hir::def_id::DefId;
+use rustc::mir::{
+    self,
+    interpret::{ConstValue, InterpResult, Scalar},
+    BinOp,
+};
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::ty::subst::SubstsRef;
-use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
-use rustc::mir::{
-    self, BinOp,
-    interpret::{InterpResult, Scalar, ConstValue}
-};
+use syntax_pos::symbol::{sym, Symbol};
+use syntax_pos::Span;
 
-use super::{
-    Machine, PlaceTy, OpTy, InterpCx, ImmTy,
-};
+use super::{ImmTy, InterpCx, Machine, OpTy, PlaceTy};
 
 mod caller_location;
 mod type_name;
@@ -63,11 +62,9 @@ crate fn eval_nullary_intrinsic<'tcx>(
                 }),
                 ty: tcx.mk_static_str(),
             })
-        },
+        }
         sym::needs_drop => ty::Const::from_bool(tcx, tp_ty.needs_drop(tcx, param_env)),
-        sym::size_of |
-        sym::min_align_of |
-        sym::pref_align_of => {
+        sym::size_of | sym::min_align_of | sym::pref_align_of => {
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
             let n = match name {
                 sym::pref_align_of => layout.align.pref.bytes(),
@@ -76,12 +73,10 @@ crate fn eval_nullary_intrinsic<'tcx>(
                 _ => bug!(),
             };
             ty::Const::from_usize(tcx, n)
-        },
-        sym::type_id => ty::Const::from_bits(
-            tcx,
-            tcx.type_id_hash(tp_ty).into(),
-            param_env.and(tcx.types.u64),
-        ),
+        }
+        sym::type_id => {
+            ty::Const::from_bits(tcx, tcx.type_id_hash(tp_ty).into(), param_env.and(tcx.types.u64))
+        }
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
 }
@@ -105,7 +100,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => match intrinsic_name {
                 sym::transmute => throw_ub!(Unreachable),
                 _ => return Ok(false),
-            }
+            },
         };
 
         // Keep the patterns in this match ordered the same as the list in
@@ -117,20 +112,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(location.ptr, dest)?;
             }
 
-            sym::min_align_of |
-            sym::pref_align_of |
-            sym::needs_drop |
-            sym::size_of |
-            sym::type_id |
-            sym::type_name => {
-                let val = self.tcx.const_eval_instance(self.param_env,
-                                                       instance,
-                                                       Some(self.tcx.span))?;
+            sym::min_align_of
+            | sym::pref_align_of
+            | sym::needs_drop
+            | sym::size_of
+            | sym::type_id
+            | sym::type_name => {
+                let val =
+                    self.tcx.const_eval_instance(self.param_env, instance, Some(self.tcx.span))?;
                 let val = self.eval_const_to_op(val, None)?;
                 self.copy_op(val, dest)?;
             }
 
-            | sym::ctpop
+            sym::ctpop
             | sym::cttz
             | sym::cttz_nonzero
             | sym::ctlz
@@ -156,7 +150,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let out_val = numeric_intrinsic(intrinsic_name, bits, kind)?;
                 self.write_scalar(out_val, dest)?;
             }
-            | sym::wrapping_add
+            sym::wrapping_add
             | sym::wrapping_sub
             | sym::wrapping_mul
             | sym::add_with_overflow
@@ -171,7 +165,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::add_with_overflow => (BinOp::Add, false),
                     sym::sub_with_overflow => (BinOp::Sub, false),
                     sym::mul_with_overflow => (BinOp::Mul, false),
-                    _ => bug!("Already checked for int ops")
+                    _ => bug!("Already checked for int ops"),
                 };
                 if ignore_overflow {
                     self.binop_ignore_overflow(bin_op, lhs, rhs, dest)?;
@@ -183,11 +177,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let l = self.read_immediate(args[0])?;
                 let r = self.read_immediate(args[1])?;
                 let is_add = intrinsic_name == sym::saturating_add;
-                let (val, overflowed, _ty) = self.overflowing_binary_op(if is_add {
-                    BinOp::Add
-                } else {
-                    BinOp::Sub
-                }, l, r)?;
+                let (val, overflowed, _ty) =
+                    self.overflowing_binary_op(if is_add { BinOp::Add } else { BinOp::Sub }, l, r)?;
                 let val = if overflowed {
                     let num_bits = l.layout.size.bits();
                     if l.layout.abi.is_signed() {
@@ -196,24 +187,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // the fact that the operation has overflowed (if either is 0 no
                         // overflow can occur)
                         let first_term: u128 = self.force_bits(l.to_scalar()?, l.layout.size)?;
-                        let first_term_positive = first_term & (1 << (num_bits-1)) == 0;
+                        let first_term_positive = first_term & (1 << (num_bits - 1)) == 0;
                         if first_term_positive {
                             // Negative overflow not possible since the positive first term
                             // can only increase an (in range) negative term for addition
                             // or corresponding negated positive term for subtraction
-                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1,  // max positive
-                                Size::from_bits(num_bits))
+                            Scalar::from_uint(
+                                (1u128 << (num_bits - 1)) - 1, // max positive
+                                Size::from_bits(num_bits),
+                            )
                         } else {
                             // Positive overflow not possible for similar reason
                             // max negative
                             Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
                         }
-                    } else {  // unsigned
+                    } else {
+                        // unsigned
                         if is_add {
                             // max unsigned
-                            Scalar::from_uint(u128::max_value() >> (128 - num_bits),
-                                Size::from_bits(num_bits))
-                        } else {  // underflow to 0
+                            Scalar::from_uint(
+                                u128::max_value() >> (128 - num_bits),
+                                Size::from_bits(num_bits),
+                            )
+                        } else {
+                            // underflow to 0
                             Scalar::from_uint(0u128, Size::from_bits(num_bits))
                         }
                     }
@@ -228,7 +225,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bin_op = match intrinsic_name {
                     sym::unchecked_shl => BinOp::Shl,
                     sym::unchecked_shr => BinOp::Shr,
-                    _ => bug!("Already checked for int ops")
+                    _ => bug!("Already checked for int ops"),
                 };
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, l, r)?;
                 if overflowed {
@@ -279,8 +276,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if a == b && a != 0 {
                         self.write_scalar(Scalar::from_int(0, isize_layout.size), dest)?;
                         true
-                    } else { false }
-                } else { false };
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
 
                 if !done {
                     // General case: we need two pointers.
@@ -295,9 +296,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let usize_layout = self.layout_of(self.tcx.types.usize)?;
                     let a_offset = ImmTy::from_uint(a.offset.bytes(), usize_layout);
                     let b_offset = ImmTy::from_uint(b.offset.bytes(), usize_layout);
-                    let (val, _overflowed, _ty) = self.overflowing_binary_op(
-                        BinOp::Sub, a_offset, b_offset,
-                    )?;
+                    let (val, _overflowed, _ty) =
+                        self.overflowing_binary_op(BinOp::Sub, a_offset, b_offset)?;
                     let pointee_layout = self.layout_of(substs.type_at(0))?;
                     let val = ImmTy::from_scalar(val, isize_layout);
                     let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
@@ -316,7 +316,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(
                     index < len,
                     "Index `{}` must be in bounds of vector type `{}`: `[0, {})`",
-                    index, e_ty, len
+                    index,
+                    e_ty,
+                    len
                 );
                 assert_eq!(
                     input.layout, dest.layout,
@@ -331,11 +333,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 for i in 0..len {
                     let place = self.place_field(dest, i)?;
-                    let value = if i == index {
-                        elem
-                    } else {
-                        self.operand_field(input, i)?
-                    };
+                    let value = if i == index { elem } else { self.operand_field(input, i)? };
                     self.copy_op(value, place)?;
                 }
             }
@@ -345,7 +343,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(
                     index < len,
                     "index `{}` is out-of-bounds of vector type `{}` with length `{}`",
-                    index, e_ty, len
+                    index,
+                    e_ty,
+                    len
                 );
                 assert_eq!(
                     e_ty, dest.layout.ty,
@@ -430,11 +430,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if b_scalar == minus1 {
                 throw_ub_format!("exact_div: result of dividing MIN by -1 cannot be represented")
             } else {
-                throw_ub_format!(
-                    "exact_div: {} cannot be divided by {} without remainder",
-                    a,
-                    b,
-                )
+                throw_ub_format!("exact_div: {} cannot be divided by {} without remainder", a, b,)
             }
         }
         self.binop_ignore_overflow(BinOp::Div, a, b, dest)

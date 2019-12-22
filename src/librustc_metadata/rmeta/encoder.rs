@@ -1,31 +1,30 @@
-use crate::rmeta::*;
 use crate::rmeta::table::FixedSizeEncoding;
+use crate::rmeta::*;
 
-use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
-                            EncodedMetadata, ForeignModule};
 use rustc::hir::def::CtorKind;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
-use rustc::hir::{GenericParamKind, AnonConst};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_index::vec::Idx;
+use rustc::hir::{AnonConst, GenericParamKind};
+use rustc::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLibrary};
 use rustc::middle::dependency_format::Linkage;
-use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
-                                      metadata_symbol_name};
+use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
 use rustc::middle::lang_items;
 use rustc::mir::{self, interpret};
 use rustc::traits::specialization_graph;
-use rustc::ty::{self, Ty, TyCtxt, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 use rustc::ty::layout::VariantIdx;
+use rustc::ty::{self, SymbolName, Ty, TyCtxt};
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_index::vec::Idx;
 
 use rustc::session::config::{self, CrateType};
 use rustc::util::nodemap::FxHashMap;
 
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
-use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
+use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 
+use log::{debug, trace};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -36,12 +35,11 @@ use syntax::expand::is_proc_macro_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax_pos::{self, FileName, SourceFile, Span};
-use log::{debug, trace};
 
-use rustc::hir::{self, PatKind};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::intravisit;
+use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::{self, PatKind};
 
 struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
@@ -115,7 +113,8 @@ impl<'tcx, T> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
 }
 
 impl<'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>>> for EncodeContext<'tcx>
-    where Option<T>: FixedSizeEncoding,
+where
+    Option<T>: FixedSizeEncoding,
 {
     fn specialized_encode(&mut self, lazy: &Lazy<Table<I, T>>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
@@ -133,10 +132,7 @@ impl<'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'tcx> {
 impl<'tcx> SpecializedEncoder<DefId> for EncodeContext<'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_id: &DefId) -> Result<(), Self::Error> {
-        let DefId {
-            krate,
-            index,
-        } = *def_id;
+        let DefId { krate, index } = *def_id;
 
         krate.encode(self)?;
         index.encode(self)
@@ -153,7 +149,7 @@ impl<'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'tcx> {
 impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
         if span.is_dummy() {
-            return TAG_INVALID_SPAN.encode(self)
+            return TAG_INVALID_SPAN.encode(self);
         }
 
         let span = span.data();
@@ -170,14 +166,14 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         if !self.source_file_cache.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
-            return TAG_INVALID_SPAN.encode(self)
+            return TAG_INVALID_SPAN.encode(self);
         }
 
         // HACK(eddyb) there's no way to indicate which crate a Span is coming
         // from right now, so decoding would fail to find the SourceFile if
         // it's not local to the crate the Span is found in.
         if self.source_file_cache.is_imported() {
-            return TAG_INVALID_SPAN.encode(self)
+            return TAG_INVALID_SPAN.encode(self);
         }
 
         TAG_VALID_SPAN.encode(self)?;
@@ -222,7 +218,7 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
                 self.interpret_allocs_inverse.push(*alloc_id);
                 e.insert(idx);
                 idx
-            },
+            }
         };
 
         index.encode(self)
@@ -230,9 +226,10 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
 }
 
 impl<'tcx> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, Span)]> for EncodeContext<'tcx> {
-    fn specialized_encode(&mut self,
-                          predicates: &&'tcx [(ty::Predicate<'tcx>, Span)])
-                          -> Result<(), Self::Error> {
+    fn specialized_encode(
+        &mut self,
+        predicates: &&'tcx [(ty::Predicate<'tcx>, Span)],
+    ) -> Result<(), Self::Error> {
         ty_codec::encode_spanned_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
     }
 }
@@ -244,9 +241,7 @@ impl<'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'tcx> {
 }
 
 impl<'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'tcx> {
-    fn specialized_encode(&mut self,
-                          _: &mir::ClearCrossCrate<T>)
-                          -> Result<(), Self::Error> {
+    fn specialized_encode(&mut self, _: &mir::ClearCrossCrate<T>) -> Result<(), Self::Error> {
         Ok(())
     }
 }
@@ -275,8 +270,9 @@ impl<T: Encodable> EncodeContentsForLazy<T> for T {
 }
 
 impl<I, T: Encodable> EncodeContentsForLazy<[T]> for I
-    where I: IntoIterator,
-          I::Item: EncodeContentsForLazy<T>,
+where
+    I: IntoIterator,
+    I::Item: EncodeContentsForLazy<T>,
 {
     fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) -> usize {
         self.into_iter().map(|value| value.encode_contents_for_lazy(ecx)).count()
@@ -292,7 +288,7 @@ macro_rules! record {
             let lazy = $self.lazy(value);
             $self.$tables.$table.set($def_id.index, lazy);
         }
-    }}
+    }};
 }
 
 impl<'tcx> EncodeContext<'tcx> {
@@ -321,10 +317,7 @@ impl<'tcx> EncodeContext<'tcx> {
         self.emit_usize(distance)
     }
 
-    fn lazy<T: ?Sized + LazyMeta>(
-        &mut self,
-        value: impl EncodeContentsForLazy<T>,
-    ) -> Lazy<T> {
+    fn lazy<T: ?Sized + LazyMeta>(&mut self, value: impl EncodeContentsForLazy<T>) -> Lazy<T> {
         let pos = NonZeroUsize::new(self.position()).unwrap();
 
         assert_eq!(self.lazy_state, LazyState::NoNode);
@@ -358,7 +351,8 @@ impl<'tcx> EncodeContext<'tcx> {
 
         let (working_dir, _cwd_remapped) = self.tcx.sess.working_dir.clone();
 
-        let adapted = all_source_files.iter()
+        let adapted = all_source_files
+            .iter()
             .filter(|source_file| {
                 // No need to re-export imported source_files, as any downstream
                 // crate will import them from their original source.
@@ -370,7 +364,7 @@ impl<'tcx> EncodeContext<'tcx> {
                     // This path of this SourceFile has been modified by
                     // path-remapping, so we use it verbatim (and avoid
                     // cloning the whole map in the process).
-                    _  if source_file.name_was_remapped => source_file.clone(),
+                    _ if source_file.name_was_remapped => source_file.clone(),
 
                     // Otherwise expand all paths to absolute paths because
                     // any relative paths are potentially relative to a
@@ -384,7 +378,7 @@ impl<'tcx> EncodeContext<'tcx> {
                             hasher.finish::<u128>()
                         };
                         Lrc::new(adapted)
-                    },
+                    }
 
                     // expanded code, not from a file
                     _ => source_file.clone(),
@@ -472,17 +466,12 @@ impl<'tcx> EncodeContext<'tcx> {
                     let id = self.interpret_allocs_inverse[idx];
                     let pos = self.position() as u32;
                     interpret_alloc_index.push(pos);
-                    interpret::specialized_encode_alloc_id(
-                        self,
-                        tcx,
-                        id,
-                    ).unwrap();
+                    interpret::specialized_encode_alloc_id(self, tcx, id).unwrap();
                 }
                 n = new_n;
             }
             self.lazy(interpret_alloc_index)
         };
-
 
         i = self.position();
         let per_def = self.per_def.encode(&mut self.opaque);
@@ -492,7 +481,6 @@ impl<'tcx> EncodeContext<'tcx> {
         i = self.position();
         let proc_macro_data = self.encode_proc_macros();
         let proc_macro_data_bytes = self.position() - i;
-
 
         let attrs = tcx.hir().krate_attrs();
         let has_default_lib_allocator = attr::contains_name(&attrs, sym::default_lib_allocator);
@@ -588,11 +576,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.ty[def_id] <- self.tcx.type_of(def_id));
     }
 
-    fn encode_enum_variant_info(
-        &mut self,
-        enum_did: DefId,
-        index: VariantIdx,
-    ) {
+    fn encode_enum_variant_info(&mut self, enum_did: DefId, index: VariantIdx) {
         let tcx = self.tcx;
         let def = tcx.adt_def(enum_did);
         let variant = &def.variants[index];
@@ -635,11 +619,7 @@ impl EncodeContext<'tcx> {
         self.encode_promoted_mir(def_id);
     }
 
-    fn encode_enum_variant_ctor(
-        &mut self,
-        enum_did: DefId,
-        index: VariantIdx,
-    ) {
+    fn encode_enum_variant_ctor(&mut self, enum_did: DefId, index: VariantIdx) {
         let tcx = self.tcx;
         let def = tcx.adt_def(enum_did);
         let variant = &def.variants[index];
@@ -708,12 +688,7 @@ impl EncodeContext<'tcx> {
         self.encode_deprecation(def_id);
     }
 
-    fn encode_field(
-        &mut self,
-        adt_def_id: DefId,
-        variant_index: VariantIdx,
-        field_index: usize,
-    ) {
+    fn encode_field(&mut self, adt_def_id: DefId, variant_index: VariantIdx, field_index: usize) {
         let tcx = self.tcx;
         let variant = &tcx.adt_def(adt_def_id).variants[variant_index];
         let field = &variant.fields[field_index];
@@ -759,8 +734,8 @@ impl EncodeContext<'tcx> {
 
         // If the structure is marked as non_exhaustive then lower the visibility
         // to within the crate.
-        if adt_def.non_enum_variant().is_field_list_non_exhaustive() &&
-            ctor_vis == ty::Visibility::Public
+        if adt_def.non_enum_variant().is_field_list_non_exhaustive()
+            && ctor_vis == ty::Visibility::Public
         {
             ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }
@@ -815,12 +790,9 @@ impl EncodeContext<'tcx> {
         let trait_item = tcx.associated_item(def_id);
 
         let container = match trait_item.defaultness {
-            hir::Defaultness::Default { has_value: true } =>
-                AssocContainer::TraitWithDefault,
-            hir::Defaultness::Default { has_value: false } =>
-                AssocContainer::TraitRequired,
-            hir::Defaultness::Final =>
-                span_bug!(ast_item.span, "traits cannot have final items"),
+            hir::Defaultness::Default { has_value: true } => AssocContainer::TraitWithDefault,
+            hir::Defaultness::Default { has_value: false } => AssocContainer::TraitRequired,
+            hir::Defaultness::Final => span_bug!(ast_item.span, "traits cannot have final items"),
         };
 
         record!(self.per_def.kind[def_id] <- match trait_item.kind {
@@ -869,8 +841,7 @@ impl EncodeContext<'tcx> {
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match trait_item.kind {
-            ty::AssocKind::Const |
-            ty::AssocKind::Method => {
+            ty::AssocKind::Const | ty::AssocKind::Method => {
                 self.encode_item_type(def_id);
             }
             ty::AssocKind::Type => {
@@ -907,8 +878,9 @@ impl EncodeContext<'tcx> {
         let container = match impl_item.defaultness {
             hir::Defaultness::Default { has_value: true } => AssocContainer::ImplDefault,
             hir::Defaultness::Final => AssocContainer::ImplFinal,
-            hir::Defaultness::Default { has_value: false } =>
-                span_bug!(ast_item.span, "impl items always have values (currently)"),
+            hir::Defaultness::Default { has_value: false } => {
+                span_bug!(ast_item.span, "impl items always have values (currently)")
+            }
         };
 
         record!(self.per_def.kind[def_id] <- match impl_item.kind {
@@ -961,15 +933,14 @@ impl EncodeContext<'tcx> {
             hir::ImplItemKind::Const(..) => true,
             hir::ImplItemKind::Method(ref sig, _) => {
                 let generics = self.tcx.generics_of(def_id);
-                let needs_inline = (generics.requires_monomorphization(self.tcx) ||
-                                    tcx.codegen_fn_attrs(def_id).requests_inline()) &&
-                                    !self.metadata_output_only();
+                let needs_inline = (generics.requires_monomorphization(self.tcx)
+                    || tcx.codegen_fn_attrs(def_id).requests_inline())
+                    && !self.metadata_output_only();
                 let is_const_fn = sig.header.constness == hir::Constness::Const;
                 let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                 needs_inline || is_const_fn || always_encode_mir
-            },
-            hir::ImplItemKind::OpaqueTy(..) |
-            hir::ImplItemKind::TyAlias(..) => false,
+            }
+            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => false,
         };
         if mir {
             self.encode_optimized_mir(def_id);
@@ -977,15 +948,12 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId)
-                                    -> Lazy<[ast::Name]> {
+    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[ast::Name]> {
         self.tcx.dep_graph.with_ignore(|| {
             let body = self.tcx.hir().body(body_id);
-            self.lazy(body.params.iter().map(|arg| {
-                match arg.pat.kind {
-                    PatKind::Binding(_, _, ident, _) => ident.name,
-                    _ => kw::Invalid,
-                }
+            self.lazy(body.params.iter().map(|arg| match arg.pat.kind {
+                PatKind::Binding(_, _, ident, _) => ident.name,
+                _ => kw::Invalid,
             }))
         })
     }
@@ -1175,15 +1143,15 @@ impl EncodeContext<'tcx> {
                     v.def_id.index
                 })
             ),
-            hir::ItemKind::Struct(..) |
-            hir::ItemKind::Union(..) => record!(self.per_def.children[def_id] <-
-                self.tcx.adt_def(def_id).non_enum_variant().fields.iter().map(|f| {
-                    assert!(f.did.is_local());
-                    f.did.index
-                })
-            ),
-            hir::ItemKind::Impl(..) |
-            hir::ItemKind::Trait(..) => {
+            hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
+                record!(self.per_def.children[def_id] <-
+                    self.tcx.adt_def(def_id).non_enum_variant().fields.iter().map(|f| {
+                        assert!(f.did.is_local());
+                        f.did.index
+                    })
+                )
+            }
+            hir::ItemKind::Impl(..) | hir::ItemKind::Trait(..) => {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
                 record!(self.per_def.children[def_id] <-
                     associated_item_def_ids.iter().map(|&def_id| {
@@ -1198,15 +1166,15 @@ impl EncodeContext<'tcx> {
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match item.kind {
-            hir::ItemKind::Static(..) |
-            hir::ItemKind::Const(..) |
-            hir::ItemKind::Fn(..) |
-            hir::ItemKind::TyAlias(..) |
-            hir::ItemKind::OpaqueTy(..) |
-            hir::ItemKind::Enum(..) |
-            hir::ItemKind::Struct(..) |
-            hir::ItemKind::Union(..) |
-            hir::ItemKind::Impl(..) => self.encode_item_type(def_id),
+            hir::ItemKind::Static(..)
+            | hir::ItemKind::Const(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::TyAlias(..)
+            | hir::ItemKind::OpaqueTy(..)
+            | hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::Impl(..) => self.encode_item_type(def_id),
             _ => {}
         }
         if let hir::ItemKind::Fn(..) = item.kind {
@@ -1219,24 +1187,24 @@ impl EncodeContext<'tcx> {
         }
         self.encode_inherent_implementations(def_id);
         match item.kind {
-            hir::ItemKind::Enum(..) |
-            hir::ItemKind::Struct(..) |
-            hir::ItemKind::Union(..) |
-            hir::ItemKind::Fn(..) => self.encode_variances_of(def_id),
+            hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::Fn(..) => self.encode_variances_of(def_id),
             _ => {}
         }
         match item.kind {
-            hir::ItemKind::Static(..) |
-            hir::ItemKind::Const(..) |
-            hir::ItemKind::Fn(..) |
-            hir::ItemKind::TyAlias(..) |
-            hir::ItemKind::Enum(..) |
-            hir::ItemKind::Struct(..) |
-            hir::ItemKind::Union(..) |
-            hir::ItemKind::Impl(..) |
-            hir::ItemKind::OpaqueTy(..) |
-            hir::ItemKind::Trait(..) |
-            hir::ItemKind::TraitAlias(..) => {
+            hir::ItemKind::Static(..)
+            | hir::ItemKind::Const(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::TyAlias(..)
+            | hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::Impl(..)
+            | hir::ItemKind::OpaqueTy(..)
+            | hir::ItemKind::Trait(..)
+            | hir::ItemKind::TraitAlias(..) => {
                 self.encode_generics(def_id);
                 self.encode_explicit_predicates(def_id);
                 self.encode_inferred_outlives(def_id);
@@ -1244,8 +1212,7 @@ impl EncodeContext<'tcx> {
             _ => {}
         }
         match item.kind {
-            hir::ItemKind::Trait(..) |
-            hir::ItemKind::TraitAlias(..) => {
+            hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => {
                 self.encode_super_predicates(def_id);
             }
             _ => {}
@@ -1255,10 +1222,9 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => true,
             hir::ItemKind::Fn(ref sig, ..) => {
                 let generics = tcx.generics_of(def_id);
-                let needs_inline =
-                    (generics.requires_monomorphization(tcx) ||
-                        tcx.codegen_fn_attrs(def_id).requests_inline()) &&
-                        !self.metadata_output_only();
+                let needs_inline = (generics.requires_monomorphization(tcx)
+                    || tcx.codegen_fn_attrs(def_id).requests_inline())
+                    && !self.metadata_output_only();
                 let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                 needs_inline || sig.header.constness == hir::Constness::Const || always_encode_mir
             }
@@ -1446,18 +1412,13 @@ impl EncodeContext<'tcx> {
     fn encode_impls(&mut self) -> Lazy<[TraitImpls]> {
         debug!("EncodeContext::encode_impls()");
         let tcx = self.tcx;
-        let mut visitor = ImplVisitor {
-            tcx,
-            impls: FxHashMap::default(),
-        };
+        let mut visitor = ImplVisitor { tcx, impls: FxHashMap::default() };
         tcx.hir().krate().visit_all_item_likes(&mut visitor);
 
         let mut all_impls: Vec<_> = visitor.impls.into_iter().collect();
 
         // Bring everything into deterministic order for hashing
-        all_impls.sort_by_cached_key(|&(trait_def_id, _)| {
-            tcx.def_path_hash(trait_def_id)
-        });
+        all_impls.sort_by_cached_key(|&(trait_def_id, _)| tcx.def_path_hash(trait_def_id));
 
         let all_impls: Vec<_> = all_impls
             .into_iter()
@@ -1483,24 +1444,23 @@ impl EncodeContext<'tcx> {
     // middle::reachable module but filters out items that either don't have a
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
-    fn encode_exported_symbols(&mut self,
-                               exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportLevel)])
-                               -> Lazy<[(ExportedSymbol<'tcx>, SymbolExportLevel)]> {
+    fn encode_exported_symbols(
+        &mut self,
+        exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportLevel)],
+    ) -> Lazy<[(ExportedSymbol<'tcx>, SymbolExportLevel)]> {
         // The metadata symbol name is special. It should not show up in
         // downstream crates.
         let metadata_symbol_name = SymbolName::new(&metadata_symbol_name(self.tcx));
 
-        self.lazy(exported_symbols
-            .iter()
-            .filter(|&&(ref exported_symbol, _)| {
-                match *exported_symbol {
-                    ExportedSymbol::NoDefId(symbol_name) => {
-                        symbol_name != metadata_symbol_name
-                    },
+        self.lazy(
+            exported_symbols
+                .iter()
+                .filter(|&&(ref exported_symbol, _)| match *exported_symbol {
+                    ExportedSymbol::NoDefId(symbol_name) => symbol_name != metadata_symbol_name,
                     _ => true,
-                }
-            })
-            .cloned())
+                })
+                .cloned(),
+        )
     }
 
     fn encode_dylib_dependency_formats(&mut self) -> Lazy<[Option<LinkagePreference>]> {
@@ -1509,24 +1469,17 @@ impl EncodeContext<'tcx> {
             if *ty != config::CrateType::Dylib {
                 continue;
             }
-            return self.lazy(arr.iter().map(|slot| {
-                match *slot {
-                    Linkage::NotLinked |
-                    Linkage::IncludedFromDylib => None,
+            return self.lazy(arr.iter().map(|slot| match *slot {
+                Linkage::NotLinked | Linkage::IncludedFromDylib => None,
 
-                    Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
-                    Linkage::Static => Some(LinkagePreference::RequireStatic),
-                }
+                Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
+                Linkage::Static => Some(LinkagePreference::RequireStatic),
             }));
         }
         Lazy::empty()
     }
 
-    fn encode_info_for_foreign_item(
-        &mut self,
-        def_id: DefId,
-        nitem: &hir::ForeignItem<'_>,
-    )  {
+    fn encode_info_for_foreign_item(&mut self, def_id: DefId, nitem: &hir::ForeignItem<'_>) {
         let tcx = self.tcx;
 
         debug!("EncodeContext::encode_info_for_foreign_item({:?})", def_id);
@@ -1584,8 +1537,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         intravisit::walk_item(self, item);
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         match item.kind {
-            hir::ItemKind::ExternCrate(_) |
-            hir::ItemKind::Use(..) => {} // ignore these
+            hir::ItemKind::ExternCrate(_) | hir::ItemKind::Use(..) => {} // ignore these
             _ => self.encode_info_for_item(def_id, item),
         }
         self.encode_addl_info_for_item(item);
@@ -1652,17 +1604,17 @@ impl EncodeContext<'tcx> {
     fn encode_addl_info_for_item(&mut self, item: &hir::Item<'_>) {
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         match item.kind {
-            hir::ItemKind::Static(..) |
-            hir::ItemKind::Const(..) |
-            hir::ItemKind::Fn(..) |
-            hir::ItemKind::Mod(..) |
-            hir::ItemKind::ForeignMod(..) |
-            hir::ItemKind::GlobalAsm(..) |
-            hir::ItemKind::ExternCrate(..) |
-            hir::ItemKind::Use(..) |
-            hir::ItemKind::TyAlias(..) |
-            hir::ItemKind::OpaqueTy(..) |
-            hir::ItemKind::TraitAlias(..) => {
+            hir::ItemKind::Static(..)
+            | hir::ItemKind::Const(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::Mod(..)
+            | hir::ItemKind::ForeignMod(..)
+            | hir::ItemKind::GlobalAsm(..)
+            | hir::ItemKind::ExternCrate(..)
+            | hir::ItemKind::Use(..)
+            | hir::ItemKind::TyAlias(..)
+            | hir::ItemKind::OpaqueTy(..)
+            | hir::ItemKind::TraitAlias(..) => {
                 // no sub-item recording needed in these cases
             }
             hir::ItemKind::Enum(..) => {
@@ -1717,10 +1669,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
         if let hir::ItemKind::Impl(..) = item.kind {
             let impl_id = self.tcx.hir().local_def_id(item.hir_id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
-                self.impls
-                    .entry(trait_ref.def_id)
-                    .or_default()
-                    .push(impl_id.index);
+                self.impls.entry(trait_ref.def_id).or_default().push(impl_id.index);
             }
         }
     }

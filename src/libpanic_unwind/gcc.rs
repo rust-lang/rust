@@ -46,13 +46,13 @@
 
 #![allow(private_no_mangle_fns)]
 
+use alloc::boxed::Box;
 use core::any::Any;
 use core::ptr;
-use alloc::boxed::Box;
 
-use unwind as uw;
+use crate::dwarf::eh::{self, EHAction, EHContext};
 use libc::{c_int, uintptr_t};
-use crate::dwarf::eh::{self, EHContext, EHAction};
+use unwind as uw;
 
 #[repr(C)]
 struct Exception {
@@ -72,8 +72,10 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let exception_param = Box::into_raw(exception) as *mut uw::_Unwind_Exception;
     return uw::_Unwind_RaiseException(exception_param) as u32;
 
-    extern "C" fn exception_cleanup(_unwind_code: uw::_Unwind_Reason_Code,
-                                    exception: *mut uw::_Unwind_Exception) {
+    extern "C" fn exception_cleanup(
+        _unwind_code: uw::_Unwind_Reason_Code,
+        exception: *mut uw::_Unwind_Exception,
+    ) {
         unsafe {
             let _: Box<Exception> = Box::from_raw(exception as *mut Exception);
         }
@@ -97,7 +99,6 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
     // M O Z \0  R U S T -- vendor, language
     0x4d4f5a_00_52555354
 }
-
 
 // Register ids were lifted from LLVM's TargetLowering::getExceptionPointerRegister()
 // and TargetLowering::getExceptionSelectorRegister() for each architecture,
@@ -302,9 +303,10 @@ cfg_if::cfg_if! {
     }
 }
 
-unsafe fn find_eh_action(context: *mut uw::_Unwind_Context, foreign_exception: bool)
-    -> Result<EHAction, ()>
-{
+unsafe fn find_eh_action(
+    context: *mut uw::_Unwind_Context,
+    foreign_exception: bool,
+) -> Result<EHAction, ()> {
     let lsda = uw::_Unwind_GetLanguageSpecificData(context) as *const u8;
     let mut ip_before_instr: c_int = 0;
     let ip = uw::_Unwind_GetIPInfo(context, &mut ip_before_instr);
@@ -320,7 +322,11 @@ unsafe fn find_eh_action(context: *mut uw::_Unwind_Context, foreign_exception: b
 }
 
 // See docs in the `unwind` module.
-#[cfg(all(target_os="windows", any(target_arch = "x86", target_arch = "x86_64"), target_env="gnu"))]
+#[cfg(all(
+    target_os = "windows",
+    any(target_arch = "x86", target_arch = "x86_64"),
+    target_env = "gnu"
+))]
 #[lang = "eh_unwind_resume"]
 #[unwind(allowed)]
 unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
@@ -343,7 +349,7 @@ unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
 // implementation of stack unwinding is (for now) deferred to libgcc_eh, however
 // Rust crates use these Rust-specific entry points to avoid potential clashes
 // with any GCC runtime.
-#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
+#[cfg(all(target_os = "windows", target_arch = "x86", target_env = "gnu"))]
 pub mod eh_frame_registry {
     extern "C" {
         fn __register_frame_info(eh_frame_begin: *const u8, object: *mut u8);
@@ -356,8 +362,7 @@ pub mod eh_frame_registry {
     }
 
     #[no_mangle]
-    pub unsafe extern "C" fn rust_eh_unregister_frames(eh_frame_begin: *const u8,
-                                                       object: *mut u8) {
+    pub unsafe extern "C" fn rust_eh_unregister_frames(eh_frame_begin: *const u8, object: *mut u8) {
         __deregister_frame_info(eh_frame_begin, object);
     }
 }

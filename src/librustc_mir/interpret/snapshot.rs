@@ -10,21 +10,20 @@ use std::hash::{Hash, Hasher};
 use rustc::ich::StableHashingContextProvider;
 use rustc::mir;
 use rustc::mir::interpret::{
-    AllocId, Pointer, Scalar,
-    Relocations, Allocation, UndefMask, InterpResult,
+    AllocId, Allocation, InterpResult, Pointer, Relocations, Scalar, UndefMask,
 };
 
-use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::{Align, Size};
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
 use super::eval_context::{LocalState, StackPopCleanup};
-use super::{Frame, Memory, Operand, MemPlace, Place, Immediate, ScalarMaybeUndef, LocalValue};
+use super::{Frame, Immediate, LocalValue, MemPlace, Memory, Operand, Place, ScalarMaybeUndef};
 use crate::const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
@@ -60,12 +59,14 @@ impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
         // Check if we know that hash already
         if self.hashes.is_empty() {
             // FIXME(#49980): make this warning a lint
-            tcx.sess.span_warn(span,
-                "Constant evaluating a complex constant, this might take some time");
+            tcx.sess.span_warn(
+                span,
+                "Constant evaluating a complex constant, this might take some time",
+            );
         }
         if self.hashes.insert(hash) {
             // No collision
-            return Ok(())
+            return Ok(());
         }
 
         // We need to make a full copy. NOW things that to get really expensive.
@@ -73,7 +74,7 @@ impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
 
         if self.snapshots.insert(InterpSnapshot::new(memory, stack)) {
             // Spurious collision or first cycle
-            return Ok(())
+            return Ok(());
         }
 
         // Second cycle
@@ -93,8 +94,12 @@ trait Snapshot<'a, Ctx: SnapshotContext<'a>> {
 }
 
 macro_rules! __impl_snapshot_field {
-    ($field:ident, $ctx:expr) => ($field.snapshot($ctx));
-    ($field:ident, $ctx:expr, $delegate:expr) => ($delegate);
+    ($field:ident, $ctx:expr) => {
+        $field.snapshot($ctx)
+    };
+    ($field:ident, $ctx:expr, $delegate:expr) => {
+        $delegate
+    };
 }
 
 // This assumes the type has two type parameters, first for the tag (set to `()`),
@@ -145,8 +150,9 @@ macro_rules! impl_snapshot_for {
 }
 
 impl<'a, Ctx, T> Snapshot<'a, Ctx> for Option<T>
-    where Ctx: SnapshotContext<'a>,
-          T: Snapshot<'a, Ctx>
+where
+    Ctx: SnapshotContext<'a>,
+    T: Snapshot<'a, Ctx>,
 {
     type Item = Option<<T as Snapshot<'a, Ctx>>::Item>;
 
@@ -162,7 +168,8 @@ impl<'a, Ctx, T> Snapshot<'a, Ctx> for Option<T>
 struct AllocIdSnapshot<'a>(Option<AllocationSnapshot<'a>>);
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for AllocId
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = AllocIdSnapshot<'a>;
 
@@ -178,25 +185,25 @@ impl_snapshot_for!(struct Pointer {
 });
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = Scalar<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         match self {
             Scalar::Ptr(p) => Scalar::Ptr(p.snapshot(ctx)),
-            Scalar::Raw{ size, data } => Scalar::Raw {
-                data: *data,
-                size: *size,
-            },
+            Scalar::Raw { size, data } => Scalar::Raw { data: *data, size: *size },
         }
     }
 }
 
-impl_snapshot_for!(enum ScalarMaybeUndef {
-    Scalar(s),
-    Undef,
-});
+impl_snapshot_for!(
+    enum ScalarMaybeUndef {
+        Scalar(s),
+        Undef,
+    }
+);
 
 impl_snapshot_for!(struct MemPlace {
     ptr,
@@ -205,7 +212,8 @@ impl_snapshot_for!(struct MemPlace {
 });
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Place
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = Place<(), AllocIdSnapshot<'a>>;
 
@@ -213,39 +221,43 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Place
         match self {
             Place::Ptr(p) => Place::Ptr(p.snapshot(ctx)),
 
-            Place::Local{ frame, local } => Place::Local{
-                frame: *frame,
-                local: *local,
-            },
+            Place::Local { frame, local } => Place::Local { frame: *frame, local: *local },
         }
     }
 }
 
-impl_snapshot_for!(enum Immediate {
-    Scalar(s),
-    ScalarPair(s, t),
-});
+impl_snapshot_for!(
+    enum Immediate {
+        Scalar(s),
+        ScalarPair(s, t),
+    }
+);
 
-impl_snapshot_for!(enum Operand {
-    Immediate(v),
-    Indirect(m),
-});
+impl_snapshot_for!(
+    enum Operand {
+        Immediate(v),
+        Indirect(m),
+    }
+);
 
-impl_snapshot_for!(enum LocalValue {
-    Dead,
-    Uninitialized,
-    Live(v),
-});
+impl_snapshot_for!(
+    enum LocalValue {
+        Dead,
+        Uninitialized,
+        Live(v),
+    }
+);
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = Relocations<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        Relocations::from_presorted(self.iter()
-            .map(|(size, ((), id))| (*size, ((), id.snapshot(ctx))))
-            .collect())
+        Relocations::from_presorted(
+            self.iter().map(|(size, ((), id))| (*size, ((), id.snapshot(ctx)))).collect(),
+        )
     }
 }
 
@@ -260,18 +272,13 @@ struct AllocationSnapshot<'a> {
 }
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = AllocationSnapshot<'a>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        let Allocation {
-            size,
-            align,
-            mutability,
-            extra: (),
-            ..
-        } = self;
+        let Allocation { size, align, mutability, extra: (), .. } = self;
 
         let all_bytes = 0..self.len();
         // This 'inspect' is okay since following access respects undef and relocations. This does
@@ -305,7 +312,8 @@ struct FrameSnapshot<'a, 'tcx> {
 }
 
 impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = FrameSnapshot<'a, 'tcx>;
 
@@ -335,7 +343,8 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
 }
 
 impl<'a, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a LocalState<'tcx>
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = LocalValue<(), AllocIdSnapshot<'a>>;
 
@@ -369,16 +378,11 @@ impl InterpSnapshot<'mir, 'tcx> {
         memory: &Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>],
     ) -> Self {
-        InterpSnapshot {
-            memory: memory.clone(),
-            stack: stack.into(),
-        }
+        InterpSnapshot { memory: memory.clone(), stack: stack.into() }
     }
 
     // Used to compare two snapshots
-    fn snapshot(&'b self)
-        -> Vec<FrameSnapshot<'b, 'tcx>>
-    {
+    fn snapshot(&'b self) -> Vec<FrameSnapshot<'b, 'tcx>> {
         // Start with the stack, iterate and recursively snapshot
         self.stack.iter().map(|frame| frame.snapshot(&self.memory)).collect()
     }

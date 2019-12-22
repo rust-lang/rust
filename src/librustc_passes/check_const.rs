@@ -7,18 +7,18 @@
 //! errors. We still look for those primitives in the MIR const-checker to ensure nothing slips
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
-use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
-use rustc::hir::map::Map;
 use rustc::hir;
-use rustc::ty::TyCtxt;
-use rustc::ty::query::Providers;
+use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::session::config::nightly_options;
+use rustc::ty::query::Providers;
+use rustc::ty::TyCtxt;
+use rustc_error_codes::*;
 use syntax::ast::Mutability;
 use syntax::feature_gate::feature_err;
 use syntax::span_err;
 use syntax_pos::{sym, Span, Symbol};
-use rustc_error_codes::*;
 
 use std::fmt;
 
@@ -38,23 +38,20 @@ impl NonConstExpr {
     }
 
     fn required_feature_gates(self) -> Option<&'static [Symbol]> {
-        use hir::MatchSource::*;
         use hir::LoopSource::*;
+        use hir::MatchSource::*;
 
         let gates: &[_] = match self {
-            | Self::Match(Normal)
+            Self::Match(Normal)
             | Self::Match(IfDesugar { .. })
-            | Self::Match(IfLetDesugar { .. })
-            => &[sym::const_if_match],
+            | Self::Match(IfLetDesugar { .. }) => &[sym::const_if_match],
 
-            | Self::Loop(Loop)
-            => &[sym::const_loop],
+            Self::Loop(Loop) => &[sym::const_loop],
 
-            | Self::Loop(While)
+            Self::Loop(While)
             | Self::Loop(WhileLet)
             | Self::Match(WhileDesugar)
-            | Self::Match(WhileLetDesugar)
-            => &[sym::const_loop, sym::const_if_match],
+            | Self::Match(WhileLetDesugar) => &[sym::const_loop, sym::const_if_match],
 
             // A `for` loop's desugaring contains a call to `IntoIterator::into_iter`,
             // so they are not yet allowed with `#![feature(const_loop)]`.
@@ -111,10 +108,7 @@ fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: DefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
-    *providers = Providers {
-        check_mod_const_bodies,
-        ..*providers
-    };
+    *providers = Providers { check_mod_const_bodies, ..*providers };
 }
 
 #[derive(Copy, Clone)]
@@ -125,10 +119,7 @@ struct CheckConstVisitor<'tcx> {
 
 impl<'tcx> CheckConstVisitor<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Self {
-        CheckConstVisitor {
-            tcx,
-            const_kind: None,
-        }
+        CheckConstVisitor { tcx, const_kind: None }
     }
 
     /// Emits an error when an unsupported expression is found in a const context.
@@ -150,16 +141,14 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             _ => {}
         }
 
-        let const_kind = self.const_kind
+        let const_kind = self
+            .const_kind
             .expect("`const_check_violated` may only be called inside a const context");
         let msg = format!("`{}` is not allowed in a `{}`", expr.name(), const_kind);
 
         let required_gates = required_gates.unwrap_or(&[]);
-        let missing_gates: Vec<_> = required_gates
-            .iter()
-            .copied()
-            .filter(|&g| !features.enabled(g))
-            .collect();
+        let missing_gates: Vec<_> =
+            required_gates.iter().copied().filter(|&g| !features.enabled(g)).collect();
 
         match missing_gates.as_slice() {
             &[] => span_err!(self.tcx.sess, span, E0744, "{}", msg),
@@ -168,8 +157,10 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             // explain why their `while` loop is being rejected.
             &[gate @ sym::const_if_match] if required_gates.contains(&sym::const_loop) => {
                 feature_err(&self.tcx.sess.parse_sess, gate, span, &msg)
-                    .note("`#![feature(const_loop)]` alone is not sufficient, \
-                           since this loop expression contains an implicit conditional")
+                    .note(
+                        "`#![feature(const_loop)]` alone is not sufficient, \
+                           since this loop expression contains an implicit conditional",
+                    )
                     .emit();
             }
 
@@ -232,10 +223,9 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
             hir::ExprKind::Match(_, _, source) => {
                 let non_const_expr = match source {
                     // These are handled by `ExprKind::Loop` above.
-                    | hir::MatchSource::WhileDesugar
+                    hir::MatchSource::WhileDesugar
                     | hir::MatchSource::WhileLetDesugar
-                    | hir::MatchSource::ForLoopDesugar
-                    => None,
+                    | hir::MatchSource::ForLoopDesugar => None,
 
                     _ => Some(NonConstExpr::Match(*source)),
                 };
@@ -245,7 +235,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
                 }
             }
 
-            _ => {},
+            _ => {}
         }
 
         hir::intravisit::walk_expr(self, e);

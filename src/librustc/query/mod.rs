@@ -1,18 +1,17 @@
-use crate::ty::query::QueryDescription;
-use crate::ty::query::queries;
-use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use crate::ty::subst::SubstsRef;
-use crate::dep_graph::{RecoverKey,DepKind, DepNode, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, RecoverKey, SerializedDepNodeIndex};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::traits;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal,
-    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
-    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
-    CanonicalTypeOpNormalizeGoal,
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
+use crate::ty::query::queries;
+use crate::ty::query::QueryDescription;
+use crate::ty::subst::SubstsRef;
+use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 
 use std::borrow::Cow;
 use syntax_pos::symbol::Symbol;

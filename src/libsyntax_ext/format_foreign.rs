@@ -35,7 +35,6 @@ pub mod printf {
             }
         }
 
-
         /// Translate this substitution into an equivalent Rust formatting directive.
         ///
         /// This ignores cases where the substitution does not have an exact equivalent, or where
@@ -88,7 +87,7 @@ pub mod printf {
                         '0' => c_zero = true,
                         '-' => c_left = true,
                         '+' => c_plus = true,
-                        _ => return None
+                        _ => return None,
                     }
                 }
                 (c_alt, c_zero, c_left, c_plus)
@@ -136,7 +135,7 @@ pub mod printf {
                 (true, Some(_), Some(_)) => {
                     // Rust can't duplicate this insanity.
                     return None;
-                },
+                }
                 (true, None, Some(p)) => (Some("0"), Some(p), None),
                 (true, w, None) => (fill, w, None),
                 (false, w, p) => (fill, w, p),
@@ -164,8 +163,7 @@ pub mod printf {
                 || zero_fill
                 || width.is_some()
                 || precision.is_some()
-                || type_.is_some()
-                ;
+                || type_.is_some();
 
             // Initialise with a rough guess.
             let cap = self.span.len() + if has_options { 2 } else { 0 };
@@ -230,7 +228,6 @@ pub mod printf {
         // is *vanishingly* unlikely that *anyone* is going to try formatting something wider, or
         // with more precision, than 32 thousand positions which is so wide it couldn't possibly fit
         // on a screen.
-
         /// A specific, fixed value.
         Num(u16),
         /// The value is derived from a positional argument.
@@ -257,7 +254,7 @@ pub mod printf {
                 Num::Arg(n) => {
                     let n = n.checked_sub(1).ok_or(std::fmt::Error)?;
                     write!(s, "{}$", n)
-                },
+                }
                 Num::Next => write!(s, "*"),
             }
         }
@@ -265,10 +262,7 @@ pub mod printf {
 
     /// Returns an iterator over all substitutions in a given string.
     pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
-        Substitutions {
-            s,
-            pos: start_pos,
-        }
+        Substitutions { s, pos: start_pos }
     }
 
     /// Iterator over substitutions in a string.
@@ -283,9 +277,11 @@ pub mod printf {
             let (mut sub, tail) = parse_next_substitution(self.s)?;
             self.s = tail;
             match sub {
-                Substitution::Format(_) => if let Some(inner_span) = sub.position() {
-                    sub.set_position(inner_span.start + self.pos, inner_span.end + self.pos);
-                    self.pos += inner_span.end;
+                Substitution::Format(_) => {
+                    if let Some(inner_span) = sub.position() {
+                        sub.set_position(inner_span.start + self.pos, inner_span.end + self.pos);
+                        self.pos += inner_span.end;
+                    }
                 }
                 Substitution::Escape => self.pos += 2,
             }
@@ -315,9 +311,9 @@ pub mod printf {
 
         let at = {
             let start = s.find('%')?;
-            match s[start+1..].chars().next()? {
-                '%' => return Some((Substitution::Escape, &s[start+2..])),
-                _ => {/* fall-through */},
+            match s[start + 1..].chars().next()? {
+                '%' => return Some((Substitution::Escape, &s[start + 2..])),
+                _ => { /* fall-through */ }
             }
 
             Cur::new_at(&s[..], start)
@@ -351,14 +347,12 @@ pub mod printf {
 
         // Update `at`, `c`, and `next`, exiting if we're out of input.
         macro_rules! move_to {
-            ($cur:expr) => {
-                {
-                    at = $cur;
-                    let (c_, next_) = at.next_cp()?;
-                    c = c_;
-                    next = next_;
-                }
-            };
+            ($cur:expr) => {{
+                at = $cur;
+                let (c_, next_) = at.next_cp()?;
+                c = c_;
+                next = next_;
+            }};
         }
 
         // Constructs a result when parsing fails.
@@ -376,7 +370,7 @@ pub mod printf {
                     type_: at.slice_between(next).unwrap(),
                     position: InnerSpan::new(start.at, next.at),
                 }),
-                next.slice_after()
+                next.slice_after(),
             ));
         };
 
@@ -402,7 +396,7 @@ pub mod printf {
                             state = Flags;
                             parameter = Some(at.slice_between(end).unwrap().parse().unwrap());
                             move_to!(end2);
-                        },
+                        }
                         // Wait, no, actually, it's the width.
                         Some(_) => {
                             state = Prec;
@@ -410,11 +404,11 @@ pub mod printf {
                             flags = "";
                             width = Some(Num::from_str(at.slice_between(end).unwrap(), None));
                             move_to!(end);
-                        },
+                        }
                         // It's invalid, is what it is.
                         None => return fallback(),
                     }
-                },
+                }
                 _ => {
                     state = Flags;
                     parameter = None;
@@ -435,13 +429,13 @@ pub mod printf {
                 '*' => {
                     state = WidthArg;
                     move_to!(next);
-                },
-                '1' ..= '9' => {
+                }
+                '1'..='9' => {
                     let end = at_next_cp_while(next, is_digit);
                     state = Prec;
                     width = Some(Num::from_str(at.slice_between(end).unwrap(), None));
                     move_to!(end);
-                },
+                }
                 _ => {
                     state = Prec;
                     width = None;
@@ -457,7 +451,7 @@ pub mod printf {
                     state = Prec;
                     width = Some(Num::from_str("", Some(at.slice_between(end).unwrap())));
                     move_to!(end2);
-                },
+                }
                 _ => {
                     state = Prec;
                     width = Some(Num::Next);
@@ -471,7 +465,7 @@ pub mod printf {
                 '.' => {
                     state = PrecInner;
                     move_to!(next);
-                },
+                }
                 _ => {
                     state = Length;
                     precision = None;
@@ -489,20 +483,20 @@ pub mod printf {
                             state = Length;
                             precision = Some(Num::from_str("*", next.slice_between(end)));
                             move_to!(end2);
-                        },
+                        }
                         _ => {
                             state = Length;
                             precision = Some(Num::Next);
                             move_to!(end);
                         }
                     }
-                },
-                '0' ..= '9' => {
+                }
+                '0'..='9' => {
                     let end = at_next_cp_while(next, is_digit);
                     state = Length;
                     precision = Some(Num::from_str(at.slice_between(end).unwrap(), None));
                     move_to!(end);
-                },
+                }
                 _ => return fallback(),
             }
         }
@@ -510,36 +504,32 @@ pub mod printf {
         if let Length = state {
             let c1_next1 = next.next_cp();
             match (c, c1_next1) {
-                ('h', Some(('h', next1)))
-                | ('l', Some(('l', next1)))
-                => {
+                ('h', Some(('h', next1))) | ('l', Some(('l', next1))) => {
                     state = Type;
                     length = Some(at.slice_between(next1).unwrap());
                     move_to!(next1);
-                },
+                }
 
-                ('h', _) | ('l', _) | ('L', _)
-                | ('z', _) | ('j', _) | ('t', _)
-                | ('q', _)
-                => {
+                ('h', _) | ('l', _) | ('L', _) | ('z', _) | ('j', _) | ('t', _) | ('q', _) => {
                     state = Type;
                     length = Some(at.slice_between(next).unwrap());
                     move_to!(next);
-                },
+                }
 
                 ('I', _) => {
-                    let end = next.at_next_cp()
+                    let end = next
+                        .at_next_cp()
                         .and_then(|end| end.at_next_cp())
                         .map(|end| (next.slice_between(end).unwrap(), end));
                     let end = match end {
                         Some(("32", end)) => end,
                         Some(("64", end)) => end,
-                        _ => next
+                        _ => next,
                     };
                     state = Type;
                     length = Some(at.slice_between(end).unwrap());
                     move_to!(end);
-                },
+                }
 
                 _ => {
                     state = Type;
@@ -577,14 +567,18 @@ pub mod printf {
     }
 
     fn at_next_cp_while<F>(mut cur: Cur<'_>, mut pred: F) -> Cur<'_>
-    where F: FnMut(char) -> bool {
+    where
+        F: FnMut(char) -> bool,
+    {
         loop {
             match cur.next_cp() {
-                Some((c, next)) => if pred(c) {
-                    cur = next;
-                } else {
-                    return cur;
-                },
+                Some((c, next)) => {
+                    if pred(c) {
+                        cur = next;
+                    } else {
+                        return cur;
+                    }
+                }
                 None => return cur,
             }
         }
@@ -592,15 +586,15 @@ pub mod printf {
 
     fn is_digit(c: char) -> bool {
         match c {
-            '0' ..= '9' => true,
-            _ => false
+            '0'..='9' => true,
+            _ => false,
         }
     }
 
     fn is_flag(c: char) -> bool {
         match c {
             '0' | '-' | '+' | ' ' | '#' | '\'' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -630,17 +624,17 @@ pub mod shell {
 
         pub fn position(&self) -> Option<InnerSpan> {
             match self {
-                Substitution::Ordinal(_, pos) |
-                Substitution::Name(_, pos) |
-                Substitution::Escape(pos) => Some(InnerSpan::new(pos.0, pos.1)),
+                Substitution::Ordinal(_, pos)
+                | Substitution::Name(_, pos)
+                | Substitution::Escape(pos) => Some(InnerSpan::new(pos.0, pos.1)),
             }
         }
 
         pub fn set_position(&mut self, start: usize, end: usize) {
             match self {
-                Substitution::Ordinal(_, ref mut pos) |
-                Substitution::Name(_, ref mut pos) |
-                Substitution::Escape(ref mut pos) => *pos = (start, end),
+                Substitution::Ordinal(_, ref mut pos)
+                | Substitution::Name(_, ref mut pos)
+                | Substitution::Escape(ref mut pos) => *pos = (start, end),
             }
         }
 
@@ -655,10 +649,7 @@ pub mod shell {
 
     /// Returns an iterator over all substitutions in a given string.
     pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
-        Substitutions {
-            s,
-            pos: start_pos,
-        }
+        Substitutions { s, pos: start_pos }
     }
 
     /// Iterator over substitutions in a string.
@@ -678,7 +669,7 @@ pub mod shell {
                         self.pos += end;
                     }
                     Some(sub)
-                },
+                }
                 None => None,
             }
         }
@@ -692,13 +683,13 @@ pub mod shell {
     pub fn parse_next_substitution(s: &str) -> Option<(Substitution<'_>, &str)> {
         let at = {
             let start = s.find('$')?;
-            match s[start+1..].chars().next()? {
-                '$' => return Some((Substitution::Escape((start, start+2)), &s[start+2..])),
-                c @ '0' ..= '9' => {
+            match s[start + 1..].chars().next()? {
+                '$' => return Some((Substitution::Escape((start, start + 2)), &s[start + 2..])),
+                c @ '0'..='9' => {
                     let n = (c as u8) - b'0';
-                    return Some((Substitution::Ordinal(n, (start, start+2)), &s[start+2..]));
-                },
-                _ => {/* fall-through */},
+                    return Some((Substitution::Ordinal(n, (start, start + 2)), &s[start + 2..]));
+                }
+                _ => { /* fall-through */ }
             }
 
             Cur::new_at(&s[..], start)
@@ -719,14 +710,18 @@ pub mod shell {
     }
 
     fn at_next_cp_while<F>(mut cur: Cur<'_>, mut pred: F) -> Cur<'_>
-    where F: FnMut(char) -> bool {
+    where
+        F: FnMut(char) -> bool,
+    {
         loop {
             match cur.next_cp() {
-                Some((c, next)) => if pred(c) {
-                    cur = next;
-                } else {
-                    return cur;
-                },
+                Some((c, next)) => {
+                    if pred(c) {
+                        cur = next;
+                    } else {
+                        return cur;
+                    }
+                }
                 None => return cur,
             }
         }
@@ -734,15 +729,15 @@ pub mod shell {
 
     fn is_ident_head(c: char) -> bool {
         match c {
-            'a' ..= 'z' | 'A' ..= 'Z' | '_' => true,
-            _ => false
+            'a'..='z' | 'A'..='Z' | '_' => true,
+            _ => false,
         }
     }
 
     fn is_ident_tail(c: char) -> bool {
         match c {
-            '0' ..= '9' => true,
-            c => is_ident_head(c)
+            '0'..='9' => true,
+            c => is_ident_head(c),
         }
     }
 
@@ -758,16 +753,13 @@ mod strcursor {
 
     impl<'a> StrCursor<'a> {
         pub fn new_at(s: &'a str, at: usize) -> StrCursor<'a> {
-            StrCursor {
-                s,
-                at,
-            }
+            StrCursor { s, at }
         }
 
         pub fn at_next_cp(mut self) -> Option<StrCursor<'a>> {
             match self.try_seek_right_cp() {
                 true => Some(self),
-                false => None
+                false => None,
             }
         }
 
@@ -805,7 +797,7 @@ mod strcursor {
                 Some(c) => {
                     self.at += c.len_utf8();
                     true
-                },
+                }
                 None => false,
             }
         }
@@ -830,7 +822,6 @@ mod strcursor {
     }
 
     fn str_eq_literal(a: &str, b: &str) -> bool {
-        a.as_bytes().as_ptr() == b.as_bytes().as_ptr()
-            && a.len() == b.len()
+        a.as_bytes().as_ptr() == b.as_bytes().as_ptr() && a.len() == b.len()
     }
 }

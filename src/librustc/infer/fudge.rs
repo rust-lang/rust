@@ -1,9 +1,9 @@
-use crate::ty::{self, Ty, TyCtxt, TyVid, IntVid, FloatVid, RegionVid, ConstVid};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
+use crate::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
-use super::InferCtxt;
-use super::{RegionVariableOrigin, ConstVariableOrigin};
 use super::type_variable::TypeVariableOrigin;
+use super::InferCtxt;
+use super::{ConstVariableOrigin, RegionVariableOrigin};
 
 use rustc_data_structures::unify as ut;
 use ut::UnifyKey;
@@ -16,9 +16,12 @@ fn const_vars_since_snapshot<'tcx>(
     snapshot: &ut::Snapshot<ut::InPlace<ConstVid<'tcx>>>,
 ) -> (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>) {
     let range = table.vars_since_snapshot(snapshot);
-    (range.start..range.end, (range.start.index..range.end.index).map(|index| {
-        table.probe_value(ConstVid::from_index(index)).origin.clone()
-    }).collect())
+    (
+        range.start..range.end,
+        (range.start.index..range.end.index)
+            .map(|index| table.probe_value(ConstVid::from_index(index)).origin.clone())
+            .collect(),
+    )
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
@@ -61,10 +64,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the actual types (`?T`, `Option<?T>`) -- and remember that
     /// after the snapshot is popped, the variable `?T` is no longer
     /// unified.
-    pub fn fudge_inference_if_ok<T, E, F>(
-        &self,
-        f: F,
-    ) -> Result<T, E> where
+    pub fn fudge_inference_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
+    where
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<'tcx>,
     {
@@ -81,18 +82,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     // going to be popped, so we will have to
                     // eliminate any references to them.
 
-                    let type_vars = self.type_variables.borrow_mut().vars_since_snapshot(
-                        &snapshot.type_snapshot,
-                    );
-                    let int_vars = self.int_unification_table.borrow_mut().vars_since_snapshot(
-                        &snapshot.int_snapshot,
-                    );
-                    let float_vars = self.float_unification_table.borrow_mut().vars_since_snapshot(
-                        &snapshot.float_snapshot,
-                    );
-                    let region_vars = self.borrow_region_constraints().vars_since_snapshot(
-                        &snapshot.region_constraints_snapshot,
-                    );
+                    let type_vars = self
+                        .type_variables
+                        .borrow_mut()
+                        .vars_since_snapshot(&snapshot.type_snapshot);
+                    let int_vars = self
+                        .int_unification_table
+                        .borrow_mut()
+                        .vars_since_snapshot(&snapshot.int_snapshot);
+                    let float_vars = self
+                        .float_unification_table
+                        .borrow_mut()
+                        .vars_since_snapshot(&snapshot.float_snapshot);
+                    let region_vars = self
+                        .borrow_region_constraints()
+                        .vars_since_snapshot(&snapshot.region_constraints_snapshot);
                     let const_vars = const_vars_since_snapshot(
                         self.const_unification_table.borrow_mut(),
                         &snapshot.const_snapshot,
@@ -120,11 +124,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // Micro-optimization: if no variables have been created, then
         // `value` can't refer to any of them. =) So we can just return it.
-        if fudger.type_vars.0.is_empty() &&
-            fudger.int_vars.is_empty() &&
-            fudger.float_vars.is_empty() &&
-            fudger.region_vars.0.is_empty() &&
-            fudger.const_vars.0.is_empty() {
+        if fudger.type_vars.0.is_empty()
+            && fudger.int_vars.is_empty()
+            && fudger.float_vars.is_empty()
+            && fudger.region_vars.0.is_empty()
+            && fudger.const_vars.0.is_empty()
+        {
             Ok(value)
         } else {
             Ok(value.fold_with(&mut fudger))
@@ -161,9 +166,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
                     // variables to their binding anyhow, we know
                     // that it is unbound, so we can just return
                     // it.
-                    debug_assert!(self.infcx.type_variables.borrow_mut()
-                                  .probe(vid)
-                                  .is_unknown());
+                    debug_assert!(self.infcx.type_variables.borrow_mut().probe(vid).is_unknown());
                     ty
                 }
             }

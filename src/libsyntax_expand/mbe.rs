@@ -3,15 +3,15 @@
 //! why we call this module `mbe`. For external documentation, prefer the
 //! official terminology: "declarative macros".
 
-crate mod transcribe;
 crate mod macro_check;
 crate mod macro_parser;
 crate mod macro_rules;
 crate mod quoted;
+crate mod transcribe;
 
 use syntax::ast;
 use syntax::token::{self, Token, TokenKind};
-use syntax::tokenstream::{DelimSpan};
+use syntax::tokenstream::DelimSpan;
 
 use syntax_pos::Span;
 

@@ -2,12 +2,11 @@ use super::*;
 
 #[test]
 fn test_lookup_line() {
-
     let lines = &[BytePos(3), BytePos(17), BytePos(28)];
 
     assert_eq!(lookup_line(lines, BytePos(0)), -1);
-    assert_eq!(lookup_line(lines, BytePos(3)),  0);
-    assert_eq!(lookup_line(lines, BytePos(4)),  0);
+    assert_eq!(lookup_line(lines, BytePos(3)), 0);
+    assert_eq!(lookup_line(lines, BytePos(4)), 0);
 
     assert_eq!(lookup_line(lines, BytePos(16)), 0);
     assert_eq!(lookup_line(lines, BytePos(17)), 1);
@@ -23,9 +22,7 @@ fn test_normalize_newlines() {
         let mut actual = before.to_string();
         let mut actual_positions = vec![];
         normalize_newlines(&mut actual, &mut actual_positions);
-        let actual_positions : Vec<_> = actual_positions
-            .into_iter()
-            .map(|nc| nc.pos.0).collect();
+        let actual_positions: Vec<_> = actual_positions.into_iter().map(|nc| nc.pos.0).collect();
         assert_eq!(actual.as_str(), after);
         assert_eq!(actual_positions, expected_positions);
     }

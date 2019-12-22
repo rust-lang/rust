@@ -27,7 +27,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
 #![feature(arbitrary_self_types)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
@@ -61,18 +60,24 @@
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
 #![feature(hash_raw_entry)]
+#![recursion_limit = "512"]
 
-#![recursion_limit="512"]
-
-#[macro_use] extern crate bitflags;
-#[macro_use] extern crate scoped_tls;
+#[macro_use]
+extern crate bitflags;
+#[macro_use]
+extern crate scoped_tls;
 #[cfg(windows)]
 extern crate libc;
-#[macro_use] extern crate rustc_macros;
-#[macro_use] extern crate rustc_data_structures;
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
-#[macro_use] extern crate smallvec;
+#[macro_use]
+extern crate rustc_macros;
+#[macro_use]
+extern crate rustc_data_structures;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate syntax;
+#[macro_use]
+extern crate smallvec;
 
 #[cfg(test)]
 mod tests;
@@ -97,12 +102,12 @@ pub mod middle {
     pub mod diagnostic_items;
     pub mod exported_symbols;
     pub mod free_region;
-    pub mod lib_features;
     pub mod lang_items;
+    pub mod lib_features;
     pub mod privacy;
     pub mod reachable;
-    pub mod region;
     pub mod recursion_limit;
+    pub mod region;
     pub mod resolve_lifetime;
     pub mod stability;
     pub mod weak_lang_items;
@@ -114,10 +119,10 @@ pub mod traits;
 pub mod ty;
 
 pub mod util {
+    pub mod bug;
     pub mod captures;
     pub mod common;
     pub mod nodemap;
-    pub mod bug;
 }
 
 // Allows macros to refer to this crate as `::rustc`

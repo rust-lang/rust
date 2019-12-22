@@ -196,35 +196,34 @@
 //! [primitive types]: ../book/ch03-02-data-types.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
-       html_playground_url = "https://play.rust-lang.org/",
-       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-       test(no_crate_inject, attr(deny(warnings))),
-       test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
-
+#![doc(
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_playground_url = "https://play.rust-lang.org/",
+    issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
+    test(no_crate_inject, attr(deny(warnings))),
+    test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
+)]
 // Don't link to std. We are std.
 #![no_std]
-
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
-
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
-
 // std may use features in a platform-specific way
 #![allow(unused_features)]
-
 #![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
-#![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
-            feature(slice_index_methods, coerce_unsized,
-                    sgx_platform, ptr_wrapping_offset_from))]
-#![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"),
-            feature(fixed_size_array, maybe_uninit_extra))]
-
+#![cfg_attr(
+    all(target_vendor = "fortanix", target_env = "sgx"),
+    feature(slice_index_methods, coerce_unsized, sgx_platform, ptr_wrapping_offset_from)
+)]
+#![cfg_attr(
+    all(test, target_vendor = "fortanix", target_env = "sgx"),
+    feature(fixed_size_array, maybe_uninit_extra)
+)]
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
@@ -312,7 +311,6 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 // NB: the above list is sorted to minimize merge conflicts.
-
 #![default_lib_allocator]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
@@ -322,7 +320,8 @@
 use prelude::v1::*;
 
 // Access to Bencher, etc.
-#[cfg(test)] extern crate test;
+#[cfg(test)]
+extern crate test;
 
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
@@ -348,7 +347,8 @@ extern crate cfg_if;
 // would generate duplicate lang item errors), and any globals it defines are
 // _not_ the globals used by "real" std. So this import, defined only during
 // testing gives test-std access to real-std lang items and globals. See #2912
-#[cfg(test)] extern crate std as realstd;
+#[cfg(test)]
+extern crate std as realstd;
 
 // The standard macros that are not built-in to the compiler.
 #[macro_use]
@@ -359,12 +359,34 @@ pub mod prelude;
 
 // Public module declarations and re-exports
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::borrow;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::boxed;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::fmt;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::format;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::rc;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::slice;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::str;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::string;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::vec;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "simd_arch", since = "1.27.0")]
 #[doc(no_inline)]
 pub use core::arch;
+#[stable(feature = "core_array", since = "1.36.0")]
+pub use core::array;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::cell;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::char;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::clone;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -375,8 +397,22 @@ pub use core::convert;
 pub use core::default;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::hash;
+#[stable(feature = "core_hint", since = "1.27.0")]
+pub use core::hint;
+#[stable(feature = "i128", since = "1.26.0")]
+pub use core::i128;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::i16;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::i32;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::i64;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::i8;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::isize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::iter;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -386,29 +422,17 @@ pub use core::mem;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ops;
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use core::option;
+#[stable(feature = "pin", since = "1.33.0")]
+pub use core::pin;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::raw;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::option;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::isize;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::i8;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::i16;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::i32;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::i64;
 #[stable(feature = "i128", since = "1.26.0")]
-pub use core::i128;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::usize;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::u8;
+pub use core::u128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u16;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -416,33 +440,9 @@ pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u64;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::boxed;
+pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::rc;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::borrow;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::fmt;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::format;
-#[stable(feature = "pin", since = "1.33.0")]
-pub use core::pin;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::slice;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::str;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::string;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::vec;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char;
-#[stable(feature = "i128", since = "1.26.0")]
-pub use core::u128;
-#[stable(feature = "core_hint", since = "1.27.0")]
-pub use core::hint;
-#[stable(feature = "core_array", since = "1.36.0")]
-pub use core::array;
+pub use core::usize;
 
 pub mod f32;
 pub mod f64;
@@ -485,8 +485,8 @@ mod sys;
 pub mod alloc;
 
 // Private support modules
-mod panicking;
 mod memchr;
+mod panicking;
 
 // The runtime entry point and a few unstable public functions used by the
 // compiler
@@ -516,44 +516,44 @@ pub use core::{
     // Stable
     assert_eq,
     assert_ne,
+    debug_assert,
     debug_assert_eq,
     debug_assert_ne,
-    debug_assert,
+    // Unstable
+    matches,
     r#try,
+    todo,
     unimplemented,
     unreachable,
     write,
     writeln,
-    todo,
-    // Unstable
-    matches,
 };
 
 // Re-export built-in macros defined through libcore.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 pub use core::{
+    // Unstable
+    asm,
     // Stable
     assert,
     cfg,
     column,
     compile_error,
     concat,
+    concat_idents,
     env,
     file,
     format_args,
+    format_args_nl,
+    global_asm,
     include,
     include_bytes,
     include_str,
     line,
+    log_syntax,
     module_path,
     option_env,
     stringify,
-    // Unstable
-    asm,
-    concat_idents,
-    format_args_nl,
-    global_asm,
-    log_syntax,
     trace_macros,
 };
 

@@ -342,7 +342,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
-    #[stable(feature = "f32_deg_rad_conversions", since="1.7.0")]
+    #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
     #[inline]
     pub fn to_degrees(self) -> f32 {
         // Use a constant for better precision.
@@ -361,7 +361,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
-    #[stable(feature = "f32_deg_rad_conversions", since="1.7.0")]
+    #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
     #[inline]
     pub fn to_radians(self) -> f32 {
         let value: f32 = consts::PI;
@@ -424,7 +424,10 @@ impl f32 {
     /// * Be representable in the return type `Int`, after truncating off its fractional part
     #[unstable(feature = "float_approx_unchecked_to", issue = "67058")]
     #[inline]
-    pub unsafe fn approx_unchecked_to<Int>(self) -> Int where Self: FloatToInt<Int> {
+    pub unsafe fn approx_unchecked_to<Int>(self) -> Int
+    where
+        Self: FloatToInt<Int>,
+    {
         FloatToInt::<Int>::approx_unchecked(self)
     }
 

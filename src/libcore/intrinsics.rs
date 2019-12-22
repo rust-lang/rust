@@ -29,18 +29,22 @@
 //!   guaranteed to happen in order. This is the standard mode for working
 //!   with atomic types and is equivalent to Java's `volatile`.
 
-#![unstable(feature = "core_intrinsics",
-            reason = "intrinsics are unlikely to ever be stabilized, instead \
+#![unstable(
+    feature = "core_intrinsics",
+    reason = "intrinsics are unlikely to ever be stabilized, instead \
                       they should be used through stabilized interfaces \
                       in the rest of the standard library",
-            issue = "none")]
+    issue = "none"
+)]
 #![allow(missing_docs)]
 
 use crate::mem;
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[rustc_deprecated(reason = "no longer an intrinsic - use `ptr::drop_in_place` directly",
-                   since = "1.18.0")]
+#[rustc_deprecated(
+    reason = "no longer an intrinsic - use `ptr::drop_in_place` directly",
+    since = "1.18.0"
+)]
 pub use crate::ptr::drop_in_place;
 
 extern "rust-intrinsic" {
@@ -705,13 +709,14 @@ extern "rust-intrinsic" {
     /// which is unsafe unless `T` is `Copy`. Also, even if T is
     /// `Copy`, an all-zero value may not correspond to any legitimate
     /// state for the type in question.
-    #[unstable(feature = "core_intrinsics",
-               reason = "intrinsics are unlikely to ever be stabilized, instead \
+    #[unstable(
+        feature = "core_intrinsics",
+        reason = "intrinsics are unlikely to ever be stabilized, instead \
                          they should be used through stabilized interfaces \
                          in the rest of the standard library",
-               issue = "none")]
-    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned",
-                       since = "1.38.0")]
+        issue = "none"
+    )]
+    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned", since = "1.38.0")]
     pub fn init<T>() -> T;
 
     /// Creates an uninitialized value.
@@ -721,13 +726,14 @@ extern "rust-intrinsic" {
     /// state, which means it may claim either dropped or
     /// undropped. In the general case one must use `ptr::write` to
     /// initialize memory previous set to the result of `uninit`.
-    #[unstable(feature = "core_intrinsics",
-               reason = "intrinsics are unlikely to ever be stabilized, instead \
+    #[unstable(
+        feature = "core_intrinsics",
+        reason = "intrinsics are unlikely to ever be stabilized, instead \
                          they should be used through stabilized interfaces \
                          in the rest of the standard library",
-               issue = "none")]
-    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned",
-                       since = "1.38.0")]
+        issue = "none"
+    )]
+    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned", since = "1.38.0")]
     pub fn uninit<T>() -> T;
 
     /// Moves a value out of scope without running drop glue.
@@ -985,8 +991,7 @@ extern "rust-intrinsic" {
     ///
     /// The volatile parameter is set to `true`, so it will not be optimized out
     /// unless size is equal to zero.
-    pub fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
-                                                  count: usize);
+    pub fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
     /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
@@ -1147,7 +1152,6 @@ extern "rust-intrinsic" {
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// https://github.com/rust-lang/rust/issues/10184
     pub fn float_to_int_approx_unchecked<Float, Int>(value: Float) -> Int;
-
 
     /// Returns the number of bits set in an integer type `T`
     pub fn ctpop<T>(x: T) -> T;
@@ -1376,11 +1380,7 @@ fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src as usize;
     let dst_usize = dst as usize;
     let size = mem::size_of::<T>().checked_mul(count).unwrap();
-    let diff = if src_usize > dst_usize {
-        src_usize - dst_usize
-    } else {
-        dst_usize - src_usize
-    };
+    let diff = if src_usize > dst_usize { src_usize - dst_usize } else { dst_usize - src_usize };
     size > diff
 }
 

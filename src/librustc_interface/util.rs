@@ -1,36 +1,36 @@
 use log::info;
-use rustc::session::config::{Input, OutputFilenames, ErrorOutputType};
-use rustc::session::{self, config, early_error, filesearch, Session, DiagnosticOutput};
-use rustc::session::CrateDisambiguator;
-use rustc::ty;
 use rustc::lint;
+use rustc::session::config::{ErrorOutputType, Input, OutputFilenames};
+use rustc::session::CrateDisambiguator;
+use rustc::session::{self, config, early_error, filesearch, DiagnosticOutput, Session};
+use rustc::ty;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::jobserver;
-use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_resolve::{self, Resolver};
+use smallvec::SmallVec;
 use std::env;
 use std::io::{self, Write};
 use std::mem;
+use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Once};
-use std::ops::DerefMut;
-use smallvec::SmallVec;
-use syntax::ptr::P;
-use syntax::mut_visit::{*, MutVisitor, visit_clobber};
+#[cfg(not(parallel_compiler))]
+use std::{panic, thread};
 use syntax::ast::{AttrVec, BlockCheckMode};
-use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::mut_visit::{visit_clobber, MutVisitor, *};
+use syntax::ptr::P;
 use syntax::source_map::{FileLoader, RealFileLoader, SourceMap};
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{sym, Symbol};
+use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{self, ast, attr};
 use syntax_pos::edition::Edition;
-#[cfg(not(parallel_compiler))]
-use std::{thread, panic};
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -44,12 +44,7 @@ pub fn add_configuration(
 ) {
     let tf = sym::target_feature;
 
-    cfg.extend(
-        codegen_backend
-            .target_features(sess)
-            .into_iter()
-            .map(|feat| (tf, Some(feat))),
-    );
+    cfg.extend(codegen_backend.target_features(sess).into_iter().map(|feat| (tf, Some(feat))));
 
     if sess.crt_static_feature() {
         cfg.insert((tf, Some(Symbol::intern("crt-static"))));
@@ -66,10 +61,7 @@ pub fn create_session(
     descriptions: Registry,
 ) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>, Lrc<SourceMap>) {
     let loader = file_loader.unwrap_or(box RealFileLoader);
-    let source_map = Lrc::new(SourceMap::with_file_loader(
-        loader,
-        sopts.file_path_mapping(),
-    ));
+    let source_map = Lrc::new(SourceMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_source_map(
         sopts,
         input_path,
@@ -112,7 +104,9 @@ impl Write for Sink {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         Write::write(&mut *self.0.lock().unwrap(), data)
     }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(not(parallel_compiler))]
@@ -225,9 +219,12 @@ fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
                 mem::transmute::<*mut u8, _>(f)
             }
             Err(e) => {
-                let err = format!("couldn't load codegen backend as it \
+                let err = format!(
+                    "couldn't load codegen backend as it \
                                    doesn't export the `__rustc_codegen_backend` \
-                                   symbol: {:?}", e);
+                                   symbol: {:?}",
+                    e
+                );
                 early_error(ErrorOutputType::default(), &err);
             }
         }
@@ -240,12 +237,14 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
     static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unreachable!();
 
     INIT.call_once(|| {
-        let codegen_name = sess.opts.debugging_opts.codegen_backend.as_ref()
+        let codegen_name = sess
+            .opts
+            .debugging_opts
+            .codegen_backend
+            .as_ref()
             .unwrap_or(&sess.target.target.options.codegen_backend);
         let backend = match &codegen_name[..] {
-            filename if filename.contains(".") => {
-                load_backend_from_dylib(filename.as_ref())
-            }
+            filename if filename.contains(".") => load_backend_from_dylib(filename.as_ref()),
             codegen_name => get_builtin_codegen_backend(codegen_name),
         };
 
@@ -271,7 +270,8 @@ pub fn rustc_path<'a>() -> Option<&'a Path> {
 }
 
 fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
-    sysroot_candidates().iter()
+    sysroot_candidates()
+        .iter()
         .filter_map(|sysroot| {
             let candidate = sysroot.join(bin_path).join(if cfg!(target_os = "windows") {
                 "rustc.exe"
@@ -303,10 +303,12 @@ fn sysroot_candidates() -> Vec<PathBuf> {
             sysroot_candidates.push(path.to_owned());
 
             if path.ends_with(target) {
-                sysroot_candidates.extend(path.parent() // chop off `$target`
-                    .and_then(|p| p.parent())           // chop off `rustlib`
-                    .and_then(|p| p.parent())           // chop off `lib`
-                    .map(|s| s.to_owned()));
+                sysroot_candidates.extend(
+                    path.parent() // chop off `$target`
+                        .and_then(|p| p.parent()) // chop off `rustlib`
+                        .and_then(|p| p.parent()) // chop off `lib`
+                        .map(|s| s.to_owned()),
+                );
             }
         }
     }
@@ -315,7 +317,7 @@ fn sysroot_candidates() -> Vec<PathBuf> {
 
     #[cfg(unix)]
     fn current_dll_path() -> Option<PathBuf> {
-        use std::ffi::{OsStr, CStr};
+        use std::ffi::{CStr, OsStr};
         use std::os::unix::prelude::*;
 
         unsafe {
@@ -323,11 +325,11 @@ fn sysroot_candidates() -> Vec<PathBuf> {
             let mut info = mem::zeroed();
             if libc::dladdr(addr, &mut info) == 0 {
                 info!("dladdr failed");
-                return None
+                return None;
             }
             if info.dli_fname.is_null() {
                 info!("dladdr returned null pointer");
-                return None
+                return None;
             }
             let bytes = CStr::from_ptr(info.dli_fname).to_bytes();
             let os = OsStr::from_bytes(bytes);
@@ -341,38 +343,33 @@ fn sysroot_candidates() -> Vec<PathBuf> {
         use std::os::windows::prelude::*;
 
         extern "system" {
-            fn GetModuleHandleExW(dwFlags: u32,
-                                  lpModuleName: usize,
-                                  phModule: *mut usize) -> i32;
-            fn GetModuleFileNameW(hModule: usize,
-                                  lpFilename: *mut u16,
-                                  nSize: u32) -> u32;
+            fn GetModuleHandleExW(dwFlags: u32, lpModuleName: usize, phModule: *mut usize) -> i32;
+            fn GetModuleFileNameW(hModule: usize, lpFilename: *mut u16, nSize: u32) -> u32;
         }
 
         const GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS: u32 = 0x00000004;
 
         unsafe {
             let mut module = 0;
-            let r = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                                       current_dll_path as usize,
-                                       &mut module);
+            let r = GetModuleHandleExW(
+                GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                current_dll_path as usize,
+                &mut module,
+            );
             if r == 0 {
                 info!("GetModuleHandleExW failed: {}", io::Error::last_os_error());
-                return None
+                return None;
             }
             let mut space = Vec::with_capacity(1024);
-            let r = GetModuleFileNameW(module,
-                                       space.as_mut_ptr(),
-                                       space.capacity() as u32);
+            let r = GetModuleFileNameW(module, space.as_mut_ptr(), space.capacity() as u32);
             if r == 0 {
                 info!("GetModuleFileNameW failed: {}", io::Error::last_os_error());
-                return None
+                return None;
             }
             let r = r as usize;
             if r >= space.capacity() {
-                info!("our buffer was too small? {}",
-                      io::Error::last_os_error());
-                return None
+                info!("our buffer was too small? {}", io::Error::last_os_error());
+                return None;
             }
             space.set_len(r);
             let os = OsString::from_wide(&space);
@@ -420,10 +417,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
 
     // Also incorporate crate type, so that we don't get symbol conflicts when
     // linking against a library of the same name, if this is an executable.
-    let is_exe = session
-        .crate_types
-        .borrow()
-        .contains(&config::CrateType::Executable);
+    let is_exe = session.crate_types.borrow().contains(&config::CrateType::Executable);
     hasher.write(if is_exe { b"exe" } else { b"lib" });
 
     CrateDisambiguator::from(hasher.finish::<Fingerprint>())
@@ -443,7 +437,7 @@ pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut 
                     let lev_candidate = find_best_match_for_name(
                         CRATE_TYPES.iter().map(|(k, _)| k),
                         &n.as_str(),
-                        None
+                        None,
                     );
                     if let Some(candidate) = lev_candidate {
                         lint_buffer.buffer_lint_with_diagnostic(
@@ -451,19 +445,18 @@ pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut 
                             ast::CRATE_NODE_ID,
                             span,
                             "invalid `crate_type` value",
-                            lint::builtin::BuiltinLintDiagnostics::
-                                UnknownCrateTypes(
-                                    span,
-                                    "did you mean".to_string(),
-                                    format!("\"{}\"", candidate)
-                                )
+                            lint::builtin::BuiltinLintDiagnostics::UnknownCrateTypes(
+                                span,
+                                "did you mean".to_string(),
+                                format!("\"{}\"", candidate),
+                            ),
                         );
                     } else {
                         lint_buffer.buffer_lint(
                             lint::builtin::UNKNOWN_CRATE_TYPES,
                             ast::CRATE_NODE_ID,
                             span,
-                            "invalid `crate_type` value"
+                            "invalid `crate_type` value",
                         );
                     }
                 }
@@ -515,9 +508,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     if base.is_empty() {
         base.extend(attr_types);
         if base.is_empty() {
-            base.push(::rustc_codegen_utils::link::default_output_for_target(
-                session,
-            ));
+            base.push(::rustc_codegen_utils::link::default_output_for_target(session));
         } else {
             base.sort();
             base.dedup();
@@ -555,7 +546,8 @@ pub fn build_output_filenames(
             let dirpath = (*odir).as_ref().cloned().unwrap_or_default();
 
             // If a crate name is present, we use it as the link name
-            let stem = sess.opts
+            let stem = sess
+                .opts
                 .crate_name
                 .clone()
                 .or_else(|| attr::find_crate_name(attrs).map(|n| n.to_string()))
@@ -571,11 +563,8 @@ pub fn build_output_filenames(
         }
 
         Some(ref out_file) => {
-            let unnamed_output_types = sess.opts
-                .output_types
-                .values()
-                .filter(|a| a.is_none())
-                .count();
+            let unnamed_output_types =
+                sess.opts.output_types.values().filter(|a| a.is_none()).count();
             let ofile = if unnamed_output_types > 1 {
                 sess.warn(
                     "due to multiple output types requested, the explicitly specified \
@@ -626,11 +615,7 @@ pub struct ReplaceBodyWithLoop<'a, 'b> {
 
 impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
     pub fn new(resolver: &'a mut Resolver<'b>) -> ReplaceBodyWithLoop<'a, 'b> {
-        ReplaceBodyWithLoop {
-            within_static_or_const: false,
-            nested_blocks: None,
-            resolver,
-        }
+        ReplaceBodyWithLoop { within_static_or_const: false, nested_blocks: None, resolver }
     }
 
     fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
@@ -647,11 +632,11 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
             fn involves_impl_trait(ty: &ast::Ty) -> bool {
                 match ty.kind {
                     ast::TyKind::ImplTrait(..) => true,
-                    ast::TyKind::Slice(ref subty) |
-                    ast::TyKind::Array(ref subty, _) |
-                    ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. }) |
-                    ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. }) |
-                    ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
+                    ast::TyKind::Slice(ref subty)
+                    | ast::TyKind::Array(ref subty, _)
+                    | ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. })
+                    | ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. })
+                    | ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
                     ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
                     ast::TyKind::Path(_, ref path) => path.segments.iter().any(|seg| {
                         match seg.args.as_ref().map(|generic_arg| &**generic_arg) {
@@ -661,18 +646,17 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                                     ast::GenericArg::Type(ty) => Some(ty),
                                     _ => None,
                                 });
-                                any_involves_impl_trait(types.into_iter()) ||
-                                data.constraints.iter().any(|c| {
-                                    match c.kind {
+                                any_involves_impl_trait(types.into_iter())
+                                    || data.constraints.iter().any(|c| match c.kind {
                                         ast::AssocTyConstraintKind::Bound { .. } => true,
-                                        ast::AssocTyConstraintKind::Equality { ref ty } =>
-                                            involves_impl_trait(ty),
-                                    }
-                                })
-                            },
+                                        ast::AssocTyConstraintKind::Equality { ref ty } => {
+                                            involves_impl_trait(ty)
+                                        }
+                                    })
+                            }
                             Some(&ast::GenericArgs::Parenthesized(ref data)) => {
-                                any_involves_impl_trait(data.inputs.iter()) ||
-                                ReplaceBodyWithLoop::should_ignore_fn(&data.output)
+                                any_involves_impl_trait(data.inputs.iter())
+                                    || ReplaceBodyWithLoop::should_ignore_fn(&data.output)
                             }
                         }
                     }),
@@ -691,8 +675,8 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
     }
 
     fn is_sig_const(sig: &ast::FnSig) -> bool {
-        sig.header.constness.node == ast::Constness::Const ||
-            ReplaceBodyWithLoop::should_ignore_fn(&sig.decl.output)
+        sig.header.constness.node == ast::Constness::Const
+            || ReplaceBodyWithLoop::should_ignore_fn(&sig.decl.output)
     }
 }
 
@@ -724,9 +708,11 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     }
 
     fn visit_block(&mut self, b: &mut P<ast::Block>) {
-        fn stmt_to_block(rules: ast::BlockCheckMode,
-                         s: Option<ast::Stmt>,
-                         resolver: &mut Resolver<'_>) -> ast::Block {
+        fn stmt_to_block(
+            rules: ast::BlockCheckMode,
+            s: Option<ast::Stmt>,
+            resolver: &mut Resolver<'_>,
+        ) -> ast::Block {
             ast::Block {
                 stmts: s.into_iter().collect(),
                 rules,
@@ -755,7 +741,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             kind: ast::ExprKind::Loop(P(empty_block), None),
             id: self.resolver.next_node_id(),
             span: syntax_pos::DUMMY_SP,
-                attrs: AttrVec::new(),
+            attrs: AttrVec::new(),
         });
 
         let loop_stmt = ast::Stmt {
@@ -780,10 +766,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                     stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, self.resolver)));
                 }
 
-                let mut new_block = ast::Block {
-                    stmts,
-                    ..b
-                };
+                let mut new_block = ast::Block { stmts, ..b };
 
                 if let Some(old_blocks) = self.nested_blocks.as_mut() {
                     //push our fresh block onto the cache and yield an empty block with `loop {}`

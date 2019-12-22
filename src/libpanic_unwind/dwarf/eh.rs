@@ -36,8 +36,8 @@ pub const DW_EH_PE_indirect: u8 = 0x80;
 
 #[derive(Copy, Clone)]
 pub struct EHContext<'a> {
-    pub ip: usize, // Current instruction pointer
-    pub func_start: usize, // Address of the current function
+    pub ip: usize,                             // Current instruction pointer
+    pub func_start: usize,                     // Address of the current function
     pub get_text_start: &'a dyn Fn() -> usize, // Get address of the code section
     pub get_data_start: &'a dyn Fn() -> usize, // Get address of the data section
 }
@@ -51,11 +51,13 @@ pub enum EHAction {
 
 pub const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
 
-pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>, foreign_exception: bool)
-    -> Result<EHAction, ()>
-{
+pub unsafe fn find_eh_action(
+    lsda: *const u8,
+    context: &EHContext<'_>,
+    foreign_exception: bool,
+) -> Result<EHAction, ()> {
     if lsda.is_null() {
-        return Ok(EHAction::None)
+        return Ok(EHAction::None);
     }
 
     let func_start = context.func_start;
@@ -93,10 +95,10 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>, foreign_e
             }
             if ip < func_start + cs_start + cs_len {
                 if cs_lpad == 0 {
-                    return Ok(EHAction::None)
+                    return Ok(EHAction::None);
                 } else {
                     let lpad = lpad_base + cs_lpad;
-                    return Ok(interpret_cs_action(cs_action, lpad, foreign_exception))
+                    return Ok(interpret_cs_action(cs_action, lpad, foreign_exception));
                 }
             }
         }
@@ -121,7 +123,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>, foreign_e
                 // Can never have null landing pad for sjlj -- that would have
                 // been indicated by a -1 call site index.
                 let lpad = (cs_lpad + 1) as usize;
-                return Ok(interpret_cs_action(cs_action, lpad, foreign_exception))
+                return Ok(interpret_cs_action(cs_action, lpad, foreign_exception));
             }
         }
     }
@@ -144,25 +146,22 @@ fn interpret_cs_action(cs_action: u64, lpad: usize, foreign_exception: bool) -> 
 
 #[inline]
 fn round_up(unrounded: usize, align: usize) -> Result<usize, ()> {
-    if align.is_power_of_two() {
-        Ok((unrounded + align - 1) & !(align - 1))
-    } else {
-        Err(())
-    }
+    if align.is_power_of_two() { Ok((unrounded + align - 1) & !(align - 1)) } else { Err(()) }
 }
 
-unsafe fn read_encoded_pointer(reader: &mut DwarfReader,
-                               context: &EHContext<'_>,
-                               encoding: u8)
-                               -> Result<usize, ()> {
+unsafe fn read_encoded_pointer(
+    reader: &mut DwarfReader,
+    context: &EHContext<'_>,
+    encoding: u8,
+) -> Result<usize, ()> {
     if encoding == DW_EH_PE_omit {
-        return Err(())
+        return Err(());
     }
 
     // DW_EH_PE_aligned implies it's an absolute pointer value
     if encoding == DW_EH_PE_aligned {
         reader.ptr = round_up(reader.ptr as usize, mem::size_of::<usize>())? as *const u8;
-        return Ok(reader.read::<usize>())
+        return Ok(reader.read::<usize>());
     }
 
     let mut result = match encoding & 0x0F {
@@ -184,7 +183,7 @@ unsafe fn read_encoded_pointer(reader: &mut DwarfReader,
         DW_EH_PE_pcrel => reader.ptr as usize,
         DW_EH_PE_funcrel => {
             if context.func_start == 0 {
-                return Err(())
+                return Err(());
             }
             context.func_start
         }

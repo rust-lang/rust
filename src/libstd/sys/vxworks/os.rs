@@ -1,18 +1,18 @@
 use crate::error::Error as StdError;
-use crate::ffi::{CString, CStr, OsString, OsStr};
+use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::iter;
-use libc::{self, c_int, c_char /*,c_void */};
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::memchr;
-use crate::path::{self, PathBuf, Path};
+use crate::path::{self, Path, PathBuf};
 use crate::ptr;
 use crate::slice;
 use crate::str;
-use crate::sys_common::mutex::{Mutex, MutexGuard};
 use crate::sys::cvt;
+use crate::sys_common::mutex::{Mutex, MutexGuard};
+use libc::{self, c_char /*,c_void */, c_int};
 /*use sys::fd; this one is probably important */
 use crate::vec;
 
@@ -20,7 +20,7 @@ const TMPBUF_SZ: usize = 128;
 
 // This is a terrible fix
 use crate::sys::os_str::Buf;
-use crate::sys_common::{FromInner, IntoInner, AsInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 pub trait OsStringExt {
     fn from_vec(vec: Vec<u8>) -> Self;
@@ -55,18 +55,16 @@ pub fn errno() -> i32 {
 }
 
 pub fn set_errno(e: i32) {
-    unsafe { libc::errnoSet(e as c_int); }
+    unsafe {
+        libc::errnoSet(e as c_int);
+    }
 }
 
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
     let mut buf = [0 as c_char; TMPBUF_SZ];
-    extern {
-        fn strerror_r(
-            errnum: c_int,
-            buf: *mut c_char,
-            buflen: libc::size_t
-        ) -> c_int;
+    extern "C" {
+        fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t) -> c_int;
     }
 
     let p = buf.as_mut_ptr();
@@ -116,33 +114,41 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
 }
 
 pub struct SplitPaths<'a> {
-    iter: iter::Map<slice::Split<'a, u8, fn(&u8) -> bool>,
-            fn(&'a [u8]) -> PathBuf>,
+    iter: iter::Map<slice::Split<'a, u8, fn(&u8) -> bool>, fn(&'a [u8]) -> PathBuf>,
 }
 
 pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
     fn bytes_to_path(b: &[u8]) -> PathBuf {
         PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
     }
-    fn is_colon(b: &u8) -> bool { *b == b':' }
+    fn is_colon(b: &u8) -> bool {
+        *b == b':'
+    }
     let unparsed = unparsed.as_bytes();
     SplitPaths {
-        iter: unparsed.split(is_colon as fn(&u8) -> bool)
-                        .map(bytes_to_path as fn(&[u8]) -> PathBuf)
+        iter: unparsed
+            .split(is_colon as fn(&u8) -> bool)
+            .map(bytes_to_path as fn(&[u8]) -> PathBuf),
     }
 }
 
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
-    fn next(&mut self) -> Option<PathBuf> { self.iter.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    fn next(&mut self) -> Option<PathBuf> {
+        self.iter.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
 }
 
 #[derive(Debug)]
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsRef<OsStr>
+where
+    I: Iterator<Item = T>,
+    T: AsRef<OsStr>,
 {
     let mut joined = Vec::new();
     let sep = b':';
@@ -153,7 +159,7 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
             joined.push(sep)
         }
         if path.contains(&sep) {
-            return Err(JoinPathsError)
+            return Err(JoinPathsError);
         }
         joined.extend_from_slice(path);
     }
@@ -167,7 +173,9 @@ impl fmt::Display for JoinPathsError {
 }
 
 impl StdError for JoinPathsError {
-    fn description(&self) -> &str { "failed to join paths" }
+    fn description(&self) -> &str {
+        "failed to join paths"
+    }
 }
 
 pub fn current_exe() -> io::Result<PathBuf> {
@@ -189,12 +197,18 @@ pub struct Env {
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> { self.iter.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    fn next(&mut self) -> Option<(OsString, OsString)> {
+        self.iter.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
 }
 
 pub unsafe fn environ() -> *mut *const *const c_char {
-    extern { static mut environ: *const *const c_char; }
+    extern "C" {
+        static mut environ: *const *const c_char;
+    }
     &mut environ
 }
 
@@ -212,8 +226,7 @@ pub fn env() -> Env {
         let _guard = env_lock();
         let mut environ = *environ();
         if environ == ptr::null() {
-            panic!("os::env() failure getting env string from OS: {}",
-                io::Error::last_os_error());
+            panic!("os::env() failure getting env string from OS: {}", io::Error::last_os_error());
         }
         let mut result = Vec::new();
         while *environ != ptr::null() {
@@ -222,10 +235,7 @@ pub fn env() -> Env {
             }
             environ = environ.offset(1);
         }
-        return Env {
-            iter: result.into_iter(),
-            _dont_send_or_sync_me: PhantomData,
-        }
+        return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
     }
 
     fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
@@ -237,10 +247,12 @@ pub fn env() -> Env {
             return None;
         }
         let pos = memchr::memchr(b'=', &input[1..]).map(|p| p + 1);
-        pos.map(|p| (
-            OsStringExt::from_vec(input[..p].to_vec()),
-            OsStringExt::from_vec(input[p+1..].to_vec()),
-        ))
+        pos.map(|p| {
+            (
+                OsStringExt::from_vec(input[..p].to_vec()),
+                OsStringExt::from_vec(input[p + 1..].to_vec()),
+            )
+        })
     }
 }
 
@@ -280,20 +292,15 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
 }
 
 pub fn page_size() -> usize {
-    unsafe {
-        libc::sysconf(libc::_SC_PAGESIZE) as usize
-    }
+    unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
 }
 
 pub fn temp_dir() -> PathBuf {
-    crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
-        PathBuf::from("/tmp")
-    })
+    crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/tmp"))
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    crate::env::var_os("HOME").or_else(|| None
-    ).map(PathBuf::from)
+    crate::env::var_os("HOME").or_else(|| None).map(PathBuf::from)
 }
 
 pub fn exit(code: i32) -> ! {

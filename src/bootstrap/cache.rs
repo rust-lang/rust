@@ -1,6 +1,7 @@
 use std::any::{Any, TypeId};
 use std::borrow::Borrow;
 use std::cell::RefCell;
+use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::ffi::OsStr;
@@ -11,7 +12,6 @@ use std::mem;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::cmp::{PartialOrd, Ord, Ordering};
 
 use lazy_static::lazy_static;
 
@@ -47,7 +47,7 @@ impl<T> Eq for Interned<T> {}
 
 impl PartialEq<str> for Interned<String> {
     fn eq(&self, other: &str) -> bool {
-       *self == other
+        *self == other
     }
 }
 impl<'a> PartialEq<&'a str> for Interned<String> {
@@ -168,24 +168,21 @@ struct TyIntern<T: Clone + Eq> {
 
 impl<T: Hash + Clone + Eq> Default for TyIntern<T> {
     fn default() -> Self {
-        TyIntern {
-            items: Vec::new(),
-            set: Default::default(),
-        }
+        TyIntern { items: Vec::new(), set: Default::default() }
     }
 }
 
 impl<T: Hash + Clone + Eq> TyIntern<T> {
     fn intern_borrow<B>(&mut self, item: &B) -> Interned<T>
     where
-        B: Eq + Hash + ToOwned<Owned=T> + ?Sized,
+        B: Eq + Hash + ToOwned<Owned = T> + ?Sized,
         T: Borrow<B>,
     {
         if let Some(i) = self.set.get(&item) {
             return *i;
         }
         let item = item.to_owned();
-        let interned =  Interned(self.items.len(), PhantomData::<*const T>);
+        let interned = Interned(self.items.len(), PhantomData::<*const T>);
         self.set.insert(item.clone(), interned);
         self.items.push(item);
         interned
@@ -195,7 +192,7 @@ impl<T: Hash + Clone + Eq> TyIntern<T> {
         if let Some(i) = self.set.get(&item) {
             return *i;
         }
-        let interned =  Interned(self.items.len(), PhantomData::<*const T>);
+        let interned = Interned(self.items.len(), PhantomData::<*const T>);
         self.set.insert(item.clone(), interned);
         self.items.push(item);
         interned
@@ -235,10 +232,12 @@ lazy_static! {
 /// `get()` method.
 #[derive(Debug)]
 pub struct Cache(
-    RefCell<HashMap<
-        TypeId,
-        Box<dyn Any>, // actually a HashMap<Step, Interned<Step::Output>>
-    >>
+    RefCell<
+        HashMap<
+            TypeId,
+            Box<dyn Any>, // actually a HashMap<Step, Interned<Step::Output>>
+        >,
+    >,
 );
 
 impl Cache {
@@ -249,10 +248,11 @@ impl Cache {
     pub fn put<S: Step>(&self, step: S, value: S::Output) {
         let mut cache = self.0.borrow_mut();
         let type_id = TypeId::of::<S>();
-        let stepcache = cache.entry(type_id)
-                        .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
-                        .downcast_mut::<HashMap<S, S::Output>>()
-                        .expect("invalid type mapped");
+        let stepcache = cache
+            .entry(type_id)
+            .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
+            .downcast_mut::<HashMap<S, S::Output>>()
+            .expect("invalid type mapped");
         assert!(!stepcache.contains_key(&step), "processing {:?} a second time", step);
         stepcache.insert(step, value);
     }
@@ -260,10 +260,11 @@ impl Cache {
     pub fn get<S: Step>(&self, step: &S) -> Option<S::Output> {
         let mut cache = self.0.borrow_mut();
         let type_id = TypeId::of::<S>();
-        let stepcache = cache.entry(type_id)
-                        .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
-                        .downcast_mut::<HashMap<S, S::Output>>()
-                        .expect("invalid type mapped");
+        let stepcache = cache
+            .entry(type_id)
+            .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
+            .downcast_mut::<HashMap<S, S::Output>>()
+            .expect("invalid type mapped");
         stepcache.get(step).cloned()
     }
 }
@@ -273,7 +274,8 @@ impl Cache {
     pub fn all<S: Ord + Copy + Step>(&mut self) -> Vec<(S, S::Output)> {
         let cache = self.0.get_mut();
         let type_id = TypeId::of::<S>();
-        let mut v = cache.remove(&type_id)
+        let mut v = cache
+            .remove(&type_id)
             .map(|b| b.downcast::<HashMap<S, S::Output>>().expect("correct type"))
             .map(|m| m.into_iter().collect::<Vec<_>>())
             .unwrap_or_default();

@@ -40,8 +40,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             // but no other pre-existing region variables -- can name
             // the placeholders.
             let (a_prime, _) =
-                self.infcx
-                    .replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
+                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
@@ -49,8 +48,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             // Compare types now that bound regions have been replaced.
             let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
 
-            self.infcx
-                .leak_check(!a_is_expected, &placeholder_map, snapshot)?;
+            self.infcx.leak_check(!a_is_expected, &placeholder_map, snapshot)?;
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
@@ -100,15 +98,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let fld_c = |bound_var: ty::BoundVar, ty| {
-            self.tcx.mk_const(
-                ty::Const {
-                    val: ty::ConstKind::Placeholder(ty::PlaceholderConst {
-                        universe: next_universe,
-                        name: bound_var,
-                    }),
-                    ty,
-                }
-            )
+            self.tcx.mk_const(ty::Const {
+                val: ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                    universe: next_universe,
+                    name: bound_var,
+                }),
+                ty,
+            })
         };
 
         let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t, fld_c);
@@ -132,7 +128,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         placeholder_map: &PlaceholderMap<'tcx>,
         snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> RelateResult<'tcx, ()> {
-        self.borrow_region_constraints()
-            .leak_check(self.tcx, overly_polymorphic, placeholder_map, snapshot)
+        self.borrow_region_constraints().leak_check(
+            self.tcx,
+            overly_polymorphic,
+            placeholder_map,
+            snapshot,
+        )
     }
 }

@@ -99,8 +99,12 @@ mod imp {
     pub type ptr_t = *mut u8;
 
     macro_rules! ptr {
-        (0) => (core::ptr::null_mut());
-        ($e:expr) => ($e as *mut u8);
+        (0) => {
+            core::ptr::null_mut()
+        };
+        ($e:expr) => {
+            $e as *mut u8
+        };
     }
 }
 
@@ -169,19 +173,13 @@ static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
     pCatchableTypeArray: ptr!(0),
 };
 
-static mut CATCHABLE_TYPE_ARRAY: _CatchableTypeArray = _CatchableTypeArray {
-    nCatchableTypes: 1,
-    arrayOfCatchableTypes: [ptr!(0)],
-};
+static mut CATCHABLE_TYPE_ARRAY: _CatchableTypeArray =
+    _CatchableTypeArray { nCatchableTypes: 1, arrayOfCatchableTypes: [ptr!(0)] };
 
 static mut CATCHABLE_TYPE: _CatchableType = _CatchableType {
     properties: 0,
     pType: ptr!(0),
-    thisDisplacement: _PMD {
-        mdisp: 0,
-        pdisp: -1,
-        vdisp: 0,
-    },
+    thisDisplacement: _PMD { mdisp: 0, pdisp: -1, vdisp: 0 },
     sizeOrOffset: mem::size_of::<[u64; 2]>() as c_int,
     copy_function: ptr!(0),
 };
@@ -245,20 +243,25 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     //
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
-    atomic_store(&mut THROW_INFO.pCatchableTypeArray as *mut _ as *mut u32,
-                 ptr!(&CATCHABLE_TYPE_ARRAY as *const _) as u32);
-    atomic_store(&mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0] as *mut _ as *mut u32,
-                 ptr!(&CATCHABLE_TYPE as *const _) as u32);
-    atomic_store(&mut CATCHABLE_TYPE.pType as *mut _ as *mut u32,
-                 ptr!(&TYPE_DESCRIPTOR as *const _) as u32);
+    atomic_store(
+        &mut THROW_INFO.pCatchableTypeArray as *mut _ as *mut u32,
+        ptr!(&CATCHABLE_TYPE_ARRAY as *const _) as u32,
+    );
+    atomic_store(
+        &mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0] as *mut _ as *mut u32,
+        ptr!(&CATCHABLE_TYPE as *const _) as u32,
+    );
+    atomic_store(
+        &mut CATCHABLE_TYPE.pType as *mut _ as *mut u32,
+        ptr!(&TYPE_DESCRIPTOR as *const _) as u32,
+    );
 
     extern "system" {
         #[unwind(allowed)]
         pub fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
     }
 
-    _CxxThrowException(throw_ptr,
-                       &mut THROW_INFO as *mut _ as *mut _);
+    _CxxThrowException(throw_ptr, &mut THROW_INFO as *mut _ as *mut _);
 }
 
 pub fn payload() -> [u64; 2] {
@@ -266,10 +269,7 @@ pub fn payload() -> [u64; 2] {
 }
 
 pub unsafe fn cleanup(payload: [u64; 2]) -> Box<dyn Any + Send> {
-    mem::transmute(raw::TraitObject {
-        data: payload[0] as *mut _,
-        vtable: payload[1] as *mut _,
-    })
+    mem::transmute(raw::TraitObject { data: payload[0] as *mut _, vtable: payload[1] as *mut _ })
 }
 
 // This is required by the compiler to exist (e.g., it's a lang item), but

@@ -15,15 +15,15 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use build_helper::{output, t};
-use cmake;
 use cc;
+use cmake;
 
-use crate::channel;
-use crate::util::{self, exe};
-use build_helper::up_to_date;
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
+use crate::channel;
+use crate::util::{self, exe};
 use crate::GitRepo;
+use build_helper::up_to_date;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
@@ -36,15 +36,11 @@ impl Step for Llvm {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/llvm-project")
-            .path("src/llvm-project/llvm")
-            .path("src/llvm")
+        run.path("src/llvm-project").path("src/llvm-project/llvm").path("src/llvm")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Llvm {
-            target: run.target,
-        });
+        run.builder.ensure(Llvm { target: run.target });
     }
 
     /// Compile LLVM for `target`.
@@ -56,7 +52,7 @@ impl Step for Llvm {
         if let Some(config) = builder.config.target_config.get(&target) {
             if let Some(ref s) = config.llvm_config {
                 check_llvm_version(builder, s);
-                return s.to_path_buf()
+                return s.to_path_buf();
             }
         }
 
@@ -69,8 +65,8 @@ impl Step for Llvm {
         }
         llvm_config_ret_dir.push("bin");
 
-        let build_llvm_config = llvm_config_ret_dir
-            .join(exe("llvm-config", &*builder.config.build));
+        let build_llvm_config =
+            llvm_config_ret_dir.join(exe("llvm-config", &*builder.config.build));
         let done_stamp = out_dir.join("llvm-finished-building");
 
         if done_stamp.exists() {
@@ -112,8 +108,10 @@ impl Step for Llvm {
         // defaults!
         let llvm_targets = match &builder.config.llvm_targets {
             Some(s) => s,
-            None => "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
-                     Sparc;SystemZ;WebAssembly;X86",
+            None => {
+                "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
+                     Sparc;SystemZ;WebAssembly;X86"
+            }
         };
 
         let llvm_exp_targets = match builder.config.llvm_experimental_targets {
@@ -121,31 +119,31 @@ impl Step for Llvm {
             None => "",
         };
 
-        let assertions = if builder.config.llvm_assertions {"ON"} else {"OFF"};
+        let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
 
         cfg.out_dir(&out_dir)
-           .profile(profile)
-           .define("LLVM_ENABLE_ASSERTIONS", assertions)
-           .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
-           .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)
-           .define("LLVM_INCLUDE_EXAMPLES", "OFF")
-           .define("LLVM_INCLUDE_TESTS", "OFF")
-           .define("LLVM_INCLUDE_DOCS", "OFF")
-           .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
-           .define("LLVM_ENABLE_ZLIB", "OFF")
-           .define("WITH_POLLY", "OFF")
-           .define("LLVM_ENABLE_TERMINFO", "OFF")
-           .define("LLVM_ENABLE_LIBEDIT", "OFF")
-           .define("LLVM_ENABLE_BINDINGS", "OFF")
-           .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
-           .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
-           .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
-           .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+            .profile(profile)
+            .define("LLVM_ENABLE_ASSERTIONS", assertions)
+            .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
+            .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)
+            .define("LLVM_INCLUDE_EXAMPLES", "OFF")
+            .define("LLVM_INCLUDE_TESTS", "OFF")
+            .define("LLVM_INCLUDE_DOCS", "OFF")
+            .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
+            .define("LLVM_ENABLE_ZLIB", "OFF")
+            .define("WITH_POLLY", "OFF")
+            .define("LLVM_ENABLE_TERMINFO", "OFF")
+            .define("LLVM_ENABLE_LIBEDIT", "OFF")
+            .define("LLVM_ENABLE_BINDINGS", "OFF")
+            .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
+            .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
+            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
+            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
         if builder.config.llvm_thin_lto {
             cfg.define("LLVM_ENABLE_LTO", "Thin");
             if !target.contains("apple") {
-               cfg.define("LLVM_ENABLE_LLD", "ON");
+                cfg.define("LLVM_ENABLE_LLD", "ON");
             }
         }
 
@@ -212,20 +210,17 @@ impl Step for Llvm {
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != builder.config.build {
-            builder.ensure(Llvm {
-                target: builder.config.build,
-            });
+            builder.ensure(Llvm { target: builder.config.build });
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
             let host = builder.llvm_out(builder.config.build).join("bin/llvm-tblgen");
-            cfg.define("CMAKE_CROSSCOMPILING", "True")
-               .define("LLVM_TABLEGEN", &host);
+            cfg.define("CMAKE_CROSSCOMPILING", "True").define("LLVM_TABLEGEN", &host);
 
             if target.contains("netbsd") {
-               cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
+                cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
             } else if target.contains("freebsd") {
-               cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
+                cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
             }
 
             cfg.define("LLVM_NATIVE_BUILD", builder.llvm_out(builder.config.build).join("build"));
@@ -237,11 +232,8 @@ impl Step for Llvm {
                 cfg.define("LLVM_VERSION_SUFFIX", suffix);
             }
         } else {
-            let mut default_suffix = format!(
-                "-rust-{}-{}",
-                channel::CFG_RELEASE_NUM,
-                builder.config.channel,
-            );
+            let mut default_suffix =
+                format!("-rust-{}-{}", channel::CFG_RELEASE_NUM, builder.config.channel,);
             if let Some(sha) = llvm_info.sha_short() {
                 default_suffix.push_str("-");
                 default_suffix.push_str(sha);
@@ -282,7 +274,7 @@ impl Step for Llvm {
 
 fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     if !builder.config.llvm_version_check {
-        return
+        return;
     }
 
     if builder.config.dry_run {
@@ -291,19 +283,16 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
 
     let mut cmd = Command::new(llvm_config);
     let version = output(cmd.arg("--version"));
-    let mut parts = version.split('.').take(2)
-        .filter_map(|s| s.parse::<u32>().ok());
+    let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
         if major >= 7 {
-            return
+            return;
         }
     }
     panic!("\n\nbad LLVM version: {}, need >=7.0\n\n", version)
 }
 
-fn configure_cmake(builder: &Builder<'_>,
-                   target: Interned<String>,
-                   cfg: &mut cmake::Config) {
+fn configure_cmake(builder: &Builder<'_>, target: Interned<String>, cfg: &mut cmake::Config) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
     cfg.define("CMAKE_INSTALL_MESSAGE", "LAZY");
@@ -311,8 +300,7 @@ fn configure_cmake(builder: &Builder<'_>,
     if builder.config.ninja {
         cfg.generator("Ninja");
     }
-    cfg.target(&target)
-       .host(&builder.config.build);
+    cfg.target(&target).host(&builder.config.build);
 
     let sanitize_cc = |cc: &Path| {
         if target.contains("msvc") {
@@ -326,7 +314,7 @@ fn configure_cmake(builder: &Builder<'_>,
     // vars that we'd otherwise configure. In that case we just skip this
     // entirely.
     if target.contains("msvc") && !builder.config.ninja {
-        return
+        return;
     }
 
     let (cc, cxx) = match builder.config.llvm_clang_cl {
@@ -335,56 +323,52 @@ fn configure_cmake(builder: &Builder<'_>,
     };
 
     // Handle msvc + ninja + ccache specially (this is what the bots use)
-    if target.contains("msvc") &&
-       builder.config.ninja &&
-       builder.config.ccache.is_some()
-    {
-       let mut wrap_cc = env::current_exe().expect("failed to get cwd");
-       wrap_cc.set_file_name("sccache-plus-cl.exe");
+    if target.contains("msvc") && builder.config.ninja && builder.config.ccache.is_some() {
+        let mut wrap_cc = env::current_exe().expect("failed to get cwd");
+        wrap_cc.set_file_name("sccache-plus-cl.exe");
 
-       cfg.define("CMAKE_C_COMPILER", sanitize_cc(&wrap_cc))
-          .define("CMAKE_CXX_COMPILER", sanitize_cc(&wrap_cc));
-       cfg.env("SCCACHE_PATH",
-               builder.config.ccache.as_ref().unwrap())
-          .env("SCCACHE_TARGET", target)
-          .env("SCCACHE_CC", &cc)
-          .env("SCCACHE_CXX", &cxx);
+        cfg.define("CMAKE_C_COMPILER", sanitize_cc(&wrap_cc))
+            .define("CMAKE_CXX_COMPILER", sanitize_cc(&wrap_cc));
+        cfg.env("SCCACHE_PATH", builder.config.ccache.as_ref().unwrap())
+            .env("SCCACHE_TARGET", target)
+            .env("SCCACHE_CC", &cc)
+            .env("SCCACHE_CXX", &cxx);
 
-       // Building LLVM on MSVC can be a little ludicrous at times. We're so far
-       // off the beaten path here that I'm not really sure this is even half
-       // supported any more. Here we're trying to:
-       //
-       // * Build LLVM on MSVC
-       // * Build LLVM with `clang-cl` instead of `cl.exe`
-       // * Build a project with `sccache`
-       // * Build for 32-bit as well
-       // * Build with Ninja
-       //
-       // For `cl.exe` there are different binaries to compile 32/64 bit which
-       // we use but for `clang-cl` there's only one which internally
-       // multiplexes via flags. As a result it appears that CMake's detection
-       // of a compiler's architecture and such on MSVC **doesn't** pass any
-       // custom flags we pass in CMAKE_CXX_FLAGS below. This means that if we
-       // use `clang-cl.exe` it's always diagnosed as a 64-bit compiler which
-       // definitely causes problems since all the env vars are pointing to
-       // 32-bit libraries.
-       //
-       // To hack around this... again... we pass an argument that's
-       // unconditionally passed in the sccache shim. This'll get CMake to
-       // correctly diagnose it's doing a 32-bit compilation and LLVM will
-       // internally configure itself appropriately.
-       if builder.config.llvm_clang_cl.is_some() && target.contains("i686") {
-           cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
-       }
+        // Building LLVM on MSVC can be a little ludicrous at times. We're so far
+        // off the beaten path here that I'm not really sure this is even half
+        // supported any more. Here we're trying to:
+        //
+        // * Build LLVM on MSVC
+        // * Build LLVM with `clang-cl` instead of `cl.exe`
+        // * Build a project with `sccache`
+        // * Build for 32-bit as well
+        // * Build with Ninja
+        //
+        // For `cl.exe` there are different binaries to compile 32/64 bit which
+        // we use but for `clang-cl` there's only one which internally
+        // multiplexes via flags. As a result it appears that CMake's detection
+        // of a compiler's architecture and such on MSVC **doesn't** pass any
+        // custom flags we pass in CMAKE_CXX_FLAGS below. This means that if we
+        // use `clang-cl.exe` it's always diagnosed as a 64-bit compiler which
+        // definitely causes problems since all the env vars are pointing to
+        // 32-bit libraries.
+        //
+        // To hack around this... again... we pass an argument that's
+        // unconditionally passed in the sccache shim. This'll get CMake to
+        // correctly diagnose it's doing a 32-bit compilation and LLVM will
+        // internally configure itself appropriately.
+        if builder.config.llvm_clang_cl.is_some() && target.contains("i686") {
+            cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
+        }
     } else {
-       // If ccache is configured we inform the build a little differently how
-       // to invoke ccache while also invoking our compilers.
-       if let Some(ref ccache) = builder.config.ccache {
-         cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
-            .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
-       }
-       cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
-          .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
+        // If ccache is configured we inform the build a little differently how
+        // to invoke ccache while also invoking our compilers.
+        if let Some(ref ccache) = builder.config.ccache {
+            cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
+                .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
+        }
+        cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
+            .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
@@ -394,10 +378,7 @@ fn configure_cmake(builder: &Builder<'_>,
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
-    if builder.config.llvm_static_stdcpp &&
-        !target.contains("msvc") &&
-        !target.contains("netbsd")
-    {
+    if builder.config.llvm_static_stdcpp && !target.contains("msvc") && !target.contains("netbsd") {
         cxxflags.push_str(" -static-libstdc++");
     }
     if let Some(ref s) = builder.config.llvm_cxxflags {
@@ -455,14 +436,12 @@ impl Step for Lld {
         }
         let target = self.target;
 
-        let llvm_config = builder.ensure(Llvm {
-            target: self.target,
-        });
+        let llvm_config = builder.ensure(Llvm { target: self.target });
 
         let out_dir = builder.lld_out(target);
         let done_stamp = out_dir.join("lld-finished-building");
         if done_stamp.exists() {
-            return out_dir
+            return out_dir;
         }
 
         builder.info(&format!("Building LLD for {}", target));
@@ -486,14 +465,12 @@ impl Step for Lld {
         // ensure we don't hit the same bugs with escaping. It means that you
         // can't build on a system where your paths require `\` on Windows, but
         // there's probably a lot of reasons you can't do that other than this.
-        let llvm_config_shim = env::current_exe()
-            .unwrap()
-            .with_file_name("llvm-config-wrapper");
+        let llvm_config_shim = env::current_exe().unwrap().with_file_name("llvm-config-wrapper");
         cfg.out_dir(&out_dir)
-           .profile("Release")
-           .env("LLVM_CONFIG_REAL", llvm_config)
-           .define("LLVM_CONFIG_PATH", llvm_config_shim)
-           .define("LLVM_INCLUDE_TESTS", "OFF");
+            .profile("Release")
+            .env("LLVM_CONFIG_REAL", llvm_config)
+            .define("LLVM_CONFIG_PATH", llvm_config_shim)
+            .define("LLVM_INCLUDE_TESTS", "OFF");
 
         cfg.build();
 
@@ -528,7 +505,7 @@ impl Step for TestHelpers {
         let dst = builder.test_helpers_out(target);
         let src = builder.src.join("src/test/auxiliary/rust_test_helpers.c");
         if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
-            return
+            return;
         }
 
         builder.info("Building test helpers");
@@ -550,13 +527,13 @@ impl Step for TestHelpers {
         }
 
         cfg.cargo_metadata(false)
-           .out_dir(&dst)
-           .target(&target)
-           .host(&builder.config.build)
-           .opt_level(0)
-           .warnings(false)
-           .debug(false)
-           .file(builder.src.join("src/test/auxiliary/rust_test_helpers.c"))
-           .compile("rust_test_helpers");
+            .out_dir(&dst)
+            .target(&target)
+            .host(&builder.config.build)
+            .opt_level(0)
+            .warnings(false)
+            .debug(false)
+            .file(builder.src.join("src/test/auxiliary/rust_test_helpers.c"))
+            .compile("rust_test_helpers");
     }
 }

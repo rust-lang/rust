@@ -1,6 +1,6 @@
-use walkdir::WalkDir;
 use std::path::PathBuf;
 use std::{env, fs};
+use walkdir::WalkDir;
 
 fn main() {
     // The src directory (we are in src/tools/error_index_generator)
@@ -12,8 +12,9 @@ fn main() {
     let error_codes_path = "../../../src/librustc_error_codes/error_codes.rs";
 
     println!("cargo:rerun-if-changed={}", error_codes_path);
-    let file = fs::read_to_string(error_codes_path).unwrap()
-                  .replace(": include_str!(\"./error_codes/", ": include_str!(\"./");
+    let file = fs::read_to_string(error_codes_path)
+        .unwrap()
+        .replace(": include_str!(\"./error_codes/", ": include_str!(\"./");
     let contents = format!("(|| {{\n{}\n}})()", file);
     fs::write(&out_dir.join("all_error_codes.rs"), &contents).unwrap();
 
@@ -30,7 +31,8 @@ fn main() {
     }
 
     let mut all = String::new();
-    all.push_str(r###"
+    all.push_str(
+        r###"
 fn register_all() -> Vec<(&'static str, Option<&'static str>)> {
     let mut long_codes: Vec<(&'static str, Option<&'static str>)> = Vec::new();
     macro_rules! register_diagnostics {
@@ -51,7 +53,8 @@ fn register_all() -> Vec<(&'static str, Option<&'static str>)> {
             )*
         )
     }
-"###);
+"###,
+    );
     all.push_str(r#"include!(concat!(env!("OUT_DIR"), "/all_error_codes.rs"));"#);
     all.push_str("\nlong_codes\n");
     all.push_str("}\n");

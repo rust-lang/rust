@@ -1,28 +1,28 @@
-use std::fmt;
+use crate::util::patch::MirPatch;
 use rustc::hir;
-use rustc::mir::*;
 use rustc::middle::lang_items;
+use rustc::mir::*;
 use rustc::traits::Reveal;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::util::IntTypeExt;
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc_index::vec::Idx;
-use crate::util::patch::MirPatch;
+use std::fmt;
 
 use std::convert::TryInto;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DropFlagState {
     Present, // i.e., initialized
-    Absent, // i.e., deinitialized or "moved"
+    Absent,  // i.e., deinitialized or "moved"
 }
 
 impl DropFlagState {
     pub fn value(self) -> bool {
         match self {
             DropFlagState::Present => true,
-            DropFlagState::Absent => false
+            DropFlagState::Absent => false,
         }
     }
 }
@@ -38,20 +38,20 @@ pub enum DropStyle {
 #[derive(Debug)]
 pub enum DropFlagMode {
     Shallow,
-    Deep
+    Deep,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum Unwind {
     To(BasicBlock),
-    InCleanup
+    InCleanup,
 }
 
 impl Unwind {
     fn is_cleanup(self) -> bool {
         match self {
             Unwind::To(..) => false,
-            Unwind::InCleanup => true
+            Unwind::InCleanup => true,
         }
     }
 
@@ -62,16 +62,19 @@ impl Unwind {
         }
     }
 
-    fn map<F>(self, f: F) -> Self where F: FnOnce(BasicBlock) -> BasicBlock {
+    fn map<F>(self, f: F) -> Self
+    where
+        F: FnOnce(BasicBlock) -> BasicBlock,
+    {
         match self {
             Unwind::To(bb) => Unwind::To(f(bb)),
-            Unwind::InCleanup => Unwind::InCleanup
+            Unwind::InCleanup => Unwind::InCleanup,
         }
     }
 }
 
 pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
-    type Path : Copy + fmt::Debug;
+    type Path: Copy + fmt::Debug;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
     fn body(&self) -> &'a Body<'tcx>;
@@ -81,7 +84,6 @@ pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle;
     fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>>;
     fn clear_drop_flag(&mut self, location: Location, path: Self::Path, mode: DropFlagMode);
-
 
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path>;
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path>;
@@ -116,9 +118,7 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     D: DropElaborator<'b, 'tcx>,
     'tcx: 'b,
 {
-    DropCtxt {
-        elaborator, source_info, place, path, succ, unwind
-    }.elaborate_drop(bb)
+    DropCtxt { elaborator, source_info, place, path, succ, unwind }.elaborate_drop(bb)
 }
 
 impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
@@ -158,85 +158,98 @@ where
         debug!("elaborate_drop({:?}): live - {:?}", self, style);
         match style {
             DropStyle::Dead => {
-                self.elaborator.patch().patch_terminator(bb, TerminatorKind::Goto {
-                    target: self.succ
-                });
+                self.elaborator
+                    .patch()
+                    .patch_terminator(bb, TerminatorKind::Goto { target: self.succ });
             }
             DropStyle::Static => {
                 let loc = self.terminator_loc(bb);
                 self.elaborator.clear_drop_flag(loc, self.path, DropFlagMode::Deep);
-                self.elaborator.patch().patch_terminator(bb, TerminatorKind::Drop {
-                    location: self.place.clone(),
-                    target: self.succ,
-                    unwind: self.unwind.into_option(),
-                });
+                self.elaborator.patch().patch_terminator(
+                    bb,
+                    TerminatorKind::Drop {
+                        location: self.place.clone(),
+                        target: self.succ,
+                        unwind: self.unwind.into_option(),
+                    },
+                );
             }
             DropStyle::Conditional => {
                 let unwind = self.unwind; // FIXME(#43234)
                 let succ = self.succ;
                 let drop_bb = self.complete_drop(Some(DropFlagMode::Deep), succ, unwind);
-                self.elaborator.patch().patch_terminator(bb, TerminatorKind::Goto {
-                    target: drop_bb
-                });
+                self.elaborator
+                    .patch()
+                    .patch_terminator(bb, TerminatorKind::Goto { target: drop_bb });
             }
             DropStyle::Open => {
                 let drop_bb = self.open_drop();
-                self.elaborator.patch().patch_terminator(bb, TerminatorKind::Goto {
-                    target: drop_bb
-                });
+                self.elaborator
+                    .patch()
+                    .patch_terminator(bb, TerminatorKind::Goto { target: drop_bb });
             }
         }
     }
 
     /// Returns the place and move path for each field of `variant`,
     /// (the move path is `None` if the field is a rest field).
-    fn move_paths_for_fields(&self,
-                             base_place: &Place<'tcx>,
-                             variant_path: D::Path,
-                             variant: &'tcx ty::VariantDef,
-                             substs: SubstsRef<'tcx>)
-                             -> Vec<(Place<'tcx>, Option<D::Path>)>
-    {
-        variant.fields.iter().enumerate().map(|(i, f)| {
-            let field = Field::new(i);
-            let subpath = self.elaborator.field_subpath(variant_path, field);
-            let tcx = self.tcx();
+    fn move_paths_for_fields(
+        &self,
+        base_place: &Place<'tcx>,
+        variant_path: D::Path,
+        variant: &'tcx ty::VariantDef,
+        substs: SubstsRef<'tcx>,
+    ) -> Vec<(Place<'tcx>, Option<D::Path>)> {
+        variant
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                let field = Field::new(i);
+                let subpath = self.elaborator.field_subpath(variant_path, field);
+                let tcx = self.tcx();
 
-            assert_eq!(self.elaborator.param_env().reveal, Reveal::All);
-            let field_ty = tcx.normalize_erasing_regions(
-                self.elaborator.param_env(),
-                f.ty(tcx, substs),
-            );
-            (tcx.mk_place_field(base_place.clone(), field, field_ty), subpath)
-        }).collect()
+                assert_eq!(self.elaborator.param_env().reveal, Reveal::All);
+                let field_ty =
+                    tcx.normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, substs));
+                (tcx.mk_place_field(base_place.clone(), field, field_ty), subpath)
+            })
+            .collect()
     }
 
-    fn drop_subpath(&mut self,
-                    place: &Place<'tcx>,
-                    path: Option<D::Path>,
-                    succ: BasicBlock,
-                    unwind: Unwind)
-                    -> BasicBlock
-    {
+    fn drop_subpath(
+        &mut self,
+        place: &Place<'tcx>,
+        path: Option<D::Path>,
+        succ: BasicBlock,
+        unwind: Unwind,
+    ) -> BasicBlock {
         if let Some(path) = path {
             debug!("drop_subpath: for std field {:?}", place);
 
             DropCtxt {
                 elaborator: self.elaborator,
                 source_info: self.source_info,
-                path, place, succ, unwind,
-            }.elaborated_drop_block()
+                path,
+                place,
+                succ,
+                unwind,
+            }
+            .elaborated_drop_block()
         } else {
             debug!("drop_subpath: for rest field {:?}", place);
 
             DropCtxt {
                 elaborator: self.elaborator,
                 source_info: self.source_info,
-                place, succ, unwind,
+                place,
+                succ,
+                unwind,
                 // Using `self.path` here to condition the drop on
                 // our own drop flag.
-                path: self.path
-            }.complete_drop(None, succ, unwind)
+                path: self.path,
+            }
+            .complete_drop(None, succ, unwind)
         }
     }
 
@@ -246,19 +259,21 @@ where
     ///
     /// `unwind_ladder` is such a list of steps in reverse order,
     /// which is called if the matching step of the drop glue panics.
-    fn drop_halfladder(&mut self,
-                       unwind_ladder: &[Unwind],
-                       mut succ: BasicBlock,
-                       fields: &[(Place<'tcx>, Option<D::Path>)])
-                       -> Vec<BasicBlock>
-    {
-        Some(succ).into_iter().chain(
-            fields.iter().rev().zip(unwind_ladder)
-                .map(|(&(ref place, path), &unwind_succ)| {
+    fn drop_halfladder(
+        &mut self,
+        unwind_ladder: &[Unwind],
+        mut succ: BasicBlock,
+        fields: &[(Place<'tcx>, Option<D::Path>)],
+    ) -> Vec<BasicBlock> {
+        Some(succ)
+            .into_iter()
+            .chain(fields.iter().rev().zip(unwind_ladder).map(
+                |(&(ref place, path), &unwind_succ)| {
                     succ = self.drop_subpath(place, path, succ, unwind_succ);
                     succ
-                })
-        ).collect()
+                },
+            ))
+            .collect()
     }
 
     fn drop_ladder_bottom(&mut self) -> (BasicBlock, Unwind) {
@@ -270,7 +285,7 @@ where
             self.drop_flag_reset_block(DropFlagMode::Shallow, succ, unwind),
             unwind.map(|unwind| {
                 self.drop_flag_reset_block(DropFlagMode::Shallow, unwind, Unwind::InCleanup)
-            })
+            }),
         )
     }
 
@@ -314,8 +329,7 @@ where
             unwind_ladder
         };
 
-        let normal_ladder =
-            self.drop_halfladder(&unwind_ladder, succ, &fields);
+        let normal_ladder = self.drop_halfladder(&unwind_ladder, succ, &fields);
 
         (*normal_ladder.last().unwrap(), *unwind_ladder.last().unwrap())
     }
@@ -323,10 +337,16 @@ where
     fn open_drop_for_tuple(&mut self, tys: &[Ty<'tcx>]) -> BasicBlock {
         debug!("open_drop_for_tuple({:?}, {:?})", self, tys);
 
-        let fields = tys.iter().enumerate().map(|(i, &ty)| {
-            (self.tcx().mk_place_field(self.place.clone(), Field::new(i), ty),
-             self.elaborator.field_subpath(self.path, Field::new(i)))
-        }).collect();
+        let fields = tys
+            .iter()
+            .enumerate()
+            .map(|(i, &ty)| {
+                (
+                    self.tcx().mk_place_field(self.place.clone(), Field::new(i), ty),
+                    self.elaborator.field_subpath(self.path, Field::new(i)),
+                )
+            })
+            .collect();
 
         let (succ, unwind) = self.drop_ladder_bottom();
         self.drop_ladder(fields, succ, unwind).0
@@ -341,9 +361,8 @@ where
         let succ = self.succ; // FIXME(#43234)
         let unwind = self.unwind;
         let succ = self.box_free_block(adt, substs, succ, unwind);
-        let unwind_succ = self.unwind.map(|unwind| {
-            self.box_free_block(adt, substs, unwind, Unwind::InCleanup)
-        });
+        let unwind_succ =
+            self.unwind.map(|unwind| self.box_free_block(adt, substs, unwind, Unwind::InCleanup));
 
         self.drop_subpath(&interior, interior_path, succ, unwind_succ)
     }
@@ -355,9 +374,9 @@ where
                 statements: vec![],
                 terminator: Some(Terminator {
                     source_info: self.source_info,
-                    kind: TerminatorKind::Unreachable
+                    kind: TerminatorKind::Unreachable,
                 }),
-                is_cleanup: self.unwind.is_cleanup()
+                is_cleanup: self.unwind.is_cleanup(),
             });
         }
 
@@ -376,16 +395,18 @@ where
         }
     }
 
-    fn open_drop_for_adt_contents(&mut self, adt: &'tcx ty::AdtDef,
-                                  substs: SubstsRef<'tcx>)
-                                  -> (BasicBlock, Unwind) {
+    fn open_drop_for_adt_contents(
+        &mut self,
+        adt: &'tcx ty::AdtDef,
+        substs: SubstsRef<'tcx>,
+    ) -> (BasicBlock, Unwind) {
         let (succ, unwind) = self.drop_ladder_bottom();
         if !adt.is_enum() {
             let fields = self.move_paths_for_fields(
                 self.place,
                 self.path,
                 &adt.variants[VariantIdx::new(0)],
-                substs
+                substs,
             );
             self.drop_ladder(fields, succ, unwind)
         } else {
@@ -393,25 +414,23 @@ where
         }
     }
 
-    fn open_drop_for_multivariant(&mut self, adt: &'tcx ty::AdtDef,
-                                  substs: SubstsRef<'tcx>,
-                                  succ: BasicBlock,
-                                  unwind: Unwind)
-                                  -> (BasicBlock, Unwind) {
+    fn open_drop_for_multivariant(
+        &mut self,
+        adt: &'tcx ty::AdtDef,
+        substs: SubstsRef<'tcx>,
+        succ: BasicBlock,
+        unwind: Unwind,
+    ) -> (BasicBlock, Unwind) {
         let mut values = Vec::with_capacity(adt.variants.len());
         let mut normal_blocks = Vec::with_capacity(adt.variants.len());
-        let mut unwind_blocks = if unwind.is_cleanup() {
-            None
-        } else {
-            Some(Vec::with_capacity(adt.variants.len()))
-        };
+        let mut unwind_blocks =
+            if unwind.is_cleanup() { None } else { Some(Vec::with_capacity(adt.variants.len())) };
 
         let mut have_otherwise = false;
         let tcx = self.tcx();
 
         for (variant_index, discr) in adt.discriminants(tcx) {
-            let subpath = self.elaborator.downcast_subpath(
-                self.path, variant_index);
+            let subpath = self.elaborator.downcast_subpath(self.path, variant_index);
             if let Some(variant_path) = subpath {
                 let base_place = tcx.mk_place_elem(
                     self.place.clone(),
@@ -424,7 +443,8 @@ where
                     &base_place,
                     variant_path,
                     &adt.variants[variant_index],
-                    substs);
+                    substs,
+                );
                 values.push(discr.val);
                 if let Unwind::To(unwind) = unwind {
                     // We can't use the half-ladder from the original
@@ -447,8 +467,7 @@ where
 
                     let unwind_blocks = unwind_blocks.as_mut().unwrap();
                     let unwind_ladder = vec![Unwind::InCleanup; fields.len() + 1];
-                    let halfladder =
-                        self.drop_halfladder(&unwind_ladder, unwind, &fields);
+                    let halfladder = self.drop_halfladder(&unwind_ladder, unwind, &fields);
                     unwind_blocks.push(halfladder.last().cloned().unwrap());
                 }
                 let (normal, _) = self.drop_ladder(fields, succ, unwind);
@@ -461,29 +480,34 @@ where
         if have_otherwise {
             normal_blocks.push(self.drop_block(succ, unwind));
             if let Unwind::To(unwind) = unwind {
-                unwind_blocks.as_mut().unwrap().push(
-                    self.drop_block(unwind, Unwind::InCleanup)
-                        );
+                unwind_blocks.as_mut().unwrap().push(self.drop_block(unwind, Unwind::InCleanup));
             }
         } else {
             values.pop();
         }
 
-        (self.adt_switch_block(adt, normal_blocks, &values, succ, unwind),
-         unwind.map(|unwind| {
-             self.adt_switch_block(
-                 adt, unwind_blocks.unwrap(), &values, unwind, Unwind::InCleanup
-             )
-         }))
+        (
+            self.adt_switch_block(adt, normal_blocks, &values, succ, unwind),
+            unwind.map(|unwind| {
+                self.adt_switch_block(
+                    adt,
+                    unwind_blocks.unwrap(),
+                    &values,
+                    unwind,
+                    Unwind::InCleanup,
+                )
+            }),
+        )
     }
 
-    fn adt_switch_block(&mut self,
-                        adt: &'tcx ty::AdtDef,
-                        blocks: Vec<BasicBlock>,
-                        values: &[u128],
-                        succ: BasicBlock,
-                        unwind: Unwind)
-                        -> BasicBlock {
+    fn adt_switch_block(
+        &mut self,
+        adt: &'tcx ty::AdtDef,
+        blocks: Vec<BasicBlock>,
+        values: &[u128],
+        succ: BasicBlock,
+        unwind: Unwind,
+    ) -> BasicBlock {
         // If there are multiple variants, then if something
         // is present within the enum the discriminant, tracked
         // by the rest path, must be initialized.
@@ -503,7 +527,7 @@ where
                     switch_ty: discr_ty,
                     values: From::from(values.to_owned()),
                     targets: blocks,
-                }
+                },
             }),
             is_cleanup: unwind.is_cleanup(),
         };
@@ -519,24 +543,28 @@ where
         let ty = self.place_ty(self.place);
         let substs = tcx.mk_substs_trait(ty, &[]);
 
-        let ref_ty = tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut {
-            ty,
-            mutbl: hir::Mutability::Mut
-        });
+        let ref_ty =
+            tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut });
         let ref_place = self.new_temp(ref_ty);
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
 
         let result = BasicBlockData {
             statements: vec![self.assign(
                 &Place::from(ref_place),
-                Rvalue::Ref(tcx.lifetimes.re_erased,
-                            BorrowKind::Mut { allow_two_phase_borrow: false },
-                            self.place.clone())
+                Rvalue::Ref(
+                    tcx.lifetimes.re_erased,
+                    BorrowKind::Mut { allow_two_phase_borrow: false },
+                    self.place.clone(),
+                ),
             )],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
-                    func: Operand::function_handle(tcx, drop_fn.def_id, substs,
-                                                   self.source_info.span),
+                    func: Operand::function_handle(
+                        tcx,
+                        drop_fn.def_id,
+                        substs,
+                        self.source_info.span,
+                    ),
                     args: vec![Operand::Move(Place::from(ref_place))],
                     destination: Some((unit_temp, succ)),
                     cleanup: unwind.into_option(),
@@ -578,19 +606,13 @@ where
         let move_ = |place: Place<'tcx>| Operand::Move(place);
         let tcx = self.tcx();
 
-        let ptr_ty = tcx.mk_ptr(ty::TypeAndMut {
-            ty: ety,
-            mutbl: hir::Mutability::Mut
-        });
+        let ptr_ty = tcx.mk_ptr(ty::TypeAndMut { ty: ety, mutbl: hir::Mutability::Mut });
         let ptr = &Place::from(self.new_temp(ptr_ty));
         let can_go = Place::from(self.new_temp(tcx.types.bool));
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
-            (
-                Rvalue::Use(copy(cur.into())),
-                Rvalue::BinaryOp(BinOp::Offset, move_(cur.into()), one),
-            )
+            (Rvalue::Use(copy(cur.into())), Rvalue::BinaryOp(BinOp::Offset, move_(cur.into()), one))
         } else {
             (
                 Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place.clone(), cur)),
@@ -599,38 +621,37 @@ where
         };
 
         let drop_block = BasicBlockData {
-            statements: vec![
-                self.assign(ptr, ptr_next),
-                self.assign(&Place::from(cur), cur_next)
-            ],
+            statements: vec![self.assign(ptr, ptr_next), self.assign(&Place::from(cur), cur_next)],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
                 // this gets overwritten by drop elaboration.
                 kind: TerminatorKind::Unreachable,
-            })
+            }),
         };
         let drop_block = self.elaborator.patch().new_block(drop_block);
 
         let loop_block = BasicBlockData {
-            statements: vec![
-                self.assign(&can_go, Rvalue::BinaryOp(BinOp::Eq,
-                                                     copy(Place::from(cur)),
-                                                     copy(length_or_end.clone())))
-            ],
+            statements: vec![self.assign(
+                &can_go,
+                Rvalue::BinaryOp(BinOp::Eq, copy(Place::from(cur)), copy(length_or_end.clone())),
+            )],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
-                kind: TerminatorKind::if_(tcx, move_(can_go), succ, drop_block)
-            })
+                kind: TerminatorKind::if_(tcx, move_(can_go), succ, drop_block),
+            }),
         };
         let loop_block = self.elaborator.patch().new_block(loop_block);
 
-        self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
-            location: tcx.mk_place_deref(ptr.clone()),
-            target: loop_block,
-            unwind: unwind.into_option()
-        });
+        self.elaborator.patch().patch_terminator(
+            drop_block,
+            TerminatorKind::Drop {
+                location: tcx.mk_place_deref(ptr.clone()),
+                target: loop_block,
+                unwind: unwind.into_option(),
+            },
+        );
 
         loop_block
     }
@@ -666,9 +687,9 @@ where
                 })
                 .collect();
 
-            if fields.iter().any(|(_,path)| path.is_some()) {
+            if fields.iter().any(|(_, path)| path.is_some()) {
                 let (succ, unwind) = self.drop_ladder_bottom();
-                return self.drop_ladder(fields, succ, unwind).0
+                return self.drop_ladder(fields, succ, unwind).0;
             }
         }
 
@@ -695,7 +716,7 @@ where
                         self.drop_loop_pair(ety, true, len.clone()),
                     ],
                 },
-            })
+            }),
         };
         self.elaborator.patch().new_block(base_block)
     }
@@ -711,35 +732,17 @@ where
     ) -> BasicBlock {
         debug!("drop_loop_pair({:?}, {:?})", ety, ptr_based);
         let tcx = self.tcx();
-        let iter_ty = if ptr_based {
-            tcx.mk_mut_ptr(ety)
-        } else {
-            tcx.types.usize
-        };
+        let iter_ty = if ptr_based { tcx.mk_mut_ptr(ety) } else { tcx.types.usize };
 
         let cur = self.new_temp(iter_ty);
-        let length_or_end = if ptr_based {
-            Place::from(self.new_temp(iter_ty))
-        } else {
-            length.clone()
-        };
+        let length_or_end =
+            if ptr_based { Place::from(self.new_temp(iter_ty)) } else { length.clone() };
 
         let unwind = self.unwind.map(|unwind| {
-            self.drop_loop(unwind,
-                           cur,
-                           &length_or_end,
-                           ety,
-                           Unwind::InCleanup,
-                           ptr_based)
+            self.drop_loop(unwind, cur, &length_or_end, ety, Unwind::InCleanup, ptr_based)
         });
 
-        let loop_block = self.drop_loop(
-            self.succ,
-            cur,
-            &length_or_end,
-            ety,
-            unwind,
-            ptr_based);
+        let loop_block = self.drop_loop(self.succ, cur, &length_or_end, ety, unwind, ptr_based);
 
         let cur = Place::from(cur);
         let drop_block_stmts = if ptr_based {
@@ -766,8 +769,8 @@ where
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
-                kind: TerminatorKind::Goto { target: loop_block }
-            })
+                kind: TerminatorKind::Goto { target: loop_block },
+            }),
         });
 
         // FIXME(#34708): handle partially-dropped array/slice elements.
@@ -787,7 +790,7 @@ where
         let ty = self.place_ty(self.place);
         match ty.kind {
             ty::Closure(def_id, substs) => {
-                let tys : Vec<_> = substs.as_closure().upvar_tys(def_id, self.tcx()).collect();
+                let tys: Vec<_> = substs.as_closure().upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
             // Note that `elaborate_drops` only drops the upvars of a generator,
@@ -797,7 +800,7 @@ where
             // It effetively only contains upvars until the generator transformation runs.
             // See librustc_body/transform/generator.rs for more details.
             ty::Generator(def_id, substs, _) => {
-                let tys : Vec<_> = substs.as_generator().upvar_tys(def_id, self.tcx()).collect();
+                let tys: Vec<_> = substs.as_generator().upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
             ty::Tuple(..) => {
@@ -819,10 +822,10 @@ where
             ty::Array(ety, size) => {
                 let size = size.try_eval_usize(self.tcx(), self.elaborator.param_env());
                 self.open_drop_for_array(ety, size)
-            },
+            }
             ty::Slice(ety) => self.open_drop_for_array(ety, None),
 
-            _ => bug!("open drop from non-ADT `{:?}`", ty)
+            _ => bug!("open drop from non-ADT `{:?}`", ty),
         }
     }
 
@@ -851,11 +854,12 @@ where
         self.drop_flag_test_block(drop_block, succ, unwind)
     }
 
-    fn drop_flag_reset_block(&mut self,
-                             mode: DropFlagMode,
-                             succ: BasicBlock,
-                             unwind: Unwind) -> BasicBlock
-    {
+    fn drop_flag_reset_block(
+        &mut self,
+        mode: DropFlagMode,
+        succ: BasicBlock,
+        unwind: Unwind,
+    ) -> BasicBlock {
         debug!("drop_flag_reset_block({:?},{:?})", self, mode);
 
         let block = self.new_block(unwind, TerminatorKind::Goto { target: succ });
@@ -893,15 +897,18 @@ where
     ) -> BasicBlock {
         let tcx = self.tcx();
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
-        let free_func = tcx.require_lang_item(
-            lang_items::BoxFreeFnLangItem,
-            Some(self.source_info.span)
-        );
-        let args = adt.variants[VariantIdx::new(0)].fields.iter().enumerate().map(|(i, f)| {
-            let field = Field::new(i);
-            let field_ty = f.ty(tcx, substs);
-            Operand::Move(tcx.mk_place_field(self.place.clone(), field, field_ty))
-        }).collect();
+        let free_func =
+            tcx.require_lang_item(lang_items::BoxFreeFnLangItem, Some(self.source_info.span));
+        let args = adt.variants[VariantIdx::new(0)]
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                let field = Field::new(i);
+                let field_ty = f.ty(tcx, substs);
+                Operand::Move(tcx.mk_place_field(self.place.clone(), field, field_ty))
+            })
+            .collect();
 
         let call = TerminatorKind::Call {
             func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
@@ -921,20 +928,22 @@ where
         let block = TerminatorKind::Drop {
             location: self.place.clone(),
             target,
-            unwind: unwind.into_option()
+            unwind: unwind.into_option(),
         };
         self.new_block(unwind, block)
     }
 
-    fn drop_flag_test_block(&mut self,
-                            on_set: BasicBlock,
-                            on_unset: BasicBlock,
-                            unwind: Unwind)
-                            -> BasicBlock
-    {
+    fn drop_flag_test_block(
+        &mut self,
+        on_set: BasicBlock,
+        on_unset: BasicBlock,
+        unwind: Unwind,
+    ) -> BasicBlock {
         let style = self.elaborator.drop_style(self.path, DropFlagMode::Shallow);
-        debug!("drop_flag_test_block({:?},{:?},{:?},{:?}) - {:?}",
-               self, on_set, on_unset, unwind, style);
+        debug!(
+            "drop_flag_test_block({:?},{:?},{:?},{:?}) - {:?}",
+            self, on_set, on_unset, unwind, style
+        );
 
         match style {
             DropStyle::Dead => on_unset,
@@ -950,10 +959,8 @@ where
     fn new_block(&mut self, unwind: Unwind, k: TerminatorKind<'tcx>) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData {
             statements: vec![],
-            terminator: Some(Terminator {
-                source_info: self.source_info, kind: k
-            }),
-            is_cleanup: unwind.is_cleanup()
+            terminator: Some(Terminator { source_info: self.source_info, kind: k }),
+            is_cleanup: unwind.is_cleanup(),
         })
     }
 
@@ -977,7 +984,7 @@ where
     fn assign(&self, lhs: &Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
         Statement {
             source_info: self.source_info,
-            kind: StatementKind::Assign(box(lhs.clone(), rhs))
+            kind: StatementKind::Assign(box (lhs.clone(), rhs)),
         }
     }
 }

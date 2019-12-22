@@ -1,16 +1,23 @@
 //! Diagnostics related methods for `TyS`.
 
-use crate::ty::TyS;
-use crate::ty::TyKind::*;
 use crate::ty::sty::InferTy;
+use crate::ty::TyKind::*;
+use crate::ty::TyS;
 
 impl<'tcx> TyS<'tcx> {
     /// Similar to `TyS::is_primitive`, but also considers inferred numeric values to be primitive.
     pub fn is_primitive_ty(&self) -> bool {
         match self.kind {
-            Bool | Char | Str | Int(_) | Uint(_) | Float(_) |
-            Infer(InferTy::IntVar(_)) | Infer(InferTy::FloatVar(_)) |
-            Infer(InferTy::FreshIntTy(_)) | Infer(InferTy::FreshFloatTy(_)) => true,
+            Bool
+            | Char
+            | Str
+            | Int(_)
+            | Uint(_)
+            | Float(_)
+            | Infer(InferTy::IntVar(_))
+            | Infer(InferTy::FloatVar(_))
+            | Infer(InferTy::FreshIntTy(_))
+            | Infer(InferTy::FreshFloatTy(_)) => true,
             _ => false,
         }
     }
@@ -19,9 +26,16 @@ impl<'tcx> TyS<'tcx> {
     /// description in error messages. This is used in the main error message.
     pub fn is_simple_ty(&self) -> bool {
         match self.kind {
-            Bool | Char | Str | Int(_) | Uint(_) | Float(_) |
-            Infer(InferTy::IntVar(_)) | Infer(InferTy::FloatVar(_)) |
-            Infer(InferTy::FreshIntTy(_)) | Infer(InferTy::FreshFloatTy(_)) => true,
+            Bool
+            | Char
+            | Str
+            | Int(_)
+            | Uint(_)
+            | Float(_)
+            | Infer(InferTy::IntVar(_))
+            | Infer(InferTy::FloatVar(_))
+            | Infer(InferTy::FreshIntTy(_))
+            | Infer(InferTy::FreshFloatTy(_)) => true,
             Ref(_, x, _) | Array(x, _) | Slice(x) => x.peel_refs().is_simple_ty(),
             Tuple(tys) if tys.is_empty() => true,
             _ => false,
@@ -43,13 +57,8 @@ impl<'tcx> TyS<'tcx> {
     /// Whether the type can be safely suggested during error recovery.
     pub fn is_suggestable(&self) -> bool {
         match self.kind {
-            Opaque(..) |
-            FnDef(..) |
-            FnPtr(..) |
-            Dynamic(..) |
-            Closure(..) |
-            Infer(..) |
-            Projection(..) => false,
+            Opaque(..) | FnDef(..) | FnPtr(..) | Dynamic(..) | Closure(..) | Infer(..)
+            | Projection(..) => false,
             _ => true,
         }
     }

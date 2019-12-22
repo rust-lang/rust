@@ -2,10 +2,10 @@
 //! compilation. This is used for incremental compilation tests and debug
 //! output.
 
+use log::debug;
 use rustc_data_structures::fx::FxHashMap;
 use std::sync::{Arc, Mutex};
 use syntax_pos::Span;
-use log::debug;
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum CguReuse {
@@ -40,30 +40,21 @@ pub struct CguReuseTracker {
 
 impl CguReuseTracker {
     pub fn new() -> CguReuseTracker {
-        let data = TrackerData {
-            actual_reuse: Default::default(),
-            expected_reuse: Default::default(),
-        };
+        let data =
+            TrackerData { actual_reuse: Default::default(), expected_reuse: Default::default() };
 
-        CguReuseTracker {
-            data: Some(Arc::new(Mutex::new(data))),
-        }
+        CguReuseTracker { data: Some(Arc::new(Mutex::new(data))) }
     }
 
     pub fn new_disabled() -> CguReuseTracker {
-        CguReuseTracker {
-            data: None,
-        }
+        CguReuseTracker { data: None }
     }
 
     pub fn set_actual_reuse(&self, cgu_name: &str, kind: CguReuse) {
         if let Some(ref data) = self.data {
             debug!("set_actual_reuse({:?}, {:?})", cgu_name, kind);
 
-            let prev_reuse = data.lock()
-                                 .unwrap()
-                                 .actual_reuse
-                                 .insert(cgu_name.to_string(), kind);
+            let prev_reuse = data.lock().unwrap().actual_reuse.insert(cgu_name.to_string(), kind);
 
             if let Some(prev_reuse) = prev_reuse {
                 // The only time it is legal to overwrite reuse state is when
@@ -74,23 +65,22 @@ impl CguReuseTracker {
         }
     }
 
-    pub fn set_expectation(&self,
-                           cgu_name: &str,
-                           cgu_user_name: &str,
-                           error_span: Span,
-                           expected_reuse: CguReuse,
-                           comparison_kind: ComparisonKind) {
+    pub fn set_expectation(
+        &self,
+        cgu_name: &str,
+        cgu_user_name: &str,
+        error_span: Span,
+        expected_reuse: CguReuse,
+        comparison_kind: ComparisonKind,
+    ) {
         if let Some(ref data) = self.data {
-            debug!("set_expectation({:?}, {:?}, {:?})", cgu_name,
-                                                        expected_reuse,
-                                                        comparison_kind);
+            debug!("set_expectation({:?}, {:?}, {:?})", cgu_name, expected_reuse, comparison_kind);
             let mut data = data.lock().unwrap();
 
-            data.expected_reuse.insert(cgu_name.to_string(),
-                                       (cgu_user_name.to_string(),
-                                        SendSpan(error_span),
-                                        expected_reuse,
-                                        comparison_kind));
+            data.expected_reuse.insert(
+                cgu_name.to_string(),
+                (cgu_user_name.to_string(), SendSpan(error_span), expected_reuse, comparison_kind),
+            );
         }
     }
 
@@ -98,35 +88,30 @@ impl CguReuseTracker {
         if let Some(ref data) = self.data {
             let data = data.lock().unwrap();
 
-            for (cgu_name, &(ref cgu_user_name,
-                             ref error_span,
-                             expected_reuse,
-                             comparison_kind)) in &data.expected_reuse {
+            for (cgu_name, &(ref cgu_user_name, ref error_span, expected_reuse, comparison_kind)) in
+                &data.expected_reuse
+            {
                 if let Some(&actual_reuse) = data.actual_reuse.get(cgu_name) {
                     let (error, at_least) = match comparison_kind {
-                        ComparisonKind::Exact => {
-                            (expected_reuse != actual_reuse, false)
-                        }
-                        ComparisonKind::AtLeast => {
-                            (actual_reuse < expected_reuse, true)
-                        }
+                        ComparisonKind::Exact => (expected_reuse != actual_reuse, false),
+                        ComparisonKind::AtLeast => (actual_reuse < expected_reuse, true),
                     };
 
                     if error {
                         let at_least = if at_least { "at least " } else { "" };
-                        let msg = format!("CGU-reuse for `{}` is `{:?}` but \
+                        let msg = format!(
+                            "CGU-reuse for `{}` is `{:?}` but \
                                            should be {}`{:?}`",
-                                          cgu_user_name,
-                                          actual_reuse,
-                                          at_least,
-                                          expected_reuse);
+                            cgu_user_name, actual_reuse, at_least, expected_reuse
+                        );
                         diag.span_err(error_span.0, &msg);
                     }
                 } else {
-                    let msg = format!("CGU-reuse for `{}` (mangled: `{}`) was \
+                    let msg = format!(
+                        "CGU-reuse for `{}` (mangled: `{}`) was \
                                        not recorded",
-                                       cgu_user_name,
-                                       cgu_name);
+                        cgu_user_name, cgu_name
+                    );
                     diag.span_fatal(error_span.0, &msg).raise();
                 }
             }

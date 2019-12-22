@@ -2765,8 +2765,7 @@ mod tests {
         let buf1 = [1; 8];
         let buf2 = [2; 16];
         let buf3 = [3; 8];
-        let mut bufs =
-            &mut [IoSlice::new(&buf1), IoSlice::new(&buf2), IoSlice::new(&buf3)][..];
+        let mut bufs = &mut [IoSlice::new(&buf1), IoSlice::new(&buf2), IoSlice::new(&buf3)][..];
 
         // Only in a single buffer..
         bufs = IoSlice::advance(bufs, 1);

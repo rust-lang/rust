@@ -4,11 +4,11 @@
 //! N.B., we do _not_ erase regions of statements that are relevant for
 //! "types-as-contracts"-validation, namely, `AcquireValid` and `ReleaseValid`.
 
+use crate::transform::{MirPass, MirSource};
+use rustc::mir::visit::{MutVisitor, TyContext};
+use rustc::mir::*;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::mir::*;
-use rustc::mir::visit::{MutVisitor, TyContext};
-use crate::transform::{MirPass, MirSource};
 
 struct EraseRegionsVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -16,9 +16,7 @@ struct EraseRegionsVisitor<'tcx> {
 
 impl EraseRegionsVisitor<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-        EraseRegionsVisitor {
-            tcx,
-        }
+        EraseRegionsVisitor { tcx }
     }
 }
 
@@ -43,10 +41,7 @@ impl MutVisitor<'tcx> for EraseRegionsVisitor<'tcx> {
         *substs = self.tcx.erase_regions(substs);
     }
 
-    fn process_projection_elem(
-        &mut self,
-        elem: &PlaceElem<'tcx>,
-    ) -> Option<PlaceElem<'tcx>> {
+    fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
         if let PlaceElem::Field(field, ty) = elem {
             let new_ty = self.tcx.erase_regions(ty);
 

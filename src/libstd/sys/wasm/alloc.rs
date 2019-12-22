@@ -58,7 +58,7 @@ mod lock {
     pub fn lock() -> DropLock {
         loop {
             if LOCKED.swap(1, SeqCst) == 0 {
-                return DropLock
+                return DropLock;
             }
             // Ok so here's where things get a little depressing. At this point
             // in time we need to synchronously acquire a lock, but we're

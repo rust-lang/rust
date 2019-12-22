@@ -1,17 +1,15 @@
+use rustc::ty::adjustment::PointerCast;
+use rustc::ty::layout::{self, Size, TyLayout};
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
-use rustc::ty::layout::{self, TyLayout, Size};
-use rustc::ty::adjustment::{PointerCast};
 use syntax::ast::FloatTy;
 use syntax::symbol::sym;
 
-use rustc_apfloat::ieee::{Single, Double};
-use rustc_apfloat::{Float, FloatConvert};
-use rustc::mir::interpret::{
-    Scalar, InterpResult, PointerArithmetic,
-};
+use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc::mir::CastKind;
+use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::{Float, FloatConvert};
 
-use super::{InterpCx, Machine, PlaceTy, OpTy, ImmTy, Immediate, FnVal};
+use super::{FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
@@ -52,7 +50,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             self.param_env,
                             def_id,
                             substs,
-                        ).ok_or_else(|| err_inval!(TooGeneric))?;
+                        )
+                        .ok_or_else(|| err_inval!(TooGeneric))?;
 
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                         self.write_scalar(fn_ptr, dest)?;
@@ -107,55 +106,61 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match src.layout.ty.kind {
             // Floating point
-            Float(FloatTy::F32) =>
-                return Ok(self.cast_from_float(src.to_scalar()?.to_f32()?, dest_layout.ty)?.into()),
-            Float(FloatTy::F64) =>
-                return Ok(self.cast_from_float(src.to_scalar()?.to_f64()?, dest_layout.ty)?.into()),
+            Float(FloatTy::F32) => {
+                return Ok(self
+                    .cast_from_float(src.to_scalar()?.to_f32()?, dest_layout.ty)?
+                    .into());
+            }
+            Float(FloatTy::F64) => {
+                return Ok(self
+                    .cast_from_float(src.to_scalar()?.to_f64()?, dest_layout.ty)?
+                    .into());
+            }
             // The rest is integer/pointer-"like", including fn ptr casts and casts from enums that
             // are represented as integers.
-            _ =>
-                assert!(
-                    src.layout.ty.is_bool()       || src.layout.ty.is_char()     ||
-                    src.layout.ty.is_enum()       || src.layout.ty.is_integral() ||
-                    src.layout.ty.is_any_ptr(),
-                    "Unexpected cast from type {:?}", src.layout.ty
-                )
+            _ => assert!(
+                src.layout.ty.is_bool()
+                    || src.layout.ty.is_char()
+                    || src.layout.ty.is_enum()
+                    || src.layout.ty.is_integral()
+                    || src.layout.ty.is_any_ptr(),
+                "Unexpected cast from type {:?}",
+                src.layout.ty
+            ),
         }
 
         // Handle cast from a univariant (ZST) enum.
         match src.layout.variants {
             layout::Variants::Single { index } => {
-                if let Some(discr) =
-                    src.layout.ty.discriminant_for_variant(*self.tcx, index)
-                {
+                if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     assert!(src.layout.is_zst());
                     return Ok(Scalar::from_uint(discr.val, dest_layout.size).into());
                 }
             }
-            layout::Variants::Multiple { .. } => {},
+            layout::Variants::Multiple { .. } => {}
         }
 
         // Handle casting the metadata away from a fat pointer.
-        if src.layout.ty.is_unsafe_ptr() && dest_layout.ty.is_unsafe_ptr() &&
-            dest_layout.size != src.layout.size
+        if src.layout.ty.is_unsafe_ptr()
+            && dest_layout.ty.is_unsafe_ptr()
+            && dest_layout.size != src.layout.size
         {
-            assert_eq!(src.layout.size, 2*self.memory.pointer_size());
+            assert_eq!(src.layout.size, 2 * self.memory.pointer_size());
             assert_eq!(dest_layout.size, self.memory.pointer_size());
             assert!(dest_layout.ty.is_unsafe_ptr());
             match *src {
-                Immediate::ScalarPair(data, _) =>
-                    return Ok(data.into()),
-                Immediate::Scalar(..) =>
-                    bug!(
-                        "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
-                        *src, src.layout.ty, dest_layout.ty
-                    ),
+                Immediate::ScalarPair(data, _) => return Ok(data.into()),
+                Immediate::Scalar(..) => bug!(
+                    "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
+                    *src,
+                    src.layout.ty,
+                    dest_layout.ty
+                ),
             };
         }
 
         // Handle casting any ptr to raw ptr (might be a fat ptr).
-        if src.layout.ty.is_any_ptr() && dest_layout.ty.is_unsafe_ptr()
-        {
+        if src.layout.ty.is_any_ptr() && dest_layout.ty.is_unsafe_ptr() {
             // The only possible size-unequal case was handled above.
             assert_eq!(src.layout.size, dest_layout.size);
             return Ok(*src);
@@ -177,11 +182,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.abi.is_signed();
-        let v = if signed {
-            self.sign_extend(v, src_layout)
-        } else {
-            v
-        };
+        let v = if signed { self.sign_extend(v, src_layout) } else { v };
         trace!("cast_from_int: {}, {}, {}", v, src_layout.ty, dest_layout.ty);
         use rustc::ty::TyKind::*;
         match dest_layout.ty.kind {
@@ -190,24 +191,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(Scalar::from_uint(v, dest_layout.size))
             }
 
-            Float(FloatTy::F32) if signed => Ok(Scalar::from_f32(
-                Single::from_i128(v as i128).value
-            )),
-            Float(FloatTy::F64) if signed => Ok(Scalar::from_f64(
-                Double::from_i128(v as i128).value
-            )),
-            Float(FloatTy::F32) => Ok(Scalar::from_f32(
-                Single::from_u128(v).value
-            )),
-            Float(FloatTy::F64) => Ok(Scalar::from_f64(
-                Double::from_u128(v).value
-            )),
+            Float(FloatTy::F32) if signed => {
+                Ok(Scalar::from_f32(Single::from_i128(v as i128).value))
+            }
+            Float(FloatTy::F64) if signed => {
+                Ok(Scalar::from_f64(Double::from_i128(v as i128).value))
+            }
+            Float(FloatTy::F32) => Ok(Scalar::from_f32(Single::from_u128(v).value)),
+            Float(FloatTy::F64) => Ok(Scalar::from_f64(Double::from_u128(v).value)),
 
             Char => {
                 // `u8` to `char` cast
                 debug_assert_eq!(v as u8 as u128, v);
                 Ok(Scalar::from_uint(v, Size::from_bytes(4)))
-            },
+            }
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
             _ => bug!("invalid int to {:?} cast", dest_layout.ty),
@@ -217,9 +214,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn cast_from_float<F>(
         &self,
         f: F,
-        dest_ty: Ty<'tcx>
+        dest_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>>
-    where F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>
+    where
+        F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
     {
         use rustc::ty::TyKind::*;
         match dest_ty.kind {
@@ -229,19 +227,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let v = f.to_u128(width).value;
                 // This should already fit the bit width
                 Ok(Scalar::from_uint(v, Size::from_bits(width as u64)))
-            },
+            }
             // float -> int
             Int(t) => {
                 let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
                 let v = f.to_i128(width).value;
                 Ok(Scalar::from_int(v, Size::from_bits(width as u64)))
-            },
+            }
             // float -> f32
-            Float(FloatTy::F32) =>
-                Ok(Scalar::from_f32(f.convert(&mut false).value)),
+            Float(FloatTy::F32) => Ok(Scalar::from_f32(f.convert(&mut false).value)),
             // float -> f64
-            Float(FloatTy::F64) =>
-                Ok(Scalar::from_f64(f.convert(&mut false).value)),
+            Float(FloatTy::F64) => Ok(Scalar::from_f64(f.convert(&mut false).value)),
             // That's it.
             _ => bug!("invalid float to {:?} cast", dest_ty),
         }
@@ -296,10 +292,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} into {:?}", src, dest);
         match (&src.layout.ty.kind, &dest.layout.ty.kind) {
-            (&ty::Ref(_, s, _), &ty::Ref(_, d, _)) |
-            (&ty::Ref(_, s, _), &ty::RawPtr(TypeAndMut { ty: d, .. })) |
-            (&ty::RawPtr(TypeAndMut { ty: s, .. }),
-             &ty::RawPtr(TypeAndMut { ty: d, .. })) => {
+            (&ty::Ref(_, s, _), &ty::Ref(_, d, _))
+            | (&ty::Ref(_, s, _), &ty::RawPtr(TypeAndMut { ty: d, .. }))
+            | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: d, .. })) => {
                 self.unsize_into_ptr(src, dest, s, d)
             }
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
@@ -333,13 +328,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 Ok(())
             }
-            _ => {
-                bug!(
-                    "unsize_into: invalid conversion: {:?} -> {:?}",
-                    src.layout,
-                    dest.layout
-                )
-            }
+            _ => bug!("unsize_into: invalid conversion: {:?} -> {:?}", src.layout, dest.layout),
         }
     }
 }

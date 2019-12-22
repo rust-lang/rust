@@ -1,7 +1,7 @@
-use std::ffi::OsStr;
-use std::env;
-use std::path::PathBuf;
 use crate::common::Config;
+use std::env;
+use std::ffi::OsStr;
+use std::path::PathBuf;
 
 use log::*;
 
@@ -106,11 +106,7 @@ pub fn get_arch(triple: &str) -> &'static str {
 }
 
 pub fn matches_env(triple: &str, name: &str) -> bool {
-    if let Some(env) = triple.split('-').nth(3) {
-        env.starts_with(name)
-    } else {
-        false
-    }
+    if let Some(env) = triple.split('-').nth(3) { env.starts_with(name) } else { false }
 }
 
 pub fn get_pointer_width(triple: &str) -> &'static str {

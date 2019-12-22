@@ -2,14 +2,17 @@ use super::*;
 
 use std::boxed::Box;
 use std::clone::Clone;
-use std::sync::mpsc::channel;
+use std::convert::{From, TryInto};
 use std::mem::drop;
 use std::ops::Drop;
 use std::option::Option::{self, None, Some};
-use std::sync::atomic::{self, Ordering::{Acquire, SeqCst}};
-use std::thread;
+use std::sync::atomic::{
+    self,
+    Ordering::{Acquire, SeqCst},
+};
+use std::sync::mpsc::channel;
 use std::sync::Mutex;
-use std::convert::{From, TryInto};
+use std::thread;
 
 use crate::vec::Vec;
 
@@ -394,11 +397,8 @@ fn test_clone_from_slice_panic() {
         }
     }
 
-    let s: &[Fail] = &[
-        Fail(0, "foo".to_string()),
-        Fail(1, "bar".to_string()),
-        Fail(2, "baz".to_string()),
-    ];
+    let s: &[Fail] =
+        &[Fail(0, "foo".to_string()), Fail(1, "bar".to_string()), Fail(2, "baz".to_string())];
 
     // Should panic, but not cause memory corruption
     let _r: Arc<[Fail]> = Arc::from(s);

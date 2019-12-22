@@ -97,40 +97,40 @@ macro_rules! throw_machine_stop {
     };
 }
 
-mod error;
-mod value;
 mod allocation;
+mod error;
 mod pointer;
 mod queries;
+mod value;
 
 pub use self::error::{
-    InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
-    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicInfo, UnsupportedOpInfo,
-    InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviorInfo,
+    struct_error, AssertMessage, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
+    FrameInfo, InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, PanicInfo,
+    ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 
-pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue, get_slice_bytes};
+pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybeUndef};
 
 pub use self::allocation::{Allocation, AllocationExtra, Relocations, UndefMask};
 
-pub use self::pointer::{Pointer, PointerArithmetic, CheckInAllocMsg};
+pub use self::pointer::{CheckInAllocMsg, Pointer, PointerArithmetic};
 
-use crate::mir;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, TyCtxt, Instance};
+use crate::mir;
 use crate::ty::codec::TyDecoder;
 use crate::ty::layout::{self, Size};
 use crate::ty::subst::GenericArgKind;
-use std::io;
-use std::fmt;
-use std::num::NonZeroU32;
-use std::sync::atomic::{AtomicU32, Ordering};
-use rustc_serialize::{Encoder, Decodable, Encodable};
+use crate::ty::{self, Instance, TyCtxt};
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{Lock, HashMapExt};
+use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
 use rustc_macros::HashStable;
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
+use rustc_serialize::{Decodable, Encodable, Encoder};
+use std::fmt;
+use std::io;
+use std::num::NonZeroU32;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Uniquely identifies one of the following:
 /// - A constant
@@ -165,8 +165,8 @@ pub fn specialized_encode_alloc_id<'tcx, E: Encoder>(
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
 ) -> Result<(), E::Error> {
-    let alloc: GlobalAlloc<'tcx> = tcx.alloc_map.lock().get(alloc_id)
-        .expect("no value for given alloc ID");
+    let alloc: GlobalAlloc<'tcx> =
+        tcx.alloc_map.lock().get(alloc_id).expect("no value for given alloc ID");
     match alloc {
         GlobalAlloc::Memory(alloc) => {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
@@ -214,19 +214,13 @@ impl AllocDecodingState {
         // Make sure this is never zero.
         let session_id = DecodingSessionId::new((counter & 0x7FFFFFFF) + 1).unwrap();
 
-        AllocDecodingSession {
-            state: self,
-            session_id,
-        }
+        AllocDecodingSession { state: self, session_id }
     }
 
     pub fn new(data_offsets: Vec<u32>) -> Self {
         let decoding_state = vec![Lock::new(State::Empty); data_offsets.len()];
 
-        Self {
-            decoding_state,
-            data_offsets,
-        }
+        Self { decoding_state, data_offsets }
     }
 }
 
@@ -269,16 +263,15 @@ impl<'s> AllocDecodingSession<'s> {
                             // If this is an allocation, we need to reserve an
                             // `AllocId` so we can decode cyclic graphs.
                             let alloc_id = decoder.tcx().alloc_map.lock().reserve();
-                            *entry = State::InProgress(
-                                TinyList::new_single(self.session_id),
-                                alloc_id);
+                            *entry =
+                                State::InProgress(TinyList::new_single(self.session_id), alloc_id);
                             Some(alloc_id)
-                        },
+                        }
                         AllocDiscriminant::Fn | AllocDiscriminant::Static => {
                             // Fns and statics cannot be cyclic, and their `AllocId`
                             // is determined later by interning.
-                            *entry = State::InProgressNonAlloc(
-                                TinyList::new_single(self.session_id));
+                            *entry =
+                                State::InProgressNonAlloc(TinyList::new_single(self.session_id));
                             None
                         }
                     }
@@ -295,7 +288,7 @@ impl<'s> AllocDecodingSession<'s> {
                 State::InProgress(ref mut sessions, alloc_id) => {
                     if sessions.contains(&self.session_id) {
                         // Don't recurse.
-                        return Ok(alloc_id)
+                        return Ok(alloc_id);
                     } else {
                         // Start decoding concurrently.
                         sessions.insert(self.session_id);
@@ -315,7 +308,7 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("decoded alloc {:?}: {:#?}", alloc_id, alloc);
                     decoder.tcx().alloc_map.lock().set_alloc_id_same_memory(alloc_id, alloc);
                     Ok(alloc_id)
-                },
+                }
                 AllocDiscriminant::Fn => {
                     assert!(alloc_id.is_none());
                     trace!("creating fn alloc ID");
@@ -323,7 +316,7 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("decoded fn alloc instance: {:?}", instance);
                     let alloc_id = decoder.tcx().alloc_map.lock().create_fn_alloc(instance);
                     Ok(alloc_id)
-                },
+                }
                 AllocDiscriminant::Static => {
                     assert!(alloc_id.is_none());
                     trace!("creating extern static alloc ID");
@@ -379,11 +372,7 @@ pub struct AllocMap<'tcx> {
 
 impl<'tcx> AllocMap<'tcx> {
     pub fn new() -> Self {
-        AllocMap {
-            alloc_map: Default::default(),
-            dedup: Default::default(),
-            next_id: AllocId(0),
-        }
+        AllocMap { alloc_map: Default::default(), dedup: Default::default(), next_id: AllocId(0) }
     }
 
     /// Obtains a new allocation ID that can be referenced but does not
@@ -391,15 +380,13 @@ impl<'tcx> AllocMap<'tcx> {
     ///
     /// Make sure to call `set_alloc_id_memory` or `set_alloc_id_same_memory` before returning such
     /// an `AllocId` from a query.
-    pub fn reserve(
-        &mut self,
-    ) -> AllocId {
+    pub fn reserve(&mut self) -> AllocId {
         let next = self.next_id;
-        self.next_id.0 = self.next_id.0
-            .checked_add(1)
-            .expect("You overflowed a u64 by incrementing by 1... \
+        self.next_id.0 = self.next_id.0.checked_add(1).expect(
+            "You overflowed a u64 by incrementing by 1... \
                      You've just earned yourself a free drink if we ever meet. \
-                     Seriously, how did you do that?!");
+                     Seriously, how did you do that?!",
+        );
         next
     }
 
@@ -408,7 +395,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// to dedup IDs for "real" memory!
     fn reserve_and_set_dedup(&mut self, alloc: GlobalAlloc<'tcx>) -> AllocId {
         match alloc {
-            GlobalAlloc::Function(..) | GlobalAlloc::Static(..) => {},
+            GlobalAlloc::Function(..) | GlobalAlloc::Static(..) => {}
             GlobalAlloc::Memory(..) => bug!("Trying to dedup-reserve memory with real data!"),
         }
         if let Some(&alloc_id) = self.dedup.get(&alloc) {
@@ -437,11 +424,9 @@ impl<'tcx> AllocMap<'tcx> {
         // `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
         // However, formatting code relies on function identity (see #58320), so we only do
         // this for generic functions.  Lifetime parameters are ignored.
-        let is_generic = instance.substs.into_iter().any(|kind| {
-            match kind.unpack() {
-                GenericArgKind::Lifetime(_) => false,
-                _ => true,
-            }
+        let is_generic = instance.substs.into_iter().any(|kind| match kind.unpack() {
+            GenericArgKind::Lifetime(_) => false,
+            _ => true,
         });
         if is_generic {
             // Get a fresh ID.

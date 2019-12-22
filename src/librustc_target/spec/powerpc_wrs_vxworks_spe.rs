@@ -20,7 +20,7 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             // feature msync would disable instruction 'fsync' which is not supported by fsl_p1p2
             features: "+secure-plt,+msync".to_string(),
-            .. base
+            ..base
         },
     })
 }

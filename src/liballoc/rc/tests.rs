@@ -2,11 +2,11 @@ use super::*;
 
 use std::boxed::Box;
 use std::cell::RefCell;
-use std::option::Option::{self, None, Some};
-use std::result::Result::{Err, Ok};
-use std::mem::drop;
 use std::clone::Clone;
 use std::convert::{From, TryInto};
+use std::mem::drop;
+use std::option::Option::{self, None, Some};
+use std::result::Result::{Err, Ok};
 
 #[test]
 fn test_clone() {
@@ -341,11 +341,8 @@ fn test_clone_from_slice_panic() {
         }
     }
 
-    let s: &[Fail] = &[
-        Fail(0, "foo".to_string()),
-        Fail(1, "bar".to_string()),
-        Fail(2, "baz".to_string()),
-    ];
+    let s: &[Fail] =
+        &[Fail(0, "foo".to_string()), Fail(1, "bar".to_string()), Fail(2, "baz".to_string())];
 
     // Should panic, but not cause memory corruption
     let _r: Rc<[Fail]> = Rc::from(s);

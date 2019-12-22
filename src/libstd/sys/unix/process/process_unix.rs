@@ -1,9 +1,9 @@
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::ptr;
+use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
-use crate::sys;
 
 use libc::{c_int, gid_t, pid_t, uid_t};
 
@@ -12,21 +12,23 @@ use libc::{c_int, gid_t, pid_t, uid_t};
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Command {
-    pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
-                 -> io::Result<(Process, StdioPipes)> {
+    pub fn spawn(
+        &mut self,
+        default: Stdio,
+        needs_stdin: bool,
+    ) -> io::Result<(Process, StdioPipes)> {
         const CLOEXEC_MSG_FOOTER: &[u8] = b"NOEX";
 
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new(ErrorKind::InvalidInput,
-                                      "nul byte found in provided data"));
+            return Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"));
         }
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
         if let Some(ret) = self.posix_spawn(&theirs, envp.as_ref())? {
-            return Ok((ret, ours))
+            return Ok((ret, ours));
         }
 
         let (input, output) = sys::pipe::anon_pipe()?;
@@ -53,10 +55,12 @@ impl Command {
                     let bytes = [
                         (errno >> 24) as u8,
                         (errno >> 16) as u8,
-                        (errno >>  8) as u8,
-                        (errno >>  0) as u8,
-                        CLOEXEC_MSG_FOOTER[0], CLOEXEC_MSG_FOOTER[1],
-                        CLOEXEC_MSG_FOOTER[2], CLOEXEC_MSG_FOOTER[3]
+                        (errno >> 8) as u8,
+                        (errno >> 0) as u8,
+                        CLOEXEC_MSG_FOOTER[0],
+                        CLOEXEC_MSG_FOOTER[1],
+                        CLOEXEC_MSG_FOOTER[2],
+                        CLOEXEC_MSG_FOOTER[3],
                     ];
                     // pipe I/O up to PIPE_BUF bytes should be atomic, and then
                     // we want to be sure we *don't* run at_exit destructors as
@@ -77,22 +81,23 @@ impl Command {
             match input.read(&mut bytes) {
                 Ok(0) => return Ok((p, ours)),
                 Ok(8) => {
-                    assert!(combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4.. 8]),
-                            "Validation on the CLOEXEC pipe failed: {:?}", bytes);
-                    let errno = combine(&bytes[0.. 4]);
-                    assert!(p.wait().is_ok(),
-                            "wait() should either return Ok or panic");
-                    return Err(Error::from_raw_os_error(errno))
+                    assert!(
+                        combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4..8]),
+                        "Validation on the CLOEXEC pipe failed: {:?}",
+                        bytes
+                    );
+                    let errno = combine(&bytes[0..4]);
+                    assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
+                    return Err(Error::from_raw_os_error(errno));
                 }
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => {
-                    assert!(p.wait().is_ok(),
-                            "wait() should either return Ok or panic");
+                    assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
                     panic!("the CLOEXEC pipe failed: {:?}", e)
-                },
-                Ok(..) => { // pipe I/O up to PIPE_BUF bytes should be atomic
-                    assert!(p.wait().is_ok(),
-                            "wait() should either return Ok or panic");
+                }
+                Ok(..) => {
+                    // pipe I/O up to PIPE_BUF bytes should be atomic
+                    assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
                     panic!("short read on the CLOEXEC pipe")
                 }
             }
@@ -112,8 +117,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return io::Error::new(ErrorKind::InvalidInput,
-                                  "nul byte found in provided data")
+            return io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data");
         }
 
         match self.setup_io(default, true) {
@@ -165,7 +169,7 @@ impl Command {
     unsafe fn do_exec(
         &mut self,
         stdio: ChildPipes,
-        maybe_envp: Option<&CStringArray>
+        maybe_envp: Option<&CStringArray>,
     ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
@@ -215,11 +219,10 @@ impl Command {
             // we're about to run.
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(),
-                                         ptr::null_mut()))?;
+            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
             let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
             if ret == libc::SIG_ERR {
-                return Err(io::Error::last_os_error())
+                return Err(io::Error::last_os_error());
             }
         }
 
@@ -252,29 +255,40 @@ impl Command {
         Err(io::Error::last_os_error())
     }
 
-    #[cfg(not(any(target_os = "macos", target_os = "freebsd",
-                  all(target_os = "linux", target_env = "gnu"))))]
-    fn posix_spawn(&mut self, _: &ChildPipes, _: Option<&CStringArray>)
-        -> io::Result<Option<Process>>
-    {
+    #[cfg(not(any(
+        target_os = "macos",
+        target_os = "freebsd",
+        all(target_os = "linux", target_env = "gnu")
+    )))]
+    fn posix_spawn(
+        &mut self,
+        _: &ChildPipes,
+        _: Option<&CStringArray>,
+    ) -> io::Result<Option<Process>> {
         Ok(None)
     }
 
     // Only support platforms for which posix_spawn() can return ENOENT
     // directly.
-    #[cfg(any(target_os = "macos", target_os = "freebsd",
-              all(target_os = "linux", target_env = "gnu")))]
-    fn posix_spawn(&mut self, stdio: &ChildPipes, envp: Option<&CStringArray>)
-        -> io::Result<Option<Process>>
-    {
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "freebsd",
+        all(target_os = "linux", target_env = "gnu")
+    ))]
+    fn posix_spawn(
+        &mut self,
+        stdio: &ChildPipes,
+        envp: Option<&CStringArray>,
+    ) -> io::Result<Option<Process>> {
         use crate::mem::MaybeUninit;
         use crate::sys;
 
-        if self.get_gid().is_some() ||
-            self.get_uid().is_some() ||
-            self.env_saw_path() ||
-            !self.get_closures().is_empty() {
-            return Ok(None)
+        if self.get_gid().is_some()
+            || self.get_uid().is_some()
+            || self.env_saw_path()
+            || !self.get_closures().is_empty()
+        {
+            return Ok(None);
         }
 
         // Only glibc 2.24+ posix_spawn() supports returning ENOENT directly.
@@ -282,10 +296,10 @@ impl Command {
         {
             if let Some(version) = sys::os::glibc_version() {
                 if version < (2, 24) {
-                    return Ok(None)
+                    return Ok(None);
                 }
             } else {
-                return Ok(None)
+                return Ok(None);
             }
         }
 
@@ -337,19 +351,25 @@ impl Command {
             libc::posix_spawn_file_actions_init(file_actions.0.as_mut_ptr());
 
             if let Some(fd) = stdio.stdin.fd() {
-                cvt(libc::posix_spawn_file_actions_adddup2(file_actions.0.as_mut_ptr(),
-                                                           fd,
-                                                           libc::STDIN_FILENO))?;
+                cvt(libc::posix_spawn_file_actions_adddup2(
+                    file_actions.0.as_mut_ptr(),
+                    fd,
+                    libc::STDIN_FILENO,
+                ))?;
             }
             if let Some(fd) = stdio.stdout.fd() {
-                cvt(libc::posix_spawn_file_actions_adddup2(file_actions.0.as_mut_ptr(),
-                                                           fd,
-                                                           libc::STDOUT_FILENO))?;
+                cvt(libc::posix_spawn_file_actions_adddup2(
+                    file_actions.0.as_mut_ptr(),
+                    fd,
+                    libc::STDOUT_FILENO,
+                ))?;
             }
             if let Some(fd) = stdio.stderr.fd() {
-                cvt(libc::posix_spawn_file_actions_adddup2(file_actions.0.as_mut_ptr(),
-                                                           fd,
-                                                           libc::STDERR_FILENO))?;
+                cvt(libc::posix_spawn_file_actions_adddup2(
+                    file_actions.0.as_mut_ptr(),
+                    fd,
+                    libc::STDERR_FILENO,
+                ))?;
             }
             if let Some((f, cwd)) = addchdir {
                 cvt(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
@@ -357,20 +377,16 @@ impl Command {
 
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(),
-                                                 set.as_ptr()))?;
+            cvt(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(), set.as_ptr()))?;
             cvt(sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
-            cvt(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(),
-                                                    set.as_ptr()))?;
+            cvt(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(), set.as_ptr()))?;
 
-            let flags = libc::POSIX_SPAWN_SETSIGDEF |
-                libc::POSIX_SPAWN_SETSIGMASK;
+            let flags = libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK;
             cvt(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
             let _env_lock = sys::os::env_lock();
-            let envp = envp.map(|c| c.as_ptr())
-                .unwrap_or_else(|| *sys::os::environ() as *const _);
+            let envp = envp.map(|c| c.as_ptr()).unwrap_or_else(|| *sys::os::environ() as *const _);
             let ret = libc::posix_spawnp(
                 &mut p.pid,
                 self.get_program().as_ptr(),
@@ -379,11 +395,7 @@ impl Command {
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
             );
-            if ret == 0 {
-                Ok(Some(p))
-            } else {
-                Err(io::Error::from_raw_os_error(ret))
-            }
+            if ret == 0 { Ok(Some(p)) } else { Err(io::Error::from_raw_os_error(ret)) }
         }
     }
 }
@@ -408,8 +420,10 @@ impl Process {
         // and used for another process, and we probably shouldn't be killing
         // random processes, so just return an error.
         if self.status.is_some() {
-            Err(Error::new(ErrorKind::InvalidInput,
-                           "invalid argument: can't kill an exited process"))
+            Err(Error::new(
+                ErrorKind::InvalidInput,
+                "invalid argument: can't kill an exited process",
+            ))
         } else {
             cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(|_| ())
         }
@@ -418,7 +432,7 @@ impl Process {
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use crate::sys::cvt_r;
         if let Some(status) = self.status {
-            return Ok(status)
+            return Ok(status);
         }
         let mut status = 0 as c_int;
         cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
@@ -428,12 +442,10 @@ impl Process {
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         if let Some(status) = self.status {
-            return Ok(Some(status))
+            return Ok(Some(status));
         }
         let mut status = 0 as c_int;
-        let pid = cvt(unsafe {
-            libc::waitpid(self.pid, &mut status, libc::WNOHANG)
-        })?;
+        let pid = cvt(unsafe { libc::waitpid(self.pid, &mut status, libc::WNOHANG) })?;
         if pid == 0 {
             Ok(None)
         } else {
@@ -461,19 +473,11 @@ impl ExitStatus {
     }
 
     pub fn code(&self) -> Option<i32> {
-        if self.exited() {
-            Some(unsafe { libc::WEXITSTATUS(self.0) })
-        } else {
-            None
-        }
+        if self.exited() { Some(unsafe { libc::WEXITSTATUS(self.0) }) } else { None }
     }
 
     pub fn signal(&self) -> Option<i32> {
-        if !self.exited() {
-            Some(unsafe { libc::WTERMSIG(self.0) })
-        } else {
-            None
-        }
+        if !self.exited() { Some(unsafe { libc::WTERMSIG(self.0) }) } else { None }
     }
 }
 

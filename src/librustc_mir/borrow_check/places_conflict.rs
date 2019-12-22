@@ -1,6 +1,6 @@
 use crate::borrow_check::ArtificialField;
 use crate::borrow_check::Overlap;
-use crate::borrow_check::{Deep, Shallow, AccessDepth};
+use crate::borrow_check::{AccessDepth, Deep, Shallow};
 use rustc::hir;
 use rustc::mir::{
     Body, BorrowKind, Place, PlaceBase, PlaceElem, PlaceRef, ProjectionElem, StaticKind,
@@ -340,7 +340,7 @@ fn place_base_conflict<'tcx>(
                         debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
                         Overlap::EqualOrDisjoint
                     }
-                },
+                }
                 (StaticKind::Promoted(promoted_1, _), StaticKind::Promoted(promoted_2, _)) => {
                     if promoted_1 == promoted_2 {
                         if let ty::Array(_, len) = s1.ty.kind {
@@ -358,15 +358,15 @@ fn place_base_conflict<'tcx>(
                         debug!("place_element_conflict: DISJOINT-PROMOTED");
                         Overlap::Disjoint
                     }
-                },
+                }
                 (_, _) => {
                     debug!("place_element_conflict: DISJOINT-STATIC-PROMOTED");
                     Overlap::Disjoint
                 }
             }
         }
-        (PlaceBase::Local(_), PlaceBase::Static(_)) |
-        (PlaceBase::Static(_), PlaceBase::Local(_)) => {
+        (PlaceBase::Local(_), PlaceBase::Static(_))
+        | (PlaceBase::Static(_), PlaceBase::Local(_)) => {
             debug!("place_element_conflict: DISJOINT-STATIC-LOCAL-PROMOTED");
             Overlap::Disjoint
         }
@@ -466,11 +466,14 @@ fn place_projection_conflict<'tcx>(
                 }
             }
         }
-        (ProjectionElem::ConstantIndex { offset: o1, min_length: _, from_end: false },
-            ProjectionElem::ConstantIndex { offset: o2, min_length: _, from_end: false })
-        | (ProjectionElem::ConstantIndex { offset: o1, min_length: _, from_end: true },
-            ProjectionElem::ConstantIndex {
-                offset: o2, min_length: _, from_end: true }) => {
+        (
+            ProjectionElem::ConstantIndex { offset: o1, min_length: _, from_end: false },
+            ProjectionElem::ConstantIndex { offset: o2, min_length: _, from_end: false },
+        )
+        | (
+            ProjectionElem::ConstantIndex { offset: o1, min_length: _, from_end: true },
+            ProjectionElem::ConstantIndex { offset: o2, min_length: _, from_end: true },
+        ) => {
             if o1 == o2 {
                 debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX");
                 Overlap::EqualOrDisjoint
@@ -479,14 +482,30 @@ fn place_projection_conflict<'tcx>(
                 Overlap::Disjoint
             }
         }
-        (ProjectionElem::ConstantIndex {
-            offset: offset_from_begin, min_length: min_length1, from_end: false },
+        (
             ProjectionElem::ConstantIndex {
-                offset: offset_from_end, min_length: min_length2, from_end: true })
-        | (ProjectionElem::ConstantIndex {
-            offset: offset_from_end, min_length: min_length1, from_end: true },
-           ProjectionElem::ConstantIndex {
-               offset: offset_from_begin, min_length: min_length2, from_end: false }) => {
+                offset: offset_from_begin,
+                min_length: min_length1,
+                from_end: false,
+            },
+            ProjectionElem::ConstantIndex {
+                offset: offset_from_end,
+                min_length: min_length2,
+                from_end: true,
+            },
+        )
+        | (
+            ProjectionElem::ConstantIndex {
+                offset: offset_from_end,
+                min_length: min_length1,
+                from_end: true,
+            },
+            ProjectionElem::ConstantIndex {
+                offset: offset_from_begin,
+                min_length: min_length2,
+                from_end: false,
+            },
+        ) => {
             // both patterns matched so it must be at least the greater of the two
             let min_length = max(min_length1, min_length2);
             // `offset_from_end` can be in range `[1..min_length]`, 1 indicates the last
@@ -503,11 +522,11 @@ fn place_projection_conflict<'tcx>(
         }
         (
             ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false },
-            ProjectionElem::Subslice { from, to, from_end: false }
+            ProjectionElem::Subslice { from, to, from_end: false },
         )
         | (
             ProjectionElem::Subslice { from, to, from_end: false },
-            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false }
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false },
         ) => {
             if (from..to).contains(&offset) {
                 debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-SUBSLICE");
@@ -517,26 +536,35 @@ fn place_projection_conflict<'tcx>(
                 Overlap::Disjoint
             }
         }
-        (ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false },
-         ProjectionElem::Subslice {from, .. })
-        | (ProjectionElem::Subslice {from, .. },
-            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false }) => {
+        (
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false },
+            ProjectionElem::Subslice { from, .. },
+        )
+        | (
+            ProjectionElem::Subslice { from, .. },
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false },
+        ) => {
             if offset >= from {
-                debug!(
-                    "place_element_conflict: DISJOINT-OR-EQ-SLICE-CONSTANT-INDEX-SUBSLICE");
+                debug!("place_element_conflict: DISJOINT-OR-EQ-SLICE-CONSTANT-INDEX-SUBSLICE");
                 Overlap::EqualOrDisjoint
             } else {
                 debug!("place_element_conflict: DISJOINT-SLICE-CONSTANT-INDEX-SUBSLICE");
                 Overlap::Disjoint
             }
         }
-        (ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true },
-         ProjectionElem::Subslice { to, from_end: true, .. })
-        | (ProjectionElem::Subslice { to, from_end: true, .. },
-            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true }) => {
+        (
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true },
+            ProjectionElem::Subslice { to, from_end: true, .. },
+        )
+        | (
+            ProjectionElem::Subslice { to, from_end: true, .. },
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true },
+        ) => {
             if offset > to {
-                debug!("place_element_conflict: \
-                       DISJOINT-OR-EQ-SLICE-CONSTANT-INDEX-SUBSLICE-FE");
+                debug!(
+                    "place_element_conflict: \
+                       DISJOINT-OR-EQ-SLICE-CONSTANT-INDEX-SUBSLICE-FE"
+                );
                 Overlap::EqualOrDisjoint
             } else {
                 debug!("place_element_conflict: DISJOINT-SLICE-CONSTANT-INDEX-SUBSLICE-FE");
@@ -545,7 +573,7 @@ fn place_projection_conflict<'tcx>(
         }
         (
             ProjectionElem::Subslice { from: f1, to: t1, from_end: false },
-            ProjectionElem::Subslice { from: f2, to: t2, from_end: false }
+            ProjectionElem::Subslice { from: f2, to: t2, from_end: false },
         ) => {
             if f2 >= t1 || f1 >= t2 {
                 debug!("place_element_conflict: DISJOINT-ARRAY-SUBSLICES");
@@ -557,7 +585,7 @@ fn place_projection_conflict<'tcx>(
         }
         (ProjectionElem::Subslice { .. }, ProjectionElem::Subslice { .. }) => {
             debug!("place_element_conflict: DISJOINT-OR-EQ-SLICE-SUBSLICES");
-             Overlap::EqualOrDisjoint
+            Overlap::EqualOrDisjoint
         }
         (ProjectionElem::Deref, _)
         | (ProjectionElem::Field(..), _)

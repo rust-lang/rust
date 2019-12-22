@@ -1,9 +1,9 @@
 //! Used by `rustc` when loading a plugin.
 
+use crate::Registry;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::Session;
 use rustc_metadata::locator;
-use crate::Registry;
 
 use std::borrow::ToOwned;
 use std::env;
@@ -26,9 +26,11 @@ fn call_malformed_plugin_attribute(sess: &Session, span: Span) {
 }
 
 /// Read plugin metadata and dynamically load registrar functions.
-pub fn load_plugins(sess: &Session,
-                    metadata_loader: &dyn MetadataLoader,
-                    krate: &Crate) -> Vec<PluginRegistrarFn> {
+pub fn load_plugins(
+    sess: &Session,
+    metadata_loader: &dyn MetadataLoader,
+    krate: &Crate,
+) -> Vec<PluginRegistrarFn> {
     let mut plugins = Vec::new();
 
     for attr in &krate.attrs {
@@ -38,8 +40,9 @@ pub fn load_plugins(sess: &Session,
 
         for plugin in attr.meta_item_list().unwrap_or_default() {
             match plugin.ident() {
-                Some(ident) if plugin.is_word() =>
-                    load_plugin(&mut plugins, sess, metadata_loader, ident),
+                Some(ident) if plugin.is_word() => {
+                    load_plugin(&mut plugins, sess, metadata_loader, ident)
+                }
                 _ => call_malformed_plugin_attribute(sess, plugin.span()),
             }
         }
@@ -48,10 +51,12 @@ pub fn load_plugins(sess: &Session,
     plugins
 }
 
-fn load_plugin(plugins: &mut Vec<PluginRegistrarFn>,
-               sess: &Session,
-               metadata_loader: &dyn MetadataLoader,
-               ident: Ident) {
+fn load_plugin(
+    plugins: &mut Vec<PluginRegistrarFn>,
+    sess: &Session,
+    metadata_loader: &dyn MetadataLoader,
+    ident: Ident,
+) {
     let registrar = locator::find_plugin_registrar(sess, metadata_loader, ident.span, ident.name);
 
     if let Some((lib, disambiguator)) = registrar {
@@ -62,10 +67,12 @@ fn load_plugin(plugins: &mut Vec<PluginRegistrarFn>,
 }
 
 // Dynamically link a registrar function into the compiler process.
-fn dylink_registrar(sess: &Session,
-                    span: Span,
-                    path: PathBuf,
-                    symbol: String) -> PluginRegistrarFn {
+fn dylink_registrar(
+    sess: &Session,
+    span: Span,
+    path: PathBuf,
+    symbol: String,
+) -> PluginRegistrarFn {
     use rustc_metadata::dynamic_lib::DynamicLibrary;
 
     // Make sure the path contains a / or the linker will search for it.
@@ -76,22 +83,15 @@ fn dylink_registrar(sess: &Session,
         // this is fatal: there are almost certainly macros we need
         // inside this crate, so continue would spew "macro undefined"
         // errors
-        Err(err) => {
-            sess.span_fatal(span, &err)
-        }
+        Err(err) => sess.span_fatal(span, &err),
     };
 
     unsafe {
-        let registrar =
-            match lib.symbol(&symbol) {
-                Ok(registrar) => {
-                    mem::transmute::<*mut u8, PluginRegistrarFn>(registrar)
-                }
-                // again fatal if we can't register macros
-                Err(err) => {
-                    sess.span_fatal(span, &err)
-                }
-            };
+        let registrar = match lib.symbol(&symbol) {
+            Ok(registrar) => mem::transmute::<*mut u8, PluginRegistrarFn>(registrar),
+            // again fatal if we can't register macros
+            Err(err) => sess.span_fatal(span, &err),
+        };
 
         // Intentionally leak the dynamic library. We can't ever unload it
         // since the library can make things that will live arbitrarily long

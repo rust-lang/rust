@@ -5,7 +5,7 @@ use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::middle::region;
-use rustc::mir::interpret::{PanicInfo::BoundsCheck};
+use rustc::mir::interpret::PanicInfo::BoundsCheck;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
 use syntax_pos::Span;
@@ -26,10 +26,7 @@ struct PlaceBuilder<'tcx> {
 
 impl PlaceBuilder<'tcx> {
     fn into_place(self, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
-        Place {
-            base: self.base,
-            projection: tcx.intern_place_elems(&self.projection),
-        }
+        Place { base: self.base, projection: tcx.intern_place_elems(&self.projection) }
     }
 
     fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
@@ -52,19 +49,13 @@ impl PlaceBuilder<'tcx> {
 
 impl From<Local> for PlaceBuilder<'tcx> {
     fn from(local: Local) -> Self {
-        Self {
-            base: local.into(),
-            projection: Vec::new(),
-        }
+        Self { base: local.into(), projection: Vec::new() }
     }
 }
 
 impl From<PlaceBase<'tcx>> for PlaceBuilder<'tcx> {
     fn from(base: PlaceBase<'tcx>) -> Self {
-        Self {
-            base,
-            projection: Vec::new(),
-        }
+        Self { base, projection: Vec::new() }
     }
 }
 
@@ -137,55 +128,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        debug!(
-            "expr_as_place(block={:?}, expr={:?}, mutability={:?})",
-            block, expr, mutability
-        );
+        debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
 
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
         match expr.kind {
-            ExprKind::Scope {
-                region_scope,
-                lint_level,
-                value,
-            } => this.in_scope((region_scope, source_info), lint_level, |this| {
-                let value = this.hir.mirror(value);
-                this.expr_as_place(block, value, mutability, fake_borrow_temps)
-            }),
+            ExprKind::Scope { region_scope, lint_level, value } => {
+                this.in_scope((region_scope, source_info), lint_level, |this| {
+                    let value = this.hir.mirror(value);
+                    this.expr_as_place(block, value, mutability, fake_borrow_temps)
+                })
+            }
             ExprKind::Field { lhs, name } => {
                 let lhs = this.hir.mirror(lhs);
-                let place_builder = unpack!(block = this.expr_as_place(
-                    block,
-                    lhs,
-                    mutability,
-                    fake_borrow_temps,
-                ));
+                let place_builder =
+                    unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
                 block.and(place_builder.field(name, expr.ty))
             }
             ExprKind::Deref { arg } => {
                 let arg = this.hir.mirror(arg);
-                let place_builder = unpack!(block = this.expr_as_place(
-                    block,
-                    arg,
-                    mutability,
-                    fake_borrow_temps,
-                ));
+                let place_builder =
+                    unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_temps,));
                 block.and(place_builder.deref())
             }
-            ExprKind::Index { lhs, index } => {
-                this.lower_index_expression(
-                    block,
-                    lhs,
-                    index,
-                    mutability,
-                    fake_borrow_temps,
-                    expr.temp_lifetime,
-                    expr_span,
-                    source_info,
-                )
-            }
+            ExprKind::Index { lhs, index } => this.lower_index_expression(
+                block,
+                lhs,
+                index,
+                mutability,
+                fake_borrow_temps,
+                expr.temp_lifetime,
+                expr_span,
+                source_info,
+            ),
             ExprKind::SelfRef => block.and(PlaceBuilder::from(Local::new(1))),
             ExprKind::VarRef { id } => {
                 let place_builder = if this.is_bound_var_in_guard(id) {
@@ -200,20 +176,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let source = this.hir.mirror(source);
-                let place_builder = unpack!(block = this.expr_as_place(
-                    block,
-                    source,
-                    mutability,
-                    fake_borrow_temps,
-                ));
+                let place_builder = unpack!(
+                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
+                );
                 if let Some(user_ty) = user_ty {
-                    let annotation_index = this.canonical_user_type_annotations.push(
-                        CanonicalUserTypeAnnotation {
+                    let annotation_index =
+                        this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: source_info.span,
                             user_ty,
                             inferred_ty: expr.ty,
-                        }
-                    );
+                        });
 
                     let place = place_builder.clone().into_place(this.hir.tcx());
                     this.cfg.push(
@@ -221,9 +193,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Statement {
                             source_info,
                             kind: StatementKind::AscribeUserType(
-                                box(
+                                box (
                                     place,
-                                    UserTypeProjection { base: annotation_index, projs: vec![], }
+                                    UserTypeProjection { base: annotation_index, projs: vec![] },
                                 ),
                                 Variance::Invariant,
                             ),
@@ -234,25 +206,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::ValueTypeAscription { source, user_ty } => {
                 let source = this.hir.mirror(source);
-                let temp = unpack!(
-                    block = this.as_temp(block, source.temp_lifetime, source, mutability)
-                );
+                let temp =
+                    unpack!(block = this.as_temp(block, source.temp_lifetime, source, mutability));
                 if let Some(user_ty) = user_ty {
-                    let annotation_index = this.canonical_user_type_annotations.push(
-                        CanonicalUserTypeAnnotation {
+                    let annotation_index =
+                        this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: source_info.span,
                             user_ty,
                             inferred_ty: expr.ty,
-                        }
-                    );
+                        });
                     this.cfg.push(
                         block,
                         Statement {
                             source_info,
                             kind: StatementKind::AscribeUserType(
-                                box(
+                                box (
                                     Place::from(temp.clone()),
-                                    UserTypeProjection { base: annotation_index, projs: vec![], },
+                                    UserTypeProjection { base: annotation_index, projs: vec![] },
                                 ),
                                 Variance::Invariant,
                             ),
@@ -319,7 +289,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fake_borrow_temps: Option<&mut Vec<Local>>,
         temp_lifetime: Option<region::Scope>,
         expr_span: Span,
-        source_info: SourceInfo
+        source_info: SourceInfo,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let lhs = self.hir.mirror(base);
 
@@ -327,22 +297,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let is_outermost_index = fake_borrow_temps.is_none();
         let fake_borrow_temps = fake_borrow_temps.unwrap_or(base_fake_borrow_temps);
 
-        let base_place = unpack!(block = self.expr_as_place(
-            block,
-            lhs,
-            mutability,
-            Some(fake_borrow_temps),
-        ));
+        let base_place =
+            unpack!(block = self.expr_as_place(block, lhs, mutability, Some(fake_borrow_temps),));
 
         // Making this a *fresh* temporary means we do not have to worry about
         // the index changing later: Nothing will ever change this temporary.
         // The "retagging" transformation (for Stacked Borrows) relies on this.
-        let idx = unpack!(block = self.as_temp(
-            block,
-            temp_lifetime,
-            index,
-            Mutability::Not,
-        ));
+        let idx = unpack!(block = self.as_temp(block, temp_lifetime, index, Mutability::Not,));
 
         block = self.bounds_check(
             block,
@@ -382,12 +343,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let lt = self.temp(bool_ty, expr_span);
 
         // len = len(slice)
-        self.cfg.push_assign(
-            block,
-            source_info,
-            &len,
-            Rvalue::Len(slice),
-        );
+        self.cfg.push_assign(block, source_info, &len, Rvalue::Len(slice));
         // lt = idx < len
         self.cfg.push_assign(
             block,
@@ -399,10 +355,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Operand::Copy(len.clone()),
             ),
         );
-        let msg = BoundsCheck {
-            len: Operand::Move(len),
-            index: Operand::Copy(Place::from(index)),
-        };
+        let msg = BoundsCheck { len: Operand::Move(len), index: Operand::Copy(Place::from(index)) };
         // assert!(lt, "...")
         self.assert(block, Operand::Move(lt), true, msg, expr_span)
     }
@@ -416,12 +369,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
     ) {
         let tcx = self.hir.tcx();
-        let place_ty = Place::ty_from(
-            &base_place.base,
-            &base_place.projection,
-            &self.local_decls,
-            tcx,
-        );
+        let place_ty =
+            Place::ty_from(&base_place.base, &base_place.projection, &self.local_decls, tcx);
         if let ty::Slice(_) = place_ty.ty.kind {
             // We need to create fake borrows to ensure that the bounds
             // check that we just did stays valid. Since we can't assign to
@@ -435,14 +384,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             &base_place.projection[..idx],
                             &self.local_decls,
                             tcx,
-                        ).ty;
-                        let fake_borrow_ty = tcx.mk_imm_ref(
-                            tcx.lifetimes.re_erased,
-                            fake_borrow_deref_ty,
-                        );
-                        let fake_borrow_temp = self.local_decls.push(
-                            LocalDecl::new_temp(fake_borrow_ty, expr_span)
-                        );
+                        )
+                        .ty;
+                        let fake_borrow_ty =
+                            tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
+                        let fake_borrow_temp =
+                            self.local_decls.push(LocalDecl::new_temp(fake_borrow_ty, expr_span));
                         let projection = tcx.intern_place_elems(&base_place.projection[..idx]);
                         self.cfg.push_assign(
                             block,
@@ -451,10 +398,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Rvalue::Ref(
                                 tcx.lifetimes.re_erased,
                                 BorrowKind::Shallow,
-                                Place {
-                                    base: base_place.base.clone(),
-                                    projection,
-                                }
+                                Place { base: base_place.base.clone(), projection },
                             ),
                         );
                         fake_borrow_temps.push(fake_borrow_temp);

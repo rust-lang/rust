@@ -50,15 +50,15 @@ use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
-use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
 use core::ops::Bound::{Excluded, Included, Unbounded};
+use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
 use core::ptr;
-use core::str::{pattern::Pattern, lossy};
+use core::str::{lossy, pattern::Pattern};
 
 use crate::borrow::{Cow, ToOwned};
-use crate::collections::TryReserveError;
 use crate::boxed::Box;
-use crate::str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
+use crate::collections::TryReserveError;
+use crate::str::{self, from_boxed_utf8_unchecked, Chars, FromStr, Utf8Error};
 use crate::vec::Vec;
 
 /// A UTF-8 encoded, growable string.
@@ -491,12 +491,7 @@ impl String {
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(&vec) {
             Ok(..) => Ok(String { vec }),
-            Err(e) => {
-                Err(FromUtf8Error {
-                    bytes: vec,
-                    error: e,
-                })
-            }
+            Err(e) => Err(FromUtf8Error { bytes: vec, error: e }),
         }
     }
 
@@ -985,7 +980,7 @@ impl String {
     /// }
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+    #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.vec.try_reserve(additional)
     }
@@ -1023,8 +1018,8 @@ impl String {
     /// }
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError>  {
+    #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.vec.try_reserve_exact(additional)
     }
 
@@ -1072,7 +1067,7 @@ impl String {
     /// assert!(s.capacity() >= 3);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.vec.shrink_to(min_capacity)
     }
@@ -1222,9 +1217,7 @@ impl String {
         let next = idx + ch.len_utf8();
         let len = self.len();
         unsafe {
-            ptr::copy(self.vec.as_ptr().add(next),
-                      self.vec.as_mut_ptr().add(idx),
-                      len - next);
+            ptr::copy(self.vec.as_ptr().add(next), self.vec.as_mut_ptr().add(idx), len - next);
             self.vec.set_len(len - (next - idx));
         }
         ch
@@ -1258,25 +1251,26 @@ impl String {
     #[inline]
     #[stable(feature = "string_retain", since = "1.26.0")]
     pub fn retain<F>(&mut self, mut f: F)
-        where F: FnMut(char) -> bool
+    where
+        F: FnMut(char) -> bool,
     {
         let len = self.len();
         let mut del_bytes = 0;
         let mut idx = 0;
 
         while idx < len {
-            let ch = unsafe {
-                self.get_unchecked(idx..len).chars().next().unwrap()
-            };
+            let ch = unsafe { self.get_unchecked(idx..len).chars().next().unwrap() };
             let ch_len = ch.len_utf8();
 
             if !f(ch) {
                 del_bytes += ch_len;
             } else if del_bytes > 0 {
                 unsafe {
-                    ptr::copy(self.vec.as_ptr().add(idx),
-                              self.vec.as_mut_ptr().add(idx - del_bytes),
-                              ch_len);
+                    ptr::copy(
+                        self.vec.as_ptr().add(idx),
+                        self.vec.as_mut_ptr().add(idx - del_bytes),
+                        ch_len,
+                    );
                 }
             }
 
@@ -1285,7 +1279,9 @@ impl String {
         }
 
         if del_bytes > 0 {
-            unsafe { self.vec.set_len(len - del_bytes); }
+            unsafe {
+                self.vec.set_len(len - del_bytes);
+            }
         }
     }
 
@@ -1331,12 +1327,8 @@ impl String {
         let amt = bytes.len();
         self.vec.reserve(amt);
 
-        ptr::copy(self.vec.as_ptr().add(idx),
-                  self.vec.as_mut_ptr().add(idx + amt),
-                  len - idx);
-        ptr::copy(bytes.as_ptr(),
-                  self.vec.as_mut_ptr().add(idx),
-                  amt);
+        ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
+        ptr::copy(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
         self.vec.set_len(len + amt);
     }
 
@@ -1531,7 +1523,8 @@ impl String {
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain<'_>
-        where R: RangeBounds<usize>
+    where
+        R: RangeBounds<usize>,
     {
         // Memory safety
         //
@@ -1557,12 +1550,7 @@ impl String {
         // slicing does the appropriate bounds checks
         let chars_iter = self[start..end].chars();
 
-        Drain {
-            start,
-            end,
-            iter: chars_iter,
-            string: self_ptr,
-        }
+        Drain { start, end, iter: chars_iter, string: self_ptr }
     }
 
     /// Removes the specified range in the string,
@@ -1591,7 +1579,8 @@ impl String {
     /// ```
     #[stable(feature = "splice", since = "1.27.0")]
     pub fn replace_range<R>(&mut self, range: R, replace_with: &str)
-        where R: RangeBounds<usize>
+    where
+        R: RangeBounds<usize>,
     {
         // Memory safety
         //
@@ -1599,19 +1588,17 @@ impl String {
         // of the vector version. The data is just plain bytes.
 
         match range.start_bound() {
-             Included(&n) => assert!(self.is_char_boundary(n)),
-             Excluded(&n) => assert!(self.is_char_boundary(n + 1)),
-             Unbounded => {},
+            Included(&n) => assert!(self.is_char_boundary(n)),
+            Excluded(&n) => assert!(self.is_char_boundary(n + 1)),
+            Unbounded => {}
         };
         match range.end_bound() {
-             Included(&n) => assert!(self.is_char_boundary(n + 1)),
-             Excluded(&n) => assert!(self.is_char_boundary(n)),
-             Unbounded => {},
+            Included(&n) => assert!(self.is_char_boundary(n + 1)),
+            Excluded(&n) => assert!(self.is_char_boundary(n)),
+            Unbounded => {}
         };
 
-        unsafe {
-            self.as_mut_vec()
-        }.splice(range, replace_with.bytes());
+        unsafe { self.as_mut_vec() }.splice(range, replace_with.bytes());
     }
 
     /// Converts this `String` into a [`Box`]`<`[`str`]`>`.
@@ -1840,9 +1827,11 @@ impl<'a> Extend<Cow<'a, str>> for String {
 }
 
 /// A convenience impl that delegates to the impl for `&str`
-#[unstable(feature = "pattern",
-           reason = "API not fully fleshed out and ready to be stabilized",
-           issue = "27721")]
+#[unstable(
+    feature = "pattern",
+    reason = "API not fully fleshed out and ready to be stabilized",
+    issue = "27721"
+)]
 impl<'a, 'b> Pattern<'a> for &'b String {
     type Searcher = <&'b str as Pattern<'a>>::Searcher;
 
@@ -1879,21 +1868,28 @@ macro_rules! impl_eq {
         #[allow(unused_lifetimes)]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
             #[inline]
-            fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&self[..], &other[..]) }
+            fn eq(&self, other: &$rhs) -> bool {
+                PartialEq::eq(&self[..], &other[..])
+            }
             #[inline]
-            fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&self[..], &other[..]) }
+            fn ne(&self, other: &$rhs) -> bool {
+                PartialEq::ne(&self[..], &other[..])
+            }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(unused_lifetimes)]
         impl<'a, 'b> PartialEq<$lhs> for $rhs {
             #[inline]
-            fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&self[..], &other[..]) }
+            fn eq(&self, other: &$lhs) -> bool {
+                PartialEq::eq(&self[..], &other[..])
+            }
             #[inline]
-            fn ne(&self, other: &$lhs) -> bool { PartialEq::ne(&self[..], &other[..]) }
+            fn ne(&self, other: &$lhs) -> bool {
+                PartialEq::ne(&self[..], &other[..])
+            }
         }
-
-    }
+    };
 }
 
 impl_eq! { String, str }
@@ -2134,7 +2130,6 @@ impl FromStr for String {
     }
 }
 
-
 /// A trait for converting a value to a `String`.
 ///
 /// This trait is automatically implemented for any type which implements the
@@ -2175,7 +2170,7 @@ impl<T: fmt::Display + ?Sized> ToString for T {
         use fmt::Write;
         let mut buf = String::new();
         buf.write_fmt(format_args!("{}", self))
-           .expect("a Display implementation returned an error unexpectedly");
+            .expect("a Display implementation returned an error unexpectedly");
         buf.shrink_to_fit();
         buf
     }

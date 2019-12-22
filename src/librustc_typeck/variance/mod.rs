@@ -4,11 +4,11 @@
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/variance.html
 
 use arena;
-use rustc::hir;
 use hir::Node;
+use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::ty::{self, CrateVariancesMap, TyCtxt};
 use rustc::ty::query::Providers;
+use rustc::ty::{self, CrateVariancesMap, TyCtxt};
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.
@@ -27,11 +27,7 @@ pub mod test;
 mod xform;
 
 pub fn provide(providers: &mut Providers<'_>) {
-    *providers = Providers {
-        variances_of,
-        crate_variances,
-        ..*providers
-    };
+    *providers = Providers { variances_of, crate_variances, ..*providers };
 }
 
 fn crate_variances(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CrateVariancesMap<'_> {
@@ -50,41 +46,39 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
     };
     match tcx.hir().get(id) {
         Node::Item(item) => match item.kind {
-            hir::ItemKind::Enum(..) |
-            hir::ItemKind::Struct(..) |
-            hir::ItemKind::Union(..) |
-            hir::ItemKind::Fn(..) => {}
+            hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::Fn(..) => {}
 
-            _ => unsupported()
+            _ => unsupported(),
         },
 
         Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Method(..) => {}
 
-            _ => unsupported()
+            _ => unsupported(),
         },
 
         Node::ImplItem(item) => match item.kind {
             hir::ImplItemKind::Method(..) => {}
 
-            _ => unsupported()
+            _ => unsupported(),
         },
 
         Node::ForeignItem(item) => match item.kind {
             hir::ForeignItemKind::Fn(..) => {}
 
-            _ => unsupported()
+            _ => unsupported(),
         },
 
         Node::Variant(_) | Node::Ctor(..) => {}
 
-        _ => unsupported()
+        _ => unsupported(),
     }
 
     // Everything else must be inferred.
 
     let crate_map = tcx.crate_variances(LOCAL_CRATE);
-    crate_map.variances.get(&item_def_id)
-                       .map(|p| *p)
-                       .unwrap_or(&[])
+    crate_map.variances.get(&item_def_id).map(|p| *p).unwrap_or(&[])
 }

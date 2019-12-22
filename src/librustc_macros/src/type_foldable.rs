@@ -1,6 +1,6 @@
-use synstructure;
-use syn;
 use quote::quote;
+use syn;
+use synstructure;
 
 pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     if let syn::Data::Union(_) = s.ast().data {
@@ -12,28 +12,31 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
         let bindings = vi.bindings();
         vi.construct(|_, index| {
             let bind = &bindings[index];
-            quote!{
+            quote! {
                 ::rustc::ty::fold::TypeFoldable::fold_with(#bind, __folder)
             }
         })
     });
     let body_visit = s.fold(false, |acc, bind| {
-        quote!{ #acc || ::rustc::ty::fold::TypeFoldable::visit_with(#bind, __folder) }
+        quote! { #acc || ::rustc::ty::fold::TypeFoldable::visit_with(#bind, __folder) }
     });
 
-    s.bound_impl(quote!(::rustc::ty::fold::TypeFoldable<'tcx>), quote!{
-        fn super_fold_with<__F: ::rustc::ty::fold::TypeFolder<'tcx>>(
-            &self,
-            __folder: &mut __F
-        ) -> Self {
-            match *self { #body_fold }
-        }
+    s.bound_impl(
+        quote!(::rustc::ty::fold::TypeFoldable<'tcx>),
+        quote! {
+            fn super_fold_with<__F: ::rustc::ty::fold::TypeFolder<'tcx>>(
+                &self,
+                __folder: &mut __F
+            ) -> Self {
+                match *self { #body_fold }
+            }
 
-        fn super_visit_with<__F: ::rustc::ty::fold::TypeVisitor<'tcx>>(
-            &self,
-            __folder: &mut __F
-        ) -> bool {
-            match *self { #body_visit }
-        }
-    })
+            fn super_visit_with<__F: ::rustc::ty::fold::TypeVisitor<'tcx>>(
+                &self,
+                __folder: &mut __F
+            ) -> bool {
+                match *self { #body_visit }
+            }
+        },
+    )
 }

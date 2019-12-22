@@ -11,15 +11,15 @@ use std::ptr;
 
 #[cfg(parallel_compiler)]
 use {
-    parking_lot::{Mutex, Condvar},
-    rustc_data_structures::{jobserver, OnDrop},
+    parking_lot::{Condvar, Mutex},
     rustc_data_structures::fx::FxHashSet,
-    rustc_data_structures::stable_hasher::{StableHasher, HashStable},
+    rustc_data_structures::stable_hasher::{HashStable, StableHasher},
     rustc_data_structures::sync::Lock,
+    rustc_data_structures::{jobserver, OnDrop},
     rustc_rayon_core as rayon_core,
-    syntax_pos::DUMMY_SP,
-    std::{mem, process, thread},
     std::iter::FromIterator,
+    std::{mem, process, thread},
+    syntax_pos::DUMMY_SP,
 };
 
 /// Represents a span and a query key.
@@ -55,11 +55,7 @@ impl<'tcx> QueryJob<'tcx> {
 
     /// Awaits for the query job to complete.
     #[cfg(parallel_compiler)]
-    pub(super) fn r#await(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        span: Span,
-    ) -> Result<(), CycleError<'tcx>> {
+    pub(super) fn r#await(&self, tcx: TyCtxt<'tcx>, span: Span) -> Result<(), CycleError<'tcx>> {
         tls::with_related_context(tcx, move |icx| {
             let waiter = Lrc::new(QueryWaiter {
                 query: icx.query.clone(),
@@ -74,7 +70,7 @@ impl<'tcx> QueryJob<'tcx> {
             let mut cycle = waiter.cycle.lock();
             match cycle.take() {
                 None => Ok(()),
-                Some(cycle) => Err(cycle)
+                Some(cycle) => Err(cycle),
             }
         })
     }
@@ -97,9 +93,8 @@ impl<'tcx> QueryJob<'tcx> {
                 // Replace it with the span which caused the cycle to form
                 cycle[0].span = span;
                 // Find out why the cycle itself was used
-                let usage = job.parent.as_ref().map(|parent| {
-                    (job.info.span, parent.info.query.clone())
-                });
+                let usage =
+                    job.parent.as_ref().map(|parent| (job.info.span, parent.info.query.clone()));
                 return CycleError { usage, cycle };
             }
 
@@ -154,12 +149,7 @@ struct QueryLatch<'tcx> {
 #[cfg(parallel_compiler)]
 impl<'tcx> QueryLatch<'tcx> {
     fn new() -> Self {
-        QueryLatch {
-            info: Mutex::new(QueryLatchInfo {
-                complete: false,
-                waiters: Vec::new(),
-            }),
-        }
+        QueryLatch { info: Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() }) }
     }
 
     /// Awaits the caller on this latch by blocking the current thread.
@@ -197,10 +187,7 @@ impl<'tcx> QueryLatch<'tcx> {
 
     /// Removes a single waiter from the list of waiters.
     /// This is used to break query cycles.
-    fn extract_waiter(
-        &self,
-        waiter: usize,
-    ) -> Lrc<QueryWaiter<'tcx>> {
+    fn extract_waiter(&self, waiter: usize) -> Lrc<QueryWaiter<'tcx>> {
         let mut info = self.info.lock();
         debug_assert!(!info.complete);
         // Remove the waiter from the list of waiters
@@ -224,7 +211,7 @@ type Waiter<'tcx> = (Lrc<QueryJob<'tcx>>, usize);
 #[cfg(parallel_compiler)]
 fn visit_waiters<'tcx, F>(query: Lrc<QueryJob<'tcx>>, mut visit: F) -> Option<Option<Waiter<'tcx>>>
 where
-    F: FnMut(Span, Lrc<QueryJob<'tcx>>) -> Option<Option<Waiter<'tcx>>>
+    F: FnMut(Span, Lrc<QueryJob<'tcx>>) -> Option<Option<Waiter<'tcx>>>,
 {
     // Visit the parent query which is a non-resumable waiter since it's on the same stack
     if let Some(ref parent) = query.parent {
@@ -250,10 +237,11 @@ where
 /// If a cycle is detected, this initial value is replaced with the span causing
 /// the cycle.
 #[cfg(parallel_compiler)]
-fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
-                     span: Span,
-                     stack: &mut Vec<(Span, Lrc<QueryJob<'tcx>>)>,
-                     visited: &mut FxHashSet<*const QueryJob<'tcx>>
+fn cycle_check<'tcx>(
+    query: Lrc<QueryJob<'tcx>>,
+    span: Span,
+    stack: &mut Vec<(Span, Lrc<QueryJob<'tcx>>)>,
+    visited: &mut FxHashSet<*const QueryJob<'tcx>>,
 ) -> Option<Option<Waiter<'tcx>>> {
     if !visited.insert(query.as_ptr()) {
         return if let Some(p) = stack.iter().position(|q| q.1.as_ptr() == query.as_ptr()) {
@@ -266,16 +254,14 @@ fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
             Some(None)
         } else {
             None
-        }
+        };
     }
 
     // Query marked as visited is added it to the stack
     stack.push((span, query.clone()));
 
     // Visit all the waiters
-    let r = visit_waiters(query, |span, successor| {
-        cycle_check(successor, span, stack, visited)
-    });
+    let r = visit_waiters(query, |span, successor| cycle_check(successor, span, stack, visited));
 
     // Remove the entry in our stack if we didn't find a cycle
     if r.is_none() {
@@ -291,7 +277,7 @@ fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
 #[cfg(parallel_compiler)]
 fn connected_to_root<'tcx>(
     query: Lrc<QueryJob<'tcx>>,
-    visited: &mut FxHashSet<*const QueryJob<'tcx>>
+    visited: &mut FxHashSet<*const QueryJob<'tcx>>,
 ) -> bool {
     // We already visited this or we're deliberately ignoring it
     if !visited.insert(query.as_ptr()) {
@@ -317,16 +303,19 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
     // Deterministically pick an entry point
     // FIXME: Sort this instead
     let mut hcx = tcx.create_stable_hashing_context();
-    queries.iter().min_by_key(|v| {
-        let (span, query) = f(v);
-        let mut stable_hasher = StableHasher::new();
-        query.info.query.hash_stable(&mut hcx, &mut stable_hasher);
-        // Prefer entry points which have valid spans for nicer error messages
-        // We add an integer to the tuple ensuring that entry points
-        // with valid spans are picked first
-        let span_cmp = if span == DUMMY_SP { 1 } else { 0 };
-        (span_cmp, stable_hasher.finish::<u64>())
-    }).unwrap()
+    queries
+        .iter()
+        .min_by_key(|v| {
+            let (span, query) = f(v);
+            let mut stable_hasher = StableHasher::new();
+            query.info.query.hash_stable(&mut hcx, &mut stable_hasher);
+            // Prefer entry points which have valid spans for nicer error messages
+            // We add an integer to the tuple ensuring that entry points
+            // with valid spans are picked first
+            let span_cmp = if span == DUMMY_SP { 1 } else { 0 };
+            (span_cmp, stable_hasher.finish::<u64>())
+        })
+        .unwrap()
 }
 
 /// Looks for query cycles starting from the last query in `jobs`.
@@ -343,10 +332,7 @@ fn remove_cycle<'tcx>(
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
     // Look for a cycle starting with the last query in `jobs`
-    if let Some(waiter) = cycle_check(jobs.pop().unwrap(),
-                                      DUMMY_SP,
-                                      &mut stack,
-                                      &mut visited) {
+    if let Some(waiter) = cycle_check(jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited) {
         // The stack is a vector of pairs of spans and queries; reverse it so that
         // the earlier entries require later entries
         let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
@@ -366,40 +352,42 @@ fn remove_cycle<'tcx>(
 
         // Find the queries in the cycle which are
         // connected to queries outside the cycle
-        let entry_points = stack.iter().filter_map(|(span, query)| {
-            if query.parent.is_none() {
-                // This query is connected to the root (it has no query parent)
-                Some((*span, query.clone(), None))
-            } else {
-                let mut waiters = Vec::new();
-                // Find all the direct waiters who lead to the root
-                visit_waiters(query.clone(), |span, waiter| {
-                    // Mark all the other queries in the cycle as already visited
-                    let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1.as_ptr()));
-
-                    if connected_to_root(waiter.clone(), &mut visited) {
-                        waiters.push((span, waiter));
-                    }
-
-                    None
-                });
-                if waiters.is_empty() {
-                    None
+        let entry_points = stack
+            .iter()
+            .filter_map(|(span, query)| {
+                if query.parent.is_none() {
+                    // This query is connected to the root (it has no query parent)
+                    Some((*span, query.clone(), None))
                 } else {
-                    // Deterministically pick one of the waiters to show to the user
-                    let waiter = pick_query(tcx, &waiters, |s| s.clone()).clone();
-                    Some((*span, query.clone(), Some(waiter)))
+                    let mut waiters = Vec::new();
+                    // Find all the direct waiters who lead to the root
+                    visit_waiters(query.clone(), |span, waiter| {
+                        // Mark all the other queries in the cycle as already visited
+                        let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1.as_ptr()));
+
+                        if connected_to_root(waiter.clone(), &mut visited) {
+                            waiters.push((span, waiter));
+                        }
+
+                        None
+                    });
+                    if waiters.is_empty() {
+                        None
+                    } else {
+                        // Deterministically pick one of the waiters to show to the user
+                        let waiter = pick_query(tcx, &waiters, |s| s.clone()).clone();
+                        Some((*span, query.clone(), Some(waiter)))
+                    }
                 }
-            }
-        }).collect::<Vec<(Span, Lrc<QueryJob<'tcx>>, Option<(Span, Lrc<QueryJob<'tcx>>)>)>>();
+            })
+            .collect::<Vec<(Span, Lrc<QueryJob<'tcx>>, Option<(Span, Lrc<QueryJob<'tcx>>)>)>>();
 
         // Deterministically pick an entry point
         let (_, entry_point, usage) = pick_query(tcx, &entry_points, |e| (e.0, e.1.clone()));
 
         // Shift the stack so that our entry point is first
-        let entry_point_pos = stack.iter().position(|(_, query)| {
-            query.as_ptr() == entry_point.as_ptr()
-        });
+        let entry_point_pos =
+            stack.iter().position(|(_, query)| query.as_ptr() == entry_point.as_ptr());
         if let Some(pos) = entry_point_pos {
             stack.rotate_left(pos);
         }
@@ -409,10 +397,10 @@ fn remove_cycle<'tcx>(
         // Create the cycle error
         let error = CycleError {
             usage,
-            cycle: stack.iter().map(|&(s, ref q)| QueryInfo {
-                span: s,
-                query: q.info.query.clone(),
-            } ).collect(),
+            cycle: stack
+                .iter()
+                .map(|&(s, ref q)| QueryInfo { span: s, query: q.info.query.clone() })
+                .collect(),
         };
 
         // We unwrap `waiter` here since there must always be one
@@ -441,22 +429,17 @@ fn remove_cycle<'tcx>(
 pub unsafe fn handle_deadlock() {
     let registry = rayon_core::Registry::current();
 
-    let gcx_ptr = tls::GCX_PTR.with(|gcx_ptr| {
-        gcx_ptr as *const _
-    });
+    let gcx_ptr = tls::GCX_PTR.with(|gcx_ptr| gcx_ptr as *const _);
     let gcx_ptr = &*gcx_ptr;
 
-    let syntax_pos_globals = syntax_pos::GLOBALS.with(|syntax_pos_globals| {
-        syntax_pos_globals as *const _
-    });
+    let syntax_pos_globals =
+        syntax_pos::GLOBALS.with(|syntax_pos_globals| syntax_pos_globals as *const _);
     let syntax_pos_globals = &*syntax_pos_globals;
     thread::spawn(move || {
         tls::GCX_PTR.set(gcx_ptr, || {
             syntax_pos::GLOBALS.set(syntax_pos_globals, || {
                 syntax_pos::GLOBALS.set(syntax_pos_globals, || {
-                    tls::with_thread_locals(|| {
-                        tls::with_global(|tcx| deadlock(tcx, &registry))
-                    })
+                    tls::with_thread_locals(|| tls::with_global(|tcx| deadlock(tcx, &registry)))
                 })
             })
         })

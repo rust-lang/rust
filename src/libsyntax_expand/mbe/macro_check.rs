@@ -108,9 +108,9 @@ use crate::mbe::{KleeneToken, TokenTree};
 
 use syntax::ast::NodeId;
 use syntax::early_buffered_lints::META_VARIABLE_MISUSE;
-use syntax::token::{DelimToken, Token, TokenKind};
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym};
+use syntax::token::{DelimToken, Token, TokenKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use smallvec::SmallVec;

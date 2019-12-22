@@ -18,9 +18,8 @@ pub struct Condvar {
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
-const NEW: Condvar = Condvar {
-    condvar: UnsafeCell::new(AtomicU32::new(abi::CONDVAR_HAS_NO_WAITERS.0)),
-};
+const NEW: Condvar =
+    Condvar { condvar: UnsafeCell::new(AtomicU32::new(abi::CONDVAR_HAS_NO_WAITERS.0)) };
 
 impl Condvar {
     pub const fn new() -> Condvar {
@@ -33,11 +32,7 @@ impl Condvar {
         let condvar = self.condvar.get();
         if (*condvar).load(Ordering::Relaxed) != abi::CONDVAR_HAS_NO_WAITERS.0 {
             let ret = abi::condvar_signal(condvar as *mut abi::condvar, abi::scope::PRIVATE, 1);
-            assert_eq!(
-                ret,
-                abi::errno::SUCCESS,
-                "Failed to signal on condition variable"
-            );
+            assert_eq!(ret, abi::errno::SUCCESS, "Failed to signal on condition variable");
         }
     }
 
@@ -49,11 +44,7 @@ impl Condvar {
                 abi::scope::PRIVATE,
                 abi::nthreads::max_value(),
             );
-            assert_eq!(
-                ret,
-                abi::errno::SUCCESS,
-                "Failed to broadcast on condition variable"
-            );
+            assert_eq!(ret, abi::errno::SUCCESS, "Failed to broadcast on condition variable");
         }
     }
 
@@ -81,17 +72,8 @@ impl Condvar {
         };
         let mut event: mem::MaybeUninit<abi::event> = mem::MaybeUninit::uninit();
         let mut nevents: mem::MaybeUninit<usize> = mem::MaybeUninit::uninit();
-        let ret = abi::poll(
-            &subscription,
-            event.as_mut_ptr(),
-            1,
-            nevents.as_mut_ptr()
-        );
-        assert_eq!(
-            ret,
-            abi::errno::SUCCESS,
-            "Failed to wait on condition variable"
-        );
+        let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
+        assert_eq!(ret, abi::errno::SUCCESS, "Failed to wait on condition variable");
         assert_eq!(
             event.assume_init().error,
             abi::errno::SUCCESS,
@@ -109,8 +91,8 @@ impl Condvar {
 
         // Call into the kernel to wait on the condition variable.
         let condvar = self.condvar.get();
-        let timeout = checked_dur2intervals(&dur)
-            .expect("overflow converting duration to nanoseconds");
+        let timeout =
+            checked_dur2intervals(&dur).expect("overflow converting duration to nanoseconds");
         let subscriptions = [
             abi::subscription {
                 type_: abi::eventtype::CONDVAR,
@@ -142,13 +124,9 @@ impl Condvar {
             subscriptions.as_ptr(),
             mem::MaybeUninit::first_ptr_mut(&mut events),
             2,
-            nevents.as_mut_ptr()
+            nevents.as_mut_ptr(),
         );
-        assert_eq!(
-            ret,
-            abi::errno::SUCCESS,
-            "Failed to wait on condition variable"
-        );
+        assert_eq!(ret, abi::errno::SUCCESS, "Failed to wait on condition variable");
         let nevents = nevents.assume_init();
         for i in 0..nevents {
             assert_eq!(

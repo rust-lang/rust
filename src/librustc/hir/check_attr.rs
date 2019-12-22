@@ -4,13 +4,13 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::hir::{self, HirId, Attribute, Item, ItemKind, TraitItem, TraitItemKind};
-use crate::hir::DUMMY_HIR_ID;
 use crate::hir::def_id::DefId;
-use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::hir::DUMMY_HIR_ID;
+use crate::hir::{self, Attribute, HirId, Item, ItemKind, TraitItem, TraitItemKind};
 use crate::lint::builtin::UNUSED_ATTRIBUTES;
-use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
+use crate::ty::TyCtxt;
 
 use std::fmt::{self, Display};
 use syntax::{attr, symbol::sym};
@@ -55,33 +55,37 @@ pub(crate) enum Target {
 
 impl Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match *self {
-            Target::ExternCrate => "extern crate",
-            Target::Use => "use",
-            Target::Static => "static item",
-            Target::Const => "constant item",
-            Target::Fn => "function",
-            Target::Closure => "closure",
-            Target::Mod => "module",
-            Target::ForeignMod => "foreign module",
-            Target::GlobalAsm => "global asm",
-            Target::TyAlias => "type alias",
-            Target::OpaqueTy => "opaque type",
-            Target::Enum => "enum",
-            Target::Struct => "struct",
-            Target::Union => "union",
-            Target::Trait => "trait",
-            Target::TraitAlias => "trait alias",
-            Target::Impl => "item",
-            Target::Expression => "expression",
-            Target::Statement => "statement",
-            Target::AssocConst => "associated const",
-            Target::Method(_) => "method",
-            Target::AssocTy => "associated type",
-            Target::ForeignFn => "foreign function",
-            Target::ForeignStatic => "foreign static item",
-            Target::ForeignTy => "foreign type",
-        })
+        write!(
+            f,
+            "{}",
+            match *self {
+                Target::ExternCrate => "extern crate",
+                Target::Use => "use",
+                Target::Static => "static item",
+                Target::Const => "constant item",
+                Target::Fn => "function",
+                Target::Closure => "closure",
+                Target::Mod => "module",
+                Target::ForeignMod => "foreign module",
+                Target::GlobalAsm => "global asm",
+                Target::TyAlias => "type alias",
+                Target::OpaqueTy => "opaque type",
+                Target::Enum => "enum",
+                Target::Struct => "struct",
+                Target::Union => "union",
+                Target::Trait => "trait",
+                Target::TraitAlias => "trait alias",
+                Target::Impl => "item",
+                Target::Expression => "expression",
+                Target::Statement => "statement",
+                Target::AssocConst => "associated const",
+                Target::Method(_) => "method",
+                Target::AssocTy => "associated type",
+                Target::ForeignFn => "foreign function",
+                Target::ForeignStatic => "foreign static item",
+                Target::ForeignTy => "foreign type",
+            }
+        )
     }
 }
 
@@ -195,15 +199,19 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
     fn check_inline(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
-            Target::Fn | Target::Closure | Target::Method(MethodKind::Trait { body: true })
+            Target::Fn
+            | Target::Closure
+            | Target::Method(MethodKind::Trait { body: true })
             | Target::Method(MethodKind::Inherent) => true,
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
-                self.tcx.struct_span_lint_hir(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    "`#[inline]` is ignored on function prototypes",
-                ).emit();
+                self.tcx
+                    .struct_span_lint_hir(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        attr.span,
+                        "`#[inline]` is ignored on function prototypes",
+                    )
+                    .emit();
                 true
             }
             // FIXME(#65833): We permit associated consts to have an `#[inline]` attribute with
@@ -211,17 +219,23 @@ impl CheckAttrVisitor<'tcx> {
             // accidentally, to to be compatible with crates depending on them, we can't throw an
             // error here.
             Target::AssocConst => {
-                self.tcx.struct_span_lint_hir(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    "`#[inline]` is ignored on constants",
-                ).warn("this was previously accepted by the compiler but is \
+                self.tcx
+                    .struct_span_lint_hir(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        attr.span,
+                        "`#[inline]` is ignored on constants",
+                    )
+                    .warn(
+                        "this was previously accepted by the compiler but is \
                        being phased out; it will become a hard error in \
-                       a future release!")
-                .note("for more information, see issue #65833 \
-                       <https://github.com/rust-lang/rust/issues/65833>")
-                .emit();
+                       a future release!",
+                    )
+                    .note(
+                        "for more information, see issue #65833 \
+                       <https://github.com/rust-lang/rust/issues/65833>",
+                    )
+                    .emit();
                 true
             }
             _ => {
@@ -230,8 +244,9 @@ impl CheckAttrVisitor<'tcx> {
                     attr.span,
                     E0518,
                     "attribute should be applied to function or closure",
-                ).span_label(*span, "not a function or closure")
-                    .emit();
+                )
+                .span_label(*span, "not a function or closure")
+                .emit();
                 false
             }
         }
@@ -252,7 +267,8 @@ impl CheckAttrVisitor<'tcx> {
                     *attr_span,
                     E0736,
                     "cannot use `#[track_caller]` with `#[naked]`",
-                ).emit();
+                )
+                .emit();
                 false
             }
             Target::Fn | Target::Method(MethodKind::Inherent) => true,
@@ -262,7 +278,8 @@ impl CheckAttrVisitor<'tcx> {
                     *attr_span,
                     E0738,
                     "`#[track_caller]` may not be used on trait methods",
-                ).emit();
+                )
+                .emit();
                 false
             }
             _ => {
@@ -280,21 +297,18 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid. Returns `true` if valid.
-    fn check_non_exhaustive(
-        &self,
-        attr: &Attribute,
-        span: &Span,
-        target: Target,
-    ) -> bool {
+    fn check_non_exhaustive(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
             Target::Struct | Target::Enum => true,
             _ => {
-                struct_span_err!(self.tcx.sess,
-                                 attr.span,
-                                 E0701,
-                                 "attribute can only be applied to a struct or enum")
-                    .span_label(*span, "not a struct or enum")
-                    .emit();
+                struct_span_err!(
+                    self.tcx.sess,
+                    attr.span,
+                    E0701,
+                    "attribute can only be applied to a struct or enum"
+                )
+                .span_label(*span, "not a struct or enum")
+                .emit();
                 false
             }
         }
@@ -305,7 +319,8 @@ impl CheckAttrVisitor<'tcx> {
         match target {
             Target::Trait => true,
             _ => {
-                self.tcx.sess
+                self.tcx
+                    .sess
                     .struct_span_err(attr.span, "attribute can only be applied to a trait")
                     .span_label(*span, "not a trait")
                     .emit();
@@ -317,15 +332,17 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if the `#[target_feature]` attribute on `item` is valid. Returns `true` if valid.
     fn check_target_feature(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
-            Target::Fn | Target::Method(MethodKind::Trait { body: true })
+            Target::Fn
+            | Target::Method(MethodKind::Trait { body: true })
             | Target::Method(MethodKind::Inherent) => true,
             _ => {
-                self.tcx.sess
+                self.tcx
+                    .sess
                     .struct_span_err(attr.span, "attribute should be applied to a function")
                     .span_label(*span, "not a function")
                     .emit();
                 false
-            },
+            }
         }
     }
 
@@ -364,20 +381,15 @@ impl CheckAttrVisitor<'tcx> {
                     }
                 }
                 sym::packed => {
-                    if target != Target::Struct &&
-                            target != Target::Union {
-                                ("a", "struct or union")
+                    if target != Target::Struct && target != Target::Union {
+                        ("a", "struct or union")
                     } else {
-                        continue
+                        continue;
                     }
                 }
                 sym::simd => {
                     is_simd = true;
-                    if target != Target::Struct {
-                        ("a", "struct")
-                    } else {
-                        continue
-                    }
+                    if target != Target::Struct { ("a", "struct") } else { continue }
                 }
                 sym::transparent => {
                     is_transparent = true;
@@ -386,15 +398,18 @@ impl CheckAttrVisitor<'tcx> {
                         _ => ("a", "struct, enum, or union"),
                     }
                 }
-                sym::i8  | sym::u8  | sym::i16 | sym::u16 |
-                sym::i32 | sym::u32 | sym::i64 | sym::u64 |
-                sym::isize | sym::usize => {
+                sym::i8
+                | sym::u8
+                | sym::i16
+                | sym::u16
+                | sym::i32
+                | sym::u32
+                | sym::i64
+                | sym::u64
+                | sym::isize
+                | sym::usize => {
                     int_reprs += 1;
-                    if target != Target::Enum {
-                        ("an", "enum")
-                    } else {
-                        continue
-                    }
+                    if target != Target::Enum { ("an", "enum") } else { continue }
                 }
                 _ => continue,
             };
@@ -413,16 +428,21 @@ impl CheckAttrVisitor<'tcx> {
         // Error on repr(transparent, <anything else>).
         if is_transparent && hints.len() > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
-            span_err!(self.tcx.sess, hint_spans, E0692,
-                      "transparent {} cannot have other repr hints", target);
+            span_err!(
+                self.tcx.sess,
+                hint_spans,
+                E0692,
+                "transparent {} cannot have other repr hints",
+                target
+            );
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
-           || (is_simd && is_c)
-           || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item))) {
+            || (is_simd && is_c)
+            || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item)))
+        {
             let hint_spans: Vec<_> = hint_spans.collect();
-            span_warn!(self.tcx.sess, hint_spans, E0566,
-                       "conflicting representation hints");
+            span_warn!(self.tcx.sess, hint_spans, E0566, "conflicting representation hints");
         }
     }
 
@@ -480,7 +500,8 @@ impl CheckAttrVisitor<'tcx> {
     fn check_used(&self, attrs: &'hir [Attribute], target: Target) {
         for attr in attrs {
             if attr.check_name(sym::used) && target != Target::Static {
-                self.tcx.sess
+                self.tcx
+                    .sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
             }
         }
@@ -542,15 +563,10 @@ fn is_c_like_enum(item: &Item<'_>) -> bool {
 }
 
 fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(
-        module_def_id,
-        &mut CheckAttrVisitor { tcx }.as_deep_visitor()
-    );
+    tcx.hir()
+        .visit_item_likes_in_module(module_def_id, &mut CheckAttrVisitor { tcx }.as_deep_visitor());
 }
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
-    *providers = Providers {
-        check_mod_attrs,
-        ..*providers
-    };
+    *providers = Providers { check_mod_attrs, ..*providers };
 }

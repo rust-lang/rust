@@ -1,11 +1,11 @@
 pub use self::def_id_forest::DefIdForest;
 
-use crate::ty::context::TyCtxt;
-use crate::ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
-use crate::ty::{DefId, SubstsRef};
-use crate::ty::{AdtKind, Visibility};
-use crate::ty::TyKind::*;
 use crate::ty;
+use crate::ty::context::TyCtxt;
+use crate::ty::TyKind::*;
+use crate::ty::{AdtDef, FieldDef, Ty, TyS, VariantDef};
+use crate::ty::{AdtKind, Visibility};
+use crate::ty::{DefId, SubstsRef};
 
 mod def_id_forest;
 
@@ -115,9 +115,10 @@ impl<'tcx> AdtDef {
         if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
             DefIdForest::empty()
         } else {
-            DefIdForest::intersection(tcx, self.variants.iter().map(|v| {
-                v.uninhabited_from(tcx, substs, self.adt_kind())
-            }))
+            DefIdForest::intersection(
+                tcx,
+                self.variants.iter().map(|v| v.uninhabited_from(tcx, substs, self.adt_kind())),
+            )
         }
     }
 }
@@ -141,9 +142,10 @@ impl<'tcx> VariantDef {
         if self.is_field_list_non_exhaustive() && !self.def_id.is_local() {
             DefIdForest::empty()
         } else {
-            DefIdForest::union(tcx, self.fields.iter().map(|f| {
-                f.uninhabited_from(tcx, substs, is_enum)
-            }))
+            DefIdForest::union(
+                tcx,
+                self.fields.iter().map(|f| f.uninhabited_from(tcx, substs, is_enum)),
+            )
         }
     }
 }
@@ -156,9 +158,7 @@ impl<'tcx> FieldDef {
         substs: SubstsRef<'tcx>,
         is_enum: bool,
     ) -> DefIdForest {
-        let data_uninhabitedness = move || {
-            self.ty(tcx, substs).uninhabited_from(tcx)
-        };
+        let data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(tcx);
         // FIXME(canndrew): Currently enum fields are (incorrectly) stored with
         // `Visibility::Invisible` so we need to override `self.vis` if we're
         // dealing with an enum.
@@ -171,7 +171,7 @@ impl<'tcx> FieldDef {
                     let forest = DefIdForest::from_id(from);
                     let iter = Some(forest).into_iter().chain(Some(data_uninhabitedness()));
                     DefIdForest::intersection(tcx, iter)
-                },
+                }
                 Visibility::Public => data_uninhabitedness(),
             }
         }
@@ -187,16 +187,14 @@ impl<'tcx> TyS<'tcx> {
             Never => DefIdForest::full(tcx),
 
             Tuple(ref tys) => {
-                DefIdForest::union(tcx, tys.iter().map(|ty| {
-                    ty.expect_ty().uninhabited_from(tcx)
-                }))
+                DefIdForest::union(tcx, tys.iter().map(|ty| ty.expect_ty().uninhabited_from(tcx)))
             }
 
             Array(ty, len) => match len.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                 // If the array is definitely non-empty, it's uninhabited if
                 // the type of its elements is uninhabited.
                 Some(n) if n != 0 => ty.uninhabited_from(tcx),
-                _ => DefIdForest::empty()
+                _ => DefIdForest::empty(),
             },
 
             // References to uninitialised memory is valid for any type, including

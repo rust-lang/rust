@@ -7,9 +7,9 @@ use crate::lint::{
 };
 use errors::Applicability;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_session::declare_tool_lint;
 use syntax::ast::{Ident, Item, ItemKind};
 use syntax::symbol::{sym, Symbol};
-use rustc_session::declare_tool_lint;
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
@@ -224,8 +224,9 @@ impl EarlyLintPass for LintPassImpl {
                 if last.ident.name == sym::LintPass {
                     let expn_data = lint_pass.path.span.ctxt().outer_expn_data();
                     let call_site = expn_data.call_site;
-                    if expn_data.kind.descr() != sym::impl_lint_pass &&
-                       call_site.ctxt().outer_expn_data().kind.descr() != sym::declare_lint_pass {
+                    if expn_data.kind.descr() != sym::impl_lint_pass
+                        && call_site.ctxt().outer_expn_data().kind.descr() != sym::declare_lint_pass
+                    {
                         cx.struct_span_lint(
                             LINT_PASS_IMPL_WITHOUT_MACRO,
                             lint_pass.path.span,

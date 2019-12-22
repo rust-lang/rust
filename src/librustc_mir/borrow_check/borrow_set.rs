@@ -1,15 +1,15 @@
-use crate::borrow_check::place_ext::PlaceExt;
 use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::path_utils::allow_two_phase_borrow;
+use crate::borrow_check::place_ext::PlaceExt;
 use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
 use rustc::mir::traversal;
-use rustc::mir::visit::{PlaceContext, Visitor, NonUseContext, MutatingUseContext};
-use rustc::mir::{self, Location, Body, Local, ReadOnlyBodyAndCache};
+use rustc::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
+use rustc::mir::{self, Body, Local, Location, ReadOnlyBodyAndCache};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_index::vec::IndexVec;
 use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 use std::fmt;
 use std::ops::Index;
 
@@ -84,14 +84,14 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
 
 crate enum LocalsStateAtExit {
     AllAreInvalidated,
-    SomeAreInvalidated { has_storage_dead_or_moved: BitSet<Local> }
+    SomeAreInvalidated { has_storage_dead_or_moved: BitSet<Local> },
 }
 
 impl LocalsStateAtExit {
     fn build(
         locals_are_invalidated_at_exit: bool,
         body: ReadOnlyBodyAndCache<'_, 'tcx>,
-        move_data: &MoveData<'tcx>
+        move_data: &MoveData<'tcx>,
     ) -> Self {
         struct HasStorageDead(BitSet<Local>);
 
@@ -106,17 +106,15 @@ impl LocalsStateAtExit {
         if locals_are_invalidated_at_exit {
             LocalsStateAtExit::AllAreInvalidated
         } else {
-            let mut has_storage_dead
-                = HasStorageDead(BitSet::new_empty(body.local_decls.len()));
+            let mut has_storage_dead = HasStorageDead(BitSet::new_empty(body.local_decls.len()));
             has_storage_dead.visit_body(body);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {
                 if let Some(index) = move_data.base_local(move_out.path) {
                     has_storage_dead_or_moved.insert(index);
-
                 }
             }
-            LocalsStateAtExit::SomeAreInvalidated{ has_storage_dead_or_moved }
+            LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved }
         }
     }
 }
@@ -136,8 +134,11 @@ impl<'tcx> BorrowSet<'tcx> {
             activation_map: Default::default(),
             local_map: Default::default(),
             pending_activations: Default::default(),
-            locals_state_at_exit:
-                LocalsStateAtExit::build(locals_are_invalidated_at_exit, body, move_data),
+            locals_state_at_exit: LocalsStateAtExit::build(
+                locals_are_invalidated_at_exit,
+                body,
+                move_data,
+            ),
         };
 
         for (block, block_data) in traversal::preorder(&body) {
@@ -154,10 +155,7 @@ impl<'tcx> BorrowSet<'tcx> {
     }
 
     crate fn activations_at_location(&self, location: Location) -> &[BorrowIndex] {
-        self.activation_map
-            .get(&location)
-            .map(|activations| &activations[..])
-            .unwrap_or(&[])
+        self.activation_map.get(&location).map(|activations| &activations[..]).unwrap_or(&[])
     }
 }
 
@@ -218,12 +216,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         self.super_assign(assigned_place, rvalue, location)
     }
 
-    fn visit_local(
-        &mut self,
-        temp: &Local,
-        context: PlaceContext,
-        location: Location,
-    ) {
+    fn visit_local(&mut self, temp: &Local, context: PlaceContext, location: Location) {
         if !context.is_use() {
             return;
         }
@@ -237,14 +230,14 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
 
             // Watch out: the use of TMP in the borrow itself
             // doesn't count as an activation. =)
-            if borrow_data.reserve_location == location &&
-                context == PlaceContext::MutatingUse(MutatingUseContext::Store)
+            if borrow_data.reserve_location == location
+                && context == PlaceContext::MutatingUse(MutatingUseContext::Store)
             {
                 return;
             }
 
-            if let TwoPhaseActivation::ActivatedAt(other_location) =
-                    borrow_data.activation_location {
+            if let TwoPhaseActivation::ActivatedAt(other_location) = borrow_data.activation_location
+            {
                 span_bug!(
                     self.body.source_info(location).span,
                     "found two uses for 2-phase borrow temporary {:?}: \
@@ -264,10 +257,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 TwoPhaseActivation::NotActivated,
                 "never found an activation for this borrow!",
             );
-            self.activation_map
-                .entry(location)
-                .or_default()
-                .push(borrow_index);
+            self.activation_map.entry(location).or_default().push(borrow_index);
 
             borrow_data.activation_location = TwoPhaseActivation::ActivatedAt(location);
         }
@@ -290,7 +280,6 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
-
     /// If this is a two-phase borrow, then we will record it
     /// as "pending" until we find the activating use.
     fn insert_as_pending_if_two_phase(
@@ -339,10 +328,14 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         // assignment.
         let old_value = self.pending_activations.insert(temp, borrow_index);
         if let Some(old_index) = old_value {
-            span_bug!(self.body.source_info(start_location).span,
-                      "found already pending activation for temp: {:?} \
+            span_bug!(
+                self.body.source_info(start_location).span,
+                "found already pending activation for temp: {:?} \
                        at borrow_index: {:?} with associated data {:?}",
-                      temp, old_index, self.idx_vec[old_index]);
+                temp,
+                old_index,
+                self.idx_vec[old_index]
+            );
         }
     }
 }

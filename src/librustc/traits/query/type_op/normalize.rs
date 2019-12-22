@@ -1,8 +1,8 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
-use std::fmt;
 use crate::traits::query::Fallible;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
 pub struct Normalize<T> {
@@ -25,11 +25,7 @@ where
     type QueryResponse = T;
 
     fn try_fast_path(_tcx: TyCtxt<'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
-        if !key.value.value.has_projections() {
-            Some(key.value.value)
-        } else {
-            None
-        }
+        if !key.value.value.has_projections() { Some(key.value.value) } else { None }
     }
 
     fn perform_query(

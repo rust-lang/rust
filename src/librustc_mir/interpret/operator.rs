@@ -1,11 +1,14 @@
 use rustc::mir;
-use rustc::ty::{self, Ty, layout::{TyLayout, LayoutOf}};
-use syntax::ast::FloatTy;
-use rustc_apfloat::Float;
 use rustc::mir::interpret::{InterpResult, Scalar};
+use rustc::ty::{
+    self,
+    layout::{LayoutOf, TyLayout},
+    Ty,
+};
+use rustc_apfloat::Float;
+use syntax::ast::FloatTy;
 
-use super::{InterpCx, PlaceTy, Immediate, Machine, ImmTy};
-
+use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
@@ -21,7 +24,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         debug_assert_eq!(
             self.tcx.intern_tup(&[ty, self.tcx.types.bool]),
             dest.layout.ty,
-            "type mismatch for result of {:?}", op,
+            "type mismatch for result of {:?}",
+            op,
         );
         let val = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
         self.write_immediate(val, dest)
@@ -157,8 +161,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             bug!(
                 "invalid asymmetric binary op {:?}: {:?} ({:?}), {:?} ({:?})",
                 bin_op,
-                l, left_layout.ty,
-                r, right_layout.ty,
+                l,
+                left_layout.ty,
+                r,
+                right_layout.ty,
             )
         }
 
@@ -196,8 +202,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if r == -1 && l == (1 << (size.bits() - 1)) {
                             return Ok((Scalar::from_uint(l, size), true, left_layout.ty));
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
                 trace!("{}, {}, {}", l, l128, r);
                 let (result, mut oflo) = op(l128, r);
@@ -249,15 +255,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ));
             }
 
-            _ => {
-                bug!(
-                    "invalid binary op {:?}: {:?}, {:?} (both {:?})",
-                    bin_op,
-                    l,
-                    r,
-                    right_layout.ty,
-                )
-            }
+            _ => bug!(
+                "invalid binary op {:?}: {:?}, {:?} (both {:?})",
+                bin_op,
+                l,
+                r,
+                right_layout.ty,
+            ),
         };
 
         Ok((val, false, ty))
@@ -271,8 +275,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         left: ImmTy<'tcx, M::PointerTag>,
         right: ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
-        trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
-            bin_op, *left, left.layout.ty, *right, right.layout.ty);
+        trace!(
+            "Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
+            bin_op,
+            *left,
+            left.layout.ty,
+            *right,
+            right.layout.ty
+        );
 
         match left.layout.ty.kind {
             ty::Char => {
@@ -293,10 +303,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let left = left.to_scalar()?;
                 let right = right.to_scalar()?;
                 Ok(match fty {
-                    FloatTy::F32 =>
-                        self.binary_float_op(bin_op, ty, left.to_f32()?, right.to_f32()?),
-                    FloatTy::F64 =>
-                        self.binary_float_op(bin_op, ty, left.to_f64()?, right.to_f64()?),
+                    FloatTy::F32 => {
+                        self.binary_float_op(bin_op, ty, left.to_f32()?, right.to_f32()?)
+                    }
+                    FloatTy::F64 => {
+                        self.binary_float_op(bin_op, ty, left.to_f64()?, right.to_f64()?)
+                    }
                 })
             }
             _ if left.layout.ty.is_integral() => {
@@ -304,7 +316,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(
                     right.layout.ty.is_integral(),
                     "Unexpected types for BinOp: {:?} {:?} {:?}",
-                    left.layout.ty, bin_op, right.layout.ty
+                    left.layout.ty,
+                    bin_op,
+                    right.layout.ty
                 );
 
                 let l = self.force_bits(left.to_scalar()?, left.layout.size)?;
@@ -316,7 +330,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(
                     right.layout.ty == left.layout.ty || right.layout.ty.is_integral(),
                     "Unexpected types for BinOp: {:?} {:?} {:?}",
-                    left.layout.ty, bin_op, right.layout.ty
+                    left.layout.ty,
+                    bin_op,
+                    right.layout.ty
                 );
 
                 M::binary_ptr_op(self, bin_op, left, right)
@@ -353,7 +369,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = val.to_bool()?;
                 let res = match un_op {
                     Not => !val,
-                    _ => bug!("Invalid bool op {:?}", un_op)
+                    _ => bug!("Invalid bool op {:?}", un_op),
                 };
                 Ok(ImmTy::from_scalar(Scalar::from_bool(res), self.layout_of(self.tcx.types.bool)?))
             }
@@ -361,7 +377,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let res = match (un_op, fty) {
                     (Neg, FloatTy::F32) => Scalar::from_f32(-val.to_f32()?),
                     (Neg, FloatTy::F64) => Scalar::from_f64(-val.to_f64()?),
-                    _ => bug!("Invalid float op {:?}", un_op)
+                    _ => bug!("Invalid float op {:?}", un_op),
                 };
                 Ok(ImmTy::from_scalar(res, layout))
             }

@@ -1,11 +1,11 @@
 use super::{Parser, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-use rustc_errors::{PResult, Applicability, DiagnosticBuilder};
-use syntax::ast::{self, AttrVec, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
-use syntax::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
-use syntax::mut_visit::{noop_visit_pat, noop_visit_mac, MutVisitor};
-use syntax::ptr::P;
+use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
+use syntax::ast::{self, AttrVec, Attribute, FieldPat, Mac, Pat, PatKind, RangeEnd, RangeSyntax};
+use syntax::ast::{BindingMode, Expr, ExprKind, Ident, Mutability, Path, QSelf};
+use syntax::mut_visit::{noop_visit_mac, noop_visit_pat, MutVisitor};
 use syntax::print::pprust;
+use syntax::ptr::P;
 use syntax::token;
 use syntax_pos::source_map::{respan, Span, Spanned};
 use syntax_pos::symbol::{kw, sym};
@@ -19,11 +19,17 @@ const WHILE_PARSING_OR_MSG: &str = "while parsing this or-pattern starting here"
 
 /// Whether or not an or-pattern should be gated when occurring in the current context.
 #[derive(PartialEq)]
-pub(super) enum GateOr { Yes, No }
+pub(super) enum GateOr {
+    Yes,
+    No,
+}
 
 /// Whether or not to recover a `,` when parsing or-patterns.
 #[derive(PartialEq, Copy, Clone)]
-enum RecoverComma { Yes, No }
+enum RecoverComma {
+    Yes,
+    No,
+}
 
 impl<'a> Parser<'a> {
     /// Parses a pattern.
@@ -93,7 +99,7 @@ impl<'a> Parser<'a> {
         // If the next token is not a `|`,
         // this is not an or-pattern and we should exit here.
         if !self.check(&token::BinOp(token::Or)) && self.token != token::OrOr {
-            return Ok(first_pat)
+            return Ok(first_pat);
         }
 
         // Parse the patterns `p_1 | ... | p_n` where `n > 0`.
@@ -172,7 +178,7 @@ impl<'a> Parser<'a> {
             self.token.span,
             "use a single `|` to separate multiple alternative patterns",
             "|".to_owned(),
-            Applicability::MachineApplicable
+            Applicability::MachineApplicable,
         );
         if let Some(lo) = lo {
             err.span_label(lo, WHILE_PARSING_OR_MSG);
@@ -205,13 +211,13 @@ impl<'a> Parser<'a> {
                 seq_span,
                 "try adding parentheses to match on a tuple..",
                 format!("({})", seq_snippet),
-                Applicability::MachineApplicable
+                Applicability::MachineApplicable,
             )
             .span_suggestion(
                 seq_span,
                 "..or a vertical bar to match on multiple alternatives",
                 format!("{}", seq_snippet.replace(",", " |")),
-                Applicability::MachineApplicable
+                Applicability::MachineApplicable,
             );
         }
         Err(err)
@@ -223,7 +229,7 @@ impl<'a> Parser<'a> {
         while !self.check(&token::CloseDelim(token::Paren)) {
             self.parse_pat(None)?;
             if !self.eat(&token::Comma) {
-                return Ok(())
+                return Ok(());
             }
         }
         Ok(())
@@ -280,10 +286,8 @@ impl<'a> Parser<'a> {
             token::OpenDelim(token::Paren) => self.parse_pat_tuple_or_parens()?,
             token::OpenDelim(token::Bracket) => {
                 // Parse `[pat, pat,...]` as a slice pattern.
-                let (pats, _) = self.parse_delim_comma_seq(
-                    token::Bracket,
-                    |p| p.parse_pat_with_or_inner(),
-                )?;
+                let (pats, _) =
+                    self.parse_delim_comma_seq(token::Bracket, |p| p.parse_pat_with_or_inner())?;
                 PatKind::Slice(pats)
             }
             token::DotDot => {
@@ -307,56 +311,60 @@ impl<'a> Parser<'a> {
                 self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotDot), "...")?
             }
             // At this point, token != `&`, `&&`, `(`, `[`, `..`, `..=`, or `...`.
-            _ => if self.eat_keyword(kw::Underscore) {
-                // Parse _
-                PatKind::Wild
-            } else if self.eat_keyword(kw::Mut) {
-                self.parse_pat_ident_mut()?
-            } else if self.eat_keyword(kw::Ref) {
-                // Parse ref ident @ pat / ref mut ident @ pat
-                let mutbl = self.parse_mutability();
-                self.parse_pat_ident(BindingMode::ByRef(mutbl))?
-            } else if self.eat_keyword(kw::Box) {
-                // Parse `box pat`
-                let pat = self.parse_pat_with_range_pat(false, None)?;
-                self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_span));
-                PatKind::Box(pat)
-            } else if self.can_be_ident_pat() {
-                // Parse `ident @ pat`
-                // This can give false positives and parse nullary enums,
-                // they are dealt with later in resolve.
-                self.parse_pat_ident(BindingMode::ByValue(Mutability::Not))?
-            } else if self.is_start_of_pat_with_path() {
-                // Parse pattern starting with a path
-                let (qself, path) = if self.eat_lt() {
-                    // Parse a qualified path
-                    let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-                    (Some(qself), path)
+            _ => {
+                if self.eat_keyword(kw::Underscore) {
+                    // Parse _
+                    PatKind::Wild
+                } else if self.eat_keyword(kw::Mut) {
+                    self.parse_pat_ident_mut()?
+                } else if self.eat_keyword(kw::Ref) {
+                    // Parse ref ident @ pat / ref mut ident @ pat
+                    let mutbl = self.parse_mutability();
+                    self.parse_pat_ident(BindingMode::ByRef(mutbl))?
+                } else if self.eat_keyword(kw::Box) {
+                    // Parse `box pat`
+                    let pat = self.parse_pat_with_range_pat(false, None)?;
+                    self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_span));
+                    PatKind::Box(pat)
+                } else if self.can_be_ident_pat() {
+                    // Parse `ident @ pat`
+                    // This can give false positives and parse nullary enums,
+                    // they are dealt with later in resolve.
+                    self.parse_pat_ident(BindingMode::ByValue(Mutability::Not))?
+                } else if self.is_start_of_pat_with_path() {
+                    // Parse pattern starting with a path
+                    let (qself, path) = if self.eat_lt() {
+                        // Parse a qualified path
+                        let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+                        (Some(qself), path)
+                    } else {
+                        // Parse an unqualified path
+                        (None, self.parse_path(PathStyle::Expr)?)
+                    };
+                    match self.token.kind {
+                        token::Not if qself.is_none() => self.parse_pat_mac_invoc(path)?,
+                        token::DotDotDot | token::DotDotEq | token::DotDot => {
+                            self.parse_pat_range_starting_with_path(lo, qself, path)?
+                        }
+                        token::OpenDelim(token::Brace) => self.parse_pat_struct(qself, path)?,
+                        token::OpenDelim(token::Paren) => {
+                            self.parse_pat_tuple_struct(qself, path)?
+                        }
+                        _ => PatKind::Path(qself, path),
+                    }
                 } else {
-                    // Parse an unqualified path
-                    (None, self.parse_path(PathStyle::Expr)?)
-                };
-                match self.token.kind {
-                    token::Not if qself.is_none() => self.parse_pat_mac_invoc(path)?,
-                    token::DotDotDot | token::DotDotEq | token::DotDot => {
-                        self.parse_pat_range_starting_with_path(lo, qself, path)?
+                    // Try to parse everything else as literal with optional minus
+                    match self.parse_literal_maybe_minus() {
+                        Ok(begin)
+                            if self.check(&token::DotDot)
+                                || self.check(&token::DotDotEq)
+                                || self.check(&token::DotDotDot) =>
+                        {
+                            self.parse_pat_range_starting_with_lit(begin)?
+                        }
+                        Ok(begin) => PatKind::Lit(begin),
+                        Err(err) => return self.fatal_unexpected_non_pat(err, expected),
                     }
-                    token::OpenDelim(token::Brace) => self.parse_pat_struct(qself, path)?,
-                    token::OpenDelim(token::Paren) => self.parse_pat_tuple_struct(qself, path)?,
-                    _ => PatKind::Path(qself, path),
-                }
-            } else {
-                // Try to parse everything else as literal with optional minus
-                match self.parse_literal_maybe_minus() {
-                    Ok(begin)
-                        if self.check(&token::DotDot)
-                            || self.check(&token::DotDotEq)
-                            || self.check(&token::DotDotDot) =>
-                    {
-                        self.parse_pat_range_starting_with_lit(begin)?
-                    }
-                    Ok(begin) => PatKind::Lit(begin),
-                    Err(err) => return self.fatal_unexpected_non_pat(err, expected),
                 }
             }
         };
@@ -403,7 +411,7 @@ impl<'a> Parser<'a> {
                 PatKind::Ident(..) => {
                     applicability = Applicability::MaybeIncorrect;
                     false // Short-circuit.
-                },
+                }
                 _ => true,
             });
 
@@ -435,22 +443,21 @@ impl<'a> Parser<'a> {
     fn ban_pat_range_if_ambiguous(&self, pat: &Pat) -> PResult<'a, ()> {
         match pat.kind {
             PatKind::Range(
-                .., Spanned { node: RangeEnd::Included(RangeSyntax::DotDotDot), .. }
+                ..,
+                Spanned { node: RangeEnd::Included(RangeSyntax::DotDotDot), .. },
             ) => return Ok(()),
             PatKind::Range(..) => {}
             _ => return Ok(()),
         }
 
-        let mut err = self.struct_span_err(
-            pat.span,
-            "the range pattern here has ambiguous interpretation",
-        );
+        let mut err =
+            self.struct_span_err(pat.span, "the range pattern here has ambiguous interpretation");
         err.span_suggestion(
             pat.span,
             "add parentheses to clarify the precedence",
             format!("({})", pprust::pat_to_string(&pat)),
             // "ambiguous interpretation" implies that we have to be guessing
-            Applicability::MaybeIncorrect
+            Applicability::MaybeIncorrect,
         );
         Err(err)
     }
@@ -482,7 +489,8 @@ impl<'a> Parser<'a> {
 
     /// Parse a tuple or parenthesis pattern.
     fn parse_pat_tuple_or_parens(&mut self) -> PResult<'a, PatKind> {
-        let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner())?;
+        let (fields, trailing_comma) =
+            self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner())?;
 
         // Here, `(pat,)` is a tuple pattern.
         // For backward compatibility, `(..)` is a tuple pattern as well.
@@ -498,16 +506,16 @@ impl<'a> Parser<'a> {
         let mut_span = self.prev_span;
 
         if self.eat_keyword(kw::Ref) {
-            return self.recover_mut_ref_ident(mut_span)
+            return self.recover_mut_ref_ident(mut_span);
         }
 
         self.recover_additional_muts();
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
         if let token::Interpolated(ref nt) = self.token.kind {
-             if let token::NtPat(_) = **nt {
-                 self.expected_ident_found().emit();
-             }
+            if let token::NtPat(_) = **nt {
+                self.expected_ident_found().emit();
+            }
         }
 
         // Parse the pattern we hope to be an identifier.
@@ -535,7 +543,7 @@ impl<'a> Parser<'a> {
                 mutref_span,
                 "try switching the order",
                 "ref mut".into(),
-                Applicability::MachineApplicable
+                Applicability::MachineApplicable,
             )
             .emit();
 
@@ -552,8 +560,8 @@ impl<'a> Parser<'a> {
             }
 
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
-                if let PatKind::Ident(BindingMode::ByValue(ref mut m @ Mutability::Not), ..)
-                    = pat.kind
+                if let PatKind::Ident(BindingMode::ByValue(ref mut m @ Mutability::Not), ..) =
+                    pat.kind
                 {
                     *m = Mutability::Mut;
                     self.0 = true;
@@ -605,11 +613,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let args = self.parse_mac_args()?;
-        let mac = Mac {
-            path,
-            args,
-            prior_type_ascription: self.last_type_ascription,
-        };
+        let mac = Mac { path, args, prior_type_ascription: self.last_type_ascription };
         Ok(PatKind::Mac(mac))
     }
 
@@ -624,7 +628,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         qself: Option<QSelf>,
-        path: Path
+        path: Path,
     ) -> PResult<'a, PatKind> {
         let (end_kind, form) = match self.token.kind {
             token::DotDot => (self.excluded_range_end(self.token.span), ".."),
@@ -793,10 +797,7 @@ impl<'a> Parser<'a> {
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to `parse_enum_variant()`.
         if self.token == token::OpenDelim(token::Paren) {
-            return Err(self.span_fatal(
-                self.prev_span,
-                "expected identifier, found enum pattern",
-            ))
+            return Err(self.span_fatal(self.prev_span, "expected identifier, found enum pattern"));
         }
 
         Ok(PatKind::Ident(binding_mode, ident, sub))
@@ -849,7 +850,7 @@ impl<'a> Parser<'a> {
                         delayed.emit();
                     }
                     return Err(err);
-                },
+                }
             };
             let lo = self.token.span;
 
@@ -868,7 +869,7 @@ impl<'a> Parser<'a> {
                 let mut etc_sp = self.token.span;
 
                 self.recover_one_fewer_dotdot();
-                self.bump();  // `..` || `...`
+                self.bump(); // `..` || `...`
 
                 if self.token == token::CloseDelim(token::Brace) {
                     etc_span = Some(etc_sp);
@@ -879,11 +880,14 @@ impl<'a> Parser<'a> {
 
                 err.span_label(self.token.span, "expected `}`");
                 let mut comma_sp = None;
-                if self.token == token::Comma { // Issue #49257
+                if self.token == token::Comma {
+                    // Issue #49257
                     let nw_span = self.sess.source_map().span_until_non_whitespace(self.token.span);
                     etc_sp = etc_sp.to(nw_span);
-                    err.span_label(etc_sp,
-                                   "`..` must be at the end and cannot have a trailing comma");
+                    err.span_label(
+                        etc_sp,
+                        "`..` must be at the end and cannot have a trailing comma",
+                    );
                     comma_sp = Some(self.token.span);
                     self.bump();
                     ate_comma = true;
@@ -961,7 +965,7 @@ impl<'a> Parser<'a> {
                 self.token.span,
                 "to omit remaining fields, use one fewer `.`",
                 "..".to_owned(),
-                Applicability::MachineApplicable
+                Applicability::MachineApplicable,
             )
             .emit();
     }
@@ -993,11 +997,8 @@ impl<'a> Parser<'a> {
             };
 
             let fieldpat = self.mk_pat_ident(boxed_span.to(hi), bind_type, fieldname);
-            let subpat = if is_box {
-                self.mk_pat(lo.to(hi), PatKind::Box(fieldpat))
-            } else {
-                fieldpat
-            };
+            let subpat =
+                if is_box { self.mk_pat(lo.to(hi), PatKind::Box(fieldpat)) } else { fieldpat };
             (subpat, fieldname, true)
         };
 

@@ -11,7 +11,7 @@ use crate::abi::{self, Abi, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMet
 enum Class {
     Int,
     Sse,
-    SseUp
+    SseUp,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -21,15 +21,23 @@ struct Memory;
 const LARGEST_VECTOR_SIZE: usize = 512;
 const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &ArgAbi<'a, Ty>)
-                          -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory>
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+fn classify_arg<'a, Ty, C>(
+    cx: &C,
+    arg: &ArgAbi<'a, Ty>,
+) -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory>
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
-    fn classify<'a, Ty, C>(cx: &C, layout: TyLayout<'a, Ty>,
-                          cls: &mut [Option<Class>], off: Size) -> Result<(), Memory>
-        where Ty: TyLayoutMethods<'a, C> + Copy,
-            C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+    fn classify<'a, Ty, C>(
+        cx: &C,
+        layout: TyLayout<'a, Ty>,
+        cls: &mut [Option<Class>],
+        off: Size,
+    ) -> Result<(), Memory>
+    where
+        Ty: TyLayoutMethods<'a, C> + Copy,
+        C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
     {
         if !off.is_aligned(layout.align.abi) {
             if !layout.is_zst() {
@@ -41,30 +49,23 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &ArgAbi<'a, Ty>)
         let mut c = match layout.abi {
             Abi::Uninhabited => return Ok(()),
 
-            Abi::Scalar(ref scalar) => {
-                match scalar.value {
-                    abi::Int(..) |
-                    abi::Pointer => Class::Int,
-                    abi::F32 | abi::F64 => Class::Sse
-                }
-            }
+            Abi::Scalar(ref scalar) => match scalar.value {
+                abi::Int(..) | abi::Pointer => Class::Int,
+                abi::F32 | abi::F64 => Class::Sse,
+            },
 
             Abi::Vector { .. } => Class::Sse,
 
-            Abi::ScalarPair(..) |
-            Abi::Aggregate { .. } => {
-                match layout.variants {
-                    abi::Variants::Single { .. } => {
-                        for i in 0..layout.fields.count() {
-                            let field_off = off + layout.fields.offset(i);
-                            classify(cx, layout.field(cx, i), cls, field_off)?;
-                        }
-                        return Ok(());
+            Abi::ScalarPair(..) | Abi::Aggregate { .. } => match layout.variants {
+                abi::Variants::Single { .. } => {
+                    for i in 0..layout.fields.count() {
+                        let field_off = off + layout.fields.offset(i);
+                        classify(cx, layout.field(cx, i), cls, field_off)?;
                     }
-                    abi::Variants::Multiple { .. } => return Err(Memory),
+                    return Ok(());
                 }
-            }
-
+                abi::Variants::Multiple { .. } => return Err(Memory),
+            },
         };
 
         // Fill in `cls` for scalars (Int/Sse) and vectors (Sse).
@@ -104,7 +105,9 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &ArgAbi<'a, Ty>)
                 cls[i] = Some(Class::Sse);
             } else if cls[i] == Some(Class::Sse) {
                 i += 1;
-                while i != n && cls[i] == Some(Class::SseUp) { i += 1; }
+                while i != n && cls[i] == Some(Class::SseUp) {
+                    i += 1;
+                }
             } else {
                 i += 1;
             }
@@ -123,33 +126,22 @@ fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg
         None => None,
         Some(Class::Int) => {
             *i += 1;
-            Some(if size.bytes() < 8 {
-                Reg {
-                    kind: RegKind::Integer,
-                    size
-                }
-            } else {
-                Reg::i64()
-            })
+            Some(if size.bytes() < 8 { Reg { kind: RegKind::Integer, size } } else { Reg::i64() })
         }
         Some(Class::Sse) => {
-            let vec_len = 1 + cls[*i+1..].iter()
-                .take_while(|&&c| c == Some(Class::SseUp))
-                .count();
+            let vec_len =
+                1 + cls[*i + 1..].iter().take_while(|&&c| c == Some(Class::SseUp)).count();
             *i += vec_len;
             Some(if vec_len == 1 {
                 match size.bytes() {
                     4 => Reg::f32(),
-                    _ => Reg::f64()
+                    _ => Reg::f64(),
                 }
             } else {
-                Reg {
-                    kind: RegKind::Vector,
-                    size: Size::from_bytes(8) * (vec_len as u64)
-                }
+                Reg { kind: RegKind::Vector, size: Size::from_bytes(8) * (vec_len as u64) }
             })
         }
-        Some(c) => unreachable!("reg_component: unhandled class {:?}", c)
+        Some(c) => unreachable!("reg_component: unhandled class {:?}", c),
     }
 }
 
@@ -171,8 +163,9 @@ const MAX_INT_REGS: usize = 6; // RDI, RSI, RDX, RCX, R8, R9
 const MAX_SSE_REGS: usize = 8; // XMM0-7
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     let mut int_regs = MAX_INT_REGS;
     let mut sse_regs = MAX_SSE_REGS;
@@ -239,7 +232,9 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
     }
 
     for arg in &mut fn_abi.args {
-        if arg.is_ignore() { continue; }
+        if arg.is_ignore() {
+            continue;
+        }
         x86_64_arg_or_ret(arg, true);
     }
 }

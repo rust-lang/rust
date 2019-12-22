@@ -2,11 +2,11 @@
 
 use core::cell::Cell;
 use core::marker::Unpin;
-use core::pin::Pin;
+use core::ops::{Drop, Generator, GeneratorState};
 use core::option::Option;
+use core::pin::Pin;
 use core::ptr::NonNull;
 use core::task::{Context, Poll};
-use core::ops::{Drop, Generator, GeneratorState};
 
 #[doc(inline)]
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -66,9 +66,7 @@ impl Drop for SetOnDrop {
 unsafe fn set_task_context(cx: &mut Context<'_>) -> SetOnDrop {
     // transmute the context's lifetime to 'static so we can store it.
     let cx = core::mem::transmute::<&mut Context<'_>, &mut Context<'static>>(cx);
-    let old_cx = TLS_CX.with(|tls_cx| {
-        tls_cx.replace(Some(NonNull::from(cx)))
-    });
+    let old_cx = TLS_CX.with(|tls_cx| tls_cx.replace(Some(NonNull::from(cx))));
     SetOnDrop(old_cx)
 }
 
@@ -77,7 +75,7 @@ unsafe fn set_task_context(cx: &mut Context<'_>) -> SetOnDrop {
 /// Polls a future in the current thread-local task waker.
 pub fn poll_with_tls_context<F>(f: Pin<&mut F>) -> Poll<F::Output>
 where
-    F: Future
+    F: Future,
 {
     let cx_ptr = TLS_CX.with(|tls_cx| {
         // Clear the entry so that nested `get_task_waker` calls
@@ -88,7 +86,8 @@ where
 
     let mut cx_ptr = cx_ptr.expect(
         "TLS Context not set. This is a rustc bug. \
-        Please file an issue on https://github.com/rust-lang/rust.");
+        Please file an issue on https://github.com/rust-lang/rust.",
+    );
 
     // Safety: we've ensured exclusive access to the context by
     // removing the pointer from TLS, only to be replaced once

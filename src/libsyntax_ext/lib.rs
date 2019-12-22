@@ -2,7 +2,6 @@
 //! injecting code into the crate before it is lowered to HIR.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
@@ -17,7 +16,7 @@ use crate::deriving::*;
 use syntax::ast::Ident;
 use syntax::edition::Edition;
 use syntax::symbol::sym;
-use syntax_expand::base::{Resolver, SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
+use syntax_expand::base::{MacroExpanderFn, Resolver, SyntaxExtension, SyntaxExtensionKind};
 use syntax_expand::proc_macro::BangProcMacro;
 
 mod asm;
@@ -44,11 +43,12 @@ pub mod standard_library_imports;
 pub mod test_harness;
 
 pub fn register_builtin_macros(resolver: &mut dyn Resolver, edition: Edition) {
-    let mut register = |name, kind| resolver.register_builtin_macro(
-        Ident::with_dummy_span(name), SyntaxExtension {
-            is_builtin: true, ..SyntaxExtension::default(kind, edition)
-        },
-    );
+    let mut register = |name, kind| {
+        resolver.register_builtin_macro(
+            Ident::with_dummy_span(name),
+            SyntaxExtension { is_builtin: true, ..SyntaxExtension::default(kind, edition) },
+        )
+    };
     macro register_bang($($name:ident: $f:expr,)*) {
         $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)));)*
     }

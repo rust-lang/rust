@@ -1,7 +1,7 @@
 pub use BinOpToken::*;
-pub use Nonterminal::*;
 pub use DelimToken::*;
 pub use LitKind::*;
+pub use Nonterminal::*;
 pub use TokenKind::*;
 
 use crate::ast;
@@ -12,11 +12,11 @@ use crate::tokenstream::TokenTree;
 use syntax_pos::symbol::Symbol;
 use syntax_pos::{self, Span, DUMMY_SP};
 
-use std::fmt;
-use std::mem;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
+use std::fmt;
+use std::mem;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 #[derive(HashStable_Generic)]
@@ -83,20 +83,23 @@ impl fmt::Display for Lit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Lit { kind, symbol, suffix } = *self;
         match kind {
-            Byte          => write!(f, "b'{}'", symbol)?,
-            Char          => write!(f, "'{}'", symbol)?,
-            Str           => write!(f, "\"{}\"", symbol)?,
-            StrRaw(n)     => write!(f, "r{delim}\"{string}\"{delim}",
-                                     delim="#".repeat(n as usize),
-                                     string=symbol)?,
-            ByteStr       => write!(f, "b\"{}\"", symbol)?,
-            ByteStrRaw(n) => write!(f, "br{delim}\"{string}\"{delim}",
-                                     delim="#".repeat(n as usize),
-                                     string=symbol)?,
-            Integer       |
-            Float         |
-            Bool          |
-            Err           => write!(f, "{}", symbol)?,
+            Byte => write!(f, "b'{}'", symbol)?,
+            Char => write!(f, "'{}'", symbol)?,
+            Str => write!(f, "\"{}\"", symbol)?,
+            StrRaw(n) => write!(
+                f,
+                "r{delim}\"{string}\"{delim}",
+                delim = "#".repeat(n as usize),
+                string = symbol
+            )?,
+            ByteStr => write!(f, "b\"{}\"", symbol)?,
+            ByteStrRaw(n) => write!(
+                f,
+                "br{delim}\"{string}\"{delim}",
+                delim = "#".repeat(n as usize),
+                string = symbol
+            )?,
+            Integer | Float | Bool | Err => write!(f, "{}", symbol)?,
         }
 
         if let Some(suffix) = suffix {
@@ -149,48 +152,41 @@ pub fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) -> bool {
 }
 
 pub fn token_can_begin_expr(ident_token: &Token) -> bool {
-    !ident_token.is_reserved_ident() ||
-    ident_token.is_path_segment_keyword() ||
-    match ident_token.kind {
-        TokenKind::Ident(ident, _) => [
-            kw::Async,
-            kw::Do,
-            kw::Box,
-            kw::Break,
-            kw::Continue,
-            kw::False,
-            kw::For,
-            kw::If,
-            kw::Let,
-            kw::Loop,
-            kw::Match,
-            kw::Move,
-            kw::Return,
-            kw::True,
-            kw::Unsafe,
-            kw::While,
-            kw::Yield,
-            kw::Static,
-        ].contains(&ident),
-        _=> false,
-    }
+    !ident_token.is_reserved_ident()
+        || ident_token.is_path_segment_keyword()
+        || match ident_token.kind {
+            TokenKind::Ident(ident, _) => [
+                kw::Async,
+                kw::Do,
+                kw::Box,
+                kw::Break,
+                kw::Continue,
+                kw::False,
+                kw::For,
+                kw::If,
+                kw::Let,
+                kw::Loop,
+                kw::Match,
+                kw::Move,
+                kw::Return,
+                kw::True,
+                kw::Unsafe,
+                kw::While,
+                kw::Yield,
+                kw::Static,
+            ]
+            .contains(&ident),
+            _ => false,
+        }
 }
 
 fn ident_can_begin_type(name: ast::Name, span: Span, is_raw: bool) -> bool {
     let ident_token = Token::new(Ident(name, is_raw), span);
 
-    !ident_token.is_reserved_ident() ||
-    ident_token.is_path_segment_keyword() ||
-    [
-        kw::Underscore,
-        kw::For,
-        kw::Impl,
-        kw::Fn,
-        kw::Unsafe,
-        kw::Extern,
-        kw::Typeof,
-        kw::Dyn,
-    ].contains(&name)
+    !ident_token.is_reserved_ident()
+        || ident_token.is_path_segment_keyword()
+        || [kw::Underscore, kw::For, kw::Impl, kw::Fn, kw::Unsafe, kw::Extern, kw::Typeof, kw::Dyn]
+            .contains(&name)
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
@@ -249,7 +245,6 @@ pub enum TokenKind {
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for
     // them. Instead, users could extract that from the associated span.
-
     /// Whitespace.
     Whitespace,
     /// A comment.
@@ -282,7 +277,7 @@ impl TokenKind {
         match *self {
             Comma => Some(vec![Dot, Lt, Semi]),
             Semi => Some(vec![Colon, Comma]),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -309,9 +304,8 @@ impl Token {
 
     pub fn is_op(&self) -> bool {
         match self.kind {
-            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
-            Ident(..) | Lifetime(..) | Interpolated(..) |
-            Whitespace | Comment | Shebang(..) | Eof => false,
+            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
+            | Lifetime(..) | Interpolated(..) | Whitespace | Comment | Shebang(..) | Eof => false,
             _ => true,
         }
     }
@@ -385,22 +379,25 @@ impl Token {
             Interpolated(ref nt) => match **nt {
                 NtExpr(..) | NtBlock(..) | NtLiteral(..) => true,
                 _ => false,
-            }
+            },
             _ => self.can_begin_literal_or_bool(),
         }
     }
 
     /// Returns `true` if the token can appear at the start of a generic bound.
     pub fn can_begin_bound(&self) -> bool {
-        self.is_path_start() || self.is_lifetime() || self.is_keyword(kw::For) ||
-        self == &Question || self == &OpenDelim(Paren)
+        self.is_path_start()
+            || self.is_lifetime()
+            || self.is_keyword(kw::For)
+            || self == &Question
+            || self == &OpenDelim(Paren)
     }
 
     /// Returns `true` if the token is any literal
     pub fn is_lit(&self) -> bool {
         match self.kind {
             Literal(..) => true,
-            _           => false,
+            _ => false,
         }
     }
 
@@ -412,9 +409,9 @@ impl Token {
             Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match **nt {
                 NtLiteral(..) => true,
-                _             => false,
+                _ => false,
             },
-            _            => false,
+            _ => false,
         }
     }
 
@@ -483,8 +480,7 @@ impl Token {
 
     /// Returns `true` if the token is either the `mut` or `const` keyword.
     pub fn is_mutability(&self) -> bool {
-        self.is_keyword(kw::Mut) ||
-        self.is_keyword(kw::Const)
+        self.is_keyword(kw::Mut) || self.is_keyword(kw::Const)
     }
 
     pub fn is_qpath_start(&self) -> bool {
@@ -492,8 +488,11 @@ impl Token {
     }
 
     pub fn is_path_start(&self) -> bool {
-        self == &ModSep || self.is_qpath_start() || self.is_path() ||
-        self.is_path_segment_keyword() || self.is_ident() && !self.is_reserved_ident()
+        self == &ModSep
+            || self.is_qpath_start()
+            || self.is_path()
+            || self.is_path_segment_keyword()
+            || self.is_ident() && !self.is_reserved_ident()
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
@@ -589,11 +588,11 @@ impl Token {
                 _ => return None,
             },
 
-            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot |
-            DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
-            Question | OpenDelim(..) | CloseDelim(..) |
-            Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
-            Whitespace | Comment | Shebang(..) | Unknown(..) | Eof => return None,
+            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
+            | DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar
+            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
+            | Lifetime(..) | Interpolated(..) | DocComment(..) | Whitespace | Comment
+            | Shebang(..) | Unknown(..) | Eof => return None,
         };
 
         Some(Token::new(kind, self.span.to(joint.span)))
@@ -603,54 +602,51 @@ impl Token {
     // *probably* equal here rather than actual equality
     crate fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
         if mem::discriminant(&self.kind) != mem::discriminant(&other.kind) {
-            return false
+            return false;
         }
         match (&self.kind, &other.kind) {
-            (&Eq, &Eq) |
-            (&Lt, &Lt) |
-            (&Le, &Le) |
-            (&EqEq, &EqEq) |
-            (&Ne, &Ne) |
-            (&Ge, &Ge) |
-            (&Gt, &Gt) |
-            (&AndAnd, &AndAnd) |
-            (&OrOr, &OrOr) |
-            (&Not, &Not) |
-            (&Tilde, &Tilde) |
-            (&At, &At) |
-            (&Dot, &Dot) |
-            (&DotDot, &DotDot) |
-            (&DotDotDot, &DotDotDot) |
-            (&DotDotEq, &DotDotEq) |
-            (&Comma, &Comma) |
-            (&Semi, &Semi) |
-            (&Colon, &Colon) |
-            (&ModSep, &ModSep) |
-            (&RArrow, &RArrow) |
-            (&LArrow, &LArrow) |
-            (&FatArrow, &FatArrow) |
-            (&Pound, &Pound) |
-            (&Dollar, &Dollar) |
-            (&Question, &Question) |
-            (&Whitespace, &Whitespace) |
-            (&Comment, &Comment) |
-            (&Eof, &Eof) => true,
+            (&Eq, &Eq)
+            | (&Lt, &Lt)
+            | (&Le, &Le)
+            | (&EqEq, &EqEq)
+            | (&Ne, &Ne)
+            | (&Ge, &Ge)
+            | (&Gt, &Gt)
+            | (&AndAnd, &AndAnd)
+            | (&OrOr, &OrOr)
+            | (&Not, &Not)
+            | (&Tilde, &Tilde)
+            | (&At, &At)
+            | (&Dot, &Dot)
+            | (&DotDot, &DotDot)
+            | (&DotDotDot, &DotDotDot)
+            | (&DotDotEq, &DotDotEq)
+            | (&Comma, &Comma)
+            | (&Semi, &Semi)
+            | (&Colon, &Colon)
+            | (&ModSep, &ModSep)
+            | (&RArrow, &RArrow)
+            | (&LArrow, &LArrow)
+            | (&FatArrow, &FatArrow)
+            | (&Pound, &Pound)
+            | (&Dollar, &Dollar)
+            | (&Question, &Question)
+            | (&Whitespace, &Whitespace)
+            | (&Comment, &Comment)
+            | (&Eof, &Eof) => true,
 
-            (&BinOp(a), &BinOp(b)) |
-            (&BinOpEq(a), &BinOpEq(b)) => a == b,
+            (&BinOp(a), &BinOp(b)) | (&BinOpEq(a), &BinOpEq(b)) => a == b,
 
-            (&OpenDelim(a), &OpenDelim(b)) |
-            (&CloseDelim(a), &CloseDelim(b)) => a == b,
+            (&OpenDelim(a), &OpenDelim(b)) | (&CloseDelim(a), &CloseDelim(b)) => a == b,
 
-            (&DocComment(a), &DocComment(b)) |
-            (&Shebang(a), &Shebang(b)) => a == b,
+            (&DocComment(a), &DocComment(b)) | (&Shebang(a), &Shebang(b)) => a == b,
 
             (&Literal(a), &Literal(b)) => a == b,
 
             (&Lifetime(a), &Lifetime(b)) => a == b,
-            (&Ident(a, b), &Ident(c, d)) => b == d && (a == c ||
-                                                       a == kw::DollarCrate ||
-                                                       c == kw::DollarCrate),
+            (&Ident(a, b), &Ident(c, d)) => {
+                b == d && (a == c || a == kw::DollarCrate || c == kw::DollarCrate)
+            }
 
             (&Interpolated(_), &Interpolated(_)) => false,
 
@@ -693,8 +689,9 @@ pub enum Nonterminal {
 impl PartialEq for Nonterminal {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
-            (NtIdent(ident_lhs, is_raw_lhs), NtIdent(ident_rhs, is_raw_rhs)) =>
-                ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs,
+            (NtIdent(ident_lhs, is_raw_lhs), NtIdent(ident_rhs, is_raw_rhs)) => {
+                ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs
+            }
             (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
             (NtTT(tt_lhs), NtTT(tt_rhs)) => tt_lhs == tt_rhs,
             // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them
@@ -730,7 +727,8 @@ impl fmt::Debug for Nonterminal {
 }
 
 impl<CTX> HashStable<CTX> for Nonterminal
-    where CTX: crate::HashStableContext
+where
+    CTX: crate::HashStableContext,
 {
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
         panic!("interpolated tokens should not be present in the HIR")

@@ -117,7 +117,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let place_ty = Place::ty_from(&place.base, proj_base, body, tcx).ty;
             match place_ty.kind {
                 ty::Ref(..) | ty::RawPtr(..) => {
-                    let proj = &place.projection[..i+1];
+                    let proj = &place.projection[..i + 1];
                     return Err(MoveError::cannot_move_out_of(
                         self.loc,
                         BorrowedContent {
@@ -162,11 +162,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             };
 
             if union_path.is_none() {
-                base = self.add_move_path(base, elem, |tcx| {
-                    Place {
-                        base: place.base.clone(),
-                        projection: tcx.intern_place_elems(&place.projection[..i+1]),
-                    }
+                base = self.add_move_path(base, elem, |tcx| Place {
+                    base: place.base.clone(),
+                    projection: tcx.intern_place_elems(&place.projection[..i + 1]),
                 });
             }
         }
@@ -190,18 +188,16 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             tcx,
             ..
         } = self.builder;
-        *rev_lookup.projections
-            .entry((base, elem.lift()))
-            .or_insert_with(move || {
-                let path = MoveDataBuilder::new_move_path(
-                    move_paths,
-                    path_map,
-                    init_path_map,
-                    Some(base),
-                    mk_place(*tcx),
-                );
-                path
-            })
+        *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
+            let path = MoveDataBuilder::new_move_path(
+                move_paths,
+                path_map,
+                init_path_map,
+                Some(base),
+                mk_place(*tcx),
+            );
+            path
+        })
     }
 
     fn create_move_path(&mut self, place: &Place<'tcx>) {
@@ -289,7 +285,7 @@ struct Gatherer<'b, 'a, 'tcx> {
 impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match stmt.kind {
-            StatementKind::Assign(box(ref place, ref rval)) => {
+            StatementKind::Assign(box (ref place, ref rval)) => {
                 self.create_move_path(place);
                 if let RvalueInitializationState::Shallow = rval.initialization_state() {
                     // Box starts out uninitialized - need to create a separate
@@ -433,10 +429,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_move(&mut self, place: &Place<'tcx>) {
         debug!("gather_move({:?}, {:?})", self.loc, place);
 
-        if let [
-            ref base @ ..,
-            ProjectionElem::Subslice { from, to, from_end: false },
-        ] = **place.projection {
+        if let [ref base @ .., ProjectionElem::Subslice { from, to, from_end: false }] =
+            **place.projection
+        {
             // Split `Subslice` patterns into the corresponding list of
             // `ConstIndex` patterns. This is done to ensure that all move paths
             // are disjoint, which is expected by drop elaboration.
@@ -459,23 +454,18 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let len: u32 = match base_ty.kind {
                 ty::Array(_, size) => {
                     let length = size.eval_usize(self.builder.tcx, self.builder.param_env);
-                    length.try_into().expect(
-                        "slice pattern of array with more than u32::MAX elements"
-                    )
+                    length
+                        .try_into()
+                        .expect("slice pattern of array with more than u32::MAX elements")
                 }
                 _ => bug!("from_end: false slice pattern of non-array type"),
             };
             for offset in from..to {
-                let elem = ProjectionElem::ConstantIndex {
-                    offset,
-                    min_length: len,
-                    from_end: false,
-                };
-                let path = self.add_move_path(
-                    base_path,
-                    &elem,
-                    |tcx| tcx.mk_place_elem(base_place.clone(), elem),
-                );
+                let elem =
+                    ProjectionElem::ConstantIndex { offset, min_length: len, from_end: false };
+                let path = self.add_move_path(base_path, &elem, |tcx| {
+                    tcx.mk_place_elem(base_place.clone(), elem)
+                });
                 self.record_move(place, path);
             }
         } else {

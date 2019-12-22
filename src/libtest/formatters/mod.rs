@@ -1,21 +1,18 @@
-use std::{
-    io,
-    io::prelude::Write,
-};
+use std::{io, io::prelude::Write};
 
 use crate::{
-    types::{TestDesc, TestName},
-    time,
+    console::ConsoleTestState,
     test_result::TestResult,
-    console::{ConsoleTestState},
+    time,
+    types::{TestDesc, TestName},
 };
 
-mod pretty;
 mod json;
+mod pretty;
 mod terse;
 
-pub(crate) use self::pretty::PrettyFormatter;
 pub(crate) use self::json::JsonFormatter;
+pub(crate) use self::pretty::PrettyFormatter;
 pub(crate) use self::terse::TerseFormatter;
 
 pub(crate) trait OutputFormatter {

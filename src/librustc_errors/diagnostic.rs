@@ -1,10 +1,10 @@
-use crate::CodeSuggestion;
-use crate::SuggestionStyle;
-use crate::SubstitutionPart;
-use crate::Substitution;
-use crate::Applicability;
-use crate::Level;
 use crate::snippet::Style;
+use crate::Applicability;
+use crate::CodeSuggestion;
+use crate::Level;
+use crate::Substitution;
+use crate::SubstitutionPart;
+use crate::SuggestionStyle;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
@@ -81,7 +81,7 @@ pub enum StringPart {
 impl StringPart {
     pub fn content(&self) -> &str {
         match self {
-            &StringPart::Normal(ref s) | & StringPart::Highlighted(ref s) => s
+            &StringPart::Normal(ref s) | &StringPart::Highlighted(ref s) => s,
         }
     }
 }
@@ -105,19 +105,9 @@ impl Diagnostic {
 
     pub fn is_error(&self) -> bool {
         match self.level {
-            Level::Bug |
-            Level::Fatal |
-            Level::Error |
-            Level::FailureNote => {
-                true
-            }
+            Level::Bug | Level::Fatal | Level::Error | Level::FailureNote => true,
 
-            Level::Warning |
-            Level::Note |
-            Level::Help |
-            Level::Cancelled => {
-                false
-            }
+            Level::Warning | Level::Note | Level::Help | Level::Cancelled => false,
         }
     }
 
@@ -177,19 +167,16 @@ impl Diagnostic {
         found: DiagnosticStyledString,
     ) -> &mut Self {
         let mut msg: Vec<_> =
-            vec![(format!("required when trying to coerce from type `"),
-                  Style::NoStyle)];
-        msg.extend(expected.0.iter()
-                   .map(|x| match *x {
-                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-                   }));
+            vec![(format!("required when trying to coerce from type `"), Style::NoStyle)];
+        msg.extend(expected.0.iter().map(|x| match *x {
+            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+        }));
         msg.push((format!("` to type '"), Style::NoStyle));
-        msg.extend(found.0.iter()
-                   .map(|x| match *x {
-                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-                   }));
+        msg.extend(found.0.iter().map(|x| match *x {
+            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+        }));
         msg.push((format!("`"), Style::NoStyle));
 
         // For now, just attach these as notes
@@ -213,22 +200,18 @@ impl Diagnostic {
         } else {
             (0, found_label.len() - expected_label.len())
         };
-        let mut msg: Vec<_> = vec![(
-            format!("{}{} `", " ".repeat(expected_padding), expected_label),
-            Style::NoStyle,
-        )];
-        msg.extend(expected.0.iter()
-            .map(|x| match *x {
-                StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-            }));
+        let mut msg: Vec<_> =
+            vec![(format!("{}{} `", " ".repeat(expected_padding), expected_label), Style::NoStyle)];
+        msg.extend(expected.0.iter().map(|x| match *x {
+            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+        }));
         msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
         msg.push((format!("{}{} `", " ".repeat(found_padding), found_label), Style::NoStyle));
-        msg.extend(found.0.iter()
-            .map(|x| match *x {
-                StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-            }));
+        msg.extend(found.0.iter().map(|x| match *x {
+            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+        }));
         msg.push((format!("`{}", found_extra), Style::NoStyle));
 
         // For now, just attach these as notes.
@@ -240,7 +223,8 @@ impl Diagnostic {
         self.highlighted_note(vec![
             (format!("`{}` from trait: `", name), Style::NoStyle),
             (signature, Style::Highlight),
-            ("`".to_string(), Style::NoStyle)]);
+            ("`".to_string(), Style::NoStyle),
+        ]);
         self
     }
 
@@ -255,10 +239,7 @@ impl Diagnostic {
     }
 
     /// Prints the span with a note above it.
-    pub fn span_note<S: Into<MultiSpan>>(&mut self,
-                                         sp: S,
-                                         msg: &str)
-                                         -> &mut Self {
+    pub fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, sp.into(), None);
         self
     }
@@ -269,24 +250,18 @@ impl Diagnostic {
     }
 
     /// Prints the span with a warn above it.
-    pub fn span_warn<S: Into<MultiSpan>>(&mut self,
-                                         sp: S,
-                                         msg: &str)
-                                         -> &mut Self {
+    pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, sp.into(), None);
         self
     }
 
-    pub fn help(&mut self , msg: &str) -> &mut Self {
+    pub fn help(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new(), None);
         self
     }
 
     /// Prints the span with some help above it.
-    pub fn span_help<S: Into<MultiSpan>>(&mut self,
-                                         sp: S,
-                                         msg: &str)
-                                         -> &mut Self {
+    pub fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
         self
     }
@@ -381,10 +356,7 @@ impl Diagnostic {
     ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
-                parts: vec![SubstitutionPart {
-                    snippet: suggestion,
-                    span: sp,
-                }],
+                parts: vec![SubstitutionPart { snippet: suggestion, span: sp }],
             }],
             msg: msg.to_owned(),
             style,
@@ -419,12 +391,9 @@ impl Diagnostic {
         applicability: Applicability,
     ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
-            substitutions: suggestions.map(|snippet| Substitution {
-                parts: vec![SubstitutionPart {
-                    snippet,
-                    span: sp,
-                }],
-            }).collect(),
+            substitutions: suggestions
+                .map(|snippet| Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] })
+                .collect(),
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
             applicability,
@@ -437,7 +406,11 @@ impl Diagnostic {
     ///
     /// See `CodeSuggestion` for more information.
     pub fn span_suggestion_short(
-        &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
             sp,
@@ -456,7 +429,11 @@ impl Diagnostic {
     /// (marginally overlapping spans or multiline spans) and showing the snippet window wouldn't
     /// improve understandability.
     pub fn span_suggestion_hidden(
-        &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
             sp,
@@ -473,7 +450,11 @@ impl Diagnostic {
     /// This is intended to be used for suggestions that are *very* obvious in what the changes
     /// need to be from the message, but we still want other tools to be able to apply them.
     pub fn tool_only_span_suggestion(
-        &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
             sp,
@@ -530,11 +511,13 @@ impl Diagnostic {
 
     /// Convenience function for internal use, clients should use one of the
     /// public methods above.
-    pub fn sub(&mut self,
-           level: Level,
-           message: &str,
-           span: MultiSpan,
-           render_span: Option<MultiSpan>) {
+    pub fn sub(
+        &mut self,
+        level: Level,
+        message: &str,
+        span: MultiSpan,
+        render_span: Option<MultiSpan>,
+    ) {
         let sub = SubDiagnostic {
             level,
             message: vec![(message.to_owned(), Style::NoStyle)],
@@ -546,17 +529,14 @@ impl Diagnostic {
 
     /// Convenience function for internal use, clients should use one of the
     /// public methods above.
-    fn sub_with_highlights(&mut self,
-                           level: Level,
-                           message: Vec<(String, Style)>,
-                           span: MultiSpan,
-                           render_span: Option<MultiSpan>) {
-        let sub = SubDiagnostic {
-            level,
-            message,
-            span,
-            render_span,
-        };
+    fn sub_with_highlights(
+        &mut self,
+        level: Level,
+        message: Vec<(String, Style)>,
+        span: MultiSpan,
+        render_span: Option<MultiSpan>,
+    ) {
+        let sub = SubDiagnostic { level, message, span, render_span };
         self.children.push(sub);
     }
 }

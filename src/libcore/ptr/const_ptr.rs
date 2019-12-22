@@ -1,7 +1,7 @@
-use crate::cmp::Ordering::{self, Less, Equal, Greater};
+use super::*;
+use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics;
 use crate::mem;
-use super::*;
 
 // ignore-tidy-undocumented-unsafe
 
@@ -154,8 +154,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn offset(self, count: isize) -> *const T
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         intrinsics::offset(self, count)
     }
@@ -212,8 +212,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[inline]
     pub fn wrapping_offset(self, count: isize) -> *const T
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         unsafe { intrinsics::arith_offset(self, count) }
     }
@@ -284,8 +284,8 @@ impl<T: ?Sized> *const T {
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
     #[inline]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         let pointee_size = mem::size_of::<T>();
         let ok = 0 < pointee_size && pointee_size <= isize::max_value() as usize;
@@ -332,8 +332,8 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
     #[inline]
     pub fn wrapping_offset_from(self, origin: *const T) -> isize
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
@@ -396,8 +396,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn add(self, count: usize) -> Self
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         self.offset(count as isize)
     }
@@ -457,8 +457,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn sub(self, count: usize) -> Self
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         self.offset((count as isize).wrapping_neg())
     }
@@ -512,8 +512,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub fn wrapping_add(self, count: usize) -> Self
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         self.wrapping_offset(count as isize)
     }
@@ -567,8 +567,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub fn wrapping_sub(self, count: usize) -> Self
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         self.wrapping_offset((count as isize).wrapping_neg())
     }
@@ -582,8 +582,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read(self) -> T
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         read(self)
     }
@@ -601,8 +601,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_volatile(self) -> T
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         read_volatile(self)
     }
@@ -618,8 +618,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_unaligned(self) -> T
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         read_unaligned(self)
     }
@@ -635,8 +635,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to(self, dest: *mut T, count: usize)
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         copy(self, dest, count)
     }
@@ -652,8 +652,8 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         copy_nonoverlapping(self, dest, count)
     }
@@ -699,8 +699,8 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
     pub fn align_offset(self, align: usize) -> usize
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         if !align.is_power_of_two() {
             panic!("align_offset: align is not a power-of-two");
@@ -713,7 +713,9 @@ impl<T: ?Sized> *const T {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *const T {
     #[inline]
-    fn eq(&self, other: &*const T) -> bool { *self == *other }
+    fn eq(&self, other: &*const T) -> bool {
+        *self == *other
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -742,14 +744,22 @@ impl<T: ?Sized> PartialOrd for *const T {
     }
 
     #[inline]
-    fn lt(&self, other: &*const T) -> bool { *self < *other }
+    fn lt(&self, other: &*const T) -> bool {
+        *self < *other
+    }
 
     #[inline]
-    fn le(&self, other: &*const T) -> bool { *self <= *other }
+    fn le(&self, other: &*const T) -> bool {
+        *self <= *other
+    }
 
     #[inline]
-    fn gt(&self, other: &*const T) -> bool { *self > *other }
+    fn gt(&self, other: &*const T) -> bool {
+        *self > *other
+    }
 
     #[inline]
-    fn ge(&self, other: &*const T) -> bool { *self >= *other }
+    fn ge(&self, other: &*const T) -> bool {
+        *self >= *other
+    }
 }

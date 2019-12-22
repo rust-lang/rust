@@ -6,17 +6,16 @@
 #![feature(generator_trait)]
 #![feature(generators)]
 #![cfg_attr(unix, feature(libc))]
-
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 #[cfg(unix)]
 extern crate libc;
 
 pub mod interface;
 mod passes;
+mod proc_macro_decls;
 mod queries;
 pub mod util;
-mod proc_macro_decls;
 
 pub use interface::{run_compiler, Config};
 pub use queries::Queries;

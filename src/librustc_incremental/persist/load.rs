@@ -1,23 +1,23 @@
 //! Code to save/load the dep-graph from files.
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc::session::Session;
-use rustc::ty::TyCtxt;
 use rustc::ty::query::OnDiskCache;
+use rustc::ty::TyCtxt;
 use rustc::util::common::time_ext;
-use rustc_serialize::Decodable as RustcDecodable;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::opaque::Decoder;
+use rustc_serialize::Decodable as RustcDecodable;
 use std::path::Path;
 
 use super::data::*;
-use super::fs::*;
 use super::file_format;
+use super::fs::*;
 use super::work_product;
 
 pub fn dep_graph_tcx_init(tcx: TyCtxt<'_>) {
     if !tcx.dep_graph.is_fully_enabled() {
-        return
+        return;
     }
 
     tcx.allocate_metadata_dep_nodes();
@@ -37,42 +37,38 @@ impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
             LoadResult::Error { message } => {
                 sess.warn(&message);
                 Default::default()
-            },
+            }
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
-                    sess.err(&format!("Failed to delete invalidated or incompatible \
+                    sess.err(&format!(
+                        "Failed to delete invalidated or incompatible \
                                       incremental compilation session directory contents `{}`: {}.",
-                                      dep_graph_path(sess).display(), err));
+                        dep_graph_path(sess).display(),
+                        err
+                    ));
                 }
                 Default::default()
             }
-            LoadResult::Ok { data } => data
+            LoadResult::Ok { data } => data,
         }
     }
 }
 
-
 fn load_data(report_incremental_info: bool, path: &Path) -> LoadResult<(Vec<u8>, usize)> {
     match file_format::read_file(report_incremental_info, path) {
-        Ok(Some(data_and_pos)) => LoadResult::Ok {
-            data: data_and_pos
-        },
+        Ok(Some(data_and_pos)) => LoadResult::Ok { data: data_and_pos },
         Ok(None) => {
             // The file either didn't exist or was produced by an incompatible
             // compiler version. Neither is an error.
             LoadResult::DataOutOfDate
         }
-        Err(err) => {
-            LoadResult::Error {
-                message: format!("could not load dep-graph from `{}`: {}",
-                                  path.display(), err)
-            }
-        }
+        Err(err) => LoadResult::Error {
+            message: format!("could not load dep-graph from `{}`: {}", path.display(), err),
+        },
     }
 }
 
-fn delete_dirty_work_product(sess: &Session,
-                             swp: SerializedWorkProduct) {
+fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
     debug!("delete_dirty_work_product({:?})", swp);
     work_product::delete_workproduct_files(sess, &swp.work_product);
 }
@@ -82,13 +78,13 @@ fn delete_dirty_work_product(sess: &Session,
 /// by a background thread.
 pub enum MaybeAsync<T> {
     Sync(T),
-    Async(std::thread::JoinHandle<T>)
+    Async(std::thread::JoinHandle<T>),
 }
 impl<T> MaybeAsync<T> {
     pub fn open(self) -> std::thread::Result<T> {
         match self {
             MaybeAsync::Sync(result) => Ok(result),
-            MaybeAsync::Async(handle) => handle.join()
+            MaybeAsync::Async(handle) => handle.join(),
         }
     }
 }
@@ -105,9 +101,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
     if sess.opts.incremental.is_none() {
         // No incremental compilation.
-        return MaybeAsync::Sync(LoadResult::Ok {
-            data: Default::default(),
-        });
+        return MaybeAsync::Sync(LoadResult::Ok { data: Default::default() });
     }
 
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
@@ -130,8 +124,11 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
             let mut work_product_decoder = Decoder::new(&work_products_data[..], start_pos);
             let work_products: Vec<SerializedWorkProduct> =
                 RustcDecodable::decode(&mut work_product_decoder).unwrap_or_else(|e| {
-                    let msg = format!("Error decoding `work-products` from incremental \
-                                    compilation session directory: {}", e);
+                    let msg = format!(
+                        "Error decoding `work-products` from incremental \
+                                    compilation session directory: {}",
+                        e
+                    );
                     sess.fatal(&msg[..])
                 });
 
@@ -143,8 +140,11 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                         all_files_exist = false;
 
                         if sess.opts.debugging_opts.incremental_info {
-                            eprintln!("incremental: could not find file for work \
-                                    product: {}", path.display());
+                            eprintln!(
+                                "incremental: could not find file for work \
+                                    product: {}",
+                                path.display()
+                            );
                         }
                     }
                 }
@@ -168,15 +168,16 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                 LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
                 LoadResult::Error { message } => LoadResult::Error { message },
                 LoadResult::Ok { data: (bytes, start_pos) } => {
-
                     let mut decoder = Decoder::new(&bytes, start_pos);
                     let prev_commandline_args_hash = u64::decode(&mut decoder)
                         .expect("Error reading commandline arg hash from cached dep-graph");
 
                     if prev_commandline_args_hash != expected_hash {
                         if report_incremental_info {
-                            println!("[incremental] completely ignoring cache because of \
-                                    differing commandline arguments");
+                            println!(
+                                "[incremental] completely ignoring cache because of \
+                                    differing commandline arguments"
+                            );
                         }
                         // We can't reuse the cache, purge it.
                         debug!("load_dep_graph_new: differing commandline arg hashes");
@@ -196,15 +197,14 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 }
 
 pub fn load_query_result_cache(sess: &Session) -> OnDiskCache<'_> {
-    if sess.opts.incremental.is_none() ||
-       !sess.opts.debugging_opts.incremental_queries {
+    if sess.opts.incremental.is_none() || !sess.opts.debugging_opts.incremental_queries {
         return OnDiskCache::new_empty(sess.source_map());
     }
 
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
     match load_data(sess.opts.debugging_opts.incremental_info, &query_cache_path(sess)) {
-        LoadResult::Ok{ data: (bytes, start_pos) } => OnDiskCache::new(sess, bytes, start_pos),
-        _ => OnDiskCache::new_empty(sess.source_map())
+        LoadResult::Ok { data: (bytes, start_pos) } => OnDiskCache::new(sess, bytes, start_pos),
+        _ => OnDiskCache::new_empty(sess.source_map()),
     }
 }

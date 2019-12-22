@@ -3,15 +3,15 @@
 //! is calculated in `rustc_mir::transform::generator` and may be a subset of the
 //! types computed here.
 
+use super::FnCtxt;
+use crate::util::nodemap::FxHashMap;
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Pat, PatKind, Expr, ExprKind};
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::{self, Expr, ExprKind, Pat, PatKind};
 use rustc::middle::region::{self, YieldData};
 use rustc::ty::{self, Ty};
 use syntax_pos::Span;
-use super::FnCtxt;
-use crate::util::nodemap::FxHashMap;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -23,81 +23,96 @@ struct InteriorVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
-    fn record(&mut self,
-              ty: Ty<'tcx>,
-              scope: Option<region::Scope>,
-              expr: Option<&'tcx Expr>,
-              source_span: Span) {
+    fn record(
+        &mut self,
+        ty: Ty<'tcx>,
+        scope: Option<region::Scope>,
+        expr: Option<&'tcx Expr>,
+        source_span: Span,
+    ) {
         use syntax_pos::DUMMY_SP;
 
-        debug!("generator_interior: attempting to record type {:?} {:?} {:?} {:?}",
-               ty, scope, expr, source_span);
+        debug!(
+            "generator_interior: attempting to record type {:?} {:?} {:?} {:?}",
+            ty, scope, expr, source_span
+        );
 
-        let live_across_yield = scope.map(|s| {
-            self.region_scope_tree.yield_in_scope(s).and_then(|yield_data| {
-                // If we are recording an expression that is the last yield
-                // in the scope, or that has a postorder CFG index larger
-                // than the one of all of the yields, then its value can't
-                // be storage-live (and therefore live) at any of the yields.
-                //
-                // See the mega-comment at `yield_in_scope` for a proof.
+        let live_across_yield = scope
+            .map(|s| {
+                self.region_scope_tree.yield_in_scope(s).and_then(|yield_data| {
+                    // If we are recording an expression that is the last yield
+                    // in the scope, or that has a postorder CFG index larger
+                    // than the one of all of the yields, then its value can't
+                    // be storage-live (and therefore live) at any of the yields.
+                    //
+                    // See the mega-comment at `yield_in_scope` for a proof.
 
-                debug!("comparing counts yield: {} self: {}, source_span = {:?}",
-                       yield_data.expr_and_pat_count, self.expr_count, source_span);
+                    debug!(
+                        "comparing counts yield: {} self: {}, source_span = {:?}",
+                        yield_data.expr_and_pat_count, self.expr_count, source_span
+                    );
 
-                if yield_data.expr_and_pat_count >= self.expr_count {
-                    Some(yield_data)
-                } else {
-                    None
-                }
+                    if yield_data.expr_and_pat_count >= self.expr_count {
+                        Some(yield_data)
+                    } else {
+                        None
+                    }
+                })
             })
-        }).unwrap_or_else(|| Some(YieldData {
-            span: DUMMY_SP,
-            expr_and_pat_count: 0,
-            source: self.kind.into(),
-        }));
+            .unwrap_or_else(|| {
+                Some(YieldData { span: DUMMY_SP, expr_and_pat_count: 0, source: self.kind.into() })
+            });
 
         if let Some(yield_data) = live_across_yield {
             let ty = self.fcx.resolve_vars_if_possible(&ty);
-            debug!("type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
-                   expr, scope, ty, self.expr_count, yield_data.span);
+            debug!(
+                "type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
+                expr, scope, ty, self.expr_count, yield_data.span
+            );
 
             if let Some((unresolved_type, unresolved_type_span)) =
                 self.fcx.unresolved_type_vars(&ty)
             {
-                let note = format!("the type is part of the {} because of this {}",
-                                   self.kind,
-                                   yield_data.source);
+                let note = format!(
+                    "the type is part of the {} because of this {}",
+                    self.kind, yield_data.source
+                );
 
                 // If unresolved type isn't a ty_var then unresolved_type_span is None
-                let span = self.prev_unresolved_span.unwrap_or_else(
-                    || unresolved_type_span.unwrap_or(source_span)
-                );
-                self.fcx.need_type_info_err_in_generator(
-                    self.kind,
-                    span,
-                    unresolved_type,
-                )
+                let span = self
+                    .prev_unresolved_span
+                    .unwrap_or_else(|| unresolved_type_span.unwrap_or(source_span));
+                self.fcx
+                    .need_type_info_err_in_generator(self.kind, span, unresolved_type)
                     .span_note(yield_data.span, &*note)
                     .emit();
             } else {
                 // Map the type to the number of types added before it
                 let entries = self.types.len();
                 let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
-                self.types.entry(ty::GeneratorInteriorTypeCause {
-                    span: source_span,
-                    ty: &ty,
-                    scope_span
-                }).or_insert(entries);
+                self.types
+                    .entry(ty::GeneratorInteriorTypeCause {
+                        span: source_span,
+                        ty: &ty,
+                        scope_span,
+                    })
+                    .or_insert(entries);
             }
         } else {
-            debug!("no type in expr = {:?}, count = {:?}, span = {:?}",
-                   expr, self.expr_count, expr.map(|e| e.span));
+            debug!(
+                "no type in expr = {:?}, count = {:?}, span = {:?}",
+                expr,
+                self.expr_count,
+                expr.map(|e| e.span)
+            );
             let ty = self.fcx.resolve_vars_if_possible(&ty);
-            if let Some((unresolved_type, unresolved_type_span))
-                = self.fcx.unresolved_type_vars(&ty) {
-                debug!("remained unresolved_type = {:?}, unresolved_type_span: {:?}",
-                    unresolved_type, unresolved_type_span);
+            if let Some((unresolved_type, unresolved_type_span)) =
+                self.fcx.unresolved_type_vars(&ty)
+            {
+                debug!(
+                    "remained unresolved_type = {:?}, unresolved_type_span: {:?}",
+                    unresolved_type, unresolved_type_span
+                );
                 self.prev_unresolved_span = unresolved_type_span;
             }
         }
@@ -161,8 +176,10 @@ pub fn resolve_interior<'a, 'tcx>(
 
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
-    debug!("types in generator after region replacement {:?}, span = {:?}",
-            witness, body.value.span);
+    debug!(
+        "types in generator after region replacement {:?}, span = {:?}",
+        witness, body.value.span
+    );
 
     // Unify the type variable inside the generator with the new witness
     match fcx.at(&fcx.misc(body.value.span), fcx.param_env).eq(interior, witness) {
@@ -202,9 +219,9 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                         // Direct calls never need to keep the callee `ty::FnDef`
                         // ZST in a temporary, so skip its type, just in case it
                         // can significantly complicate the generator type.
-                        Res::Def(DefKind::Fn, _) |
-                        Res::Def(DefKind::Method, _) |
-                        Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
+                        Res::Def(DefKind::Fn, _)
+                        | Res::Def(DefKind::Method, _)
+                        | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
                             // NOTE(eddyb) this assumes a path expression has
                             // no nested expressions to keep track of.
                             self.expr_count += 1;
@@ -218,7 +235,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                     }
                 }
                 _ => intravisit::walk_expr(self, expr),
-            }
+            },
             ExprKind::Path(qpath) => {
                 let res = self.fcx.tables.borrow().qpath_res(qpath, expr.hir_id);
                 if let Res::Def(DefKind::Static, def_id) = res {

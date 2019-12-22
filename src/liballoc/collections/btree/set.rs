@@ -2,14 +2,14 @@
 // to TreeMap
 
 use core::borrow::Borrow;
-use core::cmp::Ordering::{Less, Greater, Equal};
+use core::cmp::Ordering::{Equal, Greater, Less};
 use core::cmp::{max, min};
 use core::fmt::{self, Debug};
-use core::iter::{Peekable, FromIterator, FusedIterator};
-use core::ops::{BitOr, BitAnd, BitXor, Sub, RangeBounds};
+use core::iter::{FromIterator, FusedIterator, Peekable};
+use core::ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub};
 
-use crate::collections::btree_map::{self, BTreeMap, Keys};
 use super::Recover;
+use crate::collections::btree_map::{self, BTreeMap, Keys};
 
 // FIXME(conventions): implement bounded iterators
 
@@ -77,9 +77,7 @@ pub struct Iter<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Iter")
-         .field(&self.iter.clone())
-         .finish()
+        f.debug_tuple("Iter").field(&self.iter.clone()).finish()
     }
 }
 
@@ -114,8 +112,9 @@ pub struct Range<'a, T: 'a> {
 /// and crucially for SymmetricDifference, nexts() reports on both sides.
 #[derive(Clone)]
 struct MergeIterInner<I>
-    where I: Iterator,
-          I::Item: Copy,
+where
+    I: Iterator,
+    I::Item: Copy,
 {
     a: I,
     b: I,
@@ -129,8 +128,9 @@ enum MergeIterPeeked<I: Iterator> {
 }
 
 impl<I> MergeIterInner<I>
-    where I: ExactSizeIterator + FusedIterator,
-          I::Item: Copy + Ord,
+where
+    I: ExactSizeIterator + FusedIterator,
+    I::Item: Copy + Ord,
 {
     fn new(a: I, b: I) -> Self {
         MergeIterInner { a, b, peeked: None }
@@ -169,14 +169,12 @@ impl<I> MergeIterInner<I>
 }
 
 impl<I> Debug for MergeIterInner<I>
-    where I: Iterator + Debug,
-          I::Item: Copy + Debug,
+where
+    I: Iterator + Debug,
+    I::Item: Copy + Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("MergeIterInner")
-            .field(&self.a)
-            .field(&self.b)
-            .finish()
+        f.debug_tuple("MergeIterInner").field(&self.a).field(&self.b).finish()
     }
 }
 
@@ -328,7 +326,10 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range<K: ?Sized, R>(&self, range: R) -> Range<'_, T>
-        where K: Ord, T: Borrow<K>, R: RangeBounds<K>
+    where
+        K: Ord,
+        T: Borrow<K>,
+        R: RangeBounds<K>,
     {
         Range { iter: self.map.range(range) }
     }
@@ -355,24 +356,18 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> Difference<'a, T> {
-        let (self_min, self_max) = if let (Some(self_min), Some(self_max)) =
-            (self.first(), self.last())
-        {
-            (self_min, self_max)
-        } else {
-            return Difference {
-                inner: DifferenceInner::Iterate(self.iter()),
+        let (self_min, self_max) =
+            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
+                (self_min, self_max)
+            } else {
+                return Difference { inner: DifferenceInner::Iterate(self.iter()) };
             };
-        };
-        let (other_min, other_max) = if let (Some(other_min), Some(other_max)) =
-            (other.first(), other.last())
-        {
-            (other_min, other_max)
-        } else {
-            return Difference {
-                inner: DifferenceInner::Iterate(self.iter()),
+        let (other_min, other_max) =
+            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
+                (other_min, other_max)
+            } else {
+                return Difference { inner: DifferenceInner::Iterate(self.iter()) };
             };
-        };
         Difference {
             inner: match (self_min.cmp(other_max), self_max.cmp(other_min)) {
                 (Greater, _) | (_, Less) => DifferenceInner::Iterate(self.iter()),
@@ -387,10 +382,7 @@ impl<T: Ord> BTreeSet<T> {
                     DifferenceInner::Iterate(self_iter)
                 }
                 _ if self.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
-                    DifferenceInner::Search {
-                        self_iter: self.iter(),
-                        other_set: other,
-                    }
+                    DifferenceInner::Search { self_iter: self.iter(), other_set: other }
                 }
                 _ => DifferenceInner::Stitch {
                     self_iter: self.iter(),
@@ -421,9 +413,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(sym_diff, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn symmetric_difference<'a>(&'a self,
-                                    other: &'a BTreeSet<T>)
-                                    -> SymmetricDifference<'a, T> {
+    pub fn symmetric_difference<'a>(
+        &'a self,
+        other: &'a BTreeSet<T>,
+    ) -> SymmetricDifference<'a, T> {
         SymmetricDifference(MergeIterInner::new(self.iter(), other.iter()))
     }
 
@@ -449,45 +442,30 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>) -> Intersection<'a, T> {
-        let (self_min, self_max) = if let (Some(self_min), Some(self_max)) =
-            (self.first(), self.last())
-        {
-            (self_min, self_max)
-        } else {
-            return Intersection {
-                inner: IntersectionInner::Answer(None),
+        let (self_min, self_max) =
+            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
+                (self_min, self_max)
+            } else {
+                return Intersection { inner: IntersectionInner::Answer(None) };
             };
-        };
-        let (other_min, other_max) = if let (Some(other_min), Some(other_max)) =
-            (other.first(), other.last())
-        {
-            (other_min, other_max)
-        } else {
-            return Intersection {
-                inner: IntersectionInner::Answer(None),
+        let (other_min, other_max) =
+            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
+                (other_min, other_max)
+            } else {
+                return Intersection { inner: IntersectionInner::Answer(None) };
             };
-        };
         Intersection {
             inner: match (self_min.cmp(other_max), self_max.cmp(other_min)) {
                 (Greater, _) | (_, Less) => IntersectionInner::Answer(None),
                 (Equal, _) => IntersectionInner::Answer(Some(self_min)),
                 (_, Equal) => IntersectionInner::Answer(Some(self_max)),
                 _ if self.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
-                    IntersectionInner::Search {
-                        small_iter: self.iter(),
-                        large_set: other,
-                    }
+                    IntersectionInner::Search { small_iter: self.iter(), large_set: other }
                 }
                 _ if other.len() <= self.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
-                    IntersectionInner::Search {
-                        small_iter: other.iter(),
-                        large_set: self,
-                    }
+                    IntersectionInner::Search { small_iter: other.iter(), large_set: self }
                 }
-                _ => IntersectionInner::Stitch {
-                    a: self.iter(),
-                    b: other.iter(),
-                },
+                _ => IntersectionInner::Stitch { a: self.iter(), b: other.iter() },
             },
         }
     }
@@ -549,8 +527,9 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
-        where T: Borrow<Q>,
-              Q: Ord
+    where
+        T: Borrow<Q>,
+        Q: Ord,
     {
         self.map.contains_key(value)
     }
@@ -572,8 +551,9 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
-        where T: Borrow<Q>,
-              Q: Ord
+    where
+        T: Borrow<Q>,
+        Q: Ord,
     {
         Recover::get(&self.map, value)
     }
@@ -624,20 +604,18 @@ impl<T: Ord> BTreeSet<T> {
         if self.len() > other.len() {
             return false;
         }
-        let (self_min, self_max) = if let (Some(self_min), Some(self_max)) =
-            (self.first(), self.last())
-        {
-            (self_min, self_max)
-        } else {
-            return true; // self is empty
-        };
-        let (other_min, other_max) = if let (Some(other_min), Some(other_max)) =
-            (other.first(), other.last())
-        {
-            (other_min, other_max)
-        } else {
-            return false; // other is empty
-        };
+        let (self_min, self_max) =
+            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
+                (self_min, self_max)
+            } else {
+                return true; // self is empty
+            };
+        let (other_min, other_max) =
+            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
+                (other_min, other_max)
+            } else {
+                return false; // other is empty
+            };
         let mut self_iter = self.iter();
         match self_min.cmp(other_min) {
             Less => return false,
@@ -855,8 +833,9 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
-        where T: Borrow<Q>,
-              Q: Ord
+    where
+        T: Borrow<Q>,
+        Q: Ord,
     {
         self.map.remove(value).is_some()
     }
@@ -878,8 +857,9 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
-        where T: Borrow<Q>,
-              Q: Ord
+    where
+        T: Borrow<Q>,
+        Q: Ord,
     {
         Recover::take(&mut self.map, value)
     }
@@ -947,7 +927,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert!(b.contains(&41));
     /// ```
     #[stable(feature = "btree_split_off", since = "1.11.0")]
-    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where T: Borrow<Q> {
+    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
+    where
+        T: Borrow<Q>,
+    {
         BTreeSet { map: self.map.split_off(key) }
     }
 }
@@ -1213,7 +1196,9 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
-    fn len(&self) -> usize { self.iter.len() }
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1238,7 +1223,9 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {
-    fn len(&self) -> usize { self.iter.len() }
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1279,20 +1266,13 @@ impl<T> Clone for Difference<'_, T> {
     fn clone(&self) -> Self {
         Difference {
             inner: match &self.inner {
-                DifferenceInner::Stitch {
-                    self_iter,
-                    other_iter,
-                } => DifferenceInner::Stitch {
+                DifferenceInner::Stitch { self_iter, other_iter } => DifferenceInner::Stitch {
                     self_iter: self_iter.clone(),
                     other_iter: other_iter.clone(),
                 },
-                DifferenceInner::Search {
-                    self_iter,
-                    other_set,
-                } => DifferenceInner::Search {
-                    self_iter: self_iter.clone(),
-                    other_set,
-                },
+                DifferenceInner::Search { self_iter, other_set } => {
+                    DifferenceInner::Search { self_iter: self_iter.clone(), other_set }
+                }
                 DifferenceInner::Iterate(iter) => DifferenceInner::Iterate(iter.clone()),
             },
         }
@@ -1304,16 +1284,10 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
 
     fn next(&mut self) -> Option<&'a T> {
         match &mut self.inner {
-            DifferenceInner::Stitch {
-                self_iter,
-                other_iter,
-            } => {
+            DifferenceInner::Stitch { self_iter, other_iter } => {
                 let mut self_next = self_iter.next()?;
                 loop {
-                    match other_iter
-                        .peek()
-                        .map_or(Less, |other_next| self_next.cmp(other_next))
-                    {
+                    match other_iter.peek().map_or(Less, |other_next| self_next.cmp(other_next)) {
                         Less => return Some(self_next),
                         Equal => {
                             self_next = self_iter.next()?;
@@ -1325,10 +1299,7 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
                     }
                 }
             }
-            DifferenceInner::Search {
-                self_iter,
-                other_set,
-            } => loop {
+            DifferenceInner::Search { self_iter, other_set } => loop {
                 let self_next = self_iter.next()?;
                 if !other_set.contains(&self_next) {
                     return Some(self_next);
@@ -1340,14 +1311,10 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (self_len, other_len) = match &self.inner {
-            DifferenceInner::Stitch {
-                self_iter,
-                other_iter,
-            } => (self_iter.len(), other_iter.len()),
-            DifferenceInner::Search {
-                self_iter,
-                other_set,
-            } => (self_iter.len(), other_set.len()),
+            DifferenceInner::Stitch { self_iter, other_iter } => {
+                (self_iter.len(), other_iter.len())
+            }
+            DifferenceInner::Search { self_iter, other_set } => (self_iter.len(), other_set.len()),
             DifferenceInner::Iterate(iter) => (iter.len(), 0),
         };
         (self_len.saturating_sub(other_len), Some(self_len))
@@ -1393,20 +1360,12 @@ impl<T> Clone for Intersection<'_, T> {
     fn clone(&self) -> Self {
         Intersection {
             inner: match &self.inner {
-                IntersectionInner::Stitch {
-                    a,
-                    b,
-                } => IntersectionInner::Stitch {
-                    a: a.clone(),
-                    b: b.clone(),
-                },
-                IntersectionInner::Search {
-                    small_iter,
-                    large_set,
-                } => IntersectionInner::Search {
-                    small_iter: small_iter.clone(),
-                    large_set,
-                },
+                IntersectionInner::Stitch { a, b } => {
+                    IntersectionInner::Stitch { a: a.clone(), b: b.clone() }
+                }
+                IntersectionInner::Search { small_iter, large_set } => {
+                    IntersectionInner::Search { small_iter: small_iter.clone(), large_set }
+                }
                 IntersectionInner::Answer(answer) => IntersectionInner::Answer(*answer),
             },
         }
@@ -1418,10 +1377,7 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
 
     fn next(&mut self) -> Option<&'a T> {
         match &mut self.inner {
-            IntersectionInner::Stitch {
-                a,
-                b,
-            } => {
+            IntersectionInner::Stitch { a, b } => {
                 let mut a_next = a.next()?;
                 let mut b_next = b.next()?;
                 loop {
@@ -1432,10 +1388,7 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
                     }
                 }
             }
-            IntersectionInner::Search {
-                small_iter,
-                large_set,
-            } => loop {
+            IntersectionInner::Search { small_iter, large_set } => loop {
                 let small_next = small_iter.next()?;
                 if large_set.contains(&small_next) {
                     return Some(small_next);

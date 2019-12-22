@@ -157,8 +157,7 @@ fn pdub_crisscross() {
     relation.add("a1", "x");
     relation.add("b1", "x");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"),
-               vec![&"a1", &"b1"]);
+    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"a1", &"b1"]);
     assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
     assert_eq!(relation.postdom_parent(&"a"), Some(&"x"));
     assert_eq!(relation.postdom_parent(&"b"), Some(&"x"));
@@ -188,10 +187,8 @@ fn pdub_crisscross_more() {
     relation.add("a3", "x");
     relation.add("b2", "x");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"),
-               vec![&"a1", &"b1"]);
-    assert_eq!(relation.minimal_upper_bounds(&"a1", &"b1"),
-               vec![&"a2", &"b2"]);
+    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"a1", &"b1"]);
+    assert_eq!(relation.minimal_upper_bounds(&"a1", &"b1"), vec![&"a2", &"b2"]);
     assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
 
     assert_eq!(relation.postdom_parent(&"a"), Some(&"x"));

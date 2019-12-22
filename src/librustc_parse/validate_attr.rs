@@ -2,14 +2,16 @@
 
 use crate::parse_in;
 
-use rustc_errors::{PResult, Applicability};
+use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
-use syntax::ast::{self, Attribute, AttrKind, Ident, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
+use syntax::ast::{
+    self, AttrKind, Attribute, Ident, MacArgs, MacDelimiter, MetaItem, MetaItemKind,
+};
 use syntax::attr::mk_name_value_item_str;
 use syntax::early_buffered_lints::ILL_FORMED_ATTRIBUTE_INPUT;
-use syntax::tokenstream::DelimSpan;
 use syntax::sess::ParseSess;
-use syntax_pos::{Symbol, sym};
+use syntax::tokenstream::DelimSpan;
+use syntax_pos::{sym, Symbol};
 
 pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
     let attr_info =
@@ -18,11 +20,14 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
     // Check input tokens for built-in and key-value attributes.
     match attr_info {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-        Some((name, _, template, _)) if name != sym::rustc_dummy =>
-            check_builtin_attribute(sess, attr, name, template),
-        _ => if let MacArgs::Eq(..) = attr.get_normal_item().args {
-            // All key-value attributes are restricted to meta-item syntax.
-            parse_meta(sess, attr).map_err(|mut err| err.emit()).ok();
+        Some((name, _, template, _)) if name != sym::rustc_dummy => {
+            check_builtin_attribute(sess, attr, name, template)
+        }
+        _ => {
+            if let MacArgs::Eq(..) = attr.get_normal_item().args {
+                // All key-value attributes are restricted to meta-item syntax.
+                parse_meta(sess, attr).map_err(|mut err| err.emit()).ok();
+            }
         }
     }
 }
@@ -43,7 +48,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     let nmis = parse_in(sess, t.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                     MetaItemKind::List(nmis)
                 }
-            }
+            },
         },
         AttrKind::DocComment(comment) => {
             mk_name_value_item_str(Ident::new(sym::doc, attr.span), comment, attr.span)
@@ -60,10 +65,7 @@ crate fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelim
         .struct_span_err(span.entire(), msg)
         .multipart_suggestion(
             "the delimiters should be `(` and `)`",
-            vec![
-                (span.open, "(".to_string()),
-                (span.close, ")".to_string()),
-            ],
+            vec![(span.open, "(".to_string()), (span.close, ")".to_string())],
             Applicability::MachineApplicable,
         )
         .emit();
@@ -90,58 +92,67 @@ pub fn check_builtin_attribute(
     let should_skip = |name| name == sym::cfg;
     // Some of previously accepted forms were used in practice,
     // report them as warnings for now.
-    let should_warn = |name| name == sym::doc || name == sym::ignore ||
-                             name == sym::inline || name == sym::link ||
-                             name == sym::test || name == sym::bench;
+    let should_warn = |name| {
+        name == sym::doc
+            || name == sym::ignore
+            || name == sym::inline
+            || name == sym::link
+            || name == sym::test
+            || name == sym::bench
+    };
 
     match parse_meta(sess, attr) {
-        Ok(meta) => if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
-            let error_msg = format!("malformed `{}` attribute input", name);
-            let mut msg = "attribute must be of the form ".to_owned();
-            let mut suggestions = vec![];
-            let mut first = true;
-            if template.word {
-                first = false;
-                let code = format!("#[{}]", name);
-                msg.push_str(&format!("`{}`", &code));
-                suggestions.push(code);
-            }
-            if let Some(descr) = template.list {
-                if !first {
-                    msg.push_str(" or ");
+        Ok(meta) => {
+            if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
+                let error_msg = format!("malformed `{}` attribute input", name);
+                let mut msg = "attribute must be of the form ".to_owned();
+                let mut suggestions = vec![];
+                let mut first = true;
+                if template.word {
+                    first = false;
+                    let code = format!("#[{}]", name);
+                    msg.push_str(&format!("`{}`", &code));
+                    suggestions.push(code);
                 }
-                first = false;
-                let code = format!("#[{}({})]", name, descr);
-                msg.push_str(&format!("`{}`", &code));
-                suggestions.push(code);
-            }
-            if let Some(descr) = template.name_value_str {
-                if !first {
-                    msg.push_str(" or ");
+                if let Some(descr) = template.list {
+                    if !first {
+                        msg.push_str(" or ");
+                    }
+                    first = false;
+                    let code = format!("#[{}({})]", name, descr);
+                    msg.push_str(&format!("`{}`", &code));
+                    suggestions.push(code);
                 }
-                let code = format!("#[{} = \"{}\"]", name, descr);
-                msg.push_str(&format!("`{}`", &code));
-                suggestions.push(code);
-            }
-            if should_warn(name) {
-                sess.buffer_lint(
-                    &ILL_FORMED_ATTRIBUTE_INPUT,
-                    meta.span,
-                    ast::CRATE_NODE_ID,
-                    &msg,
-                );
-            } else {
-                sess.span_diagnostic.struct_span_err(meta.span, &error_msg)
-                    .span_suggestions(
+                if let Some(descr) = template.name_value_str {
+                    if !first {
+                        msg.push_str(" or ");
+                    }
+                    let code = format!("#[{} = \"{}\"]", name, descr);
+                    msg.push_str(&format!("`{}`", &code));
+                    suggestions.push(code);
+                }
+                if should_warn(name) {
+                    sess.buffer_lint(
+                        &ILL_FORMED_ATTRIBUTE_INPUT,
                         meta.span,
-                        if suggestions.len() == 1 {
-                            "must be of the form"
-                        } else {
-                            "the following are the possible correct uses"
-                        },
-                        suggestions.into_iter(),
-                        Applicability::HasPlaceholders,
-                    ).emit();
+                        ast::CRATE_NODE_ID,
+                        &msg,
+                    );
+                } else {
+                    sess.span_diagnostic
+                        .struct_span_err(meta.span, &error_msg)
+                        .span_suggestions(
+                            meta.span,
+                            if suggestions.len() == 1 {
+                                "must be of the form"
+                            } else {
+                                "the following are the possible correct uses"
+                            },
+                            suggestions.into_iter(),
+                            Applicability::HasPlaceholders,
+                        )
+                        .emit();
+                }
             }
         }
         Err(mut err) => err.emit(),

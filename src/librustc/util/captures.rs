@@ -5,6 +5,6 @@
 /// [this comment]: https://github.com/rust-lang/rust/issues/34511#issuecomment-373423999
 // FIXME(eddyb) false positive, the lifetime parameter is "phantom" but needed.
 #[allow(unused_lifetimes)]
-pub trait Captures<'a> { }
+pub trait Captures<'a> {}
 
-impl<'a, T: ?Sized> Captures<'a> for T { }
+impl<'a, T: ?Sized> Captures<'a> for T {}

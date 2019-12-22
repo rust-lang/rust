@@ -145,11 +145,11 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::ops::{Deref, DerefMut};
-use core::iter::{FromIterator, FusedIterator, TrustedLen};
-use core::mem::{swap, size_of, ManuallyDrop};
-use core::ptr;
 use core::fmt;
+use core::iter::{FromIterator, FusedIterator, TrustedLen};
+use core::mem::{size_of, swap, ManuallyDrop};
+use core::ops::{Deref, DerefMut};
+use core::ptr;
 
 use crate::slice;
 use crate::vec::{self, Vec};
@@ -267,9 +267,7 @@ pub struct PeekMut<'a, T: 'a + Ord> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: Ord + fmt::Debug> fmt::Debug for PeekMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("PeekMut")
-         .field(&self.heap.data[0])
-         .finish()
+        f.debug_tuple("PeekMut").field(&self.heap.data[0]).finish()
     }
 }
 
@@ -404,14 +402,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// Cost is O(1) in the worst case.
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
-        if self.is_empty() {
-            None
-        } else {
-            Some(PeekMut {
-                heap: self,
-                sift: true,
-            })
-        }
+        if self.is_empty() { None } else { Some(PeekMut { heap: self, sift: true }) }
     }
 
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
@@ -674,9 +665,7 @@ impl<T: Ord> BinaryHeap<T> {
     #[inline]
     #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
     pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {
-        DrainSorted {
-            inner: self,
-        }
+        DrainSorted { inner: self }
     }
 }
 
@@ -718,9 +707,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
     pub fn into_iter_sorted(self) -> IntoIterSorted<T> {
-        IntoIterSorted {
-            inner: self,
-        }
+        IntoIterSorted { inner: self }
     }
 
     /// Returns the greatest item in the binary heap, or `None` if it is empty.
@@ -857,7 +844,7 @@ impl<T> BinaryHeap<T> {
     /// assert!(heap.capacity() >= 10);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.data.shrink_to(min_capacity)
     }
@@ -991,11 +978,7 @@ impl<'a, T> Hole<'a, T> {
         debug_assert!(pos < data.len());
         // SAFE: pos should be inside the slice
         let elt = ptr::read(data.get_unchecked(pos));
-        Hole {
-            data,
-            elt: ManuallyDrop::new(elt),
-            pos,
-        }
+        Hole { data, elt: ManuallyDrop::new(elt), pos }
     }
 
     #[inline]
@@ -1059,9 +1042,7 @@ pub struct Iter<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Iter")
-         .field(&self.iter.as_slice())
-         .finish()
+        f.debug_tuple("Iter").field(&self.iter.as_slice()).finish()
     }
 }
 
@@ -1127,9 +1108,7 @@ pub struct IntoIter<T> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IntoIter")
-         .field(&self.iter.as_slice())
-         .finish()
+        f.debug_tuple("IntoIter").field(&self.iter.as_slice()).finish()
     }
 }
 
@@ -1281,7 +1260,7 @@ impl<T: Ord> Iterator for DrainSorted<'_, T> {
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<T: Ord> ExactSizeIterator for DrainSorted<'_, T> { }
+impl<T: Ord> ExactSizeIterator for DrainSorted<'_, T> {}
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 impl<T: Ord> FusedIterator for DrainSorted<'_, T> {}

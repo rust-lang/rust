@@ -1,6 +1,6 @@
 use crate::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
 use crate::base::{SyntaxExtension, SyntaxExtensionKind};
-use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
+use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
 use crate::mbe;
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::parse;
@@ -83,7 +83,7 @@ fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Pa
     }
     e.help(
         "for more information, see https://doc.rust-lang.org/edition-guide/\
-        rust-2018/slice-patterns.html"
+        rust-2018/slice-patterns.html",
     );
 }
 
@@ -157,7 +157,14 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             return DummyResult::any(sp);
         }
         generic_extension(
-            cx, sp, self.span, self.name, self.transparency, input, &self.lhses, &self.rhses
+            cx,
+            sp,
+            self.span,
+            self.name,
+            self.transparency,
+            input,
+            &self.lhses,
+            &self.rhses,
         )
     }
 }
@@ -388,13 +395,7 @@ pub fn compile_declarative_macro(
             .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        let tt = mbe::quoted::parse(
-                            tt.clone().into(),
-                            true,
-                            sess,
-                        )
-                        .pop()
-                        .unwrap();
+                        let tt = mbe::quoted::parse(tt.clone().into(), true, sess).pop().unwrap();
                         valid &= check_lhs_nt_follows(sess, features, &def.attrs, &tt);
                         return tt;
                     }
@@ -411,13 +412,7 @@ pub fn compile_declarative_macro(
             .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        return mbe::quoted::parse(
-                            tt.clone().into(),
-                            false,
-                            sess,
-                        )
-                        .pop()
-                        .unwrap();
+                        return mbe::quoted::parse(tt.clone().into(), false, sess).pop().unwrap();
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
@@ -441,15 +436,22 @@ pub fn compile_declarative_macro(
 
     let (transparency, transparency_error) = attr::find_transparency(&def.attrs, is_legacy);
     match transparency_error {
-        Some(TransparencyError::UnknownTransparency(value, span)) =>
-            diag.span_err(span, &format!("unknown macro transparency: `{}`", value)),
-        Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) =>
-            diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes"),
+        Some(TransparencyError::UnknownTransparency(value, span)) => {
+            diag.span_err(span, &format!("unknown macro transparency: `{}`", value))
+        }
+        Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
+            diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes")
+        }
         None => {}
     }
 
     let expander: Box<_> = Box::new(MacroRulesMacroExpander {
-        name: def.ident, span: def.span, transparency, lhses, rhses, valid
+        name: def.ident,
+        span: def.span,
+        transparency,
+        lhses,
+        rhses,
+        valid,
     });
 
     SyntaxExtension::new(
@@ -1200,9 +1202,6 @@ fn parse_tt(cx: &ExtCtxt<'_>, mtch: &[mbe::TokenTree], tts: TokenStream) -> Name
 fn parse_failure_msg(tok: &Token) -> String {
     match tok.kind {
         token::Eof => "unexpected end of macro invocation".to_string(),
-        _ => format!(
-            "no rules expected the token `{}`",
-            pprust::token_to_string(tok),
-        ),
+        _ => format!("no rules expected the token `{}`", pprust::token_to_string(tok),),
     }
 }

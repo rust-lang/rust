@@ -6,20 +6,20 @@ use self::UndoLog::*;
 use super::unify_key;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::unify as ut;
 use crate::hir::def_id::DefId;
 use crate::ty::ReStatic;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{ReLateBound, ReVar};
 use crate::ty::{Region, RegionVid};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::unify as ut;
+use rustc_index::vec::IndexVec;
 use syntax_pos::Span;
 
 use std::collections::BTreeMap;
-use std::{cmp, fmt, mem};
 use std::ops::Range;
+use std::{cmp, fmt, mem};
 
 mod leak_check;
 
@@ -346,24 +346,15 @@ pub struct TaintDirections {
 
 impl TaintDirections {
     pub fn incoming() -> Self {
-        TaintDirections {
-            incoming: true,
-            outgoing: false,
-        }
+        TaintDirections { incoming: true, outgoing: false }
     }
 
     pub fn outgoing() -> Self {
-        TaintDirections {
-            incoming: false,
-            outgoing: true,
-        }
+        TaintDirections { incoming: false, outgoing: true }
     }
 
     pub fn both() -> Self {
-        TaintDirections {
-            incoming: true,
-            outgoing: true,
-        }
+        TaintDirections { incoming: true, outgoing: true }
     }
 }
 
@@ -529,17 +520,12 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     ) -> RegionVid {
         let vid = self.var_infos.push(RegionVariableInfo { origin, universe });
 
-        let u_vid = self
-            .unification_table
-            .new_key(unify_key::RegionVidKey { min_vid: vid });
+        let u_vid = self.unification_table.new_key(unify_key::RegionVidKey { min_vid: vid });
         assert_eq!(vid, u_vid);
         if self.in_snapshot() {
             self.undo_log.push(AddVar(vid));
         }
-        debug!(
-            "created new region variable {:?} in {:?} with origin {:?}",
-            vid, universe, origin
-        );
+        debug!("created new region variable {:?} in {:?} with origin {:?}", vid, universe, origin);
         return vid;
     }
 
@@ -601,10 +587,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     fn add_constraint(&mut self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
         // cannot add constraints once regions are resolved
-        debug!(
-            "RegionConstraintCollector: add_constraint({:?})",
-            constraint
-        );
+        debug!("RegionConstraintCollector: add_constraint({:?})", constraint);
 
         // never overwrite an existing (constraint, origin) - only insert one if it isn't
         // present in the map yet. This prevents origins from outside the snapshot being
@@ -687,9 +670,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             definition_span,
             hidden_ty,
             member_region,
-            choice_regions: choice_regions.clone()
+            choice_regions: choice_regions.clone(),
         });
-
     }
 
     pub fn make_subregion(
@@ -706,12 +688,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
         match (sub, sup) {
             (&ReLateBound(..), _) | (_, &ReLateBound(..)) => {
-                span_bug!(
-                    origin.span(),
-                    "cannot relate bound region: {:?} <= {:?}",
-                    sub,
-                    sup
-                );
+                span_bug!(origin.span(), "cannot relate bound region: {:?} <= {:?}", sub, sup);
             }
             (_, &ReStatic) => {
                 // all regions are subregions of static, so we can ignore this
@@ -739,12 +716,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         sub: Region<'tcx>,
         bound: VerifyBound<'tcx>,
     ) {
-        self.add_verify(Verify {
-            kind,
-            origin,
-            region: sub,
-            bound,
-        });
+        self.add_verify(Verify { kind, origin, region: sub, bound });
     }
 
     pub fn lub_regions(
@@ -857,9 +829,12 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         mark: &RegionSnapshot,
     ) -> (Range<RegionVid>, Vec<RegionVariableOrigin>) {
         let range = self.unification_table.vars_since_snapshot(&mark.region_snapshot);
-        (range.clone(), (range.start.index()..range.end.index()).map(|index| {
-            self.var_infos[ty::RegionVid::from(index)].origin.clone()
-        }).collect())
+        (
+            range.clone(),
+            (range.start.index()..range.end.index())
+                .map(|index| self.var_infos[ty::RegionVid::from(index)].origin.clone())
+                .collect(),
+        )
     }
 
     /// See [`RegionInference::region_constraints_added_in_snapshot`].
@@ -869,7 +844,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             .map(|&elt| match elt {
                 AddConstraint(constraint) => Some(constraint.involves_placeholders()),
                 _ => None,
-            }).max()
+            })
+            .max()
             .unwrap_or(None)
     }
 }
@@ -953,15 +929,10 @@ impl<'tcx> RegionConstraintData<'tcx> {
     /// Returns `true` if this region constraint data contains no constraints, and `false`
     /// otherwise.
     pub fn is_empty(&self) -> bool {
-        let RegionConstraintData {
-            constraints,
-            member_constraints,
-            verifys,
-            givens,
-        } = self;
-        constraints.is_empty() &&
-            member_constraints.is_empty() &&
-            verifys.is_empty() &&
-            givens.is_empty()
+        let RegionConstraintData { constraints, member_constraints, verifys, givens } = self;
+        constraints.is_empty()
+            && member_constraints.is_empty()
+            && verifys.is_empty()
+            && givens.is_empty()
     }
 }

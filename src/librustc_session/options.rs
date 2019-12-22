@@ -1,33 +1,35 @@
 use crate::config::*;
 
-use crate::lint;
-use crate::utils::NativeLibraryKind;
 use crate::early_error;
+use crate::lint;
 use crate::search_paths::SearchPath;
+use crate::utils::NativeLibraryKind;
 
-use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::TargetTriple;
+use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 
-use syntax_pos::edition::Edition;
 use rustc_feature::UnstableFeatures;
+use syntax_pos::edition::Edition;
 
 use getopts;
 
 use std::collections::BTreeMap;
 
-use std::str;
-use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
+use std::hash::Hasher;
 use std::path::PathBuf;
+use std::str;
 
 macro_rules! hash_option {
-    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => ({});
-    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => ({
-        if $sub_hashes.insert(stringify!($opt_name),
-                              $opt_expr as &dyn dep_tracking::DepTrackingHash).is_some() {
+    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => {{}};
+    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => {{
+        if $sub_hashes
+            .insert(stringify!($opt_name), $opt_expr as &dyn dep_tracking::DepTrackingHash)
+            .is_some()
+        {
             panic!("duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
-    });
+    }};
 }
 
 macro_rules! top_level_options {

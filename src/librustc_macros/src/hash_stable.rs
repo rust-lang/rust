@@ -1,7 +1,7 @@
-use synstructure;
-use syn::{self, Meta, NestedMeta, parse_quote};
 use proc_macro2::{self, Ident};
 use quote::quote;
+use syn::{self, parse_quote, Meta, NestedMeta};
+use synstructure;
 
 struct Attributes {
     ignore: bool,
@@ -9,10 +9,7 @@ struct Attributes {
 }
 
 fn parse_attributes(field: &syn::Field) -> Attributes {
-    let mut attrs = Attributes {
-        ignore: false,
-        project: None,
-    };
+    let mut attrs = Attributes { ignore: false, project: None };
     for attr in &field.attrs {
         if let Ok(meta) = attr.parse_meta() {
             if !meta.path().is_ident("stable_hasher") {
@@ -51,17 +48,17 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
     let generic: syn::GenericParam = parse_quote!(__CTX);
     s.add_bounds(synstructure::AddBounds::Generics);
     s.add_impl_generic(generic);
-    s.add_where_predicate(parse_quote!{ __CTX: crate::HashStableContext });
+    s.add_where_predicate(parse_quote! { __CTX: crate::HashStableContext });
     let body = s.each(|bi| {
         let attrs = parse_attributes(bi.ast());
         if attrs.ignore {
-             quote!{}
+            quote! {}
         } else if let Some(project) = attrs.project {
-            quote!{
+            quote! {
                 &#bi.#project.hash_stable(__hcx, __hasher);
             }
         } else {
-            quote!{
+            quote! {
                 #bi.hash_stable(__hcx, __hasher);
             }
         }
@@ -75,15 +72,18 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
         syn::Data::Union(_) => panic!("cannot derive on union"),
     };
 
-    s.bound_impl(quote!(::rustc_data_structures::stable_hasher::HashStable<__CTX>), quote!{
-        fn hash_stable(
-            &self,
-            __hcx: &mut __CTX,
-            __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
-            #discriminant
-            match *self { #body }
-        }
-    })
+    s.bound_impl(
+        quote!(::rustc_data_structures::stable_hasher::HashStable<__CTX>),
+        quote! {
+            fn hash_stable(
+                &self,
+                __hcx: &mut __CTX,
+                __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                #discriminant
+                match *self { #body }
+            }
+        },
+    )
 }
 
 pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
@@ -93,13 +93,13 @@ pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::To
     let body = s.each(|bi| {
         let attrs = parse_attributes(bi.ast());
         if attrs.ignore {
-             quote!{}
+            quote! {}
         } else if let Some(project) = attrs.project {
-            quote!{
+            quote! {
                 &#bi.#project.hash_stable(__hcx, __hasher);
             }
         } else {
-            quote!{
+            quote! {
                 #bi.hash_stable(__hcx, __hasher);
             }
         }
@@ -113,14 +113,20 @@ pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::To
         syn::Data::Union(_) => panic!("cannot derive on union"),
     };
 
-    s.bound_impl(quote!(::rustc_data_structures::stable_hasher::HashStable
-                        <::rustc::ich::StableHashingContext<'__ctx>>), quote!{
-        fn hash_stable(
-            &self,
-            __hcx: &mut ::rustc::ich::StableHashingContext<'__ctx>,
-            __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
-            #discriminant
-            match *self { #body }
-        }
-    })
+    s.bound_impl(
+        quote!(
+            ::rustc_data_structures::stable_hasher::HashStable<
+                ::rustc::ich::StableHashingContext<'__ctx>,
+            >
+        ),
+        quote! {
+            fn hash_stable(
+                &self,
+                __hcx: &mut ::rustc::ich::StableHashingContext<'__ctx>,
+                __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                #discriminant
+                match *self { #body }
+            }
+        },
+    )
 }

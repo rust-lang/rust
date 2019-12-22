@@ -1,5 +1,5 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 use super::apple_ios_base::{opts, Arch};
+use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let base = opts(Arch::Armv7s)?;
@@ -18,7 +18,7 @@ pub fn target() -> TargetResult {
             features: "+v7,+vfp4,+neon".to_string(),
             max_atomic_width: Some(64),
             abi_blacklist: super::arm_base::abi_blacklist(),
-            .. base
-        }
+            ..base
+        },
     })
 }

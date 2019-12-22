@@ -24,9 +24,6 @@ pub fn target() -> TargetResult {
         target_vendor: String::new(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
-        options: TargetOptions {
-            max_atomic_width: Some(32),
-            .. super::thumb_base::opts()
-        },
+        options: TargetOptions { max_atomic_width: Some(32), ..super::thumb_base::opts() },
     })
 }
