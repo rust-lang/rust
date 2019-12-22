@@ -1566,6 +1566,9 @@ impl fmt::Debug for Expr {
 
 /// Checks if the specified expression is a built-in range literal.
 /// (See: `LoweringContext::lower_expr()`).
+///
+/// FIXME(#60607): This function is a hack. If and when we have `QPath::Lang(...)`,
+/// we can use that instead as simpler, more reliable mechanism, as opposed to using `SourceMap`.
 pub fn is_range_literal(sm: &SourceMap, expr: &Expr) -> bool {
     // Returns whether the given path represents a (desugared) range,
     // either in std or core, i.e. has either a `::std::ops::Range` or
