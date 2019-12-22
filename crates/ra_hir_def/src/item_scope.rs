@@ -10,6 +10,7 @@ use crate::{per_ns::PerNs, AdtId, BuiltinType, ImplId, MacroDefId, ModuleDefId, 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
     visible: FxHashMap<Name, Resolution>,
+    defs: Vec<ModuleDefId>,
     impls: Vec<ImplId>,
     /// Macros visible in current module in legacy textual scope
     ///
@@ -53,11 +54,7 @@ impl ItemScope {
     }
 
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
-        self.entries()
-            .filter_map(|(_name, res)| if !res.import { Some(res.def) } else { None })
-            .flat_map(|per_ns| {
-                per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
-            })
+        self.defs.iter().copied()
     }
 
     pub fn impls(&self) -> impl Iterator<Item = ImplId> + ExactSizeIterator + '_ {
@@ -98,6 +95,10 @@ impl ItemScope {
             Some(ModuleDefId::TraitId(t)) => Some(t),
             _ => None,
         })
+    }
+
+    pub(crate) fn define_def(&mut self, def: ModuleDefId) {
+        self.defs.push(def)
     }
 
     pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<MacroDefId> {

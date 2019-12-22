@@ -716,6 +716,7 @@ where
         modules[self.module_id].children.insert(name.clone(), res);
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
         let def: ModuleDefId = module.into();
+        self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
         let resolution = Resolution { def: def.into(), import: false };
         self.def_collector.update(self.module_id, None, &[(name, resolution)]);
         res
@@ -775,6 +776,7 @@ where
             .intern(self.def_collector.db)
             .into(),
         };
+        self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
         let resolution = Resolution { def: def.into(), import: false };
         self.def_collector.update(self.module_id, None, &[(name, resolution)])
     }
