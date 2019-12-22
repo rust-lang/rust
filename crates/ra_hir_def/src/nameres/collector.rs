@@ -714,12 +714,9 @@ where
             modules[res].scope.define_legacy_macro(name, mac)
         }
         modules[self.module_id].children.insert(name.clone(), res);
-        let resolution = Resolution {
-            def: PerNs::types(
-                ModuleId { krate: self.def_collector.def_map.krate, local_id: res }.into(),
-            ),
-            import: false,
-        };
+        let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
+        let def: ModuleDefId = module.into();
+        let resolution = Resolution { def: def.into(), import: false };
         self.def_collector.update(self.module_id, None, &[(name, resolution)]);
         res
     }
@@ -734,63 +731,51 @@ where
 
         let name = def.name.clone();
         let container = ContainerId::ModuleId(module);
-        let def: PerNs = match def.kind {
-            raw::DefKind::Function(ast_id) => {
-                let def = FunctionLoc {
-                    container: container.into(),
-                    ast_id: AstId::new(self.file_id, ast_id),
-                }
-                .intern(self.def_collector.db);
-
-                PerNs::values(def.into())
+        let def: ModuleDefId = match def.kind {
+            raw::DefKind::Function(ast_id) => FunctionLoc {
+                container: container.into(),
+                ast_id: AstId::new(self.file_id, ast_id),
             }
+            .intern(self.def_collector.db)
+            .into(),
             raw::DefKind::Struct(ast_id) => {
-                let def = StructLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
-                    .intern(self.def_collector.db);
-                PerNs::both(def.into(), def.into())
+                StructLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db)
+                    .into()
             }
             raw::DefKind::Union(ast_id) => {
-                let def = UnionLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
-                    .intern(self.def_collector.db);
-                PerNs::both(def.into(), def.into())
+                UnionLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db)
+                    .into()
             }
             raw::DefKind::Enum(ast_id) => {
-                let def = EnumLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
-                    .intern(self.def_collector.db);
-                PerNs::types(def.into())
+                EnumLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db)
+                    .into()
             }
             raw::DefKind::Const(ast_id) => {
-                let def = ConstLoc {
-                    container: container.into(),
-                    ast_id: AstId::new(self.file_id, ast_id),
-                }
-                .intern(self.def_collector.db);
-
-                PerNs::values(def.into())
+                ConstLoc { container: container.into(), ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db)
+                    .into()
             }
             raw::DefKind::Static(ast_id) => {
-                let def = StaticLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
-                    .intern(self.def_collector.db);
-
-                PerNs::values(def.into())
+                StaticLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db)
+                    .into()
             }
             raw::DefKind::Trait(ast_id) => {
-                let def = TraitLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
-                    .intern(self.def_collector.db);
-
-                PerNs::types(def.into())
+                TraitLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db)
+                    .into()
             }
-            raw::DefKind::TypeAlias(ast_id) => {
-                let def = TypeAliasLoc {
-                    container: container.into(),
-                    ast_id: AstId::new(self.file_id, ast_id),
-                }
-                .intern(self.def_collector.db);
-
-                PerNs::types(def.into())
+            raw::DefKind::TypeAlias(ast_id) => TypeAliasLoc {
+                container: container.into(),
+                ast_id: AstId::new(self.file_id, ast_id),
             }
+            .intern(self.def_collector.db)
+            .into(),
         };
-        let resolution = Resolution { def, import: false };
+        let resolution = Resolution { def: def.into(), import: false };
         self.def_collector.update(self.module_id, None, &[(name, resolution)])
     }
 

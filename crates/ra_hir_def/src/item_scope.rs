@@ -5,7 +5,7 @@ use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
 
-use crate::{per_ns::PerNs, BuiltinType, ImplId, MacroDefId, ModuleDefId, TraitId};
+use crate::{per_ns::PerNs, AdtId, BuiltinType, ImplId, MacroDefId, ModuleDefId, TraitId};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
@@ -152,4 +152,22 @@ pub struct Resolution {
     /// None for unresolved
     pub def: PerNs,
     pub(crate) import: bool,
+}
+
+impl From<ModuleDefId> for PerNs {
+    fn from(def: ModuleDefId) -> PerNs {
+        match def {
+            ModuleDefId::ModuleId(_) => PerNs::types(def),
+            ModuleDefId::FunctionId(_) => PerNs::values(def),
+            ModuleDefId::AdtId(adt) => match adt {
+                AdtId::StructId(_) | AdtId::UnionId(_) => PerNs::both(def, def),
+                AdtId::EnumId(_) => PerNs::types(def),
+            },
+            ModuleDefId::EnumVariantId(_) => PerNs::both(def, def),
+            ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => PerNs::values(def),
+            ModuleDefId::TraitId(_) => PerNs::types(def),
+            ModuleDefId::TypeAliasId(_) => PerNs::types(def),
+            ModuleDefId::BuiltinType(_) => PerNs::types(def),
+        }
+    }
 }
