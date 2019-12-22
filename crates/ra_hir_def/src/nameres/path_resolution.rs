@@ -181,7 +181,7 @@ impl CrateDefMap {
 
                     // Since it is a qualified path here, it should not contains legacy macros
                     match self[module.local_id].scope.get(&segment, prefer_module(i)) {
-                        Some(res) => res.def,
+                        Some(def) => *def,
                         _ => {
                             log::debug!("path segment {:?} not found", segment);
                             return ResolvePathResult::empty(ReachedFixedPoint::No);
@@ -243,8 +243,7 @@ impl CrateDefMap {
         //  - std prelude
         let from_legacy_macro =
             self[module].scope.get_legacy_macro(name).map_or_else(PerNs::none, PerNs::macros);
-        let from_scope =
-            self[module].scope.get(name, shadow).map_or_else(PerNs::none, |res| res.def);
+        let from_scope = self[module].scope.get(name, shadow).copied().unwrap_or_else(PerNs::none);
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
         let from_prelude = self.resolve_in_prelude(db, name, shadow);
@@ -258,7 +257,7 @@ impl CrateDefMap {
         shadow: BuiltinShadowMode,
     ) -> PerNs {
         let from_crate_root =
-            self[self.root].scope.get(name, shadow).map_or_else(PerNs::none, |res| res.def);
+            self[self.root].scope.get(name, shadow).copied().unwrap_or_else(PerNs::none);
         let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
 
         from_crate_root.or(from_extern_prelude)
@@ -279,10 +278,7 @@ impl CrateDefMap {
                 keep = db.crate_def_map(prelude.krate);
                 &keep
             };
-            def_map[prelude.local_id]
-                .scope
-                .get(name, shadow)
-                .map_or_else(PerNs::none, |res| res.def)
+            def_map[prelude.local_id].scope.get(name, shadow).copied().unwrap_or_else(PerNs::none)
         } else {
             PerNs::none()
         }

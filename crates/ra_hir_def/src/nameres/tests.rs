@@ -35,19 +35,19 @@ fn render_crate_def_map(map: &CrateDefMap) -> String {
         let mut entries = map.modules[module].scope.collect_resolutions();
         entries.sort_by_key(|(name, _)| name.clone());
 
-        for (name, res) in entries {
+        for (name, def) in entries {
             *buf += &format!("{}:", name);
 
-            if res.def.types.is_some() {
+            if def.types.is_some() {
                 *buf += " t";
             }
-            if res.def.values.is_some() {
+            if def.values.is_some() {
                 *buf += " v";
             }
-            if res.def.macros.is_some() {
+            if def.macros.is_some() {
                 *buf += " m";
             }
-            if res.def.is_none() {
+            if def.is_none() {
                 *buf += " _";
             }
 
