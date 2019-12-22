@@ -9,7 +9,7 @@ use crate::{per_ns::PerNs, BuiltinType, ImplId, MacroDefId, ModuleDefId, TraitId
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
-    items: FxHashMap<Name, Resolution>,
+    visible: FxHashMap<Name, Resolution>,
     impls: Vec<ImplId>,
     /// Macros visible in current module in legacy textual scope
     ///
@@ -49,7 +49,7 @@ pub(crate) enum BuiltinShadowMode {
 impl ItemScope {
     pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, &'a Resolution)> + 'a {
         //FIXME: shadowing
-        self.items.iter().chain(BUILTIN_SCOPE.iter())
+        self.visible.iter().chain(BUILTIN_SCOPE.iter())
     }
 
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
@@ -66,7 +66,7 @@ impl ItemScope {
 
     /// Iterate over all module scoped macros
     pub(crate) fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
-        self.items
+        self.visible
             .iter()
             .filter_map(|(name, res)| res.def.take_macros().map(|macro_| (name, macro_)))
     }
@@ -79,9 +79,9 @@ impl ItemScope {
     /// Get a name from current module scope, legacy macros are not included
     pub(crate) fn get(&self, name: &Name, shadow: BuiltinShadowMode) -> Option<&Resolution> {
         match shadow {
-            BuiltinShadowMode::Module => self.items.get(name).or_else(|| BUILTIN_SCOPE.get(name)),
+            BuiltinShadowMode::Module => self.visible.get(name).or_else(|| BUILTIN_SCOPE.get(name)),
             BuiltinShadowMode::Other => {
-                let item = self.items.get(name);
+                let item = self.visible.get(name);
                 if let Some(res) = item {
                     if let Some(ModuleDefId::ModuleId(_)) = res.def.take_types() {
                         return BUILTIN_SCOPE.get(name).or(item);
@@ -94,7 +94,7 @@ impl ItemScope {
     }
 
     pub(crate) fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
-        self.items.values().filter_map(|r| match r.def.take_types() {
+        self.visible.values().filter_map(|r| match r.def.take_types() {
             Some(ModuleDefId::TraitId(t)) => Some(t),
             _ => None,
         })
@@ -114,7 +114,7 @@ impl ItemScope {
 
     pub(crate) fn push_res(&mut self, name: Name, res: &Resolution, import: bool) -> bool {
         let mut changed = false;
-        let existing = self.items.entry(name.clone()).or_default();
+        let existing = self.visible.entry(name.clone()).or_default();
 
         if existing.def.types.is_none() && res.def.types.is_some() {
             existing.def.types = res.def.types;
@@ -139,7 +139,7 @@ impl ItemScope {
     }
 
     pub(crate) fn collect_resolutions(&self) -> Vec<(Name, Resolution)> {
-        self.items.iter().map(|(name, res)| (name.clone(), res.clone())).collect()
+        self.visible.iter().map(|(name, res)| (name.clone(), res.clone())).collect()
     }
 
     pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroDefId> {
