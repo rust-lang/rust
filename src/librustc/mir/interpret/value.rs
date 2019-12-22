@@ -237,13 +237,21 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
+    pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
+        let i = i.into();
+        if truncate(i, size) == i {
+            Some(Scalar::Raw { data: i, size: size.bytes() as u8 })
+        } else {
+            None
+        }
+    }
+
+    #[inline]
     pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
         let i = i.into();
-        assert_eq!(
-            truncate(i, size), i,
-            "Unsigned value {:#x} does not fit in {} bits", i, size.bits()
-        );
-        Scalar::Raw { data: i, size: size.bytes() as u8 }
+        Self::try_from_uint(i, size).unwrap_or_else(|| {
+            bug!("Unsigned value {:#x} does not fit in {} bits", i, size.bits())
+        })
     }
 
     #[inline]
@@ -267,15 +275,23 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn from_int(i: impl Into<i128>, size: Size) -> Self {
+    pub fn try_from_int(i: impl Into<i128>, size: Size) -> Option<Self> {
         let i = i.into();
         // `into` performed sign extension, we have to truncate
         let truncated = truncate(i as u128, size);
-        assert_eq!(
-            sign_extend(truncated, size) as i128, i,
-            "Signed value {:#x} does not fit in {} bits", i, size.bits()
-        );
-        Scalar::Raw { data: truncated, size: size.bytes() as u8 }
+        if sign_extend(truncated, size) as i128 == i {
+            Some(Scalar::Raw { data: truncated, size: size.bytes() as u8 })
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn from_int(i: impl Into<i128>, size: Size) -> Self {
+        let i = i.into();
+        Self::try_from_int(i, size).unwrap_or_else(|| {
+            bug!("Signed value {:#x} does not fit in {} bits", i, size.bits())
+        })
     }
 
     #[inline]
