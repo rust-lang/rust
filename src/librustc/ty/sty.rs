@@ -15,7 +15,7 @@ use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFolda
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
-use crate::mir::interpret::{Scalar, GlobalId};
+use crate::mir::interpret::Scalar;
 
 use polonius_engine::Atom;
 use rustc_index::vec::Idx;
@@ -2340,13 +2340,9 @@ impl<'tcx> Const<'tcx> {
 
             let (param_env, substs) = param_env_and_substs.into_parts();
 
-            // try to resolve e.g. associated constants to their definition on an impl
-            let instance = ty::Instance::resolve(tcx, param_env, did, substs)?;
-            let gid = GlobalId {
-                instance,
-                promoted: None,
-            };
-            tcx.const_eval(param_env.and(gid)).ok()
+            // try to resolve e.g. associated constants to their definition on an impl, and then
+            // evaluate the const.
+            tcx.const_eval_resolve(param_env, did, substs, None).ok()
         };
 
         match self.val {

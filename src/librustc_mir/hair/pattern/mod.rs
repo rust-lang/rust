@@ -11,7 +11,7 @@ use crate::hair::constant::*;
 
 use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
-use rustc::mir::interpret::{GlobalId, ConstValue, get_slice_bytes, sign_extend};
+use rustc::mir::interpret::{ConstValue, ErrorHandled, get_slice_bytes, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, UserType, DefIdTree};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
 use rustc::ty::subst::{SubstsRef, GenericArg};
@@ -771,57 +771,37 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let kind = match res {
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let substs = self.tables.node_substs(id);
-                match ty::Instance::resolve(
-                    self.tcx,
-                    self.param_env,
-                    def_id,
-                    substs,
-                ) {
-                    Some(instance) => {
-                        let cid = GlobalId {
-                            instance,
-                            promoted: None,
-                        };
-                        match self.tcx.at(span).const_eval(self.param_env.and(cid)) {
-                            Ok(value) => {
-                                let pattern = self.const_to_pat(value, id, span);
-                                if !is_associated_const {
-                                    return pattern;
-                                }
+                match self.tcx.const_eval_resolve(self.param_env, def_id, substs, Some(span)) {
+                    Ok(value) => {
+                        let pattern = self.const_to_pat(value, id, span);
+                        if !is_associated_const {
+                            return pattern;
+                        }
 
-                                let user_provided_types = self.tables().user_provided_types();
-                                return if let Some(u_ty) = user_provided_types.get(id) {
-                                    let user_ty = PatTyProj::from_user_type(*u_ty);
-                                    Pat {
-                                        span,
-                                        kind: Box::new(
-                                            PatKind::AscribeUserType {
-                                                subpattern: pattern,
-                                                ascription: Ascription {
-                                                    /// Note that use `Contravariant` here. See the
-                                                    /// `variance` field documentation for details.
-                                                    variance: ty::Variance::Contravariant,
-                                                    user_ty,
-                                                    user_ty_span: span,
-                                                },
-                                            }
-                                        ),
-                                        ty: value.ty,
+                        let user_provided_types = self.tables().user_provided_types();
+                        return if let Some(u_ty) = user_provided_types.get(id) {
+                            let user_ty = PatTyProj::from_user_type(*u_ty);
+                            Pat {
+                                span,
+                                kind: Box::new(
+                                    PatKind::AscribeUserType {
+                                        subpattern: pattern,
+                                        ascription: Ascription {
+                                            /// Note that use `Contravariant` here. See the
+                                            /// `variance` field documentation for details.
+                                            variance: ty::Variance::Contravariant,
+                                            user_ty,
+                                            user_ty_span: span,
+                                        },
                                     }
-                                } else {
-                                    pattern
-                                }
-                            },
-                            Err(_) => {
-                                self.tcx.sess.span_err(
-                                    span,
-                                    "could not evaluate constant pattern",
-                                );
-                                PatKind::Wild
+                                ),
+                                ty: value.ty,
                             }
+                        } else {
+                            pattern
                         }
                     },
-                    None => {
+                    Err(ErrorHandled::TooGeneric) => {
                         self.errors.push(if is_associated_const {
                             PatternError::AssocConstInPattern(span)
                         } else {
@@ -829,6 +809,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                         });
                         PatKind::Wild
                     },
+                    Err(_) => {
+                        self.tcx.sess.span_err(
+                            span,
+                            "could not evaluate constant pattern",
+                        );
+                        PatKind::Wild
+                    }
                 }
             }
             _ => self.lower_variant_or_leaf(res, id, span, ty, vec![]),

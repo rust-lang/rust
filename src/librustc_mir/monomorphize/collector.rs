@@ -189,7 +189,7 @@ use rustc::session::config::EntryFnType;
 use rustc::mir::{self, Location, PlaceBase, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::{MonoItem, InstantiationMode};
-use rustc::mir::interpret::{Scalar, GlobalId, GlobalAlloc, ErrorHandled};
+use rustc::mir::interpret::{Scalar, GlobalAlloc, ErrorHandled};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use rustc::util::common::time;
 
@@ -379,13 +379,7 @@ fn collect_items_rec<'tcx>(
 
             recursion_depth_reset = None;
 
-            let cid = GlobalId {
-                instance,
-                promoted: None,
-            };
-            let param_env = ty::ParamEnv::reveal_all();
-
-            if let Ok(val) = tcx.const_eval(param_env.and(cid)) {
+            if let Ok(val) = tcx.const_eval_poly(def_id) {
                 collect_const(tcx, val, InternalSubsts::empty(), &mut neighbors);
             }
         }
@@ -681,12 +675,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 def_id,
                 ..
             }) => {
-                let param_env = ty::ParamEnv::reveal_all();
-                let cid = GlobalId {
-                    instance: Instance::new(*def_id, substs.subst(self.tcx, self.param_substs)),
-                    promoted: Some(*promoted),
-                };
-                match self.tcx.const_eval(param_env.and(cid)) {
+                let instance = Instance::new(*def_id, substs.subst(self.tcx, self.param_substs));
+                match self.tcx.const_eval_promoted(instance, *promoted) {
                     Ok(val) => collect_const(self.tcx, val, substs, self.output),
                     Err(ErrorHandled::Reported) => {},
                     Err(ErrorHandled::TooGeneric) => {
@@ -1041,14 +1031,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                 // but even just declaring them must collect the items they refer to
                 let def_id = self.tcx.hir().local_def_id(item.hir_id);
 
-                let instance = Instance::mono(self.tcx, def_id);
-                let cid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                let param_env = ty::ParamEnv::reveal_all();
-
-                if let Ok(val) = self.tcx.const_eval(param_env.and(cid)) {
+                if let Ok(val) = self.tcx.const_eval_poly(def_id) {
                     collect_const(self.tcx, val, InternalSubsts::empty(), &mut self.output);
                 }
             }
@@ -1288,16 +1271,7 @@ fn collect_const<'tcx>(
             }
         }
         ty::ConstKind::Unevaluated(def_id, substs) => {
-            let instance = ty::Instance::resolve(tcx,
-                                                param_env,
-                                                def_id,
-                                                substs).unwrap();
-
-            let cid = GlobalId {
-                instance,
-                promoted: None,
-            };
-            match tcx.const_eval(param_env.and(cid)) {
+            match tcx.const_eval_resolve(param_env, def_id, substs, None) {
                 Ok(val) => collect_const(tcx, val, param_substs, output),
                 Err(ErrorHandled::Reported) => {},
                 Err(ErrorHandled::TooGeneric) => span_bug!(
