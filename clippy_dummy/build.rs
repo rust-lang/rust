@@ -1,42 +1,42 @@
-extern crate term;
+use term::color::{GREEN, RED, WHITE};
+use term::{Attr, Error, Result};
 
 fn main() {
-    if let Err(_) = foo() {
-        eprintln!("error: Clippy is no longer available via crates.io\n");
-        eprintln!("help: please run `rustup component add clippy` instead");
+    if foo().is_err() {
+        eprintln!(
+            "error: Clippy is no longer available via crates.io\n\n\
+             help: please run `rustup component add clippy` instead"
+        );
     }
     std::process::exit(1);
 }
 
-fn foo() -> Result<(), ()> {
-    let mut t = term::stderr().ok_or(())?;
+fn foo() -> Result<()> {
+    let mut t = term::stderr().ok_or(Error::NotSupported)?;
 
-    t.attr(term::Attr::Bold).map_err(|_| ())?;
-    t.fg(term::color::RED).map_err(|_| ())?;
-    write!(t, "\nerror: ").map_err(|_| ())?;
+    t.attr(Attr::Bold)?;
+    t.fg(RED)?;
+    write!(t, "\nerror: ")?;
 
+    t.reset()?;
+    t.fg(WHITE)?;
+    writeln!(t, "Clippy is no longer available via crates.io\n")?;
 
-    t.reset().map_err(|_| ())?;
-    t.fg(term::color::WHITE).map_err(|_| ())?;
-    writeln!(t, "Clippy is no longer available via crates.io\n").map_err(|_| ())?;
+    t.attr(Attr::Bold)?;
+    t.fg(GREEN)?;
+    write!(t, "help: ")?;
 
+    t.reset()?;
+    t.fg(WHITE)?;
+    write!(t, "please run `")?;
 
-    t.attr(term::Attr::Bold).map_err(|_| ())?;
-    t.fg(term::color::GREEN).map_err(|_| ())?;
-    write!(t, "help: ").map_err(|_| ())?;
+    t.attr(Attr::Bold)?;
+    write!(t, "rustup component add clippy")?;
 
+    t.reset()?;
+    t.fg(WHITE)?;
+    writeln!(t, "` instead")?;
 
-    t.reset().map_err(|_| ())?;
-    t.fg(term::color::WHITE).map_err(|_| ())?;
-    write!(t, "please run `").map_err(|_| ())?;
-
-    t.attr(term::Attr::Bold).map_err(|_| ())?;
-    write!(t, "rustup component add clippy").map_err(|_| ())?;
-
-    t.reset().map_err(|_| ())?;
-    t.fg(term::color::WHITE).map_err(|_| ())?;
-    writeln!(t, "` instead").map_err(|_| ())?;
-
-    t.reset().map_err(|_| ())?;
+    t.reset()?;
     Ok(())
 }
