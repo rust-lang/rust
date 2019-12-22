@@ -70,18 +70,20 @@ impl ItemScope {
     }
 
     /// Get a name from current module scope, legacy macros are not included
-    pub(crate) fn get(&self, name: &Name, shadow: BuiltinShadowMode) -> Option<&PerNs> {
+    pub(crate) fn get(&self, name: &Name, shadow: BuiltinShadowMode) -> Option<PerNs> {
         match shadow {
-            BuiltinShadowMode::Module => self.visible.get(name).or_else(|| BUILTIN_SCOPE.get(name)),
+            BuiltinShadowMode::Module => {
+                self.visible.get(name).or_else(|| BUILTIN_SCOPE.get(name)).copied()
+            }
             BuiltinShadowMode::Other => {
-                let item = self.visible.get(name);
+                let item = self.visible.get(name).copied();
                 if let Some(def) = item {
                     if let Some(ModuleDefId::ModuleId(_)) = def.take_types() {
-                        return BUILTIN_SCOPE.get(name).or(item);
+                        return BUILTIN_SCOPE.get(name).copied().or(item);
                     }
                 }
 
-                item.or_else(|| BUILTIN_SCOPE.get(name))
+                item.or_else(|| BUILTIN_SCOPE.get(name).copied())
             }
         }
     }
