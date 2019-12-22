@@ -564,14 +564,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let source_info = scope.source_info(span);
             block = match scope.cached_exits.entry((target, region_scope)) {
                 Entry::Occupied(e) => {
-                    self.cfg.terminate(block, source_info,
-                                    TerminatorKind::Goto { target: *e.get() });
+                    self.cfg.goto(block, source_info, *e.get());
                     return;
                 }
                 Entry::Vacant(v) => {
                     let b = self.cfg.start_new_block();
-                    self.cfg.terminate(block, source_info,
-                                    TerminatorKind::Goto { target: b });
+                    self.cfg.goto(block, source_info, b);
                     v.insert(b);
                     b
                 }
@@ -596,8 +594,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scope = next_scope;
         }
 
-        let source_info = self.scopes.source_info(scope_count, span);
-        self.cfg.terminate(block, source_info, TerminatorKind::Goto { target });
+        self.cfg.goto(block, self.scopes.source_info(scope_count, span), target);
     }
 
     /// Creates a path that performs all required cleanup for dropping a generator.
@@ -616,14 +613,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         while let Some(scope) = scopes.next() {
             block = if let Some(b) = scope.cached_generator_drop {
-                self.cfg.terminate(block, src_info,
-                                   TerminatorKind::Goto { target: b });
+                self.cfg.goto(block, src_info, b);
                 return Some(result);
             } else {
                 let b = self.cfg.start_new_block();
                 scope.cached_generator_drop = Some(b);
-                self.cfg.terminate(block, src_info,
-                                   TerminatorKind::Goto { target: b });
+                self.cfg.goto(block, src_info, b);
                 b
             };
 
@@ -1243,8 +1238,7 @@ fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
                     // block for our StorageDead statements.
                     let block = cfg.start_new_cleanup_block();
                     let source_info = SourceInfo { span: DUMMY_SP, scope: source_scope };
-                    cfg.terminate(block, source_info,
-                                    TerminatorKind::Goto { target: target });
+                    cfg.goto(block, source_info, target);
                     target = block;
                     target_built_by_us = true;
                 }

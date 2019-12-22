@@ -109,15 +109,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
             }
-            _ => {
-                self.cfg.terminate(
-                    from_block,
-                    source_info,
-                    TerminatorKind::Goto {
-                        target: real_target
-                    }
-                );
-            }
+            _ => self.cfg.goto(from_block, source_info, real_target),
         }
     }
 }
