@@ -578,6 +578,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
+                // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
+                // and thus don't care about the parameter environment. While we could just use
+                // `self.param_env`, that would mean we invoke the query to evaluate the static
+                // with different parameter environments, thus causing the static to be evaluated
+                // multiple times.
                 let param_env = if self.tcx.is_static(def_id) {
                     ty::ParamEnv::reveal_all()
                 } else {
