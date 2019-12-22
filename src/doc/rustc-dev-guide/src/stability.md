@@ -12,7 +12,8 @@ The `#[unstable(feature = "foo", issue = "1234", reason = "lorem ipsum")]`
 attribute explicitly marks an item as unstable. Items that are marked as
 "unstable" cannot be used without a corresponding `#![feature]` attribute on
 the crate, even on a nightly compiler. This restriction only applies across
-crate boundaries, unstable items may be used within the crate they are defined.
+crate boundaries, unstable items may be used within the crate that defines
+them.
 
 The `issue` field specifies the associated GitHub [issue number]. This field is
 required and all unstable features should have an associated tracking issue. In
