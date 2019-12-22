@@ -32,7 +32,7 @@ mod explain_borrow;
 
 crate use mutability_errors::AccessKind;
 crate use region_name::{RegionName, RegionNameSource, RegionErrorNamingCtx};
-crate use region_errors::{ErrorReportingCtx, ErrorConstraintInfo};
+crate use region_errors::{ErrorReportingCtx, ErrorConstraintInfo, RegionErrors, RegionErrorKind};
 crate use outlives_suggestion::OutlivesSuggestionBuilder;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
