@@ -215,11 +215,7 @@ where
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
         if export {
-            self.update(
-                self.def_map.root,
-                None,
-                &[(name, Resolution { def: PerNs::macros(macro_) })],
-            );
+            self.update(self.def_map.root, &[(name, Resolution { def: PerNs::macros(macro_) })]);
         }
     }
 
@@ -373,7 +369,7 @@ where
                         // Module scoped macros is included
                         let items = scope.collect_resolutions();
 
-                        self.update(module_id, Some(import_id), &items);
+                        self.update(module_id, &items);
                     } else {
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
@@ -383,7 +379,7 @@ where
                         // Module scoped macros is included
                         let items = scope.collect_resolutions();
 
-                        self.update(module_id, Some(import_id), &items);
+                        self.update(module_id, &items);
                         // record the glob import in case we add further items
                         let glob = self.glob_imports.entry(m.local_id).or_default();
                         if !glob.iter().any(|it| *it == (module_id, import_id)) {
@@ -406,7 +402,7 @@ where
                             (name, res)
                         })
                         .collect::<Vec<_>>();
-                    self.update(module_id, Some(import_id), &resolutions);
+                    self.update(module_id, &resolutions);
                 }
                 Some(d) => {
                     log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
@@ -429,26 +425,20 @@ where
                     }
 
                     let resolution = Resolution { def };
-                    self.update(module_id, Some(import_id), &[(name, resolution)]);
+                    self.update(module_id, &[(name, resolution)]);
                 }
                 None => tested_by!(bogus_paths),
             }
         }
     }
 
-    fn update(
-        &mut self,
-        module_id: LocalModuleId,
-        import: Option<raw::Import>,
-        resolutions: &[(Name, Resolution)],
-    ) {
-        self.update_recursive(module_id, import, resolutions, 0)
+    fn update(&mut self, module_id: LocalModuleId, resolutions: &[(Name, Resolution)]) {
+        self.update_recursive(module_id, resolutions, 0)
     }
 
     fn update_recursive(
         &mut self,
         module_id: LocalModuleId,
-        import: Option<raw::Import>,
         resolutions: &[(Name, Resolution)],
         depth: usize,
     ) {
@@ -459,7 +449,7 @@ where
         let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            changed |= scope.push_res(name.clone(), res, import.is_some());
+            changed |= scope.push_res(name.clone(), res);
         }
 
         if !changed {
@@ -472,9 +462,9 @@ where
             .flat_map(|v| v.iter())
             .cloned()
             .collect::<Vec<_>>();
-        for (glob_importing_module, glob_import) in glob_imports {
+        for (glob_importing_module, _glob_import) in glob_imports {
             // We pass the glob import so that the tracked import in those modules is that glob import
-            self.update_recursive(glob_importing_module, Some(glob_import), resolutions, depth + 1);
+            self.update_recursive(glob_importing_module, resolutions, depth + 1);
         }
     }
 
@@ -716,7 +706,7 @@ where
         let def: ModuleDefId = module.into();
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
         let resolution = Resolution { def: def.into() };
-        self.def_collector.update(self.module_id, None, &[(name, resolution)]);
+        self.def_collector.update(self.module_id, &[(name, resolution)]);
         res
     }
 
@@ -776,7 +766,7 @@ where
         };
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
         let resolution = Resolution { def: def.into() };
-        self.def_collector.update(self.module_id, None, &[(name, resolution)])
+        self.def_collector.update(self.module_id, &[(name, resolution)])
     }
 
     fn collect_derives(&mut self, attrs: &Attrs, def: &raw::DefData) {

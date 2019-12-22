@@ -111,7 +111,7 @@ impl ItemScope {
         self.legacy_macros.insert(name, mac);
     }
 
-    pub(crate) fn push_res(&mut self, name: Name, res: &Resolution, _import: bool) -> bool {
+    pub(crate) fn push_res(&mut self, name: Name, res: &Resolution) -> bool {
         let mut changed = false;
         let existing = self.visible.entry(name.clone()).or_default();
 
