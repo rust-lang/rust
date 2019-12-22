@@ -324,6 +324,7 @@ function getSearchElement() {
     }
 
     function handleEscape(ev) {
+        debugger;
         var help = getHelpElement();
         var search = getSearchElement();
         hideModal();
@@ -390,8 +391,8 @@ function getSearchElement() {
         return null;
     }
 
-    document.onkeypress = handleShortcut;
-    document.onkeydown = handleShortcut;
+    document.addEventListener("keypress", handleShortcut);
+    document.addEventListener("keydown", handleShortcut);
 
     var handleSourceHighlight = (function() {
         var prev_line_id = 0;
@@ -430,7 +431,7 @@ function getSearchElement() {
         }
     })();
 
-    document.onclick = function(ev) {
+    document.addEventListener("click", function(ev) {
         if (hasClass(ev.target, "collapse-toggle")) {
             collapseDocs(ev.target, "toggle");
         } else if (hasClass(ev.target.parentNode, "collapse-toggle")) {
@@ -452,7 +453,7 @@ function getSearchElement() {
                 expandSection(a.hash.replace(/^#/, ""));
             }
         }
-    };
+    });
 
     var x = document.getElementsByClassName("version-selector");
     if (x.length > 0) {
