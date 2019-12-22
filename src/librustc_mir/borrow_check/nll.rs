@@ -3,12 +3,11 @@
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements,
-                 Local, Location, Body, BodyAndCache, LocalKind, BasicBlock,
+                 Location, Body, BodyAndCache, LocalKind, BasicBlock,
                  Promoted, ReadOnlyBodyAndCache};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_index::vec::IndexVec;
 use rustc_errors::Diagnostic;
-use syntax_pos::symbol::Symbol;
 use std::fmt::Debug;
 use std::env;
 use std::io;
@@ -29,19 +28,28 @@ use crate::transform::MirSource;
 
 use crate::borrow_check::{
     borrow_set::BorrowSet,
+    diagnostics::RegionErrors,
     location::LocationTable,
     facts::{AllFacts, AllFactsExt, RustcFacts},
     region_infer::{RegionInferenceContext, values::RegionValueElements},
     universal_regions::UniversalRegions,
     type_check::{self, MirTypeckResults, MirTypeckRegionConstraints},
-    Upvar, renumber, constraint_generation, invalidation,
+    renumber, constraint_generation, invalidation,
 };
 
 crate type PoloniusOutput = Output<RustcFacts>;
 
-/// Rewrites the regions in the MIR to use NLL variables, also
-/// scraping out the set of universal regions (e.g., region parameters)
-/// declared on the function. That set will need to be given to
+/// The output of `nll::compute_regions`. This includes the computed `RegionInferenceContext`, any
+/// closure requirements to propagate, and any generated errors.
+crate struct NllOutput<'tcx> {
+    pub regioncx: RegionInferenceContext<'tcx>,
+    pub polonius_output: Option<Rc<PoloniusOutput>>,
+    pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
+    pub nll_errors: RegionErrors<'tcx>,
+}
+
+/// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
+/// regions (e.g., region parameters) declared on the function. That set will need to be given to
 /// `compute_regions`.
 pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
@@ -152,19 +160,12 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     universal_regions: UniversalRegions<'tcx>,
     body: ReadOnlyBodyAndCache<'_, 'tcx>,
     promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
-    local_names: &IndexVec<Local, Option<Symbol>>,
-    upvars: &[Upvar],
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    errors_buffer: &mut Vec<Diagnostic>,
-) -> (
-    RegionInferenceContext<'tcx>,
-    Option<Rc<PoloniusOutput>>,
-    Option<ClosureRegionRequirements<'tcx>>,
-) {
+) -> NllOutput<'tcx> {
     let mut all_facts = AllFacts::enabled(infcx.tcx).then_some(AllFacts::default());
 
     let universal_regions = Rc::new(universal_regions);
@@ -306,40 +307,22 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     });
 
     // Solve the region constraints.
-    let closure_region_requirements = regioncx.solve(
+    let (closure_region_requirements, nll_errors) = regioncx.solve(
         infcx,
         &body,
-        local_names,
-        upvars,
         def_id,
-        errors_buffer,
         polonius_output.clone(),
     );
 
-    // Dump MIR results into a file, if that is enabled. This let us
-    // write unit-tests, as well as helping with debugging.
-    dump_mir_results(
-        infcx,
-        MirSource::item(def_id),
-        &body,
-        &regioncx,
-        &closure_region_requirements,
-    );
-
-    // We also have a `#[rustc_nll]` annotation that causes us to dump
-    // information
-    dump_annotation(
-        infcx,
-        &body,
-        def_id,
-        &regioncx,
-        &closure_region_requirements,
-        errors_buffer);
-
-    (regioncx, polonius_output, closure_region_requirements)
+    NllOutput {
+        regioncx,
+        polonius_output,
+        opt_closure_req: closure_region_requirements,
+        nll_errors,
+    }
 }
 
-fn dump_mir_results<'a, 'tcx>(
+pub(super) fn dump_mir_results<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     source: MirSource<'tcx>,
     body: &Body<'tcx>,
@@ -400,7 +383,7 @@ fn dump_mir_results<'a, 'tcx>(
     };
 }
 
-fn dump_annotation<'a, 'tcx>(
+pub(super) fn dump_annotation<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     body: &Body<'tcx>,
     mir_def_id: DefId,
