@@ -606,14 +606,11 @@ where
         let fn_end = span.shrink_to_hi();
         let source_info = builder.source_info(fn_end);
         let return_block = builder.return_block();
-        builder.cfg.terminate(block, source_info,
-                              TerminatorKind::Goto { target: return_block });
-        builder.cfg.terminate(return_block, source_info,
-                              TerminatorKind::Return);
+        builder.cfg.goto(block, source_info, return_block);
+        builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
         // Attribute any unreachable codepaths to the function's closing brace
         if let Some(unreachable_block) = builder.cached_unreachable_block {
-            builder.cfg.terminate(unreachable_block, source_info,
-                                  TerminatorKind::Unreachable);
+            builder.cfg.terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
         }
         return_block.unit()
     }));
