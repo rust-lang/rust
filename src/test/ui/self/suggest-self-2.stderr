@@ -2,19 +2,25 @@ error[E0425]: cannot find function `bar` in this scope
   --> $DIR/suggest-self-2.rs:5:9
    |
 LL |         bar(self);
-   |         ^^^ help: try calling `bar` as a method: `self.bar()`
+   |         ^^^------
+   |         |
+   |         help: try calling `bar` as a method: `self.bar()`
 
 error[E0425]: cannot find function `bar` in this scope
   --> $DIR/suggest-self-2.rs:9:9
    |
 LL |         bar(&&self, 102);
-   |         ^^^ help: try calling `bar` as a method: `self.bar(102)`
+   |         ^^^-------------
+   |         |
+   |         help: try calling `bar` as a method: `self.bar(102)`
 
 error[E0425]: cannot find function `bar` in this scope
   --> $DIR/suggest-self-2.rs:13:9
    |
 LL |         bar(&mut self, 102, &"str");
-   |         ^^^ help: try calling `bar` as a method: `self.bar(102, &"str")`
+   |         ^^^------------------------
+   |         |
+   |         help: try calling `bar` as a method: `self.bar(102, &"str")`
 
 error[E0425]: cannot find function `bar` in this scope
   --> $DIR/suggest-self-2.rs:17:9

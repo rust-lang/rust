@@ -261,8 +261,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             }
 
             // Check if the first argument is `self` and suggest calling a method.
-            let mut has_self_arg = false;
-            let mut args_span = None;
+            let mut has_self_arg = None;
             if let PathSource::Expr(parent) = source {
                 match &parent.map(|p| &p.kind) {
                     Some(ExprKind::Call(_, args)) if args.len() > 0 => {
@@ -270,13 +269,18 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                         loop {
                             match expr_kind {
                                 ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
-                                    has_self_arg = arg_name.segments[0].ident.name == kw::SelfLower;
-                                    if args.len() > 1 {
-                                        args_span = Some(Span::new(
-                                            args[1].span.lo(),
-                                            args.last().unwrap().span.hi(),
-                                            parent.unwrap().span.ctxt(),
-                                        ));
+                                    if arg_name.segments[0].ident.name == kw::SelfLower {
+                                        let call_span = parent.unwrap().span;
+                                        let args_span = if args.len() > 1 {
+                                            Some(Span::new(
+                                                args[1].span.lo(),
+                                                args.last().unwrap().span.hi(),
+                                                call_span.ctxt(),
+                                            ))
+                                        } else {
+                                            None
+                                        };
+                                        has_self_arg = Some((call_span, args_span));
                                     }
                                     break;
                                 },
@@ -289,7 +293,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 }
             };
 
-            if has_self_arg {
+            if let Some((call_span, args_span)) = has_self_arg {
                 let mut args_snippet: String = String::from("");
                 if let Some(args_span) = args_span {
                     if let Ok(snippet) = self.r.session.source_map().span_to_snippet(args_span) {
@@ -298,7 +302,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 }
 
                 err.span_suggestion(
-                    span,
+                    call_span,
                     &format!("try calling `{}` as a method", ident),
                     format!("self.{}({})", path_str, args_snippet),
                     Applicability::MachineApplicable,
