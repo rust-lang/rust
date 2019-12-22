@@ -51,6 +51,12 @@ impl ItemScope {
         self.visible.iter().chain(BUILTIN_SCOPE.iter()).map(|(n, def)| (n, *def))
     }
 
+    pub fn entries_without_primitives<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (&'a Name, PerNs)> + 'a {
+        self.visible.iter().map(|(n, def)| (n, *def))
+    }
+
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
         self.defs.iter().copied()
     }
@@ -118,7 +124,7 @@ impl ItemScope {
         self.legacy_macros.insert(name, mac);
     }
 
-    pub(crate) fn push_res(&mut self, name: Name, def: &PerNs) -> bool {
+    pub(crate) fn push_res(&mut self, name: Name, def: PerNs) -> bool {
         let mut changed = false;
         let existing = self.visible.entry(name.clone()).or_default();
 

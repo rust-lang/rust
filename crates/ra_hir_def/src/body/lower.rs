@@ -494,45 +494,57 @@ where
     fn collect_block_items(&mut self, block: &ast::Block) {
         let container = ContainerId::DefWithBodyId(self.def);
         for item in block.items() {
-            let def: ModuleDefId = match item {
+            let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
                 ast::ModuleItem::FnDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    FunctionLoc { container: container.into(), ast_id }.intern(self.db).into()
+                    (
+                        FunctionLoc { container: container.into(), ast_id }.intern(self.db).into(),
+                        def.name(),
+                    )
                 }
                 ast::ModuleItem::TypeAliasDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    TypeAliasLoc { container: container.into(), ast_id }.intern(self.db).into()
+                    (
+                        TypeAliasLoc { container: container.into(), ast_id }.intern(self.db).into(),
+                        def.name(),
+                    )
                 }
                 ast::ModuleItem::ConstDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    ConstLoc { container: container.into(), ast_id }.intern(self.db).into()
+                    (
+                        ConstLoc { container: container.into(), ast_id }.intern(self.db).into(),
+                        def.name(),
+                    )
                 }
                 ast::ModuleItem::StaticDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    StaticLoc { container, ast_id }.intern(self.db).into()
+                    (StaticLoc { container, ast_id }.intern(self.db).into(), def.name())
                 }
                 ast::ModuleItem::StructDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    StructLoc { container, ast_id }.intern(self.db).into()
+                    (StructLoc { container, ast_id }.intern(self.db).into(), def.name())
                 }
                 ast::ModuleItem::EnumDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    EnumLoc { container, ast_id }.intern(self.db).into()
+                    (EnumLoc { container, ast_id }.intern(self.db).into(), def.name())
                 }
                 ast::ModuleItem::UnionDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    UnionLoc { container, ast_id }.intern(self.db).into()
+                    (UnionLoc { container, ast_id }.intern(self.db).into(), def.name())
                 }
                 ast::ModuleItem::TraitDef(def) => {
                     let ast_id = self.expander.ast_id(&def);
-                    TraitLoc { container, ast_id }.intern(self.db).into()
+                    (TraitLoc { container, ast_id }.intern(self.db).into(), def.name())
                 }
                 ast::ModuleItem::ImplBlock(_)
                 | ast::ModuleItem::UseItem(_)
                 | ast::ModuleItem::ExternCrateItem(_)
                 | ast::ModuleItem::Module(_) => continue,
             };
-            self.body.item_scope.define_def(def)
+            self.body.item_scope.define_def(def);
+            if let Some(name) = name {
+                self.body.item_scope.push_res(name.as_name(), def.into());
+            }
         }
     }
 
