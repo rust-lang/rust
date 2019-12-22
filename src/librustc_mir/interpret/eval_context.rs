@@ -20,8 +20,8 @@ use rustc_macros::HashStable;
 use syntax::source_map::{self, Span, DUMMY_SP};
 
 use super::{
-    Immediate, MPlaceTy, Machine, MemPlace, Memory, Operand, Place, PlaceTy, ScalarMaybeUndef,
-    StackPopInfo,
+    Immediate, MPlaceTy, Machine, MemPlace, Memory, OpTy, Operand, Place, PlaceTy,
+    ScalarMaybeUndef, StackPopInfo,
 };
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -752,6 +752,24 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.memory.deallocate_local(ptr)?;
         };
         Ok(())
+    }
+
+    pub(super) fn const_eval(
+        &self,
+        gid: GlobalId<'tcx>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
+        // and thus don't care about the parameter environment. While we could just use
+        // `self.param_env`, that would mean we invoke the query to evaluate the static
+        // with different parameter environments, thus causing the static to be evaluated
+        // multiple times.
+        let param_env = if self.tcx.is_static(gid.instance.def_id()) {
+            ty::ParamEnv::reveal_all()
+        } else {
+            self.param_env
+        };
+        let val = self.tcx.const_eval(param_env.and(gid))?;
+        self.eval_const_to_op(val, None)
     }
 
     pub fn const_eval_raw(

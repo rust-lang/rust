@@ -578,16 +578,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
-                // and thus don't care about the parameter environment. While we could just use
-                // `self.param_env`, that would mean we invoke the query to evaluate the static
-                // with different parameter environments, thus causing the static to be evaluated
-                // multiple times.
-                let param_env = if self.tcx.is_static(def_id) {
-                    ty::ParamEnv::reveal_all()
-                } else {
-                    self.param_env
-                };
                 // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.
                 // The reason we use `const_eval_raw` everywhere else is to prevent cycles during
                 // validation, because validation automatically reads through any references, thus
@@ -595,11 +585,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // problem here, because we need an operand and operands are always reads.
                 // FIXME(oli-obk): eliminate all the `const_eval_raw` usages when we get rid of
                 // `StaticKind` once and for all.
-                let val =
-                    self.tcx.const_eval(param_env.and(GlobalId { instance, promoted: None }))?;
-                // "recurse". This is only ever going into a recusion depth of 1, because after
-                // `const_eval` we don't have `Unevaluated` anymore.
-                return self.eval_const_to_op(val, layout);
+                return self.const_eval(GlobalId { instance, promoted: None });
             }
             ty::ConstKind::Value(val_val) => val_val,
         };
