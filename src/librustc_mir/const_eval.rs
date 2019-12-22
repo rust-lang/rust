@@ -652,7 +652,7 @@ fn validate_and_turn_into_const<'tcx>(
     })
 }
 
-pub fn const_eval_provider<'tcx>(
+pub fn const_eval_validated_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
@@ -660,7 +660,7 @@ pub fn const_eval_provider<'tcx>(
     if key.param_env.reveal == Reveal::All {
         let mut key = key.clone();
         key.param_env.reveal = Reveal::UserFacing;
-        match tcx.const_eval(key) {
+        match tcx.const_eval_validated(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {
                 // Promoteds should never be "too generic" when getting evaluated.

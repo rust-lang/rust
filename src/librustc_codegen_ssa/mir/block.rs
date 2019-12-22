@@ -638,12 +638,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 projection: &[],
                             } = place.as_ref()
                             {
-                                let param_env = ty::ParamEnv::reveal_all();
-                                let cid = mir::interpret::GlobalId {
-                                    instance: self.instance,
-                                    promoted: Some(promoted),
-                                };
-                                let c = bx.tcx().const_eval(param_env.and(cid));
+                                let c = bx.tcx().const_eval_promoted(self.instance, promoted);
                                 let (llval, ty) = self.simd_shuffle_indices(
                                     &bx,
                                     terminator.source_info.span,

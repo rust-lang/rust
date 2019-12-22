@@ -15,7 +15,6 @@ use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::middle::stability;
-use rustc::mir::interpret::GlobalId;
 use rustc::hir;
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
@@ -1341,13 +1340,7 @@ impl Clean<Type> for hir::Ty {
             TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),
             TyKind::Array(ref ty, ref length) => {
                 let def_id = cx.tcx.hir().local_def_id(length.hir_id);
-                let param_env = cx.tcx.param_env(def_id);
-                let substs = InternalSubsts::identity_for_item(cx.tcx, def_id);
-                let cid = GlobalId {
-                    instance: ty::Instance::new(def_id, substs),
-                    promoted: None
-                };
-                let length = match cx.tcx.const_eval(param_env.and(cid)) {
+                let length = match cx.tcx.const_eval_poly(def_id) {
                     Ok(length) => print_const(cx, length),
                     Err(_) => cx.sess()
                                 .source_map()
@@ -1541,16 +1534,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Slice(ty) => Slice(box ty.clean(cx)),
             ty::Array(ty, n) => {
                 let mut n = cx.tcx.lift(&n).expect("array lift failed");
-                if let ty::ConstKind::Unevaluated(def_id, substs) = n.val {
-                    let param_env = cx.tcx.param_env(def_id);
-                    let cid = GlobalId {
-                        instance: ty::Instance::new(def_id, substs),
-                        promoted: None
-                    };
-                    if let Ok(new_n) = cx.tcx.const_eval(param_env.and(cid)) {
-                        n = new_n;
-                    }
-                };
+                n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
                 let n = print_const(cx, n);
                 Array(box ty.clean(cx), n)
             }
