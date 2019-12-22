@@ -140,17 +140,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
 
-                this.cfg.terminate(
-                    true_block,
-                    source_info,
-                    TerminatorKind::Goto { target: join_block },
-                );
-                this.cfg.terminate(
-                    false_block,
-                    source_info,
-                    TerminatorKind::Goto { target: join_block },
-                );
-
+                // Link up both branches:
+                this.cfg.goto(true_block, source_info, join_block);
+                this.cfg.goto(false_block, source_info, join_block);
                 join_block.unit()
             }
             ExprKind::Loop { body } => {
@@ -167,12 +159,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let loop_block = this.cfg.start_new_block();
                 let exit_block = this.cfg.start_new_block();
 
-                // start the loop
-                this.cfg.terminate(
-                    block,
-                    source_info,
-                    TerminatorKind::Goto { target: loop_block },
-                );
+                // Start the loop.
+                this.cfg.goto(block, source_info, loop_block);
 
                 this.in_breakable_scope(
                     Some(loop_block),
@@ -196,11 +184,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let tmp = this.get_unit_temp();
                         // Execute the body, branching back to the test.
                         let body_block_end = unpack!(this.into(&tmp, body_block, body));
-                        this.cfg.terminate(
-                            body_block_end,
-                            source_info,
-                            TerminatorKind::Goto { target: loop_block },
-                        );
+                        this.cfg.goto(body_block_end, source_info, loop_block);
                     },
                 );
                 exit_block.unit()

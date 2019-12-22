@@ -26,6 +26,7 @@ mod simplify;
 mod test;
 mod util;
 
+use itertools::Itertools;
 use std::convert::TryFrom;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -258,11 +259,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             scrutinee_span,
                             match_scope,
                         );
-                        this.cfg.terminate(
-                            binding_end,
-                            source_info,
-                            TerminatorKind::Goto { target: arm_block },
-                        );
+                        this.cfg.goto(binding_end, source_info, arm_block);
                     }
                 }
 
@@ -278,11 +275,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let end_block = self.cfg.start_new_block();
 
         for arm_block in arm_end_blocks {
-            self.cfg.terminate(
-                unpack!(arm_block),
-                outer_source_info,
-                TerminatorKind::Goto { target: end_block },
-            );
+            self.cfg.goto(unpack!(arm_block), outer_source_info, end_block);
         }
 
         self.source_scope = outer_source_info.scope;
@@ -822,9 +815,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         let (matched_candidates, unmatched_candidates) = candidates.split_at_mut(fully_matched);
 
-        let block: BasicBlock;
-
-        if !matched_candidates.is_empty() {
+        let block: BasicBlock = if !matched_candidates.is_empty() {
             let otherwise_block = self.select_matched_candidates(
                 matched_candidates,
                 start_block,
@@ -832,35 +823,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
 
             if let Some(last_otherwise_block) = otherwise_block {
-                block = last_otherwise_block
+                last_otherwise_block
             } else {
                 // Any remaining candidates are unreachable.
                 if unmatched_candidates.is_empty() {
                     return;
                 }
-                block = self.cfg.start_new_block();
-            };
+                self.cfg.start_new_block()
+            }
         } else {
-            block = *start_block.get_or_insert_with(|| self.cfg.start_new_block());
-        }
+            *start_block.get_or_insert_with(|| self.cfg.start_new_block())
+        };
 
         // If there are no candidates that still need testing, we're
         // done. Since all matches are exhaustive, execution should
         // never reach this point.
         if unmatched_candidates.is_empty() {
             let source_info = self.source_info(span);
-            if let Some(otherwise) = otherwise_block {
-                self.cfg.terminate(
-                    block,
-                    source_info,
-                    TerminatorKind::Goto { target: otherwise },
-                );
-            } else {
-                self.cfg.terminate(
-                    block,
-                    source_info,
-                    TerminatorKind::Unreachable,
-                )
+            match otherwise_block {
+                Some(otherwise) => self.cfg.goto(block, source_info, otherwise),
+                None => self.cfg.terminate(block, source_info, TerminatorKind::Unreachable),
             }
             return;
         }
@@ -885,7 +867,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ...
     ///
     /// We generate real edges from:
-    /// * `block` to the prebinding_block of the first pattern,
+    /// * `start_block` to the `prebinding_block` of the first pattern,
     /// * the otherwise block of the first pattern to the second pattern,
     /// * the otherwise block of the third pattern to the a block with an
     ///   Unreachable terminator.
@@ -948,32 +930,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let first_candidate = &reachable_candidates[0];
         let first_prebinding_block = first_candidate.pre_binding_block;
 
+        // `goto -> first_prebinding_block` from the `start_block` if there is one.
         if let Some(start_block) = *start_block {
             let source_info = self.source_info(first_candidate.span);
-            self.cfg.terminate(
-                start_block,
-                source_info,
-                TerminatorKind::Goto { target: first_prebinding_block },
-            );
+            self.cfg.goto(start_block, source_info, first_prebinding_block);
         } else {
             *start_block = Some(first_prebinding_block);
         }
 
-        for window in reachable_candidates.windows(2) {
-            if let [first_candidate, second_candidate] = window {
-                let source_info = self.source_info(first_candidate.span);
-                if let Some(otherwise_block) = first_candidate.otherwise_block {
-                    self.false_edges(
-                        otherwise_block,
-                        second_candidate.pre_binding_block,
-                        first_candidate.next_candidate_pre_binding_block,
-                        source_info,
-                    );
-                } else {
-                    bug!("candidate other than the last has no guard");
-                }
+        for (first_candidate, second_candidate) in reachable_candidates.iter().tuple_windows() {
+            let source_info = self.source_info(first_candidate.span);
+            if let Some(otherwise_block) = first_candidate.otherwise_block {
+                self.false_edges(
+                    otherwise_block,
+                    second_candidate.pre_binding_block,
+                    first_candidate.next_candidate_pre_binding_block,
+                    source_info,
+                );
             } else {
-                bug!("<[_]>::windows returned incorrectly sized window");
+                bug!("candidate other than the last has no guard");
             }
         }
 
@@ -992,8 +967,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let last_candidate = reachable_candidates.last().unwrap();
 
+        let last_candidate = reachable_candidates.last().unwrap();
         if let Some(otherwise) = last_candidate.otherwise_block {
             let source_info = self.source_info(last_candidate.span);
             let block = self.cfg.start_new_block();
