@@ -17,6 +17,46 @@ use crate::interpret::{
 
 use super::error::*;
 
+impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
+    /// Evaluate a const function where all arguments (if any) are zero-sized types.
+    /// The evaluation is memoized thanks to the query system.
+    ///
+    /// Returns `true` if the call has been evaluated.
+    fn try_eval_const_fn_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        args: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, bool> {
+        trace!("try_eval_const_fn_call: {:?}", instance);
+        // Because `#[track_caller]` adds an implicit non-ZST argument, we also cannot
+        // perform this optimization on items tagged with it.
+        if instance.def.requires_caller_location(self.tcx()) {
+            return Ok(false);
+        }
+        // For the moment we only do this for functions which take no arguments
+        // (or all arguments are ZSTs) so that we don't memoize too much.
+        if args.iter().any(|a| !a.layout.is_zst()) {
+            return Ok(false);
+        }
+
+        let gid = GlobalId { instance, promoted: None };
+
+        let place = self.const_eval_raw(gid)?;
+        let dest = match ret {
+            Some((dest, _)) => dest,
+            // Don't memoize diverging function calls.
+            None => return Ok(false),
+        };
+
+        self.copy_op(place.into(), dest)?;
+
+        self.return_to_block(ret.map(|r| r.1))?;
+        self.dump_place(*dest);
+        return Ok(true);
+    }
+}
+
 /// Number of steps until the detector even starts doing anything.
 /// Also, a warning is shown to the user when this number is reached.
 const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
@@ -318,42 +358,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 }
 
-impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
-    /// Evaluate a const function where all arguments (if any) are zero-sized types.
-    /// The evaluation is memoized thanks to the query system.
-    ///
-    /// Returns `true` if the call has been evaluated.
-    fn try_eval_const_fn_call(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
-        args: &[OpTy<'tcx>],
-    ) -> InterpResult<'tcx, bool> {
-        trace!("try_eval_const_fn_call: {:?}", instance);
-        // Because `#[track_caller]` adds an implicit non-ZST argument, we also cannot
-        // perform this optimization on items tagged with it.
-        if instance.def.requires_caller_location(self.tcx()) {
-            return Ok(false);
-        }
-        // For the moment we only do this for functions which take no arguments
-        // (or all arguments are ZSTs) so that we don't memoize too much.
-        if args.iter().any(|a| !a.layout.is_zst()) {
-            return Ok(false);
-        }
-
-        let gid = GlobalId { instance, promoted: None };
-
-        let place = self.const_eval_raw(gid)?;
-        let dest = match ret {
-            Some((dest, _)) => dest,
-            // Don't memoize diverging function calls.
-            None => return Ok(false),
-        };
-
-        self.copy_op(place.into(), dest)?;
-
-        self.return_to_block(ret.map(|r| r.1))?;
-        self.dump_place(*dest);
-        return Ok(true);
-    }
-}
+// Please do not add any code below the above `Machine` trait impl. I (oli-obk) plan more cleanups
+// so we can end up having a file with just that impl, but for now, let's keep the impl discoverable
+// at the bottom of this file.
