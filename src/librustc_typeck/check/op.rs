@@ -35,12 +35,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !lhs_expr.is_syntactic_place_expr() {
             struct_span_err!(
-                self.tcx.sess, lhs_expr.span,
-                E0067, "invalid left-hand side expression")
-            .span_label(
-                lhs_expr.span,
-                "invalid expression for left-hand side")
-            .emit();
+                self.tcx.sess,
+                op.span,
+                E0067,
+                "invalid left-hand side of assignment",
+            ).span_label(lhs_expr.span, "cannot assign to this expression").emit();
         }
         ty
     }
