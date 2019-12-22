@@ -758,11 +758,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         gid: GlobalId<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // FIXME(oli-obk): make this check an assertion that it's not a static here
-        // FIXME(RalfJ, oli-obk): document that `Place::Static` can never be anything but a static
-        // and `ConstValue::Unevaluated` can never be a static
-        // FIXME(oli-obk, spastorino): the above FIXME is not true anymore, PlaceBase::Static does
-        // not exist anymore (except for promoteds but it's going away soon).
+        // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
+        // and thus don't care about the parameter environment. While we could just use
+        // `self.param_env`, that would mean we invoke the query to evaluate the static
+        // with different parameter environments, thus causing the static to be evaluated
+        // multiple times.
         let param_env = if self.tcx.is_static(gid.instance.def_id()) {
             ty::ParamEnv::reveal_all()
         } else {
