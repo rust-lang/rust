@@ -218,7 +218,7 @@ where
             self.update(
                 self.def_map.root,
                 None,
-                &[(name, Resolution { def: PerNs::macros(macro_), import: false })],
+                &[(name, Resolution { def: PerNs::macros(macro_) })],
             );
         }
     }
@@ -401,10 +401,8 @@ where
                         .map(|(local_id, variant_data)| {
                             let name = variant_data.name.clone();
                             let variant = EnumVariantId { parent: e, local_id };
-                            let res = Resolution {
-                                def: PerNs::both(variant.into(), variant.into()),
-                                import: true,
-                            };
+                            let res =
+                                Resolution { def: PerNs::both(variant.into(), variant.into()) };
                             (name, res)
                         })
                         .collect::<Vec<_>>();
@@ -430,7 +428,7 @@ where
                         }
                     }
 
-                    let resolution = Resolution { def, import: true };
+                    let resolution = Resolution { def };
                     self.update(module_id, Some(import_id), &[(name, resolution)]);
                 }
                 None => tested_by!(bogus_paths),
@@ -717,7 +715,7 @@ where
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
         let def: ModuleDefId = module.into();
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        let resolution = Resolution { def: def.into(), import: false };
+        let resolution = Resolution { def: def.into() };
         self.def_collector.update(self.module_id, None, &[(name, resolution)]);
         res
     }
@@ -777,7 +775,7 @@ where
             .into(),
         };
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        let resolution = Resolution { def: def.into(), import: false };
+        let resolution = Resolution { def: def.into() };
         self.def_collector.update(self.module_id, None, &[(name, resolution)])
     }
 

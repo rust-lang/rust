@@ -30,9 +30,7 @@ pub struct ItemScope {
 static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
     BuiltinType::ALL
         .iter()
-        .map(|(name, ty)| {
-            (name.clone(), Resolution { def: PerNs::types(ty.clone().into()), import: false })
-        })
+        .map(|(name, ty)| (name.clone(), Resolution { def: PerNs::types(ty.clone().into()) }))
         .collect()
 });
 
@@ -113,29 +111,23 @@ impl ItemScope {
         self.legacy_macros.insert(name, mac);
     }
 
-    pub(crate) fn push_res(&mut self, name: Name, res: &Resolution, import: bool) -> bool {
+    pub(crate) fn push_res(&mut self, name: Name, res: &Resolution, _import: bool) -> bool {
         let mut changed = false;
         let existing = self.visible.entry(name.clone()).or_default();
 
         if existing.def.types.is_none() && res.def.types.is_some() {
             existing.def.types = res.def.types;
-            existing.import = import || res.import;
             changed = true;
         }
         if existing.def.values.is_none() && res.def.values.is_some() {
             existing.def.values = res.def.values;
-            existing.import = import || res.import;
             changed = true;
         }
         if existing.def.macros.is_none() && res.def.macros.is_some() {
             existing.def.macros = res.def.macros;
-            existing.import = import || res.import;
             changed = true;
         }
 
-        if existing.def.is_none() && res.def.is_none() && !existing.import && res.import {
-            existing.import = res.import;
-        }
         changed
     }
 
@@ -152,7 +144,6 @@ impl ItemScope {
 pub struct Resolution {
     /// None for unresolved
     pub def: PerNs,
-    pub(crate) import: bool,
 }
 
 impl From<ModuleDefId> for PerNs {
