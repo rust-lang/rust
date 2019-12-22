@@ -292,7 +292,6 @@ pub mod types;
 pub mod unicode;
 pub mod unsafe_removed_from_name;
 pub mod unused_io_amount;
-pub mod unused_label;
 pub mod unused_self;
 pub mod unwrap;
 pub mod use_self;
@@ -445,6 +444,10 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_removed(
         "clippy::into_iter_on_array",
         "this lint has been uplifted to rustc and is now called `array_into_iter`",
+    );
+    store.register_removed(
+        "clippy::unused_label",
+        "this lint has been uplifted to rustc and is now called `unused_labels`",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
@@ -774,7 +777,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &unicode::ZERO_WIDTH_SPACE,
         &unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         &unused_io_amount::UNUSED_IO_AMOUNT,
-        &unused_label::UNUSED_LABEL,
         &unused_self::UNUSED_SELF,
         &unwrap::PANICKING_UNWRAP,
         &unwrap::UNNECESSARY_UNWRAP,
@@ -868,7 +870,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box format::UselessFormat);
     store.register_late_pass(|| box swap::Swap);
     store.register_late_pass(|| box overflow_check_conditional::OverflowCheckConditional);
-    store.register_late_pass(|| box unused_label::UnusedLabel);
     store.register_late_pass(|| box new_without_default::NewWithoutDefault::default());
     let blacklisted_names = conf.blacklisted_names.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box blacklisted_name::BlacklistedName::new(blacklisted_names.clone()));
@@ -1302,7 +1303,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&unicode::ZERO_WIDTH_SPACE),
         LintId::of(&unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME),
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),
-        LintId::of(&unused_label::UNUSED_LABEL),
         LintId::of(&unwrap::PANICKING_UNWRAP),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
         LintId::of(&vec::USELESS_VEC),
@@ -1482,7 +1482,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&types::UNIT_ARG),
         LintId::of(&types::UNNECESSARY_CAST),
         LintId::of(&types::VEC_BOX),
-        LintId::of(&unused_label::UNUSED_LABEL),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
         LintId::of(&zero_div_zero::ZERO_DIVIDED_BY_ZERO),
     ]);

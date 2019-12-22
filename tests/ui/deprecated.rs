@@ -6,5 +6,6 @@
 #[warn(clippy::unused_collect)]
 #[warn(clippy::invalid_ref)]
 #[warn(clippy::into_iter_on_array)]
+#[warn(clippy::unused_label)]
 
 fn main() {}
