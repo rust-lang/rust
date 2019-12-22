@@ -751,7 +751,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             err.span_label(lhs.span, "cannot assign to this expression");
             if self.is_destructuring_place_expr(lhs) {
-                err.note("destructuring assignments are not yet supported");
+                err.note("destructuring assignments are not currently supported");
                 err.note(
                     "for more information, see https://github.com/rust-lang/rfcs/issues/372",
                 );

@@ -1216,6 +1216,7 @@ pub enum ExprKind {
     TryBlock(P<Block>),
 
     /// An assignment (`a = foo()`).
+    /// The `Span` argument is the span of the `=` token.
     Assign(P<Expr>, P<Expr>, Span),
     /// An assignment with an operator.
     ///
