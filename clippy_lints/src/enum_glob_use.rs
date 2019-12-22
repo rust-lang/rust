@@ -29,7 +29,7 @@ declare_clippy_lint! {
 declare_lint_pass!(EnumGlobUse => [ENUM_GLOB_USE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
-    fn check_mod(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx Mod, _: Span, _: HirId) {
+    fn check_mod(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx Mod<'_>, _: Span, _: HirId) {
         let map = cx.tcx.hir();
         // only check top level `use` statements
         for item in &m.item_ids {
@@ -38,7 +38,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
     }
 }
 
-fn lint_item(cx: &LateContext<'_, '_>, item: &Item) {
+fn lint_item(cx: &LateContext<'_, '_>, item: &Item<'_>) {
     if item.vis.node.is_pub() {
         return; // re-exports are fine
     }

@@ -48,7 +48,7 @@ impl CognitiveComplexity {
         cx: &'a LateContext<'a, 'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        body: &'tcx Body,
+        body: &'tcx Body<'_>,
         body_span: Span,
     ) {
         if body_span.from_expansion() {
@@ -117,7 +117,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CognitiveComplexity {
         cx: &LateContext<'a, 'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        body: &'tcx Body,
+        body: &'tcx Body<'_>,
         span: Span,
         hir_id: HirId,
     ) {

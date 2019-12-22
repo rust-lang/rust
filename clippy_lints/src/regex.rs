@@ -76,7 +76,7 @@ pub struct Regex {
 impl_lint_pass!(Regex => [INVALID_REGEX, REGEX_MACRO, TRIVIAL_REGEX]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
-    fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
+    fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx Crate<'_>) {
         self.spans.clear();
     }
 

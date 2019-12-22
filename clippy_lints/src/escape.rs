@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
         cx: &LateContext<'a, 'tcx>,
         _: visit::FnKind<'tcx>,
         _: &'tcx FnDecl,
-        body: &'tcx Body,
+        body: &'tcx Body<'_>,
         _: Span,
         hir_id: HirId,
     ) {

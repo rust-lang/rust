@@ -130,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
         _: &'tcx FnDecl,
-        body: &'tcx Body,
+        body: &'tcx Body<'_>,
         span: Span,
         _: HirId,
     ) {

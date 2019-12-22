@@ -40,7 +40,7 @@ declare_clippy_lint! {
 declare_lint_pass!(UnusedSelf => [UNUSED_SELF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &Item<'_>) {
         if item.span.from_expansion() {
             return;
         }

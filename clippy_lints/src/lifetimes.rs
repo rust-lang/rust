@@ -71,13 +71,13 @@ declare_clippy_lint! {
 declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, ref generics, id) = item.kind {
             check_fn_inner(cx, &sig.decl, Some(id), generics, item.span, true);
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Method(ref sig, id) = item.kind {
             let report_extra_lifetimes = trait_ref_of_method(cx, item.hir_id).is_none();
             check_fn_inner(
@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Method(ref sig, ref body) = item.kind {
             let body = match *body {
                 TraitMethod::Required(_) => None,

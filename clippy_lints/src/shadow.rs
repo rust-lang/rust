@@ -89,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Shadow {
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        body: &'tcx Body,
+        body: &'tcx Body<'_>,
         _: Span,
         _: HirId,
     ) {
@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Shadow {
     }
 }
 
-fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: &'tcx Body) {
+fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: &'tcx Body<'_>) {
     let mut bindings = Vec::new();
     for arg in iter_input_pats(decl, body) {
         if let PatKind::Binding(.., ident, _) = arg.pat.kind {

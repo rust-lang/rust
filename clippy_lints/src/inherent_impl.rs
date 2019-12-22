@@ -49,7 +49,7 @@ pub struct MultipleInherentImpl {
 impl_lint_pass!(MultipleInherentImpl => [MULTIPLE_INHERENT_IMPL]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
-    fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(_, _, _, ref generics, None, _, _) = item.kind {
             // Remember for each inherent implementation encoutered its span and generics
             // but filter out implementations that have generic params (type or lifetime)
@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
         }
     }
 
-    fn check_crate_post(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx Crate) {
+    fn check_crate_post(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx Crate<'_>) {
         if let Some(item) = krate.items.values().nth(0) {
             // Retrieve all inherent implementations from the crate, grouped by type
             for impls in cx

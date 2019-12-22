@@ -224,7 +224,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         if is_relevant_item(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
@@ -295,13 +295,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem<'_>) {
         if is_relevant_impl(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
         if is_relevant_trait(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
@@ -355,7 +355,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
     }
 }
 
-fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item) -> bool {
+fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item<'_>) -> bool {
     if let ItemKind::Fn(_, _, eid) = item.kind {
         is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
     } else {
@@ -363,14 +363,14 @@ fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item) -> bool {
     }
 }
 
-fn is_relevant_impl(cx: &LateContext<'_, '_>, item: &ImplItem) -> bool {
+fn is_relevant_impl(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) -> bool {
     match item.kind {
         ImplItemKind::Method(_, eid) => is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value),
         _ => false,
     }
 }
 
-fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem) -> bool {
+fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem<'_>) -> bool {
     match item.kind {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
         TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {

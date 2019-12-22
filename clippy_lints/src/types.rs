@@ -170,7 +170,7 @@ declare_clippy_lint! {
 declare_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
-    fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: HirId) {
+    fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body<'_>, _: Span, id: HirId) {
         // Skip trait implementations; see issue #605.
         if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.kind {
@@ -181,11 +181,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
         check_fn_decl(cx, decl);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &hir::StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &hir::StructField<'_>) {
         check_ty(cx, &field.ty, false);
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, item: &TraitItem<'_>) {
         match item.kind {
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty, false),
             TraitItemKind::Method(ref sig, _) => check_fn_decl(cx, &sig.decl),
@@ -1395,19 +1395,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        _: &'tcx Body,
+        _: &'tcx Body<'_>,
         _: Span,
         _: HirId,
     ) {
         self.check_fndecl(cx, decl);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField<'_>) {
         // enum variants are also struct fields now
         self.check_type(cx, &field.ty);
     }
 
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         match item.kind {
             ItemKind::Static(ref ty, _, _) | ItemKind::Const(ref ty, _) => self.check_type(cx, ty),
             // functions, enums, structs, impls and traits are covered
@@ -1415,7 +1415,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
         match item.kind {
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
             TraitItemKind::Method(FnSig { ref decl, .. }, TraitMethod::Required(_)) => self.check_fndecl(cx, decl),
@@ -1424,7 +1424,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem<'_>) {
         match item.kind {
             ImplItemKind::Const(ref ty, _) | ImplItemKind::TyAlias(ref ty) => self.check_type(cx, ty),
             // methods are covered by check_fn
@@ -2036,7 +2036,7 @@ declare_lint_pass!(ImplicitHasher => [IMPLICIT_HASHER]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
     #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         use syntax_pos::BytePos;
 
         fn suggestion<'a, 'tcx>(
@@ -2291,7 +2291,7 @@ impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
-    fn visit_body(&mut self, body: &'tcx Body) {
+    fn visit_body(&mut self, body: &'tcx Body<'_>) {
         let prev_body = self.body;
         self.body = self.cx.tcx.body_tables(body.id());
         walk_body(self, body);

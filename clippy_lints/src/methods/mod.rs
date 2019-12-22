@@ -1256,7 +1256,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         if in_external_macro(cx.sess(), impl_item.span) {
             return;
         }

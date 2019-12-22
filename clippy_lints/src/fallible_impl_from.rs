@@ -32,7 +32,7 @@ declare_clippy_lint! {
 declare_lint_pass!(FallibleImplFrom => [FALLIBLE_IMPL_FROM]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
         // check for `impl From<???> for ..`
         let impl_def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if_chain! {

@@ -165,7 +165,7 @@ pub struct LintWithoutLintPass {
 impl_lint_pass!(LintWithoutLintPass => [LINT_WITHOUT_LINT_PASS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         if let hir::ItemKind::Static(ref ty, Mutability::Not, _) = item.kind {
             if is_lint_ref_type(cx, ty) {
                 self.declared_lints.insert(item.ident.name, item.span);
@@ -191,7 +191,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
         }
     }
 
-    fn check_crate_post(&mut self, cx: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
+    fn check_crate_post(&mut self, cx: &LateContext<'a, 'tcx>, _: &'tcx Crate<'_>) {
         for (lint_name, &lint_span) in &self.declared_lints {
             // When using the `declare_tool_lint!` macro, the original `lint_span`'s
             // file points to "<rustc macros>".
