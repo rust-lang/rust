@@ -204,7 +204,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                     return None;
                 }
             }
-            return Some(return_code);
+            Some(return_code)
         }
         Err(e) => report_err(&ecx, e),
     }
