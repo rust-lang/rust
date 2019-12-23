@@ -446,14 +446,20 @@ where
                 }
             }
             // FIXME expand to statements in statement position
-            ast::Expr::MacroCall(e) => match self.expander.enter_expand(self.db, e) {
-                Some((mark, expansion)) => {
-                    let id = self.collect_expr(expansion);
-                    self.expander.exit(self.db, mark);
-                    id
+            ast::Expr::MacroCall(e) => {
+                let macro_call = self.expander.to_source(AstPtr::new(&e));
+                match self.expander.enter_expand(self.db, e.clone()) {
+                    Some((mark, expansion)) => {
+                        self.source_map
+                            .expansions
+                            .insert(macro_call, self.expander.current_file_id);
+                        let id = self.collect_expr(expansion);
+                        self.expander.exit(self.db, mark);
+                        id
+                    }
+                    None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
-                None => self.alloc_expr(Expr::Missing, syntax_ptr),
-            },
+            }
 
             // FIXME implement HIR for these:
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),

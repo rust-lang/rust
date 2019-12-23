@@ -26,7 +26,7 @@ use crate::{
     DefWithBodyId, HasModule, Lookup, ModuleId,
 };
 
-pub struct Expander {
+pub(crate) struct Expander {
     crate_def_map: Arc<CrateDefMap>,
     current_file_id: HirFileId,
     hygiene: Hygiene,
@@ -35,14 +35,18 @@ pub struct Expander {
 }
 
 impl Expander {
-    pub fn new(db: &impl DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
+    pub(crate) fn new(
+        db: &impl DefDatabase,
+        current_file_id: HirFileId,
+        module: ModuleId,
+    ) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db, current_file_id);
         let ast_id_map = db.ast_id_map(current_file_id);
         Expander { crate_def_map, current_file_id, hygiene, ast_id_map, module }
     }
 
-    pub fn enter_expand<T: ast::AstNode, DB: DefDatabase>(
+    pub(crate) fn enter_expand<T: ast::AstNode, DB: DefDatabase>(
         &mut self,
         db: &DB,
         macro_call: ast::MacroCall,
@@ -80,14 +84,14 @@ impl Expander {
         None
     }
 
-    pub fn exit(&mut self, db: &impl DefDatabase, mut mark: Mark) {
+    pub(crate) fn exit(&mut self, db: &impl DefDatabase, mut mark: Mark) {
         self.hygiene = Hygiene::new(db, mark.file_id);
         self.current_file_id = mark.file_id;
         self.ast_id_map = mem::take(&mut mark.ast_id_map);
         mark.bomb.defuse();
     }
 
-    pub fn to_source<T>(&self, value: T) -> InFile<T> {
+    pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
         InFile { file_id: self.current_file_id, value }
     }
 
@@ -112,7 +116,7 @@ impl Expander {
     }
 }
 
-pub struct Mark {
+pub(crate) struct Mark {
     file_id: HirFileId,
     ast_id_map: Arc<AstIdMap>,
     bomb: DropBomb,
@@ -159,6 +163,7 @@ pub struct BodySourceMap {
     pat_map: FxHashMap<PatSource, PatId>,
     pat_map_back: ArenaMap<PatId, PatSource>,
     field_map: FxHashMap<(ExprId, usize), AstPtr<ast::RecordField>>,
+    expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 }
 
 impl Body {
@@ -231,6 +236,11 @@ impl BodySourceMap {
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
         let src = node.map(|it| Either::Left(AstPtr::new(it)));
         self.expr_map.get(&src).cloned()
+    }
+
+    pub fn node_macro_file(&self, node: InFile<&ast::MacroCall>) -> Option<HirFileId> {
+        let src = node.map(|it| AstPtr::new(it));
+        self.expansions.get(&src).cloned()
     }
 
     pub fn field_init_shorthand_expr(&self, node: InFile<&ast::RecordField>) -> Option<ExprId> {
