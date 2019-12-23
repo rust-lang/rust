@@ -131,7 +131,7 @@ pub(super) fn is_active<'tcx>(
 }
 
 /// Determines if a given borrow is borrowing local data
-/// This is called for all Yield statements on movable generators
+/// This is called for all Yield expressions on movable generators
 pub(super) fn borrow_of_local_data(place: &Place<'_>) -> bool {
     match place.base {
         PlaceBase::Static(_) => false,

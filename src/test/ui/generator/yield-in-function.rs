@@ -1,4 +1,4 @@
 #![feature(generators)]
 
 fn main() { yield; }
-//~^ ERROR yield statement outside
+//~^ ERROR yield expression outside
