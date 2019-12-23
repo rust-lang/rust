@@ -390,8 +390,10 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
+static LEAVE_MAIN_PATTERNS: &[&str] = &["static", "fn main() {}", "extern crate"];
+
 fn check_code(cx: &LateContext<'_, '_>, text: &str, span: Span) {
-    if text.contains("fn main() {") && !(text.contains("static") || text.contains("fn main() {}")) {
+    if text.contains("fn main() {") && !LEAVE_MAIN_PATTERNS.iter().any(|p| text.contains(p)) {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }
