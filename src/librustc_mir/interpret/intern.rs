@@ -327,7 +327,8 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                     // We use `delay_span_bug` here, because this can be reached in the presence
                     // of fancy transmutes.
                     if alloc.mutability == Mutability::Mut {
-                        // For better errors later, mark the allocation as immutable (on top of the delayed ICE).
+                        // For better errors later, mark the allocation as immutable
+                        // (on top of the delayed ICE).
                         alloc.mutability = Mutability::Not;
                         ecx.tcx.sess.delay_span_bug(ecx.tcx.span, "mutable allocation in constant");
                     }
