@@ -8,20 +8,20 @@ const uri1 = vscode.Uri.file('/file/1');
 const uri2 = vscode.Uri.file('/file/2');
 
 const mockDocument1 = ({
-    uri: uri1
+    uri: uri1,
 } as unknown) as vscode.TextDocument;
 
 const mockDocument2 = ({
-    uri: uri2
+    uri: uri2,
 } as unknown) as vscode.TextDocument;
 
 const range1 = new vscode.Range(
     new vscode.Position(1, 2),
-    new vscode.Position(3, 4)
+    new vscode.Position(3, 4),
 );
 const range2 = new vscode.Range(
     new vscode.Position(5, 6),
-    new vscode.Position(7, 8)
+    new vscode.Position(7, 8),
 );
 
 const diagnostic1 = new vscode.Diagnostic(range1, 'First diagnostic');
@@ -32,7 +32,7 @@ function suggestion1(): SuggestedFix {
     return new SuggestedFix(
         'Replace me!',
         new vscode.Location(uri1, range1),
-        'With this!'
+        'With this!',
     );
 }
 
@@ -44,7 +44,7 @@ describe('SuggestedFixCollection', () => {
         // Specify the document and range that exactly matches
         const codeActions = suggestedFixes.provideCodeActions(
             mockDocument1,
-            range1
+            range1,
         );
 
         assert.strictEqual(codeActions.length, 1);
@@ -53,7 +53,8 @@ describe('SuggestedFixCollection', () => {
 
         const { diagnostics } = codeAction;
         if (!diagnostics) {
-            return assert.fail('Diagnostics unexpectedly missing');
+            assert.fail('Diagnostics unexpectedly missing');
+            return;
         }
 
         assert.strictEqual(diagnostics.length, 1);
@@ -66,7 +67,7 @@ describe('SuggestedFixCollection', () => {
 
         const codeActions = suggestedFixes.provideCodeActions(
             mockDocument1,
-            range2
+            range2,
         );
 
         assert(!codeActions || codeActions.length === 0);
@@ -78,7 +79,7 @@ describe('SuggestedFixCollection', () => {
 
         const codeActions = suggestedFixes.provideCodeActions(
             mockDocument2,
-            range1
+            range1,
         );
 
         assert(!codeActions || codeActions.length === 0);
@@ -91,7 +92,7 @@ describe('SuggestedFixCollection', () => {
 
         const codeActions = suggestedFixes.provideCodeActions(
             mockDocument1,
-            range1
+            range1,
         );
 
         assert(!codeActions || codeActions.length === 0);
@@ -106,7 +107,7 @@ describe('SuggestedFixCollection', () => {
 
         const codeActions = suggestedFixes.provideCodeActions(
             mockDocument1,
-            range1
+            range1,
         );
 
         assert.strictEqual(codeActions.length, 1);
@@ -114,7 +115,8 @@ describe('SuggestedFixCollection', () => {
         const { diagnostics } = codeAction;
 
         if (!diagnostics) {
-            return assert.fail('Diagnostics unexpectedly missing');
+            assert.fail('Diagnostics unexpectedly missing');
+            return;
         }
 
         // We should be associated with both diagnostics

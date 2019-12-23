@@ -17,7 +17,7 @@ import * as path from 'path';
 export function run(): Promise<void> {
     // Create the mocha test
     const mocha = new Mocha({
-        ui: 'bdd'
+        ui: 'bdd',
     });
     mocha.useColors(true);
 

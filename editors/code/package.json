@@ -13,7 +13,7 @@
         "Other"
     ],
     "engines": {
-        "vscode": "^1.37.0"
+        "vscode": "^1.41.0"
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -27,33 +27,37 @@
         "travis": "npm run compile && npm run test && npm run lint && npm run prettier -- --write && git diff --exit-code"
     },
     "prettier": {
+        "singleQuote": true,
         "tabWidth": 4,
-        "singleQuote": true
+        "trailingComma": "all"
     },
     "dependencies": {
-        "seedrandom": "^3.0.1",
-        "vscode-languageclient": "^5.3.0-next.4",
+        "lookpath": "^1.0.4",
+        "seedrandom": "^3.0.5",
+        "vscode-languageclient": "^6.0.0-next.9",
         "jsonc-parser": "^2.1.0"
     },
     "devDependencies": {
         "@types/glob": "^7.1.1",
         "@types/mocha": "^5.2.7",
-        "@types/node": "^10.14.13",
+        "@types/node": "^12.12.21",
         "@types/seedrandom": "^2.4.28",
-        "@types/vscode": "^1.37.0",
-        "glob": "^7.1.4",
-        "mocha": "^6.2.0",
-        "prettier": "^1.18.2",
-        "rollup": "^1.23.1",
+        "@types/vscode": "^1.41.0",
+        "glob": "^7.1.6",
+        "mocha": "^6.2.2",
+        "prettier": "^1.19.1",
+        "rollup": "^1.27.13",
         "rollup-plugin-commonjs": "^10.1.0",
         "rollup-plugin-node-resolve": "^5.2.0",
+        "rollup-plugin-sourcemaps": "^0.4.2",
         "rollup-plugin-typescript": "^1.0.1",
         "shx": "^0.3.1",
-        "tslint": "^5.18.0",
+        "tslint": "^5.20.1",
         "tslint-config-prettier": "^1.18.0",
-        "typescript": "^3.5.3",
-        "vsce": "^1.67.0",
-        "vscode-test": "^1.2.0"
+        "tslint-plugin-prettier": "^2.0.1",
+        "typescript": "^3.7.3",
+        "vsce": "^1.71.0",
+        "vscode-test": "^1.3.0"
     },
     "activationEvents": [
         "onLanguage:rust",
@@ -279,7 +283,7 @@
                 },
                 "rust-analyzer.useClientWatching": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "client provided file watching instead of notify watching."
                 },
                 "rust-analyzer.cargo-watch.arguments": {
@@ -296,6 +300,11 @@
                     "type": "array",
                     "description": "A list of patterns for cargo-watch to ignore (will be passed as `--ignore`)",
                     "default": []
+                },
+                "rust-analyzer.cargo-watch.allTargets": {
+                    "type": "boolean",
+                    "description": "Check all targets and tests (will be passed as `--all-targets`)",
+                    "default": true
                 },
                 "rust-analyzer.trace.server": {
                     "type": "string",
@@ -338,6 +347,21 @@
                     "type": "number",
                     "default": 20,
                     "description": "Maximum length for inlay hints"
+                },
+                "rust-analyzer.cargoFeatures.noDefaultFeatures": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Do not activate the `default` feature"
+                },
+                "rust-analyzer.cargoFeatures.allFeatures": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Activate all available features"
+                },
+                "rust-analyzer.cargoFeatures.features": {
+                    "type": "array",
+                    "default": [],
+                    "description": "List of features to activate"
                 }
             }
         },
@@ -358,6 +382,20 @@
                         "column": 3
                     }
                 ]
+            },
+            {
+                "name": "rustc-json",
+                "patterns": [
+                    {
+                        "regexp": "^.*\"message\":{\"message\":\"([^\"]*).*?\"file_name\":\"([^\"]+).*?\"line_start\":(\\d+).*?\"line_end\":(\\d+).*?\"column_start\":(\\d+).*?\"column_end\":(\\d+).*}$",
+                        "message": 1,
+                        "file": 2,
+                        "line": 3,
+                        "endLine": 4,
+                        "column": 5,
+                        "endColumn": 6
+                    }
+                ]
             }
         ],
         "problemMatchers": [
@@ -368,6 +406,14 @@
                     "${workspaceRoot}"
                 ],
                 "pattern": "$rustc"
+            },
+            {
+                "name": "rustc-json",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceRoot}"
+                ],
+                "pattern": "$rustc-json"
             },
             {
                 "name": "rustc-watch",
@@ -483,6 +529,33 @@
                 }
             },
             {
+                "id": "ralsp.literal.numeric",
+                "description": "Color for numeric literals",
+                "defaults": {
+                    "dark": "#BECEA8",
+                    "light": "#09885A",
+                    "highContrast": "#B5CEA8"
+                }
+            },
+            {
+                "id": "ralsp.literal.char",
+                "description": "Color for character literals",
+                "defaults": {
+                    "dark": "#BECEA8",
+                    "light": "#09885A",
+                    "highContrast": "#B5CEA8"
+                }
+            },
+            {
+                "id": "ralsp.literal.byte",
+                "description": "Color for byte literals",
+                "defaults": {
+                    "dark": "#BECEA8",
+                    "light": "#09885A",
+                    "highContrast": "#B5CEA8"
+                }
+            },
+            {
                 "id": "ralsp.macro",
                 "description": "Color for macros",
                 "defaults": {
@@ -502,7 +575,43 @@
             },
             {
                 "id": "ralsp.type",
-                "description": "Color for types",
+                "description": "Color for other types (traits, aliases..)",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.type.builtin",
+                "description": "Color for built-in types (&str, bool, u16, u32)",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.type.lifetime",
+                "description": "Color for lifetimes parameters",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.type.self",
+                "description": "Color for `Self` param type",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.type.param",
+                "description": "Color for type parameters",
                 "defaults": {
                     "dark": "#4EC9B0",
                     "light": "#267F99",

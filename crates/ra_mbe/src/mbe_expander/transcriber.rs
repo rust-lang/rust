@@ -50,7 +50,7 @@ pub(super) fn transcribe(
     template: &tt::Subtree,
     bindings: &Bindings,
 ) -> Result<tt::Subtree, ExpandError> {
-    assert!(template.delimiter == tt::Delimiter::None);
+    assert!(template.delimiter == None);
     let mut ctx = ExpandCtx { bindings: &bindings, nesting: Vec::new(), var_expanded: false };
     expand_subtree(&mut ctx, template)
 }
@@ -106,9 +106,14 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> Result<Fragment, ExpandError>
         // ```
         // We just treat it a normal tokens
         let tt = tt::Subtree {
-            delimiter: tt::Delimiter::None,
+            delimiter: None,
             token_trees: vec![
-                tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone }).into(),
+                tt::Leaf::from(tt::Punct {
+                    char: '$',
+                    spacing: tt::Spacing::Alone,
+                    id: tt::TokenId::unspecified(),
+                })
+                .into(),
                 tt::Leaf::from(tt::Ident { text: v.clone(), id: tt::TokenId::unspecified() })
                     .into(),
             ],
@@ -147,7 +152,7 @@ fn expand_repeat(
     ctx.var_expanded = false;
 
     while let Ok(mut t) = expand_subtree(ctx, template) {
-        t.delimiter = tt::Delimiter::None;
+        t.delimiter = None;
         // if no var expanded in the child, we count it as a fail
         if !ctx.var_expanded {
             break;
@@ -212,7 +217,7 @@ fn expand_repeat(
 
     // Check if it is a single token subtree without any delimiter
     // e.g {Delimiter:None> ['>'] /Delimiter:None>}
-    let tt = tt::Subtree { delimiter: tt::Delimiter::None, token_trees: buf }.into();
+    let tt = tt::Subtree { delimiter: None, token_trees: buf }.into();
     Ok(Fragment::Tokens(tt))
 }
 
@@ -225,7 +230,7 @@ fn push_fragment(buf: &mut Vec<tt::TokenTree>, fragment: Fragment) {
 
 fn push_subtree(buf: &mut Vec<tt::TokenTree>, tt: tt::Subtree) {
     match tt.delimiter {
-        tt::Delimiter::None => buf.extend(tt.token_trees),
+        None => buf.extend(tt.token_trees),
         _ => buf.push(tt.into()),
     }
 }

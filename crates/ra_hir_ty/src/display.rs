@@ -10,6 +10,7 @@ pub struct HirFormatter<'a, 'b, DB> {
     buf: String,
     curr_size: usize,
     max_size: Option<usize>,
+    should_display_default_types: bool,
 }
 
 pub trait HirDisplay {
@@ -19,7 +20,7 @@ pub trait HirDisplay {
     where
         Self: Sized,
     {
-        HirDisplayWrapper(db, self, None)
+        HirDisplayWrapper(db, self, None, true)
     }
 
     fn display_truncated<'a, DB>(
@@ -30,7 +31,7 @@ pub trait HirDisplay {
     where
         Self: Sized,
     {
-        HirDisplayWrapper(db, self, max_size)
+        HirDisplayWrapper(db, self, max_size, false)
     }
 }
 
@@ -72,9 +73,13 @@ where
             false
         }
     }
+
+    pub fn should_display_default_types(&self) -> bool {
+        self.should_display_default_types
+    }
 }
 
-pub struct HirDisplayWrapper<'a, DB, T>(&'a DB, &'a T, Option<usize>);
+pub struct HirDisplayWrapper<'a, DB, T>(&'a DB, &'a T, Option<usize>, bool);
 
 impl<'a, DB, T> fmt::Display for HirDisplayWrapper<'a, DB, T>
 where
@@ -88,6 +93,7 @@ where
             buf: String::with_capacity(20),
             curr_size: 0,
             max_size: self.2,
+            should_display_default_types: self.3,
         })
     }
 }

@@ -57,24 +57,23 @@ mod tests;
 
 use std::sync::Arc;
 
-use hir_expand::{
-    ast_id_map::FileAstId, diagnostics::DiagnosticSink, either::Either, name::Name, MacroDefId,
-    Source,
-};
-use once_cell::sync::Lazy;
+use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile};
 use ra_arena::Arena;
-use ra_db::{CrateId, Edition, FileId};
+use ra_db::{CrateId, Edition, FileId, FilePosition};
 use ra_prof::profile;
-use ra_syntax::ast;
+use ra_syntax::{
+    ast::{self, AstNode},
+    SyntaxNode,
+};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    builtin_type::BuiltinType,
     db::DefDatabase,
+    item_scope::{BuiltinShadowMode, ItemScope},
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
-    path::Path,
+    path::ModPath,
     per_ns::PerNs,
-    AstId, FunctionId, ImplId, LocalImportId, LocalModuleId, ModuleDefId, ModuleId, TraitId,
+    AstId, LocalModuleId, ModuleDefId, ModuleId,
 };
 
 /// Contains all top-level defs from a macro-expanded crate
@@ -100,106 +99,76 @@ impl std::ops::Index<LocalModuleId> for CrateDefMap {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum ModuleOrigin {
+    CrateRoot {
+        definition: FileId,
+    },
+    /// Note that non-inline modules, by definition, live inside non-macro file.
+    File {
+        declaration: AstId<ast::Module>,
+        definition: FileId,
+    },
+    Inline {
+        definition: AstId<ast::Module>,
+    },
+}
+
+impl Default for ModuleOrigin {
+    fn default() -> Self {
+        ModuleOrigin::CrateRoot { definition: FileId(0) }
+    }
+}
+
+impl ModuleOrigin {
+    pub(crate) fn not_sure_file(file: Option<FileId>, declaration: AstId<ast::Module>) -> Self {
+        match file {
+            None => ModuleOrigin::Inline { definition: declaration },
+            Some(definition) => ModuleOrigin::File { declaration, definition },
+        }
+    }
+
+    fn declaration(&self) -> Option<AstId<ast::Module>> {
+        match self {
+            ModuleOrigin::File { declaration: module, .. }
+            | ModuleOrigin::Inline { definition: module, .. } => Some(*module),
+            ModuleOrigin::CrateRoot { .. } => None,
+        }
+    }
+
+    pub fn file_id(&self) -> Option<FileId> {
+        match self {
+            ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
+                Some(*definition)
+            }
+            _ => None,
+        }
+    }
+
+    /// Returns a node which defines this module.
+    /// That is, a file or a `mod foo {}` with items.
+    fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
+        match self {
+            ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
+                let file_id = *definition;
+                let sf = db.parse(file_id).tree();
+                return InFile::new(file_id.into(), ModuleSource::SourceFile(sf));
+            }
+            ModuleOrigin::Inline { definition } => {
+                InFile::new(definition.file_id, ModuleSource::Module(definition.to_node(db)))
+            }
+        }
+    }
+}
+
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ModuleData {
     pub parent: Option<LocalModuleId>,
     pub children: FxHashMap<Name, LocalModuleId>,
-    pub scope: ModuleScope,
+    pub scope: ItemScope,
 
-    //  FIXME: these can't be both null, we need a three-state enum here.
-    /// None for root
-    pub declaration: Option<AstId<ast::Module>>,
-    /// None for inline modules.
-    ///
-    /// Note that non-inline modules, by definition, live inside non-macro file.
-    pub definition: Option<FileId>,
-
-    pub impls: Vec<ImplId>,
-}
-
-#[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct Declarations {
-    fns: FxHashMap<FileAstId<ast::FnDef>, FunctionId>,
-}
-
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct ModuleScope {
-    items: FxHashMap<Name, Resolution>,
-    /// Macros visable in current module in legacy textual scope
-    ///
-    /// For macros invoked by an unquatified identifier like `bar!()`, `legacy_macros` will be searched in first.
-    /// If it yields no result, then it turns to module scoped `macros`.
-    /// It macros with name quatified with a path like `crate::foo::bar!()`, `legacy_macros` will be skipped,
-    /// and only normal scoped `macros` will be searched in.
-    ///
-    /// Note that this automatically inherit macros defined textually before the definition of module itself.
-    ///
-    /// Module scoped macros will be inserted into `items` instead of here.
-    // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
-    // be all resolved to the last one defined if shadowing happens.
-    legacy_macros: FxHashMap<Name, MacroDefId>,
-}
-
-static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
-    BuiltinType::ALL
-        .iter()
-        .map(|(name, ty)| {
-            (name.clone(), Resolution { def: PerNs::types(ty.clone().into()), import: None })
-        })
-        .collect()
-});
-
-/// Legacy macros can only be accessed through special methods like `get_legacy_macros`.
-/// Other methods will only resolve values, types and module scoped macros only.
-impl ModuleScope {
-    pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, &'a Resolution)> + 'a {
-        //FIXME: shadowing
-        self.items.iter().chain(BUILTIN_SCOPE.iter())
-    }
-
-    pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
-        self.entries()
-            .filter_map(|(_name, res)| if res.import.is_none() { Some(res.def) } else { None })
-            .flat_map(|per_ns| {
-                per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
-            })
-    }
-
-    /// Iterate over all module scoped macros
-    pub fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
-        self.items
-            .iter()
-            .filter_map(|(name, res)| res.def.take_macros().map(|macro_| (name, macro_)))
-    }
-
-    /// Iterate over all legacy textual scoped macros visable at the end of the module
-    pub fn legacy_macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
-        self.legacy_macros.iter().map(|(name, def)| (name, *def))
-    }
-
-    /// Get a name from current module scope, legacy macros are not included
-    pub fn get(&self, name: &Name) -> Option<&Resolution> {
-        self.items.get(name).or_else(|| BUILTIN_SCOPE.get(name))
-    }
-
-    pub fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
-        self.items.values().filter_map(|r| match r.def.take_types() {
-            Some(ModuleDefId::TraitId(t)) => Some(t),
-            _ => None,
-        })
-    }
-
-    fn get_legacy_macro(&self, name: &Name) -> Option<MacroDefId> {
-        self.legacy_macros.get(name).copied()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Resolution {
-    /// None for unresolved
-    pub def: PerNs,
-    /// ident by which this is imported into local scope.
-    pub import: Option<LocalImportId>,
+    /// Where does this module come from?
+    pub origin: ModuleOrigin,
 }
 
 impl CrateDefMap {
@@ -241,7 +210,7 @@ impl CrateDefMap {
     pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = LocalModuleId> + '_ {
         self.modules
             .iter()
-            .filter(move |(_id, data)| data.definition == Some(file_id))
+            .filter(move |(_id, data)| data.origin.file_id() == Some(file_id))
             .map(|(id, _data)| id)
     }
 
@@ -249,33 +218,62 @@ impl CrateDefMap {
         &self,
         db: &impl DefDatabase,
         original_module: LocalModuleId,
-        path: &Path,
+        path: &ModPath,
+        shadow: BuiltinShadowMode,
     ) -> (PerNs, Option<usize>) {
-        let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
+        let res =
+            self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path, shadow);
         (res.resolved_def, res.segment_index)
     }
 }
 
 impl ModuleData {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(
-        &self,
-        db: &impl DefDatabase,
-    ) -> Source<Either<ast::SourceFile, ast::Module>> {
-        if let Some(file_id) = self.definition {
-            let sf = db.parse(file_id).tree();
-            return Source::new(file_id.into(), Either::A(sf));
-        }
-        let decl = self.declaration.unwrap();
-        Source::new(decl.file_id(), Either::B(decl.to_node(db)))
+    pub fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
+        self.origin.definition_source(db)
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
-    /// `None` for the crate root.
-    pub fn declaration_source(&self, db: &impl DefDatabase) -> Option<Source<ast::Module>> {
-        let decl = self.declaration?;
+    /// `None` for the crate root or block.
+    pub fn declaration_source(&self, db: &impl DefDatabase) -> Option<InFile<ast::Module>> {
+        let decl = self.origin.declaration()?;
         let value = decl.to_node(db);
-        Some(Source { file_id: decl.file_id(), value })
+        Some(InFile { file_id: decl.file_id, value })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModuleSource {
+    SourceFile(ast::SourceFile),
+    Module(ast::Module),
+}
+
+impl ModuleSource {
+    // FIXME: this methods do not belong here
+    pub fn from_position(db: &impl DefDatabase, position: FilePosition) -> ModuleSource {
+        let parse = db.parse(position.file_id);
+        match &ra_syntax::algo::find_node_at_offset::<ast::Module>(
+            parse.tree().syntax(),
+            position.offset,
+        ) {
+            Some(m) if !m.has_semi() => ModuleSource::Module(m.clone()),
+            _ => {
+                let source_file = parse.tree();
+                ModuleSource::SourceFile(source_file)
+            }
+        }
+    }
+
+    pub fn from_child_node(db: &impl DefDatabase, child: InFile<&SyntaxNode>) -> ModuleSource {
+        if let Some(m) =
+            child.value.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
+        {
+            ModuleSource::Module(m)
+        } else {
+            let file_id = child.file_id.original_file(db);
+            let source_file = db.parse(file_id).tree();
+            ModuleSource::SourceFile(source_file)
+        }
     }
 }
 
@@ -309,7 +307,7 @@ mod diagnostics {
                     }
                     let decl = declaration.to_node(db);
                     sink.push(UnresolvedModule {
-                        file: declaration.file_id(),
+                        file: declaration.file_id,
                         decl: AstPtr::new(&decl),
                         candidate: candidate.clone(),
                     })

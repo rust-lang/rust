@@ -6,12 +6,12 @@ import SuggestedFix from '../../../utils/diagnostics/SuggestedFix';
 
 const location1 = new vscode.Location(
     vscode.Uri.file('/file/1'),
-    new vscode.Range(new vscode.Position(1, 2), new vscode.Position(3, 4))
+    new vscode.Range(new vscode.Position(1, 2), new vscode.Position(3, 4)),
 );
 
 const location2 = new vscode.Location(
     vscode.Uri.file('/file/2'),
-    new vscode.Range(new vscode.Position(5, 6), new vscode.Position(7, 8))
+    new vscode.Range(new vscode.Position(5, 6), new vscode.Position(7, 8)),
 );
 
 describe('SuggestedFix', () => {
@@ -20,13 +20,13 @@ describe('SuggestedFix', () => {
             const suggestion1 = new SuggestedFix(
                 'Replace me!',
                 location1,
-                'With this!'
+                'With this!',
             );
 
             const suggestion2 = new SuggestedFix(
                 'Replace me!',
                 location1,
-                'With this!'
+                'With this!',
             );
 
             assert(suggestion1.isEqual(suggestion2));
@@ -36,13 +36,13 @@ describe('SuggestedFix', () => {
             const suggestion1 = new SuggestedFix(
                 'Replace me!',
                 location1,
-                'With this!'
+                'With this!',
             );
 
             const suggestion2 = new SuggestedFix(
                 'Not the same title!',
                 location1,
-                'With this!'
+                'With this!',
             );
 
             assert(!suggestion1.isEqual(suggestion2));
@@ -52,13 +52,13 @@ describe('SuggestedFix', () => {
             const suggestion1 = new SuggestedFix(
                 'Replace me!',
                 location1,
-                'With this!'
+                'With this!',
             );
 
             const suggestion2 = new SuggestedFix(
                 'Replace me!',
                 location1,
-                'With something else!'
+                'With something else!',
             );
 
             assert(!suggestion1.isEqual(suggestion2));
@@ -68,13 +68,13 @@ describe('SuggestedFix', () => {
             const suggestion1 = new SuggestedFix(
                 'Replace me!',
                 location1,
-                'With this!'
+                'With this!',
             );
 
             const suggestion2 = new SuggestedFix(
                 'Replace me!',
                 location2,
-                'With this!'
+                'With this!',
             );
 
             assert(!suggestion1.isEqual(suggestion2));
@@ -85,14 +85,14 @@ describe('SuggestedFix', () => {
                 'Replace me!',
                 location1,
                 'With this!',
-                SuggestionApplicability.MachineApplicable
+                SuggestionApplicability.MachineApplicable,
             );
 
             const suggestion2 = new SuggestedFix(
                 'Replace me!',
                 location2,
                 'With this!',
-                SuggestionApplicability.HasPlaceholders
+                SuggestionApplicability.HasPlaceholders,
             );
 
             assert(!suggestion1.isEqual(suggestion2));
@@ -104,7 +104,7 @@ describe('SuggestedFix', () => {
             const suggestion = new SuggestedFix(
                 'Replace me!',
                 location1,
-                'With this!'
+                'With this!',
             );
 
             const codeAction = suggestion.toCodeAction();
@@ -114,7 +114,8 @@ describe('SuggestedFix', () => {
 
             const edit = codeAction.edit;
             if (!edit) {
-                return assert.fail('Code Action edit unexpectedly missing');
+                assert.fail('Code Action edit unexpectedly missing');
+                return;
             }
 
             const editEntries = edit.entries();

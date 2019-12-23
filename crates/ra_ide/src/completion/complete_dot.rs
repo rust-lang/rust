@@ -27,7 +27,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     complete_methods(acc, ctx, &receiver_ty);
 
     // Suggest .await syntax for types that implement Future trait
-    if ctx.analyzer.impls_future(ctx.db, receiver_ty.into_ty()) {
+    if ctx.analyzer.impls_future(ctx.db, receiver_ty) {
         CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
             .detail("expr.await")
             .insert_text("await")
@@ -206,6 +206,39 @@ mod tests {
                 label: "the_method()",
                 source_range: [144; 144),
                 delete: [144; 144),
+                insert: "the_method()$0",
+                kind: Method,
+                lookup: "the_method",
+                detail: "fn the_method(&self)",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_method_completion_only_fitting_impls() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+            struct A<T> {}
+            impl A<u32> {
+                fn the_method(&self) {}
+            }
+            impl A<i32> {
+                fn the_other_method(&self) {}
+            }
+            fn foo(a: A<u32>) {
+               a.<|>
+            }
+            ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_method()",
+                source_range: [243; 243),
+                delete: [243; 243),
                 insert: "the_method()$0",
                 kind: Method,
                 lookup: "the_method",

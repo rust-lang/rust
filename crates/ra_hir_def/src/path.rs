@@ -1,35 +1,97 @@
 //! A desugared representation of paths like `crate::foo` or `<Type as Trait>::bar`.
+mod lower;
 
 use std::{iter, sync::Arc};
 
 use hir_expand::{
-    either::Either,
     hygiene::Hygiene,
-    name::{self, AsName, Name},
+    name::{AsName, Name},
 };
 use ra_db::CrateId;
-use ra_syntax::{
-    ast::{self, NameOwner, TypeAscriptionOwner},
-    AstNode,
-};
+use ra_syntax::ast;
 
-use crate::{type_ref::TypeRef, Source};
+use crate::{type_ref::TypeRef, InFile};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ModPath {
+    pub kind: PathKind,
+    pub segments: Vec<Name>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PathKind {
+    Plain,
+    /// `self::` is `Super(0)`
+    Super(u8),
+    Crate,
+    /// Absolute path (::foo)
+    Abs,
+    /// `$crate` from macro expansion
+    DollarCrate(CrateId),
+}
+
+impl ModPath {
+    pub fn from_src(path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
+        lower::lower_path(path, hygiene).map(|it| it.mod_path)
+    }
+
+    pub fn from_simple_segments(
+        kind: PathKind,
+        segments: impl IntoIterator<Item = Name>,
+    ) -> ModPath {
+        let segments = segments.into_iter().collect::<Vec<_>>();
+        ModPath { kind, segments }
+    }
+
+    pub(crate) fn from_name_ref(name_ref: &ast::NameRef) -> ModPath {
+        name_ref.as_name().into()
+    }
+
+    /// Converts an `tt::Ident` into a single-identifier `Path`.
+    pub(crate) fn from_tt_ident(ident: &tt::Ident) -> ModPath {
+        ident.as_name().into()
+    }
+
+    /// Calls `cb` with all paths, represented by this use item.
+    pub(crate) fn expand_use_item(
+        item_src: InFile<ast::UseItem>,
+        hygiene: &Hygiene,
+        mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<Name>),
+    ) {
+        if let Some(tree) = item_src.value.use_tree() {
+            lower::lower_use_tree(None, tree, hygiene, &mut cb);
+        }
+    }
+
+    pub fn is_ident(&self) -> bool {
+        self.kind == PathKind::Plain && self.segments.len() == 1
+    }
+
+    pub fn is_self(&self) -> bool {
+        self.kind == PathKind::Super(0) && self.segments.is_empty()
+    }
+
+    /// If this path is a single identifier, like `foo`, return its name.
+    pub fn as_ident(&self) -> Option<&Name> {
+        if self.kind != PathKind::Plain || self.segments.len() > 1 {
+            return None;
+        }
+        self.segments.first()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
-    pub kind: PathKind,
-    pub segments: Vec<PathSegment>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PathSegment {
-    pub name: Name,
-    pub args_and_bindings: Option<Arc<GenericArgs>>,
+    /// Type based path like `<T>::foo`.
+    /// Note that paths like `<Type as Trait>::foo` are desugard to `Trait::<Self=Type>::foo`.
+    type_anchor: Option<Box<TypeRef>>,
+    mod_path: ModPath,
+    /// Invariant: the same len as self.path.segments
+    generic_args: Vec<Option<Arc<GenericArgs>>>,
 }
 
 /// Generic arguments to a path segment (e.g. the `i32` in `Option<i32>`). This
-/// can (in the future) also include bindings of associated types, like in
-/// `Iterator<Item = Foo>`.
+/// also includes bindings of associated types, like in `Iterator<Item = Foo>`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArgs {
     pub args: Vec<GenericArg>,
@@ -50,234 +112,111 @@ pub enum GenericArg {
     // or lifetime...
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PathKind {
-    Plain,
-    Self_,
-    Super,
-    Crate,
-    // Absolute path
-    Abs,
-    // Type based path like `<T>::foo`
-    Type(Box<TypeRef>),
-    // `$crate` from macro expansion
-    DollarCrate(CrateId),
-}
-
 impl Path {
-    /// Calls `cb` with all paths, represented by this use item.
-    pub(crate) fn expand_use_item(
-        item_src: Source<ast::UseItem>,
-        hygiene: &Hygiene,
-        mut cb: impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
-    ) {
-        if let Some(tree) = item_src.value.use_tree() {
-            expand_use_tree(None, tree, hygiene, &mut cb);
-        }
-    }
-
-    pub(crate) fn from_simple_segments(
-        kind: PathKind,
-        segments: impl IntoIterator<Item = Name>,
-    ) -> Path {
-        Path {
-            kind,
-            segments: segments
-                .into_iter()
-                .map(|name| PathSegment { name, args_and_bindings: None })
-                .collect(),
-        }
-    }
-
     /// Converts an `ast::Path` to `Path`. Works with use trees.
     /// DEPRECATED: It does not handle `$crate` from macro call.
     pub fn from_ast(path: ast::Path) -> Option<Path> {
-        Path::from_src(path, &Hygiene::new_unhygienic())
+        lower::lower_path(path, &Hygiene::new_unhygienic())
     }
 
     /// Converts an `ast::Path` to `Path`. Works with use trees.
     /// It correctly handles `$crate` based path from macro call.
-    pub fn from_src(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
-        let mut kind = PathKind::Plain;
-        let mut segments = Vec::new();
-        loop {
-            let segment = path.segment()?;
-
-            if segment.has_colon_colon() {
-                kind = PathKind::Abs;
-            }
-
-            match segment.kind()? {
-                ast::PathSegmentKind::Name(name_ref) => {
-                    // FIXME: this should just return name
-                    match hygiene.name_ref_to_name(name_ref) {
-                        Either::A(name) => {
-                            let args = segment
-                                .type_arg_list()
-                                .and_then(GenericArgs::from_ast)
-                                .or_else(|| {
-                                    GenericArgs::from_fn_like_path_ast(
-                                        segment.param_list(),
-                                        segment.ret_type(),
-                                    )
-                                })
-                                .map(Arc::new);
-                            let segment = PathSegment { name, args_and_bindings: args };
-                            segments.push(segment);
-                        }
-                        Either::B(crate_id) => {
-                            kind = PathKind::DollarCrate(crate_id);
-                            break;
-                        }
-                    }
-                }
-                ast::PathSegmentKind::Type { type_ref, trait_ref } => {
-                    assert!(path.qualifier().is_none()); // this can only occur at the first segment
-
-                    let self_type = TypeRef::from_ast(type_ref?);
-
-                    match trait_ref {
-                        // <T>::foo
-                        None => {
-                            kind = PathKind::Type(Box::new(self_type));
-                        }
-                        // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
-                        Some(trait_ref) => {
-                            let path = Path::from_src(trait_ref.path()?, hygiene)?;
-                            kind = path.kind;
-                            let mut prefix_segments = path.segments;
-                            prefix_segments.reverse();
-                            segments.extend(prefix_segments);
-                            // Insert the type reference (T in the above example) as Self parameter for the trait
-                            let mut last_segment = segments.last_mut()?;
-                            if last_segment.args_and_bindings.is_none() {
-                                last_segment.args_and_bindings =
-                                    Some(Arc::new(GenericArgs::empty()));
-                            };
-                            let args = last_segment.args_and_bindings.as_mut().unwrap();
-                            let mut args_inner = Arc::make_mut(args);
-                            args_inner.has_self_type = true;
-                            args_inner.args.insert(0, GenericArg::Type(self_type));
-                        }
-                    }
-                }
-                ast::PathSegmentKind::CrateKw => {
-                    kind = PathKind::Crate;
-                    break;
-                }
-                ast::PathSegmentKind::SelfKw => {
-                    kind = PathKind::Self_;
-                    break;
-                }
-                ast::PathSegmentKind::SuperKw => {
-                    kind = PathKind::Super;
-                    break;
-                }
-            }
-            path = match qualifier(&path) {
-                Some(it) => it,
-                None => break,
-            };
-        }
-        segments.reverse();
-        return Some(Path { kind, segments });
-
-        fn qualifier(path: &ast::Path) -> Option<ast::Path> {
-            if let Some(q) = path.qualifier() {
-                return Some(q);
-            }
-            // FIXME: this bottom up traversal is not too precise.
-            // Should we handle do a top-down analysis, recording results?
-            let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
-            let use_tree = use_tree_list.parent_use_tree();
-            use_tree.path()
-        }
+    pub fn from_src(path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
+        lower::lower_path(path, hygiene)
     }
 
     /// Converts an `ast::NameRef` into a single-identifier `Path`.
     pub(crate) fn from_name_ref(name_ref: &ast::NameRef) -> Path {
-        name_ref.as_name().into()
+        Path { type_anchor: None, mod_path: name_ref.as_name().into(), generic_args: vec![None] }
     }
 
-    /// `true` is this path is a single identifier, like `foo`
-    pub fn is_ident(&self) -> bool {
-        self.kind == PathKind::Plain && self.segments.len() == 1
+    pub fn kind(&self) -> &PathKind {
+        &self.mod_path.kind
     }
 
-    /// `true` if this path is just a standalone `self`
-    pub fn is_self(&self) -> bool {
-        self.kind == PathKind::Self_ && self.segments.is_empty()
+    pub fn type_anchor(&self) -> Option<&TypeRef> {
+        self.type_anchor.as_deref()
     }
 
-    /// If this path is a single identifier, like `foo`, return its name.
-    pub fn as_ident(&self) -> Option<&Name> {
-        if self.kind != PathKind::Plain || self.segments.len() > 1 {
+    pub fn segments(&self) -> PathSegments<'_> {
+        PathSegments {
+            segments: self.mod_path.segments.as_slice(),
+            generic_args: self.generic_args.as_slice(),
+        }
+    }
+
+    pub fn mod_path(&self) -> &ModPath {
+        &self.mod_path
+    }
+
+    pub fn qualifier(&self) -> Option<Path> {
+        if self.mod_path.is_ident() {
             return None;
         }
-        self.segments.first().map(|s| &s.name)
+        let res = Path {
+            type_anchor: self.type_anchor.clone(),
+            mod_path: ModPath {
+                kind: self.mod_path.kind.clone(),
+                segments: self.mod_path.segments[..self.mod_path.segments.len() - 1].to_vec(),
+            },
+            generic_args: self.generic_args[..self.generic_args.len() - 1].to_vec(),
+        };
+        Some(res)
     }
+}
 
-    pub fn expand_macro_expr(&self) -> Option<Name> {
-        self.as_ident().and_then(|name| Some(name.clone()))
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PathSegment<'a> {
+    pub name: &'a Name,
+    pub args_and_bindings: Option<&'a GenericArgs>,
+}
+
+pub struct PathSegments<'a> {
+    segments: &'a [Name],
+    generic_args: &'a [Option<Arc<GenericArgs>>],
+}
+
+impl<'a> PathSegments<'a> {
+    pub const EMPTY: PathSegments<'static> = PathSegments { segments: &[], generic_args: &[] };
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
-
-    pub fn is_type_relative(&self) -> bool {
-        match self.kind {
-            PathKind::Type(_) => true,
-            _ => false,
-        }
+    pub fn len(&self) -> usize {
+        self.segments.len()
+    }
+    pub fn first(&self) -> Option<PathSegment<'a>> {
+        self.get(0)
+    }
+    pub fn last(&self) -> Option<PathSegment<'a>> {
+        self.get(self.len().checked_sub(1)?)
+    }
+    pub fn get(&self, idx: usize) -> Option<PathSegment<'a>> {
+        assert_eq!(self.segments.len(), self.generic_args.len());
+        let res = PathSegment {
+            name: self.segments.get(idx)?,
+            args_and_bindings: self.generic_args.get(idx).unwrap().as_ref().map(|it| &**it),
+        };
+        Some(res)
+    }
+    pub fn skip(&self, len: usize) -> PathSegments<'a> {
+        assert_eq!(self.segments.len(), self.generic_args.len());
+        PathSegments { segments: &self.segments[len..], generic_args: &self.generic_args[len..] }
+    }
+    pub fn take(&self, len: usize) -> PathSegments<'a> {
+        assert_eq!(self.segments.len(), self.generic_args.len());
+        PathSegments { segments: &self.segments[..len], generic_args: &self.generic_args[..len] }
+    }
+    pub fn iter(&self) -> impl Iterator<Item = PathSegment<'a>> {
+        self.segments.iter().zip(self.generic_args.iter()).map(|(name, args)| PathSegment {
+            name,
+            args_and_bindings: args.as_ref().map(|it| &**it),
+        })
     }
 }
 
 impl GenericArgs {
     pub(crate) fn from_ast(node: ast::TypeArgList) -> Option<GenericArgs> {
-        let mut args = Vec::new();
-        for type_arg in node.type_args() {
-            let type_ref = TypeRef::from_ast_opt(type_arg.type_ref());
-            args.push(GenericArg::Type(type_ref));
-        }
-        // lifetimes ignored for now
-        let mut bindings = Vec::new();
-        for assoc_type_arg in node.assoc_type_args() {
-            if let Some(name_ref) = assoc_type_arg.name_ref() {
-                let name = name_ref.as_name();
-                let type_ref = TypeRef::from_ast_opt(assoc_type_arg.type_ref());
-                bindings.push((name, type_ref));
-            }
-        }
-        if args.is_empty() && bindings.is_empty() {
-            None
-        } else {
-            Some(GenericArgs { args, has_self_type: false, bindings })
-        }
-    }
-
-    /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
-    /// -> Z` (which desugars to `Fn<(X, Y), Output=Z>`).
-    pub(crate) fn from_fn_like_path_ast(
-        params: Option<ast::ParamList>,
-        ret_type: Option<ast::RetType>,
-    ) -> Option<GenericArgs> {
-        let mut args = Vec::new();
-        let mut bindings = Vec::new();
-        if let Some(params) = params {
-            let mut param_types = Vec::new();
-            for param in params.params() {
-                let type_ref = TypeRef::from_ast_opt(param.ascribed_type());
-                param_types.push(type_ref);
-            }
-            let arg = GenericArg::Type(TypeRef::Tuple(param_types));
-            args.push(arg);
-        }
-        if let Some(ret_type) = ret_type {
-            let type_ref = TypeRef::from_ast_opt(ret_type.type_ref());
-            bindings.push((name::OUTPUT_TYPE, type_ref))
-        }
-        if args.is_empty() && bindings.is_empty() {
-            None
-        } else {
-            Some(GenericArgs { args, has_self_type: false, bindings })
-        }
+        lower::lower_generic_args(node)
     }
 
     pub(crate) fn empty() -> GenericArgs {
@@ -287,137 +226,51 @@ impl GenericArgs {
 
 impl From<Name> for Path {
     fn from(name: Name) -> Path {
-        Path::from_simple_segments(PathKind::Plain, iter::once(name))
-    }
-}
-
-fn expand_use_tree(
-    prefix: Option<Path>,
-    tree: ast::UseTree,
-    hygiene: &Hygiene,
-    cb: &mut dyn FnMut(Path, &ast::UseTree, bool, Option<Name>),
-) {
-    if let Some(use_tree_list) = tree.use_tree_list() {
-        let prefix = match tree.path() {
-            // E.g. use something::{{{inner}}};
-            None => prefix,
-            // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
-            // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
-            Some(path) => match convert_path(prefix, path, hygiene) {
-                Some(it) => Some(it),
-                None => return, // FIXME: report errors somewhere
-            },
-        };
-        for child_tree in use_tree_list.use_trees() {
-            expand_use_tree(prefix.clone(), child_tree, hygiene, cb);
-        }
-    } else {
-        let alias = tree.alias().and_then(|a| a.name()).map(|a| a.as_name());
-        if let Some(ast_path) = tree.path() {
-            // Handle self in a path.
-            // E.g. `use something::{self, <...>}`
-            if ast_path.qualifier().is_none() {
-                if let Some(segment) = ast_path.segment() {
-                    if segment.kind() == Some(ast::PathSegmentKind::SelfKw) {
-                        if let Some(prefix) = prefix {
-                            cb(prefix, &tree, false, alias);
-                            return;
-                        }
-                    }
-                }
-            }
-            if let Some(path) = convert_path(prefix, ast_path, hygiene) {
-                let is_glob = tree.has_star();
-                cb(path, &tree, is_glob, alias)
-            }
-            // FIXME: report errors somewhere
-            // We get here if we do
+        Path {
+            type_anchor: None,
+            mod_path: ModPath::from_simple_segments(PathKind::Plain, iter::once(name)),
+            generic_args: vec![None],
         }
     }
 }
 
-fn convert_path(prefix: Option<Path>, path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
-    let prefix = if let Some(qual) = path.qualifier() {
-        Some(convert_path(prefix, qual, hygiene)?)
-    } else {
-        prefix
+impl From<Name> for ModPath {
+    fn from(name: Name) -> ModPath {
+        ModPath::from_simple_segments(PathKind::Plain, iter::once(name))
+    }
+}
+
+pub use hir_expand::name as __name;
+
+#[macro_export]
+macro_rules! __known_path {
+    (std::iter::IntoIterator) => {};
+    (std::result::Result) => {};
+    (std::ops::Range) => {};
+    (std::ops::RangeFrom) => {};
+    (std::ops::RangeFull) => {};
+    (std::ops::RangeTo) => {};
+    (std::ops::RangeToInclusive) => {};
+    (std::ops::RangeInclusive) => {};
+    (std::boxed::Box) => {};
+    (std::future::Future) => {};
+    (std::ops::Try) => {};
+    (std::ops::Neg) => {};
+    (std::ops::Not) => {};
+    (std::ops::Index) => {};
+    ($path:path) => {
+        compile_error!("Please register your known path in the path module")
     };
-
-    let segment = path.segment()?;
-    let res = match segment.kind()? {
-        ast::PathSegmentKind::Name(name_ref) => {
-            match hygiene.name_ref_to_name(name_ref) {
-                Either::A(name) => {
-                    // no type args in use
-                    let mut res = prefix.unwrap_or_else(|| Path {
-                        kind: PathKind::Plain,
-                        segments: Vec::with_capacity(1),
-                    });
-                    res.segments.push(PathSegment {
-                        name,
-                        args_and_bindings: None, // no type args in use
-                    });
-                    res
-                }
-                Either::B(crate_id) => {
-                    return Some(Path::from_simple_segments(
-                        PathKind::DollarCrate(crate_id),
-                        iter::empty(),
-                    ))
-                }
-            }
-        }
-        ast::PathSegmentKind::CrateKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            Path::from_simple_segments(PathKind::Crate, iter::empty())
-        }
-        ast::PathSegmentKind::SelfKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            Path::from_simple_segments(PathKind::Self_, iter::empty())
-        }
-        ast::PathSegmentKind::SuperKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            Path::from_simple_segments(PathKind::Super, iter::empty())
-        }
-        ast::PathSegmentKind::Type { .. } => {
-            // not allowed in imports
-            return None;
-        }
-    };
-    Some(res)
 }
 
-pub mod known {
-    use hir_expand::name;
-
-    use super::{Path, PathKind};
-
-    pub fn std_iter_into_iterator() -> Path {
-        Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::ITER, name::INTO_ITERATOR_TYPE],
-        )
-    }
-
-    pub fn std_ops_try() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::TRY_TYPE])
-    }
-
-    pub fn std_result_result() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::RESULT, name::RESULT_TYPE])
-    }
-
-    pub fn std_future_future() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::FUTURE, name::FUTURE_TYPE])
-    }
-
-    pub fn std_boxed_box() -> Path {
-        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::BOXED, name::BOX_TYPE])
-    }
+#[macro_export]
+macro_rules! __path {
+    ($start:ident $(:: $seg:ident)*) => ({
+        $crate::__known_path!($start $(:: $seg)*);
+        $crate::path::ModPath::from_simple_segments($crate::path::PathKind::Abs, vec![
+            $crate::path::__name![$start], $($crate::path::__name![$seg],)*
+        ])
+    });
 }
+
+pub use crate::__path as path;

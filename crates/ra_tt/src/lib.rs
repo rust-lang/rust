@@ -33,14 +33,14 @@ impl TokenId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenTree {
     Leaf(Leaf),
     Subtree(Subtree),
 }
 impl_froms!(TokenTree: Leaf, Subtree);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Leaf {
     Literal(Literal),
     Punct(Punct),
@@ -48,38 +48,45 @@ pub enum Leaf {
 }
 impl_froms!(Leaf: Literal, Punct, Ident);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct Subtree {
-    pub delimiter: Delimiter,
+    pub delimiter: Option<Delimiter>,
     pub token_trees: Vec<TokenTree>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Delimiter {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Delimiter {
+    pub id: TokenId,
+    pub kind: DelimiterKind,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DelimiterKind {
     Parenthesis,
     Brace,
     Bracket,
-    None,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Literal {
     pub text: SmolStr,
+    pub id: TokenId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Punct {
     pub char: char,
     pub spacing: Spacing,
+    pub id: TokenId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Spacing {
     Alone,
     Joint,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
     pub text: SmolStr,
     pub id: TokenId,
@@ -96,11 +103,11 @@ impl fmt::Display for TokenTree {
 
 impl fmt::Display for Subtree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (l, r) = match self.delimiter {
-            Delimiter::Parenthesis => ("(", ")"),
-            Delimiter::Brace => ("{", "}"),
-            Delimiter::Bracket => ("[", "]"),
-            Delimiter::None => ("", ""),
+        let (l, r) = match self.delimiter_kind() {
+            Some(DelimiterKind::Parenthesis) => ("(", ")"),
+            Some(DelimiterKind::Brace) => ("{", "}"),
+            Some(DelimiterKind::Bracket) => ("[", "]"),
+            None => ("", ""),
         };
         f.write_str(l)?;
         let mut needs_space = false;
@@ -163,6 +170,10 @@ impl Subtree {
             .sum::<usize>();
 
         self.token_trees.len() + children_count
+    }
+
+    pub fn delimiter_kind(&self) -> Option<DelimiterKind> {
+        self.delimiter.map(|it| it.kind)
     }
 }
 

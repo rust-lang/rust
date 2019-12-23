@@ -5,10 +5,14 @@
 
 use std::sync::Arc;
 
-use hir_expand::either::Either;
+use either::Either;
 use ra_syntax::ast;
 
-use crate::{db::DefDatabase, AdtId, AstItemDef, AttrDefId, HasChildSource, HasSource, Lookup};
+use crate::{
+    db::DefDatabase,
+    src::{HasChildSource, HasSource},
+    AdtId, AttrDefId, Lookup,
+};
 
 /// Holds documentation
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,21 +46,21 @@ impl Documentation {
             AttrDefId::StructFieldId(it) => {
                 let src = it.parent.child_source(db);
                 match &src.value[it.local_id] {
-                    Either::A(_tuple) => None,
-                    Either::B(record) => docs_from_ast(record),
+                    Either::Left(_tuple) => None,
+                    Either::Right(record) => docs_from_ast(record),
                 }
             }
             AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => docs_from_ast(&it.source(db).value),
-                AdtId::EnumId(it) => docs_from_ast(&it.source(db).value),
-                AdtId::UnionId(it) => docs_from_ast(&it.source(db).value),
+                AdtId::StructId(it) => docs_from_ast(&it.lookup(db).source(db).value),
+                AdtId::EnumId(it) => docs_from_ast(&it.lookup(db).source(db).value),
+                AdtId::UnionId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             },
             AttrDefId::EnumVariantId(it) => {
                 let src = it.parent.child_source(db);
                 docs_from_ast(&src.value[it.local_id])
             }
-            AttrDefId::TraitId(it) => docs_from_ast(&it.source(db).value),
-            AttrDefId::MacroDefId(it) => docs_from_ast(&it.ast_id.to_node(db)),
+            AttrDefId::TraitId(it) => docs_from_ast(&it.lookup(db).source(db).value),
+            AttrDefId::MacroDefId(it) => docs_from_ast(&it.ast_id?.to_node(db)),
             AttrDefId::ConstId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             AttrDefId::StaticId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             AttrDefId::FunctionId(it) => docs_from_ast(&it.lookup(db).source(db).value),

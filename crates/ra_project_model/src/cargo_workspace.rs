@@ -6,6 +6,7 @@ use cargo_metadata::{CargoOpt, MetadataCommand};
 use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_db::Edition;
 use rustc_hash::FxHashMap;
+use serde::Deserialize;
 
 use crate::Result;
 
@@ -21,6 +22,26 @@ pub struct CargoWorkspace {
     packages: Arena<Package, PackageData>,
     targets: Arena<Target, TargetData>,
     pub(crate) workspace_root: PathBuf,
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct CargoFeatures {
+    /// Do not activate the `default` feature.
+    pub no_default_features: bool,
+
+    /// Activate all available features
+    pub all_features: bool,
+
+    /// List of features to activate.
+    /// This will be ignored if `cargo_all_features` is true.
+    pub features: Vec<String>,
+}
+
+impl Default for CargoFeatures {
+    fn default() -> Self {
+        CargoFeatures { no_default_features: false, all_features: true, features: Vec::new() }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -132,9 +153,21 @@ impl Target {
 }
 
 impl CargoWorkspace {
-    pub fn from_cargo_metadata(cargo_toml: &Path) -> Result<CargoWorkspace> {
+    pub fn from_cargo_metadata(
+        cargo_toml: &Path,
+        cargo_features: &CargoFeatures,
+    ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
-        meta.manifest_path(cargo_toml).features(CargoOpt::AllFeatures);
+        meta.manifest_path(cargo_toml);
+        if cargo_features.all_features {
+            meta.features(CargoOpt::AllFeatures);
+        } else if cargo_features.no_default_features {
+            // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
+            // https://github.com/oli-obk/cargo_metadata/issues/79
+            meta.features(CargoOpt::NoDefaultFeatures);
+        } else {
+            meta.features(CargoOpt::SomeFeatures(cargo_features.features.clone()));
+        }
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent);
         }

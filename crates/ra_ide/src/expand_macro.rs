@@ -22,7 +22,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)?;
     let mac = name_ref.syntax().ancestors().find_map(ast::MacroCall::cast)?;
 
-    let source = hir::Source::new(position.file_id.into(), mac.syntax());
+    let source = hir::InFile::new(position.file_id.into(), mac.syntax());
     let expanded = expand_macro_recur(db, source, source.with_value(&mac))?;
 
     // FIXME:
@@ -34,8 +34,8 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
 fn expand_macro_recur(
     db: &RootDatabase,
-    source: hir::Source<&SyntaxNode>,
-    macro_call: hir::Source<&ast::MacroCall>,
+    source: hir::InFile<&SyntaxNode>,
+    macro_call: hir::InFile<&ast::MacroCall>,
 ) -> Option<SyntaxNode> {
     let analyzer = hir::SourceAnalyzer::new(db, source, None);
     let expansion = analyzer.expand(db, macro_call)?;
@@ -46,7 +46,7 @@ fn expand_macro_recur(
     let mut replaces = FxHashMap::default();
 
     for child in children.into_iter() {
-        let node = hir::Source::new(macro_file_id, &child);
+        let node = hir::InFile::new(macro_file_id, &child);
         if let Some(new_node) = expand_macro_recur(db, source, node) {
             // Replace the whole node if it is root
             // `replace_descendants` will not replace the parent node
@@ -86,21 +86,18 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
         let mut is_next = |f: fn(SyntaxKind) -> bool, default| -> bool {
             token_iter.peek().map(|it| f(it.kind())).unwrap_or(default)
         };
-        let is_last = |f: fn(SyntaxKind) -> bool, default| -> bool {
-            last.map(|it| f(it)).unwrap_or(default)
-        };
+        let is_last =
+            |f: fn(SyntaxKind) -> bool, default| -> bool { last.map(f).unwrap_or(default) };
 
         res += &match token.kind() {
-            k @ _ if is_text(k) && is_next(|it| !it.is_punct(), true) => {
-                token.text().to_string() + " "
-            }
+            k if is_text(k) && is_next(|it| !it.is_punct(), true) => token.text().to_string() + " ",
             L_CURLY if is_next(|it| it != R_CURLY, true) => {
                 indent += 1;
-                let leading_space = if is_last(|it| is_text(it), false) { " " } else { "" };
+                let leading_space = if is_last(is_text, false) { " " } else { "" };
                 format!("{}{{\n{}", leading_space, "  ".repeat(indent))
             }
             R_CURLY if is_last(|it| it != L_CURLY, true) => {
-                indent = indent.checked_sub(1).unwrap_or(0);
+                indent = indent.saturating_sub(1);
                 format!("\n{}}}", "  ".repeat(indent))
             }
             R_CURLY => format!("}}\n{}", "  ".repeat(indent)),

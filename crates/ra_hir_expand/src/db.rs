@@ -6,17 +6,18 @@ use mbe::MacroRules;
 use ra_db::{salsa, SourceDatabase};
 use ra_parser::FragmentKind;
 use ra_prof::profile;
-use ra_syntax::{AstNode, Parse, SyntaxNode};
+use ra_syntax::{AstNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
-    ast_id_map::AstIdMap, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId,
-    MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, MacroFileKind,
+    ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr,
+    MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
     MacroRules(mbe::MacroRules),
     Builtin(BuiltinFnLikeExpander),
+    BuiltinDerive(BuiltinDeriveExpander),
 }
 
 impl TokenExpander {
@@ -29,6 +30,7 @@ impl TokenExpander {
         match self {
             TokenExpander::MacroRules(it) => it.expand(tt),
             TokenExpander::Builtin(it) => it.expand(db, id, tt),
+            TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt),
         }
     }
 
@@ -36,13 +38,15 @@ impl TokenExpander {
         match self {
             TokenExpander::MacroRules(it) => it.map_id_down(id),
             TokenExpander::Builtin(..) => id,
+            TokenExpander::BuiltinDerive(..) => id,
         }
     }
 
     pub fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
         match self {
             TokenExpander::MacroRules(it) => it.map_id_up(id),
-            TokenExpander::Builtin(..) => (id, mbe::Origin::Def),
+            TokenExpander::Builtin(..) => (id, mbe::Origin::Call),
+            TokenExpander::BuiltinDerive(..) => (id, mbe::Origin::Call),
         }
     }
 }
@@ -76,7 +80,7 @@ pub(crate) fn macro_def(
 ) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
     match id.kind {
         MacroDefKind::Declarative => {
-            let macro_call = id.ast_id.to_node(db);
+            let macro_call = id.ast_id?.to_node(db);
             let arg = macro_call.token_tree()?;
             let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
                 log::warn!("fail on macro_def to token tree: {:#?}", arg);
@@ -89,7 +93,10 @@ pub(crate) fn macro_def(
             Some(Arc::new((TokenExpander::MacroRules(rules), tmap)))
         }
         MacroDefKind::BuiltIn(expander) => {
-            Some(Arc::new((TokenExpander::Builtin(expander.clone()), mbe::TokenMap::default())))
+            Some(Arc::new((TokenExpander::Builtin(expander), mbe::TokenMap::default())))
+        }
+        MacroDefKind::BuiltInDerive(expander) => {
+            Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
         }
     }
 }
@@ -99,9 +106,8 @@ pub(crate) fn macro_arg(
     id: MacroCallId,
 ) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
     let loc = db.lookup_intern_macro(id);
-    let macro_call = loc.ast_id.to_node(db);
-    let arg = macro_call.token_tree()?;
-    let (tt, tmap) = mbe::ast_to_token_tree(&arg)?;
+    let arg = loc.kind.arg(db)?;
+    let (tt, tmap) = mbe::syntax_node_to_token_tree(&arg)?;
     Some(Arc::new((tt, tmap)))
 }
 
@@ -148,11 +154,43 @@ pub(crate) fn parse_macro(
         })
         .ok()?;
 
-    let fragment_kind = match macro_file.macro_file_kind {
-        MacroFileKind::Items => FragmentKind::Items,
-        MacroFileKind::Expr => FragmentKind::Expr,
-        MacroFileKind::Statements => FragmentKind::Statements,
-    };
+    let fragment_kind = to_fragment_kind(db, macro_call_id);
+
     let (parse, rev_token_map) = mbe::token_tree_to_syntax_node(&tt, fragment_kind).ok()?;
     Some((parse, Arc::new(rev_token_map)))
+}
+
+/// Given a `MacroCallId`, return what `FragmentKind` it belongs to.
+/// FIXME: Not completed
+fn to_fragment_kind(db: &dyn AstDatabase, macro_call_id: MacroCallId) -> FragmentKind {
+    let syn = db.lookup_intern_macro(macro_call_id).kind.node(db).value;
+
+    let parent = match syn.parent() {
+        Some(it) => it,
+        None => {
+            // FIXME:
+            // If it is root, which means the parent HirFile
+            // MacroKindFile must be non-items
+            // return expr now.
+            return FragmentKind::Expr;
+        }
+    };
+
+    match parent.kind() {
+        MACRO_ITEMS | SOURCE_FILE => FragmentKind::Items,
+        LET_STMT => {
+            // FIXME: Handle Pattern
+            FragmentKind::Expr
+        }
+        // FIXME: Expand to statements in appropriate positions; HIR lowering needs to handle that
+        EXPR_STMT | BLOCK => FragmentKind::Expr,
+        ARG_LIST => FragmentKind::Expr,
+        TRY_EXPR => FragmentKind::Expr,
+        TUPLE_EXPR => FragmentKind::Expr,
+        ITEM_LIST => FragmentKind::Items,
+        _ => {
+            // Unknown , Just guess it is `Items`
+            FragmentKind::Items
+        }
+    }
 }

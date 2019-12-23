@@ -38,8 +38,8 @@ impl Name {
     }
 
     /// Shortcut to create inline plain text name
-    const fn new_inline_ascii(len: usize, text: &[u8]) -> Name {
-        Name::new_text(SmolStr::new_inline_from_ascii(len, text))
+    const fn new_inline_ascii(text: &[u8]) -> Name {
+        Name::new_text(SmolStr::new_inline_from_ascii(text.len(), text))
     }
 
     /// Resolve a name from the text of token.
@@ -83,6 +83,12 @@ impl AsName for ast::Name {
     }
 }
 
+impl AsName for tt::Ident {
+    fn as_name(&self) -> Name {
+        Name::resolve(&self.text)
+    }
+}
+
 impl AsName for ast::FieldKind {
     fn as_name(&self) -> Name {
         match self {
@@ -98,52 +104,102 @@ impl AsName for ra_db::Dependency {
     }
 }
 
-// Primitives
-pub const ISIZE: Name = Name::new_inline_ascii(5, b"isize");
-pub const I8: Name = Name::new_inline_ascii(2, b"i8");
-pub const I16: Name = Name::new_inline_ascii(3, b"i16");
-pub const I32: Name = Name::new_inline_ascii(3, b"i32");
-pub const I64: Name = Name::new_inline_ascii(3, b"i64");
-pub const I128: Name = Name::new_inline_ascii(4, b"i128");
-pub const USIZE: Name = Name::new_inline_ascii(5, b"usize");
-pub const U8: Name = Name::new_inline_ascii(2, b"u8");
-pub const U16: Name = Name::new_inline_ascii(3, b"u16");
-pub const U32: Name = Name::new_inline_ascii(3, b"u32");
-pub const U64: Name = Name::new_inline_ascii(3, b"u64");
-pub const U128: Name = Name::new_inline_ascii(4, b"u128");
-pub const F32: Name = Name::new_inline_ascii(3, b"f32");
-pub const F64: Name = Name::new_inline_ascii(3, b"f64");
-pub const BOOL: Name = Name::new_inline_ascii(4, b"bool");
-pub const CHAR: Name = Name::new_inline_ascii(4, b"char");
-pub const STR: Name = Name::new_inline_ascii(3, b"str");
+pub mod known {
+    macro_rules! known_names {
+        ($($ident:ident),* $(,)?) => {
+            $(
+                #[allow(bad_style)]
+                pub const $ident: super::Name =
+                    super::Name::new_inline_ascii(stringify!($ident).as_bytes());
+            )*
+        };
+    }
 
-// Special names
-pub const SELF_PARAM: Name = Name::new_inline_ascii(4, b"self");
-pub const SELF_TYPE: Name = Name::new_inline_ascii(4, b"Self");
-pub const MACRO_RULES: Name = Name::new_inline_ascii(11, b"macro_rules");
+    known_names!(
+        // Primitives
+        isize,
+        i8,
+        i16,
+        i32,
+        i64,
+        i128,
+        usize,
+        u8,
+        u16,
+        u32,
+        u64,
+        u128,
+        f32,
+        f64,
+        bool,
+        char,
+        str,
+        // Special names
+        macro_rules,
+        // Components of known path (value or mod name)
+        std,
+        iter,
+        ops,
+        future,
+        result,
+        boxed,
+        // Components of known path (type name)
+        IntoIterator,
+        Item,
+        Try,
+        Ok,
+        Future,
+        Result,
+        Output,
+        Target,
+        Box,
+        RangeFrom,
+        RangeFull,
+        RangeInclusive,
+        RangeToInclusive,
+        RangeTo,
+        Range,
+        Neg,
+        Not,
+        Index,
+        // Builtin macros
+        file,
+        column,
+        compile_error,
+        line,
+        stringify,
+        format_args,
+        format_args_nl,
+        env,
+        option_env,
+        // Builtin derives
+        Copy,
+        Clone,
+        Default,
+        Debug,
+        Hash,
+        Ord,
+        PartialOrd,
+        Eq,
+        PartialEq,
+    );
 
-// Components of known path (value or mod name)
-pub const STD: Name = Name::new_inline_ascii(3, b"std");
-pub const ITER: Name = Name::new_inline_ascii(4, b"iter");
-pub const OPS: Name = Name::new_inline_ascii(3, b"ops");
-pub const FUTURE: Name = Name::new_inline_ascii(6, b"future");
-pub const RESULT: Name = Name::new_inline_ascii(6, b"result");
-pub const BOXED: Name = Name::new_inline_ascii(5, b"boxed");
+    // self/Self cannot be used as an identifier
+    pub const SELF_PARAM: super::Name = super::Name::new_inline_ascii(b"self");
+    pub const SELF_TYPE: super::Name = super::Name::new_inline_ascii(b"Self");
 
-// Components of known path (type name)
-pub const INTO_ITERATOR_TYPE: Name = Name::new_inline_ascii(12, b"IntoIterator");
-pub const ITEM_TYPE: Name = Name::new_inline_ascii(4, b"Item");
-pub const TRY_TYPE: Name = Name::new_inline_ascii(3, b"Try");
-pub const OK_TYPE: Name = Name::new_inline_ascii(2, b"Ok");
-pub const FUTURE_TYPE: Name = Name::new_inline_ascii(6, b"Future");
-pub const RESULT_TYPE: Name = Name::new_inline_ascii(6, b"Result");
-pub const OUTPUT_TYPE: Name = Name::new_inline_ascii(6, b"Output");
-pub const TARGET_TYPE: Name = Name::new_inline_ascii(6, b"Target");
-pub const BOX_TYPE: Name = Name::new_inline_ascii(3, b"Box");
+    #[macro_export]
+    macro_rules! name {
+        (self) => {
+            $crate::name::known::SELF_PARAM
+        };
+        (Self) => {
+            $crate::name::known::SELF_TYPE
+        };
+        ($ident:ident) => {
+            $crate::name::known::$ident
+        };
+    }
+}
 
-// Builtin Macros
-pub const FILE_MACRO: Name = Name::new_inline_ascii(4, b"file");
-pub const COLUMN_MACRO: Name = Name::new_inline_ascii(6, b"column");
-pub const COMPILE_ERROR_MACRO: Name = Name::new_inline_ascii(13, b"compile_error");
-pub const LINE_MACRO: Name = Name::new_inline_ascii(4, b"line");
-pub const STRINGIFY_MACRO: Name = Name::new_inline_ascii(9, b"stringify");
+pub use crate::name;

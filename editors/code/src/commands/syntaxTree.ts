@@ -11,7 +11,7 @@ export class SyntaxTreeContentProvider
     public syntaxTree: string = 'Not available';
 
     public provideTextDocumentContent(
-        uri: vscode.Uri
+        uri: vscode.Uri,
     ): vscode.ProviderResult<string> {
         const editor = vscode.window.activeTextEditor;
         if (editor == null) {
@@ -25,17 +25,17 @@ export class SyntaxTreeContentProvider
             range = editor.selection.isEmpty
                 ? undefined
                 : Server.client.code2ProtocolConverter.asRange(
-                      editor.selection
+                      editor.selection,
                   );
         }
 
         const request: SyntaxTreeParams = {
             textDocument: { uri: editor.document.uri.toString() },
-            range
+            range,
         };
         return Server.client.sendRequest<SyntaxTreeResult>(
             'rust-analyzer/syntaxTree',
-            request
+            request,
         );
     }
 
@@ -70,7 +70,7 @@ export function createHandle(provider: SyntaxTreeContentProvider) {
         return vscode.window.showTextDocument(
             document,
             vscode.ViewColumn.Two,
-            true
+            true,
         );
     };
 }

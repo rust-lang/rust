@@ -17,15 +17,15 @@ export async function handle() {
         textDocument: { uri: editor.document.uri.toString() },
         offsets: editor.selections.map(s => {
             return Server.client.code2ProtocolConverter.asPosition(s.active);
-        })
+        }),
     };
     const response = await Server.client.sendRequest<Position[]>(
         'rust-analyzer/findMatchingBrace',
-        request
+        request,
     );
     editor.selections = editor.selections.map((sel, idx) => {
         const active = Server.client.protocol2CodeConverter.asPosition(
-            response[idx]
+            response[idx],
         );
         const anchor = sel.isEmpty ? active : sel.anchor;
         return new vscode.Selection(anchor, active);

@@ -15,6 +15,10 @@ pub mod type_ref;
 pub mod builtin_type;
 pub mod diagnostics;
 pub mod per_ns;
+pub mod item_scope;
+
+pub mod dyn_map;
+pub mod keys;
 
 pub mod adt;
 pub mod data;
@@ -29,23 +33,23 @@ pub mod resolver;
 mod trace;
 pub mod nameres;
 
+pub mod src;
+pub mod child_by_source;
+
 #[cfg(test)]
 mod test_db;
 #[cfg(test)]
 mod marks;
 
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
-use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, MacroDefId, Source};
-use ra_arena::{impl_arena_id, map::ArenaMap, RawId};
+use hir_expand::{ast_id_map::FileAstId, AstId, HirFileId, InFile, MacroDefId};
+use ra_arena::{impl_arena_id, RawId};
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_syntax::{ast, AstNode};
 
-use crate::{builtin_type::BuiltinType, db::InternDatabase};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LocalImportId(RawId);
-impl_arena_id!(LocalImportId);
+use crate::body::Expander;
+use crate::builtin_type::BuiltinType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
@@ -59,122 +63,57 @@ pub struct ModuleId {
 pub struct LocalModuleId(RawId);
 impl_arena_id!(LocalModuleId);
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ItemLoc<N: AstNode> {
-    pub(crate) module: ModuleId,
-    ast_id: AstId<N>,
+    pub container: ContainerId,
+    pub ast_id: AstId<N>,
 }
 
-impl<N: AstNode> PartialEq for ItemLoc<N> {
-    fn eq(&self, other: &Self) -> bool {
-        self.module == other.module && self.ast_id == other.ast_id
-    }
-}
-impl<N: AstNode> Eq for ItemLoc<N> {}
-impl<N: AstNode> Hash for ItemLoc<N> {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.module.hash(hasher);
-        self.ast_id.hash(hasher);
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AssocItemLoc<N: AstNode> {
+    pub container: AssocContainerId,
+    pub ast_id: AstId<N>,
 }
 
-impl<N: AstNode> Clone for ItemLoc<N> {
-    fn clone(&self) -> ItemLoc<N> {
-        ItemLoc { module: self.module, ast_id: self.ast_id }
-    }
-}
+macro_rules! impl_intern {
+    ($id:ident, $loc:ident, $intern:ident, $lookup:ident) => {
+        impl_intern_key!($id);
 
-#[derive(Clone, Copy)]
-pub struct LocationCtx<DB> {
-    db: DB,
-    module: ModuleId,
-    file_id: HirFileId,
-}
+        impl Intern for $loc {
+            type ID = $id;
+            fn intern(self, db: &impl db::DefDatabase) -> $id {
+                db.$intern(self)
+            }
+        }
 
-impl<'a, DB> LocationCtx<&'a DB> {
-    pub fn new(db: &'a DB, module: ModuleId, file_id: HirFileId) -> LocationCtx<&'a DB> {
-        LocationCtx { db, module, file_id }
-    }
-}
-
-pub trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<N>) -> Self;
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<N>;
-
-    fn from_ast_id(ctx: LocationCtx<&impl InternDatabase>, ast_id: FileAstId<N>) -> Self {
-        let loc = ItemLoc { module: ctx.module, ast_id: AstId::new(ctx.file_id, ast_id) };
-        Self::intern(ctx.db, loc)
-    }
-    fn source(self, db: &(impl AstDatabase + InternDatabase)) -> Source<N> {
-        let loc = self.lookup_intern(db);
-        let value = loc.ast_id.to_node(db);
-        Source { file_id: loc.ast_id.file_id(), value }
-    }
-    fn module(self, db: &impl InternDatabase) -> ModuleId {
-        let loc = self.lookup_intern(db);
-        loc.module
-    }
+        impl Lookup for $id {
+            type Data = $loc;
+            fn lookup(&self, db: &impl db::DefDatabase) -> $loc {
+                db.$lookup(*self)
+            }
+        }
+    };
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FunctionId(salsa::InternId);
-impl_intern_key!(FunctionId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionLoc {
-    pub container: ContainerId,
-    pub ast_id: AstId<ast::FnDef>,
-}
-
-impl Intern for FunctionLoc {
-    type ID = FunctionId;
-    fn intern(self, db: &impl db::DefDatabase) -> FunctionId {
-        db.intern_function(self)
-    }
-}
-
-impl Lookup for FunctionId {
-    type Data = FunctionLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> FunctionLoc {
-        db.lookup_intern_function(*self)
-    }
-}
+type FunctionLoc = AssocItemLoc<ast::FnDef>;
+impl_intern!(FunctionId, FunctionLoc, intern_function, lookup_intern_function);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructId(salsa::InternId);
-impl_intern_key!(StructId);
-impl AstItemDef<ast::StructDef> for StructId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::StructDef>) -> Self {
-        db.intern_struct(loc)
-    }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::StructDef> {
-        db.lookup_intern_struct(self)
-    }
-}
+type StructLoc = ItemLoc<ast::StructDef>;
+impl_intern!(StructId, StructLoc, intern_struct, lookup_intern_struct);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnionId(salsa::InternId);
-impl_intern_key!(UnionId);
-impl AstItemDef<ast::UnionDef> for UnionId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::UnionDef>) -> Self {
-        db.intern_union(loc)
-    }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::UnionDef> {
-        db.lookup_intern_union(self)
-    }
-}
+pub type UnionLoc = ItemLoc<ast::UnionDef>;
+impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumId(salsa::InternId);
-impl_intern_key!(EnumId);
-impl AstItemDef<ast::EnumDef> for EnumId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::EnumDef>) -> Self {
-        db.intern_enum(loc)
-    }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::EnumDef> {
-        db.lookup_intern_enum(self)
-    }
-}
+pub type EnumLoc = ItemLoc<ast::EnumDef>;
+impl_intern!(EnumId, EnumLoc, intern_enum, lookup_intern_enum);
 
 // FIXME: rename to `VariantId`, only enums can ave variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -199,98 +138,38 @@ impl_arena_id!(LocalStructFieldId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
-impl_intern_key!(ConstId);
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConstLoc {
-    pub container: ContainerId,
-    pub ast_id: AstId<ast::ConstDef>,
-}
-
-impl Intern for ConstLoc {
-    type ID = ConstId;
-    fn intern(self, db: &impl db::DefDatabase) -> ConstId {
-        db.intern_const(self)
-    }
-}
-
-impl Lookup for ConstId {
-    type Data = ConstLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> ConstLoc {
-        db.lookup_intern_const(*self)
-    }
-}
+type ConstLoc = AssocItemLoc<ast::ConstDef>;
+impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StaticId(salsa::InternId);
-impl_intern_key!(StaticId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StaticLoc {
-    pub container: ModuleId,
-    pub ast_id: AstId<ast::StaticDef>,
-}
-
-impl Intern for StaticLoc {
-    type ID = StaticId;
-    fn intern(self, db: &impl db::DefDatabase) -> StaticId {
-        db.intern_static(self)
-    }
-}
-
-impl Lookup for StaticId {
-    type Data = StaticLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> StaticLoc {
-        db.lookup_intern_static(*self)
-    }
-}
+pub type StaticLoc = ItemLoc<ast::StaticDef>;
+impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TraitId(salsa::InternId);
-impl_intern_key!(TraitId);
-impl AstItemDef<ast::TraitDef> for TraitId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::TraitDef>) -> Self {
-        db.intern_trait(loc)
-    }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::TraitDef> {
-        db.lookup_intern_trait(self)
-    }
-}
+pub type TraitLoc = ItemLoc<ast::TraitDef>;
+impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAliasId(salsa::InternId);
-impl_intern_key!(TypeAliasId);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeAliasLoc {
-    pub container: ContainerId,
-    pub ast_id: AstId<ast::TypeAliasDef>,
-}
-
-impl Intern for TypeAliasLoc {
-    type ID = TypeAliasId;
-    fn intern(self, db: &impl db::DefDatabase) -> TypeAliasId {
-        db.intern_type_alias(self)
-    }
-}
-
-impl Lookup for TypeAliasId {
-    type Data = TypeAliasLoc;
-    fn lookup(&self, db: &impl db::DefDatabase) -> TypeAliasLoc {
-        db.lookup_intern_type_alias(*self)
-    }
-}
+type TypeAliasLoc = AssocItemLoc<ast::TypeAliasDef>;
+impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_alias);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplId(salsa::InternId);
-impl_intern_key!(ImplId);
-impl AstItemDef<ast::ImplBlock> for ImplId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::ImplBlock>) -> Self {
-        db.intern_impl(loc)
-    }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::ImplBlock> {
-        db.lookup_intern_impl(self)
-    }
+type ImplLoc = ItemLoc<ast::ImplBlock>;
+impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TypeParamId {
+    pub parent: GenericDefId,
+    pub local_id: LocalTypeParamId,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LocalTypeParamId(RawId);
+impl_arena_id!(LocalTypeParamId);
 
 macro_rules! impl_froms {
     ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {
@@ -314,9 +193,16 @@ macro_rules! impl_froms {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContainerId {
     ModuleId(ModuleId),
+    DefWithBodyId(DefWithBodyId),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AssocContainerId {
+    ContainerId(ContainerId),
     ImplId(ImplId),
     TraitId(TraitId),
 }
+impl_froms!(AssocContainerId: ContainerId);
 
 /// A Data Type
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -459,43 +345,39 @@ pub trait HasModule {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId;
 }
 
-impl HasModule for FunctionLoc {
+impl HasModule for ContainerId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
-        match self.container {
+        match *self {
             ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.module(db),
-            ContainerId::TraitId(it) => it.module(db),
+            ContainerId::DefWithBodyId(it) => it.module(db),
         }
     }
 }
 
-impl HasModule for TypeAliasLoc {
+impl HasModule for AssocContainerId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
-        match self.container {
-            ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.module(db),
-            ContainerId::TraitId(it) => it.module(db),
+        match *self {
+            AssocContainerId::ContainerId(it) => it.module(db),
+            AssocContainerId::ImplId(it) => it.lookup(db).container.module(db),
+            AssocContainerId::TraitId(it) => it.lookup(db).container.module(db),
         }
     }
 }
 
-impl HasModule for ConstLoc {
+impl<N: AstNode> HasModule for AssocItemLoc<N> {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
-        match self.container {
-            ContainerId::ModuleId(it) => it,
-            ContainerId::ImplId(it) => it.module(db),
-            ContainerId::TraitId(it) => it.module(db),
-        }
+        self.container.module(db)
     }
 }
 
 impl HasModule for AdtId {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match self {
-            AdtId::StructId(it) => it.module(db),
-            AdtId::UnionId(it) => it.module(db),
-            AdtId::EnumId(it) => it.module(db),
+            AdtId::StructId(it) => it.lookup(db).container,
+            AdtId::UnionId(it) => it.lookup(db).container,
+            AdtId::EnumId(it) => it.lookup(db).container,
         }
+        .module(db)
     }
 }
 
@@ -509,58 +391,22 @@ impl HasModule for DefWithBodyId {
     }
 }
 
+impl HasModule for GenericDefId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        match self {
+            GenericDefId::FunctionId(it) => it.lookup(db).module(db),
+            GenericDefId::AdtId(it) => it.module(db),
+            GenericDefId::TraitId(it) => it.lookup(db).container.module(db),
+            GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
+            GenericDefId::ImplId(it) => it.lookup(db).container.module(db),
+            GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container.module(db),
+            GenericDefId::ConstId(it) => it.lookup(db).module(db),
+        }
+    }
+}
+
 impl HasModule for StaticLoc {
-    fn module(&self, _db: &impl db::DefDatabase) -> ModuleId {
-        self.container
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        self.container.module(db)
     }
-}
-
-pub trait HasSource {
-    type Value;
-    fn source(&self, db: &impl db::DefDatabase) -> Source<Self::Value>;
-}
-
-impl HasSource for FunctionLoc {
-    type Value = ast::FnDef;
-
-    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::FnDef> {
-        let node = self.ast_id.to_node(db);
-        Source::new(self.ast_id.file_id(), node)
-    }
-}
-
-impl HasSource for TypeAliasLoc {
-    type Value = ast::TypeAliasDef;
-
-    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::TypeAliasDef> {
-        let node = self.ast_id.to_node(db);
-        Source::new(self.ast_id.file_id(), node)
-    }
-}
-
-impl HasSource for ConstLoc {
-    type Value = ast::ConstDef;
-
-    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::ConstDef> {
-        let node = self.ast_id.to_node(db);
-        Source::new(self.ast_id.file_id(), node)
-    }
-}
-
-impl HasSource for StaticLoc {
-    type Value = ast::StaticDef;
-
-    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::StaticDef> {
-        let node = self.ast_id.to_node(db);
-        Source::new(self.ast_id.file_id(), node)
-    }
-}
-
-pub trait HasChildSource {
-    type ChildId;
-    type Value;
-    fn child_source(
-        &self,
-        db: &impl db::DefDatabase,
-    ) -> Source<ArenaMap<Self::ChildId, Self::Value>>;
 }

@@ -168,8 +168,7 @@ pub fn let_stmt(pattern: ast::Pat, initializer: Option<ast::Expr>) -> ast::LetSt
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
-    let res = parse.tree().syntax().descendants().find_map(N::cast).unwrap();
-    res
+    parse.tree().syntax().descendants().find_map(N::cast).unwrap()
 }
 
 pub mod tokens {

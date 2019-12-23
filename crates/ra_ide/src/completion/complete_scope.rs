@@ -873,4 +873,41 @@ mod tests {
         "###
         );
     }
+
+    #[test]
+    fn completes_local_item() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /main.rs
+                fn main() {
+                    return f<|>;
+                    fn frobnicate() {}
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "frobnicate()",
+                source_range: [23; 24),
+                delete: [23; 24),
+                insert: "frobnicate()$0",
+                kind: Function,
+                lookup: "frobnicate",
+                detail: "fn frobnicate()",
+            },
+            CompletionItem {
+                label: "main()",
+                source_range: [23; 24),
+                delete: [23; 24),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###
+        )
+    }
 }

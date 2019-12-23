@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Datastructures that keep track of inflight requests.
 
 use std::time::{Duration, Instant};
 

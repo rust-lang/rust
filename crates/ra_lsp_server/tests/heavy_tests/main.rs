@@ -4,7 +4,8 @@ use std::{collections::HashMap, time::Instant};
 
 use lsp_types::{
     CodeActionContext, DidOpenTextDocumentParams, DocumentFormattingParams, FormattingOptions,
-    Position, Range, TextDocumentItem, TextDocumentPositionParams,
+    PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
+    WorkDoneProgressParams,
 };
 use ra_lsp_server::req::{
     CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
@@ -12,15 +13,19 @@ use ra_lsp_server::req::{
 };
 use serde_json::json;
 use tempfile::TempDir;
+use test_utils::skip_slow_tests;
 
 use crate::support::{project, Project};
 
-const LOG: &'static str = "";
 const PROFILE: &'static str = "";
 // const PROFILE: &'static str = "*@3>100";
 
 #[test]
 fn completes_items_from_standard_library() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let project_start = Instant::now();
     let server = Project::with_fixture(
         r#"
@@ -44,6 +49,8 @@ use std::collections::Spam;
             Position::new(0, 23),
         ),
         context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
     });
     assert!(format!("{}", res).contains("HashMap"));
     eprintln!("completion took {:?}", completion_start.elapsed());
@@ -51,6 +58,10 @@ use std::collections::Spam;
 
 #[test]
 fn test_runnables_no_project() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = project(
         r"
 //- lib.rs
@@ -100,6 +111,10 @@ fn foo() {
 
 #[test]
 fn test_runnables_project() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let code = r#"
 //- foo/Cargo.toml
 [package]
@@ -171,8 +186,13 @@ fn main() {}
 
 #[test]
 fn test_format_document() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = project(
         r#"
+//- Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
@@ -194,8 +214,12 @@ pub use std::collections::HashMap;
             options: FormattingOptions {
                 tab_size: 4,
                 insert_spaces: false,
+                insert_final_newline: None,
+                trim_final_newlines: None,
+                trim_trailing_whitespace: None,
                 properties: HashMap::new(),
             },
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([
             {
@@ -221,7 +245,77 @@ pub use std::collections::HashMap;
 }
 
 #[test]
+fn test_format_document_2018() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = project(
+        r#"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+edition = "2018"
+
+//- src/lib.rs
+mod bar;
+
+async fn test() {
+}
+
+fn main() {
+}
+
+pub use std::collections::HashMap;
+"#,
+    );
+    server.wait_until_workspace_is_loaded();
+
+    server.request::<Formatting>(
+        DocumentFormattingParams {
+            text_document: server.doc_id("src/lib.rs"),
+            options: FormattingOptions {
+                tab_size: 4,
+                insert_spaces: false,
+                properties: HashMap::new(),
+                insert_final_newline: None,
+                trim_final_newlines: None,
+                trim_trailing_whitespace: None,
+            },
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        },
+        json!([
+            {
+                "newText": r#"mod bar;
+
+async fn test() {}
+
+fn main() {}
+
+pub use std::collections::HashMap;
+"#,
+                "range": {
+                    "end": {
+                        "character": 0,
+                        "line": 10
+                    },
+                    "start": {
+                        "character": 0,
+                        "line": 0
+                    }
+                }
+            }
+        ]),
+    );
+}
+
+#[test]
 fn test_missing_module_code_action() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = project(
         r#"
 //- Cargo.toml
@@ -242,6 +336,8 @@ fn main() {}
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(0, 4), Position::new(0, 7)),
             context: empty_context(),
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([
           {
@@ -273,6 +369,8 @@ fn main() {}
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(2, 4), Position::new(2, 7)),
             context: empty_context(),
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([]),
     );
@@ -280,6 +378,10 @@ fn main() {}
 
 #[test]
 fn test_missing_module_code_action_in_json_project() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let tmp_dir = TempDir::new().unwrap();
 
     let path = tmp_dir.path();
@@ -317,6 +419,8 @@ fn main() {{}}
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(0, 4), Position::new(0, 7)),
             context: empty_context(),
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([
           {
@@ -348,6 +452,8 @@ fn main() {{}}
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(2, 4), Position::new(2, 7)),
             context: empty_context(),
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([]),
     );
@@ -355,6 +461,10 @@ fn main() {{}}
 
 #[test]
 fn diagnostics_dont_block_typing() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let librs: String = (0..10).map(|i| format!("mod m{};", i)).collect();
     let libs: String = (0..10).map(|i| format!("//- src/m{}.rs\nfn foo() {{}}\n\n", i)).collect();
     let server = Project::with_fixture(&format!(
@@ -423,6 +533,10 @@ fn main() {{}}
 
 #[test]
 fn preserves_dos_line_endings() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = Project::with_fixture(
         &"
 //- Cargo.toml

@@ -11,12 +11,12 @@ export async function handle() {
     const request: lc.TextDocumentPositionParams = {
         textDocument: { uri: editor.document.uri.toString() },
         position: Server.client.code2ProtocolConverter.asPosition(
-            editor.selection.active
-        )
+            editor.selection.active,
+        ),
     };
     const response = await Server.client.sendRequest<lc.Location[]>(
         'rust-analyzer/parentModule',
-        request
+        request,
     );
     const loc = response[0];
     if (loc == null) {

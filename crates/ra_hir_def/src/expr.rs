@@ -14,6 +14,7 @@
 
 use hir_expand::name::Name;
 use ra_arena::{impl_arena_id, RawId};
+use ra_syntax::ast::RangeOp;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt},
@@ -130,6 +131,11 @@ pub enum Expr {
         rhs: ExprId,
         op: Option<BinaryOp>,
     },
+    Range {
+        lhs: Option<ExprId>,
+        rhs: Option<ExprId>,
+        range_type: RangeOp,
+    },
     Index {
         base: ExprId,
         index: ExprId,
@@ -137,6 +143,7 @@ pub enum Expr {
     Lambda {
         args: Vec<PatId>,
         arg_types: Vec<Option<TypeRef>>,
+        ret_type: Option<TypeRef>,
         body: ExprId,
     },
     Tuple {
@@ -287,6 +294,14 @@ impl Expr {
             Expr::BinaryOp { lhs, rhs, .. } => {
                 f(*lhs);
                 f(*rhs);
+            }
+            Expr::Range { lhs, rhs, .. } => {
+                if let Some(lhs) = rhs {
+                    f(*lhs);
+                }
+                if let Some(rhs) = lhs {
+                    f(*rhs);
+                }
             }
             Expr::Index { base, index } => {
                 f(*base);

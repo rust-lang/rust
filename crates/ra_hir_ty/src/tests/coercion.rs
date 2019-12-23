@@ -1,3 +1,4 @@
+use super::infer_with_mismatches;
 use insta::assert_snapshot;
 use test_utils::covers;
 
@@ -364,6 +365,164 @@ fn test() {
     [115; 116) '_': i32
     [120; 121) 't': &mut i32
     [120; 135) 't as *const i32': *const i32
+    "###
+    );
+}
+
+#[test]
+fn return_coerce_unknown() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn foo() -> u32 {
+    return unknown;
+}
+"#, true),
+        @r###"
+    [17; 40) '{     ...own; }': !
+    [23; 37) 'return unknown': !
+    [30; 37) 'unknown': u32
+    "###
+    );
+}
+
+#[test]
+fn coerce_autoderef() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+struct Foo;
+fn takes_ref_foo(x: &Foo) {}
+fn test() {
+    takes_ref_foo(&Foo);
+    takes_ref_foo(&&Foo);
+    takes_ref_foo(&&&Foo);
+}
+"#, true),
+        @r###"
+    [30; 31) 'x': &Foo
+    [39; 41) '{}': ()
+    [52; 133) '{     ...oo); }': ()
+    [58; 71) 'takes_ref_foo': fn takes_ref_foo(&Foo) -> ()
+    [58; 77) 'takes_...(&Foo)': ()
+    [72; 76) '&Foo': &Foo
+    [73; 76) 'Foo': Foo
+    [83; 96) 'takes_ref_foo': fn takes_ref_foo(&Foo) -> ()
+    [83; 103) 'takes_...&&Foo)': ()
+    [97; 102) '&&Foo': &&Foo
+    [98; 102) '&Foo': &Foo
+    [99; 102) 'Foo': Foo
+    [109; 122) 'takes_ref_foo': fn takes_ref_foo(&Foo) -> ()
+    [109; 130) 'takes_...&&Foo)': ()
+    [123; 129) '&&&Foo': &&&Foo
+    [124; 129) '&&Foo': &&Foo
+    [125; 129) '&Foo': &Foo
+    [126; 129) 'Foo': Foo
+    "###
+    );
+}
+
+#[test]
+fn coerce_autoderef_generic() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+struct Foo;
+fn takes_ref<T>(x: &T) -> T { *x }
+fn test() {
+    takes_ref(&Foo);
+    takes_ref(&&Foo);
+    takes_ref(&&&Foo);
+}
+"#, true),
+        @r###"
+    [29; 30) 'x': &T
+    [41; 47) '{ *x }': T
+    [43; 45) '*x': T
+    [44; 45) 'x': &T
+    [58; 127) '{     ...oo); }': ()
+    [64; 73) 'takes_ref': fn takes_ref<Foo>(&T) -> T
+    [64; 79) 'takes_ref(&Foo)': Foo
+    [74; 78) '&Foo': &Foo
+    [75; 78) 'Foo': Foo
+    [85; 94) 'takes_ref': fn takes_ref<&Foo>(&T) -> T
+    [85; 101) 'takes_...&&Foo)': &Foo
+    [95; 100) '&&Foo': &&Foo
+    [96; 100) '&Foo': &Foo
+    [97; 100) 'Foo': Foo
+    [107; 116) 'takes_ref': fn takes_ref<&&Foo>(&T) -> T
+    [107; 124) 'takes_...&&Foo)': &&Foo
+    [117; 123) '&&&Foo': &&&Foo
+    [118; 123) '&&Foo': &&Foo
+    [119; 123) '&Foo': &Foo
+    [120; 123) 'Foo': Foo
+    "###
+    );
+}
+
+#[test]
+fn closure_return_coerce() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn foo() {
+    let x = || {
+        if true {
+            return &1u32;
+        }
+        &&1u32
+    };
+}
+"#, true),
+        @r###"
+    [10; 106) '{     ...  }; }': ()
+    [20; 21) 'x': || -> &u32
+    [24; 103) '|| {  ...     }': || -> &u32
+    [27; 103) '{     ...     }': &u32
+    [37; 82) 'if tru...     }': ()
+    [40; 44) 'true': bool
+    [45; 82) '{     ...     }': !
+    [59; 71) 'return &1u32': !
+    [66; 71) '&1u32': &u32
+    [67; 71) '1u32': u32
+    [91; 97) '&&1u32': &&u32
+    [92; 97) '&1u32': &u32
+    [93; 97) '1u32': u32
+    "###
+    );
+}
+
+#[test]
+fn coerce_fn_item_to_fn_ptr() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn foo(x: u32) -> isize { 1 }
+fn test() {
+    let f: fn(u32) -> isize = foo;
+}
+"#, true),
+        @r###"
+    [8; 9) 'x': u32
+    [25; 30) '{ 1 }': isize
+    [27; 28) '1': isize
+    [41; 79) '{     ...foo; }': ()
+    [51; 52) 'f': fn(u32) -> isize
+    [73; 76) 'foo': fn foo(u32) -> isize
+    "###
+    );
+}
+
+#[test]
+fn coerce_closure_to_fn_ptr() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn test() {
+    let f: fn(u32) -> isize = |x| { 1 };
+}
+"#, true),
+        @r###"
+    [11; 55) '{     ...1 }; }': ()
+    [21; 22) 'f': fn(u32) -> isize
+    [43; 52) '|x| { 1 }': |u32| -> isize
+    [44; 45) 'x': u32
+    [47; 52) '{ 1 }': isize
+    [49; 50) '1': isize
     "###
     );
 }

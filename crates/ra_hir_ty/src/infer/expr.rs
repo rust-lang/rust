@@ -6,17 +6,21 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::Signedness,
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
-    generics::GenericParams,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
-    AdtId, ContainerId, Lookup, StructFieldId,
+    AdtId, AssocContainerId, Lookup, StructFieldId,
 };
-use hir_expand::name::{self, Name};
+use hir_expand::name::{name, Name};
+use ra_syntax::ast::RangeOp;
 
 use crate::{
-    autoderef, db::HirDatabase, method_resolution, op, traits::InEnvironment, utils::variant_data,
-    CallableDef, InferTy, IntTy, Mutability, Obligation, ProjectionPredicate, ProjectionTy, Substs,
-    TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
+    autoderef,
+    db::HirDatabase,
+    method_resolution, op,
+    traits::InEnvironment,
+    utils::{generics, variant_data, Generics},
+    ApplicationTy, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef, Ty,
+    TypeCtor, TypeWalk, Uncertain,
 };
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
@@ -31,13 +35,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
             );
         }
-        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+        let ty = self.resolve_ty_as_possible(ty);
         ty
     }
 
     /// Infer type of expression with possibly implicit coerce to the expected type.
     /// Return the type after possible coercion.
-    fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
+    pub(super) fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, &expected);
         let ty = if !self.coerce(&ty, &expected.ty) {
             self.result
@@ -52,7 +56,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             expected.ty.clone()
         };
 
-        self.resolve_ty_as_possible(&mut vec![], ty)
+        self.resolve_ty_as_possible(ty)
     }
 
     fn infer_expr_inner(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
@@ -91,27 +95,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::For { iterable, body, pat } => {
                 let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
 
-                let pat_ty = match self.resolve_into_iter_item() {
-                    Some(into_iter_item_alias) => {
-                        let pat_ty = self.new_type_var();
-                        let projection = ProjectionPredicate {
-                            ty: pat_ty.clone(),
-                            projection_ty: ProjectionTy {
-                                associated_ty: into_iter_item_alias,
-                                parameters: Substs::single(iterable_ty),
-                            },
-                        };
-                        self.obligations.push(Obligation::Projection(projection));
-                        self.resolve_ty_as_possible(&mut vec![], pat_ty)
-                    }
-                    None => Ty::Unknown,
-                };
+                let pat_ty =
+                    self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
 
                 self.infer_pat(*pat, &pat_ty, BindingMode::default());
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
-            Expr::Lambda { body, args, arg_types } => {
+            Expr::Lambda { body, args, ret_type, arg_types } => {
                 assert_eq!(args.len(), arg_types.len());
 
                 let mut sig_tys = Vec::new();
@@ -127,7 +118,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 // add return type
-                let ret_ty = self.new_type_var();
+                let ret_ty = match ret_type {
+                    Some(type_ref) => self.make_ty(type_ref),
+                    None => self.table.new_type_var(),
+                };
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = Ty::apply(
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
@@ -143,7 +137,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // infer the body.
                 self.coerce(&closure_ty, &expected.ty);
 
-                self.infer_expr(*body, &Expectation::has_type(ret_ty));
+                let prev_ret_ty = std::mem::replace(&mut self.return_ty, ret_ty.clone());
+
+                self.infer_expr_coerce(*body, &Expectation::has_type(ret_ty));
+
+                self.return_ty = prev_ret_ty;
+
                 closure_ty
             }
             Expr::Call { callee, args } => {
@@ -166,7 +165,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
-                let mut result_ty = self.new_maybe_never_type_var();
+                let mut result_ty = self.table.new_maybe_never_type_var();
 
                 for arm in arms {
                     for &pat in &arm.pats {
@@ -200,7 +199,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Return { expr } => {
                 if let Some(expr) = expr {
-                    self.infer_expr(*expr, &Expectation::has_type(self.return_ty.clone()));
+                    self.infer_expr_coerce(*expr, &Expectation::has_type(self.return_ty.clone()));
+                } else {
+                    let unit = Ty::unit();
+                    self.coerce(&unit, &self.return_ty.clone());
                 }
                 Ty::simple(TypeCtor::Never)
             }
@@ -244,7 +246,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ty
             }
             Expr::Field { expr, name } => {
-                let receiver_ty = self.infer_expr(*expr, &Expectation::none());
+                let receiver_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let canonicalized = self.canonicalizer().canonicalize_ty(receiver_ty);
                 let ty = autoderef::autoderef(
                     self.db,
@@ -279,45 +281,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.normalize_associated_types_in(ty)
             }
             Expr::Await { expr } => {
-                let inner_ty = self.infer_expr(*expr, &Expectation::none());
-                let ty = match self.resolve_future_future_output() {
-                    Some(future_future_output_alias) => {
-                        let ty = self.new_type_var();
-                        let projection = ProjectionPredicate {
-                            ty: ty.clone(),
-                            projection_ty: ProjectionTy {
-                                associated_ty: future_future_output_alias,
-                                parameters: Substs::single(inner_ty),
-                            },
-                        };
-                        self.obligations.push(Obligation::Projection(projection));
-                        self.resolve_ty_as_possible(&mut vec![], ty)
-                    }
-                    None => Ty::Unknown,
-                };
+                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
+                let ty =
+                    self.resolve_associated_type(inner_ty, self.resolve_future_future_output());
                 ty
             }
             Expr::Try { expr } => {
-                let inner_ty = self.infer_expr(*expr, &Expectation::none());
-                let ty = match self.resolve_ops_try_ok() {
-                    Some(ops_try_ok_alias) => {
-                        let ty = self.new_type_var();
-                        let projection = ProjectionPredicate {
-                            ty: ty.clone(),
-                            projection_ty: ProjectionTy {
-                                associated_ty: ops_try_ok_alias,
-                                parameters: Substs::single(inner_ty),
-                            },
-                        };
-                        self.obligations.push(Obligation::Projection(projection));
-                        self.resolve_ty_as_possible(&mut vec![], ty)
-                    }
-                    None => Ty::Unknown,
-                };
+                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
+                let ty = self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok());
                 ty
             }
             Expr::Cast { expr, type_ref } => {
-                let _inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let _inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let cast_ty = self.make_ty(type_ref);
                 // FIXME check the cast...
                 cast_ty
@@ -333,12 +308,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     } else {
                         Expectation::none()
                     };
-                // FIXME reference coercions etc.
-                let inner_ty = self.infer_expr(*expr, &expectation);
+                let inner_ty = self.infer_expr_inner(*expr, &expectation);
                 Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
             }
             Expr::Box { expr } => {
-                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 if let Some(box_) = self.resolve_boxed_box() {
                     Ty::apply_one(TypeCtor::Adt(box_), inner_ty)
                 } else {
@@ -346,7 +320,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
             Expr::UnaryOp { expr, op } => {
-                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 match op {
                     UnaryOp::Deref => match self.resolver.krate() {
                         Some(krate) => {
@@ -369,31 +343,36 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     },
                     UnaryOp::Neg => {
                         match &inner_ty {
-                            Ty::Apply(a_ty) => match a_ty.ctor {
-                                TypeCtor::Int(Uncertain::Unknown)
-                                | TypeCtor::Int(Uncertain::Known(IntTy {
-                                    signedness: Signedness::Signed,
-                                    ..
-                                }))
-                                | TypeCtor::Float(..) => inner_ty,
-                                _ => Ty::Unknown,
-                            },
-                            Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => {
-                                inner_ty
-                            }
-                            // FIXME: resolve ops::Neg trait
-                            _ => Ty::Unknown,
+                            // Fast path for builtins
+                            Ty::Apply(ApplicationTy {
+                                ctor:
+                                    TypeCtor::Int(Uncertain::Known(IntTy {
+                                        signedness: Signedness::Signed,
+                                        ..
+                                    })),
+                                ..
+                            })
+                            | Ty::Apply(ApplicationTy {
+                                ctor: TypeCtor::Int(Uncertain::Unknown),
+                                ..
+                            })
+                            | Ty::Apply(ApplicationTy { ctor: TypeCtor::Float(_), .. })
+                            | Ty::Infer(InferTy::IntVar(..))
+                            | Ty::Infer(InferTy::FloatVar(..)) => inner_ty,
+                            // Otherwise we resolve via the std::ops::Neg trait
+                            _ => self
+                                .resolve_associated_type(inner_ty, self.resolve_ops_neg_output()),
                         }
                     }
                     UnaryOp::Not => {
                         match &inner_ty {
-                            Ty::Apply(a_ty) => match a_ty.ctor {
-                                TypeCtor::Bool | TypeCtor::Int(_) => inner_ty,
-                                _ => Ty::Unknown,
-                            },
-                            Ty::Infer(InferTy::IntVar(..)) => inner_ty,
-                            // FIXME: resolve ops::Not trait for inner_ty
-                            _ => Ty::Unknown,
+                            // Fast path for builtins
+                            Ty::Apply(ApplicationTy { ctor: TypeCtor::Bool, .. })
+                            | Ty::Apply(ApplicationTy { ctor: TypeCtor::Int(_), .. })
+                            | Ty::Infer(InferTy::IntVar(..)) => inner_ty,
+                            // Otherwise we resolve via the std::ops::Not trait
+                            _ => self
+                                .resolve_associated_type(inner_ty, self.resolve_ops_not_output()),
                         }
                     }
                 }
@@ -415,21 +394,63 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 _ => Ty::Unknown,
             },
+            Expr::Range { lhs, rhs, range_type } => {
+                let lhs_ty = lhs.map(|e| self.infer_expr_inner(e, &Expectation::none()));
+                let rhs_expect = lhs_ty
+                    .as_ref()
+                    .map_or_else(Expectation::none, |ty| Expectation::has_type(ty.clone()));
+                let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect));
+                match (range_type, lhs_ty, rhs_ty) {
+                    (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
+                        Some(adt) => Ty::simple(TypeCtor::Adt(adt)),
+                        None => Ty::Unknown,
+                    },
+                    (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
+                        Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                        None => Ty::Unknown,
+                    },
+                    (RangeOp::Inclusive, None, Some(ty)) => {
+                        match self.resolve_range_to_inclusive() {
+                            Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                            None => Ty::Unknown,
+                        }
+                    }
+                    (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
+                        Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                        None => Ty::Unknown,
+                    },
+                    (RangeOp::Inclusive, Some(_), Some(ty)) => {
+                        match self.resolve_range_inclusive() {
+                            Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                            None => Ty::Unknown,
+                        }
+                    }
+                    (RangeOp::Exclusive, Some(ty), None) => match self.resolve_range_from() {
+                        Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                        None => Ty::Unknown,
+                    },
+                    (RangeOp::Inclusive, _, None) => Ty::Unknown,
+                }
+            }
             Expr::Index { base, index } => {
-                let _base_ty = self.infer_expr(*base, &Expectation::none());
-                let _index_ty = self.infer_expr(*index, &Expectation::none());
-                // FIXME: use `std::ops::Index::Output` to figure out the real return type
-                Ty::Unknown
+                let base_ty = self.infer_expr_inner(*base, &Expectation::none());
+                let index_ty = self.infer_expr(*index, &Expectation::none());
+
+                self.resolve_associated_type_with_params(
+                    base_ty,
+                    self.resolve_ops_index_output(),
+                    &[index_ty],
+                )
             }
             Expr::Tuple { exprs } => {
                 let mut tys = match &expected.ty {
                     ty_app!(TypeCtor::Tuple { .. }, st) => st
                         .iter()
                         .cloned()
-                        .chain(repeat_with(|| self.new_type_var()))
+                        .chain(repeat_with(|| self.table.new_type_var()))
                         .take(exprs.len())
                         .collect::<Vec<_>>(),
-                    _ => (0..exprs.len()).map(|_| self.new_type_var()).collect(),
+                    _ => (0..exprs.len()).map(|_| self.table.new_type_var()).collect(),
                 };
 
                 for (expr, ty) in exprs.iter().zip(tys.iter_mut()) {
@@ -443,7 +464,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     ty_app!(TypeCtor::Array, st) | ty_app!(TypeCtor::Slice, st) => {
                         st.as_single().clone()
                     }
-                    _ => self.new_type_var(),
+                    _ => self.table.new_type_var(),
                 };
 
                 match array {
@@ -485,7 +506,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
-        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+        let ty = self.resolve_ty_as_possible(ty);
         self.write_expr_ty(tgt_expr, ty.clone());
         ty
     }
@@ -514,7 +535,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         }
                     }
 
-                    let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+                    let ty = self.resolve_ty_as_possible(ty);
                     self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr(expr) => {
@@ -558,7 +579,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Some((ty, func)) => {
                 let ty = canonicalized_receiver.decanonicalize_ty(ty);
                 self.write_method_resolution(tgt_expr, func);
-                (ty, self.db.value_ty(func.into()), Some(self.db.generic_params(func.into())))
+                (ty, self.db.value_ty(func.into()), Some(generics(self.db, func.into())))
             }
             None => (receiver_ty, Ty::Unknown, None),
         };
@@ -607,6 +628,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     continue;
                 }
 
+                let param_ty = self.insert_vars_for_impl_trait(param_ty);
                 let param_ty = self.normalize_associated_types_in(param_ty);
                 self.infer_expr_coerce(arg, &Expectation::has_type(param_ty.clone()));
             }
@@ -615,17 +637,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn substs_for_method_call(
         &mut self,
-        def_generics: Option<Arc<GenericParams>>,
+        def_generics: Option<Generics>,
         generic_args: Option<&GenericArgs>,
         receiver_ty: &Ty,
     ) -> Substs {
-        let (parent_param_count, param_count) =
-            def_generics.as_ref().map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
-        let mut substs = Vec::with_capacity(parent_param_count + param_count);
+        let (total_len, _parent_len, child_len) =
+            def_generics.as_ref().map_or((0, 0, 0), |g| g.len_split());
+        let mut substs = Vec::with_capacity(total_len);
         // Parent arguments are unknown, except for the receiver type
-        if let Some(parent_generics) = def_generics.and_then(|p| p.parent_params.clone()) {
-            for param in &parent_generics.params {
-                if param.name == name::SELF_TYPE {
+        if let Some(parent_generics) = def_generics.as_ref().map(|p| p.iter_parent()) {
+            for (_id, param) in parent_generics {
+                if param.name == name![Self] {
                     substs.push(receiver_ty.clone());
                 } else {
                     substs.push(Ty::Unknown);
@@ -635,7 +657,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // handle provided type arguments
         if let Some(generic_args) = generic_args {
             // if args are provided, it should be all of them, but we can't rely on that
-            for arg in generic_args.args.iter().take(param_count) {
+            for arg in generic_args.args.iter().take(child_len) {
                 match arg {
                     GenericArg::Type(type_ref) => {
                         let ty = self.make_ty(type_ref);
@@ -645,10 +667,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
         };
         let supplied_params = substs.len();
-        for _ in supplied_params..parent_param_count + param_count {
+        for _ in supplied_params..total_len {
             substs.push(Ty::Unknown);
         }
-        assert_eq!(substs.len(), parent_param_count + param_count);
+        assert_eq!(substs.len(), total_len);
         Substs(substs.into())
     }
 
@@ -665,13 +687,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // add obligation for trait implementation, if this is a trait method
                 match def {
                     CallableDef::FunctionId(f) => {
-                        if let ContainerId::TraitId(trait_) = f.lookup(self.db).container {
+                        if let AssocContainerId::TraitId(trait_) = f.lookup(self.db).container {
                             // construct a TraitDef
-                            let substs = a_ty.parameters.prefix(
-                                self.db
-                                    .generic_params(trait_.into())
-                                    .count_params_including_parent(),
-                            );
+                            let substs =
+                                a_ty.parameters.prefix(generics(self.db, trait_.into()).len());
                             self.obligations.push(Obligation::Trait(TraitRef {
                                 trait_: trait_.into(),
                                 substs,

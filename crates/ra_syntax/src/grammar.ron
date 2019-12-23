@@ -94,7 +94,8 @@ Grammar(
         "return",
         "try",
         "box",
-        "await"
+        "await",
+        "macro"
     ],
     contextual_keywords: [
         "auto",
@@ -140,6 +141,7 @@ Grammar(
         "TYPE_ALIAS_DEF",
         "MACRO_CALL",
         "TOKEN_TREE",
+        "MACRO_DEF",
 
         "PAREN_TYPE",
         "TUPLE_TYPE",
@@ -243,6 +245,7 @@ Grammar(
         "TYPE_PARAM_LIST",
         "LIFETIME_PARAM",
         "TYPE_PARAM",
+        "CONST_PARAM",
         "TYPE_ARG_LIST",
         "LIFETIME_ARG",
         "TYPE_ARG",
@@ -426,7 +429,7 @@ Grammar(
         "PathExpr": (options: ["Path"]),
         "LambdaExpr": (
             options: [
-                "ParamList",
+                "ParamList", "RetType",
                 ["body", "Expr"],
             ]
         ),
@@ -602,6 +605,10 @@ Grammar(
             options: [("default_type", "TypeRef")],
             traits: ["NameOwner", "AttrsOwner", "TypeBoundsOwner"],
         ),
+        "ConstParam": (
+            options: [("default_val", "Expr")],
+            traits: ["NameOwner", "AttrsOwner", "TypeAscriptionOwner"],
+        ),
         "LifetimeParam": (
             traits: ["AttrsOwner"],
         ),
@@ -653,6 +660,7 @@ Grammar(
             ],
             traits: [
                 "AttrsOwner",
+                "ModuleItemOwner",
             ]
         ),
         "ParamList": (
@@ -664,14 +672,14 @@ Grammar(
         "SelfParam": (
             traits: [
                 "TypeAscriptionOwner",
-				"AttrsOwner",
+                "AttrsOwner",
             ]
         ),
         "Param": (
             options: [ "Pat" ],
             traits: [
                 "TypeAscriptionOwner",
-				"AttrsOwner",
+                "AttrsOwner",
             ]
         ),
         "UseItem": (

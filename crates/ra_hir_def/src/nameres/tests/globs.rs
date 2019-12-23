@@ -112,3 +112,24 @@ fn glob_enum() {
     "###
     );
 }
+
+#[test]
+fn glob_enum_group() {
+    covers!(glob_enum_group);
+    let map = def_map(
+        "
+        //- /lib.rs
+        enum Foo {
+            Bar, Baz
+        }
+        use self::Foo::{*};
+        ",
+    );
+    assert_snapshot!(map, @r###"
+   ⋮crate
+   ⋮Bar: t v
+   ⋮Baz: t v
+   ⋮Foo: t
+    "###
+    );
+}

@@ -9,15 +9,9 @@ use hir_def::{
 };
 
 use crate::{
-    Adt, AssocItem, AttrDef, Crate, DefWithBody, EnumVariant, GenericDef, ModuleDef, StructField,
+    Adt, AssocItem, AttrDef, DefWithBody, EnumVariant, GenericDef, ModuleDef, StructField,
     VariantDef,
 };
-
-impl From<ra_db::CrateId> for Crate {
-    fn from(crate_id: ra_db::CrateId) -> Self {
-        Crate { crate_id }
-    }
-}
 
 macro_rules! from_id {
     ($(($id:path, $ty:path)),*) => {$(
@@ -26,10 +20,16 @@ macro_rules! from_id {
                 $ty { id }
             }
         }
+        impl From<$ty> for $id {
+            fn from(ty: $ty) -> $id {
+                ty.id
+            }
+        }
     )*}
 }
 
 from_id![
+    (ra_db::CrateId, crate::Crate),
     (hir_def::ModuleId, crate::Module),
     (hir_def::StructId, crate::Struct),
     (hir_def::UnionId, crate::Union),

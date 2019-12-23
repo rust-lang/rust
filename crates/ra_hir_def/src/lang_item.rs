@@ -81,7 +81,7 @@ impl LangItems {
         // Look for impl targets
         let def_map = db.crate_def_map(module.krate);
         let module_data = &def_map[module.local_id];
-        for &impl_block in module_data.impls.iter() {
+        for impl_block in module_data.scope.impls() {
             self.collect_lang_item(db, impl_block, LangItemTarget::ImplBlockId)
         }
 

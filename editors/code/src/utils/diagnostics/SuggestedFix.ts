@@ -24,7 +24,7 @@ export default class SuggestedFix {
         title: string,
         location: vscode.Location,
         replacement: string,
-        applicability: SuggestionApplicability = SuggestionApplicability.Unspecified
+        applicability: SuggestionApplicability = SuggestionApplicability.Unspecified,
     ) {
         this.title = title;
         this.location = location;
@@ -51,7 +51,7 @@ export default class SuggestedFix {
     public toCodeAction(): vscode.CodeAction {
         const codeAction = new vscode.CodeAction(
             this.title,
-            vscode.CodeActionKind.QuickFix
+            vscode.CodeActionKind.QuickFix,
         );
 
         const edit = new vscode.WorkspaceEdit();

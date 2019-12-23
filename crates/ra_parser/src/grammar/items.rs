@@ -33,7 +33,7 @@ pub(super) enum ItemFlavor {
 
 pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
     FN_KW, STRUCT_KW, ENUM_KW, IMPL_KW, TRAIT_KW, CONST_KW, STATIC_KW, LET_KW, MOD_KW, PUB_KW,
-    CRATE_KW, USE_KW
+    CRATE_KW, USE_KW, MACRO_KW
 ];
 
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemFlavor) {
@@ -249,6 +249,11 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             // }
             adt::struct_def(p, m);
         }
+        // test pub_macro_def
+        // pub macro m($:ident) {}
+        T![macro] => {
+            macro_def(p, m);
+        }
         IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
             // test union_items
             // union Foo {}
@@ -377,6 +382,29 @@ pub(crate) fn mod_item_list(p: &mut Parser) {
     mod_contents(p, true);
     p.expect(T!['}']);
     m.complete(p, ITEM_LIST);
+}
+
+// test macro_def
+// macro m { ($i:ident) => {} }
+// macro m($i:ident) {}
+fn macro_def(p: &mut Parser, m: Marker) {
+    p.expect(T![macro]);
+    name_r(p, ITEM_RECOVERY_SET);
+    if p.at(T!['{']) {
+        token_tree(p);
+    } else if !p.at(T!['(']) {
+        p.error("unmatched `(`");
+    } else {
+        let m = p.start();
+        token_tree(p);
+        match p.current() {
+            T!['{'] | T!['['] | T!['('] => token_tree(p),
+            _ => p.error("expected `{`, `[`, `(`"),
+        }
+        m.complete(p, TOKEN_TREE);
+    }
+
+    m.complete(p, MACRO_DEF);
 }
 
 fn macro_call(p: &mut Parser) -> BlockLike {

@@ -8,9 +8,9 @@ use hir_def::{lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutabilit
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
-use crate::{autoderef, db::HirDatabase, ImplTy, Substs, Ty, TypeCtor, TypeWalk};
+use crate::{autoderef, db::HirDatabase, Substs, Ty, TypeCtor, TypeWalk};
 
-use super::{InEnvironment, InferTy, InferenceContext, TypeVarValue};
+use super::{unify::TypeVarValue, InEnvironment, InferTy, InferenceContext};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// Unify two types, but may coerce the first one to the second one
@@ -54,10 +54,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         impls
             .iter()
             .filter_map(|&impl_id| {
-                let trait_ref = match db.impl_ty(impl_id) {
-                    ImplTy::TraitRef(it) => it,
-                    ImplTy::Inherent(_) => return None,
-                };
+                let trait_ref = db.impl_trait(impl_id)?;
 
                 // `CoerseUnsized` has one generic parameter for the target type.
                 let cur_from_ty = trait_ref.substs.0.get(0)?;
@@ -88,8 +85,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match (&from_ty, to_ty) {
             // Never type will make type variable to fallback to Never Type instead of Unknown.
             (ty_app!(TypeCtor::Never), Ty::Infer(InferTy::TypeVar(tv))) => {
-                let var = self.new_maybe_never_type_var();
-                self.var_unification_table.union_value(*tv, TypeVarValue::Known(var));
+                let var = self.table.new_maybe_never_type_var();
+                self.table.var_unification_table.union_value(*tv, TypeVarValue::Known(var));
                 return true;
             }
             (ty_app!(TypeCtor::Never), _) => return true,
@@ -97,7 +94,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // Trivial cases, this should go after `never` check to
             // avoid infer result type to be never
             _ => {
-                if self.unify_inner_trivial(&from_ty, &to_ty) {
+                if self.table.unify_inner_trivial(&from_ty, &to_ty) {
                     return true;
                 }
             }
@@ -135,6 +132,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             Ty::apply(TypeCtor::FnPtr { num_args }, Substs(sig.params_and_return));
                     }
                 }
+            }
+
+            (ty_app!(TypeCtor::Closure { .. }, params), ty_app!(TypeCtor::FnPtr { .. })) => {
+                from_ty = params[0].clone();
             }
 
             _ => {}
@@ -333,9 +334,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // Stop when constructor matches.
                 (ty_app!(from_ctor, st1), ty_app!(to_ctor, st2)) if from_ctor == to_ctor => {
                     // It will not recurse to `coerce`.
-                    return self.unify_substs(st1, st2, 0);
+                    return self.table.unify_substs(st1, st2, 0);
                 }
-                _ => {}
+                _ => {
+                    if self.table.unify_inner_trivial(&derefed_ty, &to_ty) {
+                        return true;
+                    }
+                }
             }
         }
 

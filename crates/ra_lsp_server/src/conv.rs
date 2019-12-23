@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Convenience module responsible for translating between rust-analyzer's types and LSP types.
 
 use lsp_types::{
     self, CreateFile, DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, Documentation,
@@ -130,6 +130,11 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
             deprecated: Some(self.deprecated()),
             ..Default::default()
         };
+
+        if self.deprecated() {
+            res.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])
+        }
+
         res.insert_text_format = Some(match self.insert_text_format() {
             InsertTextFormat::Snippet => lsp_types::InsertTextFormat::Snippet,
             InsertTextFormat::PlainText => lsp_types::InsertTextFormat::PlainText,

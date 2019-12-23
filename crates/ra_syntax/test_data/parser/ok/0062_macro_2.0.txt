@@ -1,0 +1,176 @@
+SOURCE_FILE@[0; 349)
+  MACRO_DEF@[0; 93)
+    MACRO_KW@[0; 5) "macro"
+    WHITESPACE@[5; 6) " "
+    NAME@[6; 21)
+      IDENT@[6; 21) "parse_use_trees"
+    TOKEN_TREE@[21; 93)
+      TOKEN_TREE@[21; 41)
+        L_PAREN@[21; 22) "("
+        DOLLAR@[22; 23) "$"
+        TOKEN_TREE@[23; 32)
+          L_PAREN@[23; 24) "("
+          DOLLAR@[24; 25) "$"
+          IDENT@[25; 26) "s"
+          COLON@[26; 27) ":"
+          IDENT@[27; 31) "expr"
+          R_PAREN@[31; 32) ")"
+        COMMA@[32; 33) ","
+        STAR@[33; 34) "*"
+        WHITESPACE@[34; 35) " "
+        DOLLAR@[35; 36) "$"
+        TOKEN_TREE@[36; 39)
+          L_PAREN@[36; 37) "("
+          COMMA@[37; 38) ","
+          R_PAREN@[38; 39) ")"
+        STAR@[39; 40) "*"
+        R_PAREN@[40; 41) ")"
+      WHITESPACE@[41; 42) " "
+      TOKEN_TREE@[42; 93)
+        L_CURLY@[42; 43) "{"
+        WHITESPACE@[43; 48) "\n    "
+        IDENT@[48; 51) "vec"
+        EXCL@[51; 52) "!"
+        TOKEN_TREE@[52; 91)
+          L_BRACK@[52; 53) "["
+          WHITESPACE@[53; 62) "\n        "
+          DOLLAR@[62; 63) "$"
+          TOKEN_TREE@[63; 84)
+            L_PAREN@[63; 64) "("
+            IDENT@[64; 78) "parse_use_tree"
+            TOKEN_TREE@[78; 82)
+              L_PAREN@[78; 79) "("
+              DOLLAR@[79; 80) "$"
+              IDENT@[80; 81) "s"
+              R_PAREN@[81; 82) ")"
+            COMMA@[82; 83) ","
+            R_PAREN@[83; 84) ")"
+          STAR@[84; 85) "*"
+          WHITESPACE@[85; 90) "\n    "
+          R_BRACK@[90; 91) "]"
+        WHITESPACE@[91; 92) "\n"
+        R_CURLY@[92; 93) "}"
+  WHITESPACE@[93; 95) "\n\n"
+  FN_DEF@[95; 348)
+    ATTR@[95; 102)
+      POUND@[95; 96) "#"
+      L_BRACK@[96; 97) "["
+      PATH@[97; 101)
+        PATH_SEGMENT@[97; 101)
+          NAME_REF@[97; 101)
+            IDENT@[97; 101) "test"
+      R_BRACK@[101; 102) "]"
+    WHITESPACE@[102; 103) "\n"
+    FN_KW@[103; 105) "fn"
+    WHITESPACE@[105; 106) " "
+    NAME@[106; 125)
+      IDENT@[106; 125) "test_use_tree_merge"
+    PARAM_LIST@[125; 127)
+      L_PAREN@[125; 126) "("
+      R_PAREN@[126; 127) ")"
+    WHITESPACE@[127; 128) " "
+    BLOCK_EXPR@[128; 348)
+      BLOCK@[128; 348)
+        L_CURLY@[128; 129) "{"
+        WHITESPACE@[129; 134) "\n    "
+        MACRO_DEF@[134; 346)
+          MACRO_KW@[134; 139) "macro"
+          WHITESPACE@[139; 140) " "
+          NAME@[140; 150)
+            IDENT@[140; 150) "test_merge"
+          TOKEN_TREE@[150; 346)
+            TOKEN_TREE@[150; 203)
+              L_PAREN@[150; 151) "("
+              TOKEN_TREE@[151; 175)
+                L_BRACK@[151; 152) "["
+                DOLLAR@[152; 153) "$"
+                TOKEN_TREE@[153; 166)
+                  L_PAREN@[153; 154) "("
+                  DOLLAR@[154; 155) "$"
+                  IDENT@[155; 160) "input"
+                  COLON@[160; 161) ":"
+                  IDENT@[161; 165) "expr"
+                  R_PAREN@[165; 166) ")"
+                COMMA@[166; 167) ","
+                STAR@[167; 168) "*"
+                WHITESPACE@[168; 169) " "
+                DOLLAR@[169; 170) "$"
+                TOKEN_TREE@[170; 173)
+                  L_PAREN@[170; 171) "("
+                  COMMA@[171; 172) ","
+                  R_PAREN@[172; 173) ")"
+                STAR@[173; 174) "*"
+                R_BRACK@[174; 175) "]"
+              COMMA@[175; 176) ","
+              WHITESPACE@[176; 177) " "
+              TOKEN_TREE@[177; 202)
+                L_BRACK@[177; 178) "["
+                DOLLAR@[178; 179) "$"
+                TOKEN_TREE@[179; 193)
+                  L_PAREN@[179; 180) "("
+                  DOLLAR@[180; 181) "$"
+                  IDENT@[181; 187) "output"
+                  COLON@[187; 188) ":"
+                  IDENT@[188; 192) "expr"
+                  R_PAREN@[192; 193) ")"
+                COMMA@[193; 194) ","
+                STAR@[194; 195) "*"
+                WHITESPACE@[195; 196) " "
+                DOLLAR@[196; 197) "$"
+                TOKEN_TREE@[197; 200)
+                  L_PAREN@[197; 198) "("
+                  COMMA@[198; 199) ","
+                  R_PAREN@[199; 200) ")"
+                STAR@[200; 201) "*"
+                R_BRACK@[201; 202) "]"
+              R_PAREN@[202; 203) ")"
+            WHITESPACE@[203; 204) " "
+            TOKEN_TREE@[204; 346)
+              L_CURLY@[204; 205) "{"
+              WHITESPACE@[205; 214) "\n        "
+              IDENT@[214; 223) "assert_eq"
+              EXCL@[223; 224) "!"
+              TOKEN_TREE@[224; 339)
+                L_PAREN@[224; 225) "("
+                WHITESPACE@[225; 238) "\n            "
+                IDENT@[238; 253) "merge_use_trees"
+                TOKEN_TREE@[253; 284)
+                  L_PAREN@[253; 254) "("
+                  IDENT@[254; 269) "parse_use_trees"
+                  EXCL@[269; 270) "!"
+                  TOKEN_TREE@[270; 283)
+                    L_PAREN@[270; 271) "("
+                    DOLLAR@[271; 272) "$"
+                    TOKEN_TREE@[272; 281)
+                      L_PAREN@[272; 273) "("
+                      DOLLAR@[273; 274) "$"
+                      IDENT@[274; 279) "input"
+                      COMMA@[279; 280) ","
+                      R_PAREN@[280; 281) ")"
+                    STAR@[281; 282) "*"
+                    R_PAREN@[282; 283) ")"
+                  R_PAREN@[283; 284) ")"
+                COMMA@[284; 285) ","
+                WHITESPACE@[285; 298) "\n            "
+                IDENT@[298; 313) "parse_use_trees"
+                EXCL@[313; 314) "!"
+                TOKEN_TREE@[314; 328)
+                  L_PAREN@[314; 315) "("
+                  DOLLAR@[315; 316) "$"
+                  TOKEN_TREE@[316; 326)
+                    L_PAREN@[316; 317) "("
+                    DOLLAR@[317; 318) "$"
+                    IDENT@[318; 324) "output"
+                    COMMA@[324; 325) ","
+                    R_PAREN@[325; 326) ")"
+                  STAR@[326; 327) "*"
+                  R_PAREN@[327; 328) ")"
+                COMMA@[328; 329) ","
+                WHITESPACE@[329; 338) "\n        "
+                R_PAREN@[338; 339) ")"
+              SEMI@[339; 340) ";"
+              WHITESPACE@[340; 345) "\n    "
+              R_CURLY@[345; 346) "}"
+        WHITESPACE@[346; 347) "\n"
+        R_CURLY@[347; 348) "}"
+  WHITESPACE@[348; 349) "\n"

@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! This module is responsible for implementing handlers for Lanuage Server Protocol.
+//! The majority of requests are fulfilled by calling into the `ra_ide` crate.
 
 use std::{fmt::Write as _, io::Write as _};
 
@@ -164,7 +165,7 @@ pub fn handle_on_type_formatting(
 
     // in `ra_ide`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
-    position.offset = position.offset - TextUnit::of_char('.');
+    position.offset -= TextUnit::of_char('.');
     let char_typed = params.ch.chars().next().unwrap_or('\0');
 
     // We have an assist that inserts ` ` after typing `->` in `fn foo() ->{`,
@@ -480,8 +481,6 @@ pub fn handle_prepare_rename(
     let _p = profile("handle_prepare_rename");
     let position = params.try_conv_with(&world)?;
 
-    // We support renaming references like handle_rename does.
-    // In the future we may want to reject the renaming of things like keywords here too.
     let optional_change = world.analysis().rename(position, "dummy")?;
     let range = match optional_change {
         None => return Ok(None),
@@ -557,12 +556,18 @@ pub fn handle_formatting(
     let _p = profile("handle_formatting");
     let file_id = params.text_document.try_conv_with(&world)?;
     let file = world.analysis().file_text(file_id)?;
+    let crate_ids = world.analysis().crate_for(file_id)?;
 
     let file_line_index = world.analysis().file_line_index(file_id)?;
     let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
 
     use std::process;
     let mut rustfmt = process::Command::new("rustfmt");
+    if let Some(&crate_id) = crate_ids.first() {
+        // Assume all crates are in the same edition
+        let edition = world.analysis().crate_edition(crate_id)?;
+        rustfmt.args(&["--edition", &edition.to_string()]);
+    }
     rustfmt.stdin(process::Stdio::piped()).stdout(process::Stdio::piped());
 
     if let Ok(path) = params.text_document.uri.to_file_path() {
@@ -644,6 +649,7 @@ pub fn handle_code_action(
             diagnostics: None,
             edit: None,
             command: Some(command),
+            is_preferred: None,
         };
         res.push(action.into());
     }
@@ -666,6 +672,7 @@ pub fn handle_code_action(
             diagnostics: None,
             edit: None,
             command: Some(command),
+            is_preferred: None,
         };
         res.push(action.into());
     }
@@ -824,9 +831,10 @@ pub fn publish_diagnostics(
             source: Some("rust-analyzer".to_string()),
             message: d.message,
             related_information: None,
+            tags: None,
         })
         .collect();
-    Ok(req::PublishDiagnosticsParams { uri, diagnostics })
+    Ok(req::PublishDiagnosticsParams { uri, diagnostics, version: None })
 }
 
 pub fn publish_decorations(

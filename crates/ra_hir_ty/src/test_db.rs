@@ -74,7 +74,7 @@ impl TestDB {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (local_id, data) in crate_def_map.modules.iter() {
-                if data.definition == Some(file_id) {
+                if data.origin.file_id() == Some(file_id) {
                     return ModuleId { krate, local_id };
                 }
             }
@@ -98,7 +98,7 @@ impl TestDB {
                     }
                 }
 
-                for &impl_id in crate_def_map[module_id].impls.iter() {
+                for impl_id in crate_def_map[module_id].scope.impls() {
                     let impl_data = self.impl_data(impl_id);
                     for item in impl_data.items.iter() {
                         if let AssocItemId::FunctionId(f) = item {

@@ -1,30 +1,41 @@
 //! `ra_lsp_server` binary
 
-use flexi_logger::{Duplicate, Logger};
 use lsp_server::Connection;
 use ra_lsp_server::{show_message, Result, ServerConfig};
 use ra_prof;
 
 fn main() -> Result<()> {
     setup_logging()?;
-    run_server()?;
+    match Args::parse()? {
+        Args::Version => println!("rust-analyzer {}", env!("REV")),
+        Args::Run => run_server()?,
+    }
     Ok(())
 }
 
 fn setup_logging() -> Result<()> {
     std::env::set_var("RUST_BACKTRACE", "short");
 
-    let logger = Logger::with_env_or_str("error").duplicate_to_stderr(Duplicate::All);
-    match std::env::var("RA_LOG_DIR") {
-        Ok(ref v) if v == "1" => logger.log_to_file().directory("log").start()?,
-        _ => logger.start()?,
-    };
+    env_logger::try_init()?;
 
     ra_prof::set_filter(match std::env::var("RA_PROFILE") {
         Ok(spec) => ra_prof::Filter::from_spec(&spec),
         Err(_) => ra_prof::Filter::disabled(),
     });
     Ok(())
+}
+
+enum Args {
+    Version,
+    Run,
+}
+
+impl Args {
+    fn parse() -> Result<Args> {
+        let res =
+            if std::env::args().any(|it| it == "--version") { Args::Version } else { Args::Run };
+        Ok(res)
+    }
 }
 
 fn run_server() -> Result<()> {

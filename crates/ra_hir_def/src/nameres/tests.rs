@@ -32,27 +32,22 @@ fn render_crate_def_map(map: &CrateDefMap) -> String {
         *buf += path;
         *buf += "\n";
 
-        let mut entries = map.modules[module]
-            .scope
-            .items
-            .iter()
-            .map(|(name, res)| (name, res.def))
-            .collect::<Vec<_>>();
-        entries.sort_by_key(|(name, _)| *name);
+        let mut entries = map.modules[module].scope.collect_resolutions();
+        entries.sort_by_key(|(name, _)| name.clone());
 
-        for (name, res) in entries {
+        for (name, def) in entries {
             *buf += &format!("{}:", name);
 
-            if res.types.is_some() {
+            if def.types.is_some() {
                 *buf += " t";
             }
-            if res.values.is_some() {
+            if def.values.is_some() {
                 *buf += " v";
             }
-            if res.macros.is_some() {
+            if def.macros.is_some() {
                 *buf += " m";
             }
-            if res.is_none() {
+            if def.is_none() {
                 *buf += " _";
             }
 
@@ -557,4 +552,36 @@ fn cfg_test() {
         ⋮Baz: t v
         ⋮Foo: t v
     "###);
+}
+
+#[test]
+fn infer_multiple_namespace() {
+    let map = def_map(
+        r#"
+//- /main.rs
+mod a {
+    pub type T = ();
+    pub use crate::b::*;
+}
+
+use crate::a::T;
+
+mod b {
+    pub const T: () = ();
+}
+"#,
+    );
+
+    assert_snapshot!(map, @r###"
+    ⋮crate
+    ⋮T: t v
+    ⋮a: t
+    ⋮b: t
+    ⋮
+    ⋮crate::b
+    ⋮T: v
+    ⋮
+    ⋮crate::a
+    ⋮T: t v
+"###);
 }

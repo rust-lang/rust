@@ -264,7 +264,7 @@ fn name_r(p: &mut Parser, recovery: TokenSet) {
 }
 
 fn name(p: &mut Parser) {
-    name_r(p, TokenSet::empty())
+    name_r(p, TokenSet::EMPTY)
 }
 
 fn name_ref(p: &mut Parser) {

@@ -2,17 +2,18 @@
 
 use std::sync::Arc;
 
+use either::Either;
 use hir_expand::{
-    either::Either,
     name::{AsName, Name},
-    Source,
+    InFile,
 };
 use ra_arena::{map::ArenaMap, Arena};
+use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    db::DefDatabase, trace::Trace, type_ref::TypeRef, AstItemDef, EnumId, HasChildSource,
-    LocalEnumVariantId, LocalStructFieldId, StructId, UnionId, VariantId,
+    db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace, type_ref::TypeRef, EnumId,
+    LocalEnumVariantId, LocalStructFieldId, Lookup, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -50,14 +51,14 @@ pub struct StructFieldData {
 
 impl StructData {
     pub(crate) fn struct_data_query(db: &impl DefDatabase, id: StructId) -> Arc<StructData> {
-        let src = id.source(db);
+        let src = id.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(src.value.kind());
         let variant_data = Arc::new(variant_data);
         Arc::new(StructData { name, variant_data })
     }
     pub(crate) fn union_data_query(db: &impl DefDatabase, id: UnionId) -> Arc<StructData> {
-        let src = id.source(db);
+        let src = id.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(
             src.value
@@ -72,7 +73,8 @@ impl StructData {
 
 impl EnumData {
     pub(crate) fn enum_data_query(db: &impl DefDatabase, e: EnumId) -> Arc<EnumData> {
-        let src = e.source(db);
+        let _p = profile("enum_data_query");
+        let src = e.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let mut trace = Trace::new_for_arena();
         lower_enum(&mut trace, &src.value);
@@ -88,8 +90,8 @@ impl EnumData {
 impl HasChildSource for EnumId {
     type ChildId = LocalEnumVariantId;
     type Value = ast::EnumVariant;
-    fn child_source(&self, db: &impl DefDatabase) -> Source<ArenaMap<Self::ChildId, Self::Value>> {
-        let src = self.source(db);
+    fn child_source(&self, db: &impl DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
+        let src = self.lookup(db).source(db);
         let mut trace = Trace::new_for_map();
         lower_enum(&mut trace, &src.value);
         src.with_value(trace.into_map())
@@ -145,7 +147,7 @@ impl HasChildSource for VariantId {
     type ChildId = LocalStructFieldId;
     type Value = Either<ast::TupleFieldDef, ast::RecordFieldDef>;
 
-    fn child_source(&self, db: &impl DefDatabase) -> Source<ArenaMap<Self::ChildId, Self::Value>> {
+    fn child_source(&self, db: &impl DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let src = match self {
             VariantId::EnumVariantId(it) => {
                 // I don't really like the fact that we call into parent source
@@ -153,8 +155,8 @@ impl HasChildSource for VariantId {
                 let src = it.parent.child_source(db);
                 src.map(|map| map[it.local_id].kind())
             }
-            VariantId::StructId(it) => it.source(db).map(|it| it.kind()),
-            VariantId::UnionId(it) => it.source(db).map(|it| {
+            VariantId::StructId(it) => it.lookup(db).source(db).map(|it| it.kind()),
+            VariantId::UnionId(it) => it.lookup(db).source(db).map(|it| {
                 it.record_field_def_list()
                     .map(ast::StructKind::Record)
                     .unwrap_or(ast::StructKind::Unit)
@@ -184,7 +186,7 @@ fn lower_struct(
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
                 trace.alloc(
-                    || Either::A(fd.clone()),
+                    || Either::Left(fd.clone()),
                     || StructFieldData {
                         name: Name::new_tuple_field(i),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
@@ -196,7 +198,7 @@ fn lower_struct(
         ast::StructKind::Record(fl) => {
             for fd in fl.fields() {
                 trace.alloc(
-                    || Either::B(fd.clone()),
+                    || Either::Right(fd.clone()),
                     || StructFieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         type_ref: TypeRef::from_ast_opt(fd.ascribed_type()),

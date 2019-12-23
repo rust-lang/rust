@@ -5,7 +5,7 @@
 use std::mem;
 
 use hir::{DefWithBody, HasSource, ModuleSource};
-use ra_db::{FileId, SourceDatabase, SourceDatabaseExt};
+use ra_db::{FileId, SourceDatabaseExt};
 use ra_prof::profile;
 use ra_syntax::{AstNode, TextRange};
 use rustc_hash::FxHashMap;
@@ -120,15 +120,11 @@ impl NameDefinition {
             }
             if vis.as_str() == "pub" {
                 let krate = self.container.krate();
-                let crate_graph = db.crate_graph();
-                for crate_id in crate_graph.iter() {
-                    let mut crate_deps = crate_graph.dependencies(crate_id);
-                    if crate_deps.any(|dep| dep.crate_id() == krate.crate_id()) {
-                        let root_file = crate_graph.crate_root(crate_id);
-                        let source_root_id = db.file_source_root(root_file);
-                        let source_root = db.source_root(source_root_id);
-                        res.extend(source_root.walk().map(|id| (id, None)));
-                    }
+                for rev_dep in krate.reverse_dependencies(db) {
+                    let root_file = rev_dep.root_file(db);
+                    let source_root_id = db.file_source_root(root_file);
+                    let source_root = db.source_root(source_root_id);
+                    res.extend(source_root.walk().map(|id| (id, None)));
                 }
                 return SearchScope::new(res);
             }

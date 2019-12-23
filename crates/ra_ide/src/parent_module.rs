@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_db::{CrateId, FileId, FilePosition};
+use ra_db::{CrateId, FileId, FilePosition, SourceDatabase};
 
 use crate::{db::RootDatabase, NavigationTarget};
 
@@ -10,7 +10,7 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
     let src = hir::ModuleSource::from_position(db, position);
     let module = match hir::Module::from_definition(
         db,
-        hir::Source { file_id: position.file_id.into(), value: src },
+        hir::InFile { file_id: position.file_id.into(), value: src },
     ) {
         None => return Vec::new(),
         Some(it) => it,
@@ -21,15 +21,16 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
 
 /// Returns `Vec` for the same reason as `parent_module`
 pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
-    let src = hir::ModuleSource::from_file_id(db, file_id);
+    let source_file = db.parse(file_id).tree();
+    let src = hir::ModuleSource::SourceFile(source_file);
     let module =
-        match hir::Module::from_definition(db, hir::Source { file_id: file_id.into(), value: src })
+        match hir::Module::from_definition(db, hir::InFile { file_id: file_id.into(), value: src })
         {
             Some(it) => it,
             None => return Vec::new(),
         };
     let krate = module.krate();
-    vec![krate.crate_id()]
+    vec![krate.into()]
 }
 
 #[cfg(test)]

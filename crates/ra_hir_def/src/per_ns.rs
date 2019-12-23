@@ -11,8 +11,6 @@ use crate::ModuleDefId;
 pub struct PerNs {
     pub types: Option<ModuleDefId>,
     pub values: Option<ModuleDefId>,
-    /// Since macros has different type, many methods simply ignore it.
-    /// We can only use special method like `get_macros` to access it.
     pub macros: Option<MacroDefId>,
 }
 

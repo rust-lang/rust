@@ -1,5 +1,5 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
-use hir::{db::HirDatabase, SourceAnalyzer};
+use hir::{db::HirDatabase, InFile, SourceAnalyzer};
 use ra_db::FileRange;
 use ra_fmt::{leading_indent, reindent};
 use ra_syntax::{
@@ -117,7 +117,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         node: &SyntaxNode,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        SourceAnalyzer::new(self.db, hir::Source::new(self.frange.file_id.into(), node), offset)
+        SourceAnalyzer::new(self.db, InFile::new(self.frange.file_id.into(), node), offset)
     }
 
     pub(crate) fn covering_node_for_range(&self, range: TextRange) -> SyntaxElement {

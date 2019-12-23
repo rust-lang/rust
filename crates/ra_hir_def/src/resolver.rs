@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use hir_expand::{
-    name::{self, Name},
+    name::{name, Name},
     MacroDefId,
 };
 use ra_db::CrateId;
@@ -10,20 +10,23 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     body::scope::{ExprScopes, ScopeId},
+    body::Body,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr::{ExprId, PatId},
     generics::GenericParams,
+    item_scope::BuiltinShadowMode,
     nameres::CrateDefMap,
-    path::{Path, PathKind},
+    path::{ModPath, PathKind},
     per_ns::PerNs,
-    AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId,
-    StructId, TraitId, TypeAliasId,
+    AdtId, AssocContainerId, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId,
+    FunctionId, GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId,
+    StaticId, StructId, TraitId, TypeAliasId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
 pub struct Resolver {
+    // FIXME: all usages generally call `.rev`, so maybe reverse once in consturciton?
     scopes: Vec<Scope>,
 }
 
@@ -53,12 +56,14 @@ enum Scope {
     AdtScope(AdtId),
     /// Local bindings
     ExprScope(ExprScope),
+    /// Temporary hack to support local items.
+    LocalItemsScope(Arc<Body>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeNs {
     SelfType(ImplId),
-    GenericParam(u32),
+    GenericParam(TypeParamId),
     AdtId(AdtId),
     AdtSelfType(AdtId),
     // Yup, enum variants are added to the types ns, but any usage of variant as
@@ -90,8 +95,8 @@ pub enum ValueNs {
 
 impl Resolver {
     /// Resolve known trait from std, like `std::futures::Future`
-    pub fn resolve_known_trait(&self, db: &impl DefDatabase, path: &Path) -> Option<TraitId> {
-        let res = self.resolve_module_path(db, path).take_types()?;
+    pub fn resolve_known_trait(&self, db: &impl DefDatabase, path: &ModPath) -> Option<TraitId> {
+        let res = self.resolve_module_path(db, path, BuiltinShadowMode::Other).take_types()?;
         match res {
             ModuleDefId::TraitId(it) => Some(it),
             _ => None,
@@ -99,8 +104,8 @@ impl Resolver {
     }
 
     /// Resolve known struct from std, like `std::boxed::Box`
-    pub fn resolve_known_struct(&self, db: &impl DefDatabase, path: &Path) -> Option<StructId> {
-        let res = self.resolve_module_path(db, path).take_types()?;
+    pub fn resolve_known_struct(&self, db: &impl DefDatabase, path: &ModPath) -> Option<StructId> {
+        let res = self.resolve_module_path(db, path, BuiltinShadowMode::Other).take_types()?;
         match res {
             ModuleDefId::AdtId(AdtId::StructId(it)) => Some(it),
             _ => None,
@@ -108,87 +113,116 @@ impl Resolver {
     }
 
     /// Resolve known enum from std, like `std::result::Result`
-    pub fn resolve_known_enum(&self, db: &impl DefDatabase, path: &Path) -> Option<EnumId> {
-        let res = self.resolve_module_path(db, path).take_types()?;
+    pub fn resolve_known_enum(&self, db: &impl DefDatabase, path: &ModPath) -> Option<EnumId> {
+        let res = self.resolve_module_path(db, path, BuiltinShadowMode::Other).take_types()?;
         match res {
             ModuleDefId::AdtId(AdtId::EnumId(it)) => Some(it),
             _ => None,
         }
     }
 
-    /// pub only for source-binder
-    pub fn resolve_module_path(&self, db: &impl DefDatabase, path: &Path) -> PerNs {
+    fn resolve_module_path(
+        &self,
+        db: &impl DefDatabase,
+        path: &ModPath,
+        shadow: BuiltinShadowMode,
+    ) -> PerNs {
         let (item_map, module) = match self.module() {
             Some(it) => it,
             None => return PerNs::none(),
         };
-        let (module_res, segment_index) = item_map.resolve_path(db, module, path);
+        let (module_res, segment_index) = item_map.resolve_path(db, module, &path, shadow);
         if segment_index.is_some() {
             return PerNs::none();
         }
         module_res
     }
 
+    pub fn resolve_module_path_in_items(&self, db: &impl DefDatabase, path: &ModPath) -> PerNs {
+        self.resolve_module_path(db, path, BuiltinShadowMode::Module)
+    }
+
     pub fn resolve_path_in_type_ns(
         &self,
         db: &impl DefDatabase,
-        path: &Path,
+        path: &ModPath,
     ) -> Option<(TypeNs, Option<usize>)> {
-        if path.is_type_relative() {
-            return None;
-        }
-        let first_name = &path.segments.first()?.name;
+        let first_name = path.segments.first()?;
         let skip_to_mod = path.kind != PathKind::Plain;
         for scope in self.scopes.iter().rev() {
             match scope {
                 Scope::ExprScope(_) => continue,
-                Scope::GenericParams { .. } | Scope::ImplBlockScope(_) if skip_to_mod => continue,
+                Scope::GenericParams { .. }
+                | Scope::ImplBlockScope(_)
+                | Scope::LocalItemsScope(_)
+                    if skip_to_mod =>
+                {
+                    continue
+                }
 
-                Scope::GenericParams { params, .. } => {
-                    if let Some(param) = params.find_by_name(first_name) {
+                Scope::GenericParams { params, def } => {
+                    if let Some(local_id) = params.find_by_name(first_name) {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
-                        return Some((TypeNs::GenericParam(param.idx), idx));
+                        return Some((
+                            TypeNs::GenericParam(TypeParamId { local_id, parent: *def }),
+                            idx,
+                        ));
                     }
                 }
                 Scope::ImplBlockScope(impl_) => {
-                    if first_name == &name::SELF_TYPE {
+                    if first_name == &name![Self] {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::SelfType(*impl_), idx));
                     }
                 }
                 Scope::AdtScope(adt) => {
-                    if first_name == &name::SELF_TYPE {
+                    if first_name == &name![Self] {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::AdtSelfType(*adt), idx));
                     }
                 }
                 Scope::ModuleScope(m) => {
-                    let (module_def, idx) = m.crate_def_map.resolve_path(db, m.module_id, path);
-                    let res = match module_def.take_types()? {
-                        ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
-                        ModuleDefId::EnumVariantId(it) => TypeNs::EnumVariantId(it),
-
-                        ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
-                        ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
-
-                        ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
-
-                        ModuleDefId::FunctionId(_)
-                        | ModuleDefId::ConstId(_)
-                        | ModuleDefId::StaticId(_)
-                        | ModuleDefId::ModuleId(_) => return None,
-                    };
+                    let (module_def, idx) = m.crate_def_map.resolve_path(
+                        db,
+                        m.module_id,
+                        &path,
+                        BuiltinShadowMode::Other,
+                    );
+                    let res = to_type_ns(module_def)?;
                     return Some((res, idx));
+                }
+                Scope::LocalItemsScope(body) => {
+                    let def = body.item_scope.get(first_name, BuiltinShadowMode::Other);
+                    if let Some(res) = to_type_ns(def) {
+                        return Some((res, None));
+                    }
                 }
             }
         }
-        None
+        return None;
+        fn to_type_ns(per_ns: PerNs) -> Option<TypeNs> {
+            let res = match per_ns.take_types()? {
+                ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
+                ModuleDefId::EnumVariantId(it) => TypeNs::EnumVariantId(it),
+
+                ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
+                ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
+
+                ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
+
+                ModuleDefId::FunctionId(_)
+                | ModuleDefId::ConstId(_)
+                | ModuleDefId::StaticId(_)
+                | ModuleDefId::ModuleId(_) => return None,
+            };
+            Some(res)
+        }
     }
 
     pub fn resolve_path_in_type_ns_fully(
         &self,
         db: &impl DefDatabase,
-        path: &Path,
+        path: &ModPath,
     ) -> Option<TypeNs> {
         let (res, unresolved) = self.resolve_path_in_type_ns(db, path)?;
         if unresolved.is_some() {
@@ -197,17 +231,14 @@ impl Resolver {
         Some(res)
     }
 
-    pub fn resolve_path_in_value_ns<'p>(
+    pub fn resolve_path_in_value_ns(
         &self,
         db: &impl DefDatabase,
-        path: &'p Path,
+        path: &ModPath,
     ) -> Option<ResolveValueResult> {
-        if path.is_type_relative() {
-            return None;
-        }
         let n_segments = path.segments.len();
-        let tmp = name::SELF_PARAM;
-        let first_name = if path.is_self() { &tmp } else { &path.segments.first()?.name };
+        let tmp = name![self];
+        let first_name = if path.is_self() { &tmp } else { &path.segments.first()? };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         for scope in self.scopes.iter().rev() {
             match scope {
@@ -215,6 +246,7 @@ impl Resolver {
                 | Scope::ExprScope(_)
                 | Scope::GenericParams { .. }
                 | Scope::ImplBlockScope(_)
+                | Scope::LocalItemsScope(_)
                     if skip_to_mod =>
                 {
                     continue
@@ -233,22 +265,22 @@ impl Resolver {
                 }
                 Scope::ExprScope(_) => continue,
 
-                Scope::GenericParams { params, .. } if n_segments > 1 => {
-                    if let Some(param) = params.find_by_name(first_name) {
-                        let ty = TypeNs::GenericParam(param.idx);
+                Scope::GenericParams { params, def } if n_segments > 1 => {
+                    if let Some(local_id) = params.find_by_name(first_name) {
+                        let ty = TypeNs::GenericParam(TypeParamId { local_id, parent: *def });
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
                 Scope::GenericParams { .. } => continue,
 
                 Scope::ImplBlockScope(impl_) if n_segments > 1 => {
-                    if first_name == &name::SELF_TYPE {
+                    if first_name == &name![Self] {
                         let ty = TypeNs::SelfType(*impl_);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
                 Scope::AdtScope(adt) if n_segments > 1 => {
-                    if first_name == &name::SELF_TYPE {
+                    if first_name == &name![Self] {
                         let ty = TypeNs::AdtSelfType(*adt);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
@@ -256,23 +288,15 @@ impl Resolver {
                 Scope::ImplBlockScope(_) | Scope::AdtScope(_) => continue,
 
                 Scope::ModuleScope(m) => {
-                    let (module_def, idx) = m.crate_def_map.resolve_path(db, m.module_id, path);
+                    let (module_def, idx) = m.crate_def_map.resolve_path(
+                        db,
+                        m.module_id,
+                        &path,
+                        BuiltinShadowMode::Other,
+                    );
                     return match idx {
                         None => {
-                            let value = match module_def.take_values()? {
-                                ModuleDefId::FunctionId(it) => ValueNs::FunctionId(it),
-                                ModuleDefId::AdtId(AdtId::StructId(it)) => ValueNs::StructId(it),
-                                ModuleDefId::EnumVariantId(it) => ValueNs::EnumVariantId(it),
-                                ModuleDefId::ConstId(it) => ValueNs::ConstId(it),
-                                ModuleDefId::StaticId(it) => ValueNs::StaticId(it),
-
-                                ModuleDefId::AdtId(AdtId::EnumId(_))
-                                | ModuleDefId::AdtId(AdtId::UnionId(_))
-                                | ModuleDefId::TraitId(_)
-                                | ModuleDefId::TypeAliasId(_)
-                                | ModuleDefId::BuiltinType(_)
-                                | ModuleDefId::ModuleId(_) => return None,
-                            };
+                            let value = to_value_ns(module_def)?;
                             Some(ResolveValueResult::ValueNs(value))
                         }
                         Some(idx) => {
@@ -292,15 +316,39 @@ impl Resolver {
                         }
                     };
                 }
+                Scope::LocalItemsScope(body) => {
+                    let def = body.item_scope.get(first_name, BuiltinShadowMode::Other);
+                    if let Some(res) = to_value_ns(def) {
+                        return Some(ResolveValueResult::ValueNs(res));
+                    }
+                }
             }
         }
-        None
+        return None;
+
+        fn to_value_ns(per_ns: PerNs) -> Option<ValueNs> {
+            let res = match per_ns.take_values()? {
+                ModuleDefId::FunctionId(it) => ValueNs::FunctionId(it),
+                ModuleDefId::AdtId(AdtId::StructId(it)) => ValueNs::StructId(it),
+                ModuleDefId::EnumVariantId(it) => ValueNs::EnumVariantId(it),
+                ModuleDefId::ConstId(it) => ValueNs::ConstId(it),
+                ModuleDefId::StaticId(it) => ValueNs::StaticId(it),
+
+                ModuleDefId::AdtId(AdtId::EnumId(_))
+                | ModuleDefId::AdtId(AdtId::UnionId(_))
+                | ModuleDefId::TraitId(_)
+                | ModuleDefId::TypeAliasId(_)
+                | ModuleDefId::BuiltinType(_)
+                | ModuleDefId::ModuleId(_) => return None,
+            };
+            Some(res)
+        }
     }
 
     pub fn resolve_path_in_value_ns_fully(
         &self,
         db: &impl DefDatabase,
-        path: &Path,
+        path: &ModPath,
     ) -> Option<ValueNs> {
         match self.resolve_path_in_value_ns(db, path)? {
             ResolveValueResult::ValueNs(it) => Some(it),
@@ -308,9 +356,13 @@ impl Resolver {
         }
     }
 
-    pub fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &Path) -> Option<MacroDefId> {
+    pub fn resolve_path_as_macro(
+        &self,
+        db: &impl DefDatabase,
+        path: &ModPath,
+    ) -> Option<MacroDefId> {
         let (item_map, module) = self.module()?;
-        item_map.resolve_path(db, module, path).0.take_macros()
+        item_map.resolve_path(db, module, &path, BuiltinShadowMode::Other).0.take_macros()
     }
 
     pub fn process_all_names(&self, db: &impl DefDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
@@ -350,6 +402,7 @@ impl Resolver {
     ) -> impl Iterator<Item = &'a crate::generics::WherePredicate> + 'a {
         self.scopes
             .iter()
+            .rev()
             .filter_map(|scope| match scope {
                 Scope::GenericParams { params, .. } => Some(params),
                 _ => None,
@@ -358,14 +411,14 @@ impl Resolver {
     }
 
     pub fn generic_def(&self) -> Option<GenericDefId> {
-        self.scopes.iter().find_map(|scope| match scope {
+        self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::GenericParams { def, .. } => Some(*def),
             _ => None,
         })
     }
 
     pub fn body_owner(&self) -> Option<DefWithBodyId> {
-        self.scopes.iter().find_map(|scope| match scope {
+        self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ExprScope(it) => Some(it.owner),
             _ => None,
         })
@@ -376,7 +429,7 @@ pub enum ScopeDef {
     PerNs(PerNs),
     ImplSelfType(ImplId),
     AdtSelfType(AdtId),
-    GenericParam(u32),
+    GenericParam(TypeParamId),
     Local(PatId),
 }
 
@@ -391,8 +444,8 @@ impl Scope {
                 //         def: m.module.into(),
                 //     }),
                 // );
-                m.crate_def_map[m.module_id].scope.entries().for_each(|(name, res)| {
-                    f(name.clone(), ScopeDef::PerNs(res.def));
+                m.crate_def_map[m.module_id].scope.entries().for_each(|(name, def)| {
+                    f(name.clone(), ScopeDef::PerNs(def));
                 });
                 m.crate_def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
                     f(name.clone(), ScopeDef::PerNs(PerNs::macros(macro_)));
@@ -402,21 +455,29 @@ impl Scope {
                 });
                 if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
-                    prelude_def_map[prelude.local_id].scope.entries().for_each(|(name, res)| {
-                        f(name.clone(), ScopeDef::PerNs(res.def));
+                    prelude_def_map[prelude.local_id].scope.entries().for_each(|(name, def)| {
+                        f(name.clone(), ScopeDef::PerNs(def));
                     });
                 }
             }
-            Scope::GenericParams { params, .. } => {
-                for param in params.params.iter() {
-                    f(param.name.clone(), ScopeDef::GenericParam(param.idx))
+            Scope::LocalItemsScope(body) => {
+                body.item_scope.entries_without_primitives().for_each(|(name, def)| {
+                    f(name.clone(), ScopeDef::PerNs(def));
+                })
+            }
+            Scope::GenericParams { params, def } => {
+                for (local_id, param) in params.types.iter() {
+                    f(
+                        param.name.clone(),
+                        ScopeDef::GenericParam(TypeParamId { local_id, parent: *def }),
+                    )
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(name::SELF_TYPE, ScopeDef::ImplSelfType((*i).into()));
+                f(name![Self], ScopeDef::ImplSelfType((*i).into()));
             }
             Scope::AdtScope(i) => {
-                f(name::SELF_TYPE, ScopeDef::AdtSelfType((*i).into()));
+                f(name![Self], ScopeDef::AdtSelfType((*i).into()));
             }
             Scope::ExprScope(scope) => {
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {
@@ -439,6 +500,7 @@ pub fn resolver_for_scope(
     scope_id: Option<ScopeId>,
 ) -> Resolver {
     let mut r = owner.resolver(db);
+    r = r.push_local_items_scope(db.body(owner));
     let scopes = db.expr_scopes(owner);
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
@@ -455,7 +517,7 @@ impl Resolver {
 
     fn push_generic_params_scope(self, db: &impl DefDatabase, def: GenericDefId) -> Resolver {
         let params = db.generic_params(def);
-        if params.params.is_empty() {
+        if params.types.is_empty() {
             self
         } else {
             self.push_scope(Scope::GenericParams { def, params })
@@ -472,6 +534,10 @@ impl Resolver {
         module_id: LocalModuleId,
     ) -> Resolver {
         self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
+    }
+
+    fn push_local_items_scope(self, body: Arc<Body>) -> Resolver {
+        self.push_scope(Scope::LocalItemsScope(body))
     }
 
     fn push_expr_scope(
@@ -498,7 +564,7 @@ impl HasResolver for ModuleId {
 
 impl HasResolver for TraitId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db).resolver(db).push_generic_params_scope(db, self.into())
+        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
     }
 }
 
@@ -515,16 +581,6 @@ impl<T: Into<AdtId> + Copy> HasResolver for T {
 impl HasResolver for FunctionId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
         self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
-    }
-}
-
-impl HasResolver for DefWithBodyId {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        match self {
-            DefWithBodyId::ConstId(c) => c.resolver(db),
-            DefWithBodyId::FunctionId(f) => f.resolver(db),
-            DefWithBodyId::StaticId(s) => s.resolver(db),
-        }
     }
 }
 
@@ -546,12 +602,41 @@ impl HasResolver for TypeAliasId {
     }
 }
 
+impl HasResolver for ImplId {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.lookup(db)
+            .container
+            .resolver(db)
+            .push_generic_params_scope(db, self.into())
+            .push_impl_block_scope(self)
+    }
+}
+
+impl HasResolver for DefWithBodyId {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        match self {
+            DefWithBodyId::ConstId(c) => c.resolver(db),
+            DefWithBodyId::FunctionId(f) => f.resolver(db),
+            DefWithBodyId::StaticId(s) => s.resolver(db),
+        }
+    }
+}
+
 impl HasResolver for ContainerId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
         match self {
-            ContainerId::TraitId(it) => it.resolver(db),
-            ContainerId::ImplId(it) => it.resolver(db),
             ContainerId::ModuleId(it) => it.resolver(db),
+            ContainerId::DefWithBodyId(it) => it.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for AssocContainerId {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        match self {
+            AssocContainerId::ContainerId(it) => it.resolver(db),
+            AssocContainerId::TraitId(it) => it.resolver(db),
+            AssocContainerId::ImplId(it) => it.resolver(db),
         }
     }
 }
@@ -570,11 +655,12 @@ impl HasResolver for GenericDefId {
     }
 }
 
-impl HasResolver for ImplId {
+impl HasResolver for VariantId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db)
-            .resolver(db)
-            .push_generic_params_scope(db, self.into())
-            .push_impl_block_scope(self)
+        match self {
+            VariantId::EnumVariantId(it) => it.parent.resolver(db),
+            VariantId::StructId(it) => it.resolver(db),
+            VariantId::UnionId(it) => it.resolver(db),
+        }
     }
 }

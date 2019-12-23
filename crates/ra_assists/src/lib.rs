@@ -95,6 +95,7 @@ mod assists {
     mod add_derive;
     mod add_explicit_type;
     mod add_impl;
+    mod add_custom_impl;
     mod add_new;
     mod apply_demorgan;
     mod invert_if;
@@ -121,6 +122,7 @@ mod assists {
             add_derive::add_derive,
             add_explicit_type::add_explicit_type,
             add_impl::add_impl,
+            add_custom_impl::add_custom_impl,
             add_new::add_new,
             apply_demorgan::apply_demorgan,
             invert_if::invert_if,

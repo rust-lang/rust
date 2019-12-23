@@ -7,7 +7,6 @@ use std::{
 };
 
 use crossbeam_channel::{after, select, Receiver};
-use flexi_logger::Logger;
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{
     notification::{DidOpenTextDocument, Exit},
@@ -53,7 +52,7 @@ impl<'a> Project<'a> {
         let tmp_dir = self.tmp_dir.unwrap_or_else(|| TempDir::new().unwrap());
         static INIT: Once = Once::new();
         INIT.call_once(|| {
-            let _ = Logger::with_env_or_str(crate::LOG).start().unwrap();
+            let _ = env_logger::builder().is_test(true).try_init().unwrap();
             ra_prof::set_filter(if crate::PROFILE.is_empty() {
                 ra_prof::Filter::disabled()
             } else {

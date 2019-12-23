@@ -16,7 +16,7 @@ impl Bindings {
     fn push_optional(&mut self, name: &SmolStr) {
         // FIXME: Do we have a better way to represent an empty token ?
         // Insert an empty subtree for empty token
-        let tt = tt::Subtree { delimiter: tt::Delimiter::None, token_trees: vec![] }.into();
+        let tt = tt::Subtree::default().into();
         self.inner.insert(name.clone(), Binding::Fragment(Fragment::Tokens(tt)));
     }
 
@@ -65,7 +65,7 @@ macro_rules! bail {
 }
 
 pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> Result<Bindings, ExpandError> {
-    assert!(pattern.delimiter == tt::Delimiter::None);
+    assert!(pattern.delimiter == None);
 
     let mut res = Bindings::default();
     let mut src = TtIter::new(src);
@@ -106,7 +106,7 @@ fn match_subtree(
             }
             Op::TokenTree(tt::TokenTree::Subtree(lhs)) => {
                 let rhs = src.expect_subtree().map_err(|()| err!("expected subtree"))?;
-                if lhs.delimiter != rhs.delimiter {
+                if lhs.delimiter_kind() != rhs.delimiter_kind() {
                     bail!("mismatched delimiter")
                 }
                 let mut src = TtIter::new(rhs);
@@ -210,7 +210,7 @@ impl<'a> TtIter<'a> {
             0 => Err(()),
             1 => Ok(res[0].clone()),
             _ => Ok(tt::TokenTree::Subtree(tt::Subtree {
-                delimiter: tt::Delimiter::None,
+                delimiter: None,
                 token_trees: res.into_iter().cloned().collect(),
             })),
         }

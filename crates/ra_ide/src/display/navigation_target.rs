@@ -1,11 +1,12 @@
 //! FIXME: write short doc here
 
-use hir::{AssocItem, Either, FieldSource, HasSource, ModuleSource, Source};
+use either::Either;
+use hir::{AssocItem, FieldSource, HasSource, InFile, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
-    SyntaxKind::{self, BIND_PAT},
+    SyntaxKind::{self, BIND_PAT, TYPE_PARAM},
     TextRange,
 };
 
@@ -141,7 +142,7 @@ impl NavigationTarget {
     /// Allows `NavigationTarget` to be created from a `NameOwner`
     pub(crate) fn from_named(
         db: &RootDatabase,
-        node: Source<&dyn ast::NameOwner>,
+        node: InFile<&dyn ast::NameOwner>,
         docs: Option<String>,
         description: Option<String>,
     ) -> NavigationTarget {
@@ -230,34 +231,20 @@ impl ToNav for hir::Module {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.definition_source(db);
         let name = self.name(db).map(|it| it.to_string().into()).unwrap_or_default();
-        match &src.value {
-            ModuleSource::SourceFile(node) => {
-                let frange = original_range(db, src.with_value(node.syntax()));
-
-                NavigationTarget::from_syntax(
-                    frange.file_id,
-                    name,
-                    None,
-                    frange.range,
-                    node.syntax().kind(),
-                    None,
-                    None,
-                )
-            }
-            ModuleSource::Module(node) => {
-                let frange = original_range(db, src.with_value(node.syntax()));
-
-                NavigationTarget::from_syntax(
-                    frange.file_id,
-                    name,
-                    None,
-                    frange.range,
-                    node.syntax().kind(),
-                    node.doc_comment_text(),
-                    node.short_label(),
-                )
-            }
-        }
+        let syntax = match &src.value {
+            ModuleSource::SourceFile(node) => node.syntax(),
+            ModuleSource::Module(node) => node.syntax(),
+        };
+        let frange = original_range(db, src.with_value(syntax));
+        NavigationTarget::from_syntax(
+            frange.file_id,
+            name,
+            None,
+            frange.range,
+            syntax.kind(),
+            None,
+            None,
+        )
     }
 }
 
@@ -341,22 +328,43 @@ impl ToNav for hir::AssocItem {
 impl ToNav for hir::Local {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let (full_range, focus_range) = match src.value {
-            Either::A(it) => {
-                (it.syntax().text_range(), it.name().map(|it| it.syntax().text_range()))
+        let node = match &src.value {
+            Either::Left(bind_pat) => {
+                bind_pat.name().map_or_else(|| bind_pat.syntax().clone(), |it| it.syntax().clone())
             }
-            Either::B(it) => (it.syntax().text_range(), Some(it.self_kw_token().text_range())),
+            Either::Right(it) => it.syntax().clone(),
         };
+        let full_range = original_range(db, src.with_value(&node));
         let name = match self.name(db) {
             Some(it) => it.to_string().into(),
             None => "".into(),
         };
         NavigationTarget {
-            file_id: src.file_id.original_file(db),
+            file_id: full_range.file_id,
             name,
             kind: BIND_PAT,
-            full_range,
-            focus_range,
+            full_range: full_range.range,
+            focus_range: None,
+            container_name: None,
+            description: None,
+            docs: None,
+        }
+    }
+}
+
+impl ToNav for hir::TypeParam {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+        let range = match src.value {
+            Either::Left(it) => it.syntax().text_range(),
+            Either::Right(it) => it.syntax().text_range(),
+        };
+        NavigationTarget {
+            file_id: src.file_id.original_file(db),
+            name: self.name(db).to_string().into(),
+            kind: TYPE_PARAM,
+            full_range: range,
+            focus_range: None,
             container_name: None,
             description: None,
             docs: None,

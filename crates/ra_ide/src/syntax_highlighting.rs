@@ -2,7 +2,7 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use hir::{Name, Source};
+use hir::{InFile, Name};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T};
@@ -15,6 +15,34 @@ use crate::{
     },
     FileId,
 };
+
+pub mod tags {
+    pub(crate) const FIELD: &str = "field";
+    pub(crate) const FUNCTION: &str = "function";
+    pub(crate) const MODULE: &str = "module";
+    pub(crate) const TYPE: &str = "type";
+    pub(crate) const CONSTANT: &str = "constant";
+    pub(crate) const MACRO: &str = "macro";
+    pub(crate) const VARIABLE: &str = "variable";
+    pub(crate) const VARIABLE_MUT: &str = "variable.mut";
+    pub(crate) const TEXT: &str = "text";
+
+    pub(crate) const TYPE_BUILTIN: &str = "type.builtin";
+    pub(crate) const TYPE_SELF: &str = "type.self";
+    pub(crate) const TYPE_PARAM: &str = "type.param";
+    pub(crate) const TYPE_LIFETIME: &str = "type.lifetime";
+
+    pub(crate) const LITERAL_BYTE: &str = "literal.byte";
+    pub(crate) const LITERAL_NUMERIC: &str = "literal.numeric";
+    pub(crate) const LITERAL_CHAR: &str = "literal.char";
+    pub(crate) const LITERAL_COMMENT: &str = "comment";
+    pub(crate) const LITERAL_STRING: &str = "string";
+    pub(crate) const LITERAL_ATTRIBUTE: &str = "attribute";
+
+    pub(crate) const KEYWORD_UNSAFE: &str = "keyword.unsafe";
+    pub(crate) const KEYWORD_CONTROL: &str = "keyword.control";
+    pub(crate) const KEYWORD: &str = "keyword";
+}
 
 #[derive(Debug)]
 pub struct HighlightedRange {
@@ -71,17 +99,16 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 bindings_shadow_count.clear();
                 continue;
             }
-            COMMENT => "comment",
-            STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
-            ATTR => "attribute",
+            COMMENT => tags::LITERAL_COMMENT,
+            STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => tags::LITERAL_STRING,
+            ATTR => tags::LITERAL_ATTRIBUTE,
+            // Special-case field init shorthand
+            NAME_REF if node.parent().and_then(ast::RecordField::cast).is_some() => tags::FIELD,
+            NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => continue,
             NAME_REF => {
-                if node.ancestors().any(|it| it.kind() == ATTR) {
-                    continue;
-                }
-
                 let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
                 let name_kind =
-                    classify_name_ref(db, Source::new(file_id.into(), &name_ref)).map(|d| d.kind);
+                    classify_name_ref(db, InFile::new(file_id.into(), &name_ref)).map(|d| d.kind);
 
                 if let Some(Local(local)) = &name_kind {
                     if let Some(name) = local.name(db) {
@@ -90,12 +117,12 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                     }
                 };
 
-                name_kind.map_or("text", |it| highlight_name(db, it))
+                name_kind.map_or(tags::TEXT, |it| highlight_name(db, it))
             }
             NAME => {
                 let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
                 let name_kind =
-                    classify_name(db, Source::new(file_id.into(), &name)).map(|d| d.kind);
+                    classify_name(db, InFile::new(file_id.into(), &name)).map(|d| d.kind);
 
                 if let Some(Local(local)) = &name_kind {
                     if let Some(name) = local.name(db) {
@@ -107,18 +134,21 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
 
                 match name_kind {
                     Some(name_kind) => highlight_name(db, name_kind),
-                    None => name.syntax().parent().map_or("function", |x| match x.kind() {
-                        TYPE_PARAM | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => "type",
-                        RECORD_FIELD_DEF => "field",
-                        _ => "function",
+                    None => name.syntax().parent().map_or(tags::FUNCTION, |x| match x.kind() {
+                        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => tags::TYPE,
+                        TYPE_PARAM => tags::TYPE_PARAM,
+                        RECORD_FIELD_DEF => tags::FIELD,
+                        _ => tags::FUNCTION,
                     }),
                 }
             }
-            INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
-            LIFETIME => "parameter",
-            T![unsafe] => "keyword.unsafe",
-            k if is_control_keyword(k) => "keyword.control",
-            k if k.is_keyword() => "keyword",
+            INT_NUMBER | FLOAT_NUMBER => tags::LITERAL_NUMERIC,
+            BYTE => tags::LITERAL_BYTE,
+            CHAR => tags::LITERAL_CHAR,
+            LIFETIME => tags::TYPE_LIFETIME,
+            T![unsafe] => tags::KEYWORD_UNSAFE,
+            k if is_control_keyword(k) => tags::KEYWORD_CONTROL,
+            k if k.is_keyword() => tags::KEYWORD,
             _ => {
                 if let Some(macro_call) = node.as_node().cloned().and_then(ast::MacroCall::cast) {
                     if let Some(path) = macro_call.path() {
@@ -135,7 +165,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                                 }
                                 res.push(HighlightedRange {
                                     range: TextRange::from_to(range_start, range_end),
-                                    tag: "macro",
+                                    tag: tags::MACRO,
                                     binding_hash: None,
                                 })
                             }
@@ -211,29 +241,27 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
 
 fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
     match name_kind {
-        Macro(_) => "macro",
-        Field(_) => "field",
-        AssocItem(hir::AssocItem::Function(_)) => "function",
-        AssocItem(hir::AssocItem::Const(_)) => "constant",
-        AssocItem(hir::AssocItem::TypeAlias(_)) => "type",
-        Def(hir::ModuleDef::Module(_)) => "module",
-        Def(hir::ModuleDef::Function(_)) => "function",
-        Def(hir::ModuleDef::Adt(_)) => "type",
-        Def(hir::ModuleDef::EnumVariant(_)) => "constant",
-        Def(hir::ModuleDef::Const(_)) => "constant",
-        Def(hir::ModuleDef::Static(_)) => "constant",
-        Def(hir::ModuleDef::Trait(_)) => "type",
-        Def(hir::ModuleDef::TypeAlias(_)) => "type",
-        Def(hir::ModuleDef::BuiltinType(_)) => "type",
-        SelfType(_) => "type",
-        GenericParam(_) => "type",
+        Macro(_) => tags::MACRO,
+        Field(_) => tags::FIELD,
+        AssocItem(hir::AssocItem::Function(_)) => tags::FUNCTION,
+        AssocItem(hir::AssocItem::Const(_)) => tags::CONSTANT,
+        AssocItem(hir::AssocItem::TypeAlias(_)) => tags::TYPE,
+        Def(hir::ModuleDef::Module(_)) => tags::MODULE,
+        Def(hir::ModuleDef::Function(_)) => tags::FUNCTION,
+        Def(hir::ModuleDef::Adt(_)) => tags::TYPE,
+        Def(hir::ModuleDef::EnumVariant(_)) => tags::CONSTANT,
+        Def(hir::ModuleDef::Const(_)) => tags::CONSTANT,
+        Def(hir::ModuleDef::Static(_)) => tags::CONSTANT,
+        Def(hir::ModuleDef::Trait(_)) => tags::TYPE,
+        Def(hir::ModuleDef::TypeAlias(_)) => tags::TYPE,
+        Def(hir::ModuleDef::BuiltinType(_)) => tags::TYPE_BUILTIN,
+        SelfType(_) => tags::TYPE_SELF,
+        TypeParam(_) => tags::TYPE_PARAM,
         Local(local) => {
-            if local.is_mut(db) {
-                "variable.mut"
-            } else if local.ty(db).is_mutable_reference() {
-                "variable.mut"
+            if local.is_mut(db) || local.ty(db).is_mutable_reference() {
+                tags::VARIABLE_MUT
             } else {
-                "variable"
+                tags::VARIABLE
             }
         }
     }
@@ -251,12 +279,16 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .comment            { color: #7F9F7F; }
 .string             { color: #CC9393; }
+.field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
 .parameter          { color: #94BFF3; }
-.builtin            { color: #DD6718; }
 .text               { color: #DCDCCC; }
+.type               { color: #7CB8BB; }
+.type\\.builtin     { color: #8CD0D3; }
+.type\\.param       { color: #20999D; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
+.literal\\.numeric  { color: #6A8759; }
 .macro              { color: #94BFF3; }
 .variable           { color: #DCDCCC; }
 .variable\\.mut     { color: #DCDCCC; text-decoration: underline; }
@@ -293,7 +325,8 @@ fn main() {
 
     let mut vec = Vec::new();
     if true {
-        vec.push(Foo { x: 0, y: 1 });
+        let x = 92;
+        vec.push(Foo { x, y: 1 });
     }
     unsafe { vec.set_len(0); }
 
@@ -302,6 +335,14 @@ fn main() {
     let z = &y;
 
     y;
+}
+
+enum E<X> {
+    V(X)
+}
+
+impl<X> E<X> {
+    fn new<T>() -> E<T> {}
 }
 "#
             .trim(),

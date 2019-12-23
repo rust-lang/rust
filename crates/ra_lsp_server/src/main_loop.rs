@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! The main loop of `ra_lsp_server` responsible for dispatching LSP requests/replies and
+//! notifications back to the client.
 
 mod handlers;
 mod subscriptions;
@@ -67,6 +68,7 @@ pub fn main_loop(
                 let workspace = ra_project_model::ProjectWorkspace::discover_with_sysroot(
                     ws_root.as_path(),
                     config.with_sysroot,
+                    &config.cargo_features,
                 );
                 match workspace {
                     Ok(workspace) => loaded_workspaces.push(workspace),
@@ -130,7 +132,7 @@ pub fn main_loop(
         let feature_flags = {
             let mut ff = FeatureFlags::default();
             for (flag, value) in config.feature_flags {
-                if let Err(_) = ff.set(flag.as_str(), value) {
+                if ff.set(flag.as_str(), value).is_err() {
                     log::error!("unknown feature flag: {:?}", flag);
                     show_message(
                         req::MessageType::Error,
@@ -303,7 +305,6 @@ fn loop_turn(
         log::info!("queued count = {}", queue_count);
     }
 
-    let mut state_changed = false;
     match event {
         Event::Task(task) => {
             on_task(task, &connection.sender, &mut loop_state.pending_requests, world_state);
@@ -311,7 +312,6 @@ fn loop_turn(
         }
         Event::Vfs(task) => {
             world_state.vfs.write().handle_task(task);
-            state_changed = true;
         }
         Event::Lib(lib) => {
             world_state.add_lib(lib);
@@ -336,7 +336,6 @@ fn loop_turn(
                     &mut loop_state.subscriptions,
                     not,
                 )?;
-                state_changed = true;
             }
             Message::Response(resp) => {
                 let removed = loop_state.pending_responses.remove(&resp.id);
@@ -347,7 +346,12 @@ fn loop_turn(
         },
     };
 
-    loop_state.pending_libraries.extend(world_state.process_changes());
+    let mut state_changed = false;
+    if let Some(changes) = world_state.process_changes() {
+        state_changed = true;
+        loop_state.pending_libraries.extend(changes);
+    }
+
     while loop_state.in_flight_libraries < MAX_IN_FLIGHT_LIBS
         && !loop_state.pending_libraries.is_empty()
     {
@@ -520,7 +524,8 @@ fn on_notification(
             if let Some(file_id) = state.vfs.write().remove_file_overlay(path.as_path()) {
                 subs.remove_sub(FileId(file_id.0));
             }
-            let params = req::PublishDiagnosticsParams { uri, diagnostics: Vec::new() };
+            let params =
+                req::PublishDiagnosticsParams { uri, diagnostics: Vec::new(), version: None };
             let not = notification_new::<req::PublishDiagnostics>(params);
             msg_sender.send(not.into()).unwrap();
             return Ok(());

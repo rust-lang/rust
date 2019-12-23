@@ -46,17 +46,17 @@ function createTask(spec: Runnable): vscode.Task {
         label: spec.label,
         command: spec.bin,
         args: spec.args,
-        env: spec.env
+        env: spec.env,
     };
 
     const execOption: vscode.ShellExecutionOptions = {
         cwd: spec.cwd || '.',
-        env: definition.env
+        env: definition.env,
     };
     const exec = new vscode.ShellExecution(
         definition.command,
         definition.args,
-        execOption
+        execOption,
     );
 
     const f = vscode.workspace.workspaceFolders![0];
@@ -66,30 +66,30 @@ function createTask(spec: Runnable): vscode.Task {
         definition.label,
         TASK_SOURCE,
         exec,
-        ['$rustc']
+        ['$rustc'],
     );
     t.presentationOptions.clear = true;
     return t;
 }
 
 let prevRunnable: RunnableQuickPick | undefined;
-export async function handle() {
+export async function handle(): Promise<vscode.TaskExecution | undefined> {
     const editor = vscode.window.activeTextEditor;
     if (editor == null || editor.document.languageId !== 'rust') {
         return;
     }
     const textDocument: lc.TextDocumentIdentifier = {
-        uri: editor.document.uri.toString()
+        uri: editor.document.uri.toString(),
     };
     const params: RunnablesParams = {
         textDocument,
         position: Server.client.code2ProtocolConverter.asPosition(
-            editor.selection.active
-        )
+            editor.selection.active,
+        ),
     };
     const runnables = await Server.client.sendRequest<Runnable[]>(
         'rust-analyzer/runnables',
-        params
+        params,
     );
     const items: RunnableQuickPick[] = [];
     if (prevRunnable) {
@@ -105,12 +105,14 @@ export async function handle() {
         items.push(new RunnableQuickPick(r));
     }
     const item = await vscode.window.showQuickPick(items);
-    if (item) {
-        item.detail = 'rerun';
-        prevRunnable = item;
-        const task = createTask(item.runnable);
-        return await vscode.tasks.executeTask(task);
+    if (!item) {
+        return;
     }
+
+    item.detail = 'rerun';
+    prevRunnable = item;
+    const task = createTask(item.runnable);
+    return await vscode.tasks.executeTask(task);
 }
 
 export async function handleSingle(runnable: Runnable) {
@@ -124,7 +126,7 @@ export async function handleSingle(runnable: Runnable) {
     task.presentationOptions = {
         reveal: vscode.TaskRevealKind.Always,
         panel: vscode.TaskPanelKind.Dedicated,
-        clear: true
+        clear: true,
     };
 
     return vscode.tasks.executeTask(task);
@@ -136,7 +138,7 @@ export async function handleSingle(runnable: Runnable) {
  * that, when accepted, allow us to `cargo install cargo-watch` and then run it.
  */
 export async function interactivelyStartCargoWatch(
-    context: vscode.ExtensionContext
+    context: vscode.ExtensionContext,
 ): Promise<CargoWatchProvider | undefined> {
     if (Server.config.cargoWatchOptions.enableOnStartup === 'disabled') {
         return;
@@ -146,7 +148,7 @@ export async function interactivelyStartCargoWatch(
         const watch = await vscode.window.showInformationMessage(
             'Start watching changes with cargo? (Executes `cargo watch`, provides inline diagnostics)',
             'yes',
-            'no'
+            'no',
         );
         if (watch !== 'yes') {
             return;
@@ -157,12 +159,12 @@ export async function interactivelyStartCargoWatch(
 }
 
 export async function startCargoWatch(
-    context: vscode.ExtensionContext
+    context: vscode.ExtensionContext,
 ): Promise<CargoWatchProvider | undefined> {
     const execPromise = util.promisify(child_process.exec);
 
     const { stderr, code = 0 } = await execPromise(
-        'cargo watch --version'
+        'cargo watch --version',
     ).catch(e => e);
 
     if (stderr.includes('no such subcommand: `watch`')) {
@@ -171,14 +173,14 @@ export async function startCargoWatch(
         const install = await vscode.window.showInformationMessage(
             msg,
             'yes',
-            'no'
+            'no',
         );
         if (install !== 'yes') {
             return;
         }
 
         const label = 'install-cargo-watch';
-        const taskFinished = new Promise((resolve, reject) => {
+        const taskFinished = new Promise((resolve, _reject) => {
             const disposable = vscode.tasks.onDidEndTask(({ execution }) => {
                 if (execution.task.name === label) {
                     disposable.dispose();
@@ -192,20 +194,20 @@ export async function startCargoWatch(
                 label,
                 bin: 'cargo',
                 args: ['install', 'cargo-watch'],
-                env: {}
-            })
+                env: {},
+            }),
         );
         await taskFinished;
         const output = await execPromise('cargo watch --version').catch(e => e);
         if (output.stderr !== '') {
             vscode.window.showErrorMessage(
-                `Couldn't install \`cargo-\`watch: ${output.stderr}`
+                `Couldn't install \`cargo-\`watch: ${output.stderr}`,
             );
             return;
         }
     } else if (code !== 0) {
         vscode.window.showErrorMessage(
-            `\`cargo watch\` failed with ${code}: ${stderr}`
+            `\`cargo watch\` failed with ${code}: ${stderr}`,
         );
         return;
     }

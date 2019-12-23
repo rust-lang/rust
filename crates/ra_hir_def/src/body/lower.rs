@@ -1,14 +1,13 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
-use hir_expand::{
-    either::Either,
-    name::{self, AsName, Name},
-};
+use either::Either;
+
+use hir_expand::name::{name, AsName, Name};
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
-        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, NameOwner,
+        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, ModuleItemOwner, NameOwner,
         TypeAscriptionOwner,
     },
     AstNode, AstPtr,
@@ -26,23 +25,28 @@ use crate::{
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
+    ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId, StaticLoc,
+    StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
 pub(super) fn lower(
     db: &impl DefDatabase,
+    def: DefWithBodyId,
     expander: Expander,
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
     ExprCollector {
-        expander,
         db,
+        def,
+        expander,
         source_map: BodySourceMap::default(),
         body: Body {
             exprs: Arena::default(),
             pats: Arena::default(),
             params: Vec::new(),
             body_expr: ExprId::dummy(),
+            item_scope: Default::default(),
         },
     }
     .collect(params, body)
@@ -50,6 +54,7 @@ pub(super) fn lower(
 
 struct ExprCollector<DB> {
     db: DB,
+    def: DefWithBodyId,
     expander: Expander,
 
     body: Body,
@@ -70,11 +75,11 @@ where
                 let ptr = AstPtr::new(&self_param);
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
-                        name: name::SELF_PARAM,
+                        name: name![self],
                         mode: BindingAnnotation::Unannotated,
                         subpat: None,
                     },
-                    Either::B(ptr),
+                    Either::Right(ptr),
                 );
                 self.body.params.push(param_pat);
             }
@@ -94,7 +99,7 @@ where
     }
 
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
-        let ptr = Either::A(ptr);
+        let ptr = Either::Left(ptr);
         let id = self.body.exprs.alloc(expr);
         let src = self.expander.to_source(ptr);
         self.source_map.expr_map.insert(src, id);
@@ -107,7 +112,7 @@ where
         self.body.exprs.alloc(expr)
     }
     fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
-        let ptr = Either::B(ptr);
+        let ptr = Either::Right(ptr);
         let id = self.body.exprs.alloc(expr);
         let src = self.expander.to_source(ptr);
         self.source_map.expr_map.insert(src, id);
@@ -277,7 +282,7 @@ where
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                let src = self.expander.to_source(Either::A(syntax_ptr));
+                let src = self.expander.to_source(Either::Left(syntax_ptr));
                 self.source_map.expr_map.insert(src, inner);
                 inner
             }
@@ -367,8 +372,9 @@ where
                         arg_types.push(type_ref);
                     }
                 }
+                let ret_type = e.ret_type().and_then(|r| r.type_ref()).map(TypeRef::from_ast);
                 let body = self.collect_expr_opt(e.body());
-                self.alloc_expr(Expr::Lambda { args, arg_types, body }, syntax_ptr)
+                self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
             }
             ast::Expr::BinExpr(e) => {
                 let lhs = self.collect_expr_opt(e.lhs());
@@ -429,10 +435,17 @@ where
                 let index = self.collect_expr_opt(e.index());
                 self.alloc_expr(Expr::Index { base, index }, syntax_ptr)
             }
-
-            // FIXME implement HIR for these:
-            ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            ast::Expr::RangeExpr(e) => {
+                let lhs = e.start().map(|lhs| self.collect_expr(lhs));
+                let rhs = e.end().map(|rhs| self.collect_expr(rhs));
+                match e.op_kind() {
+                    Some(range_type) => {
+                        self.alloc_expr(Expr::Range { lhs, rhs, range_type }, syntax_ptr)
+                    }
+                    None => self.alloc_expr(Expr::Missing, syntax_ptr),
+                }
+            }
+            // FIXME expand to statements in statement position
             ast::Expr::MacroCall(e) => match self.expander.enter_expand(self.db, e) {
                 Some((mark, expansion)) => {
                     let id = self.collect_expr(expansion);
@@ -441,6 +454,9 @@ where
                 }
                 None => self.alloc_expr(Expr::Missing, syntax_ptr),
             },
+
+            // FIXME implement HIR for these:
+            ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
 
@@ -458,6 +474,7 @@ where
             Some(block) => block,
             None => return self.alloc_expr(Expr::Missing, syntax_node_ptr),
         };
+        self.collect_block_items(&block);
         let statements = block
             .statements()
             .map(|s| match s {
@@ -472,6 +489,63 @@ where
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
         self.alloc_expr(Expr::Block { statements, tail }, syntax_node_ptr)
+    }
+
+    fn collect_block_items(&mut self, block: &ast::Block) {
+        let container = ContainerId::DefWithBodyId(self.def);
+        for item in block.items() {
+            let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
+                ast::ModuleItem::FnDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    (
+                        FunctionLoc { container: container.into(), ast_id }.intern(self.db).into(),
+                        def.name(),
+                    )
+                }
+                ast::ModuleItem::TypeAliasDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    (
+                        TypeAliasLoc { container: container.into(), ast_id }.intern(self.db).into(),
+                        def.name(),
+                    )
+                }
+                ast::ModuleItem::ConstDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    (
+                        ConstLoc { container: container.into(), ast_id }.intern(self.db).into(),
+                        def.name(),
+                    )
+                }
+                ast::ModuleItem::StaticDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    (StaticLoc { container, ast_id }.intern(self.db).into(), def.name())
+                }
+                ast::ModuleItem::StructDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    (StructLoc { container, ast_id }.intern(self.db).into(), def.name())
+                }
+                ast::ModuleItem::EnumDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    (EnumLoc { container, ast_id }.intern(self.db).into(), def.name())
+                }
+                ast::ModuleItem::UnionDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    (UnionLoc { container, ast_id }.intern(self.db).into(), def.name())
+                }
+                ast::ModuleItem::TraitDef(def) => {
+                    let ast_id = self.expander.ast_id(&def);
+                    (TraitLoc { container, ast_id }.intern(self.db).into(), def.name())
+                }
+                ast::ModuleItem::ImplBlock(_)
+                | ast::ModuleItem::UseItem(_)
+                | ast::ModuleItem::ExternCrateItem(_)
+                | ast::ModuleItem::Module(_) => continue,
+            };
+            self.body.item_scope.define_def(def);
+            if let Some(name) = name {
+                self.body.item_scope.push_res(name.as_name(), def.into());
+            }
+        }
     }
 
     fn collect_block_opt(&mut self, expr: Option<ast::BlockExpr>) -> ExprId {
@@ -541,7 +615,7 @@ where
             ast::Pat::SlicePat(_) | ast::Pat::RangePat(_) => Pat::Missing,
         };
         let ptr = AstPtr::new(&pat);
-        self.alloc_pat(pattern, Either::A(ptr))
+        self.alloc_pat(pattern, Either::Left(ptr))
     }
 
     fn collect_pat_opt(&mut self, pat: Option<ast::Pat>) -> PatId {

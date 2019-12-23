@@ -70,11 +70,11 @@ impl<'a> SubtreeTokenSource<'a> {
                     }
                     Some(tt::TokenTree::Subtree(subtree)) => {
                         self.cached_cursor.set(cursor.subtree().unwrap());
-                        cached.push(Some(convert_delim(subtree.delimiter, false)));
+                        cached.push(Some(convert_delim(subtree.delimiter_kind(), false)));
                     }
                     None => {
                         if let Some(subtree) = cursor.end() {
-                            cached.push(Some(convert_delim(subtree.delimiter, true)));
+                            cached.push(Some(convert_delim(subtree.delimiter_kind(), true)));
                             self.cached_cursor.set(cursor.bump());
                         }
                     }
@@ -114,12 +114,12 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
     }
 }
 
-fn convert_delim(d: tt::Delimiter, closing: bool) -> TtToken {
+fn convert_delim(d: Option<tt::DelimiterKind>, closing: bool) -> TtToken {
     let (kinds, texts) = match d {
-        tt::Delimiter::Parenthesis => ([T!['('], T![')']], "()"),
-        tt::Delimiter::Brace => ([T!['{'], T!['}']], "{}"),
-        tt::Delimiter::Bracket => ([T!['['], T![']']], "[]"),
-        tt::Delimiter::None => ([L_DOLLAR, R_DOLLAR], ""),
+        Some(tt::DelimiterKind::Parenthesis) => ([T!['('], T![')']], "()"),
+        Some(tt::DelimiterKind::Brace) => ([T!['{'], T!['}']], "{}"),
+        Some(tt::DelimiterKind::Bracket) => ([T!['['], T![']']], "[]"),
+        None => ([L_DOLLAR, R_DOLLAR], ""),
     };
 
     let idx = closing as usize;

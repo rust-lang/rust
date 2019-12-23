@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import {
     SyntaxTreeContentProvider,
-    syntaxTreeUri
+    syntaxTreeUri,
 } from '../commands/syntaxTree';
 
 export function createHandler(syntaxTreeProvider: SyntaxTreeContentProvider) {

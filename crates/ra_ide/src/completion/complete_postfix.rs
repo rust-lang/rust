@@ -12,7 +12,7 @@ use crate::{
 };
 
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.db.feature_flags.get("completion.enable-postfix") == false {
+    if !ctx.db.feature_flags.get("completion.enable-postfix") {
         return;
     }
 

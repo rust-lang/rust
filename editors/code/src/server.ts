@@ -1,4 +1,5 @@
-import { homedir } from 'os';
+import { lookpath } from 'lookpath';
+import { homedir, platform } from 'os';
 import * as lc from 'vscode-languageclient';
 
 import { window, workspace } from 'vscode';
@@ -17,8 +18,8 @@ export class Server {
     public static config = new Config();
     public static client: lc.LanguageClient;
 
-    public static start(
-        notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>
+    public static async start(
+        notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>,
     ) {
         // '.' Is the fallback if no folder is open
         // TODO?: Workspace folders support Uri's (eg: file://test.txt). It might be a good idea to test if the uri points to a file.
@@ -27,16 +28,26 @@ export class Server {
             folder = workspace.workspaceFolders[0].uri.fsPath.toString();
         }
 
+        const command = expandPathResolving(this.config.raLspServerPath);
+        // FIXME: remove check when the following issue is fixed:
+        // https://github.com/otiai10/lookpath/issues/4
+        if (platform() !== 'win32') {
+            if (!(await lookpath(command))) {
+                throw new Error(
+                    `Cannot find rust-analyzer server \`${command}\` in PATH.`,
+                );
+            }
+        }
         const run: lc.Executable = {
-            command: expandPathResolving(this.config.raLspServerPath),
-            options: { cwd: folder }
+            command,
+            options: { cwd: folder },
         };
         const serverOptions: lc.ServerOptions = {
             run,
-            debug: run
+            debug: run,
         };
         const traceOutputChannel = window.createOutputChannel(
-            'Rust Analyzer Language Server Trace'
+            'Rust Analyzer Language Server Trace',
         );
         const clientOptions: lc.LanguageClientOptions = {
             documentSelector: [{ scheme: 'file', language: 'rust' }],
@@ -46,16 +57,18 @@ export class Server {
                 maxInlayHintLength: Server.config.maxInlayHintLength,
                 excludeGlobs: Server.config.excludeGlobs,
                 useClientWatching: Server.config.useClientWatching,
-                featureFlags: Server.config.featureFlags
+                featureFlags: Server.config.featureFlags,
+                withSysroot: Server.config.withSysroot,
+                cargoFeatures: Server.config.cargoFeatures,
             },
-            traceOutputChannel
+            traceOutputChannel,
         };
 
         Server.client = new lc.LanguageClient(
             'rust-analyzer',
             'Rust Analyzer Language Server',
             serverOptions,
-            clientOptions
+            clientOptions,
         );
         // HACK: This is an awful way of filtering out the decorations notifications
         // However, pending proper support, this is the most effecitve approach
@@ -68,10 +81,10 @@ export class Server {
                 if (typeof messageOrDataObject === 'string') {
                     if (
                         messageOrDataObject.includes(
-                            'rust-analyzer/publishDecorations'
+                            'rust-analyzer/publishDecorations',
                         ) ||
                         messageOrDataObject.includes(
-                            'rust-analyzer/decorationsRequest'
+                            'rust-analyzer/decorationsRequest',
                         )
                     ) {
                         // Don't log publish decorations requests
@@ -83,7 +96,7 @@ export class Server {
                     // @ts-ignore
                     Server.client.logObjectTrace(messageOrDataObject);
                 }
-            }
+            },
         };
         Server.client.registerProposedFeatures();
         Server.client.onReady().then(() => {

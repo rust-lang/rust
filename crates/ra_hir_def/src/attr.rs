@@ -2,7 +2,8 @@
 
 use std::{ops, sync::Arc};
 
-use hir_expand::{either::Either, hygiene::Hygiene, AstId, Source};
+use either::Either;
+use hir_expand::{hygiene::Hygiene, AstId, InFile};
 use mbe::ast_to_token_tree;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -11,7 +12,7 @@ use ra_syntax::{
 use tt::Subtree;
 
 use crate::{
-    db::DefDatabase, path::Path, AdtId, AstItemDef, AttrDefId, HasChildSource, HasSource, Lookup,
+    db::DefDatabase, path::ModPath, src::HasChildSource, src::HasSource, AdtId, AttrDefId, Lookup,
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -44,8 +45,8 @@ impl Attrs {
             AttrDefId::StructFieldId(it) => {
                 let src = it.parent.child_source(db);
                 match &src.value[it.local_id] {
-                    Either::A(_tuple) => Attrs::default(),
-                    Either::B(record) => Attrs::from_attrs_owner(db, src.with_value(record)),
+                    Either::Left(_tuple) => Attrs::default(),
+                    Either::Right(record) => Attrs::from_attrs_owner(db, src.with_value(record)),
                 }
             }
             AttrDefId::EnumVariantId(var_id) => {
@@ -54,13 +55,15 @@ impl Attrs {
                 Attrs::from_attrs_owner(db, src.map(|it| it as &dyn AttrsOwner))
             }
             AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
-                AdtId::EnumId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
-                AdtId::UnionId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
+                AdtId::StructId(it) => attrs_from_loc(it.lookup(db), db),
+                AdtId::EnumId(it) => attrs_from_loc(it.lookup(db), db),
+                AdtId::UnionId(it) => attrs_from_loc(it.lookup(db), db),
             },
-            AttrDefId::TraitId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
-            AttrDefId::MacroDefId(it) => attrs_from_ast(it.ast_id, db),
-            AttrDefId::ImplId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
+            AttrDefId::TraitId(it) => attrs_from_loc(it.lookup(db), db),
+            AttrDefId::MacroDefId(it) => {
+                it.ast_id.map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db))
+            }
+            AttrDefId::ImplId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::ConstId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::StaticId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::FunctionId(it) => attrs_from_loc(it.lookup(db), db),
@@ -68,7 +71,7 @@ impl Attrs {
         }
     }
 
-    fn from_attrs_owner(db: &impl DefDatabase, owner: Source<&dyn AttrsOwner>) -> Attrs {
+    fn from_attrs_owner(db: &impl DefDatabase, owner: InFile<&dyn AttrsOwner>) -> Attrs {
         let hygiene = Hygiene::new(db, owner.file_id);
         Attrs::new(owner.value, &hygiene)
     }
@@ -91,7 +94,7 @@ impl Attrs {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
-    pub(crate) path: Path,
+    pub(crate) path: ModPath,
     pub(crate) input: Option<AttrInput>,
 }
 
@@ -103,7 +106,7 @@ pub enum AttrInput {
 
 impl Attr {
     fn from_src(ast: ast::Attr, hygiene: &Hygiene) -> Option<Attr> {
-        let path = Path::from_src(ast.path()?, hygiene)?;
+        let path = ModPath::from_src(ast.path()?, hygiene)?;
         let input = match ast.input() {
             None => None,
             Some(ast::AttrInput::Literal(lit)) => {
@@ -157,7 +160,7 @@ where
     N: ast::AttrsOwner,
     D: DefDatabase,
 {
-    let src = Source::new(src.file_id(), src.to_node(db));
+    let src = InFile::new(src.file_id, src.to_node(db));
     Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
 }
 

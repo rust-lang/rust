@@ -1,9 +1,11 @@
 //! Path expression resolution.
 
+use std::iter;
+
 use hir_def::{
-    path::{Path, PathKind, PathSegment},
+    path::{Path, PathSegment},
     resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
-    AssocItemId, ContainerId, Lookup,
+    AssocContainerId, AssocItemId, Lookup,
 };
 use hir_expand::name::Name;
 
@@ -30,21 +32,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         path: &Path,
         id: ExprOrPatId,
     ) -> Option<Ty> {
-        let (value, self_subst) = if let PathKind::Type(type_ref) = &path.kind {
-            if path.segments.is_empty() {
+        let (value, self_subst) = if let Some(type_ref) = path.type_anchor() {
+            if path.segments().is_empty() {
                 // This can't actually happen syntax-wise
                 return None;
             }
             let ty = self.make_ty(type_ref);
-            let remaining_segments_for_ty = &path.segments[..path.segments.len() - 1];
+            let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
             let ty = Ty::from_type_relative_path(self.db, resolver, ty, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
-                &path.segments.last().expect("path had at least one segment").name,
+                &path.segments().last().expect("path had at least one segment").name,
                 id,
             )?
         } else {
-            let value_or_partial = resolver.resolve_path_in_value_ns(self.db, &path)?;
+            let value_or_partial = resolver.resolve_path_in_value_ns(self.db, path.mod_path())?;
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => (it, None),
@@ -57,7 +59,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let typable: ValueTyDefId = match value {
             ValueNs::LocalBinding(pat) => {
                 let ty = self.result.type_of_pat.get(pat)?.clone();
-                let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+                let ty = self.resolve_ty_as_possible(ty);
                 return Some(ty);
             }
             ValueNs::FunctionId(it) => it.into(),
@@ -83,13 +85,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         remaining_index: usize,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
-        assert!(remaining_index < path.segments.len());
+        assert!(remaining_index < path.segments().len());
         // there may be more intermediate segments between the resolved one and
         // the end. Only the last segment needs to be resolved to a value; from
         // the segments before that, we need to get either a type or a trait ref.
 
-        let resolved_segment = &path.segments[remaining_index - 1];
-        let remaining_segments = &path.segments[remaining_index..];
+        let resolved_segment = path.segments().get(remaining_index - 1).unwrap();
+        let remaining_segments = path.segments().skip(remaining_index);
         let is_before_last = remaining_segments.len() == 1;
 
         match (def, is_before_last) {
@@ -110,7 +112,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // trait but it's not the last segment, so the next segment
                 // should resolve to an associated type of that trait (e.g. `<T
                 // as Iterator>::Item::default`)
-                let remaining_segments_for_ty = &remaining_segments[..remaining_segments.len() - 1];
+                let remaining_segments_for_ty =
+                    remaining_segments.take(remaining_segments.len() - 1);
                 let ty = Ty::from_partly_resolved_hir_path(
                     self.db,
                     &self.resolver,
@@ -136,7 +139,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_trait_assoc_item(
         &mut self,
         trait_ref: TraitRef,
-        segment: &PathSegment,
+        segment: PathSegment<'_>,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         let trait_ = trait_ref.trait_;
@@ -148,7 +151,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             .map(|(_name, id)| (*id).into())
             .find_map(|item| match item {
                 AssocItemId::FunctionId(func) => {
-                    if segment.name == self.db.function_data(func).name {
+                    if segment.name == &self.db.function_data(func).name {
                         Some(AssocItemId::FunctionId(func))
                     } else {
                         None
@@ -156,7 +159,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 AssocItemId::ConstId(konst) => {
-                    if self.db.const_data(konst).name.as_ref().map_or(false, |n| n == &segment.name)
+                    if self.db.const_data(konst).name.as_ref().map_or(false, |n| n == segment.name)
                     {
                         Some(AssocItemId::ConstId(konst))
                     } else {
@@ -206,12 +209,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     AssocItemId::TypeAliasId(_) => unreachable!(),
                 };
                 let substs = match container {
-                    ContainerId::ImplId(_) => self.find_self_types(&def, ty.clone()),
-                    ContainerId::TraitId(trait_) => {
+                    AssocContainerId::ImplId(impl_id) => {
+                        let impl_substs = Substs::build_for_def(self.db, impl_id)
+                            .fill(iter::repeat_with(|| self.table.new_type_var()))
+                            .build();
+                        let impl_self_ty = self.db.impl_self_ty(impl_id).subst(&impl_substs);
+                        let substs = Substs::build_for_def(self.db, item)
+                            .use_parent_substs(&impl_substs)
+                            .fill_with_params()
+                            .build();
+                        self.unify(&impl_self_ty, &ty);
+                        Some(substs)
+                    }
+                    AssocContainerId::TraitId(trait_) => {
                         // we're picking this method
                         let trait_substs = Substs::build_for_def(self.db, trait_)
                             .push(ty.clone())
-                            .fill(std::iter::repeat_with(|| self.new_type_var()))
+                            .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                             .build();
                         let substs = Substs::build_for_def(self.db, item)
                             .use_parent_substs(&trait_substs)
@@ -223,46 +237,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         }));
                         Some(substs)
                     }
-                    ContainerId::ModuleId(_) => None,
+                    AssocContainerId::ContainerId(_) => None,
                 };
 
                 self.write_assoc_resolution(id, item.into());
                 Some((def, substs))
             },
         )
-    }
-
-    fn find_self_types(&self, def: &ValueNs, actual_def_ty: Ty) -> Option<Substs> {
-        if let ValueNs::FunctionId(func) = *def {
-            // We only do the infer if parent has generic params
-            let gen = self.db.generic_params(func.into());
-            if gen.count_parent_params() == 0 {
-                return None;
-            }
-
-            let impl_id = match func.lookup(self.db).container {
-                ContainerId::ImplId(it) => it,
-                _ => return None,
-            };
-            let self_ty = self.db.impl_ty(impl_id).self_type().clone();
-            let self_ty_substs = self_ty.substs()?;
-            let actual_substs = actual_def_ty.substs()?;
-
-            let mut new_substs = vec![Ty::Unknown; gen.count_parent_params()];
-
-            // The following code *link up* the function actual parma type
-            // and impl_block type param index
-            self_ty_substs.iter().zip(actual_substs.iter()).for_each(|(param, pty)| {
-                if let Ty::Param { idx, .. } = param {
-                    if let Some(s) = new_substs.get_mut(*idx as usize) {
-                        *s = pty.clone();
-                    }
-                }
-            });
-
-            Some(Substs(new_substs.into()))
-        } else {
-            None
-        }
     }
 }

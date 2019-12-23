@@ -67,7 +67,15 @@ impl Shift {
                 .token_trees
                 .iter()
                 .filter_map(|tt| match tt {
-                    tt::TokenTree::Subtree(subtree) => max_id(subtree),
+                    tt::TokenTree::Subtree(subtree) => {
+                        let tree_id = max_id(subtree);
+                        match subtree.delimiter {
+                            Some(it) if it.id != tt::TokenId::unspecified() => {
+                                Some(tree_id.map_or(it.id.0, |t| t.max(it.id.0)))
+                            }
+                            _ => tree_id,
+                        }
+                    }
                     tt::TokenTree::Leaf(tt::Leaf::Ident(ident))
                         if ident.id != tt::TokenId::unspecified() =>
                     {
@@ -85,9 +93,15 @@ impl Shift {
             match t {
                 tt::TokenTree::Leaf(leaf) => match leaf {
                     tt::Leaf::Ident(ident) => ident.id = self.shift(ident.id),
-                    _ => (),
+                    tt::Leaf::Punct(punct) => punct.id = self.shift(punct.id),
+                    tt::Leaf::Literal(lit) => lit.id = self.shift(lit.id),
                 },
-                tt::TokenTree::Subtree(tt) => self.shift_all(tt),
+                tt::TokenTree::Subtree(tt) => {
+                    if let Some(it) = tt.delimiter.as_mut() {
+                        it.id = self.shift(it.id);
+                    };
+                    self.shift_all(tt)
+                }
             }
         }
     }
@@ -104,6 +118,7 @@ impl Shift {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Origin {
     Def,
     Call,
@@ -159,14 +174,14 @@ impl Rule {
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
             .clone();
-        lhs.delimiter = tt::Delimiter::None;
+        lhs.delimiter = None;
         src.expect_char('=').map_err(|()| ParseError::Expected("expected `=`".to_string()))?;
         src.expect_char('>').map_err(|()| ParseError::Expected("expected `>`".to_string()))?;
         let mut rhs = src
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
             .clone();
-        rhs.delimiter = tt::Delimiter::None;
+        rhs.delimiter = None;
         Ok(crate::Rule { lhs, rhs })
     }
 }

@@ -100,6 +100,7 @@ pub enum SyntaxKind {
     TRY_KW,
     BOX_KW,
     AWAIT_KW,
+    MACRO_KW,
     AUTO_KW,
     DEFAULT_KW,
     EXISTENTIAL_KW,
@@ -136,6 +137,7 @@ pub enum SyntaxKind {
     TYPE_ALIAS_DEF,
     MACRO_CALL,
     TOKEN_TREE,
+    MACRO_DEF,
     PAREN_TYPE,
     TUPLE_TYPE,
     NEVER_TYPE,
@@ -227,6 +229,7 @@ pub enum SyntaxKind {
     TYPE_PARAM_LIST,
     LIFETIME_PARAM,
     TYPE_PARAM,
+    CONST_PARAM,
     TYPE_ARG_LIST,
     LIFETIME_ARG,
     TYPE_ARG,
@@ -251,7 +254,7 @@ impl SyntaxKind {
             | SUPER_KW | IN_KW | WHERE_KW | FOR_KW | LOOP_KW | WHILE_KW | CONTINUE_KW
             | BREAK_KW | IF_KW | ELSE_KW | MATCH_KW | CONST_KW | STATIC_KW | MUT_KW | UNSAFE_KW
             | TYPE_KW | REF_KW | LET_KW | MOVE_KW | RETURN_KW | TRY_KW | BOX_KW | AWAIT_KW
-            | AUTO_KW | DEFAULT_KW | EXISTENTIAL_KW | UNION_KW => true,
+            | MACRO_KW | AUTO_KW | DEFAULT_KW | EXISTENTIAL_KW | UNION_KW => true,
             _ => false,
         }
     }
@@ -314,6 +317,7 @@ impl SyntaxKind {
             "try" => TRY_KW,
             "box" => BOX_KW,
             "await" => AWAIT_KW,
+            "macro" => MACRO_KW,
             _ => return None,
         };
         Some(kw)
@@ -627,6 +631,9 @@ macro_rules! T {
     };
     ( await ) => {
         $crate::SyntaxKind::AWAIT_KW
+    };
+    ( macro ) => {
+        $crate::SyntaxKind::MACRO_KW
     };
     ( auto ) => {
         $crate::SyntaxKind::AUTO_KW

@@ -1,9 +1,15 @@
 {
     "defaultSeverity": "error",
-    "extends": ["tslint:recommended", "tslint-config-prettier"],
+    "extends": [
+        "tslint:recommended",
+        "tslint-config-prettier",
+        "tslint-plugin-prettier"
+    ],
     "rules": {
-        "quotemark": [true, "single"],
         "interface-name": false,
-        "object-literal-sort-keys": false
+        "prettier": true,
+        "object-literal-sort-keys": false,
+        // Allow `_bar` to sort with tsc's `noUnusedParameters` option
+        "variable-name": [true, "allow-leading-underscore"]
     }
 }

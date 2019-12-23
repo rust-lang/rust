@@ -11,6 +11,7 @@ doctest = false
 wasm = []
 
 [dependencies]
+either = "1.5"
 format-buf = "1.0.0"
 itertools = "0.8.0"
 join_to_string = "0.1.3"

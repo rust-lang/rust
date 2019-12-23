@@ -207,8 +207,8 @@ pub fn lines_match(expected: &str, actual: &str) -> bool {
     // Let's not deal with / vs \ (windows...)
     // First replace backslash-escaped backslashes with forward slashes
     // which can occur in, for example, JSON output
-    let expected = expected.replace("\\\\", "/").replace("\\", "/");
-    let mut actual: &str = &actual.replace("\\\\", "/").replace("\\", "/");
+    let expected = expected.replace(r"\\", "/").replace(r"\", "/");
+    let mut actual: &str = &actual.replace(r"\\", "/").replace(r"\", "/");
     for (i, part) in expected.split("[..]").enumerate() {
         match actual.find(part) {
             Some(j) => {
@@ -354,6 +354,17 @@ pub fn read_text(path: &Path) -> String {
     fs::read_to_string(path)
         .unwrap_or_else(|_| panic!("File at {:?} should be valid", path))
         .replace("\r\n", "\n")
+}
+
+pub fn skip_slow_tests() -> bool {
+    let should_skip = std::env::var("CI").is_err() && std::env::var("RUN_SLOW_TESTS").is_err();
+    if should_skip {
+        eprintln!("ignoring slow test")
+    } else {
+        let path = project_dir().join("./target/.slow_tests_cookie");
+        fs::write(&path, ".").unwrap();
+    }
+    should_skip
 }
 
 const REWRITE: bool = false;

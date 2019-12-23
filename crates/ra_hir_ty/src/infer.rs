@@ -18,19 +18,18 @@ use std::mem;
 use std::ops::Index;
 use std::sync::Arc;
 
-use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData},
     expr::{BindingAnnotation, ExprId, PatId},
-    path::{known, Path},
+    path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
     AdtId, AssocItemId, DefWithBodyId, FunctionId, StructFieldId, TypeAliasId, VariantId,
 };
-use hir_expand::{diagnostics::DiagnosticSink, name};
+use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 use test_utils::tested_by;
@@ -42,6 +41,8 @@ use super::{
     TypeWalk, Uncertain,
 };
 use crate::{db::HirDatabase, infer::diagnostics::InferenceDiagnostic};
+
+pub(crate) use unify::unify;
 
 macro_rules! ty_app {
     ($ctor:pat, $param:pat) => {
@@ -191,11 +192,16 @@ struct InferenceContext<'a, D: HirDatabase> {
     owner: DefWithBodyId,
     body: Arc<Body>,
     resolver: Resolver,
-    var_unification_table: InPlaceUnificationTable<TypeVarId>,
+    table: unify::InferenceTable,
     trait_env: Arc<TraitEnvironment>,
     obligations: Vec<Obligation>,
     result: InferenceResult,
-    /// The return type of the function being inferred.
+    /// The return type of the function being inferred, or the closure if we're
+    /// currently within one.
+    ///
+    /// We might consider using a nested inference context for checking
+    /// closures, but currently this is the only field that will change there,
+    /// so it doesn't make sense.
     return_ty: Ty,
 
     /// Impls of `CoerceUnsized` used in coercion.
@@ -209,7 +215,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(db: &'a D, owner: DefWithBodyId, resolver: Resolver) -> Self {
         InferenceContext {
             result: InferenceResult::default(),
-            var_unification_table: InPlaceUnificationTable::new(),
+            table: unify::InferenceTable::new(),
             obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
             trait_env: TraitEnvironment::lower(db, &resolver),
@@ -224,13 +230,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_all(mut self) -> InferenceResult {
         // FIXME resolve obligations as well (use Guidance if necessary)
         let mut result = mem::replace(&mut self.result, InferenceResult::default());
-        let mut tv_stack = Vec::new();
         for ty in result.type_of_expr.values_mut() {
-            let resolved = self.resolve_ty_completely(&mut tv_stack, mem::replace(ty, Ty::Unknown));
+            let resolved = self.table.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
             *ty = resolved;
         }
         for ty in result.type_of_pat.values_mut() {
-            let resolved = self.resolve_ty_completely(&mut tv_stack, mem::replace(ty, Ty::Unknown));
+            let resolved = self.table.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
             *ty = resolved;
         }
         result
@@ -275,96 +280,38 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.normalize_associated_types_in(ty)
     }
 
-    fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs, depth: usize) -> bool {
-        substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| self.unify_inner(t1, t2, depth))
-    }
-
-    fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
-        self.unify_inner(ty1, ty2, 0)
-    }
-
-    fn unify_inner(&mut self, ty1: &Ty, ty2: &Ty, depth: usize) -> bool {
-        if depth > 1000 {
-            // prevent stackoverflows
-            panic!("infinite recursion in unification");
-        }
-        if ty1 == ty2 {
-            return true;
-        }
-        // try to resolve type vars first
-        let ty1 = self.resolve_ty_shallow(ty1);
-        let ty2 = self.resolve_ty_shallow(ty2);
-        match (&*ty1, &*ty2) {
-            (Ty::Apply(a_ty1), Ty::Apply(a_ty2)) if a_ty1.ctor == a_ty2.ctor => {
-                self.unify_substs(&a_ty1.parameters, &a_ty2.parameters, depth + 1)
+    /// Replaces `impl Trait` in `ty` by type variables and obligations for
+    /// those variables. This is done for function arguments when calling a
+    /// function, and for return types when inside the function body, i.e. in
+    /// the cases where the `impl Trait` is 'transparent'. In other cases, `impl
+    /// Trait` is represented by `Ty::Opaque`.
+    fn insert_vars_for_impl_trait(&mut self, ty: Ty) -> Ty {
+        ty.fold(&mut |ty| match ty {
+            Ty::Opaque(preds) => {
+                tested_by!(insert_vars_for_impl_trait);
+                let var = self.table.new_type_var();
+                let var_subst = Substs::builder(1).push(var.clone()).build();
+                self.obligations.extend(
+                    preds
+                        .iter()
+                        .map(|pred| pred.clone().subst_bound_vars(&var_subst))
+                        .filter_map(Obligation::from_predicate),
+                );
+                var
             }
-            _ => self.unify_inner_trivial(&ty1, &ty2),
-        }
-    }
-
-    fn unify_inner_trivial(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
-        match (ty1, ty2) {
-            (Ty::Unknown, _) | (_, Ty::Unknown) => true,
-
-            (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
-            | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
-            | (Ty::Infer(InferTy::FloatVar(tv1)), Ty::Infer(InferTy::FloatVar(tv2)))
-            | (
-                Ty::Infer(InferTy::MaybeNeverTypeVar(tv1)),
-                Ty::Infer(InferTy::MaybeNeverTypeVar(tv2)),
-            ) => {
-                // both type vars are unknown since we tried to resolve them
-                self.var_unification_table.union(*tv1, *tv2);
-                true
-            }
-
-            // The order of MaybeNeverTypeVar matters here.
-            // Unifying MaybeNeverTypeVar and TypeVar will let the latter become MaybeNeverTypeVar.
-            // Unifying MaybeNeverTypeVar and other concrete type will let the former become it.
-            (Ty::Infer(InferTy::TypeVar(tv)), other)
-            | (other, Ty::Infer(InferTy::TypeVar(tv)))
-            | (Ty::Infer(InferTy::MaybeNeverTypeVar(tv)), other)
-            | (other, Ty::Infer(InferTy::MaybeNeverTypeVar(tv)))
-            | (Ty::Infer(InferTy::IntVar(tv)), other @ ty_app!(TypeCtor::Int(_)))
-            | (other @ ty_app!(TypeCtor::Int(_)), Ty::Infer(InferTy::IntVar(tv)))
-            | (Ty::Infer(InferTy::FloatVar(tv)), other @ ty_app!(TypeCtor::Float(_)))
-            | (other @ ty_app!(TypeCtor::Float(_)), Ty::Infer(InferTy::FloatVar(tv))) => {
-                // the type var is unknown since we tried to resolve it
-                self.var_unification_table.union_value(*tv, TypeVarValue::Known(other.clone()));
-                true
-            }
-
-            _ => false,
-        }
-    }
-
-    fn new_type_var(&mut self) -> Ty {
-        Ty::Infer(InferTy::TypeVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
-    }
-
-    fn new_integer_var(&mut self) -> Ty {
-        Ty::Infer(InferTy::IntVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
-    }
-
-    fn new_float_var(&mut self) -> Ty {
-        Ty::Infer(InferTy::FloatVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
-    }
-
-    fn new_maybe_never_type_var(&mut self) -> Ty {
-        Ty::Infer(InferTy::MaybeNeverTypeVar(
-            self.var_unification_table.new_key(TypeVarValue::Unknown),
-        ))
+            _ => ty,
+        })
     }
 
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty {
-            Ty::Unknown => self.new_type_var(),
+            Ty::Unknown => self.table.new_type_var(),
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Int(Uncertain::Unknown), .. }) => {
-                self.new_integer_var()
+                self.table.new_integer_var()
             }
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Float(Uncertain::Unknown), .. }) => {
-                self.new_float_var()
+                self.table.new_float_var()
             }
             _ => ty,
         }
@@ -402,64 +349,52 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
+    fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+        self.table.unify(ty1, ty2)
+    }
+
     /// Resolves the type as far as currently possible, replacing type variables
     /// by their known types. All types returned by the infer_* functions should
     /// be resolved as far as possible, i.e. contain no type variables with
     /// known type.
-    fn resolve_ty_as_possible(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
+    fn resolve_ty_as_possible(&mut self, ty: Ty) -> Ty {
         self.resolve_obligations_as_possible();
 
-        ty.fold(&mut |ty| match ty {
-            Ty::Infer(tv) => {
-                let inner = tv.to_inner();
-                if tv_stack.contains(&inner) {
-                    tested_by!(type_var_cycles_resolve_as_possible);
-                    // recursive type
-                    return tv.fallback_value();
-                }
-                if let Some(known_ty) =
-                    self.var_unification_table.inlined_probe_value(inner).known()
-                {
-                    // known_ty may contain other variables that are known by now
-                    tv_stack.push(inner);
-                    let result = self.resolve_ty_as_possible(tv_stack, known_ty.clone());
-                    tv_stack.pop();
-                    result
-                } else {
-                    ty
-                }
-            }
-            _ => ty,
-        })
+        self.table.resolve_ty_as_possible(ty)
     }
 
-    /// If `ty` is a type variable with known type, returns that type;
-    /// otherwise, return ty.
     fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
-        let mut ty = Cow::Borrowed(ty);
-        // The type variable could resolve to a int/float variable. Hence try
-        // resolving up to three times; each type of variable shouldn't occur
-        // more than once
-        for i in 0..3 {
-            if i > 0 {
-                tested_by!(type_var_resolves_to_int_var);
+        self.table.resolve_ty_shallow(ty)
+    }
+
+    fn resolve_associated_type(&mut self, inner_ty: Ty, assoc_ty: Option<TypeAliasId>) -> Ty {
+        self.resolve_associated_type_with_params(inner_ty, assoc_ty, &[])
+    }
+
+    fn resolve_associated_type_with_params(
+        &mut self,
+        inner_ty: Ty,
+        assoc_ty: Option<TypeAliasId>,
+        params: &[Ty],
+    ) -> Ty {
+        match assoc_ty {
+            Some(res_assoc_ty) => {
+                let ty = self.table.new_type_var();
+                let builder = Substs::build_for_def(self.db, res_assoc_ty)
+                    .push(inner_ty)
+                    .fill(params.iter().cloned());
+                let projection = ProjectionPredicate {
+                    ty: ty.clone(),
+                    projection_ty: ProjectionTy {
+                        associated_ty: res_assoc_ty,
+                        parameters: builder.build(),
+                    },
+                };
+                self.obligations.push(Obligation::Projection(projection));
+                self.resolve_ty_as_possible(ty)
             }
-            match &*ty {
-                Ty::Infer(tv) => {
-                    let inner = tv.to_inner();
-                    match self.var_unification_table.inlined_probe_value(inner).known() {
-                        Some(known_ty) => {
-                            // The known_ty can't be a type var itself
-                            ty = Cow::Owned(known_ty.clone());
-                        }
-                        _ => return ty,
-                    }
-                }
-                _ => return ty,
-            }
+            None => Ty::Unknown,
         }
-        log::error!("Inference variable still not resolved: {:?}", ty);
-        ty
     }
 
     /// Recurses through the given type, normalizing associated types mentioned
@@ -469,7 +404,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// call). `make_ty` handles this already, but e.g. for field types we need
     /// to do it as well.
     fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
-        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+        let ty = self.resolve_ty_as_possible(ty);
         ty.fold(&mut |ty| match ty {
             Ty::Projection(proj_ty) => self.normalize_projection_ty(proj_ty),
             _ => ty,
@@ -477,38 +412,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
-        let var = self.new_type_var();
+        let var = self.table.new_type_var();
         let predicate = ProjectionPredicate { projection_ty: proj_ty, ty: var.clone() };
         let obligation = Obligation::Projection(predicate);
         self.obligations.push(obligation);
         var
-    }
-
-    /// Resolves the type completely; type variables without known type are
-    /// replaced by Ty::Unknown.
-    fn resolve_ty_completely(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty {
-            Ty::Infer(tv) => {
-                let inner = tv.to_inner();
-                if tv_stack.contains(&inner) {
-                    tested_by!(type_var_cycles_resolve_completely);
-                    // recursive type
-                    return tv.fallback_value();
-                }
-                if let Some(known_ty) =
-                    self.var_unification_table.inlined_probe_value(inner).known()
-                {
-                    // known_ty may contain other variables that are known by now
-                    tv_stack.push(inner);
-                    let result = self.resolve_ty_completely(tv_stack, known_ty.clone());
-                    tv_stack.pop();
-                    result
-                } else {
-                    tv.fallback_value()
-                }
-            }
-            _ => ty,
-        })
     }
 
     fn resolve_variant(&mut self, path: Option<&Path>) -> (Ty, Option<VariantId>) {
@@ -519,7 +427,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let resolver = &self.resolver;
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
-        match resolver.resolve_path_in_type_ns_fully(self.db, &path) {
+        match resolver.resolve_path_in_type_ns_fully(self.db, path.mod_path()) {
             Some(TypeNs::AdtId(AdtId::StructId(strukt))) => {
                 let substs = Ty::substs_from_path(self.db, resolver, path, strukt.into());
                 let ty = self.db.ty(strukt.into());
@@ -547,93 +455,90 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
-        self.return_ty = self.make_ty(&data.ret_type);
+        let return_ty = self.make_ty(&data.ret_type);
+        self.return_ty = self.insert_vars_for_impl_trait(return_ty);
     }
 
     fn infer_body(&mut self) {
-        self.infer_expr(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
+        self.infer_expr_coerce(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
-        let path = known::std_iter_into_iterator();
+        let path = path![std::iter::IntoIterator];
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::ITEM_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
-        let path = known::std_ops_try();
+        let path = path![std::ops::Try];
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OK_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&name![Ok])
+    }
+
+    fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
+        let path = path![std::ops::Neg];
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+    }
+
+    fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
+        let path = path![std::ops::Not];
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
-        let path = known::std_future_future();
+        let path = path![std::future::Future];
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let path = known::std_boxed_box();
+        let path = path![std::boxed::Box];
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
     }
-}
 
-/// The ID of a type variable.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct TypeVarId(pub(super) u32);
-
-impl UnifyKey for TypeVarId {
-    type Value = TypeVarValue;
-
-    fn index(&self) -> u32 {
-        self.0
+    fn resolve_range_full(&self) -> Option<AdtId> {
+        let path = path![std::ops::RangeFull];
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
     }
 
-    fn from_index(i: u32) -> Self {
-        TypeVarId(i)
+    fn resolve_range(&self) -> Option<AdtId> {
+        let path = path![std::ops::Range];
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
     }
 
-    fn tag() -> &'static str {
-        "TypeVarId"
+    fn resolve_range_inclusive(&self) -> Option<AdtId> {
+        let path = path![std::ops::RangeInclusive];
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
     }
-}
 
-/// The value of a type variable: either we already know the type, or we don't
-/// know it yet.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum TypeVarValue {
-    Known(Ty),
-    Unknown,
-}
-
-impl TypeVarValue {
-    fn known(&self) -> Option<&Ty> {
-        match self {
-            TypeVarValue::Known(ty) => Some(ty),
-            TypeVarValue::Unknown => None,
-        }
+    fn resolve_range_from(&self) -> Option<AdtId> {
+        let path = path![std::ops::RangeFrom];
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
     }
-}
 
-impl UnifyValue for TypeVarValue {
-    type Error = NoError;
+    fn resolve_range_to(&self) -> Option<AdtId> {
+        let path = path![std::ops::RangeTo];
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
+    }
 
-    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
-        match (value1, value2) {
-            // We should never equate two type variables, both of which have
-            // known types. Instead, we recursively equate those types.
-            (TypeVarValue::Known(t1), TypeVarValue::Known(t2)) => panic!(
-                "equating two type variables, both of which have known types: {:?} and {:?}",
-                t1, t2
-            ),
+    fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
+        let path = path![std::ops::RangeToInclusive];
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
+    }
 
-            // If one side is known, prefer that one.
-            (TypeVarValue::Known(..), TypeVarValue::Unknown) => Ok(value1.clone()),
-            (TypeVarValue::Unknown, TypeVarValue::Known(..)) => Ok(value2.clone()),
-
-            (TypeVarValue::Unknown, TypeVarValue::Unknown) => Ok(TypeVarValue::Unknown),
-        }
+    fn resolve_ops_index_output(&self) -> Option<TypeAliasId> {
+        let path = path![std::ops::Index];
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 }
 
@@ -643,14 +548,14 @@ impl UnifyValue for TypeVarValue {
 /// several integer types).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InferTy {
-    TypeVar(TypeVarId),
-    IntVar(TypeVarId),
-    FloatVar(TypeVarId),
-    MaybeNeverTypeVar(TypeVarId),
+    TypeVar(unify::TypeVarId),
+    IntVar(unify::TypeVarId),
+    FloatVar(unify::TypeVarId),
+    MaybeNeverTypeVar(unify::TypeVarId),
 }
 
 impl InferTy {
-    fn to_inner(self) -> TypeVarId {
+    fn to_inner(self) -> unify::TypeVarId {
         match self {
             InferTy::TypeVar(ty)
             | InferTy::IntVar(ty)
@@ -693,7 +598,7 @@ impl Expectation {
 }
 
 mod diagnostics {
-    use hir_def::{expr::ExprId, FunctionId, HasSource, Lookup};
+    use hir_def::{expr::ExprId, src::HasSource, FunctionId, Lookup};
     use hir_expand::diagnostics::DiagnosticSink;
 
     use crate::{db::HirDatabase, diagnostics::NoSuchField};

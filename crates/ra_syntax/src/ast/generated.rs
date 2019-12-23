@@ -312,6 +312,7 @@ impl AstNode for Block {
     }
 }
 impl ast::AttrsOwner for Block {}
+impl ast::ModuleItemOwner for Block {}
 impl Block {
     pub fn statements(&self) -> AstChildren<Stmt> {
         AstChildren::new(&self.syntax)
@@ -546,6 +547,36 @@ impl ast::DocCommentsOwner for ConstDef {}
 impl ast::TypeAscriptionOwner for ConstDef {}
 impl ConstDef {
     pub fn body(&self) -> Option<Expr> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstParam {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for ConstParam {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            CONST_PARAM => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ast::NameOwner for ConstParam {}
+impl ast::AttrsOwner for ConstParam {}
+impl ast::TypeAscriptionOwner for ConstParam {}
+impl ConstParam {
+    pub fn default_val(&self) -> Option<Expr> {
         AstChildren::new(&self.syntax).next()
     }
 }
@@ -1423,6 +1454,9 @@ impl AstNode for LambdaExpr {
 }
 impl LambdaExpr {
     pub fn param_list(&self) -> Option<ParamList> {
+        AstChildren::new(&self.syntax).next()
+    }
+    pub fn ret_type(&self) -> Option<RetType> {
         AstChildren::new(&self.syntax).next()
     }
     pub fn body(&self) -> Option<Expr> {

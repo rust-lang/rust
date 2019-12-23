@@ -1,11 +1,14 @@
 //! FIXME: write short doc here
 
-use crate::{db::RootDatabase, FileId};
 use hir::{HirDisplay, SourceAnalyzer};
+use once_cell::unsync::Lazy;
+use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode, TypeAscriptionOwner},
     match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
 };
+
+use crate::{db::RootDatabase, FileId};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum InlayKind {
@@ -27,7 +30,7 @@ pub(crate) fn inlay_hints(
 ) -> Vec<InlayHint> {
     file.syntax()
         .descendants()
-        .map(|node| get_inlay_hints(db, file_id, &node, max_inlay_hint_length).unwrap_or_default())
+        .flat_map(|node| get_inlay_hints(db, file_id, &node, max_inlay_hint_length))
         .flatten()
         .collect()
 }
@@ -38,7 +41,9 @@ fn get_inlay_hints(
     node: &SyntaxNode,
     max_inlay_hint_length: Option<usize>,
 ) -> Option<Vec<InlayHint>> {
-    let analyzer = SourceAnalyzer::new(db, hir::Source::new(file_id.into(), node), None);
+    let _p = profile("get_inlay_hints");
+    let analyzer =
+        Lazy::new(|| SourceAnalyzer::new(db, hir::InFile::new(file_id.into(), node), None));
     match_ast! {
         match node {
             ast::LetStmt(it) => {
@@ -122,18 +127,11 @@ fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
 
     while let Some(maybe_leaf_pat) = pats_to_process.pop_front() {
         match &maybe_leaf_pat {
-            ast::Pat::BindPat(bind_pat) => {
-                if let Some(pat) = bind_pat.pat() {
-                    pats_to_process.push_back(pat);
-                } else {
-                    leaf_pats.push(maybe_leaf_pat);
-                }
-            }
-            ast::Pat::TuplePat(tuple_pat) => {
-                for arg_pat in tuple_pat.args() {
-                    pats_to_process.push_back(arg_pat);
-                }
-            }
+            ast::Pat::BindPat(bind_pat) => match bind_pat.pat() {
+                Some(pat) => pats_to_process.push_back(pat),
+                _ => leaf_pats.push(maybe_leaf_pat),
+            },
+            ast::Pat::TuplePat(tuple_pat) => pats_to_process.extend(tuple_pat.args()),
             ast::Pat::RecordPat(record_pat) => {
                 if let Some(pat_list) = record_pat.record_field_pat_list() {
                     pats_to_process.extend(
@@ -151,10 +149,9 @@ fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
                 }
             }
             ast::Pat::TupleStructPat(tuple_struct_pat) => {
-                for arg_pat in tuple_struct_pat.args() {
-                    pats_to_process.push_back(arg_pat);
-                }
+                pats_to_process.extend(tuple_struct_pat.args())
             }
+            ast::Pat::RefPat(ref_pat) => pats_to_process.extend(ref_pat.pat()),
             _ => (),
         }
     }
@@ -163,8 +160,35 @@ fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mock_analysis::single_file;
     use insta::assert_debug_snapshot;
+
+    use crate::mock_analysis::single_file;
+
+    #[test]
+    fn default_generic_types_should_not_be_displayed() {
+        let (analysis, file_id) = single_file(
+            r#"
+struct Test<K, T = u8> {
+    k: K,
+    t: T,
+}
+
+fn main() {
+    let zz = Test { t: 23, k: 33 };
+}"#,
+        );
+
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [69; 71),
+                kind: TypeHint,
+                label: "Test<i32>",
+            },
+        ]
+        "###
+        );
+    }
 
     #[test]
     fn let_statement() {
@@ -202,6 +226,7 @@ fn main() {
 
     let test = (42, 'a');
     let (a, (b, c, (d, e), f)) = (2, (3, 4, (6.6, 7.7), 5));
+    let &x = &92;
 }"#,
         );
 
@@ -256,6 +281,11 @@ fn main() {
                 range: [580; 581),
                 kind: TypeHint,
                 label: "f64",
+            },
+            InlayHint {
+                range: [627; 628),
+                kind: TypeHint,
+                label: "i32",
             },
         ]
         "###

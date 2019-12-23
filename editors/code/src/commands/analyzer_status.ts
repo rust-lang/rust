@@ -9,7 +9,7 @@ export class TextDocumentContentProvider
     public syntaxTree: string = 'Not available';
 
     public provideTextDocumentContent(
-        uri: vscode.Uri
+        _uri: vscode.Uri,
     ): vscode.ProviderResult<string> {
         const editor = vscode.window.activeTextEditor;
         if (editor == null) {
@@ -17,7 +17,7 @@ export class TextDocumentContentProvider
         }
         return Server.client.sendRequest<string>(
             'rust-analyzer/analyzerStatus',
-            null
+            null,
         );
     }
 
@@ -35,8 +35,8 @@ export function makeCommand(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.workspace.registerTextDocumentContentProvider(
             'rust-analyzer-status',
-            textDocumentContentProvider
-        )
+            textDocumentContentProvider,
+        ),
     );
 
     context.subscriptions.push({
@@ -44,21 +44,21 @@ export function makeCommand(context: vscode.ExtensionContext) {
             if (poller != null) {
                 clearInterval(poller);
             }
-        }
+        },
     });
 
     return async function handle() {
         if (poller == null) {
             poller = setInterval(
                 () => textDocumentContentProvider.eventEmitter.fire(statusUri),
-                1000
+                1000,
             );
         }
         const document = await vscode.workspace.openTextDocument(statusUri);
         return vscode.window.showTextDocument(
             document,
             vscode.ViewColumn.Two,
-            true
+            true,
         );
     };
 }

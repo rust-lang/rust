@@ -7,7 +7,13 @@ export enum SuggestionApplicability {
     MachineApplicable = 'MachineApplicable',
     HasPlaceholders = 'HasPlaceholders',
     MaybeIncorrect = 'MaybeIncorrect',
-    Unspecified = 'Unspecified'
+    Unspecified = 'Unspecified',
+}
+
+export interface RustDiagnosticSpanMacroExpansion {
+    span: RustDiagnosticSpan;
+    macro_decl_name: string;
+    def_site_span?: RustDiagnosticSpan;
 }
 
 // Reference:
@@ -20,6 +26,7 @@ export interface RustDiagnosticSpan {
     is_primary: boolean;
     file_name: string;
     label?: string;
+    expansion?: RustDiagnosticSpanMacroExpansion;
     suggested_replacement?: string;
     suggestion_applicability?: SuggestionApplicability;
 }
@@ -61,15 +68,46 @@ function mapLevelToSeverity(s: string): vscode.DiagnosticSeverity {
 }
 
 /**
+ * Check whether a file name is from macro invocation
+ */
+function isFromMacro(fileName: string): boolean {
+    return fileName.startsWith('<') && fileName.endsWith('>');
+}
+
+/**
+ * Converts a Rust macro span to a VsCode location recursively
+ */
+function mapMacroSpanToLocation(
+    spanMacro: RustDiagnosticSpanMacroExpansion,
+): vscode.Location | undefined {
+    if (!isFromMacro(spanMacro.span.file_name)) {
+        return mapSpanToLocation(spanMacro.span);
+    }
+
+    if (spanMacro.span.expansion) {
+        return mapMacroSpanToLocation(spanMacro.span.expansion);
+    }
+
+    return;
+}
+
+/**
  * Converts a Rust span to a VsCode location
  */
 function mapSpanToLocation(span: RustDiagnosticSpan): vscode.Location {
+    if (isFromMacro(span.file_name) && span.expansion) {
+        const macroLoc = mapMacroSpanToLocation(span.expansion);
+        if (macroLoc) {
+            return macroLoc;
+        }
+    }
+
     const fileName = path.join(vscode.workspace.rootPath || '', span.file_name);
     const fileUri = vscode.Uri.file(fileName);
 
     const range = new vscode.Range(
         new vscode.Position(span.line_start - 1, span.column_start - 1),
-        new vscode.Position(span.line_end - 1, span.column_end - 1)
+        new vscode.Position(span.line_end - 1, span.column_end - 1),
     );
 
     return new vscode.Location(fileUri, range);
@@ -81,7 +119,7 @@ function mapSpanToLocation(span: RustDiagnosticSpan): vscode.Location {
  * If the span is unlabelled this will return `undefined`.
  */
 function mapSecondarySpanToRelated(
-    span: RustDiagnosticSpan
+    span: RustDiagnosticSpan,
 ): vscode.DiagnosticRelatedInformation | undefined {
     if (!span.label) {
         // Nothing to label this with
@@ -107,7 +145,7 @@ function isUnusedOrUnnecessary(rd: RustDiagnostic): boolean {
         'unused_attributes',
         'unused_imports',
         'unused_macros',
-        'unused_variables'
+        'unused_variables',
     ].includes(rd.code.code);
 }
 
@@ -157,13 +195,13 @@ function mapRustChildDiagnostic(rd: RustDiagnostic): MappedRustChildDiagnostic {
                 title,
                 location,
                 span.suggested_replacement,
-                span.suggestion_applicability
-            )
+                span.suggestion_applicability,
+            ),
         };
     } else {
         const related = new vscode.DiagnosticRelatedInformation(
             location,
-            rd.message
+            rd.message,
         );
 
         return { related };
@@ -183,7 +221,7 @@ function mapRustChildDiagnostic(rd: RustDiagnostic): MappedRustChildDiagnostic {
  * If the diagnostic has no primary span this will return `undefined`
  */
 export function mapRustDiagnosticToVsCode(
-    rd: RustDiagnostic
+    rd: RustDiagnostic,
 ): MappedRustDiagnostic | undefined {
     const primarySpan = rd.spans.find(s => s.is_primary);
     if (!primarySpan) {
@@ -223,7 +261,7 @@ export function mapRustDiagnosticToVsCode(
     const suggestedFixes = [];
     for (const child of rd.children) {
         const { related, suggestedFix, messageLine } = mapRustChildDiagnostic(
-            child
+            child,
         );
 
         if (related) {
@@ -256,6 +294,6 @@ export function mapRustDiagnosticToVsCode(
     return {
         location,
         diagnostic: vd,
-        suggestedFixes
+        suggestedFixes,
     };
 }

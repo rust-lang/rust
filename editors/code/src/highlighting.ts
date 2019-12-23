@@ -67,7 +67,7 @@ export class Highlighter {
     > {
         const decoration = (
             tag: string,
-            textDecoration?: string
+            textDecoration?: string,
         ): [string, vscode.TextEditorDecorationType] => {
             const rule = scopesMapper.toRule(tag, scopes.find);
 
@@ -90,9 +90,10 @@ export class Highlighter {
             }
         };
 
-        const decorations: Iterable<
-            [string, vscode.TextEditorDecorationType]
-        > = [
+        const decorations: Iterable<[
+            string,
+            vscode.TextEditorDecorationType,
+        ]> = [
             decoration('comment'),
             decoration('string'),
             decoration('keyword'),
@@ -101,16 +102,23 @@ export class Highlighter {
             decoration('function'),
             decoration('parameter'),
             decoration('constant'),
+            decoration('type.builtin'),
+            decoration('type.generic'),
+            decoration('type.lifetime'),
+            decoration('type.param'),
+            decoration('type.self'),
             decoration('type'),
-            decoration('builtin'),
             decoration('text'),
             decoration('attribute'),
             decoration('literal'),
+            decoration('literal.numeric'),
+            decoration('literal.char'),
+            decoration('literal.byte'),
             decoration('macro'),
             decoration('variable'),
             decoration('variable.mut', 'underline'),
             decoration('field'),
-            decoration('module')
+            decoration('module'),
         ];
 
         return new Map<string, vscode.TextEditorDecorationType>(decorations);
@@ -139,7 +147,6 @@ export class Highlighter {
         //
         // Note: decoration objects need to be kept around so we can dispose them
         // if the user disables syntax highlighting
-
         if (this.decorations == null) {
             this.decorations = Highlighter.initDecorations();
         }
@@ -168,23 +175,22 @@ export class Highlighter {
                 colorfulIdents
                     .get(d.bindingHash)![0]
                     .push(
-                        Server.client.protocol2CodeConverter.asRange(d.range)
+                        Server.client.protocol2CodeConverter.asRange(d.range),
                     );
             } else {
                 byTag
                     .get(d.tag)!
                     .push(
-                        Server.client.protocol2CodeConverter.asRange(d.range)
+                        Server.client.protocol2CodeConverter.asRange(d.range),
                     );
             }
         }
 
         for (const tag of byTag.keys()) {
             const dec = this.decorations.get(
-                tag
+                tag,
             ) as vscode.TextEditorDecorationType;
             const ranges = byTag.get(tag)!;
-
             editor.setDecorations(dec, ranges);
         }
 
@@ -192,7 +198,7 @@ export class Highlighter {
             const textDecoration = mut ? 'underline' : undefined;
             const dec = vscode.window.createTextEditorDecorationType({
                 light: { color: fancify(hash, 'light'), textDecoration },
-                dark: { color: fancify(hash, 'dark'), textDecoration }
+                dark: { color: fancify(hash, 'dark'), textDecoration },
             });
             editor.setDecorations(dec, ranges);
         }

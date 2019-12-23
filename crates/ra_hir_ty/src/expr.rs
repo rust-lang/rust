@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use hir_def::{
-    path::{known, Path},
+    path::{path, Path},
     resolver::HasResolver,
     AdtId, FunctionId,
 };
@@ -97,7 +97,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let (_, source_map) = db.body_with_source_map(self.func.into());
 
         if let Some(source_ptr) = source_map.expr_syntax(id) {
-            if let Some(expr) = source_ptr.value.a() {
+            if let Some(expr) = source_ptr.value.left() {
                 let root = source_ptr.file_syntax(db);
                 if let ast::Expr::RecordLit(record_lit) = expr.to_node(&root) {
                     if let Some(field_list) = record_lit.record_field_list() {
@@ -124,7 +124,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             None => return,
         };
 
-        let std_result_path = known::std_result_result();
+        let std_result_path = path![std::result::Result];
 
         let resolver = self.func.resolver(db);
         let std_result_enum = match resolver.resolve_known_enum(db, &std_result_path) {
@@ -142,7 +142,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             let (_, source_map) = db.body_with_source_map(self.func.into());
 
             if let Some(source_ptr) = source_map.expr_syntax(id) {
-                if let Some(expr) = source_ptr.value.a() {
+                if let Some(expr) = source_ptr.value.left() {
                     self.sink.push(MissingOkInTailExpr { file: source_ptr.file_id, expr });
                 }
             }

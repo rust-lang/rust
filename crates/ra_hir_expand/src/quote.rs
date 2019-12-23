@@ -16,7 +16,10 @@ macro_rules! __quote {
         {
             let children = $crate::__quote!($($tt)*);
             let subtree = tt::Subtree {
-                delimiter: tt::Delimiter::$delim,
+                delimiter: Some(tt::Delimiter {
+                    kind: tt::DelimiterKind::$delim,
+                    id: tt::TokenId::unspecified(),
+                }),
                 token_trees: $crate::quote::IntoTt::to_tokens(children),
             };
             subtree
@@ -29,6 +32,7 @@ macro_rules! __quote {
                 tt::Leaf::Punct(tt::Punct {
                     char: $first,
                     spacing: tt::Spacing::Alone,
+                    id: tt::TokenId::unspecified(),
                 }).into()
             ]
         }
@@ -40,10 +44,12 @@ macro_rules! __quote {
                 tt::Leaf::Punct(tt::Punct {
                     char: $first,
                     spacing: tt::Spacing::Joint,
+                    id: tt::TokenId::unspecified(),
                 }).into(),
                 tt::Leaf::Punct(tt::Punct {
                     char: $sec,
                     spacing: tt::Spacing::Alone,
+                    id: tt::TokenId::unspecified(),
                 }).into()
             ]
         }
@@ -54,6 +60,15 @@ macro_rules! __quote {
         {
             let token = $crate::quote::ToTokenTree::to_token($first);
             let mut tokens = vec![token.into()];
+            let mut tail_tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($($tail)*));
+            tokens.append(&mut tail_tokens);
+            tokens
+        }
+    };
+
+    ( ## $first:ident $($tail:tt)* ) => {
+        {
+            let mut tokens = $first.into_iter().map($crate::quote::ToTokenTree::to_token).collect::<Vec<tt::TokenTree>>();
             let mut tail_tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($($tail)*));
             tokens.append(&mut tail_tokens);
             tokens
@@ -85,7 +100,10 @@ macro_rules! __quote {
     ( & ) => {$crate::__quote!(@PUNCT '&')};
     ( , ) => {$crate::__quote!(@PUNCT ',')};
     ( : ) => {$crate::__quote!(@PUNCT ':')};
+    ( :: ) => {$crate::__quote!(@PUNCT ':', ':')};
     ( . ) => {$crate::__quote!(@PUNCT '.')};
+    ( < ) => {$crate::__quote!(@PUNCT '<')};
+    ( > ) => {$crate::__quote!(@PUNCT '>')};
 
     ( $first:tt $($tail:tt)+ ) => {
         {
@@ -114,7 +132,7 @@ pub(crate) trait IntoTt {
 
 impl IntoTt for Vec<tt::TokenTree> {
     fn to_subtree(self) -> tt::Subtree {
-        tt::Subtree { delimiter: tt::Delimiter::None, token_trees: self }
+        tt::Subtree { delimiter: None, token_trees: self }
     }
 
     fn to_tokens(self) -> Vec<tt::TokenTree> {
@@ -169,15 +187,15 @@ macro_rules! impl_to_to_tokentrees {
 }
 
 impl_to_to_tokentrees! {
-    u32 => self { tt::Literal{text: self.to_string().into()} };
-    usize => self { tt::Literal{text: self.to_string().into()}};
-    i32 => self { tt::Literal{text: self.to_string().into()}};
+    u32 => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()} };
+    usize => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()}};
+    i32 => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()}};
     tt::Leaf => self { self };
     tt::Literal => self { self };
     tt::Ident => self { self };
     tt::Punct => self { self };
-    &str => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into()}};
-    String => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into()}}
+    &str => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into(), id: tt::TokenId::unspecified()}};
+    String => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into(), id: tt::TokenId::unspecified()}}
 }
 
 #[cfg(test)]
@@ -244,7 +262,13 @@ mod tests {
         let fields =
             fields.iter().map(|it| quote!(#it: self.#it.clone(), ).token_trees.clone()).flatten();
 
-        let list = tt::Subtree { delimiter: tt::Delimiter::Brace, token_trees: fields.collect() };
+        let list = tt::Subtree {
+            delimiter: Some(tt::Delimiter {
+                kind: tt::DelimiterKind::Brace,
+                id: tt::TokenId::unspecified(),
+            }),
+            token_trees: fields.collect(),
+        };
 
         let quoted = quote! {
             impl Clone for #struct_name {

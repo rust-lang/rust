@@ -6,14 +6,13 @@ use ra_syntax::{
     algo::find_covering_element,
     ast::{self, DocCommentsOwner},
     match_ast, AstNode,
+    SyntaxKind::*,
+    SyntaxToken, TokenAtOffset,
 };
 
 use crate::{
     db::RootDatabase,
-    display::{
-        description_from_symbol, docs_from_symbol, macro_label, rust_code_markup,
-        rust_code_markup_with_doc, ShortLabel,
-    },
+    display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
     expand::descend_into_macros,
     references::{classify_name, classify_name_ref, NameKind, NameKind::*},
     FilePosition, FileRange, RangeInfo,
@@ -93,11 +92,7 @@ fn hover_text(docs: Option<String>, desc: Option<String>) -> Option<String> {
     }
 }
 
-fn hover_text_from_name_kind(
-    db: &RootDatabase,
-    name_kind: NameKind,
-    no_fallback: &mut bool,
-) -> Option<String> {
+fn hover_text_from_name_kind(db: &RootDatabase, name_kind: NameKind) -> Option<String> {
     return match name_kind {
         Macro(it) => {
             let src = it.source(db);
@@ -133,12 +128,8 @@ fn hover_text_from_name_kind(
             hir::ModuleDef::TypeAlias(it) => from_def_source(db, it),
             hir::ModuleDef::BuiltinType(it) => Some(it.to_string()),
         },
-        Local(_) => {
-            // Hover for these shows type names
-            *no_fallback = true;
-            None
-        }
-        GenericParam(_) | SelfType(_) => {
+        Local(_) => None,
+        TypeParam(_) | SelfType(_) => {
             // FIXME: Hover for generic param
             None
         }
@@ -156,66 +147,53 @@ fn hover_text_from_name_kind(
 
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+    let token = pick_best(file.token_at_offset(position.offset))?;
     let token = descend_into_macros(db, position.file_id, token);
 
     let mut res = HoverResult::new();
 
-    let mut range = match_ast! {
+    if let Some((range, name_kind)) = match_ast! {
         match (token.value.parent()) {
             ast::NameRef(name_ref) => {
-                let mut no_fallback = false;
-                if let Some(name_kind) =
-                    classify_name_ref(db, token.with_value(&name_ref)).map(|d| d.kind)
-                {
-                    res.extend(hover_text_from_name_kind(db, name_kind, &mut no_fallback))
-                }
-
-                if res.is_empty() && !no_fallback {
-                    // Fallback index based approach:
-                    let symbols = crate::symbol_index::index_resolve(db, &name_ref);
-                    for sym in symbols {
-                        let docs = docs_from_symbol(db, &sym);
-                        let desc = description_from_symbol(db, &sym);
-                        res.extend(hover_text(docs, desc));
-                    }
-                }
-
-                if !res.is_empty() {
-                    Some(name_ref.syntax().text_range())
-                } else {
-                    None
-                }
+                classify_name_ref(db, token.with_value(&name_ref)).map(|d| (name_ref.syntax().text_range(), d.kind))
             },
             ast::Name(name) => {
-                if let Some(name_kind) = classify_name(db, token.with_value(&name)).map(|d| d.kind) {
-                    res.extend(hover_text_from_name_kind(db, name_kind, &mut true));
-                }
-
-                if !res.is_empty() {
-                    Some(name.syntax().text_range())
-                } else {
-                    None
-                }
+                classify_name(db, token.with_value(&name)).map(|d| (name.syntax().text_range(), d.kind))
             },
             _ => None,
         }
-    };
+    } {
+        res.extend(hover_text_from_name_kind(db, name_kind));
 
-    if range.is_none() {
-        let node = token.value.ancestors().find(|n| {
-            ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some()
-        })?;
-        let frange = FileRange { file_id: position.file_id, range: node.text_range() };
-        res.extend(type_of(db, frange).map(rust_code_markup));
-        range = Some(node.text_range());
-    };
+        if !res.is_empty() {
+            return Some(RangeInfo::new(range, res));
+        }
+    }
 
-    let range = range?;
+    let node = token
+        .value
+        .ancestors()
+        .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
+    let frange = FileRange { file_id: position.file_id, range: node.text_range() };
+    res.extend(type_of(db, frange).map(rust_code_markup));
     if res.is_empty() {
         return None;
     }
+    let range = node.text_range();
+
     Some(RangeInfo::new(range, res))
+}
+
+fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
+    return tokens.max_by_key(priority);
+    fn priority(n: &SyntaxToken) -> usize {
+        match n.kind() {
+            IDENT | INT_NUMBER => 3,
+            L_PAREN | R_PAREN => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        }
+    }
 }
 
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
@@ -227,7 +205,7 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
         .take_while(|it| it.text_range() == leaf_node.text_range())
         .find(|it| ast::Expr::cast(it.clone()).is_some() || ast::Pat::cast(it.clone()).is_some())?;
     let analyzer =
-        hir::SourceAnalyzer::new(db, hir::Source::new(frange.file_id.into(), &node), None);
+        hir::SourceAnalyzer::new(db, hir::InFile::new(frange.file_id.into(), &node), None);
     let ty = if let Some(ty) = ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))
     {
         ty
@@ -236,7 +214,7 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     } else {
         return None;
     };
-    Some(ty.display(db).to_string())
+    Some(ty.display_truncated(db, None).to_string())
 }
 
 #[cfg(test)]
@@ -300,7 +278,7 @@ mod tests {
             &["pub fn foo() -> u32"],
         );
 
-        // Multiple results
+        // Multiple candidates but results are ambiguous.
         check_hover_result(
             r#"
             //- /a.rs
@@ -321,7 +299,7 @@ mod tests {
                 let foo_test = fo<|>o();
             }
         "#,
-            &["pub fn foo() -> &str", "pub fn foo() -> u32", "pub fn foo(a: u32, b: u32)"],
+            &["{unknown}"],
         );
     }
 
@@ -407,6 +385,23 @@ mod tests {
             static foo<|>: u32 = 0;
         "#,
             &["static foo: u32"],
+        );
+    }
+
+    #[test]
+    fn hover_omits_default_generic_types() {
+        check_hover_result(
+            r#"
+//- /main.rs
+struct Test<K, T = u8> {
+    k: K,
+    t: T,
+}
+
+fn main() {
+    let zz<|> = Test { t: 23, k: 33 };
+}"#,
+            &["Test<i32>"],
         );
     }
 
@@ -500,6 +495,13 @@ The Some variant
 fn func(foo: i32) { if true { <|>foo; }; }
 ",
         );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+    }
+
+    #[test]
+    fn hover_for_param_edge() {
+        let (analysis, position) = single_file_with_position("fn func(<|>foo: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
     }

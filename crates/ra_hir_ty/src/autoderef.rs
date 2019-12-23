@@ -6,14 +6,14 @@
 use std::iter::successors;
 
 use hir_def::lang_item::LangItemTarget;
-use hir_expand::name;
+use hir_expand::name::name;
 use log::{info, warn};
 use ra_db::CrateId;
 
-use crate::db::HirDatabase;
-
-use super::{
+use crate::{
+    db::HirDatabase,
     traits::{InEnvironment, Solution},
+    utils::generics,
     Canonical, Substs, Ty, TypeWalk,
 };
 
@@ -48,14 +48,14 @@ fn deref_by_trait(
     krate: CrateId,
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
-    let deref_trait = match db.lang_item(krate.into(), "deref".into())? {
+    let deref_trait = match db.lang_item(krate, "deref".into())? {
         LangItemTarget::TraitId(it) => it,
         _ => return None,
     };
-    let target = db.trait_data(deref_trait).associated_type_by_name(&name::TARGET_TYPE)?;
+    let target = db.trait_data(deref_trait).associated_type_by_name(&name![Target])?;
 
-    let generic_params = db.generic_params(target.into());
-    if generic_params.count_params_including_parent() != 1 {
+    let generic_params = generics(db, target.into());
+    if generic_params.len() != 1 {
         // the Target type + Deref trait should only have one generic parameter,
         // namely Deref's Self type
         return None;
@@ -78,7 +78,7 @@ fn deref_by_trait(
 
     let canonical = super::Canonical { num_vars: 1 + ty.value.num_vars, value: in_env };
 
-    let solution = db.trait_solve(krate.into(), canonical)?;
+    let solution = db.trait_solve(krate, canonical)?;
 
     match &solution {
         Solution::Unique(vars) => {

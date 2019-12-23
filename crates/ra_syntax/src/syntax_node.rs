@@ -40,7 +40,7 @@ pub use rowan::{Direction, NodeOrToken};
 
 pub struct SyntaxTreeBuilder {
     errors: Vec<SyntaxError>,
-    inner: GreenNodeBuilder,
+    inner: GreenNodeBuilder<'static>,
 }
 
 impl Default for SyntaxTreeBuilder {

@@ -1,0 +1,21 @@
+SOURCE_FILE@[0; 24)
+  MACRO_DEF@[0; 23)
+    VISIBILITY@[0; 3)
+      PUB_KW@[0; 3) "pub"
+    WHITESPACE@[3; 4) " "
+    MACRO_KW@[4; 9) "macro"
+    WHITESPACE@[9; 10) " "
+    NAME@[10; 11)
+      IDENT@[10; 11) "m"
+    TOKEN_TREE@[11; 23)
+      TOKEN_TREE@[11; 20)
+        L_PAREN@[11; 12) "("
+        DOLLAR@[12; 13) "$"
+        COLON@[13; 14) ":"
+        IDENT@[14; 19) "ident"
+        R_PAREN@[19; 20) ")"
+      WHITESPACE@[20; 21) " "
+      TOKEN_TREE@[21; 23)
+        L_CURLY@[21; 22) "{"
+        R_CURLY@[22; 23) "}"
+  WHITESPACE@[23; 24) "\n"

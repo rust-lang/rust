@@ -3,7 +3,7 @@ import { Position, TextDocumentIdentifier } from 'vscode-languageclient';
 import { Server } from '../server';
 
 export const expandMacroUri = vscode.Uri.parse(
-    'rust-analyzer://expandMacro/[EXPANSION].rs'
+    'rust-analyzer://expandMacro/[EXPANSION].rs',
 );
 
 export class ExpandMacroContentProvider
@@ -11,7 +11,7 @@ export class ExpandMacroContentProvider
     public eventEmitter = new vscode.EventEmitter<vscode.Uri>();
 
     public provideTextDocumentContent(
-        uri: vscode.Uri
+        _uri: vscode.Uri,
     ): vscode.ProviderResult<string> {
         async function handle() {
             const editor = vscode.window.activeTextEditor;
@@ -22,11 +22,11 @@ export class ExpandMacroContentProvider
             const position = editor.selection.active;
             const request: MacroExpandParams = {
                 textDocument: { uri: editor.document.uri.toString() },
-                position
+                position,
             };
             const expanded = await Server.client.sendRequest<ExpandedMacro>(
                 'rust-analyzer/expandMacro',
-                request
+                request,
             );
 
             if (expanded == null) {
@@ -58,7 +58,7 @@ export function createHandle(provider: ExpandMacroContentProvider) {
         return vscode.window.showTextDocument(
             document,
             vscode.ViewColumn.Two,
-            true
+            true,
         );
     };
 }

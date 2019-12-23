@@ -83,8 +83,8 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
     let parent_container = parent_block.syntax().parent()?.parent()?;
 
     let early_expression: ast::Expr = match parent_container.kind() {
-        WHILE_EXPR | LOOP_EXPR => make::expr_continue().into(),
-        FN_DEF => make::expr_return().into(),
+        WHILE_EXPR | LOOP_EXPR => make::expr_continue(),
+        FN_DEF => make::expr_return(),
         _ => return None,
     };
 
@@ -116,13 +116,13 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
                             )
                             .into(),
                         ),
-                        make::expr_path(make::path_from_name_ref(make::name_ref("it"))).into(),
+                        make::expr_path(make::path_from_name_ref(make::name_ref("it"))),
                     );
 
                     let sad_arm = make::match_arm(
                         // FIXME: would be cool to use `None` or `Err(_)` if appropriate
                         once(make::placeholder_pat().into()),
-                        early_expression.into(),
+                        early_expression,
                     );
 
                     make::expr_match(cond_expr, make::match_arm_list(vec![happy_arm, sad_arm]))
@@ -130,7 +130,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
 
                 let let_stmt = make::let_stmt(
                     make::bind_pat(make::name(&bound_ident.syntax().to_string())).into(),
-                    Some(match_expr.into()),
+                    Some(match_expr),
                 );
                 let let_stmt = if_indent_level.increase_indent(let_stmt);
                 replace(let_stmt.syntax(), &then_block, &parent_block, &if_expr)

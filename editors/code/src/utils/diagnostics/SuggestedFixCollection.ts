@@ -38,13 +38,13 @@ export default class SuggestedFixCollection
      */
     public addSuggestedFixForDiagnostic(
         suggestedFix: SuggestedFix,
-        diagnostic: vscode.Diagnostic
+        diagnostic: vscode.Diagnostic,
     ): void {
         const fileUriString = suggestedFix.location.uri.toString();
         const fileSuggestions = this.suggestedFixes.get(fileUriString) || [];
 
         const existingSuggestion = fileSuggestions.find(s =>
-            s.isEqual(suggestedFix)
+            s.isEqual(suggestedFix),
         );
 
         if (existingSuggestion) {
@@ -65,7 +65,7 @@ export default class SuggestedFixCollection
      */
     public provideCodeActions(
         document: vscode.TextDocument,
-        range: vscode.Range
+        range: vscode.Range,
     ): vscode.CodeAction[] {
         const documentUriString = document.uri.toString();
 

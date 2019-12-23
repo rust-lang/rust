@@ -10,21 +10,18 @@ use std::{ops::Index, sync::Arc};
 use hir_expand::{
     ast_id_map::AstIdMap,
     db::AstDatabase,
-    either::Either,
     hygiene::Hygiene,
     name::{AsName, Name},
 };
-use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
+use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, AstPtr,
+    AstNode,
 };
 use test_utils::tested_by;
 
-use crate::{
-    attr::Attrs, db::DefDatabase, path::Path, trace::Trace, FileAstId, HirFileId, LocalImportId,
-    Source,
-};
+use crate::{attr::Attrs, db::DefDatabase, path::ModPath, FileAstId, HirFileId, InFile};
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
 ///
@@ -33,7 +30,7 @@ use crate::{
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RawItems {
     modules: Arena<Module, ModuleData>,
-    imports: Arena<LocalImportId, ImportData>,
+    imports: Arena<Import, ImportData>,
     defs: Arena<Def, DefData>,
     macros: Arena<Macro, MacroData>,
     impls: Arena<Impl, ImplData>,
@@ -41,35 +38,15 @@ pub struct RawItems {
     items: Vec<RawItem>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct ImportSourceMap {
-    map: ArenaMap<LocalImportId, ImportSourcePtr>,
-}
-
-type ImportSourcePtr = Either<AstPtr<ast::UseTree>, AstPtr<ast::ExternCrateItem>>;
-
-impl ImportSourceMap {
-    pub fn get(&self, import: LocalImportId) -> ImportSourcePtr {
-        self.map[import].clone()
-    }
-}
-
 impl RawItems {
     pub(crate) fn raw_items_query(
         db: &(impl DefDatabase + AstDatabase),
         file_id: HirFileId,
     ) -> Arc<RawItems> {
-        db.raw_items_with_source_map(file_id).0
-    }
-
-    pub(crate) fn raw_items_with_source_map_query(
-        db: &(impl DefDatabase + AstDatabase),
-        file_id: HirFileId,
-    ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
+        let _p = profile("raw_items_query");
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_ast_id_map: db.ast_id_map(file_id),
-            imports: Trace::new(),
             file_id,
             hygiene: Hygiene::new(db, file_id),
         };
@@ -80,11 +57,8 @@ impl RawItems {
                 collector.process_module(None, item_list);
             }
         }
-        let mut raw_items = collector.raw_items;
-        let (arena, map) = collector.imports.into_arena_and_map();
-        raw_items.imports = arena;
-        let source_map = ImportSourceMap { map };
-        (Arc::new(raw_items), Arc::new(source_map))
+        let raw_items = collector.raw_items;
+        Arc::new(raw_items)
     }
 
     pub(super) fn items(&self) -> &[RawItem] {
@@ -99,9 +73,9 @@ impl Index<Module> for RawItems {
     }
 }
 
-impl Index<LocalImportId> for RawItems {
+impl Index<Import> for RawItems {
     type Output = ImportData;
-    fn index(&self, idx: LocalImportId) -> &ImportData {
+    fn index(&self, idx: Import) -> &ImportData {
         &self.imports[idx]
     }
 }
@@ -136,7 +110,7 @@ pub(super) struct RawItem {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum RawItemKind {
     Module(Module),
-    Import(LocalImportId),
+    Import(Import),
     Def(Def),
     Macro(Macro),
     Impl(Impl),
@@ -152,9 +126,13 @@ pub(super) enum ModuleData {
     Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct Import(RawId);
+impl_arena_id!(Import);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
-    pub(super) path: Path,
+    pub(super) path: ModPath,
     pub(super) alias: Option<Name>,
     pub(super) is_glob: bool,
     pub(super) is_prelude: bool,
@@ -184,6 +162,21 @@ pub(super) enum DefKind {
     TypeAlias(FileAstId<ast::TypeAliasDef>),
 }
 
+impl DefKind {
+    pub fn ast_id(&self) -> FileAstId<ast::ModuleItem> {
+        match self {
+            DefKind::Function(it) => it.upcast(),
+            DefKind::Struct(it) => it.upcast(),
+            DefKind::Union(it) => it.upcast(),
+            DefKind::Enum(it) => it.upcast(),
+            DefKind::Const(it) => it.upcast(),
+            DefKind::Static(it) => it.upcast(),
+            DefKind::Trait(it) => it.upcast(),
+            DefKind::TypeAlias(it) => it.upcast(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) struct Macro(RawId);
 impl_arena_id!(Macro);
@@ -191,7 +184,7 @@ impl_arena_id!(Macro);
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct MacroData {
     pub(super) ast_id: FileAstId<ast::MacroCall>,
-    pub(super) path: Path,
+    pub(super) path: ModPath,
     pub(super) name: Option<Name>,
     pub(super) export: bool,
     pub(super) builtin: bool,
@@ -208,7 +201,6 @@ pub(super) struct ImplData {
 
 struct RawItemsCollector {
     raw_items: RawItems,
-    imports: Trace<LocalImportId, ImportData, ImportSourcePtr>,
     source_ast_id_map: Arc<AstIdMap>,
     file_id: HirFileId,
     hygiene: Hygiene,
@@ -312,10 +304,10 @@ impl RawItemsCollector {
         let attrs = self.parse_attrs(&use_item);
 
         let mut buf = Vec::new();
-        Path::expand_use_item(
-            Source { value: use_item, file_id: self.file_id },
+        ModPath::expand_use_item(
+            InFile { value: use_item, file_id: self.file_id },
             &self.hygiene,
-            |path, use_tree, is_glob, alias| {
+            |path, _use_tree, is_glob, alias| {
                 let import_data = ImportData {
                     path,
                     alias,
@@ -324,11 +316,11 @@ impl RawItemsCollector {
                     is_extern_crate: false,
                     is_macro_use: false,
                 };
-                buf.push((import_data, Either::A(AstPtr::new(use_tree))));
+                buf.push(import_data);
             },
         );
-        for (import_data, ptr) in buf {
-            self.push_import(current_module, attrs.clone(), import_data, ptr);
+        for import_data in buf {
+            self.push_import(current_module, attrs.clone(), import_data);
         }
     }
 
@@ -338,7 +330,7 @@ impl RawItemsCollector {
         extern_crate: ast::ExternCrateItem,
     ) {
         if let Some(name_ref) = extern_crate.name_ref() {
-            let path = Path::from_name_ref(&name_ref);
+            let path = ModPath::from_name_ref(&name_ref);
             let alias = extern_crate.alias().and_then(|a| a.name()).map(|it| it.as_name());
             let attrs = self.parse_attrs(&extern_crate);
             // FIXME: cfg_attr
@@ -351,18 +343,13 @@ impl RawItemsCollector {
                 is_extern_crate: true,
                 is_macro_use,
             };
-            self.push_import(
-                current_module,
-                attrs,
-                import_data,
-                Either::B(AstPtr::new(&extern_crate)),
-            );
+            self.push_import(current_module, attrs, import_data);
         }
     }
 
     fn add_macro(&mut self, current_module: Option<Module>, m: ast::MacroCall) {
         let attrs = self.parse_attrs(&m);
-        let path = match m.path().and_then(|path| Path::from_src(path, &self.hygiene)) {
+        let path = match m.path().and_then(|path| ModPath::from_src(path, &self.hygiene)) {
             Some(it) => it,
             _ => return,
         };
@@ -387,14 +374,8 @@ impl RawItemsCollector {
         self.push_item(current_module, attrs, RawItemKind::Impl(imp))
     }
 
-    fn push_import(
-        &mut self,
-        current_module: Option<Module>,
-        attrs: Attrs,
-        data: ImportData,
-        source: ImportSourcePtr,
-    ) {
-        let import = self.imports.alloc(|| source, || data);
+    fn push_import(&mut self, current_module: Option<Module>, attrs: Attrs, data: ImportData) {
+        let import = self.raw_items.imports.alloc(data);
         self.push_item(current_module, attrs, RawItemKind::Import(import))
     }
 

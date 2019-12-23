@@ -37,7 +37,8 @@ $ cargo xtask install
 $ cargo xtask install --server
 ```
 
-For non-standard setup of VS Code and other editors, see [./docs/user](./docs/user).
+For non-standard setup of VS Code and other editors, or if the language server
+cannot start, see [./docs/user](./docs/user).
 
 ## Documentation
 
@@ -57,7 +58,7 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frls-2.2E0
 ## Quick Links
 
 * API docs: https://rust-analyzer.github.io/rust-analyzer/ra_ide/
-
+* Website: https://rust-analyzer.github.io/
 
 ## License
 

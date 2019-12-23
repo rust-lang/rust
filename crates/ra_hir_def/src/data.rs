@@ -3,16 +3,17 @@
 use std::sync::Arc;
 
 use hir_expand::{
-    name::{self, AsName, Name},
-    AstId,
+    name::{name, AsName, Name},
+    AstId, InFile,
 };
-use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
+use ra_syntax::ast::{self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner};
 
 use crate::{
     db::DefDatabase,
+    src::HasSource,
     type_ref::{Mutability, TypeRef},
-    AssocItemId, AstItemDef, ConstId, ConstLoc, ContainerId, FunctionId, FunctionLoc, HasSource,
-    ImplId, Intern, Lookup, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
+    AssocContainerId, AssocItemId, ConstId, ConstLoc, Expander, FunctionId, FunctionLoc, HasModule,
+    ImplId, Intern, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,7 +37,7 @@ impl FunctionData {
                 let self_type = if let Some(type_ref) = self_param.ascribed_type() {
                     TypeRef::from_ast(type_ref)
                 } else {
-                    let self_type = TypeRef::Path(name::SELF_TYPE.into());
+                    let self_type = TypeRef::Path(name![Self].into());
                     match self_param.kind() {
                         ast::SelfParamKind::Owned => self_type,
                         ast::SelfParamKind::Ref => {
@@ -93,12 +94,12 @@ pub struct TraitData {
 
 impl TraitData {
     pub(crate) fn trait_data_query(db: &impl DefDatabase, tr: TraitId) -> Arc<TraitData> {
-        let src = tr.source(db);
+        let src = tr.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let auto = src.value.is_auto();
         let ast_id_map = db.ast_id_map(src.file_id);
 
-        let container = ContainerId::TraitId(tr);
+        let container = AssocContainerId::TraitId(tr);
         let items = if let Some(item_list) = src.value.item_list() {
             item_list
                 .impl_items()
@@ -166,46 +167,24 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn impl_data_query(db: &impl DefDatabase, id: ImplId) -> Arc<ImplData> {
-        let src = id.source(db);
-        let items = db.ast_id_map(src.file_id);
+        let impl_loc = id.lookup(db);
+        let src = impl_loc.source(db);
 
         let target_trait = src.value.target_trait().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(src.value.target_type());
         let is_negative = src.value.is_negative();
+        let module_id = impl_loc.container.module(db);
 
-        let items = if let Some(item_list) = src.value.item_list() {
-            item_list
-                .impl_items()
-                .map(|item_node| match item_node {
-                    ast::ImplItem::FnDef(it) => {
-                        let def = FunctionLoc {
-                            container: ContainerId::ImplId(id),
-                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
-                        }
-                        .intern(db);
-                        def.into()
-                    }
-                    ast::ImplItem::ConstDef(it) => {
-                        let def = ConstLoc {
-                            container: ContainerId::ImplId(id),
-                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
-                        }
-                        .intern(db);
-                        def.into()
-                    }
-                    ast::ImplItem::TypeAliasDef(it) => {
-                        let def = TypeAliasLoc {
-                            container: ContainerId::ImplId(id),
-                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
-                        }
-                        .intern(db);
-                        def.into()
-                    }
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let mut items = Vec::new();
+        if let Some(item_list) = src.value.item_list() {
+            items.extend(collect_impl_items(db, item_list.impl_items(), src.file_id, id));
+            items.extend(collect_impl_items_in_macros(
+                db,
+                module_id,
+                &src.with_value(item_list),
+                id,
+            ));
+        }
 
         let res = ImplData { target_trait, target_type, items, is_negative };
         Arc::new(res)
@@ -235,4 +214,93 @@ impl ConstData {
         let type_ref = TypeRef::from_ast_opt(node.ascribed_type());
         ConstData { name, type_ref }
     }
+}
+
+fn collect_impl_items_in_macros(
+    db: &impl DefDatabase,
+    module_id: ModuleId,
+    impl_block: &InFile<ast::ItemList>,
+    id: ImplId,
+) -> Vec<AssocItemId> {
+    let mut expander = Expander::new(db, impl_block.file_id, module_id);
+    let mut res = Vec::new();
+
+    // We set a limit to protect against infinite recursion
+    let limit = 100;
+
+    for m in impl_block.value.syntax().children().filter_map(ast::MacroCall::cast) {
+        res.extend(collect_impl_items_in_macro(db, &mut expander, m, id, limit))
+    }
+
+    res
+}
+
+fn collect_impl_items_in_macro(
+    db: &impl DefDatabase,
+    expander: &mut Expander,
+    m: ast::MacroCall,
+    id: ImplId,
+    limit: usize,
+) -> Vec<AssocItemId> {
+    if limit == 0 {
+        return Vec::new();
+    }
+
+    if let Some((mark, items)) = expander.enter_expand(db, m) {
+        let items: InFile<ast::MacroItems> = expander.to_source(items);
+        let mut res = collect_impl_items(
+            db,
+            items.value.items().filter_map(|it| ImplItem::cast(it.syntax().clone())),
+            items.file_id,
+            id,
+        );
+        // Recursive collect macros
+        // Note that ast::ModuleItem do not include ast::MacroCall
+        // We cannot use ModuleItemOwner::items here
+        for it in items.value.syntax().children().filter_map(ast::MacroCall::cast) {
+            res.extend(collect_impl_items_in_macro(db, expander, it, id, limit - 1))
+        }
+        expander.exit(db, mark);
+        res
+    } else {
+        Vec::new()
+    }
+}
+
+fn collect_impl_items(
+    db: &impl DefDatabase,
+    impl_items: impl Iterator<Item = ImplItem>,
+    file_id: crate::HirFileId,
+    id: ImplId,
+) -> Vec<AssocItemId> {
+    let items = db.ast_id_map(file_id);
+
+    impl_items
+        .map(|item_node| match item_node {
+            ast::ImplItem::FnDef(it) => {
+                let def = FunctionLoc {
+                    container: AssocContainerId::ImplId(id),
+                    ast_id: AstId::new(file_id, items.ast_id(&it)),
+                }
+                .intern(db);
+                def.into()
+            }
+            ast::ImplItem::ConstDef(it) => {
+                let def = ConstLoc {
+                    container: AssocContainerId::ImplId(id),
+                    ast_id: AstId::new(file_id, items.ast_id(&it)),
+                }
+                .intern(db);
+                def.into()
+            }
+            ast::ImplItem::TypeAliasDef(it) => {
+                let def = TypeAliasLoc {
+                    container: AssocContainerId::ImplId(id),
+                    ast_id: AstId::new(file_id, items.ast_id(&it)),
+                }
+                .intern(db);
+                def.into()
+            }
+        })
+        .collect()
 }

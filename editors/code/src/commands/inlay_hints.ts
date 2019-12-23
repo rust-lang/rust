@@ -15,8 +15,8 @@ interface InlayHint {
 
 const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
     after: {
-        color: new vscode.ThemeColor('ralsp.inlayHint')
-    }
+        color: new vscode.ThemeColor('ralsp.inlayHint'),
+    },
 });
 
 export class HintsUpdater {
@@ -26,13 +26,13 @@ export class HintsUpdater {
         if (this.displayHints !== displayHints) {
             this.displayHints = displayHints;
             return this.refreshVisibleEditorsHints(
-                displayHints ? undefined : []
+                displayHints ? undefined : [],
             );
         }
     }
 
     public async refreshHintsForVisibleEditors(
-        cause?: TextDocumentChangeEvent
+        cause?: TextDocumentChangeEvent,
     ): Promise<void> {
         if (!this.displayHints) {
             return;
@@ -48,21 +48,21 @@ export class HintsUpdater {
     }
 
     private async refreshVisibleEditorsHints(
-        newDecorations?: vscode.DecorationOptions[]
+        newDecorations?: vscode.DecorationOptions[],
     ) {
         const promises: Array<Promise<void>> = [];
 
         for (const rustEditor of vscode.window.visibleTextEditors.filter(
-            editor => this.isRustDocument(editor.document)
+            editor => this.isRustDocument(editor.document),
         )) {
             if (newDecorations !== undefined) {
                 promises.push(
                     Promise.resolve(
                         rustEditor.setDecorations(
                             typeHintDecorationType,
-                            newDecorations
-                        )
-                    )
+                            newDecorations,
+                        ),
+                    ),
                 );
             } else {
                 promises.push(this.updateDecorationsFromServer(rustEditor));
@@ -79,7 +79,7 @@ export class HintsUpdater {
     }
 
     private async updateDecorationsFromServer(
-        editor: TextEditor
+        editor: TextEditor,
     ): Promise<void> {
         const newHints = await this.queryHints(editor.document.uri.toString());
         if (newHints !== null) {
@@ -87,20 +87,20 @@ export class HintsUpdater {
                 range: hint.range,
                 renderOptions: {
                     after: {
-                        contentText: `: ${hint.label}`
-                    }
-                }
+                        contentText: `: ${hint.label}`,
+                    },
+                },
             }));
             return editor.setDecorations(
                 typeHintDecorationType,
-                newDecorations
+                newDecorations,
             );
         }
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
         const request: InlayHintsParams = {
-            textDocument: { uri: documentUri }
+            textDocument: { uri: documentUri },
         };
         const client = Server.client;
         return client
@@ -108,8 +108,8 @@ export class HintsUpdater {
             .then(() =>
                 client.sendRequest<InlayHint[] | null>(
                     'rust-analyzer/inlayHints',
-                    request
-                )
+                    request,
+                ),
             );
     }
 }

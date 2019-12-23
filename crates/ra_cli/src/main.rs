@@ -7,7 +7,6 @@ mod progress_report;
 
 use std::{error::Error, fmt::Write, io::Read};
 
-use flexi_logger::Logger;
 use pico_args::Arguments;
 use ra_ide::{file_structure, Analysis};
 use ra_prof::profile;
@@ -32,7 +31,7 @@ impl Verbosity {
 }
 
 fn main() -> Result<()> {
-    Logger::with_env_or_str("error").start()?;
+    env_logger::try_init()?;
 
     let subcommand = match std::env::args_os().nth(1) {
         None => {

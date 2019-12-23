@@ -43,6 +43,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T!['('],
         T!['{'],
         T!['['],
+        L_DOLLAR,
         T![|],
         T![move],
         T![box],
@@ -248,7 +249,12 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
             p.error("expected `{`");
         }
     }
-    expr(p);
+
+    if p.at_ts(EXPR_FIRST) {
+        expr(p);
+    } else {
+        p.error("expected expression");
+    }
     m.complete(p, LAMBDA_EXPR)
 }
 
@@ -438,7 +444,7 @@ fn match_arm(p: &mut Parser) -> BlockLike {
     // }
     attributes::outer_attributes(p);
 
-    patterns::pattern_list_r(p, TokenSet::empty());
+    patterns::pattern_list_r(p, TokenSet::EMPTY);
     if p.at(T![if]) {
         match_guard(p);
     }

@@ -26,42 +26,38 @@ macro_rules! impl_froms {
     }
 }
 
-pub mod debug;
-
 pub mod db;
 pub mod source_binder;
 
-mod ty;
 pub mod diagnostics;
 
 mod from_id;
 mod code_model;
 
-pub mod from_source;
+mod has_source;
+mod from_source;
 
 pub use crate::{
     code_model::{
-        src::HasSource, Adt, AssocItem, AttrDef, Const, Container, Crate, CrateDependency,
-        DefWithBody, Docs, Enum, EnumVariant, FieldSource, Function, GenericDef, GenericParam,
-        HasAttrs, ImplBlock, Import, Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef,
-        Static, Struct, StructField, Trait, Type, TypeAlias, Union, VariantDef,
+        Adt, AssocItem, AttrDef, Const, Crate, CrateDependency, DefWithBody, Docs, Enum,
+        EnumVariant, FieldSource, Function, GenericDef, HasAttrs, ImplBlock, Local, MacroDef,
+        Module, ModuleDef, ScopeDef, Static, Struct, StructField, Trait, Type, TypeAlias,
+        TypeParam, Union, VariantDef,
     },
     from_source::FromSource,
+    has_source::HasSource,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
-    ty::{
-        display::HirDisplay,
-        primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness, Uncertain},
-        ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
-    },
 };
 
 pub use hir_def::{
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,
-    path::{Path, PathKind},
+    nameres::ModuleSource,
+    path::{ModPath, Path, PathKind},
     type_ref::Mutability,
 };
 pub use hir_expand::{
-    either::Either, name::Name, HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Source,
+    name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Origin,
 };
+pub use hir_ty::{display::HirDisplay, CallableDef};

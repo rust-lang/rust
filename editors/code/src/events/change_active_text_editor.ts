@@ -3,7 +3,7 @@ import { TextDocumentIdentifier } from 'vscode-languageclient';
 
 import {
     SyntaxTreeContentProvider,
-    syntaxTreeUri
+    syntaxTreeUri,
 } from '../commands/syntaxTree';
 import { Decoration } from '../highlighting';
 import { Server } from '../server';
@@ -21,11 +21,11 @@ export function makeHandler(syntaxTreeProvider: SyntaxTreeContentProvider) {
         }
 
         const params: TextDocumentIdentifier = {
-            uri: editor.document.uri.toString()
+            uri: editor.document.uri.toString(),
         };
         const decorations = await Server.client.sendRequest<Decoration[]>(
             'rust-analyzer/decorationsRequest',
-            params
+            params,
         );
         Server.highlighter.setHighlights(editor, decorations);
     };

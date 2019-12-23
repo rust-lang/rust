@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Defines `rust-analyzer` specific custom messages.
 
 use lsp_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;
@@ -10,8 +10,9 @@ pub use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
     DocumentOnTypeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse,
     FileSystemWatcher, Hover, InitializeResult, MessageType, PublishDiagnosticsParams,
-    ReferenceParams, Registration, RegistrationParams, ShowMessageParams, SignatureHelp,
-    TextDocumentEdit, TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
+    ReferenceParams, Registration, RegistrationParams, SelectionRange, SelectionRangeParams,
+    ShowMessageParams, SignatureHelp, TextDocumentEdit, TextDocumentPositionParams, TextEdit,
+    WorkspaceEdit, WorkspaceSymbolParams,
 };
 
 pub enum AnalyzerStatus {}
@@ -65,28 +66,6 @@ impl Request for ExpandMacro {
 pub struct ExpandMacroParams {
     pub text_document: TextDocumentIdentifier,
     pub position: Option<Position>,
-}
-
-pub enum SelectionRangeRequest {}
-
-impl Request for SelectionRangeRequest {
-    type Params = SelectionRangeParams;
-    type Result = Vec<SelectionRange>;
-    const METHOD: &'static str = "textDocument/selectionRange";
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SelectionRangeParams {
-    pub text_document: TextDocumentIdentifier,
-    pub positions: Vec<Position>,
-}
-
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SelectionRange {
-    pub range: Range,
-    pub parent: Option<Box<SelectionRange>>,
 }
 
 pub enum FindMatchingBrace {}
