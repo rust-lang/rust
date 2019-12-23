@@ -6,7 +6,6 @@ use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
 use syntax::{ast::*, source_map::DUMMY_SP};
 
-use cargo_metadata;
 use itertools::Itertools;
 
 declare_clippy_lint! {

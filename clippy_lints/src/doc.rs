@@ -1,6 +1,5 @@
 use crate::utils::{match_type, paths, return_ty, span_lint};
 use itertools::Itertools;
-use pulldown_cmark;
 use rustc::hir;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

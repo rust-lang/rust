@@ -8,8 +8,6 @@ use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
 use syntax::{ast::*, source_map::DUMMY_SP};
 
-use cargo_metadata;
-
 declare_clippy_lint! {
     /// **What it does:** Checks to see if all common metadata is defined in
     /// `Cargo.toml`. See: https://rust-lang-nursery.github.io/api-guidelines/documentation.html#cargotoml-includes-all-common-metadata-c-metadata
@@ -56,7 +54,7 @@ fn is_empty_path(value: &Option<PathBuf>) -> bool {
 
 fn is_empty_vec(value: &[String]) -> bool {
     // This works because empty iterators return true
-    value.iter().all(std::string::String::is_empty)
+    value.iter().all(String::is_empty)
 }
 
 declare_lint_pass!(CargoCommonMetadata => [CARGO_COMMON_METADATA]);

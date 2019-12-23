@@ -50,7 +50,7 @@ impl Lint {
             name: name.to_lowercase(),
             group: group.to_string(),
             desc: NL_ESCAPE_RE.replace(&desc.replace("\\\"", "\""), "").to_string(),
-            deprecation: deprecation.map(std::string::ToString::to_string),
+            deprecation: deprecation.map(ToString::to_string),
             module: module.to_string(),
         }
     }

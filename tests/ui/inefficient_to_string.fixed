@@ -2,7 +2,6 @@
 #![deny(clippy::inefficient_to_string)]
 
 use std::borrow::Cow;
-use std::string::ToString;
 
 fn main() {
     let rstr: &str = "hello";

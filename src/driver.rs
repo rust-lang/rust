@@ -1,5 +1,6 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(rustc_private)]
+#![feature(str_strip)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -18,6 +19,8 @@ use rustc_tools_util::*;
 
 use lazy_static::lazy_static;
 use std::borrow::Cow;
+use std::env;
+use std::ops::Deref;
 use std::panic;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
@@ -26,22 +29,21 @@ mod lintlist;
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
-fn arg_value<'a>(
-    args: impl IntoIterator<Item = &'a String>,
+fn arg_value<'a, T: Deref<Target = str>>(
+    args: &'a [T],
     find_arg: &str,
     pred: impl Fn(&str) -> bool,
 ) -> Option<&'a str> {
-    let mut args = args.into_iter().map(String::as_str);
-
+    let mut args = args.iter().map(Deref::deref);
     while let Some(arg) = args.next() {
-        let arg: Vec<_> = arg.splitn(2, '=').collect();
-        if arg.get(0) != Some(&find_arg) {
+        let mut arg = arg.splitn(2, '=');
+        if arg.next() != Some(find_arg) {
             continue;
         }
 
-        let value = arg.get(1).cloned().or_else(|| args.next());
-        if value.as_ref().map_or(false, |p| pred(p)) {
-            return value;
+        match arg.next().or_else(|| args.next()) {
+            Some(v) if pred(v) => return Some(v),
+            _ => {},
         }
     }
     None
@@ -49,19 +51,16 @@ fn arg_value<'a>(
 
 #[test]
 fn test_arg_value() {
-    let args: Vec<_> = ["--bar=bar", "--foobar", "123", "--foo"]
-        .iter()
-        .map(std::string::ToString::to_string)
-        .collect();
+    let args = &["--bar=bar", "--foobar", "123", "--foo"];
 
-    assert_eq!(arg_value(None, "--foobar", |_| true), None);
-    assert_eq!(arg_value(&args, "--bar", |_| false), None);
-    assert_eq!(arg_value(&args, "--bar", |_| true), Some("bar"));
-    assert_eq!(arg_value(&args, "--bar", |p| p == "bar"), Some("bar"));
-    assert_eq!(arg_value(&args, "--bar", |p| p == "foo"), None);
-    assert_eq!(arg_value(&args, "--foobar", |p| p == "foo"), None);
-    assert_eq!(arg_value(&args, "--foobar", |p| p == "123"), Some("123"));
-    assert_eq!(arg_value(&args, "--foo", |_| true), None);
+    assert_eq!(arg_value(&[] as &[&str], "--foobar", |_| true), None);
+    assert_eq!(arg_value(args, "--bar", |_| false), None);
+    assert_eq!(arg_value(args, "--bar", |_| true), Some("bar"));
+    assert_eq!(arg_value(args, "--bar", |p| p == "bar"), Some("bar"));
+    assert_eq!(arg_value(args, "--bar", |p| p == "foo"), None);
+    assert_eq!(arg_value(args, "--foobar", |p| p == "foo"), None);
+    assert_eq!(arg_value(args, "--foobar", |p| p == "123"), Some("123"));
+    assert_eq!(arg_value(args, "--foo", |_| true), None);
 }
 
 #[allow(clippy::too_many_lines)]
@@ -276,7 +275,7 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 
     // If backtraces are enabled, also print the query stack
-    let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
+    let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
 
     if backtrace {
         TyCtxt::try_print_query_stack(&handler);
@@ -288,15 +287,13 @@ pub fn main() {
     lazy_static::initialize(&ICE_HOOK);
     exit(
         rustc_driver::catch_fatal_errors(move || {
-            use std::env;
+            let mut orig_args: Vec<String> = env::args().collect();
 
-            if std::env::args().any(|a| a == "--version" || a == "-V") {
+            if orig_args.iter().any(|a| a == "--version" || a == "-V") {
                 let version_info = rustc_tools_util::get_version_info!();
                 println!("{}", version_info);
                 exit(0);
             }
-
-            let mut orig_args: Vec<String> = env::args().collect();
 
             // Get the sysroot, looking from most specific to this invocation to the least:
             // - command line
@@ -350,7 +347,7 @@ pub fn main() {
             }
 
             let should_describe_lints = || {
-                let args: Vec<_> = std::env::args().collect();
+                let args: Vec<_> = env::args().collect();
                 args.windows(2).any(|args| {
                     args[1] == "help"
                         && match args[0].as_str() {
@@ -368,15 +365,9 @@ pub fn main() {
             // this conditional check for the --sysroot flag is there so users can call
             // `clippy_driver` directly
             // without having to pass --sysroot or anything
-            let mut args: Vec<String> = if have_sys_root_arg {
-                orig_args.clone()
-            } else {
-                orig_args
-                    .clone()
-                    .into_iter()
-                    .chain(Some("--sysroot".to_owned()))
-                    .chain(Some(sys_root))
-                    .collect()
+            let mut args: Vec<String> = orig_args.clone();
+            if !have_sys_root_arg {
+                args.extend(vec!["--sysroot".into(), sys_root]);
             };
 
             // this check ensures that dependencies are built but not linted and the final
@@ -385,7 +376,7 @@ pub fn main() {
                 || arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_none();
 
             if clippy_enabled {
-                args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
+                args.extend(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()]);
                 if let Ok(extra_args) = env::var("CLIPPY_ARGS") {
                     args.extend(extra_args.split("__CLIPPY_HACKERY__").filter_map(|s| {
                         if s.is_empty() {
@@ -396,12 +387,10 @@ pub fn main() {
                     }));
                 }
             }
-
             let mut clippy = ClippyCallbacks;
             let mut default = rustc_driver::DefaultCallbacks;
             let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
                 if clippy_enabled { &mut clippy } else { &mut default };
-            let args = args;
             rustc_driver::run_compiler(&args, callbacks, None, None)
         })
         .and_then(|result| result)

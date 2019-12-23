@@ -1,7 +1,6 @@
 #![cfg(feature = "integration")]
 
 use git2::Repository;
-use tempfile;
 
 use std::env;
 use std::process::Command;
