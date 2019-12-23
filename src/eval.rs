@@ -62,9 +62,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Setup first stack-frame
     let main_instance = ty::Instance::mono(tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def, None)?;
-
-    if !main_mir.return_ty().is_unit() || main_mir.arg_count != 0 {
-        throw_unsup_format!("miri does not support main functions without `fn()` type signatures");
+    if main_mir.arg_count != 0 {
+        bug!("main function must not take any arguments");
     }
 
     let start_id = tcx.lang_items().start_fn().unwrap();
