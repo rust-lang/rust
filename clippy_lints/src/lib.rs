@@ -47,7 +47,8 @@ extern crate syntax_pos;
 use rustc::lint::{self, LintId};
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashSet;
-use toml;
+
+use std::path::Path;
 
 /// Macro used to declare a Clippy lint.
 ///
@@ -349,16 +350,16 @@ pub fn read_conf(args: &[syntax::ast::NestedMetaItem], sess: &Session) -> Conf {
             let file_name = file_name.map(|file_name| {
                 if file_name.is_relative() {
                     sess.local_crate_source_file
-                        .as_ref()
-                        .and_then(|file| std::path::Path::new(&file).parent().map(std::path::Path::to_path_buf))
-                        .unwrap_or_default()
+                        .as_deref()
+                        .and_then(Path::parent)
+                        .unwrap_or_else(|| Path::new(""))
                         .join(file_name)
                 } else {
                     file_name
                 }
             });
 
-            let (conf, errors) = utils::conf::read(file_name.as_ref().map(std::convert::AsRef::as_ref));
+            let (conf, errors) = utils::conf::read(file_name.as_ref().map(AsRef::as_ref));
 
             // all conf errors are non-fatal, we just use the default conf in case of error
             for error in errors {

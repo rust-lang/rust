@@ -8,7 +8,6 @@ use rustc::{declare_lint_pass, impl_lint_pass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
 use syntax::ast::*;
-use syntax_pos;
 
 declare_clippy_lint! {
     /// **What it does:** Warns if a long integral or floating-point constant does

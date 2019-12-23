@@ -146,11 +146,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
 }
 
 /// Tries to determine the type for universal function call to be used instead of the closure
-fn get_ufcs_type_name(
-    cx: &LateContext<'_, '_>,
-    method_def_id: def_id::DefId,
-    self_arg: &Expr,
-) -> std::option::Option<String> {
+fn get_ufcs_type_name(cx: &LateContext<'_, '_>, method_def_id: def_id::DefId, self_arg: &Expr) -> Option<String> {
     let expected_type_of_self = &cx.tcx.fn_sig(method_def_id).inputs_and_output().skip_binder()[0];
     let actual_type_of_self = &cx.tables.node_type(self_arg.hir_id);
 

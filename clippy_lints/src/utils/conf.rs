@@ -8,7 +8,6 @@ use std::io::Read;
 use std::sync::Mutex;
 use std::{env, fmt, fs, io, path};
 use syntax::{ast, source_map};
-use toml;
 
 /// Gets the configuration file from arguments.
 pub fn file_from_args(args: &[ast::NestedMetaItem]) -> Result<Option<path::PathBuf>, (&'static str, source_map::Span)> {
@@ -77,7 +76,6 @@ macro_rules! define_Conf {
             }
             $(
                 mod $rust_name {
-                    use serde;
                     use serde::Deserialize;
                     crate fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D)
                     -> Result<define_Conf!(TY $($ty)+), D::Error> {

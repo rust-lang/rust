@@ -4,9 +4,7 @@ use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
 use syntax::{ast::*, source_map::DUMMY_SP};
 
-use cargo_metadata;
 use if_chain::if_chain;
-use semver;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for wildcard dependencies in the `Cargo.toml`.

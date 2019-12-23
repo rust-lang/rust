@@ -1,7 +1,6 @@
 use crate::consts::{constant, Constant};
 use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint};
 use if_chain::if_chain;
-use regex_syntax;
 use rustc::hir::*;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
