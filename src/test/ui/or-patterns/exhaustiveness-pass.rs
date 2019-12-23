@@ -1,3 +1,5 @@
+// check-pass
+
 #![feature(or_patterns)]
 #![feature(slice_patterns)]
 #![allow(incomplete_features)]
@@ -5,12 +7,6 @@
 
 // We wrap patterns in a tuple because top-level or-patterns are special-cased for now.
 fn main() {
-    // Get the fatal error out of the way
-    match (0,) {
-        (0 | _,) => {}
-        //~^ ERROR or-patterns are not fully implemented yet
-    }
-
     match (0,) {
         (1 | 2,) => {}
         _ => {}
@@ -38,6 +34,7 @@ fn main() {
         ((0, 0) | (0, 1),) => {}
         _ => {}
     }
+
     match ((0, 0),) {
         ((0, 0) | (1, 0),) => {}
         _ => {}
