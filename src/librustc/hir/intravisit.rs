@@ -1043,9 +1043,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             walk_list!(visitor, visit_label, opt_label);
             visitor.visit_block(block);
         }
-        ExprKind::Assign(ref left_hand_expression, ref right_hand_expression) => {
-            visitor.visit_expr(right_hand_expression);
-            visitor.visit_expr(left_hand_expression)
+        ExprKind::Assign(ref lhs, ref rhs, _) => {
+            visitor.visit_expr(rhs);
+            visitor.visit_expr(lhs)
         }
         ExprKind::AssignOp(_, ref left_expression, ref right_expression) => {
             visitor.visit_expr(right_expression);

@@ -281,7 +281,9 @@ impl<'a> Parser<'a> {
                     let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary, AttrVec::new())
                 }
-                AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs), AttrVec::new()),
+                AssocOp::Assign => {
+                    self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span), AttrVec::new())
+                }
                 AssocOp::AssignOp(k) => {
                     let aop = match k {
                         token::Plus => BinOpKind::Add,

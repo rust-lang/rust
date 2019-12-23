@@ -490,7 +490,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             String::new()
                         };
                         if let Some(hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::Assign(left_expr, _),
+                            kind: hir::ExprKind::Assign(left_expr, ..),
                             ..
                         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
                         {

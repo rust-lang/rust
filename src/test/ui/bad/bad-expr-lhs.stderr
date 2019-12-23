@@ -1,32 +1,45 @@
-error[E0070]: invalid left-hand side expression
-  --> $DIR/bad-expr-lhs.rs:2:5
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/bad-expr-lhs.rs:2:7
    |
 LL |     1 = 2;
-   |     ^^^^^ left-hand of expression not valid
+   |     - ^
+   |     |
+   |     cannot assign to this expression
 
-error[E0067]: invalid left-hand side expression
-  --> $DIR/bad-expr-lhs.rs:3:5
+error[E0067]: invalid left-hand side of assignment
+  --> $DIR/bad-expr-lhs.rs:3:7
    |
 LL |     1 += 2;
-   |     ^ invalid expression for left-hand side
+   |     - ^^
+   |     |
+   |     cannot assign to this expression
 
-error[E0070]: invalid left-hand side expression
-  --> $DIR/bad-expr-lhs.rs:4:5
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/bad-expr-lhs.rs:4:12
    |
 LL |     (1, 2) = (3, 4);
-   |     ^^^^^^^^^^^^^^^ left-hand of expression not valid
+   |     ------ ^
+   |     |
+   |     cannot assign to this expression
 
-error[E0070]: invalid left-hand side expression
-  --> $DIR/bad-expr-lhs.rs:7:5
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/bad-expr-lhs.rs:7:12
    |
 LL |     (a, b) = (3, 4);
-   |     ^^^^^^^^^^^^^^^ left-hand of expression not valid
+   |     ------ ^
+   |     |
+   |     cannot assign to this expression
+   |
+   = note: destructuring assignments are not currently supported
+   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
-error[E0070]: invalid left-hand side expression
-  --> $DIR/bad-expr-lhs.rs:9:5
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/bad-expr-lhs.rs:9:10
    |
 LL |     None = Some(3);
-   |     ^^^^^^^^^^^^^^ left-hand of expression not valid
+   |     ---- ^
+   |     |
+   |     cannot assign to this expression
 
 error: aborting due to 5 previous errors
 

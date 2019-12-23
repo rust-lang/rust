@@ -1690,7 +1690,8 @@ pub enum ExprKind {
     Block(P<Block>, Option<Label>),
 
     /// An assignment (e.g., `a = foo()`).
-    Assign(P<Expr>, P<Expr>),
+    /// The `Span` argument is the span of the `=` token.
+    Assign(P<Expr>, P<Expr>, Span),
     /// An assignment with an operator.
     ///
     /// E.g., `a += 1`.

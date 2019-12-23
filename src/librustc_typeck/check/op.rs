@@ -19,30 +19,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr,
         op: hir::BinOp,
-        lhs_expr: &'tcx hir::Expr,
-        rhs_expr: &'tcx hir::Expr,
+        lhs: &'tcx hir::Expr,
+        rhs: &'tcx hir::Expr,
     ) -> Ty<'tcx> {
         let (lhs_ty, rhs_ty, return_ty) =
-            self.check_overloaded_binop(expr, lhs_expr, rhs_expr, op, IsAssign::Yes);
+            self.check_overloaded_binop(expr, lhs, rhs, op, IsAssign::Yes);
 
         let ty =
             if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
-                self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
+                self.enforce_builtin_binop_types(lhs, lhs_ty, rhs, rhs_ty, op);
                 self.tcx.mk_unit()
             } else {
                 return_ty
             };
 
-        if !lhs_expr.is_syntactic_place_expr() {
-            struct_span_err!(
-                self.tcx.sess,
-                lhs_expr.span,
-                E0067,
-                "invalid left-hand side expression"
-            )
-            .span_label(lhs_expr.span, "invalid expression for left-hand side")
-            .emit();
-        }
+        self.check_lhs_assignable(lhs, "E0067", &op.span);
+
         ty
     }
 

@@ -97,11 +97,13 @@ LL |         || (0 = 0);
    |            expected `bool`, found `()`
    |            help: try comparing for equality: `0 == 0`
 
-error[E0070]: invalid left-hand side expression
-  --> $DIR/assignment-expected-bool.rs:31:20
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/assignment-expected-bool.rs:31:22
    |
 LL |     let _: usize = 0 = 0;
-   |                    ^^^^^ left-hand of expression not valid
+   |                    - ^
+   |                    |
+   |                    cannot assign to this expression
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:31:20
