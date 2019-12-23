@@ -166,8 +166,14 @@ pub enum LitToConstError {
     Reported,
 }
 
-#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AllocId(pub u64);
+
+impl fmt::Debug for AllocId {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, "alloc{}", self.0)
+    }
+}
 
 impl rustc_serialize::UseSpecializedEncodable for AllocId {}
 impl rustc_serialize::UseSpecializedDecodable for AllocId {}

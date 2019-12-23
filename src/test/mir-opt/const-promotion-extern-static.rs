@@ -14,7 +14,7 @@ fn main() {}
 // START rustc.FOO.PromoteTemps.before.mir
 // bb0: {
 // ...
-//     _5 = const Scalar(AllocId(1).0x0) : &i32;
+//     _5 = const Scalar(alloc1+0) : &i32;
 //     _4 = &(*_5);
 //     _3 = [move _4];
 //     _2 = &_3;
@@ -31,7 +31,7 @@ fn main() {}
 // START rustc.BAR.PromoteTemps.before.mir
 // bb0: {
 // ...
-//     _5 = const Scalar(AllocId(0).0x0) : &i32;
+//     _5 = const Scalar(alloc0+0) : &i32;
 //     _4 = &(*_5);
 //     _3 = [move _4];
 //     _2 = &_3;
