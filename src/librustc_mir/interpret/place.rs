@@ -532,7 +532,7 @@ where
                 }
 
                 let index = if from_end {
-                    assert!(offset - 1 < min_length);
+                    assert!(0 < offset && offset - 1 < min_length);
                     n - u64::from(offset)
                 } else {
                     assert!(offset < min_length);
