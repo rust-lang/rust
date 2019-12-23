@@ -305,14 +305,14 @@ macro simd_int_flt_binop {
 
 macro simd_flt_binop($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
     let (lane_layout, lane_count) = lane_type_and_count($fx.tcx, $x.layout());
-        let x_val = $x.load_vector($fx);
-        let y_val = $y.load_vector($fx);
+    let x_val = $x.load_vector($fx);
+    let y_val = $y.load_vector($fx);
 
-        let res = match lane_layout.ty.kind {
-            ty::Float(_) => $fx.bcx.ins().$op(x_val, y_val),
-            _ => unreachable!("{:?}", lane_layout.ty),
-        };
-        $ret.write_cvalue($fx, CValue::by_val(res, $ret.layout()));
+    let res = match lane_layout.ty.kind {
+        ty::Float(_) => $fx.bcx.ins().$op(x_val, y_val),
+        _ => unreachable!("{:?}", lane_layout.ty),
+    };
+    $ret.write_cvalue($fx, CValue::by_val(res, $ret.layout()));
 }
 
 pub fn codegen_intrinsic_call<'tcx>(
