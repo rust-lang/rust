@@ -17,7 +17,7 @@ use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 
-use errors::{pluralize, Applicability, DiagnosticBuilder};
+use errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir;
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::DefId;
@@ -219,6 +219,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Box(ref subexpr) => self.check_expr_box(subexpr, expected),
             ExprKind::Lit(ref lit) => self.check_lit(&lit, expected),
             ExprKind::Binary(op, ref lhs, ref rhs) => self.check_binop(expr, op, lhs, rhs),
+            ExprKind::Assign(ref lhs, ref rhs, ref span) => {
+                self.check_expr_assign(expr, expected, lhs, rhs, span)
+            }
             ExprKind::AssignOp(op, ref lhs, ref rhs) => self.check_binop_assign(expr, op, lhs, rhs),
             ExprKind::Unary(unop, ref oprnd) => {
                 self.check_expr_unary(unop, oprnd, expected, needs, expr)
@@ -245,7 +248,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
-            ExprKind::Assign(ref lhs, ref rhs) => self.check_expr_assign(expr, expected, lhs, rhs),
             ExprKind::Loop(ref body, _, source) => {
                 self.check_expr_loop(body, source, expected, expr)
             }
@@ -723,6 +725,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
+    fn is_destructuring_place_expr(&self, expr: &'tcx hir::Expr) -> bool {
+        match &expr.kind {
+            ExprKind::Array(comps) | ExprKind::Tup(comps) => {
+                comps.iter().all(|e| self.is_destructuring_place_expr(e))
+            }
+            ExprKind::Struct(_path, fields, rest) => {
+                rest.as_ref().map(|e| self.is_destructuring_place_expr(e)).unwrap_or(true)
+                    && fields.iter().all(|f| self.is_destructuring_place_expr(&f.expr))
+            }
+            _ => expr.is_syntactic_place_expr(),
+        }
+    }
+
+    pub(crate) fn check_lhs_assignable(
+        &self,
+        lhs: &'tcx hir::Expr,
+        err_code: &'static str,
+        expr_span: &Span,
+    ) {
+        if !lhs.is_syntactic_place_expr() {
+            let mut err = self.tcx.sess.struct_span_err_with_code(
+                *expr_span,
+                "invalid left-hand side of assignment",
+                DiagnosticId::Error(err_code.into()),
+            );
+            err.span_label(lhs.span, "cannot assign to this expression");
+            if self.is_destructuring_place_expr(lhs) {
+                err.note("destructuring assignments are not currently supported");
+                err.note("for more information, see https://github.com/rust-lang/rfcs/issues/372");
+            }
+            err.emit();
+        }
+    }
+
     /// Type check assignment expression `expr` of form `lhs = rhs`.
     /// The expected type is `()` and is passsed to the function for the purposes of diagnostics.
     fn check_expr_assign(
@@ -731,6 +767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         lhs: &'tcx hir::Expr,
         rhs: &'tcx hir::Expr,
+        span: &Span,
     ) -> Ty<'tcx> {
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
         let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
@@ -752,10 +789,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.help(msg);
             }
             err.emit();
-        } else if !lhs.is_syntactic_place_expr() {
-            struct_span_err!(self.tcx.sess, expr.span, E0070, "invalid left-hand side expression")
-                .span_label(expr.span, "left-hand of expression not valid")
-                .emit();
+        } else {
+            self.check_lhs_assignable(lhs, "E0070", span);
         }
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);

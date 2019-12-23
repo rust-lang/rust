@@ -26,7 +26,7 @@ fn main() {
         //~^ ERROR mismatched types
         println!("{}", x);
     }
-    // "invalid left-hand side expression" error is suppresed
+    // "invalid left-hand side of assignment" error is suppresed
     if 3 = x {
         //~^ ERROR mismatched types
         println!("{}", x);

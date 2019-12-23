@@ -10,11 +10,13 @@ error[E0308]: mismatched types
 LL |     A::C = 1;
    |            ^ expected struct `A::C`, found integer
 
-error[E0070]: invalid left-hand side expression
-  --> $DIR/issue-13407.rs:6:5
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/issue-13407.rs:6:10
    |
 LL |     A::C = 1;
-   |     ^^^^^^^^ left-hand of expression not valid
+   |     ---- ^
+   |     |
+   |     cannot assign to this expression
 
 error: aborting due to 3 previous errors
 

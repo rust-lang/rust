@@ -1,7 +1,9 @@
 macro_rules! not_a_place {
     ($thing:expr) => {
         $thing = 42;
-        //~^ ERROR invalid left-hand side expression
+        //~^ ERROR invalid left-hand side of assignment
+        $thing += 42;
+        //~^ ERROR invalid left-hand side of assignment
     }
 }
 

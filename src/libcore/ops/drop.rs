@@ -99,9 +99,15 @@ pub trait Drop {
     /// Given that a [`panic!`] will call `drop` as it unwinds, any [`panic!`]
     /// in a `drop` implementation will likely abort.
     ///
+    /// Note that even if this panics, the value is considered to be dropped;
+    /// you must not cause `drop` to be called again. This is normally automatically
+    /// handled by the compiler, but when using unsafe code, can sometimes occur
+    /// unintentionally, particularly when using [`std::ptr::drop_in_place`].
+    ///
     /// [E0040]: ../../error-index.html#E0040
     /// [`panic!`]: ../macro.panic.html
     /// [`std::mem::drop`]: ../../std/mem/fn.drop.html
+    /// [`std::ptr::drop_in_place`]: ../../std/ptr/fn.drop_in_place.html
     #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);
 }

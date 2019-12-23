@@ -29,10 +29,10 @@ use syntax::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, 
 pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use syntax::ast::{CaptureBy, Constness, Movability, Mutability, Unsafety};
 use syntax::attr::{InlineAttr, OptimizeAttr};
-use syntax::source_map::Spanned;
-use syntax::symbol::{kw, Symbol};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
+use syntax_pos::source_map::{SourceMap, Spanned};
+use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
 /// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
@@ -1564,6 +1564,68 @@ impl fmt::Debug for Expr {
     }
 }
 
+/// Checks if the specified expression is a built-in range literal.
+/// (See: `LoweringContext::lower_expr()`).
+///
+/// FIXME(#60607): This function is a hack. If and when we have `QPath::Lang(...)`,
+/// we can use that instead as simpler, more reliable mechanism, as opposed to using `SourceMap`.
+pub fn is_range_literal(sm: &SourceMap, expr: &Expr) -> bool {
+    // Returns whether the given path represents a (desugared) range,
+    // either in std or core, i.e. has either a `::std::ops::Range` or
+    // `::core::ops::Range` prefix.
+    fn is_range_path(path: &Path) -> bool {
+        let segs: Vec<_> = path.segments.iter().map(|seg| seg.ident.to_string()).collect();
+        let segs: Vec<_> = segs.iter().map(|seg| &**seg).collect();
+
+        // "{{root}}" is the equivalent of `::` prefix in `Path`.
+        if let ["{{root}}", std_core, "ops", range] = segs.as_slice() {
+            (*std_core == "std" || *std_core == "core") && range.starts_with("Range")
+        } else {
+            false
+        }
+    };
+
+    // Check whether a span corresponding to a range expression is a
+    // range literal, rather than an explicit struct or `new()` call.
+    fn is_lit(sm: &SourceMap, span: &Span) -> bool {
+        let end_point = sm.end_point(*span);
+
+        if let Ok(end_string) = sm.span_to_snippet(end_point) {
+            !(end_string.ends_with("}") || end_string.ends_with(")"))
+        } else {
+            false
+        }
+    };
+
+    match expr.kind {
+        // All built-in range literals but `..=` and `..` desugar to `Struct`s.
+        ExprKind::Struct(ref qpath, _, _) => {
+            if let QPath::Resolved(None, ref path) = **qpath {
+                return is_range_path(&path) && is_lit(sm, &expr.span);
+            }
+        }
+
+        // `..` desugars to its struct path.
+        ExprKind::Path(QPath::Resolved(None, ref path)) => {
+            return is_range_path(&path) && is_lit(sm, &expr.span);
+        }
+
+        // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+        ExprKind::Call(ref func, _) => {
+            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.kind {
+                if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.kind {
+                    let new_call = segment.ident.name == sym::new;
+                    return is_range_path(&path) && is_lit(sm, &expr.span) && new_call;
+                }
+            }
+        }
+
+        _ => {}
+    }
+
+    false
+}
+
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum ExprKind {
     /// A `box x` expression.
@@ -1628,7 +1690,8 @@ pub enum ExprKind {
     Block(P<Block>, Option<Label>),
 
     /// An assignment (e.g., `a = foo()`).
-    Assign(P<Expr>, P<Expr>),
+    /// The `Span` argument is the span of the `=` token.
+    Assign(P<Expr>, P<Expr>, Span),
     /// An assignment with an operator.
     ///
     /// E.g., `a += 1`.

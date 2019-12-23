@@ -378,7 +378,7 @@ pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
     match value.kind {
         ast::ExprKind::Struct(..) => true,
 
-        ast::ExprKind::Assign(ref lhs, ref rhs)
+        ast::ExprKind::Assign(ref lhs, ref rhs, _)
         | ast::ExprKind::AssignOp(_, ref lhs, ref rhs)
         | ast::ExprKind::Binary(_, ref lhs, ref rhs) => {
             // X { y: 1 } + X { y: 2 }

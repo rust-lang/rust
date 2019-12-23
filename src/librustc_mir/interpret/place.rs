@@ -530,11 +530,12 @@ where
                     // This can only be reached in ConstProp and non-rustc-MIR.
                     throw_ub!(BoundsCheckFailed { len: min_length as u64, index: n as u64 });
                 }
-                assert!(offset < min_length);
 
                 let index = if from_end {
+                    assert!(0 < offset && offset - 1 < min_length);
                     n - u64::from(offset)
                 } else {
+                    assert!(offset < min_length);
                     u64::from(offset)
                 };
 

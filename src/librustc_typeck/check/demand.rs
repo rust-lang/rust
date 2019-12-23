@@ -3,9 +3,7 @@ use rustc::infer::InferOk;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 
 use errors::{Applicability, DiagnosticBuilder};
-use rustc::hir;
-use rustc::hir::Node;
-use rustc::hir::{lowering::is_range_literal, print};
+use rustc::hir::{self, is_range_literal, print, Node};
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
 use syntax::symbol::sym;
@@ -478,7 +476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // parenthesize if needed (Issue #46756)
                             hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
                             // parenthesize borrows of range literals (Issue #54505)
-                            _ if is_range_literal(self.tcx.sess, expr) => true,
+                            _ if is_range_literal(self.tcx.sess.source_map(), expr) => true,
                             _ => false,
                         };
                         let sugg_expr = if needs_parens { format!("({})", src) } else { src };
@@ -492,7 +490,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             String::new()
                         };
                         if let Some(hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::Assign(left_expr, _),
+                            kind: hir::ExprKind::Assign(left_expr, ..),
                             ..
                         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
                         {

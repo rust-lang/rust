@@ -227,7 +227,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr
 
         hir::ExprKind::Block(ref blk, _) => ExprKind::Block { body: &blk },
 
-        hir::ExprKind::Assign(ref lhs, ref rhs) => {
+        hir::ExprKind::Assign(ref lhs, ref rhs, _) => {
             ExprKind::Assign { lhs: lhs.to_ref(), rhs: rhs.to_ref() }
         }
 

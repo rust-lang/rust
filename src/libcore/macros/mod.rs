@@ -5,6 +5,7 @@
     // the `caller_location` intrinsic, but once  `#[track_caller]` is implemented,
     // `panicking::{panic, panic_fmt}` can use that instead of a `Location` argument.
     core_intrinsics,
+    const_caller_location,
 )]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {

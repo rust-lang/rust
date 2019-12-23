@@ -127,6 +127,8 @@
 #![feature(maybe_uninit_slice)]
 #![feature(external_doc)]
 #![feature(associated_type_bounds)]
+#![feature(const_type_id)]
+#![feature(const_caller_location)]
 
 #[prelude_import]
 #[allow(unused)]

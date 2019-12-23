@@ -2041,7 +2041,7 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.s.word(".await");
             }
-            ast::ExprKind::Assign(ref lhs, ref rhs) => {
+            ast::ExprKind::Assign(ref lhs, ref rhs, _) => {
                 let prec = AssocOp::Assign.precedence() as i8;
                 self.print_expr_maybe_paren(lhs, prec + 1);
                 self.s.space();
