@@ -35,28 +35,28 @@ fn main() {
 // bb0: {
 //   StorageLive(_1);
 //   StorageLive(_2);
-//   _2 = const Scalar(<ZST>) : ();
+//   _2 = const ();
 //   StorageLive(_3);
-//   _3 = const Scalar(<ZST>) : ();
-//   _1 = const Scalar(<ZST>) : ((), ());
+//   _3 = const ();
+//   _1 = const ((), ());
 //   StorageDead(_3);
 //   StorageDead(_2);
 //   StorageDead(_1);
 //   StorageLive(_4);
 //   StorageLive(_6);
-//   _6 = const Scalar(<ZST>) : ();
+//   _6 = const ();
 //   StorageLive(_7);
-//   _7 = const Scalar(<ZST>) : ();
+//   _7 = const ();
 //   StorageDead(_7);
 //   StorageDead(_6);
-//   _4 = const use_zst(const Scalar(<ZST>) : ((), ())) -> bb1;
+//   _4 = const use_zst(const ((), ())) -> bb1;
 // }
 // bb1: {
 //   StorageDead(_4);
 //   StorageLive(_8);
 //   StorageLive(_10);
 //   StorageLive(_11);
-//   _11 = const Scalar(0x28) : Temp;
+//   _11 = const {0x28 : Temp};
 //   _10 = const 40u8;
 //   StorageDead(_10);
 //   _8 = const use_u8(const 42u8) -> bb2;
@@ -75,7 +75,7 @@ fn main() {
 // }
 // bb0: {
 //   StorageLive(_1);
-//   _1 = const use_zst(const Scalar(<ZST>) : ((), ())) -> bb1;
+//   _1 = const use_zst(const ((), ())) -> bb1;
 // }
 // bb1: {
 //   StorageDead(_1);
