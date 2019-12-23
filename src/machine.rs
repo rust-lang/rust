@@ -8,8 +8,12 @@ use std::rc::Rc;
 use rand::rngs::StdRng;
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, layout::{Size, LayoutOf}, Ty, TyCtxt};
 use rustc::mir;
+use rustc::ty::{
+    self,
+    layout::{LayoutOf, Size},
+    Ty, TyCtxt,
+};
 use syntax::{attr, source_map::Span, symbol::sym};
 
 use crate::*;
@@ -32,7 +36,6 @@ pub struct FrameData<'tcx> {
     /// store the panic payload, and continue execution in the parent frame.
     pub catch_panic: Option<CatchUnwindData<'tcx>>,
 }
-
 
 /// Extra memory kinds
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -114,7 +117,7 @@ pub struct Evaluator<'tcx> {
 
     /// The temporary used for storing the argument of
     /// the call to `miri_start_panic` (the panic payload) when unwinding.
-    pub(crate) panic_payload: Option<ImmTy<'tcx, Tag>>
+    pub(crate) panic_payload: Option<ImmTy<'tcx, Tag>>,
 }
 
 impl<'tcx> Evaluator<'tcx> {
@@ -130,7 +133,7 @@ impl<'tcx> Evaluator<'tcx> {
             tls: TlsData::default(),
             communicate,
             file_handler: Default::default(),
-            panic_payload: None
+            panic_payload: None,
         }
     }
 }
@@ -164,13 +167,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type PointerTag = Tag;
     type ExtraFnVal = Dlsym;
 
-    type MemoryMap = MonoHashMap<
-        AllocId,
-        (
-            MemoryKind<MiriMemoryKind>,
-            Allocation<Tag, Self::AllocExtra>,
-        ),
-    >;
+    type MemoryMap =
+        MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Tag, Self::AllocExtra>)>;
 
     const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Static);
 
@@ -322,9 +320,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                     stacked_borrows.static_base_ptr(alloc)
                 }
             },
-            AllocExtra {
-                stacked_borrows: stacks,
-            },
+            AllocExtra { stacked_borrows: stacks },
         );
         (Cow::Owned(alloc), base_tag)
     }
@@ -334,10 +330,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         if !memory_extra.validate {
             Tag::Untagged
         } else {
-            memory_extra
-                .stacked_borrows
-                .borrow_mut()
-                .static_base_ptr(id)
+            memory_extra.stacked_borrows.borrow_mut().static_base_ptr(id)
         }
     }
 
@@ -356,9 +349,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn stack_push(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
-    ) -> InterpResult<'tcx, FrameData<'tcx>> {
+    fn stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, FrameData<'tcx>> {
         Ok(FrameData {
             call_id: ecx.memory.extra.stacked_borrows.borrow_mut().new_call(),
             catch_panic: None,
@@ -369,7 +360,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     fn stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         extra: FrameData<'tcx>,
-        unwinding: bool
+        unwinding: bool,
     ) -> InterpResult<'tcx, StackPopInfo> {
         ecx.handle_stack_pop(extra, unwinding)
     }

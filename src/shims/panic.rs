@@ -11,10 +11,10 @@
 //!   gets popped *during unwinding*, we take the panic payload and store it according to the extra
 //!   metadata we remembered when pushing said frame.
 
-use syntax::source_map::Span;
 use rustc::mir;
 use rustc::ty::{self, layout::LayoutOf};
 use rustc_target::spec::PanicStrategy;
+use syntax::source_map::Span;
 
 use crate::*;
 
@@ -35,13 +35,12 @@ pub struct CatchUnwindData<'tcx> {
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-
     /// Handles the special "miri_start_panic" intrinsic, which is called
     /// by libpanic_unwind to delegate the actual unwinding process to Miri.
     fn handle_miri_start_panic(
         &mut self,
         args: &[OpTy<'tcx, Tag>],
-        unwind: Option<mir::BasicBlock>
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -49,12 +48,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Get the raw pointer stored in arg[0] (the panic payload).
         let scalar = this.read_immediate(args[0])?;
-        assert!(this.machine.panic_payload.is_none(), "the panic runtime should avoid double-panics");
+        assert!(
+            this.machine.panic_payload.is_none(),
+            "the panic runtime should avoid double-panics"
+        );
         this.machine.panic_payload = Some(scalar);
 
         // Jump to the unwind block to begin unwinding.
         this.unwind_to_block(unwind);
-        return Ok(())
+        return Ok(());
     }
 
     fn handle_catch_panic(
@@ -64,7 +66,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         ret: mir::BasicBlock,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let tcx = &{this.tcx.tcx};
+        let tcx = &{ this.tcx.tcx };
 
         // fn __rust_maybe_catch_panic(
         //     f: fn(*mut u8),
@@ -82,8 +84,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Now we make a function call, and pass `f_arg` as first and only argument.
         let f_instance = this.memory.get_fn(f)?.as_instance()?;
         trace!("__rust_maybe_catch_panic: {:?}", f_instance);
-        let ret_place =
-            MPlaceTy::dangling(this.layout_of(tcx.mk_unit())?, this).into();
+        let ret_place = MPlaceTy::dangling(this.layout_of(tcx.mk_unit())?, this).into();
         this.call_function(
             f_instance,
             &[f_arg.into()],
@@ -99,11 +100,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // This lets `handle_stack_pop` (below) know that we should stop unwinding
         // when we pop this frame.
         if this.tcx.tcx.sess.panic_strategy() == PanicStrategy::Unwind {
-            this.frame_mut().extra.catch_panic = Some(CatchUnwindData {
-                data_place,
-                vtable_place,
-                dest,
-            })
+            this.frame_mut().extra.catch_panic =
+                Some(CatchUnwindData { data_place, vtable_place, dest })
         }
 
         return Ok(());
@@ -112,7 +110,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn handle_stack_pop(
         &mut self,
         mut extra: FrameData<'tcx>,
-        unwinding: bool
+        unwinding: bool,
     ) -> InterpResult<'tcx, StackPopInfo> {
         let this = self.eval_context_mut();
 

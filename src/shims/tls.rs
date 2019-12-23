@@ -2,14 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use rustc_target::abi::LayoutOf;
 use rustc::{ty, ty::layout::HasDataLayout};
+use rustc_target::abi::LayoutOf;
 
-use crate::{
-    InterpResult, StackPopCleanup,
-    MPlaceTy, Scalar, Tag,
-    HelpersEvalContextExt,
-};
+use crate::{HelpersEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag};
 
 pub type TlsKey = u128;
 
@@ -41,19 +37,10 @@ impl<'tcx> Default for TlsData<'tcx> {
 }
 
 impl<'tcx> TlsData<'tcx> {
-    pub fn create_tls_key(
-        &mut self,
-        dtor: Option<ty::Instance<'tcx>>,
-    ) -> TlsKey {
+    pub fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
         let new_key = self.next_key;
         self.next_key += 1;
-        self.keys.insert(
-            new_key,
-            TlsEntry {
-                data: None,
-                dtor,
-            },
-        ).unwrap_none();
+        self.keys.insert(new_key, TlsEntry { data: None, dtor }).unwrap_none();
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
         new_key
     }

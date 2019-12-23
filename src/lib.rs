@@ -1,57 +1,57 @@
 #![feature(rustc_private)]
 #![feature(option_expect_none, option_unwrap_none)]
-
 #![warn(rust_2018_idioms)]
 #![allow(clippy::cast_lossless)]
 
 #[macro_use]
 extern crate log;
 // From rustc.
-extern crate syntax;
 extern crate rustc_apfloat;
-#[macro_use] extern crate rustc;
+extern crate syntax;
+#[macro_use]
+extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_mir;
 extern crate rustc_target;
 
-mod shims;
-mod operator;
+mod eval;
 mod helpers;
-mod range_map;
-mod mono_hash_map;
-mod stacked_borrows;
 mod intptrcast;
 mod machine;
-mod eval;
+mod mono_hash_map;
+mod operator;
+mod range_map;
+mod shims;
+mod stacked_borrows;
 
 // Make all those symbols available in the same place as our own.
 pub use rustc_mir::interpret::*;
 // Resolve ambiguity.
 pub use rustc_mir::interpret::{self, AllocMap, PlaceTy};
 
-pub use crate::shims::{EvalContextExt as ShimsEvalContextExt};
-pub use crate::shims::foreign_items::EvalContextExt as ForeignItemsEvalContextExt;
-pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
-pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
-pub use crate::shims::time::{EvalContextExt as TimeEvalContextExt};
 pub use crate::shims::dlsym::{Dlsym, EvalContextExt as DlsymEvalContextExt};
 pub use crate::shims::env::{EnvVars, EvalContextExt as EnvEvalContextExt};
-pub use crate::shims::fs::{FileHandler, EvalContextExt as FileEvalContextExt};
+pub use crate::shims::foreign_items::EvalContextExt as ForeignItemsEvalContextExt;
+pub use crate::shims::fs::{EvalContextExt as FileEvalContextExt, FileHandler};
+pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as PanicEvalContextExt};
+pub use crate::shims::time::EvalContextExt as TimeEvalContextExt;
+pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
+pub use crate::shims::EvalContextExt as ShimsEvalContextExt;
 
+pub use crate::eval::{create_ecx, eval_main, MiriConfig, TerminationInfo};
+pub use crate::helpers::EvalContextExt as HelpersEvalContextExt;
+pub use crate::machine::{
+    AllocExtra, Evaluator, FrameData, MemoryExtra, MiriEvalContext, MiriEvalContextExt,
+    MiriMemoryKind, NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
+};
+pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
-pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
-pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::stacked_borrows::{
-    EvalContextExt as StackedBorEvalContextExt, Tag, Permission, Stack, Stacks, Item, PtrId,
-    GlobalState,
+    EvalContextExt as StackedBorEvalContextExt, GlobalState, Item, Permission, PtrId, Stack,
+    Stacks, Tag,
 };
-pub use crate::machine::{
-    PAGE_SIZE, STACK_ADDR, STACK_SIZE, NUM_CPUS,
-    MemoryExtra, AllocExtra, FrameData, MiriMemoryKind, Evaluator, MiriEvalContext, MiriEvalContextExt,
-};
-pub use crate::eval::{eval_main, create_ecx, MiriConfig, TerminationInfo};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.

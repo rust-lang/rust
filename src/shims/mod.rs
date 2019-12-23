@@ -1,14 +1,14 @@
 pub mod dlsym;
 pub mod env;
 pub mod foreign_items;
-pub mod intrinsics;
-pub mod tls;
 pub mod fs;
-pub mod time;
+pub mod intrinsics;
 pub mod panic;
+pub mod time;
+pub mod tls;
 
-use rustc::{mir, ty};
 use crate::*;
+use rustc::{mir, ty};
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -17,14 +17,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
-        trace!(
-            "eval_fn_call: {:#?}, {:?}",
-            instance,
-            ret.map(|p| *p.0)
-        );
+        trace!("eval_fn_call: {:#?}, {:?}", instance, ret.map(|p| *p.0));
 
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
@@ -59,10 +55,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, Option<u128>> {
         let this = self.eval_context_mut();
 
-        let req_align = this.force_bits(
-            this.read_scalar(align_op)?.not_undef()?,
-            this.pointer_size(),
-        )? as usize;
+        let req_align = this
+            .force_bits(this.read_scalar(align_op)?.not_undef()?, this.pointer_size())?
+            as usize;
 
         // FIXME: This should actually panic in the interpreted program
         if !req_align.is_power_of_two() {
@@ -72,7 +67,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ptr_scalar = this.read_scalar(ptr_op)?.not_undef()?;
 
         if let Ok(ptr) = this.force_ptr(ptr_scalar) {
-            let cur_align = this.memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?.1.bytes() as usize;
+            let cur_align =
+                this.memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?.1.bytes()
+                    as usize;
             if cur_align >= req_align {
                 // if the allocation alignment is at least the required alignment we use the
                 // libcore implementation

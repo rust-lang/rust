@@ -2,11 +2,11 @@
 // Custom test runner, to avoid libtest being wrapped around compiletest which wraps libtest.
 #![test_runner(test_runner)]
 
-use std::path::PathBuf;
 use std::env;
+use std::path::PathBuf;
 
-use compiletest_rs as compiletest;
 use colored::*;
+use compiletest_rs as compiletest;
 
 fn miri_path() -> PathBuf {
     if rustc_test_suite().is_some() {
@@ -57,12 +57,15 @@ fn run_tests(mode: &str, path: &str, target: &str, mut flags: Vec<String>) {
 
 fn compile_fail(path: &str, target: &str, opt: bool) {
     let opt_str = if opt { " with optimizations" } else { "" };
-    eprintln!("{}", format!(
-        "## Running compile-fail tests in {} against miri for target {}{}",
-        path,
-        target,
-        opt_str
-    ).green().bold());
+    eprintln!(
+        "{}",
+        format!(
+            "## Running compile-fail tests in {} against miri for target {}{}",
+            path, target, opt_str
+        )
+        .green()
+        .bold()
+    );
 
     let mut flags = Vec::new();
     if opt {
@@ -76,12 +79,15 @@ fn compile_fail(path: &str, target: &str, opt: bool) {
 
 fn miri_pass(path: &str, target: &str, opt: bool) {
     let opt_str = if opt { " with optimizations" } else { "" };
-    eprintln!("{}", format!(
-        "## Running run-pass tests in {} against miri for target {}{}",
-        path,
-        target,
-        opt_str
-    ).green().bold());
+    eprintln!(
+        "{}",
+        format!(
+            "## Running run-pass tests in {} against miri for target {}{}",
+            path, target, opt_str
+        )
+        .green()
+        .bold()
+    );
 
     let mut flags = Vec::new();
     if opt {

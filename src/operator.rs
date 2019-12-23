@@ -1,7 +1,10 @@
 use std::convert::TryFrom;
 
-use rustc::ty::{Ty, layout::{Size, LayoutOf}};
 use rustc::mir;
+use rustc::ty::{
+    layout::{LayoutOf, Size},
+    Ty,
+};
 
 use crate::*;
 
@@ -13,11 +16,7 @@ pub trait EvalContextExt<'tcx> {
         right: ImmTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)>;
 
-    fn ptr_eq(
-        &self,
-        left: Scalar<Tag>,
-        right: Scalar<Tag>,
-    ) -> InterpResult<'tcx, bool>;
+    fn ptr_eq(&self, left: Scalar<Tag>, right: Scalar<Tag>) -> InterpResult<'tcx, bool>;
 
     fn pointer_offset_inbounds(
         &self,
@@ -41,12 +40,15 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         Ok(match bin_op {
             Eq | Ne => {
                 // This supports fat pointers.
+                #[rustfmt::skip]
                 let eq = match (*left, *right) {
-                    (Immediate::Scalar(left), Immediate::Scalar(right)) =>
-                        self.ptr_eq(left.not_undef()?, right.not_undef()?)?,
-                    (Immediate::ScalarPair(left1, left2), Immediate::ScalarPair(right1, right2)) =>
-                        self.ptr_eq(left1.not_undef()?, right1.not_undef()?)? &&
-                        self.ptr_eq(left2.not_undef()?, right2.not_undef()?)?,
+                    (Immediate::Scalar(left), Immediate::Scalar(right)) => {
+                        self.ptr_eq(left.not_undef()?, right.not_undef()?)?
+                    }
+                    (Immediate::ScalarPair(left1, left2), Immediate::ScalarPair(right1, right2)) => {
+                        self.ptr_eq(left1.not_undef()?, right1.not_undef()?)?
+                            && self.ptr_eq(left2.not_undef()?, right2.not_undef()?)?
+                    }
                     _ => bug!("Type system should not allow comparing Scalar with ScalarPair"),
                 };
                 (Scalar::from_bool(if bin_op == Eq { eq } else { !eq }), false, self.tcx.types.bool)
@@ -68,10 +70,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             }
 
             Offset => {
-                let pointee_ty = left.layout.ty
-                    .builtin_deref(true)
-                    .expect("Offset called on non-ptr type")
-                    .ty;
+                let pointee_ty =
+                    left.layout.ty.builtin_deref(true).expect("Offset called on non-ptr type").ty;
                 let ptr = self.pointer_offset_inbounds(
                     left.to_scalar()?,
                     pointee_ty,
@@ -80,15 +80,11 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 (ptr, false, left.layout.ty)
             }
 
-            _ => bug!("Invalid operator on pointers: {:?}", bin_op)
+            _ => bug!("Invalid operator on pointers: {:?}", bin_op),
         })
     }
 
-    fn ptr_eq(
-        &self,
-        left: Scalar<Tag>,
-        right: Scalar<Tag>,
-    ) -> InterpResult<'tcx, bool> {
+    fn ptr_eq(&self, left: Scalar<Tag>, right: Scalar<Tag>) -> InterpResult<'tcx, bool> {
         let size = self.pointer_size();
         // Just compare the integers.
         // TODO: Do we really want to *always* do that, even when comparing two live in-bounds pointers?

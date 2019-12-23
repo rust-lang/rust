@@ -1,10 +1,10 @@
 #![feature(inner_deref)]
 
 use std::fs::{self, File};
-use std::io::{self, Write, BufRead};
-use std::path::{PathBuf, Path};
-use std::process::Command;
+use std::io::{self, BufRead, Write};
 use std::ops::Not;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 17);
 
@@ -40,8 +40,12 @@ fn show_help() {
 }
 
 fn show_version() {
-    println!("miri {} ({} {})",
-        env!("CARGO_PKG_VERSION"), env!("VERGEN_SHA_SHORT"), env!("VERGEN_COMMIT_DATE"));
+    println!(
+        "miri {} ({} {})",
+        env!("CARGO_PKG_VERSION"),
+        env!("VERGEN_SHA_SHORT"),
+        env!("VERGEN_COMMIT_DATE")
+    );
 }
 
 fn show_error(msg: String) -> ! {
@@ -80,11 +84,10 @@ fn get_arg_flag_value(name: &str) -> Option<String> {
     }
 }
 
-fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
+fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
     // We need to get the manifest, and then the metadata, to enumerate targets.
-    let manifest_path = get_arg_flag_value("--manifest-path").map(|m|
-        Path::new(&m).canonicalize().unwrap()
-    );
+    let manifest_path =
+        get_arg_flag_value("--manifest-path").map(|m| Path::new(&m).canonicalize().unwrap());
 
     let mut cmd = cargo_metadata::MetadataCommand::new();
     if let Some(ref manifest_path) = manifest_path {
@@ -106,16 +109,18 @@ fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
             if let Some(ref manifest_path) = manifest_path {
                 package_manifest_path == manifest_path
             } else {
-                let current_dir = current_dir.as_ref().expect(
-                    "could not read current directory",
-                );
-                let package_manifest_directory = package_manifest_path.parent().expect(
-                    "could not find parent directory of package manifest",
-                );
+                let current_dir = current_dir.as_ref().expect("could not read current directory");
+                let package_manifest_directory = package_manifest_path
+                    .parent()
+                    .expect("could not find parent directory of package manifest");
                 package_manifest_directory == current_dir
             }
         })
-        .unwrap_or_else(|| show_error(format!("This seems to be a workspace, which is not supported by cargo-miri")));
+        .unwrap_or_else(|| {
+            show_error(format!(
+                "This seems to be a workspace, which is not supported by cargo-miri"
+            ))
+        });
     let package = metadata.packages.remove(package_index);
 
     // Finally we got the list of targets to build
@@ -134,17 +139,24 @@ fn find_miri() -> PathBuf {
 /// toolchain than what is used when `cargo miri` is run.
 fn test_sysroot_consistency() {
     fn get_sysroot(mut cmd: Command) -> PathBuf {
-        let out = cmd.arg("--print").arg("sysroot")
-            .output().expect("Failed to run rustc to get sysroot info");
+        let out = cmd
+            .arg("--print")
+            .arg("sysroot")
+            .output()
+            .expect("Failed to run rustc to get sysroot info");
         let stdout = String::from_utf8(out.stdout).expect("stdout is not valid UTF-8");
         let stderr = String::from_utf8(out.stderr).expect("stderr is not valid UTF-8");
         assert!(
             out.status.success(),
             "Bad status code {} when getting sysroot info via {:?}.\nstdout:\n{}\nstderr:\n{}",
-            out.status, cmd, stdout, stderr,
+            out.status,
+            cmd,
+            stdout,
+            stderr,
         );
         let stdout = stdout.trim();
-        PathBuf::from(stdout).canonicalize()
+        PathBuf::from(stdout)
+            .canonicalize()
             .unwrap_or_else(|_| panic!("Failed to canonicalize sysroot: {}", stdout))
     }
 
@@ -164,7 +176,8 @@ fn test_sysroot_consistency() {
              Make sure you use the same toolchain to run miri that you used to build it!\n\
              rustc sysroot: `{}`\n\
              miri sysroot: `{}`",
-             rustc_sysroot.display(), miri_sysroot.display()
+            rustc_sysroot.display(),
+            miri_sysroot.display()
         ));
     }
 }
@@ -193,28 +206,36 @@ fn xargo_version() -> Option<(u32, u32, u32)> {
         return None;
     }
     // Parse output. The first line looks like "xargo 0.3.12 (b004f1c 2018-12-13)".
-    let line = out.stderr.lines().nth(0)
+    let line = out
+        .stderr
+        .lines()
+        .nth(0)
         .expect("malformed `xargo --version` output: not at least one line")
         .expect("malformed `xargo --version` output: error reading first line");
     let (name, version) = {
         let mut split = line.split(' ');
-        (split.next().expect("malformed `xargo --version` output: empty"),
-         split.next().expect("malformed `xargo --version` output: not at least two words"))
+        (
+            split.next().expect("malformed `xargo --version` output: empty"),
+            split.next().expect("malformed `xargo --version` output: not at least two words"),
+        )
     };
     if name != "xargo" {
         // This is some fork of xargo
         return None;
     }
     let mut version_pieces = version.split('.');
-    let major = version_pieces.next()
+    let major = version_pieces
+        .next()
         .expect("malformed `xargo --version` output: not a major version piece")
         .parse()
         .expect("malformed `xargo --version` output: major version is not an integer");
-    let minor = version_pieces.next()
+    let minor = version_pieces
+        .next()
         .expect("malformed `xargo --version` output: not a minor version piece")
         .parse()
         .expect("malformed `xargo --version` output: minor version is not an integer");
-    let patch = version_pieces.next()
+    let patch = version_pieces
+        .next()
         .expect("malformed `xargo --version` output: not a patch version piece")
         .parse()
         .expect("malformed `xargo --version` output: patch version is not an integer");
@@ -232,18 +253,15 @@ fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
         io::stdin().read_line(&mut buf).unwrap();
         match buf.trim().to_lowercase().as_ref() {
             // Proceed.
-            "" | "y" | "yes" => {},
+            "" | "y" | "yes" => {}
             "n" | "no" => show_error(format!("Aborting as per your request")),
-            a => show_error(format!("I do not understand `{}`", a))
+            a => show_error(format!("I do not understand `{}`", a)),
         };
     } else {
         println!("Running `{:?}` to {}.", cmd, text);
     }
 
-    if cmd.status()
-        .expect(&format!("failed to execute {:?}", cmd))
-        .success().not()
-    {
+    if cmd.status().expect(&format!("failed to execute {:?}", cmd)).success().not() {
         show_error(format!("Failed to {}", text));
     }
 }
@@ -275,7 +293,9 @@ fn setup(ask_user: bool) {
         Ok(val) => PathBuf::from(val),
         Err(_) => {
             // Check for `rust-src` rustup component.
-            let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output()
+            let sysroot = Command::new("rustc")
+                .args(&["--print", "sysroot"])
+                .output()
                 .expect("failed to get rustc sysroot")
                 .stdout;
             let sysroot = std::str::from_utf8(&sysroot).unwrap();
@@ -298,7 +318,11 @@ fn setup(ask_user: bool) {
                         // Fallback: Ask the user to install the `rust-src` component, and use that.
                         let mut cmd = Command::new("rustup");
                         cmd.args(&["component", "add", "rust-src"]);
-                        ask_to_run(cmd, ask_user, "install the rustc-src component for the selected toolchain");
+                        ask_to_run(
+                            cmd,
+                            ask_user,
+                            "install the rustc-src component for the selected toolchain",
+                        );
                         rustup_src
                     }
                 }
@@ -317,8 +341,10 @@ fn setup(ask_user: bool) {
         fs::create_dir_all(&dir).unwrap();
     }
     // The interesting bit: Xargo.toml
-    File::create(dir.join("Xargo.toml")).unwrap()
-        .write_all(br#"
+    File::create(dir.join("Xargo.toml"))
+        .unwrap()
+        .write_all(
+            br#"
 [dependencies.std]
 default_features = false
 # We need the `panic_unwind` feature because we use the `unwind` panic strategy.
@@ -326,10 +352,14 @@ default_features = false
 features = ["panic_unwind"]
 
 [dependencies.test]
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
     // The boring bits: a dummy project for xargo.
-    File::create(dir.join("Cargo.toml")).unwrap()
-        .write_all(br#"
+    File::create(dir.join("Cargo.toml"))
+        .unwrap()
+        .write_all(
+            br#"
 [package]
 name = "miri-xargo"
 description = "A dummy project for building libstd with xargo."
@@ -337,7 +367,9 @@ version = "0.0.0"
 
 [lib]
 path = "lib.rs"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
     File::create(dir.join("lib.rs")).unwrap();
     // Prepare xargo invocation.
     let target = get_arg_flag_value("--target");
@@ -355,10 +387,7 @@ path = "lib.rs"
         command.arg("--target").arg(&target);
     }
     // Finally run it!
-    if command.status()
-        .expect("failed to run xargo")
-        .success().not()
-    {
+    if command.status().expect("failed to run xargo").success().not() {
         show_error(format!("Failed to run xargo"));
     }
 
@@ -413,9 +442,7 @@ fn in_cargo_miri() {
         Some(s) if s.starts_with("-") => (MiriCommand::Run, 2),
         None => (MiriCommand::Run, 2),
         // Invalid command.
-        Some(s) => {
-            show_error(format!("Unknown command `{}`", s))
-        }
+        Some(s) => show_error(format!("Unknown command `{}`", s)),
     };
     let verbose = has_arg_flag("-v");
 
@@ -433,9 +460,10 @@ fn in_cargo_miri() {
     // Now run the command.
     for target in list_targets() {
         let mut args = std::env::args().skip(skip);
-        let kind = target.kind.get(0).expect(
-            "badly formatted cargo metadata: target::kind is an empty array",
-        );
+        let kind = target
+            .kind
+            .get(0)
+            .expect("badly formatted cargo metadata: target::kind is an empty array");
         // Now we run `cargo rustc $FLAGS $ARGS`, giving the user the
         // change to add additional arguments. `FLAGS` is set to identify
         // this target.  The user gets to control what gets actually passed to Miri.
@@ -470,22 +498,15 @@ fn in_cargo_miri() {
         // Add `--` (to end the `cargo` flags), and then the user flags. We add markers around the
         // user flags to be able to identify them later.  "cargo rustc" adds more stuff after this,
         // so we have to mark both the beginning and the end.
-        cmd
-            .arg("--")
-            .arg("cargo-miri-marker-begin")
-            .args(args)
-            .arg("cargo-miri-marker-end");
+        cmd.arg("--").arg("cargo-miri-marker-begin").args(args).arg("cargo-miri-marker-end");
         let path = std::env::current_exe().expect("current executable path invalid");
         cmd.env("RUSTC_WRAPPER", path);
         if verbose {
             eprintln!("+ {:?}", cmd);
         }
 
-        let exit_status = cmd
-            .spawn()
-            .expect("could not run cargo")
-            .wait()
-            .expect("failed to wait for cargo?");
+        let exit_status =
+            cmd.spawn().expect("could not run cargo").wait().expect("failed to wait for cargo?");
 
         if !exit_status.success() {
             std::process::exit(exit_status.code().unwrap_or(-1))
@@ -497,49 +518,43 @@ fn inside_cargo_rustc() {
     let sysroot = std::env::var("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
 
     let rustc_args = std::env::args().skip(2); // skip `cargo rustc`
-    let mut args: Vec<String> = rustc_args
-        .chain(Some("--sysroot".to_owned()))
-        .chain(Some(sysroot))
-        .collect();
+    let mut args: Vec<String> =
+        rustc_args.chain(Some("--sysroot".to_owned())).chain(Some(sysroot)).collect();
     args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
 
     // See if we can find the `cargo-miri` markers. Those only get added to the binary we want to
     // run. They also serve to mark the user-defined arguments, which we have to move all the way
     // to the end (they get added somewhere in the middle).
-    let needs_miri = if let Some(begin) = args.iter().position(|arg| arg == "cargo-miri-marker-begin") {
-        let end = args
-            .iter()
-            .position(|arg| arg == "cargo-miri-marker-end")
-            .expect("cannot find end marker");
-        // These mark the user arguments. We remove the first and last as they are the markers.
-        let mut user_args = args.drain(begin..=end);
-        assert_eq!(user_args.next().unwrap(), "cargo-miri-marker-begin");
-        assert_eq!(user_args.next_back().unwrap(), "cargo-miri-marker-end");
-        // Collect the rest and add it back at the end.
-        let mut user_args = user_args.collect::<Vec<String>>();
-        args.append(&mut user_args);
-        // Run this in Miri.
-        true
-    } else {
-        false
-    };
+    let needs_miri =
+        if let Some(begin) = args.iter().position(|arg| arg == "cargo-miri-marker-begin") {
+            let end = args
+                .iter()
+                .position(|arg| arg == "cargo-miri-marker-end")
+                .expect("cannot find end marker");
+            // These mark the user arguments. We remove the first and last as they are the markers.
+            let mut user_args = args.drain(begin..=end);
+            assert_eq!(user_args.next().unwrap(), "cargo-miri-marker-begin");
+            assert_eq!(user_args.next_back().unwrap(), "cargo-miri-marker-end");
+            // Collect the rest and add it back at the end.
+            let mut user_args = user_args.collect::<Vec<String>>();
+            args.append(&mut user_args);
+            // Run this in Miri.
+            true
+        } else {
+            false
+        };
 
-    let mut command = if needs_miri {
-        Command::new(find_miri())
-    } else {
-        Command::new("rustc")
-    };
+    let mut command = if needs_miri { Command::new(find_miri()) } else { Command::new("rustc") };
     command.args(&args);
     if has_arg_flag("-v") {
         eprintln!("+ {:?}", command);
     }
 
     match command.status() {
-        Ok(exit) => {
+        Ok(exit) =>
             if !exit.success() {
                 std::process::exit(exit.code().unwrap_or(42));
-            }
-        }
+            },
         Err(ref e) if needs_miri => panic!("error during miri run: {:?}", e),
         Err(ref e) => panic!("error during rustc call: {:?}", e),
     }
