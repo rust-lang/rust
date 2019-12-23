@@ -74,6 +74,24 @@ mod tests {
     }
 
     #[test]
+    fn add_explicit_type_works_for_macro_call() {
+        check_assist(
+            add_explicit_type,
+            "macro_rules! v { () => {0u64} } fn f() { let a<|> = v!(); }",
+            "macro_rules! v { () => {0u64} } fn f() { let a<|>: u64 = v!(); }",
+        );
+    }
+
+    #[test]
+    fn add_explicit_type_works_for_macro_call_recursive() {
+        check_assist(
+            add_explicit_type,
+            "macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a<|> = v!(); }",
+            "macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a<|>: u64 = v!(); }",
+        );
+    }
+
+    #[test]
     fn add_explicit_type_not_applicable_if_ty_not_inferred() {
         check_assist_not_applicable(add_explicit_type, "fn f() { let a<|> = None; }");
     }

@@ -26,7 +26,7 @@ use crate::{
     DefWithBodyId, HasModule, Lookup, ModuleId,
 };
 
-pub(crate) struct Expander {
+pub struct Expander {
     crate_def_map: Arc<CrateDefMap>,
     current_file_id: HirFileId,
     hygiene: Hygiene,
@@ -35,18 +35,14 @@ pub(crate) struct Expander {
 }
 
 impl Expander {
-    pub(crate) fn new(
-        db: &impl DefDatabase,
-        current_file_id: HirFileId,
-        module: ModuleId,
-    ) -> Expander {
+    pub fn new(db: &impl DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db, current_file_id);
         let ast_id_map = db.ast_id_map(current_file_id);
         Expander { crate_def_map, current_file_id, hygiene, ast_id_map, module }
     }
 
-    pub(crate) fn enter_expand<T: ast::AstNode, DB: DefDatabase>(
+    pub fn enter_expand<T: ast::AstNode, DB: DefDatabase>(
         &mut self,
         db: &DB,
         macro_call: ast::MacroCall,
@@ -84,14 +80,14 @@ impl Expander {
         None
     }
 
-    pub(crate) fn exit(&mut self, db: &impl DefDatabase, mut mark: Mark) {
+    pub fn exit(&mut self, db: &impl DefDatabase, mut mark: Mark) {
         self.hygiene = Hygiene::new(db, mark.file_id);
         self.current_file_id = mark.file_id;
         self.ast_id_map = mem::take(&mut mark.ast_id_map);
         mark.bomb.defuse();
     }
 
-    pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
+    pub fn to_source<T>(&self, value: T) -> InFile<T> {
         InFile { file_id: self.current_file_id, value }
     }
 
@@ -116,7 +112,7 @@ impl Expander {
     }
 }
 
-pub(crate) struct Mark {
+pub struct Mark {
     file_id: HirFileId,
     ast_id_map: Arc<AstIdMap>,
     bomb: DropBomb,

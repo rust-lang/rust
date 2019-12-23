@@ -17,7 +17,7 @@ use hir_def::{
     nameres::ModuleSource,
     path::path,
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
-    AssocItemId, DefWithBodyId,
+    AssocItemId, DefWithBodyId, Expander,
 };
 use hir_expand::{
     hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroCallKind,
@@ -216,7 +216,14 @@ impl SourceAnalyzer {
     }
 
     pub fn type_of(&self, db: &impl HirDatabase, expr: &ast::Expr) -> Option<Type> {
-        let expr_id = self.expr_id(expr)?;
+        let expr_id = if let Some(macro_call) = ast::MacroCall::cast(expr.syntax().clone()) {
+            let mut expander = Expander::new(db, self.file_id, self.body_owner?.module(db).id);
+            let expr = expand_macro_call_to_expr(db, &mut expander, macro_call)?;
+            self.body_source_map.as_ref()?.node_expr(expr.as_ref())?
+        } else {
+            self.expr_id(expr)?
+        };
+
         let ty = self.infer.as_ref()?[expr_id].clone();
         let environment = TraitEnvironment::lower(db, &self.resolver);
         Some(Type { krate: self.resolver.krate()?, ty: InEnvironment { value: ty, environment } })
@@ -499,6 +506,21 @@ fn scope_for_offset(
         .map(|(ptr, scope)| {
             adjust(scopes, source_map, ptr, offset.file_id, offset.value).unwrap_or(*scope)
         })
+}
+
+fn expand_macro_call_to_expr(
+    db: &impl HirDatabase,
+    expander: &mut Expander,
+    macro_call: ast::MacroCall,
+) -> Option<InFile<ast::Expr>> {
+    let (mark, expr): (_, ast::Expr) = expander.enter_expand(db, macro_call)?;
+    let expr = if let Some(child) = ast::MacroCall::cast(expr.syntax().clone()) {
+        expand_macro_call_to_expr(db, expander, child)
+    } else {
+        Some(expander.to_source(expr))
+    };
+    expander.exit(db, mark);
+    expr
 }
 
 // XXX: during completion, cursor might be outside of any particular
