@@ -9,10 +9,10 @@ use syntax::{source_map::DUMMY_SP, symbol::Symbol};
 use crate::interpret::{intern_const_alloc_recursive, ConstValue, InterpCx};
 
 mod error;
-mod query;
+mod eval_queries;
 
 pub use error::*;
-pub use query::*;
+pub use eval_queries::*;
 
 /// Extracts a field of a (variant of a) const.
 // this function uses `unwrap` copiously, because an already validated constant must have valid
