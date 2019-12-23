@@ -26,7 +26,7 @@ function fancify(seed: string, shade: 'light' | 'dark') {
 }
 
 function createDecorationFromTextmate(
-    themeStyle: scopes.TextMateRuleSettings
+    themeStyle: scopes.TextMateRuleSettings,
 ): vscode.TextEditorDecorationType {
     const decorationOptions: vscode.DecorationRenderOptions = {};
     decorationOptions.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen;
@@ -84,7 +84,7 @@ export class Highlighter {
                 const color = new vscode.ThemeColor(fallBackTag);
                 const decor = vscode.window.createTextEditorDecorationType({
                     color,
-                    textDecoration
+                    textDecoration,
                 });
                 return [tag, decor];
             }

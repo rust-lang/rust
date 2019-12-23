@@ -58,10 +58,10 @@ function loadThemeNamed(themeName: string) {
             return extension.packageJSON.contributes.themes
                 .filter(
                     (element: any) =>
-                        (element.id || element.label) === themeName
+                        (element.id || element.label) === themeName,
                 )
                 .map((element: any) =>
-                    path.join(extension.extensionPath, element.path)
+                    path.join(extension.extensionPath, element.path),
                 )
                 .concat(list);
         }, Array<string>());
@@ -71,7 +71,7 @@ function loadThemeNamed(themeName: string) {
     const tokenColorCustomizations: [any] = [
         vscode.workspace
             .getConfiguration('editor')
-            .get('tokenColorCustomizations')
+            .get('tokenColorCustomizations'),
     ];
 
     tokenColorCustomizations
@@ -100,7 +100,7 @@ function loadThemeFile(themePath: string) {
 
 function mergeRuleSettings(
     defaultSetting: TextMateRuleSettings | undefined,
-    override: TextMateRuleSettings
+    override: TextMateRuleSettings,
 ): TextMateRuleSettings {
     if (defaultSetting === undefined) {
         return override;
@@ -116,7 +116,7 @@ function mergeRuleSettings(
 
 function updateRules(
     scope: string,
-    updatedSettings: TextMateRuleSettings
+    updatedSettings: TextMateRuleSettings,
 ): void {
     [rules.get(scope)]
         .map(settings => mergeRuleSettings(settings, updatedSettings))

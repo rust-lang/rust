@@ -10,15 +10,15 @@ const defaultMapping = new Map<string, string[]>([
             'comment',
             'comment.block',
             'comment.line',
-            'comment.block.documentation'
-        ]
+            'comment.block.documentation',
+        ],
     ],
     ['string', ['string']],
     ['keyword', ['keyword']],
     ['keyword.control', ['keyword.control', 'keyword', 'keyword.other']],
     [
         'keyword.unsafe',
-        ['storage.modifier', 'keyword.other', 'keyword.control', 'keyword']
+        ['storage.modifier', 'keyword.other', 'keyword.control', 'keyword'],
     ],
     ['function', ['entity.name.function']],
     ['parameter', ['variable.parameter']],
@@ -28,7 +28,7 @@ const defaultMapping = new Map<string, string[]>([
     ['text', ['string', 'string.quoted', 'string.regexp']],
     ['attribute', ['keyword']],
     ['literal', ['string', 'string.quoted', 'string.regexp']],
-    ['macro', ['support.other']],
+    ['macro', ['entity.name.function', 'keyword.other', 'entity.name.macro']],
     ['variable', ['variable']],
     ['variable.mut', ['variable', 'storage.modifier']],
     [
@@ -37,20 +37,19 @@ const defaultMapping = new Map<string, string[]>([
             'variable.object.property',
             'meta.field.declaration',
             'meta.definition.property',
-            'variable.other'
-        ]
+            'variable.other',
+        ],
     ],
-    ['module', ['entity.name.section', 'entity.other']]
+    ['module', ['entity.name.section', 'entity.other']],
 ]);
 
-// Temporary exported for debugging for now.
 export function find(scope: string): string[] {
     return mappings.get(scope) || [];
 }
 
 export function toRule(
     scope: string,
-    intoRule: (scope: string) => TextMateRuleSettings | undefined
+    intoRule: (scope: string) => TextMateRuleSettings | undefined,
 ): TextMateRuleSettings | undefined {
     return find(scope)
         .map(intoRule)
