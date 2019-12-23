@@ -6,7 +6,6 @@ fn test() -> _ { 5 }
 
 fn test2() -> (_, _) { (5, 5) }
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-//~^^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
 static TEST3: _ = "test";
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
@@ -59,7 +58,6 @@ pub fn main() {
 
     fn fn_test2() -> (_, _) { (5, 5) }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-    //~^^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
     static FN_TEST3: _ = "test";
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
@@ -106,4 +104,28 @@ pub fn main() {
         //~^^ ERROR the type placeholder `_` is not allowed within types on item signatures
     }
 
+    fn fn_test11(_: _) -> (_, _) { panic!() }
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    //~| ERROR type annotations needed
+
+    fn fn_test12(x: i32) -> (_, _) { (x, x) }
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
+    fn fn_test13(x: _) -> (i32, _) { (x, x) }
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+}
+
+trait T {
+    fn method_test1(&self, x: _);
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    fn method_test2(&self, x: _) -> _;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    fn method_test3(&self) -> _;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    fn assoc_fn_test1(x: _);
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    fn assoc_fn_test2(x: _) -> _;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    fn assoc_fn_test3() -> _;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }

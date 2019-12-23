@@ -7,6 +7,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::print;
 use crate::hir::ptr::P;
 use crate::hir::{self, ExprKind, GenericArg, GenericArgs, HirVec};
+use crate::hir::intravisit::{NestedVisitorMap, Visitor};
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
@@ -65,6 +66,8 @@ pub trait AstConv<'tcx> {
 
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
+
+    fn allow_ty_infer(&self) -> bool;
 
     /// Returns the const to use when a const is omitted.
     fn ct_infer(
@@ -2593,7 +2596,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::BareFn(ref bf) => {
                 require_c_abi_if_c_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-                tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl))
+                tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl, &[], None))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
@@ -2758,14 +2761,55 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         unsafety: hir::Unsafety,
         abi: abi::Abi,
         decl: &hir::FnDecl<'_>,
+        generic_params: &[hir::GenericParam<'_>],
+        ident_span: Option<Span>,
     ) -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
 
         let tcx = self.tcx();
-        let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
 
+        // We proactively collect all the infered type params to emit a single error per fn def.
+        struct PlaceholderHirTyCollector(Vec<Span>);
+        impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
+            fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+                NestedVisitorMap::None
+            }
+            fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
+                if let hir::TyKind::Infer = t.kind {
+                    self.0.push(t.span);
+                }
+                hir::intravisit::walk_ty(self, t)
+            }
+        }
+        let mut placeholder_types = vec![];
+        let mut output_placeholder_types = vec![];
+
+        let input_tys = decl.inputs.iter().map(|a| {
+            let mut visitor = PlaceholderHirTyCollector(vec![]);
+            visitor.visit_ty(&a);
+            if visitor.0.is_empty() || self.allow_ty_infer() {
+                self.ty_of_arg(a, None)
+            } else {
+                placeholder_types.extend(visitor.0);
+                tcx.types.err
+            }
+        });
         let output_ty = match decl.output {
-            hir::Return(ref output) => self.ast_ty_to_ty(output),
+            hir::Return(ref output) => {
+                let mut visitor = PlaceholderHirTyCollector(vec![]);
+                visitor.visit_ty(output);
+                let is_infer = if let hir::TyKind::Infer = output.kind {
+                    true
+                } else {
+                    false
+                };
+                if (is_infer || !visitor.0.is_empty()) && !self.allow_ty_infer() {
+                    output_placeholder_types.extend(visitor.0);
+                    tcx.types.err
+                } else {
+                    self.ast_ty_to_ty(output)
+                }
+            }
             hir::DefaultReturn(..) => tcx.mk_unit(),
         };
 
@@ -2773,6 +2817,39 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let bare_fn_ty =
             ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi));
+
+        placeholder_types.extend(output_placeholder_types);
+
+        if !placeholder_types.is_empty() {
+            let mut sugg = placeholder_types.iter().cloned()
+                .map(|sp| (sp, "T".to_owned()))
+                .collect::<Vec<_>>();
+            if let Some(span) = ident_span {
+                if generic_params.is_empty() {
+                    sugg.push((span.shrink_to_hi(), "<T>".to_string()));
+                } else {
+                    sugg.push((
+                        generic_params.iter().last().unwrap().span.shrink_to_hi(),
+                        ", T".to_string(),
+                    ));
+                }
+            }
+            let mut err = struct_span_err!(
+                tcx.sess,
+                placeholder_types,
+                E0121,
+                "the type placeholder `_` is not allowed within types on item signatures",
+            );
+            if ident_span.is_some() {
+                err.multipart_suggestion(
+                    "use type parameters instead",
+                    sugg,
+                    Applicability::HasPlaceholders,
+                );
+            }
+            err.emit();
+        }
+
 
         // Find any late-bound regions declared in return type that do
         // not appear in the arguments. These are not well-formed.

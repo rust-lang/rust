@@ -195,6 +195,10 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         None
     }
 
+    fn allow_ty_infer(&self) -> bool {
+        false
+    }
+
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
         bad_placeholder_type(self.tcx(), span).emit();
 
@@ -1699,9 +1703,26 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 }
 
+fn is_infer_ty(ty: &hir::Ty<'_>) -> bool {
+    match &ty.kind {
+        hir::TyKind::Infer => true,
+        hir::TyKind::Slice(ty) | hir::TyKind::Array(ty, _) => is_infer_ty(ty),
+        hir::TyKind::Tup(tys)
+            if !tys.is_empty()
+                && tys.iter().all(|ty| match ty.kind {
+                    hir::TyKind::Infer => true,
+                    _ => false,
+                }) =>
+        {
+            true
+        }
+        _ => false,
+    }
+}
+
 pub fn get_infer_ret_ty(output: &'hir hir::FunctionRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
     if let hir::FunctionRetTy::Return(ref ty) = output {
-        if let hir::TyKind::Infer = ty.kind {
+        if is_infer_ty(ty) {
             return Some(&**ty);
         }
     }
@@ -1719,10 +1740,12 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Method(sig, TraitMethod::Provided(_)),
+            ident,
+            generics,
             ..
         })
-        | ImplItem(hir::ImplItem { kind: ImplItemKind::Method(sig, _), .. })
-        | Item(hir::Item { kind: ItemKind::Fn(sig, _, _), .. }) => {
+        | ImplItem(hir::ImplItem { kind: ImplItemKind::Method(sig, _), ident, generics, .. })
+        | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), ident, .. }) => {
             match get_infer_ret_ty(&sig.decl.output) {
                 Some(ty) => {
                     let fn_sig = tcx.typeck_tables_of(def_id).liberated_fn_sigs()[hir_id];
@@ -1731,7 +1754,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     if ret_ty != tcx.types.err {
                         diag.span_suggestion(
                             ty.span,
-                            "replace `_` with the correct return type",
+                            "replace this with the correct return type",
                             ret_ty.to_string(),
                             Applicability::MaybeIncorrect,
                         );
@@ -1739,14 +1762,30 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     diag.emit();
                     ty::Binder::bind(fn_sig)
                 }
-                None => AstConv::ty_of_fn(&icx, sig.header.unsafety, sig.header.abi, &sig.decl),
+                None => AstConv::ty_of_fn(
+                    &icx,
+                    sig.header.unsafety,
+                    sig.header.abi,
+                    &sig.decl,
+                    &generics.params[..],
+                    Some(ident.span),
+                ),
             }
         }
 
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Method(FnSig { header, decl }, _),
+            ident,
+            generics,
             ..
-        }) => AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl),
+        }) => AstConv::ty_of_fn(
+            &icx,
+            header.unsafety,
+            header.abi,
+            decl,
+            &generics.params[..],
+            Some(ident.span),
+        ),
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(ref fn_decl, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
@@ -2351,7 +2390,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     } else {
         hir::Unsafety::Unsafe
     };
-    let fty = AstConv::ty_of_fn(&ItemCtxt::new(tcx, def_id), unsafety, abi, decl);
+    let fty = AstConv::ty_of_fn(&ItemCtxt::new(tcx, def_id), unsafety, abi, decl, &[], None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw

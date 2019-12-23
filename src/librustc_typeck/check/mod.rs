@@ -963,7 +963,7 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
         let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-                AstConv::ty_of_fn(&fcx, header.unsafety, header.abi, decl)
+                AstConv::ty_of_fn(&fcx, header.unsafety, header.abi, decl, &[], None)
             } else {
                 tcx.fn_sig(def_id)
             };
@@ -1069,6 +1069,7 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
             let ty = fcx.normalize_ty(span, ty);
             fcx.require_type_is_sized(ty, span, code);
         }
+
         fcx.select_all_obligations_or_error();
 
         if fn_decl.is_some() {
@@ -2561,6 +2562,10 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             None => infer::MiscVariable(span),
         };
         Some(self.next_region_var(v))
+    }
+
+    fn allow_ty_infer(&self) -> bool {
+        true
     }
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
