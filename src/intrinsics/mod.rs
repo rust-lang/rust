@@ -268,93 +268,51 @@ macro simd_cmp {
 
 macro simd_int_binop {
     ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_pair_for_each_lane(
-            $fx,
-            $intrinsic,
-            $x,
-            $y,
-            $ret,
-            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind {
-                    ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
-                };
-                CValue::by_val(res_lane, ret_lane_layout)
-            },
-        );
+        simd_int_binop!($fx, $intrinsic, $op|$op($x, $y) -> $ret);
     },
     ($fx:expr, $intrinsic:expr, $op_u:ident|$op_s:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_pair_for_each_lane(
-            $fx,
-            $intrinsic,
-            $x,
-            $y,
-            $ret,
-            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind {
-                    ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
-                    ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
-                };
-                CValue::by_val(res_lane, ret_lane_layout)
-            },
-        );
+        let (lane_layout, lane_count) = lane_type_and_count($fx.tcx, $x.layout());
+        let x_val = $x.load_vector($fx);
+        let y_val = $y.load_vector($fx);
+
+        let res = match lane_layout.ty.kind {
+            ty::Uint(_) => $fx.bcx.ins().$op_u(x_val, y_val),
+            ty::Int(_) => $fx.bcx.ins().$op_s(x_val, y_val),
+            _ => unreachable!("{:?}", lane_layout.ty),
+        };
+        $ret.write_cvalue($fx, CValue::by_val(res, $ret.layout()));
     },
 }
 
 macro simd_int_flt_binop {
     ($fx:expr, $intrinsic:expr, $op:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_pair_for_each_lane(
-            $fx,
-            $intrinsic,
-            $x,
-            $y,
-            $ret,
-            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind {
-                    ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
-                    ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
-                };
-                CValue::by_val(res_lane, ret_lane_layout)
-            },
-        );
+        simd_int_flt_binop!($fx, $intrinsic, $op|$op|$op_f($x, $y) -> $ret);
     },
     ($fx:expr, $intrinsic:expr, $op_u:ident|$op_s:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_pair_for_each_lane(
-            $fx,
-            $intrinsic,
-            $x,
-            $y,
-            $ret,
-            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind {
-                    ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
-                    ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
-                    ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
-                };
-                CValue::by_val(res_lane, ret_lane_layout)
-            },
-        );
+        let (lane_layout, lane_count) = lane_type_and_count($fx.tcx, $x.layout());
+        let x_val = $x.load_vector($fx);
+        let y_val = $y.load_vector($fx);
+
+        let res = match lane_layout.ty.kind {
+            ty::Uint(_) => $fx.bcx.ins().$op_u(x_val, y_val),
+            ty::Int(_) => $fx.bcx.ins().$op_s(x_val, y_val),
+            ty::Float(_) => $fx.bcx.ins().$op_f(x_val, y_val),
+            _ => unreachable!("{:?}", lane_layout.ty),
+        };
+        $ret.write_cvalue($fx, CValue::by_val(res, $ret.layout()));
     },
 }
 
 macro simd_flt_binop($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
-    simd_pair_for_each_lane(
-        $fx,
-        $intrinsic,
-        $x,
-        $y,
-        $ret,
-        |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-            let res_lane = match lane_layout.ty.kind {
-                ty::Float(_) => fx.bcx.ins().$op(x_lane, y_lane),
-                _ => unreachable!("{:?}", lane_layout.ty),
-            };
-            CValue::by_val(res_lane, ret_lane_layout)
-        },
-    );
+    let (lane_layout, lane_count) = lane_type_and_count($fx.tcx, $x.layout());
+        let x_val = $x.load_vector($fx);
+        let y_val = $y.load_vector($fx);
+
+        let res = match lane_layout.ty.kind {
+            ty::Float(_) => $fx.bcx.ins().$op(x_val, y_val),
+            _ => unreachable!("{:?}", lane_layout.ty),
+        };
+        $ret.write_cvalue($fx, CValue::by_val(res, $ret.layout()));
 }
 
 pub fn codegen_intrinsic_call<'tcx>(
