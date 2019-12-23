@@ -5,6 +5,14 @@ fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> TyLay
     fx.layout_of(fx.monomorphize(&fx.mir.local_decls[RETURN_PLACE].ty))
 }
 
+pub fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyLayout<'tcx>) -> bool {
+    match get_pass_mode(tcx, dest_layout) {
+        PassMode::NoPass | PassMode::ByVal(_) => true,
+        // FIXME Make it possible to return ByValPair and ByRef to an ssa var.
+        PassMode::ByValPair(_, _) | PassMode::ByRef => false
+    }
+}
+
 pub fn codegen_return_param(
     fx: &mut FunctionCx<impl Backend>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,

@@ -10,7 +10,7 @@ use cranelift_codegen::ir::AbiParam;
 use self::pass_mode::*;
 use crate::prelude::*;
 
-pub use self::returning::codegen_return;
+pub use self::returning::{can_return_to_ssa_var, codegen_return};
 
 // Copied from https://github.com/rust-lang/rust/blob/c2f4c57296f0d929618baed0b0d6eb594abf01eb/src/librustc/ty/layout.rs#L2349
 pub fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
