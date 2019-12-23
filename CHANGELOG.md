@@ -6,7 +6,7 @@ document.
 
 ## Unreleased / In Rust Beta or Nightly
 
-[3aea860...master](https://github.com/rust-lang/rust-clippy/compare/3aea860...master)
+[c8e3cfb...master](https://github.com/rust-lang/rust-clippy/compare/c8e3cfb...master)
 
 ## Rust 1.41
 
@@ -16,7 +16,7 @@ Current Beta
 
 Current stable, released 2019-12-19
 
-[4e7e71b...69f99e7](https://github.com/rust-lang/rust-clippy/compare/4e7e71b...c8e3cfb)
+[4e7e71b...c8e3cfb](https://github.com/rust-lang/rust-clippy/compare/4e7e71b...c8e3cfb)
 
 * New Lints:
   * [`unneeded_wildcard_pattern`] [#4537](https://github.com/rust-lang/rust-clippy/pull/4537)
