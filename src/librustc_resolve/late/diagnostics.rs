@@ -321,8 +321,8 @@ impl<'a> LateResolutionVisitor<'a, '_> {
     fn call_has_self_arg(&self, source: PathSource<'_>) -> Option<(Span, Option<Span>)> {
         let mut has_self_arg = None;
         if let PathSource::Expr(parent) = source {
-            match &parent.map(|p| &p.kind) {
-                Some(ExprKind::Call(_, args)) if args.len() > 0 => {
+            match &parent?.kind {
+                ExprKind::Call(_, args) if args.len() > 0 => {
                     let mut expr_kind = &args[0].kind;
                     loop {
                         match expr_kind {
