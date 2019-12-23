@@ -1,0 +1,133 @@
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/borrowck-move-and-move.rs:12:9
+   |
+LL |     let a @ b = U;
+   |         ^^^^^ binds an already bound by-move value by moving it
+
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/borrowck-move-and-move.rs:16:9
+   |
+LL |     let a @ (b, c) = (U, U);
+   |         ^^^^^^^^^^ binds an already bound by-move value by moving it
+
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/borrowck-move-and-move.rs:20:9
+   |
+LL |     let a @ (b, c) = (u(), u());
+   |         ^^^^^^^^^^ binds an already bound by-move value by moving it
+
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/borrowck-move-and-move.rs:25:9
+   |
+LL |         a @ Ok(b) | a @ Err(b) => {}
+   |         ^^^^^^^^^ binds an already bound by-move value by moving it
+
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/borrowck-move-and-move.rs:25:21
+   |
+LL |         a @ Ok(b) | a @ Err(b) => {}
+   |                     ^^^^^^^^^^ binds an already bound by-move value by moving it
+
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/borrowck-move-and-move.rs:37:9
+   |
+LL |         xs @ [a, .., b] => {}
+   |         ^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
+
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/borrowck-move-and-move.rs:43:9
+   |
+LL |         xs @ [_, ys @ .., _] => {}
+   |         ^^^^^^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
+
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/borrowck-move-and-move.rs:32:12
+   |
+LL |     fn fun(a @ b: U) {}
+   |            ^^^^^ binds an already bound by-move value by moving it
+
+error[E0382]: use of moved value
+  --> $DIR/borrowck-move-and-move.rs:12:13
+   |
+LL |     let a @ b = U;
+   |         ----^   - move occurs because value has type `main::U`, which does not implement the `Copy` trait
+   |         |   |
+   |         |   value used here after move
+   |         value moved here
+
+error[E0382]: use of moved value
+  --> $DIR/borrowck-move-and-move.rs:16:17
+   |
+LL |     let a @ (b, c) = (U, U);
+   |         --------^-   ------ move occurs because value has type `(main::U, main::U)`, which does not implement the `Copy` trait
+   |         |       |
+   |         |       value used here after move
+   |         value moved here
+
+error[E0382]: use of moved value
+  --> $DIR/borrowck-move-and-move.rs:20:17
+   |
+LL |     let a @ (b, c) = (u(), u());
+   |         --------^-   ---------- move occurs because value has type `(main::U, main::U)`, which does not implement the `Copy` trait
+   |         |       |
+   |         |       value used here after move
+   |         value moved here
+
+error[E0382]: use of moved value
+  --> $DIR/borrowck-move-and-move.rs:25:16
+   |
+LL |     match Ok(U) {
+   |           ----- move occurs because value has type `std::result::Result<main::U, main::U>`, which does not implement the `Copy` trait
+LL |         a @ Ok(b) | a @ Err(b) => {}
+   |         -------^-
+   |         |      |
+   |         |      value used here after move
+   |         value moved here
+
+error[E0382]: use of moved value
+  --> $DIR/borrowck-move-and-move.rs:25:29
+   |
+LL |     match Ok(U) {
+   |           ----- move occurs because value has type `std::result::Result<main::U, main::U>`, which does not implement the `Copy` trait
+LL |         a @ Ok(b) | a @ Err(b) => {}
+   |                     --------^-
+   |                     |       |
+   |                     |       value used here after move
+   |                     value moved here
+
+error[E0382]: use of moved value
+  --> $DIR/borrowck-move-and-move.rs:37:22
+   |
+LL |     match [u(), u(), u(), u()] {
+   |           -------------------- move occurs because value has type `[main::U; 4]`, which does not implement the `Copy` trait
+LL |         xs @ [a, .., b] => {}
+   |         -------------^-
+   |         |            |
+   |         |            value used here after move
+   |         value moved here
+
+error[E0382]: use of moved value
+  --> $DIR/borrowck-move-and-move.rs:43:18
+   |
+LL |     match [u(), u(), u(), u()] {
+   |           -------------------- move occurs because value has type `[main::U; 4]`, which does not implement the `Copy` trait
+LL |         xs @ [_, ys @ .., _] => {}
+   |         ---------^^^^^^^----
+   |         |        |
+   |         |        value used here after move
+   |         value moved here
+
+error[E0382]: use of moved value
+  --> $DIR/borrowck-move-and-move.rs:32:16
+   |
+LL |     fn fun(a @ b: U) {}
+   |            ----^
+   |            |   |
+   |            |   value used here after move
+   |            value moved here
+   |            move occurs because value has type `main::U`, which does not implement the `Copy` trait
+
+error: aborting due to 16 previous errors
+
+Some errors have detailed explanations: E0007, E0382.
+For more information about an error, try `rustc --explain E0007`.

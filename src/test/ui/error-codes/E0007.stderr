@@ -1,17 +1,11 @@
 error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/E0007.rs:4:9
+  --> $DIR/E0007.rs:6:9
    |
 LL |         op_string @ Some(s) => {},
    |         ^^^^^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
 
-error[E0303]: pattern bindings are not allowed after an `@`
-  --> $DIR/E0007.rs:4:26
-   |
-LL |         op_string @ Some(s) => {},
-   |                          ^ not allowed after `@`
-
 error[E0382]: use of moved value
-  --> $DIR/E0007.rs:4:26
+  --> $DIR/E0007.rs:6:26
    |
 LL |     let x = Some("s".to_string());
    |         - move occurs because `x` has type `std::option::Option<std::string::String>`, which does not implement the `Copy` trait
@@ -22,7 +16,7 @@ LL |         op_string @ Some(s) => {},
    |         |                value used here after move
    |         value moved here
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0007, E0303, E0382.
+Some errors have detailed explanations: E0007, E0382.
 For more information about an error, try `rustc --explain E0007`.

@@ -534,7 +534,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat,);
-                if let Some(&bm) = mc.tables.pat_binding_modes().get(pat.hir_id) {
+                if let Some(bm) = mc.tables.extract_binding_mode(tcx.sess, pat.hir_id, pat.span) {
                     debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
                     // pat_ty: the type of the binding being produced.
@@ -560,8 +560,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             delegate.consume(place, mode);
                         }
                     }
-                } else {
-                    tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                 }
             }
         }));

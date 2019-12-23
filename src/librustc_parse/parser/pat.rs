@@ -406,6 +406,7 @@ impl<'a> Parser<'a> {
         if let PatKind::Ident(_, _, ref mut sub @ None) = rhs.kind {
             // The user inverted the order, so help them fix that.
             let mut applicability = Applicability::MachineApplicable;
+            // FIXME(bindings_after_at): Remove this code when stabilizing the feature.
             lhs.walk(&mut |p| match p.kind {
                 // `check_match` is unhappy if the subpattern has a binding anywhere.
                 PatKind::Ident(..) => {

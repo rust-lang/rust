@@ -921,6 +921,16 @@ impl Pat {
     pub fn walk(&self, mut it: impl FnMut(&Pat) -> bool) {
         self.walk_(&mut it)
     }
+
+    /// Walk the pattern in left-to-right order.
+    ///
+    /// If you always want to recurse, prefer this method over `walk`.
+    pub fn walk_always(&self, mut it: impl FnMut(&Pat)) {
+        self.walk(|p| {
+            it(p);
+            true
+        })
+    }
 }
 
 /// A single field in a struct pattern.

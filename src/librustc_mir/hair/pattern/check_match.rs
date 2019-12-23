@@ -4,23 +4,23 @@ use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack}
 
 use super::{PatCtxt, PatKind, PatternError};
 
-use rustc::lint;
-use rustc::session::Session;
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc_errors::{Applicability, DiagnosticBuilder};
-
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::HirId;
 use rustc::hir::{self, Pat};
-
-use std::slice;
-
+use rustc::lint;
+use rustc::session::Session;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc_error_codes::*;
+use rustc_errors::{Applicability, DiagnosticBuilder};
+use syntax::ast::Mutability;
+use syntax::feature_gate::feature_err;
+use syntax_pos::symbol::sym;
 use syntax_pos::{MultiSpan, Span};
 
-use rustc_error_codes::*;
+use std::slice;
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match tcx.hir().as_local_hir_id(def_id) {
@@ -123,7 +123,10 @@ impl PatCtxt<'_, '_> {
 impl<'tcx> MatchVisitor<'_, 'tcx> {
     fn check_patterns(&mut self, has_guard: bool, pat: &Pat) {
         check_legality_of_move_bindings(self, has_guard, pat);
-        check_legality_of_bindings_in_at_patterns(self, pat);
+        check_borrow_conflicts_in_at_patterns(self, pat);
+        if !self.tcx.features().bindings_after_at {
+            check_legality_of_bindings_in_at_patterns(self, pat);
+        }
     }
 
     fn check_match(&mut self, scrut: &hir::Expr, arms: &'tcx [hir::Arm], source: hir::MatchSource) {
@@ -266,13 +269,11 @@ fn const_not_var(err: &mut DiagnosticBuilder<'_>, tcx: TyCtxt<'_>, pat: &Pat, pa
 }
 
 fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
-    pat.walk(|p| {
+    pat.walk_always(|p| {
         if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
-            if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
-                if bm != ty::BindByValue(hir::Mutability::Not) {
-                    // Nothing to check.
-                    return true;
-                }
+            if let Some(ty::BindByValue(hir::Mutability::Not)) =
+                cx.tables.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
+            {
                 let pat_ty = cx.tables.pat_ty(p);
                 if let ty::Adt(edef, _) = pat_ty.kind {
                     if edef.is_enum()
@@ -280,6 +281,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                             variant.ident == ident && variant.ctor_kind == CtorKind::Const
                         })
                     {
+                        // FIXME(Centril): Should be a lint?
                         let ty_path = cx.tcx.def_path_str(edef.did);
                         let mut err = struct_span_warn!(
                             cx.tcx.sess,
@@ -299,11 +301,8 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                         err.emit();
                     }
                 }
-            } else {
-                cx.tcx.sess.delay_span_bug(p.span, "missing binding mode");
             }
         }
-        true
     });
 }
 
@@ -318,7 +317,7 @@ fn pat_is_catchall(pat: &Pat) -> bool {
     }
 }
 
-// Check for unreachable patterns
+/// Check for unreachable patterns.
 fn check_arms<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     arms: &[(&'p super::Pat<'tcx>, &hir::Pat, bool)],
@@ -575,105 +574,176 @@ fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> 
     covered
 }
 
-// Check the legality of legality of by-move bindings.
+/// Check the legality of legality of by-move bindings.
 fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: bool, pat: &Pat) {
-    let mut by_ref_span = None;
+    let sess = cx.tcx.sess;
+    let tables = cx.tables;
+
+    // Find all by-ref spans.
+    let mut by_ref_spans = Vec::new();
     pat.each_binding(|_, hir_id, span, _| {
-        if let Some(&bm) = cx.tables.pat_binding_modes().get(hir_id) {
-            if let ty::BindByReference(..) = bm {
-                by_ref_span = Some(span);
-            }
-        } else {
-            cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
+        if let Some(ty::BindByReference(_)) = tables.extract_binding_mode(sess, hir_id, span) {
+            by_ref_spans.push(span);
         }
     });
 
-    let span_vec = &mut Vec::new();
+    // Find bad by-move spans:
+    let by_move_spans = &mut Vec::new();
     let mut check_move = |p: &Pat, sub: Option<&Pat>| {
         // Check legality of moving out of the enum.
         //
         // `x @ Foo(..)` is legal, but `x @ Foo(y)` isn't.
         if sub.map_or(false, |p| p.contains_bindings()) {
-            struct_span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings")
+            struct_span_err!(sess, p.span, E0007, "cannot bind by-move with sub-bindings")
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
-        } else if !has_guard && by_ref_span.is_some() {
-            span_vec.push(p.span);
+        } else if !has_guard && !by_ref_spans.is_empty() {
+            by_move_spans.push(p.span);
         }
     };
-
-    pat.walk(|p| {
+    pat.walk_always(|p| {
         if let hir::PatKind::Binding(.., sub) = &p.kind {
-            if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
-                if let ty::BindByValue(..) = bm {
-                    let pat_ty = cx.tables.node_type(p.hir_id);
-                    if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
-                        check_move(p, sub.as_deref());
-                    }
+            if let Some(ty::BindByValue(_)) = tables.extract_binding_mode(sess, p.hir_id, p.span) {
+                let pat_ty = tables.node_type(p.hir_id);
+                if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
+                    check_move(p, sub.as_deref());
                 }
-            } else {
-                cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
             }
         }
-        true
     });
 
-    if !span_vec.is_empty() {
+    // Found some bad by-move spans, error!
+    if !by_move_spans.is_empty() {
         let mut err = struct_span_err!(
-            cx.tcx.sess,
-            MultiSpan::from_spans(span_vec.clone()),
+            sess,
+            MultiSpan::from_spans(by_move_spans.clone()),
             E0009,
             "cannot bind by-move and by-ref in the same pattern",
         );
-        if let Some(by_ref_span) = by_ref_span {
-            err.span_label(by_ref_span, "both by-ref and by-move used");
+        for span in by_ref_spans.iter() {
+            err.span_label(*span, "by-ref pattern here");
         }
-        for span in span_vec.iter() {
+        for span in by_move_spans.iter() {
             err.span_label(*span, "by-move pattern here");
         }
         err.emit();
     }
 }
 
-/// Forbids bindings in `@` patterns. This is necessary for memory safety,
-/// because of the way rvalues are handled in the borrow check. (See issue
-/// #14587.)
-fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
-    AtBindingPatternVisitor { cx, bindings_allowed: true }.visit_pat(pat);
-}
+/// Check that there are no borrow conflicts in `binding @ subpat` patterns.
+///
+/// For example, this would reject:
+/// - `ref x @ Some(ref mut y)`,
+/// - `ref mut x @ Some(ref y)`
+/// - `ref mut x @ Some(ref mut y)`.
+///
+/// This analysis is *not* subsumed by NLL.
+fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
+    let tab = cx.tables;
+    let sess = cx.tcx.sess;
+    // Get the mutability of `p` if it's by-ref.
+    let extract_binding_mut = |hir_id, span| match tab.extract_binding_mode(sess, hir_id, span)? {
+        ty::BindByValue(_) => None,
+        ty::BindByReference(m) => Some(m),
+    };
+    pat.walk_always(|pat| {
+        // Extract `sub` in `binding @ sub`.
+        let (name, sub) = match &pat.kind {
+            hir::PatKind::Binding(.., name, Some(sub)) => (*name, sub),
+            _ => return,
+        };
 
-struct AtBindingPatternVisitor<'a, 'b, 'tcx> {
-    cx: &'a MatchVisitor<'b, 'tcx>,
-    bindings_allowed: bool,
-}
+        // Extract the mutability.
+        let mut_outer = match extract_binding_mut(pat.hir_id, pat.span) {
+            None => return,
+            Some(m) => m,
+        };
 
-impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_pat(&mut self, pat: &Pat) {
-        match pat.kind {
-            hir::PatKind::Binding(.., ref subpat) => {
-                if !self.bindings_allowed {
-                    struct_span_err!(
-                        self.cx.tcx.sess,
-                        pat.span,
-                        E0303,
-                        "pattern bindings are not allowed after an `@`"
-                    )
-                    .span_label(pat.span, "not allowed after `@`")
-                    .emit();
-                }
-
-                if subpat.is_some() {
-                    let bindings_were_allowed = self.bindings_allowed;
-                    self.bindings_allowed = false;
-                    intravisit::walk_pat(self, pat);
-                    self.bindings_allowed = bindings_were_allowed;
+        // We now have `ref $mut_outer binding @ sub` (semantically).
+        // Recurse into each binding in `sub` and find mutability conflicts.
+        let mut conflicts_mut_mut = Vec::new();
+        let mut conflicts_mut_ref = Vec::new();
+        sub.each_binding(|_, hir_id, span, _| {
+            if let Some(mut_inner) = extract_binding_mut(hir_id, span) {
+                match (mut_outer, mut_inner) {
+                    (Mutability::Not, Mutability::Not) => {}
+                    (Mutability::Mut, Mutability::Mut) => conflicts_mut_mut.push(span),
+                    _ => conflicts_mut_ref.push(span),
                 }
             }
-            _ => intravisit::walk_pat(self, pat),
+        });
+
+        // Report errors if any.
+        let binding_span = pat.span.with_hi(name.span.hi());
+        if !conflicts_mut_mut.is_empty() {
+            // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
+            let msg = &format!("cannot borrow `{}` as mutable more than once at a time", name);
+            let mut err = sess.struct_span_err(pat.span, msg);
+            err.span_label(binding_span, "first mutable borrow occurs here");
+            for sp in conflicts_mut_mut {
+                err.span_label(sp, "another mutable borrow occurs here");
+            }
+            for sp in conflicts_mut_ref {
+                err.span_label(sp, "also borrowed as immutable here");
+            }
+            err.emit();
+        } else if !conflicts_mut_ref.is_empty() {
+            // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
+            let (primary, also) = match mut_outer {
+                Mutability::Mut => ("mutable", "immutable"),
+                Mutability::Not => ("immutable", "mutable"),
+            };
+            let msg = &format!(
+                "cannot borrow `{}` as {} because it is also borrowed as {}",
+                name, also, primary,
+            );
+            let mut err = sess.struct_span_err(pat.span, msg);
+            err.span_label(binding_span, &format!("{} borrow occurs here", primary));
+            for sp in conflicts_mut_ref {
+                err.span_label(sp, &format!("{} borrow occurs here", also));
+            }
+            err.emit();
+        }
+    });
+}
+
+/// Forbids bindings in `@` patterns. This used to be is necessary for memory safety,
+/// because of the way rvalues were handled in the borrow check. (See issue #14587.)
+fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
+    AtBindingPatternVisitor { cx, bindings_allowed: true }.visit_pat(pat);
+
+    struct AtBindingPatternVisitor<'a, 'b, 'tcx> {
+        cx: &'a MatchVisitor<'b, 'tcx>,
+        bindings_allowed: bool,
+    }
+
+    impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+            NestedVisitorMap::None
+        }
+
+        fn visit_pat(&mut self, pat: &Pat) {
+            match pat.kind {
+                hir::PatKind::Binding(.., ref subpat) => {
+                    if !self.bindings_allowed {
+                        feature_err(
+                            &self.cx.tcx.sess.parse_sess,
+                            sym::bindings_after_at,
+                            pat.span,
+                            "pattern bindings after an `@` are unstable",
+                        )
+                        .emit();
+                    }
+
+                    if subpat.is_some() {
+                        let bindings_were_allowed = self.bindings_allowed;
+                        self.bindings_allowed = false;
+                        intravisit::walk_pat(self, pat);
+                        self.bindings_allowed = bindings_were_allowed;
+                    }
+                }
+                _ => intravisit::walk_pat(self, pat),
+            }
         }
     }
 }

@@ -79,11 +79,10 @@ impl hir::Pat {
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
     pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident)) {
-        self.walk(|p| {
+        self.walk_always(|p| {
             if let PatKind::Binding(binding_mode, _, ident, _) = p.kind {
                 f(binding_mode, p.hir_id, p.span, ident);
             }
-            true
         });
     }
 
