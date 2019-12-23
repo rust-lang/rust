@@ -73,19 +73,16 @@ use crate::intrinsics;
 /// Most types implement `Any`. However, any type which contains a non-`'static` reference does not.
 /// See the [module-level documentation][mod] for more details.
 ///
+/// This trait is notably `unsafe`. However, this does not affect any use of
+/// this trait in downstream code, as it is always safe to use `Any`. The reason
+/// that `Any` is unsafe is that the standard library relies on its
+/// implementation returning appropriate `TypeId`s for safe downcasting.
+/// However, no code outside the standard library can implement `Any` as it
+/// would overlap with the standard libaries impl for all `'static` types.
+///
 /// [mod]: index.html
-// This trait is not unsafe, though we rely on the specifics of it's sole impl's
-// `type_id` function in unsafe code (e.g., `downcast`). Normally, that would be
-// a problem, but because the only impl of `Any` is a blanket implementation, no
-// other code can implement `Any`.
-//
-// We could plausibly make this trait unsafe -- it would not cause breakage,
-// since we control all the implementations -- but we choose not to as that's
-// both not really necessary and may confuse users about the distinction of
-// unsafe traits and unsafe methods (i.e., `type_id` would still be safe to call,
-// but we would likely want to indicate as such in documentation).
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Any: 'static {
+pub unsafe trait Any: 'static {
     /// Gets the `TypeId` of `self`.
     ///
     /// # Examples
@@ -105,7 +102,7 @@ pub trait Any: 'static {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: 'static + ?Sized> Any for T {
+unsafe impl<T: 'static + ?Sized> Any for T {
     fn type_id(&self) -> TypeId {
         TypeId::of::<T>()
     }
