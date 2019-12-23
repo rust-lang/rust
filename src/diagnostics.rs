@@ -60,3 +60,20 @@ pub fn report_err<'tcx, 'mir>(
     // Let the reported error determine the return code.
     return None;
 }
+
+use std::cell::RefCell;
+thread_local! {
+    static ECX: RefCell<Vec<InterpErrorInfo<'static>>> = RefCell::new(Vec::new());
+}
+
+pub fn register_err(e: InterpErrorInfo<'static>) {
+    ECX.with(|ecx| ecx.borrow_mut().push(e));
+}
+
+pub fn process_errors(mut f: impl FnMut(InterpErrorInfo<'static>)) {
+    ECX.with(|ecx| {
+        for e in ecx.borrow_mut().drain(..) {
+            f(e);
+        }
+    });
+}

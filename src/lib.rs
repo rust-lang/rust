@@ -42,7 +42,7 @@ pub use crate::shims::time::EvalContextExt as TimeEvalContextExt;
 pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 pub use crate::shims::EvalContextExt as ShimsEvalContextExt;
 
-pub use crate::diagnostics::report_err;
+pub use crate::diagnostics::{process_errors, register_err, report_err};
 pub use crate::eval::{create_ecx, eval_main, MiriConfig, TerminationInfo};
 pub use crate::helpers::EvalContextExt as HelpersEvalContextExt;
 pub use crate::machine::{
