@@ -26,8 +26,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.check_overloaded_binop(expr, lhs, rhs, op, IsAssign::Yes);
 
         let ty =
-            if !lhs.is_ty_var() && !rhs.is_ty_var() && is_builtin_binop(lhs, rhs, op) {
-                self.enforce_builtin_binop_types(lhs_expr, lhs, rhs_expr, rhs, op);
+            if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
+                self.enforce_builtin_binop_types(lhs, lhs_ty, rhs, rhs_ty, op);
                 self.tcx.mk_unit()
             } else {
                 return_ty

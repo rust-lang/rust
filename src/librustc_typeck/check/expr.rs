@@ -220,8 +220,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Lit(ref lit) => self.check_lit(&lit, expected),
             ExprKind::Binary(op, ref lhs, ref rhs) => self.check_binop(expr, op, lhs, rhs),
             ExprKind::Assign(ref lhs, ref rhs, ref span) => {
-                self.check_binop_assign(expr, op, lhs, rhs)
+                self.check_expr_assign(expr, expected, lhs, rhs, span)
             }
+            ExprKind::AssignOp(op, ref lhs, ref rhs) => self.check_binop_assign(expr, op, lhs, rhs),
             ExprKind::Unary(unop, ref oprnd) => {
                 self.check_expr_unary(unop, oprnd, expected, needs, expr)
             }
@@ -730,8 +731,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 comps.iter().all(|e| self.is_destructuring_place_expr(e))
             }
             ExprKind::Struct(_path, fields, rest) => {
-                rest.as_ref().map(|e| self.is_destructuring_place_expr(e)).unwrap_or(true) &&
-                    fields.iter().all(|f| self.is_destructuring_place_expr(&f.expr))
+                rest.as_ref().map(|e| self.is_destructuring_place_expr(e)).unwrap_or(true)
+                    && fields.iter().all(|f| self.is_destructuring_place_expr(&f.expr))
             }
             _ => expr.is_syntactic_place_expr(),
         }
@@ -752,9 +753,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_label(lhs.span, "cannot assign to this expression");
             if self.is_destructuring_place_expr(lhs) {
                 err.note("destructuring assignments are not currently supported");
-                err.note(
-                    "for more information, see https://github.com/rust-lang/rfcs/issues/372",
-                );
+                err.note("for more information, see https://github.com/rust-lang/rfcs/issues/372");
             }
             err.emit();
         }
