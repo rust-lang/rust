@@ -7,7 +7,7 @@ use crate::helpers::*;
 
 #[bench]
 fn fib(bencher: &mut Bencher) {
-    bencher.iter(|| { fibonacci_helper::main(); })
+    bencher.iter(|| fibonacci_helper::main())
 }
 
 #[bench]
@@ -17,7 +17,7 @@ fn fib_miri(bencher: &mut Bencher) {
 
 #[bench]
 fn fib_iter(bencher: &mut Bencher) {
-    bencher.iter(|| { fibonacci_helper_iterative::main(); })
+    bencher.iter(|| fibonacci_helper_iterative::main())
 }
 
 #[bench]

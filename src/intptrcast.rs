@@ -1,11 +1,11 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, hash_map::Entry};
 use std::cmp::max;
+use std::collections::{hash_map::Entry, HashMap};
 
 use rand::Rng;
 
 use rustc::ty::layout::HasDataLayout;
-use rustc_mir::interpret::{AllocId, Pointer, InterpResult, Memory, AllocCheck, PointerArithmetic};
+use rustc_mir::interpret::{AllocCheck, AllocId, InterpResult, Memory, Pointer, PointerArithmetic};
 use rustc_target::abi::Size;
 
 use crate::{Evaluator, Tag, STACK_ADDR};
@@ -47,14 +47,15 @@ impl<'mir, 'tcx> GlobalState {
         }
 
         let global_state = memory.extra.intptrcast.borrow();
+        let pos = global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr);
 
-        Ok(match global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr) {
+        Ok(match pos {
             Ok(pos) => {
                 let (_, alloc_id) = global_state.int_to_ptr_map[pos];
                 // `int` is equal to the starting address for an allocation, the offset should be
                 // zero. The pointer is untagged because it was created from a cast
                 Pointer::new_with_tag(alloc_id, Size::from_bytes(0), Tag::Untagged)
-            },
+            }
             Err(0) => throw_unsup!(DanglingPointerDeref),
             Err(pos) => {
                 // This is the largest of the adresses smaller than `int`,
@@ -100,7 +101,10 @@ impl<'mir, 'tcx> GlobalState {
                 entry.insert(base_addr);
                 trace!(
                     "Assigning base address {:#x} to allocation {:?} (slack: {}, align: {})",
-                    base_addr, ptr.alloc_id, slack, align.bytes(),
+                    base_addr,
+                    ptr.alloc_id,
+                    slack,
+                    align.bytes(),
                 );
 
                 // Remember next base address.  If this allocation is zero-sized, leave a gap
@@ -114,7 +118,8 @@ impl<'mir, 'tcx> GlobalState {
             }
         };
 
-        debug_assert_eq!(base_addr % align.bytes(), 0); // sanity check
+        // Sanity check that the base address is aligned.
+        debug_assert_eq!(base_addr % align.bytes(), 0);
         // Add offset with the right kind of pointer-overflowing arithmetic.
         let dl = memory.data_layout();
         Ok(dl.overflowing_offset(base_addr, ptr.offset.bytes()).0)
@@ -125,7 +130,7 @@ impl<'mir, 'tcx> GlobalState {
     fn align_addr(addr: u64, align: u64) -> u64 {
         match addr % align {
             0 => addr,
-            rem => addr.checked_add(align).unwrap() - rem
+            rem => addr.checked_add(align).unwrap() - rem,
         }
     }
 }

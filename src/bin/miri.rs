@@ -7,29 +7,33 @@ extern crate log;
 extern crate log_settings;
 extern crate miri;
 extern crate rustc;
-extern crate rustc_metadata;
+extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_errors;
-extern crate rustc_codegen_utils;
 extern crate rustc_interface;
+extern crate rustc_metadata;
 extern crate syntax;
 
-use std::str::FromStr;
 use std::convert::TryFrom;
 use std::env;
+use std::str::FromStr;
 
 use hex::FromHexError;
 
-use rustc_interface::{interface, Queries};
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc_driver::Compilation;
+use rustc_interface::{interface, Queries};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
-    fn after_analysis<'tcx>(&mut self, compiler: &interface::Compiler, queries: &'tcx Queries<'tcx>) -> Compilation {
+    fn after_analysis<'tcx>(
+        &mut self,
+        compiler: &interface::Compiler,
+        queries: &'tcx Queries<'tcx>,
+    ) -> Compilation {
         init_late_loggers();
         compiler.session().abort_if_errors();
 
@@ -41,7 +45,9 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             config.args.insert(0, compiler.input().filestem().to_string());
 
             if let Some(return_code) = miri::eval_main(tcx, entry_def_id, config) {
-                std::process::exit(i32::try_from(return_code).expect("Return value was too large!"));
+                std::process::exit(
+                    i32::try_from(return_code).expect("Return value was too large!"),
+                );
             }
         });
 
@@ -76,8 +82,10 @@ fn init_late_loggers() {
             // This way, if you set `MIRI_LOG=trace`, you get only the right parts of
             // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_mir::interpret=debug`.
             if log::Level::from_str(&var).is_ok() {
-                env::set_var("RUSTC_LOG",
-                    &format!("rustc::mir::interpret={0},rustc_mir::interpret={0}", var));
+                env::set_var(
+                    "RUSTC_LOG",
+                    &format!("rustc::mir::interpret={0},rustc_mir::interpret={0}", var),
+                );
             } else {
                 env::set_var("RUSTC_LOG", &var);
             }
@@ -110,11 +118,9 @@ fn compile_time_sysroot() -> Option<String> {
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
     Some(match (home, toolchain) {
         (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
-        _ => {
-            option_env!("RUST_SYSROOT")
-                .expect("To build Miri without rustup, set the `RUST_SYSROOT` env var at build time")
-                .to_owned()
-        }
+        _ => option_env!("RUST_SYSROOT")
+            .expect("To build Miri without rustup, set the `RUST_SYSROOT` env var at build time")
+            .to_owned(),
     })
 }
 
@@ -135,21 +141,20 @@ fn main() {
         if rustc_args.is_empty() {
             // Very first arg: for `rustc`.
             rustc_args.push(arg);
-        }
-        else if after_dashdash {
+        } else if after_dashdash {
             // Everything that comes after are `miri` args.
             miri_args.push(arg);
         } else {
             match arg.as_str() {
                 "-Zmiri-disable-validation" => {
                     validate = false;
-                },
+                }
                 "-Zmiri-disable-isolation" => {
                     communicate = true;
-                },
+                }
                 "-Zmiri-ignore-leaks" => {
                     ignore_leaks = true;
-                },
+                }
                 "--" => {
                     after_dashdash = true;
                 }
@@ -162,32 +167,40 @@ fn main() {
                             FromHexError::InvalidHexCharacter { .. } => panic!(
                                 "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F]"
                             ),
-                            FromHexError::OddLength => panic!("-Zmiri-seed should have an even number of digits"),
+                            FromHexError::OddLength =>
+                                panic!("-Zmiri-seed should have an even number of digits"),
                             err => panic!("Unknown error decoding -Zmiri-seed as hex: {:?}", err),
                         });
                     if seed_raw.len() > 8 {
-                        panic!(format!("-Zmiri-seed must be at most 8 bytes, was {}", seed_raw.len()));
+                        panic!(format!(
+                            "-Zmiri-seed must be at most 8 bytes, was {}",
+                            seed_raw.len()
+                        ));
                     }
 
                     let mut bytes = [0; 8];
                     bytes[..seed_raw.len()].copy_from_slice(&seed_raw);
                     seed = Some(u64::from_be_bytes(bytes));
-
-                },
+                }
                 arg if arg.starts_with("-Zmiri-env-exclude=") => {
-                    excluded_env_vars.push(arg.trim_start_matches("-Zmiri-env-exclude=").to_owned());
-                },
+                    excluded_env_vars
+                        .push(arg.trim_start_matches("-Zmiri-env-exclude=").to_owned());
+                }
                 arg if arg.starts_with("-Zmiri-track-pointer-tag=") => {
-                    let id: u64 = match arg.trim_start_matches("-Zmiri-track-pointer-tag=").parse() {
+                    let id: u64 = match arg.trim_start_matches("-Zmiri-track-pointer-tag=").parse()
+                    {
                         Ok(id) => id,
-                        Err(err) => panic!("-Zmiri-track-pointer-tag requires a valid `u64` as the argument: {}", err),
+                        Err(err) => panic!(
+                            "-Zmiri-track-pointer-tag requires a valid `u64` as the argument: {}",
+                            err
+                        ),
                     };
                     if let Some(id) = miri::PtrId::new(id) {
                         tracked_pointer_tag = Some(id);
                     } else {
                         panic!("-Zmiri-track-pointer-tag must be a nonzero id");
                     }
-                },
+                }
                 _ => {
                     rustc_args.push(arg);
                 }
@@ -225,6 +238,7 @@ fn main() {
     rustc_driver::install_ice_hook();
     let result = rustc_driver::catch_fatal_errors(move || {
         rustc_driver::run_compiler(&rustc_args, &mut MiriCompilerCalls { miri_config }, None, None)
-    }).and_then(|result| result);
+    })
+    .and_then(|result| result);
     std::process::exit(result.is_err() as i32);
 }

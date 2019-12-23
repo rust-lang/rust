@@ -1,10 +1,10 @@
-use std::{iter, convert::TryInto};
+use std::{convert::TryInto, iter};
 
-use rustc::mir;
-use rustc::ty::layout::{Align, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
-use rustc_apfloat::Float;
+use rustc::mir;
 use rustc::ty;
+use rustc::ty::layout::{Align, LayoutOf, Size};
+use rustc_apfloat::Float;
 use syntax::attr;
 use syntax::symbol::sym;
 
@@ -47,14 +47,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Scalar::from_int(0, this.pointer_size())
         } else {
             let align = this.min_align(size, kind);
-            let ptr = this
-                .memory
-                .allocate(Size::from_bytes(size), align, kind.into());
+            let ptr = this.memory.allocate(Size::from_bytes(size), align, kind.into());
             if zero_init {
                 // We just allocated this, the access is definitely in-bounds.
-                this.memory
-                    .write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize))
-                    .unwrap();
+                this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize)).unwrap();
             }
             Scalar::Ptr(ptr)
         }
@@ -82,8 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(Scalar::from_int(0, this.pointer_size()))
             } else {
                 let new_ptr =
-                    this.memory
-                        .allocate(Size::from_bytes(new_size), new_align, kind.into());
+                    this.memory.allocate(Size::from_bytes(new_size), new_align, kind.into());
                 Ok(Scalar::Ptr(new_ptr))
             }
         } else {
@@ -110,12 +105,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// by this function.
     /// Returns Ok(Some(body)) if processing the foreign item
     /// is delegated to another function.
+    #[rustfmt::skip]
     fn emulate_foreign_item(
         &mut self,
         def_id: DefId,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
-        _unwind: Option<mir::BasicBlock>
+        _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
@@ -136,11 +132,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // also be a custom user-provided implementation via `#![feature(panic_runtime)]`
             "__rust_start_panic" => {
                 // FIXME we might want to cache this... but it's not really performance-critical.
-                let panic_runtime = tcx.crates().iter()
+                let panic_runtime = tcx
+                    .crates()
+                    .iter()
                     .find(|cnum| tcx.is_panic_runtime(**cnum))
                     .expect("No panic runtime found!");
                 let panic_runtime = tcx.crate_name(*panic_runtime);
-                let start_panic_instance = this.resolve_path(&[&*panic_runtime.as_str(), "__rust_start_panic"])?;
+                let start_panic_instance =
+                    this.resolve_path(&[&*panic_runtime.as_str(), "__rust_start_panic"])?;
                 return Ok(Some(&*this.load_mir(start_panic_instance.def, None)?));
             }
             // Similarly, we forward calls to the `panic_impl` foreign item to its implementation.
@@ -151,7 +150,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
             }
 
-            "exit" | "ExitProcess" => {
+            | "exit"
+            | "ExitProcess"
+            => {
                 // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
                 let code = this.read_scalar(args[0])?.to_i32()?;
                 throw_machine_stop!(TerminationInfo::Exit(code.into()));
@@ -175,9 +176,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "calloc" => {
                 let items = this.read_scalar(args[0])?.to_machine_usize(this)?;
                 let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                let size = items
-                    .checked_mul(len)
-                    .ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
+                let size =
+                    items.checked_mul(len).ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
                 let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }
@@ -250,9 +250,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     MiriMemoryKind::Rust.into(),
                 );
                 // We just allocated this, the access is definitely in-bounds.
-                this.memory
-                    .write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize))
-                    .unwrap();
+                this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize)).unwrap();
                 this.write_scalar(ptr, dest)?;
             }
             "__rust_dealloc" => {
@@ -268,10 +266,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.force_ptr(ptr)?;
                 this.memory.deallocate(
                     ptr,
-                    Some((
-                        Size::from_bytes(old_size),
-                        Align::from_bytes(align).unwrap(),
-                    )),
+                    Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
                     MiriMemoryKind::Rust.into(),
                 )?;
             }
@@ -346,7 +341,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "__rust_maybe_catch_panic" => {
                 this.handle_catch_panic(args, dest, ret)?;
-                return Ok(None)
+                return Ok(None);
             }
 
             "memcmp" => {
@@ -404,7 +399,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            "__errno_location" | "__error" => {
+            | "__errno_location"
+            | "__error"
+            => {
                 let errno_place = this.machine.last_error.unwrap();
                 this.write_scalar(errno_place.to_ref().to_scalar()?, dest)?;
             }
@@ -434,7 +431,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
-            "open" | "open64" => {
+            | "open"
+            | "open64"
+            => {
                 let result = this.open(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
@@ -444,7 +443,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
-            "close" | "close$NOCANCEL" => {
+            | "close"
+            | "close$NOCANCEL"
+            => {
                 let result = this.close(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
@@ -510,7 +511,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // math functions
-            "cbrtf" | "coshf" | "sinhf" | "tanf" | "acosf" | "asinf" | "atanf" => {
+            | "cbrtf"
+            | "coshf"
+            | "sinhf"
+            | "tanf"
+            | "acosf"
+            | "asinf"
+            | "atanf"
+            => {
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let f = match link_name {
@@ -526,7 +534,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
             }
             // underscore case for windows
-            "_hypotf" | "hypotf" | "atan2f" => {
+            | "_hypotf"
+            | "hypotf"
+            | "atan2f"
+            => {
                 // FIXME: Using host floats.
                 let f1 = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let f2 = f32::from_bits(this.read_scalar(args[1])?.to_u32()?);
@@ -538,7 +549,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_u32(n.to_bits()), dest)?;
             }
 
-            "cbrt" | "cosh" | "sinh" | "tan" | "acos" | "asin" | "atan" => {
+            | "cbrt"
+            | "cosh"
+            | "sinh"
+            | "tan"
+            | "acos"
+            | "asin"
+            | "atan"
+            => {
                 // FIXME: Using host floats.
                 let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
                 let f = match link_name {
@@ -555,7 +573,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             // underscore case for windows, here and below
             // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
-            "_hypot" | "hypot" | "atan2" => {
+            | "_hypot"
+            | "hypot"
+            | "atan2"
+            => {
                 // FIXME: Using host floats.
                 let f1 = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
                 let f2 = f64::from_bits(this.read_scalar(args[1])?.to_u64()?);
@@ -567,7 +588,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
             }
             // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
-            "_ldexp" | "ldexp" | "scalbn" => {
+            | "_ldexp"
+            | "ldexp"
+            | "scalbn"
+            => {
                 let x = this.read_scalar(args[0])?.to_f64()?;
                 let exp = this.read_scalar(args[1])?.to_i32()?;
 
@@ -586,7 +610,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Some things needed for `sys::thread` initialization to go through.
-            "signal" | "sigaction" | "sigaltstack" => {
+            | "signal"
+            | "sigaction"
+            | "sigaltstack"
+            => {
                 this.write_scalar(Scalar::from_int(0, dest.layout.size), dest)?;
             }
 
@@ -596,14 +623,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 trace!("sysconf() called with name {}", name);
                 // TODO: Cache the sysconf integers via Miri's global cache.
                 let paths = &[
-                    (
-                        &["libc", "_SC_PAGESIZE"],
-                        Scalar::from_int(PAGE_SIZE, dest.layout.size),
-                    ),
-                    (
-                        &["libc", "_SC_GETPW_R_SIZE_MAX"],
-                        Scalar::from_int(-1, dest.layout.size),
-                    ),
+                    (&["libc", "_SC_PAGESIZE"], Scalar::from_int(PAGE_SIZE, dest.layout.size)),
+                    (&["libc", "_SC_GETPW_R_SIZE_MAX"], Scalar::from_int(-1, dest.layout.size)),
                     (
                         &["libc", "_SC_NPROCESSORS_ONLN"],
                         Scalar::from_int(NUM_CPUS, dest.layout.size),
@@ -688,7 +709,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Stack size/address stuff.
-            "pthread_attr_init"
+            | "pthread_attr_init"
             | "pthread_attr_destroy"
             | "pthread_self"
             | "pthread_attr_setstacksize" => {
@@ -712,12 +733,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // We don't support threading. (Also for Windows.)
-            "pthread_create" | "CreateThread" => {
+            | "pthread_create"
+            | "CreateThread"
+            => {
                 throw_unsup_format!("Miri does not support threading");
             }
 
             // Stub out calls for condvar, mutex and rwlock, to just return `0`.
-            "pthread_mutexattr_init"
+            | "pthread_mutexattr_init"
             | "pthread_mutexattr_settype"
             | "pthread_mutex_init"
             | "pthread_mutexattr_destroy"
@@ -732,7 +755,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "pthread_condattr_setclock"
             | "pthread_cond_init"
             | "pthread_condattr_destroy"
-            | "pthread_cond_destroy" => {
+            | "pthread_cond_destroy"
+            => {
                 this.write_null(dest)?;
             }
 
@@ -751,7 +775,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // macOS API stubs.
-            "pthread_attr_get_np" | "pthread_getattr_np" => {
+            | "pthread_attr_get_np"
+            | "pthread_getattr_np"
+            => {
                 this.write_null(dest)?;
             }
             "pthread_get_stackaddr_np" => {
@@ -822,32 +848,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
             }
-            "InitializeCriticalSection"
+
+            | "InitializeCriticalSection"
             | "EnterCriticalSection"
             | "LeaveCriticalSection"
-            | "DeleteCriticalSection" => {
+            | "DeleteCriticalSection"
+            => {
                 // Nothing to do, not even a return value.
             }
-            "GetModuleHandleW"
+
+            | "GetModuleHandleW"
             | "GetProcAddress"
             | "TryEnterCriticalSection"
             | "GetConsoleScreenBufferInfo"
-            | "SetConsoleTextAttribute" => {
+            | "SetConsoleTextAttribute"
+            => {
                 // Pretend these do not exist / nothing happened, by returning zero.
                 this.write_null(dest)?;
             }
+
             "GetSystemInfo" => {
                 let system_info = this.deref_operand(args[0])?;
                 // Initialize with `0`.
-                this.memory
-                    .write_bytes(system_info.ptr, iter::repeat(0u8).take(system_info.layout.size.bytes() as usize))?;
+                this.memory.write_bytes(
+                    system_info.ptr,
+                    iter::repeat(0u8).take(system_info.layout.size.bytes() as usize),
+                )?;
                 // Set number of processors.
                 let dword_size = Size::from_bytes(4);
                 let num_cpus = this.mplace_field(system_info, 6)?;
-                this.write_scalar(
-                    Scalar::from_int(NUM_CPUS, dword_size),
-                    num_cpus.into(),
-                )?;
+                this.write_scalar(Scalar::from_int(NUM_CPUS, dword_size), num_cpus.into())?;
             }
 
             "TlsAlloc" => {
@@ -894,9 +924,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // stdout/stderr
                     use std::io::{self, Write};
 
-                    let buf_cont = this
-                        .memory
-                        .read_bytes(buf, Size::from_bytes(u64::from(n)))?;
+                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(u64::from(n)))?;
                     let res = if handle == -11 {
                         io::stdout().write(buf_cont)
                     } else {
@@ -928,7 +956,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "GetCommandLineW" => {
-                this.write_scalar(this.machine.cmd_line.expect("machine must be initialized"), dest)?;
+                this.write_scalar(
+                    this.machine.cmd_line.expect("machine must be initialized"),
+                    dest,
+                )?;
             }
             // The actual name of 'RtlGenRandom'
             "SystemFunction036" => {
@@ -955,10 +986,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, Option<ScalarMaybeUndef<Tag>>> {
         let this = self.eval_context_mut();
         if let Ok(instance) = this.resolve_path(path) {
-            let cid = GlobalId {
-                instance,
-                promoted: None,
-            };
+            let cid = GlobalId { instance, promoted: None };
             let const_val = this.const_eval_raw(cid)?;
             let const_val = this.read_scalar(const_val.into())?;
             return Ok(Some(const_val));

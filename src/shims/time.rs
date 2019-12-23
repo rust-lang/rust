@@ -9,10 +9,9 @@ fn get_time<'tcx>() -> InterpResult<'tcx, Duration> {
     system_time_to_duration(&SystemTime::now())
 }
 
-// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
+/// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
 pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {
-    time
-        .duration_since(SystemTime::UNIX_EPOCH)
+    time.duration_since(SystemTime::UNIX_EPOCH)
         .map_err(|_| err_unsup_format!("Times before the Unix epoch are not supported").into())
 }
 

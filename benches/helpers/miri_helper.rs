@@ -6,23 +6,26 @@ extern crate rustc_interface;
 extern crate test;
 
 use self::miri::eval_main;
-use rustc::hir::def_id::LOCAL_CRATE;
-use rustc_interface::{interface, Queries};
-use rustc_driver::Compilation;
 use crate::test::Bencher;
+use rustc::hir::def_id::LOCAL_CRATE;
+use rustc_driver::Compilation;
+use rustc_interface::{interface, Queries};
 
 struct MiriCompilerCalls<'a> {
     bencher: &'a mut Bencher,
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
-    fn after_analysis<'tcx>(&mut self, compiler: &interface::Compiler, queries: &'tcx Queries<'tcx>) -> Compilation {
+    fn after_analysis<'tcx>(
+        &mut self,
+        compiler: &interface::Compiler,
+        queries: &'tcx Queries<'tcx>,
+    ) -> Compilation {
         compiler.session().abort_if_errors();
 
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
-            let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect(
-                "no main or start function found",
-            );
+            let (entry_def_id, _) =
+                tcx.entry_fn(LOCAL_CRATE).expect("no main or start function found");
 
             self.bencher.iter(|| {
                 let config = miri::MiriConfig {
@@ -50,13 +53,9 @@ fn find_sysroot() -> String {
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
     match (home, toolchain) {
         (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
-        _ => {
-            option_env!("RUST_SYSROOT")
-                .expect(
-                    "need to specify RUST_SYSROOT env var or use rustup or multirust",
-                )
-                .to_owned()
-        }
+        _ => option_env!("RUST_SYSROOT")
+            .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
+            .to_owned(),
     }
 }
 

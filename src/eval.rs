@@ -50,7 +50,11 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(config.communicate),
-        MemoryExtra::new(StdRng::seed_from_u64(config.seed.unwrap_or(0)), config.validate, config.tracked_pointer_tag),
+        MemoryExtra::new(
+            StdRng::seed_from_u64(config.seed.unwrap_or(0)),
+            config.validate,
+            config.tracked_pointer_tag,
+        ),
     );
     // Complete initialization.
     EnvVars::init(&mut ecx, config.excluded_env_vars);
@@ -75,9 +79,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     .unwrap();
 
     // First argument: pointer to `main()`.
-    let main_ptr = ecx
-        .memory
-        .create_fn_alloc(FnVal::Instance(main_instance));
+    let main_ptr = ecx.memory.create_fn_alloc(FnVal::Instance(main_instance));
     // Second argument (argc): length of `config.args`.
     let argc = Scalar::from_uint(config.args.len() as u128, ecx.pointer_size());
     // Third argument (`argv`): created from `config.args`.
@@ -93,24 +95,20 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             argvs.push(arg_place.ptr);
         }
         // Make an array with all these pointers, in the Miri memory.
-        let argvs_layout = ecx.layout_of(
-            tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), argvs.len() as u64),
-        )?;
+        let argvs_layout =
+            ecx.layout_of(tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), argvs.len() as u64))?;
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Env.into());
         for (idx, arg) in argvs.into_iter().enumerate() {
             let place = ecx.mplace_field(argvs_place, idx as u64)?;
             ecx.write_scalar(arg, place.into())?;
         }
-        ecx.memory
-            .mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
+        ecx.memory.mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
         // A pointer to that place is the 3rd argument for main.
         let argv = argvs_place.ptr;
         // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
         {
-            let argc_place = ecx.allocate(
-                ecx.layout_of(tcx.types.isize)?,
-                MiriMemoryKind::Env.into(),
-            );
+            let argc_place =
+                ecx.allocate(ecx.layout_of(tcx.types.isize)?, MiriMemoryKind::Env.into());
             ecx.write_scalar(argc, argc_place.into())?;
             ecx.machine.argc = Some(argc_place.ptr);
 
@@ -149,10 +147,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     };
 
     // Return place (in static memory so that it does not count as leak).
-    let ret_place = ecx.allocate(
-        ecx.layout_of(tcx.types.isize)?,
-        MiriMemoryKind::Env.into(),
-    );
+    let ret_place = ecx.allocate(ecx.layout_of(tcx.types.isize)?, MiriMemoryKind::Env.into());
     // Call start function.
     ecx.call_function(
         start_instance,
@@ -209,27 +204,30 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                     return None;
                 }
             }
-            return Some(return_code)
+            return Some(return_code);
         }
         Err(mut e) => {
             // Special treatment for some error kinds
             let msg = match e.kind {
                 InterpError::MachineStop(ref info) => {
-                    let info = info.downcast_ref::<TerminationInfo>()
+                    let info = info
+                        .downcast_ref::<TerminationInfo>()
                         .expect("invalid MachineStop payload");
                     match info {
                         TerminationInfo::Exit(code) => return Some(*code),
                         TerminationInfo::PoppedTrackedPointerTag(item) =>
                             format!("popped tracked tag for item {:?}", item),
                         TerminationInfo::Abort =>
-                            format!("the evaluated program aborted execution")
+                            format!("the evaluated program aborted execution"),
                     }
                 }
-                err_unsup!(NoMirFor(..)) =>
-                    format!("{}. Did you set `MIRI_SYSROOT` to a Miri-enabled sysroot? You can prepare one with `cargo miri setup`.", e),
+                err_unsup!(NoMirFor(..)) => format!(
+                    "{}. Did you set `MIRI_SYSROOT` to a Miri-enabled sysroot? You can prepare one with `cargo miri setup`.",
+                    e
+                ),
                 InterpError::InvalidProgram(_) =>
                     bug!("This error should be impossible in Miri: {}", e),
-                _ => e.to_string()
+                _ => e.to_string(),
             };
             e.print_backtrace();
             if let Some(frame) = ecx.stack().last() {
@@ -242,9 +240,9 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                 // We iterate with indices because we need to look at the next frame (the caller).
                 for idx in 0..frames.len() {
                     let frame_info = &frames[idx];
-                    let call_site_is_local = frames.get(idx + 1).map_or(false, |caller_info| {
-                        caller_info.instance.def_id().is_local()
-                    });
+                    let call_site_is_local = frames
+                        .get(idx + 1)
+                        .map_or(false, |caller_info| caller_info.instance.def_id().is_local());
                     if call_site_is_local {
                         err.span_note(frame_info.call_site, &frame_info.to_string());
                     } else {

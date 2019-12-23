@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use std::convert::{TryInto, TryFrom};
+use std::convert::{TryFrom, TryInto};
 use std::fs::{remove_file, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-use rustc::ty::layout::{Size, Align, LayoutOf};
+use rustc::ty::layout::{Align, LayoutOf, Size};
 
 use crate::stacked_borrows::Tag;
 use crate::*;
@@ -172,18 +172,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let buf = this.read_scalar(buf_op)?.not_undef()?;
-        let count = this
-            .read_scalar(count_op)?
-            .to_machine_usize(&*this.tcx)?;
+        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
 
         // Check that the *entire* buffer is actually valid memory.
-        this.memory.check_ptr_access(buf, Size::from_bytes(count), Align::from_bytes(1).unwrap())?;
+        this.memory.check_ptr_access(
+            buf,
+            Size::from_bytes(count),
+            Align::from_bytes(1).unwrap(),
+        )?;
 
         // We cap the number of read bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
-        let count = count
-            .min(this.isize_max() as u64)
-            .min(isize::max_value() as u64);
+        let count = count.min(this.isize_max() as u64).min(isize::max_value() as u64);
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
             // This can never fail because `count` was capped to be smaller than
@@ -227,18 +227,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let buf = this.read_scalar(buf_op)?.not_undef()?;
-        let count = this
-            .read_scalar(count_op)?
-            .to_machine_usize(&*this.tcx)?;
+        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
 
         // Check that the *entire* buffer is actually valid memory.
-        this.memory.check_ptr_access(buf, Size::from_bytes(count), Align::from_bytes(1).unwrap())?;
+        this.memory.check_ptr_access(
+            buf,
+            Size::from_bytes(count),
+            Align::from_bytes(1).unwrap(),
+        )?;
 
         // We cap the number of written bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
-        let count = count
-            .min(this.isize_max() as u64)
-            .min(isize::max_value() as u64);
+        let count = count.min(this.isize_max() as u64).min(isize::max_value() as u64);
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
@@ -263,11 +263,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn statx(
         &mut self,
-        dirfd_op: OpTy<'tcx, Tag>, // Should be an `int`
+        dirfd_op: OpTy<'tcx, Tag>,    // Should be an `int`
         pathname_op: OpTy<'tcx, Tag>, // Should be a `const char *`
-        flags_op: OpTy<'tcx, Tag>, // Should be an `int`
-        _mask_op: OpTy<'tcx, Tag>, // Should be an `unsigned int`
-        statxbuf_op: OpTy<'tcx, Tag> // Should be a `struct statx *`
+        flags_op: OpTy<'tcx, Tag>,    // Should be an `int`
+        _mask_op: OpTy<'tcx, Tag>,    // Should be an `unsigned int`
+        statxbuf_op: OpTy<'tcx, Tag>, // Should be a `struct statx *`
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -302,29 +302,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let path: PathBuf = this.read_os_str_from_c_str(pathname_scalar)?.into();
         // `flags` should be a `c_int` but the `syscall` function provides an `isize`.
-        let flags: i32 = this
-            .read_scalar(flags_op)?
-            .to_machine_isize(&*this.tcx)?
-            .try_into()
-            .map_err(|e| err_unsup_format!(
-                "Failed to convert pointer sized operand to integer: {}",
-                e
-            ))?;
+        let flags: i32 =
+            this.read_scalar(flags_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
+                err_unsup_format!("Failed to convert pointer sized operand to integer: {}", e)
+            })?;
         // `dirfd` should be a `c_int` but the `syscall` function provides an `isize`.
-        let dirfd: i32 = this
-            .read_scalar(dirfd_op)?
-            .to_machine_isize(&*this.tcx)?
-            .try_into()
-            .map_err(|e| err_unsup_format!(
-                "Failed to convert pointer sized operand to integer: {}",
-                e
-            ))?;
+        let dirfd: i32 =
+            this.read_scalar(dirfd_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
+                err_unsup_format!("Failed to convert pointer sized operand to integer: {}", e)
+            })?;
         // we only support interpreting `path` as an absolute directory or as a directory relative
         // to `dirfd` when the latter is `AT_FDCWD`. The behavior of `statx` with a relative path
         // and a directory file descriptor other than `AT_FDCWD` is specified but it cannot be
         // tested from `libstd`. If you found this error, please open an issue reporting it.
-        if !(path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD")?)
-        {
+        if !(path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD")?) {
             throw_unsup_format!(
                 "Using statx with a relative path and a file descriptor different from `AT_FDCWD` is not supported"
             )
@@ -368,29 +359,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // the owner, its group and other users. Given that we can only provide the file type
         // without using platform specific methods, we only set the bits corresponding to the file
         // type. This should be an `__u16` but `libc` provides its values as `u32`.
-        let mode: u16 = this.eval_libc(mode_name)?
-                .to_u32()?
-                .try_into()
-                .unwrap_or_else(|_| bug!("libc contains bad value for `{}` constant", mode_name));
+        let mode: u16 = this
+            .eval_libc(mode_name)?
+            .to_u32()?
+            .try_into()
+            .unwrap_or_else(|_| bug!("libc contains bad value for `{}` constant", mode_name));
 
         let size = metadata.len();
 
         let (access_sec, access_nsec) = extract_sec_and_nsec(
             metadata.accessed(),
             &mut mask,
-            this.eval_libc("STATX_ATIME")?.to_u32()?
+            this.eval_libc("STATX_ATIME")?.to_u32()?,
         )?;
 
         let (created_sec, created_nsec) = extract_sec_and_nsec(
             metadata.created(),
             &mut mask,
-            this.eval_libc("STATX_BTIME")?.to_u32()?
+            this.eval_libc("STATX_BTIME")?.to_u32()?,
         )?;
 
         let (modified_sec, modified_nsec) = extract_sec_and_nsec(
             metadata.modified(),
             &mut mask,
-            this.eval_libc("STATX_MTIME")?.to_u32()?
+            this.eval_libc("STATX_MTIME")?.to_u32()?,
         )?;
 
         let __u32_layout = this.libc_ty_layout("__u32")?;
@@ -401,16 +393,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // zero for the unavailable fields.
         // FIXME: Provide more fields using platform specific methods.
         let imms = [
-            immty_from_uint_checked(mask, __u32_layout)?,  // stx_mask
+            immty_from_uint_checked(mask, __u32_layout)?, // stx_mask
             immty_from_uint_checked(0u128, __u32_layout)?, // stx_blksize
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_attributes
             immty_from_uint_checked(0u128, __u32_layout)?, // stx_nlink
             immty_from_uint_checked(0u128, __u32_layout)?, // stx_uid
             immty_from_uint_checked(0u128, __u32_layout)?, // stx_gid
-            immty_from_uint_checked(mode, __u16_layout)?,  // stx_mode
+            immty_from_uint_checked(mode, __u16_layout)?, // stx_mode
             immty_from_uint_checked(0u128, __u16_layout)?, // statx padding
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_ino
-            immty_from_uint_checked(size, __u64_layout)?,  // stx_size
+            immty_from_uint_checked(size, __u64_layout)?, // stx_size
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_blocks
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_attributes
             immty_from_uint_checked(access_sec, __u64_layout)?, // stx_atime.tv_sec
@@ -451,7 +443,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 // Extracts the number of seconds and nanoseconds elapsed between `time` and the unix epoch, and
 // then sets the `mask` bits determined by `flag` when `time` is Ok. If `time` is an error, it
 // returns `(0, 0)` without setting any bits.
-fn extract_sec_and_nsec<'tcx>(time: std::io::Result<SystemTime>, mask: &mut u32, flag: u32) -> InterpResult<'tcx, (u64, u32)> {
+fn extract_sec_and_nsec<'tcx>(
+    time: std::io::Result<SystemTime>,
+    mask: &mut u32,
+    flag: u32,
+) -> InterpResult<'tcx, (u64, u32)> {
     if let Ok(time) = time {
         let duration = system_time_to_duration(&time)?;
         *mask |= flag;
