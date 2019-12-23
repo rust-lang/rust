@@ -1,9 +1,5 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
-extern crate clap;
-extern crate clippy_dev;
-extern crate regex;
-
 use clap::{App, Arg, SubCommand};
 use clippy_dev::*;
 

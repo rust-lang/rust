@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::Command;
 
 #[test]
@@ -17,7 +18,7 @@ fn fmt() {
         return;
     }
 
-    let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let dev_dir = root_dir.join("clippy_dev");
     let target_dir = root_dir.join("target");
     let target_dir = target_dir.to_str().unwrap();
