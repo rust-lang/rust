@@ -11,7 +11,7 @@ LL |     fn deref(&self) -> &Self::Target;
    |
    = note: expected `fn(&Struct) -> &(dyn Trait + 'static)`
               found `fn(&Struct) -> &dyn Trait`
-   = note: the lifetime requirements from the `trait` could not be fulfilled by the `impl`
+   = note: the lifetime requirements from the `trait` could not be satisfied by the `impl`
    = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
 
 error: aborting due to previous error

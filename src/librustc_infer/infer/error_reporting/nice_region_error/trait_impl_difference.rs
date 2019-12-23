@@ -63,22 +63,25 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         err.span_label(trait_sp, &format!("expected {:?}", expected));
         let trait_fn_sig = tcx.fn_sig(trait_def_id);
 
+        // Check the `trait`'s method's output to look for type parameters that might have
+        // unconstrained lifetimes. If the method returns a type parameter and the `impl` has a
+        // borrow as the type parameter being implemented, the lifetimes will not match because
+        // a new lifetime is being introduced in the `impl` that is not present in the `trait`.
+        // Because this is confusing as hell the first time you see it, we give a short message
+        // explaining the situation and proposing constraining the type param with a named lifetime
+        // so that the `impl` will have one to tie them together.
         struct AssocTypeFinder(FxHashSet<ty::ParamTy>);
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for AssocTypeFinder {
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
                 debug!("assoc type finder ty {:?} {:?}", ty, ty.kind);
-                match ty.kind {
-                    ty::Param(param) => {
-                        self.0.insert(param);
-                    }
-                    _ => {}
+                if let ty::Param(param) = ty.kind {
+                    self.0.insert(param);
                 }
                 ty.super_visit_with(self)
             }
         }
         let mut visitor = AssocTypeFinder(FxHashSet::default());
         trait_fn_sig.output().visit_with(&mut visitor);
-
         if let Some(id) = tcx.hir().as_local_hir_id(trait_def_id) {
             let parent_id = tcx.hir().get_parent_item(id);
             let trait_item = tcx.hir().expect_item(parent_id);
@@ -86,8 +89,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 for param_ty in visitor.0 {
                     if let Some(generic) = generics.get_named(param_ty.name) {
                         err.span_label(generic.span, &format!(
-                            "in order for `impl` items to be able to implement the method, this \
-                             type parameter might need a lifetime restriction like `{}: 'a`",
+                            "for `impl` items to implement the method, this type parameter might \
+                             need a lifetime restriction like `{}: 'a`",
                             param_ty.name,
                         ));
                     }
@@ -95,46 +98,21 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
 
-        struct EarlyBoundRegionHighlighter(FxHashSet<DefId>);
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for EarlyBoundRegionHighlighter {
-            fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-                match *r {
-                    ty::ReFree(free) => {
-                        self.0.insert(free.scope);
-                    }
-                    ty::ReEarlyBound(bound) => {
-                        self.0.insert(bound.def_id);
-                    }
-                    _ => {}
-                }
-                r.super_visit_with(self)
-            }
-        }
-
-        let mut visitor = EarlyBoundRegionHighlighter(FxHashSet::default());
-        expected.visit_with(&mut visitor);
-
-        let note = !visitor.0.is_empty();
-
-        if let Some((expected, found)) = self
-            .tcx()
+        if let Some((expected, found)) = tcx
             .infer_ctxt()
             .enter(|infcx| infcx.expected_found_str_ty(&ExpectedFound { expected, found }))
         {
+            // Highlighted the differences when showing the "expected/found" note.
             err.note_expected_found(&"", expected, &"", found);
         } else {
             // This fallback shouldn't be necessary, but let's keep it in just in case.
             err.note(&format!("expected `{:?}`\n   found `{:?}`", expected, found));
         }
-        if note {
-            err.note(
-                "the lifetime requirements from the `trait` could not be fulfilled by the `impl`",
-            );
-            err.help(
-                "verify the lifetime relationships in the `trait` and `impl` between the \
-                 `self` argument, the other inputs and its output",
-            );
-        }
+        err.note("the lifetime requirements from the `trait` could not be satisfied by the `impl`");
+        err.help(
+            "verify the lifetime relationships in the `trait` and `impl` between the `self` \
+             argument, the other inputs and its output",
+        );
         err.emit();
     }
 }

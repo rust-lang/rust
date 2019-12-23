@@ -9,7 +9,7 @@ LL |     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 {
    |
    = note: expected `fn(&i32, &'a u32, &u32) -> &'a u32`
               found `fn(&i32, &u32, &u32) -> &u32`
-   = note: the lifetime requirements from the `trait` could not be fulfilled by the `impl`
+   = note: the lifetime requirements from the `trait` could not be satisfied by the `impl`
    = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
 
 error: aborting due to previous error
