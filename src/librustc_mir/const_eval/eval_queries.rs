@@ -310,11 +310,13 @@ pub fn const_eval_raw_provider<'tcx>(
                 // constant defined in this crate, we can figure out a lint level!
                 match tcx.def_kind(def_id) {
                     // constants never produce a hard error at the definition site. Anything else is
-                    // a backwards compatibility hazard (and will break old versions of winapi for sure)
+                    // a backwards compatibility hazard (and will break old versions of winapi for
+                    // sure)
                     //
                     // note that validation may still cause a hard error on this very same constant,
-                    // because any code that existed before validation could not have failed validation
-                    // thus preventing such a hard error from being a backwards compatibility hazard
+                    // because any code that existed before validation could not have failed
+                    // validation thus preventing such a hard error from being a backwards
+                    // compatibility hazard
                     Some(DefKind::Const) | Some(DefKind::AssocConst) => {
                         let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                         err.report_as_lint(
@@ -324,8 +326,9 @@ pub fn const_eval_raw_provider<'tcx>(
                             Some(err.span),
                         )
                     }
-                    // promoting runtime code is only allowed to error if it references broken constants
-                    // any other kind of error will be reported to the user as a deny-by-default lint
+                    // promoting runtime code is only allowed to error if it references broken
+                    // constants any other kind of error will be reported to the user as a
+                    // deny-by-default lint
                     _ => {
                         if let Some(p) = cid.promoted {
                             let span = tcx.promoted_mir(def_id)[p].span;
@@ -342,8 +345,8 @@ pub fn const_eval_raw_provider<'tcx>(
                                     Some(err.span),
                                 )
                             }
-                        // anything else (array lengths, enum initializers, constant patterns) are reported
-                        // as hard errors
+                        // anything else (array lengths, enum initializers, constant patterns) are
+                        // reported as hard errors
                         } else {
                             err.report_as_error(ecx.tcx, "evaluation of constant value failed")
                         }
