@@ -35,6 +35,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         changed = true;
                     }
                     Err(match_pair) => {
+                        // Re-add the `match_pair` we were unable to simplify.
                         candidate.match_pairs.push(match_pair);
                     }
                 }
@@ -198,7 +199,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatKind::Or { .. } => Err(match_pair),
+            PatKind::Or { ref pats } => {
+                candidate
+                    .match_pairs
+                    .extend(pats.iter().map(|pat| MatchPair::new(match_pair.place.clone(), pat)));
+                Ok(())
+            }
         }
     }
 }
