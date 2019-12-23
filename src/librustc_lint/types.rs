@@ -3,8 +3,7 @@
 use crate::hir::def_id::DefId;
 use lint::{LateContext, LintArray, LintContext};
 use lint::{LateLintPass, LintPass};
-use rustc::hir::lowering::is_range_literal;
-use rustc::hir::{ExprKind, Node};
+use rustc::hir::{is_range_literal, ExprKind, Node};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
@@ -266,7 +265,7 @@ fn lint_int_literal<'a, 'tcx>(
         let par_id = cx.tcx.hir().get_parent_node(e.hir_id);
         if let Node::Expr(par_e) = cx.tcx.hir().get(par_id) {
             if let hir::ExprKind::Struct(..) = par_e.kind {
-                if is_range_literal(cx.sess(), par_e)
+                if is_range_literal(cx.sess().source_map(), par_e)
                     && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t.name_str())
                 {
                     // The overflowing literal lint was overridden.
@@ -318,7 +317,7 @@ fn lint_uint_literal<'a, 'tcx>(
                         return;
                     }
                 }
-                hir::ExprKind::Struct(..) if is_range_literal(cx.sess(), par_e) => {
+                hir::ExprKind::Struct(..) if is_range_literal(cx.sess().source_map(), par_e) => {
                     let t = t.name_str();
                     if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, par_e, t) {
                         // The overflowing literal lint was overridden.
