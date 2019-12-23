@@ -329,6 +329,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
         .collect::<Vec<(Local, ArgKind, Ty)>>();
 
     fx.bcx.switch_to_block(start_ebb);
+    fx.bcx.ins().nop();
 
     #[cfg(debug_assertions)]
     self::comments::add_locals_header_comment(fx);

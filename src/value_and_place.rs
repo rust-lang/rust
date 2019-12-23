@@ -346,6 +346,19 @@ impl<'tcx> CPlace<'tcx> {
     }
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, from: CValue<'tcx>) {
+        #[cfg(debug_assertions)]
+        {
+            use cranelift_codegen::cursor::{Cursor, CursorPosition};
+            let cur_ebb = match fx.bcx.cursor().position() {
+                CursorPosition::After(ebb) => ebb,
+                _ => unreachable!(),
+            };
+            fx.add_comment(
+                fx.bcx.func.layout.last_inst(cur_ebb).unwrap(),
+                format!("write_cvalue: {:?} <- {:?}",self, from),
+            );
+        }
+
         let from_ty = from.layout().ty;
         let to_ty = self.layout().ty;
 
