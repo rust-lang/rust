@@ -7,7 +7,7 @@ use std::fmt;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 
-use rustc::hir::Mutability::{Immutable, Mutable};
+use rustc::hir::Mutability;
 use rustc::mir::RetagKind;
 use rustc::ty::{self, layout::Size};
 
@@ -604,14 +604,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(RefKind, bool)> {
             match ty.kind {
                 // References are simple.
-                ty::Ref(_, _, Mutable) => Some((
+                ty::Ref(_, _, Mutability::Mut) => Some((
                     RefKind::Unique { two_phase: kind == RetagKind::TwoPhase },
                     kind == RetagKind::FnEntry,
                 )),
-                ty::Ref(_, _, Immutable) => Some((RefKind::Shared, kind == RetagKind::FnEntry)),
+                ty::Ref(_, _, Mutability::Not) =>
+                    Some((RefKind::Shared, kind == RetagKind::FnEntry)),
                 // Raw pointers need to be enabled.
                 ty::RawPtr(tym) if kind == RetagKind::Raw =>
-                    Some((RefKind::Raw { mutable: tym.mutbl == Mutable }, false)),
+                    Some((RefKind::Raw { mutable: tym.mutbl == Mutability::Mut }, false)),
                 // Boxes do not get a protector: protectors reflect that references outlive the call
                 // they were passed in to; that's just not the case for boxes.
                 ty::Adt(..) if ty.is_box() => Some((RefKind::Unique { two_phase: false }, false)),
