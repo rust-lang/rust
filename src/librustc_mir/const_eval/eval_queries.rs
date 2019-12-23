@@ -1,19 +1,17 @@
+use super::{error_to_const_error, CompileTimeEvalContext, CompileTimeInterpreter};
 use crate::interpret::eval_nullary_intrinsic;
+use crate::interpret::{
+    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, ImmTy, Immediate, InterpCx,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar, ScalarMaybeUndef,
+    StackPopCleanup,
+};
 use rustc::hir::def::DefKind;
 use rustc::mir;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::traits::Reveal;
-use rustc::ty::{self, layout::LayoutOf, subst::Subst, TyCtxt};
-use rustc::ty::{self, TyCtxt};
-
-use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, GlobalId, InterpCx, InterpResult, MPlaceTy,
-    MemoryKind, RawConst, RefTracking, StackPopCleanup,
-};
-
-use super::{
-    error_to_const_error, mk_eval_cx, op_to_const, CompileTimeEvalContext, CompileTimeInterpreter,
-};
+use rustc::ty::{self, layout, layout::LayoutOf, subst::Subst, TyCtxt};
+use std::convert::TryInto;
+use syntax::source_map::Span;
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
     "The rules on what exactly is undefined behavior aren't clear, \
