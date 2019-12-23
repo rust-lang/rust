@@ -6,9 +6,7 @@ use crate::utils::span_lint;
 use rustc::declare_lint_pass;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::mir::interpret::GlobalId;
 use rustc::ty;
-use rustc::ty::subst::InternalSubsts;
 use rustc::ty::util::IntTypeExt;
 use rustc_session::declare_tool_lint;
 use std::convert::TryFrom;
@@ -48,15 +46,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
         if let ItemKind::Enum(def, _) = &item.kind {
             for var in def.variants {
                 if let Some(anon_const) = &var.disr_expr {
-                    let param_env = ty::ParamEnv::empty();
                     let def_id = cx.tcx.hir().body_owner_def_id(anon_const.body);
-                    let substs = InternalSubsts::identity_for_item(cx.tcx, def_id);
-                    let instance = ty::Instance::new(def_id, substs);
-                    let c_id = GlobalId {
-                        instance,
-                        promoted: None,
-                    };
-                    let constant = cx.tcx.const_eval(param_env.and(c_id)).ok();
+                    let constant = cx.tcx.const_eval_poly(def_id).ok();
                     if let Some(Constant::Int(val)) = constant.and_then(miri_to_const) {
                         let mut ty = cx.tcx.type_of(def_id);
                         if let ty::Adt(adt, _) = ty.kind {
