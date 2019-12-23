@@ -220,6 +220,7 @@ pub mod large_enum_variant;
 pub mod large_stack_arrays;
 pub mod len_zero;
 pub mod let_if_seq;
+pub mod let_underscore;
 pub mod lifetimes;
 pub mod literal_representation;
 pub mod loops;
@@ -555,6 +556,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &len_zero::LEN_WITHOUT_IS_EMPTY,
         &len_zero::LEN_ZERO,
         &let_if_seq::USELESS_LET_IF_SEQ,
+        &let_underscore::LET_UNDERSCORE_MUST_USE,
         &lifetimes::EXTRA_UNUSED_LIFETIMES,
         &lifetimes::NEEDLESS_LIFETIMES,
         &literal_representation::DECIMAL_LITERAL_REPRESENTATION,
@@ -970,6 +972,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
     store.register_early_pass(|| box as_conversions::AsConversions);
     store.register_early_pass(|| box utils::internal_lints::ProduceIce);
+    store.register_late_pass(|| box let_underscore::LetUnderscore);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -982,6 +985,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&indexing_slicing::INDEXING_SLICING),
         LintId::of(&inherent_impl::MULTIPLE_INHERENT_IMPL),
         LintId::of(&integer_division::INTEGER_DIVISION),
+        LintId::of(&let_underscore::LET_UNDERSCORE_MUST_USE),
         LintId::of(&literal_representation::DECIMAL_LITERAL_REPRESENTATION),
         LintId::of(&matches::WILDCARD_ENUM_MATCH_ARM),
         LintId::of(&mem_forget::MEM_FORGET),

@@ -41,7 +41,7 @@ use rustc::ty::{
 };
 use rustc_errors::Applicability;
 use smallvec::SmallVec;
-use syntax::ast::{self, LitKind};
+use syntax::ast::{self, Attribute, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol::{kw, Symbol};
@@ -1231,5 +1231,73 @@ pub fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> 
         Node::Expr(e) => higher::if_block(&e).is_some(),
         Node::Arm(e) => higher::if_block(&e.body).is_some(),
         _ => false,
+    }
+}
+
+pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
+    attrs.iter().find(|attr| {
+        attr.ident().map_or(false, |ident| {
+            let ident: &str = &ident.as_str();
+            "must_use" == ident
+        })
+    })
+}
+
+// Returns whether the type has #[must_use] attribute
+pub fn is_must_use_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
+    use ty::TyKind::*;
+    match ty.kind {
+        Adt(ref adt, _) => must_use_attr(&cx.tcx.get_attrs(adt.did)).is_some(),
+        Foreign(ref did) => must_use_attr(&cx.tcx.get_attrs(*did)).is_some(),
+        Slice(ref ty) | Array(ref ty, _) | RawPtr(ty::TypeAndMut { ref ty, .. }) | Ref(_, ref ty, _) => {
+            // for the Array case we don't need to care for the len == 0 case
+            // because we don't want to lint functions returning empty arrays
+            is_must_use_ty(cx, *ty)
+        },
+        Tuple(ref substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
+        Opaque(ref def_id, _) => {
+            for (predicate, _) in cx.tcx.predicates_of(*def_id).predicates {
+                if let ty::Predicate::Trait(ref poly_trait_predicate) = predicate {
+                    if must_use_attr(&cx.tcx.get_attrs(poly_trait_predicate.skip_binder().trait_ref.def_id)).is_some() {
+                        return true;
+                    }
+                }
+            }
+            false
+        },
+        Dynamic(binder, _) => {
+            for predicate in binder.skip_binder().iter() {
+                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
+                    if must_use_attr(&cx.tcx.get_attrs(trait_ref.def_id)).is_some() {
+                        return true;
+                    }
+                }
+            }
+            false
+        },
+        _ => false,
+    }
+}
+
+// check if expr is calling method or function with #[must_use] attribyte
+pub fn is_must_use_func_call(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
+    let did = match expr.kind {
+        ExprKind::Call(ref path, _) => if_chain! {
+            if let ExprKind::Path(ref qpath) = path.kind;
+            if let def::Res::Def(_, did) = cx.tables.qpath_res(qpath, path.hir_id);
+            then {
+                Some(did)
+            } else {
+                None
+            }
+        },
+        ExprKind::MethodCall(_, _, _) => cx.tables.type_dependent_def_id(expr.hir_id),
+        _ => None,
+    };
+
+    if let Some(did) = did {
+        must_use_attr(&cx.tcx.get_attrs(did)).is_some()
+    } else {
+        false
     }
 }
