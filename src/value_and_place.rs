@@ -161,6 +161,24 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
+    /// Load a value with layout.abi of vector
+    pub fn load_vector<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
+        let layout = self.1;
+        match self.0 {
+            CValueInner::ByRef(ptr) => {
+                let clif_ty = match layout.abi {
+                    layout::Abi::Vector { ref element, count } => {
+                        scalar_to_clif_type(fx.tcx, element.clone()).by(u16::try_from(count).unwrap()).unwrap()
+                    }
+                    _ => unreachable!(),
+                };
+                ptr.load(fx, clif_ty, MemFlags::new())
+            }
+            CValueInner::ByVal(value) => value,
+            CValueInner::ByValPair(_, _) => bug!("Please use load_scalar_pair for ByValPair"),
+        }
+    }
+
     pub fn value_field<'a>(
         self,
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,

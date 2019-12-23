@@ -66,14 +66,6 @@ pub fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types:
             }
         }
         ty::Param(_) => bug!("ty param {:?}", ty),
-        _ if ty.is_simd() => {
-            let (lane_type, lane_count) = crate::intrinsics::lane_type_and_count(
-                tcx,
-                tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap(),
-            );
-            let lane_type = clif_type_from_ty(tcx, lane_type.ty)?;
-            return lane_type.by(u16::try_from(lane_count).unwrap());
-        }
         _ => return None,
     })
 }
