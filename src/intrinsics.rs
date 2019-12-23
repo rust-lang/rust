@@ -825,11 +825,8 @@ pub fn codegen_intrinsic_call<'tcx>(
         };
 
         size_of | pref_align_of | min_align_of | needs_drop | type_id | type_name, () {
-            let gid = rustc::mir::interpret::GlobalId {
-                instance,
-                promoted: None,
-            };
-            let const_val = fx.tcx.const_eval(ParamEnv::reveal_all().and(gid)).unwrap();
+            let const_val =
+                fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
             let val = crate::constant::trans_const_value(fx, const_val);
             ret.write_cvalue(fx, val);
         };

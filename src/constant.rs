@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, GlobalId, InterpResult, Scalar,
+    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, InterpResult, Scalar,
 };
 use rustc::ty::{layout::Align, Const, ConstKind};
 use rustc_mir::interpret::{
@@ -54,10 +54,7 @@ pub fn trans_promoted<'tcx>(
     promoted: Promoted,
     dest_ty: Ty<'tcx>,
 ) -> CPlace<'tcx> {
-    match fx.tcx.const_eval(ParamEnv::reveal_all().and(GlobalId {
-        instance,
-        promoted: Some(promoted),
-    })) {
+    match fx.tcx.const_eval_promoted(instance, promoted) {
         Ok(const_) => {
             let cplace = trans_const_place(fx, const_);
             debug_assert_eq!(cplace.layout(), fx.layout_of(dest_ty));
@@ -85,14 +82,8 @@ pub fn force_eval_const<'tcx>(
 ) -> &'tcx Const<'tcx> {
     match const_.val {
         ConstKind::Unevaluated(def_id, ref substs) => {
-            let param_env = ParamEnv::reveal_all();
             let substs = fx.monomorphize(substs);
-            let instance = Instance::resolve(fx.tcx, param_env, def_id, substs).unwrap();
-            let cid = GlobalId {
-                instance,
-                promoted: None,
-            };
-            fx.tcx.const_eval(param_env.and(cid)).unwrap()
+            fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def_id, substs, None).unwrap()
         }
         _ => fx.monomorphize(&const_),
     }
@@ -284,12 +275,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                     continue;
                 }
 
-                let instance = ty::Instance::mono(tcx, def_id);
-                let cid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                let const_ = tcx.const_eval(ParamEnv::reveal_all().and(cid)).unwrap();
+                let const_ = tcx.const_eval_poly(def_id).unwrap();
 
                 let alloc = match const_.val {
                     ConstKind::Value(ConstValue::ByRef { alloc, offset }) if offset.bytes() == 0 => alloc,
@@ -507,12 +493,7 @@ pub fn mir_operand_get_const_val<'tcx>(
         StaticKind::Static => unimplemented!(),
         StaticKind::Promoted(promoted, substs) => {
             let instance = Instance::new(static_.def_id, fx.monomorphize(substs));
-            fx.tcx
-                .const_eval(ParamEnv::reveal_all().and(GlobalId {
-                    instance,
-                    promoted: Some(*promoted),
-                }))
-                .unwrap()
+            fx.tcx.const_eval_promoted(instance, *promoted).unwrap()
         }
     })
 }
