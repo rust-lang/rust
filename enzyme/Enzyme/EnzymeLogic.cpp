@@ -3158,6 +3158,7 @@ realcall:
        //TODO IF OP IS POINTER
       Value* tostore = op->getValueOperand();
       Type* tostoreType = tostore->getType();
+      /*
       llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
       if (tostoreType->isIntOrIntVectorTy()) {
           auto val = isIntPointerASecretFloat(op->getPointerOperand(), true);
@@ -3166,6 +3167,7 @@ realcall:
           else
               llvm::errs() << " + ip " << val << "\n";
       }
+      */
 
       //TODO allow recognition of other types that could contain pointers [e.g. {void*, void*} or <2 x i64> ]
       if ( isKnownFloatTBAA(op) || tostoreType->isFPOrFPVectorTy() || (tostoreType->isIntOrIntVectorTy() && isIntPointerASecretFloat(op->getPointerOperand(), true) ) ) {

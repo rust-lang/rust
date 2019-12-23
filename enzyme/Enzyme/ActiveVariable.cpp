@@ -60,8 +60,8 @@ bool isKnownIntegerTBAA(Instruction* inst) {
           //llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
 		  return true; 
 	    } else {
-          //if (printconst)
-          //  llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
+          if (printconst)
+            llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
 
         }
 	  }
@@ -127,13 +127,14 @@ bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& 
     seen.insert(et);
     
     /*
-    llvm::errs() << "  tract type of saw " << *et << "\n";
+    llvm::errs() << "  track type of saw " << *et << "\n";
     llvm::errs() << "       indices = [";
     for(auto a: indices) {
         llvm::errs() << a << ",";
     }
     llvm::errs() << "] of:" << onlyFirst << "\n";
     */
+    
     
     if (et->isFloatingPointTy()) {
         if (floatingUse == nullptr) {
@@ -164,6 +165,11 @@ bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& 
         }
         if (onlyFirst) {
             if (index >= 0) {
+                if (index >= st->getNumElements()) {
+                    llvm::errs() << *st << " " << index << "\n";
+                }
+                assert(index < st->getNumElements());
+
                 if(trackType(st->getElementType(index), seen, floatingUse, pointerUse, onlyFirst, nindices)) {
                     if (fast_tracking) return true;
                 }
@@ -204,6 +210,8 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
     }
     llvm::errs() << "]\n";
     */
+    
+    
 
     if (trackType(et, typeseen, floatingUse, pointerUse, onlyFirst, indices)) {
         if (fast_tracking) return true;
@@ -240,8 +248,9 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
             if (fast_tracking) return true;
         }
     }
-    if (auto inst = dyn_cast<Instruction>(v)) {
-        for(User* use: inst->users()) {
+
+    if (!isa<Constant>(v)) {
+        for(User* use: v->users()) {
             if (auto ci = dyn_cast<CastInst>(use)) {
                 if (ci->getDestTy()->isPointerTy()) {
                     if (trackPointer(ci, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
@@ -251,7 +260,34 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
             }
             if (auto gep = dyn_cast<GetElementPtrInst>(use)) {
                 //TODO consider implication of gep indices on onlyfirst/indices
-                if (trackPointer(gep, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+
+                std::vector<int> idnext;
+                size_t cnt = 0;
+                size_t vcnt = 0;
+
+                //We should not track geps that we no [from indices] do not point to the same memory location as we may get incorrect type information
+                bool notrack = false;
+                for(auto &a : gep->indices()) {
+                    if (vcnt == indices.size()) break;
+                    if (cnt != 0) {
+                        if (auto ci = dyn_cast<ConstantInt>(&a)) {
+                            if (indices[vcnt] != ci->getLimitedValue()) {
+                                notrack = true;
+                            }
+                        } else {
+                            if (indices[vcnt] != -1) notrack = true;
+                        }
+                        vcnt++;
+                    }
+                    cnt++;
+                }
+                if (notrack) continue;
+
+                for(; vcnt < indices.size(); vcnt++) {
+                    idnext.push_back(indices[vcnt]);
+                }
+
+                if (trackPointer(gep, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
                     if (fast_tracking) return true;
                 }
             }
@@ -263,7 +299,7 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
                 }
             }
             if (auto si = dyn_cast<StoreInst>(use)) {
-                if (si->getPointerOperand() == inst && si->getValueOperand()->getType()->isIntOrIntVectorTy()) {
+                if (si->getPointerOperand() == v && si->getValueOperand()->getType()->isIntOrIntVectorTy()) {
                     //! If TBAA lets us ascertain information, let's use it
                     if (isKnownIntegerTBAA(si)) {
                         intUse = true;  
@@ -288,7 +324,22 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
                     //! Storing a constant integer into memory does not tell us that this memory must be integral
                     //  since we may store the constant representation of a floating point (in hex). It is, however, unlikely
                     //  to be a pointer (but unclear whether it is an integer vs float)
-                    if (isa<Constant>(si->getValueOperand())) {
+                    if (auto c = dyn_cast<Constant>(si->getValueOperand())) {
+                        // Zero could be float zero, nullptr, or integer zero, no information should be propagated
+                        
+                        // follow-up, we apparently are insufficiently aggressive on type analysis if this is withheld =/
+                        //if (c->isZeroValue())
+                        //    continue;
+
+                        if (auto ci = dyn_cast<ConstantInt>(c)) {
+
+                            //it is unlikely a value from 1-4096 is not meant to be an integer, let us assume that it is
+                            if (ci->getLimitedValue() <= 4096) {
+                                intUse = true;
+                                if (fast_tracking) return true;
+                            }
+                        }
+
                         continue;
                     }
                     bool unknownuse;
@@ -790,17 +841,14 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
         if (defaultType != IntType::Unknown) return defaultType;
 
         if(auto inst = dyn_cast<Instruction>(val)) {
-        llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
-        llvm::errs() << *inst->getParent()->getParent() << "\n";
+            llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
+            llvm::errs() << *inst->getParent()->getParent() << "\n";
         }
         
-        if(auto inst = dyn_cast<Argument>(val)) {
-        llvm::errs() << *inst->getParent()->getParent() << "\n";
-        llvm::errs() << *inst->getParent() << "\n";
+        if(auto arg = dyn_cast<Argument>(val)) {
+            llvm::errs() << *arg->getParent()->getParent() << "\n";
+            llvm::errs() << *arg->getParent() << "\n";
         }
-
-        if(auto arg = dyn_cast<Argument>(val))
-        llvm::errs() << *arg->getParent() << "\n";
 
         if (floatingUse)
         llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
@@ -841,12 +889,17 @@ Type* isIntPointerASecretFloat(Value* val, bool onlyFirst) {
         llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
         llvm::errs() << *inst->getParent()->getParent() << "\n";
     }
+
+    if(auto arg = dyn_cast<Argument>(val)) {
+        llvm::errs() << *arg->getParent()->getParent() << "\n";
+        llvm::errs() << *arg->getParent() << "\n";
+    }
         
     if (floatingUse)
     llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
     else
     llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
-    assert(0 && "ambiguous unsure if constant or not");
+    assert(0 && "ambiguous unsure what type of ptr or not");
 }
 
 cl::opt<bool> ipoconst(
