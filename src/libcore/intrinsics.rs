@@ -1337,7 +1337,7 @@ extern "rust-intrinsic" {
     /// Performs rotate right.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_right` method. For example,
-    /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right
+    /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right)
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     pub fn rotate_right<T>(x: T, y: T) -> T;
 
