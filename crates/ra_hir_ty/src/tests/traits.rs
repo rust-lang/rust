@@ -959,6 +959,23 @@ fn test() {
 }
 
 #[test]
+fn error_bound_chalk() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait {
+    fn foo(&self) -> u32 {}
+}
+
+fn test(x: (impl Trait + UnknownTrait)) {
+    x.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
 fn assoc_type_bindings() {
     assert_snapshot!(
         infer(r#"

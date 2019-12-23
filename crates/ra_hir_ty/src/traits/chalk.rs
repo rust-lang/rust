@@ -1,17 +1,11 @@
 //! Conversion code from/to Chalk.
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 use log::debug;
 
-use chalk_ir::{
-    cast::Cast, family::ChalkIr, Identifier, Parameter, PlaceholderIndex, TypeId, TypeKindId,
-    TypeName, UniverseIndex,
-};
-use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
+use chalk_ir::{cast::Cast, Parameter, PlaceholderIndex, TypeName, UniverseIndex};
 
-use hir_def::{
-    AssocContainerId, AssocItemId, GenericDefId, HasModule, ImplId, Lookup, TraitId, TypeAliasId,
-};
+use hir_def::{AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, TypeAliasId};
 use ra_db::{
     salsa::{InternId, InternKey},
     CrateId,
@@ -23,9 +17,83 @@ use crate::{
     ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 
-/// This represents a trait whose name we could not resolve.
-const UNKNOWN_TRAIT: chalk_ir::TraitId =
-    chalk_ir::TraitId(chalk_ir::RawId { index: u32::max_value() });
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub struct TypeFamily {}
+
+impl chalk_ir::family::TypeFamily for TypeFamily {
+    type InternedType = Box<chalk_ir::TyData<Self>>;
+    type InternedLifetime = chalk_ir::LifetimeData<Self>;
+    type InternedParameter = chalk_ir::ParameterData<Self>;
+    type DefId = InternId;
+
+    // FIXME: implement these
+    fn debug_struct_id(
+        _type_kind_id: chalk_ir::StructId<Self>,
+        _fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        None
+    }
+
+    fn debug_trait_id(
+        _type_kind_id: chalk_ir::TraitId<Self>,
+        _fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        None
+    }
+
+    fn debug_assoc_type_id(
+        _id: chalk_ir::AssocTypeId<Self>,
+        _fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        None
+    }
+
+    fn debug_projection(
+        _projection: &chalk_ir::ProjectionTy<Self>,
+        _fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        None
+    }
+
+    fn intern_ty(ty: chalk_ir::TyData<Self>) -> Box<chalk_ir::TyData<Self>> {
+        Box::new(ty)
+    }
+
+    fn ty_data(ty: &Box<chalk_ir::TyData<Self>>) -> &chalk_ir::TyData<Self> {
+        ty
+    }
+
+    fn intern_lifetime(lifetime: chalk_ir::LifetimeData<Self>) -> chalk_ir::LifetimeData<Self> {
+        lifetime
+    }
+
+    fn lifetime_data(lifetime: &chalk_ir::LifetimeData<Self>) -> &chalk_ir::LifetimeData<Self> {
+        lifetime
+    }
+
+    fn intern_parameter(parameter: chalk_ir::ParameterData<Self>) -> chalk_ir::ParameterData<Self> {
+        parameter
+    }
+
+    fn parameter_data(parameter: &chalk_ir::ParameterData<Self>) -> &chalk_ir::ParameterData<Self> {
+        parameter
+    }
+}
+
+impl chalk_ir::family::HasTypeFamily for TypeFamily {
+    type TypeFamily = Self;
+}
+
+pub type AssocTypeId = chalk_ir::AssocTypeId<TypeFamily>;
+pub type AssociatedTyDatum = chalk_rust_ir::AssociatedTyDatum<TypeFamily>;
+pub type TraitId = chalk_ir::TraitId<TypeFamily>;
+pub type TraitDatum = chalk_rust_ir::TraitDatum<TypeFamily>;
+pub type StructId = chalk_ir::StructId<TypeFamily>;
+pub type StructDatum = chalk_rust_ir::StructDatum<TypeFamily>;
+pub type ImplId = chalk_ir::ImplId<TypeFamily>;
+pub type ImplDatum = chalk_rust_ir::ImplDatum<TypeFamily>;
+pub type AssociatedTyValueId = chalk_rust_ir::AssociatedTyValueId;
+pub type AssociatedTyValue = chalk_rust_ir::AssociatedTyValue<TypeFamily>;
 
 pub(super) trait ToChalk {
     type Chalk;
@@ -41,21 +109,11 @@ where
 }
 
 impl ToChalk for Ty {
-    type Chalk = chalk_ir::Ty<ChalkIr>;
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Ty<ChalkIr> {
+    type Chalk = chalk_ir::Ty<TypeFamily>;
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Ty<TypeFamily> {
         match self {
             Ty::Apply(apply_ty) => {
-                let name = match apply_ty.ctor {
-                    TypeCtor::AssociatedType(type_alias) => {
-                        let type_id = type_alias.to_chalk(db);
-                        TypeName::AssociatedType(type_id)
-                    }
-                    _ => {
-                        // other TypeCtors get interned and turned into a chalk StructId
-                        let struct_id = apply_ty.ctor.to_chalk(db);
-                        TypeName::TypeKindId(struct_id.into())
-                    }
-                };
+                let name = apply_ty.ctor.to_chalk(db);
                 let parameters = apply_ty.parameters.to_chalk(db);
                 chalk_ir::ApplicationTy { name, parameters }.cast().intern()
             }
@@ -65,17 +123,30 @@ impl ToChalk for Ty {
                 chalk_ir::ProjectionTy { associated_ty_id, parameters }.cast().intern()
             }
             Ty::Param { idx, .. } => {
-                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: idx as usize }.to_ty::<ChalkIr>()
+                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: idx as usize }
+                    .to_ty::<TypeFamily>()
             }
             Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx as usize).intern(),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
-                let where_clauses = predicates.iter().cloned().map(|p| p.to_chalk(db)).collect();
-                chalk_ir::TyData::Dyn(make_binders(where_clauses, 1)).intern()
+                let where_clauses = predicates
+                    .iter()
+                    .filter(|p| !p.is_error())
+                    .cloned()
+                    .map(|p| p.to_chalk(db))
+                    .collect();
+                let bounded_ty = chalk_ir::BoundedTy { bounds: make_binders(where_clauses, 1) };
+                chalk_ir::TyData::Dyn(bounded_ty).intern()
             }
             Ty::Opaque(predicates) => {
-                let where_clauses = predicates.iter().cloned().map(|p| p.to_chalk(db)).collect();
-                chalk_ir::TyData::Opaque(make_binders(where_clauses, 1)).intern()
+                let where_clauses = predicates
+                    .iter()
+                    .filter(|p| !p.is_error())
+                    .cloned()
+                    .map(|p| p.to_chalk(db))
+                    .collect();
+                let bounded_ty = chalk_ir::BoundedTy { bounds: make_binders(where_clauses, 1) };
+                chalk_ir::TyData::Opaque(bounded_ty).intern()
             }
             Ty::Unknown => {
                 let parameters = Vec::new();
@@ -84,30 +155,19 @@ impl ToChalk for Ty {
             }
         }
     }
-    fn from_chalk(db: &impl HirDatabase, chalk: chalk_ir::Ty<ChalkIr>) -> Self {
+    fn from_chalk(db: &impl HirDatabase, chalk: chalk_ir::Ty<TypeFamily>) -> Self {
         match chalk.data().clone() {
-            chalk_ir::TyData::Apply(apply_ty) => {
-                // FIXME this is kind of hacky due to the fact that
-                // TypeName::Placeholder is a Ty::Param on our side
-                match apply_ty.name {
-                    TypeName::TypeKindId(TypeKindId::StructId(struct_id)) => {
-                        let ctor = from_chalk(db, struct_id);
-                        let parameters = from_chalk(db, apply_ty.parameters);
-                        Ty::Apply(ApplicationTy { ctor, parameters })
-                    }
-                    TypeName::AssociatedType(type_id) => {
-                        let ctor = TypeCtor::AssociatedType(from_chalk(db, type_id));
-                        let parameters = from_chalk(db, apply_ty.parameters);
-                        Ty::Apply(ApplicationTy { ctor, parameters })
-                    }
-                    TypeName::Error => Ty::Unknown,
-                    // FIXME handle TypeKindId::Trait/Type here
-                    TypeName::TypeKindId(_) => unimplemented!(),
-                    TypeName::Placeholder(idx) => {
-                        assert_eq!(idx.ui, UniverseIndex::ROOT);
-                        Ty::Param { idx: idx.idx as u32, name: crate::Name::missing() }
-                    }
+            chalk_ir::TyData::Apply(apply_ty) => match apply_ty.name {
+                TypeName::Error => Ty::Unknown,
+                _ => {
+                    let ctor = from_chalk(db, apply_ty.name);
+                    let parameters = from_chalk(db, apply_ty.parameters);
+                    Ty::Apply(ApplicationTy { ctor, parameters })
                 }
+            },
+            chalk_ir::TyData::Placeholder(idx) => {
+                assert_eq!(idx.ui, UniverseIndex::ROOT);
+                Ty::Param { idx: idx.idx as u32, name: crate::Name::missing() }
             }
             chalk_ir::TyData::Projection(proj) => {
                 let associated_ty = from_chalk(db, proj.associated_ty_id);
@@ -118,15 +178,15 @@ impl ToChalk for Ty {
             chalk_ir::TyData::BoundVar(idx) => Ty::Bound(idx as u32),
             chalk_ir::TyData::InferenceVar(_iv) => Ty::Unknown,
             chalk_ir::TyData::Dyn(where_clauses) => {
-                assert_eq!(where_clauses.binders.len(), 1);
+                assert_eq!(where_clauses.bounds.binders.len(), 1);
                 let predicates =
-                    where_clauses.value.into_iter().map(|c| from_chalk(db, c)).collect();
+                    where_clauses.bounds.value.into_iter().map(|c| from_chalk(db, c)).collect();
                 Ty::Dyn(predicates)
             }
             chalk_ir::TyData::Opaque(where_clauses) => {
-                assert_eq!(where_clauses.binders.len(), 1);
+                assert_eq!(where_clauses.bounds.binders.len(), 1);
                 let predicates =
-                    where_clauses.value.into_iter().map(|c| from_chalk(db, c)).collect();
+                    where_clauses.bounds.value.into_iter().map(|c| from_chalk(db, c)).collect();
                 Ty::Opaque(predicates)
             }
         }
@@ -134,18 +194,21 @@ impl ToChalk for Ty {
 }
 
 impl ToChalk for Substs {
-    type Chalk = Vec<chalk_ir::Parameter<ChalkIr>>;
+    type Chalk = Vec<chalk_ir::Parameter<TypeFamily>>;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> Vec<Parameter<ChalkIr>> {
+    fn to_chalk(self, db: &impl HirDatabase) -> Vec<Parameter<TypeFamily>> {
         self.iter().map(|ty| ty.clone().to_chalk(db).cast()).collect()
     }
 
-    fn from_chalk(db: &impl HirDatabase, parameters: Vec<chalk_ir::Parameter<ChalkIr>>) -> Substs {
+    fn from_chalk(
+        db: &impl HirDatabase,
+        parameters: Vec<chalk_ir::Parameter<TypeFamily>>,
+    ) -> Substs {
         let tys = parameters
             .into_iter()
-            .map(|p| match p {
-                chalk_ir::Parameter(chalk_ir::ParameterKind::Ty(ty)) => from_chalk(db, ty),
-                chalk_ir::Parameter(chalk_ir::ParameterKind::Lifetime(_)) => unimplemented!(),
+            .map(|p| match p.ty() {
+                Some(ty) => from_chalk(db, ty.clone()),
+                None => unimplemented!(),
             })
             .collect();
         Substs(tys)
@@ -153,88 +216,102 @@ impl ToChalk for Substs {
 }
 
 impl ToChalk for TraitRef {
-    type Chalk = chalk_ir::TraitRef<ChalkIr>;
+    type Chalk = chalk_ir::TraitRef<TypeFamily>;
 
-    fn to_chalk(self: TraitRef, db: &impl HirDatabase) -> chalk_ir::TraitRef<ChalkIr> {
+    fn to_chalk(self: TraitRef, db: &impl HirDatabase) -> chalk_ir::TraitRef<TypeFamily> {
         let trait_id = self.trait_.to_chalk(db);
         let parameters = self.substs.to_chalk(db);
         chalk_ir::TraitRef { trait_id, parameters }
     }
 
-    fn from_chalk(db: &impl HirDatabase, trait_ref: chalk_ir::TraitRef<ChalkIr>) -> Self {
+    fn from_chalk(db: &impl HirDatabase, trait_ref: chalk_ir::TraitRef<TypeFamily>) -> Self {
         let trait_ = from_chalk(db, trait_ref.trait_id);
         let substs = from_chalk(db, trait_ref.parameters);
         TraitRef { trait_, substs }
     }
 }
 
-impl ToChalk for TraitId {
-    type Chalk = chalk_ir::TraitId;
+impl ToChalk for hir_def::TraitId {
+    type Chalk = TraitId;
 
-    fn to_chalk(self, _db: &impl HirDatabase) -> chalk_ir::TraitId {
-        chalk_ir::TraitId(id_to_chalk(self))
+    fn to_chalk(self, _db: &impl HirDatabase) -> TraitId {
+        chalk_ir::TraitId(self.as_intern_id())
     }
 
-    fn from_chalk(_db: &impl HirDatabase, trait_id: chalk_ir::TraitId) -> TraitId {
-        id_from_chalk(trait_id.0)
+    fn from_chalk(_db: &impl HirDatabase, trait_id: TraitId) -> hir_def::TraitId {
+        InternKey::from_intern_id(trait_id.0)
     }
 }
 
 impl ToChalk for TypeCtor {
-    type Chalk = chalk_ir::StructId;
+    type Chalk = TypeName<TypeFamily>;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::StructId {
-        db.intern_type_ctor(self).into()
+    fn to_chalk(self, db: &impl HirDatabase) -> TypeName<TypeFamily> {
+        match self {
+            TypeCtor::AssociatedType(type_alias) => {
+                let type_id = type_alias.to_chalk(db);
+                TypeName::AssociatedType(type_id)
+            }
+            _ => {
+                // other TypeCtors get interned and turned into a chalk StructId
+                let struct_id = db.intern_type_ctor(self).into();
+                TypeName::Struct(struct_id)
+            }
+        }
     }
 
-    fn from_chalk(db: &impl HirDatabase, struct_id: chalk_ir::StructId) -> TypeCtor {
-        db.lookup_intern_type_ctor(struct_id.into())
+    fn from_chalk(db: &impl HirDatabase, type_name: TypeName<TypeFamily>) -> TypeCtor {
+        match type_name {
+            TypeName::Struct(struct_id) => db.lookup_intern_type_ctor(struct_id.into()),
+            TypeName::AssociatedType(type_id) => TypeCtor::AssociatedType(from_chalk(db, type_id)),
+            TypeName::Error => {
+                // this should not be reached, since we don't represent TypeName::Error with TypeCtor
+                unreachable!()
+            }
+        }
     }
 }
 
 impl ToChalk for Impl {
-    type Chalk = chalk_ir::ImplId;
+    type Chalk = ImplId;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::ImplId {
+    fn to_chalk(self, db: &impl HirDatabase) -> ImplId {
         db.intern_chalk_impl(self).into()
     }
 
-    fn from_chalk(db: &impl HirDatabase, impl_id: chalk_ir::ImplId) -> Impl {
+    fn from_chalk(db: &impl HirDatabase, impl_id: ImplId) -> Impl {
         db.lookup_intern_chalk_impl(impl_id.into())
     }
 }
 
 impl ToChalk for TypeAliasId {
-    type Chalk = chalk_ir::TypeId;
+    type Chalk = AssocTypeId;
 
-    fn to_chalk(self, _db: &impl HirDatabase) -> chalk_ir::TypeId {
-        chalk_ir::TypeId(id_to_chalk(self))
+    fn to_chalk(self, _db: &impl HirDatabase) -> AssocTypeId {
+        chalk_ir::AssocTypeId(self.as_intern_id())
     }
 
-    fn from_chalk(_db: &impl HirDatabase, type_alias_id: chalk_ir::TypeId) -> TypeAliasId {
-        id_from_chalk(type_alias_id.0)
+    fn from_chalk(_db: &impl HirDatabase, type_alias_id: AssocTypeId) -> TypeAliasId {
+        InternKey::from_intern_id(type_alias_id.0)
     }
 }
 
 impl ToChalk for AssocTyValue {
-    type Chalk = chalk_rust_ir::AssociatedTyValueId;
+    type Chalk = AssociatedTyValueId;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_rust_ir::AssociatedTyValueId {
+    fn to_chalk(self, db: &impl HirDatabase) -> AssociatedTyValueId {
         db.intern_assoc_ty_value(self).into()
     }
 
-    fn from_chalk(
-        db: &impl HirDatabase,
-        assoc_ty_value_id: chalk_rust_ir::AssociatedTyValueId,
-    ) -> AssocTyValue {
+    fn from_chalk(db: &impl HirDatabase, assoc_ty_value_id: AssociatedTyValueId) -> AssocTyValue {
         db.lookup_intern_assoc_ty_value(assoc_ty_value_id.into())
     }
 }
 
 impl ToChalk for GenericPredicate {
-    type Chalk = chalk_ir::QuantifiedWhereClause<ChalkIr>;
+    type Chalk = chalk_ir::QuantifiedWhereClause<TypeFamily>;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::QuantifiedWhereClause<ChalkIr> {
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::QuantifiedWhereClause<TypeFamily> {
         match self {
             GenericPredicate::Implemented(trait_ref) => {
                 make_binders(chalk_ir::WhereClause::Implemented(trait_ref.to_chalk(db)), 0)
@@ -246,26 +323,16 @@ impl ToChalk for GenericPredicate {
                 }),
                 0,
             ),
-            GenericPredicate::Error => {
-                let impossible_trait_ref = chalk_ir::TraitRef {
-                    trait_id: UNKNOWN_TRAIT,
-                    parameters: vec![Ty::Unknown.to_chalk(db).cast()],
-                };
-                make_binders(chalk_ir::WhereClause::Implemented(impossible_trait_ref), 0)
-            }
+            GenericPredicate::Error => panic!("tried passing GenericPredicate::Error to Chalk"),
         }
     }
 
     fn from_chalk(
         db: &impl HirDatabase,
-        where_clause: chalk_ir::QuantifiedWhereClause<ChalkIr>,
+        where_clause: chalk_ir::QuantifiedWhereClause<TypeFamily>,
     ) -> GenericPredicate {
         match where_clause.value {
             chalk_ir::WhereClause::Implemented(tr) => {
-                if tr.trait_id == UNKNOWN_TRAIT {
-                    // FIXME we need an Error enum on the Chalk side to avoid this
-                    return GenericPredicate::Error;
-                }
                 GenericPredicate::Implemented(from_chalk(db, tr))
             }
             chalk_ir::WhereClause::ProjectionEq(projection_eq) => {
@@ -278,9 +345,9 @@ impl ToChalk for GenericPredicate {
 }
 
 impl ToChalk for ProjectionTy {
-    type Chalk = chalk_ir::ProjectionTy<ChalkIr>;
+    type Chalk = chalk_ir::ProjectionTy<TypeFamily>;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::ProjectionTy<ChalkIr> {
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::ProjectionTy<TypeFamily> {
         chalk_ir::ProjectionTy {
             associated_ty_id: self.associated_ty.to_chalk(db),
             parameters: self.parameters.to_chalk(db),
@@ -289,7 +356,7 @@ impl ToChalk for ProjectionTy {
 
     fn from_chalk(
         db: &impl HirDatabase,
-        projection_ty: chalk_ir::ProjectionTy<ChalkIr>,
+        projection_ty: chalk_ir::ProjectionTy<TypeFamily>,
     ) -> ProjectionTy {
         ProjectionTy {
             associated_ty: from_chalk(db, projection_ty.associated_ty_id),
@@ -299,31 +366,31 @@ impl ToChalk for ProjectionTy {
 }
 
 impl ToChalk for super::ProjectionPredicate {
-    type Chalk = chalk_ir::Normalize<ChalkIr>;
+    type Chalk = chalk_ir::Normalize<TypeFamily>;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Normalize<ChalkIr> {
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Normalize<TypeFamily> {
         chalk_ir::Normalize {
             projection: self.projection_ty.to_chalk(db),
             ty: self.ty.to_chalk(db),
         }
     }
 
-    fn from_chalk(_db: &impl HirDatabase, _normalize: chalk_ir::Normalize<ChalkIr>) -> Self {
+    fn from_chalk(_db: &impl HirDatabase, _normalize: chalk_ir::Normalize<TypeFamily>) -> Self {
         unimplemented!()
     }
 }
 
 impl ToChalk for Obligation {
-    type Chalk = chalk_ir::DomainGoal<ChalkIr>;
+    type Chalk = chalk_ir::DomainGoal<TypeFamily>;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::DomainGoal<ChalkIr> {
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::DomainGoal<TypeFamily> {
         match self {
             Obligation::Trait(tr) => tr.to_chalk(db).cast(),
             Obligation::Projection(pr) => pr.to_chalk(db).cast(),
         }
     }
 
-    fn from_chalk(_db: &impl HirDatabase, _goal: chalk_ir::DomainGoal<ChalkIr>) -> Self {
+    fn from_chalk(_db: &impl HirDatabase, _goal: chalk_ir::DomainGoal<TypeFamily>) -> Self {
         unimplemented!()
     }
 }
@@ -347,16 +414,17 @@ where
 }
 
 impl ToChalk for Arc<super::TraitEnvironment> {
-    type Chalk = chalk_ir::Environment<ChalkIr>;
+    type Chalk = chalk_ir::Environment<TypeFamily>;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Environment<ChalkIr> {
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Environment<TypeFamily> {
         let mut clauses = Vec::new();
         for pred in &self.predicates {
             if pred.is_error() {
                 // for env, we just ignore errors
                 continue;
             }
-            let program_clause: chalk_ir::ProgramClause<ChalkIr> = pred.clone().to_chalk(db).cast();
+            let program_clause: chalk_ir::ProgramClause<TypeFamily> =
+                pred.clone().to_chalk(db).cast();
             clauses.push(program_clause.into_from_env_clause());
         }
         chalk_ir::Environment::new().add_clauses(clauses)
@@ -364,7 +432,7 @@ impl ToChalk for Arc<super::TraitEnvironment> {
 
     fn from_chalk(
         _db: &impl HirDatabase,
-        _env: chalk_ir::Environment<ChalkIr>,
+        _env: chalk_ir::Environment<TypeFamily>,
     ) -> Arc<super::TraitEnvironment> {
         unimplemented!()
     }
@@ -372,7 +440,7 @@ impl ToChalk for Arc<super::TraitEnvironment> {
 
 impl<T: ToChalk> ToChalk for super::InEnvironment<T>
 where
-    T::Chalk: chalk_ir::family::HasTypeFamily<TypeFamily = ChalkIr>,
+    T::Chalk: chalk_ir::family::HasTypeFamily<TypeFamily = TypeFamily>,
 {
     type Chalk = chalk_ir::InEnvironment<T::Chalk>;
 
@@ -395,9 +463,9 @@ where
 }
 
 impl ToChalk for builtin::BuiltinImplData {
-    type Chalk = chalk_rust_ir::ImplDatum<ChalkIr>;
+    type Chalk = ImplDatum;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_rust_ir::ImplDatum<ChalkIr> {
+    fn to_chalk(self, db: &impl HirDatabase) -> ImplDatum {
         let impl_type = chalk_rust_ir::ImplType::External;
         let where_clauses = self.where_clauses.into_iter().map(|w| w.to_chalk(db)).collect();
 
@@ -413,15 +481,15 @@ impl ToChalk for builtin::BuiltinImplData {
         }
     }
 
-    fn from_chalk(_db: &impl HirDatabase, _data: chalk_rust_ir::ImplDatum<ChalkIr>) -> Self {
+    fn from_chalk(_db: &impl HirDatabase, _data: ImplDatum) -> Self {
         unimplemented!()
     }
 }
 
 impl ToChalk for builtin::BuiltinImplAssocTyValueData {
-    type Chalk = chalk_rust_ir::AssociatedTyValue<ChalkIr>;
+    type Chalk = AssociatedTyValue;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> chalk_rust_ir::AssociatedTyValue<ChalkIr> {
+    fn to_chalk(self, db: &impl HirDatabase) -> AssociatedTyValue {
         let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: self.value.to_chalk(db) };
 
         chalk_rust_ir::AssociatedTyValue {
@@ -433,7 +501,7 @@ impl ToChalk for builtin::BuiltinImplAssocTyValueData {
 
     fn from_chalk(
         _db: &impl HirDatabase,
-        _data: chalk_rust_ir::AssociatedTyValue<ChalkIr>,
+        _data: AssociatedTyValue,
     ) -> builtin::BuiltinImplAssocTyValueData {
         unimplemented!()
     }
@@ -450,46 +518,46 @@ fn convert_where_clauses(
     db: &impl HirDatabase,
     def: GenericDefId,
     substs: &Substs,
-) -> Vec<chalk_ir::QuantifiedWhereClause<ChalkIr>> {
+) -> Vec<chalk_ir::QuantifiedWhereClause<TypeFamily>> {
     let generic_predicates = db.generic_predicates(def);
     let mut result = Vec::with_capacity(generic_predicates.len());
     for pred in generic_predicates.iter() {
         if pred.is_error() {
-            // HACK: Return just the single predicate (which is always false
-            // anyway), otherwise Chalk can easily get into slow situations
-            return vec![pred.clone().subst(substs).to_chalk(db)];
+            // skip errored predicates completely
+            continue;
         }
         result.push(pred.clone().subst(substs).to_chalk(db));
     }
     result
 }
 
-impl<'a, DB> chalk_solve::RustIrDatabase<ChalkIr> for ChalkContext<'a, DB>
+impl<'a, DB> chalk_solve::RustIrDatabase<TypeFamily> for ChalkContext<'a, DB>
 where
     DB: HirDatabase,
 {
-    fn associated_ty_data(&self, id: TypeId) -> Arc<AssociatedTyDatum<ChalkIr>> {
+    fn associated_ty_data(&self, id: AssocTypeId) -> Arc<AssociatedTyDatum> {
         self.db.associated_ty_data(id)
     }
-    fn trait_datum(&self, trait_id: chalk_ir::TraitId) -> Arc<TraitDatum<ChalkIr>> {
+    fn trait_datum(&self, trait_id: TraitId) -> Arc<TraitDatum> {
         self.db.trait_datum(self.krate, trait_id)
     }
-    fn struct_datum(&self, struct_id: chalk_ir::StructId) -> Arc<StructDatum<ChalkIr>> {
+    fn struct_datum(&self, struct_id: StructId) -> Arc<StructDatum> {
         self.db.struct_datum(self.krate, struct_id)
     }
-    fn impl_datum(&self, impl_id: chalk_ir::ImplId) -> Arc<ImplDatum<ChalkIr>> {
+    fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
         self.db.impl_datum(self.krate, impl_id)
     }
     fn impls_for_trait(
         &self,
-        trait_id: chalk_ir::TraitId,
-        parameters: &[Parameter<ChalkIr>],
-    ) -> Vec<chalk_ir::ImplId> {
+        trait_id: TraitId,
+        parameters: &[Parameter<TypeFamily>],
+    ) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
-        if trait_id == UNKNOWN_TRAIT {
-            return Vec::new();
-        }
-        let trait_: TraitId = from_chalk(self.db, trait_id);
+        let trait_: hir_def::TraitId = from_chalk(self.db, trait_id);
+
+        // Note: Since we're using impls_for_trait, only impls where the trait
+        // can be resolved should ever reach Chalk. `impl_datum` relies on that
+        // and will panic if the trait can't be resolved.
         let mut result: Vec<_> = self
             .db
             .impls_for_trait(self.krate, trait_.into())
@@ -508,39 +576,32 @@ where
         debug!("impls_for_trait returned {} impls", result.len());
         result
     }
-    fn impl_provided_for(
-        &self,
-        auto_trait_id: chalk_ir::TraitId,
-        struct_id: chalk_ir::StructId,
-    ) -> bool {
+    fn impl_provided_for(&self, auto_trait_id: TraitId, struct_id: StructId) -> bool {
         debug!("impl_provided_for {:?}, {:?}", auto_trait_id, struct_id);
         false // FIXME
     }
-    fn type_name(&self, _id: TypeKindId) -> Identifier {
-        unimplemented!()
-    }
-    fn associated_ty_value(
-        &self,
-        id: chalk_rust_ir::AssociatedTyValueId,
-    ) -> Arc<AssociatedTyValue<ChalkIr>> {
+    fn associated_ty_value(&self, id: AssociatedTyValueId) -> Arc<AssociatedTyValue> {
         self.db.associated_ty_value(self.krate.into(), id)
     }
-    fn custom_clauses(&self) -> Vec<chalk_ir::ProgramClause<ChalkIr>> {
+    fn custom_clauses(&self) -> Vec<chalk_ir::ProgramClause<TypeFamily>> {
         vec![]
     }
-    fn local_impls_to_coherence_check(
-        &self,
-        _trait_id: chalk_ir::TraitId,
-    ) -> Vec<chalk_ir::ImplId> {
+    fn local_impls_to_coherence_check(&self, _trait_id: TraitId) -> Vec<ImplId> {
         // We don't do coherence checking (yet)
         unimplemented!()
+    }
+    fn as_struct_id(&self, id: &TypeName<TypeFamily>) -> Option<StructId> {
+        match id {
+            TypeName::Struct(struct_id) => Some(*struct_id),
+            _ => None,
+        }
     }
 }
 
 pub(crate) fn associated_ty_data_query(
     db: &impl HirDatabase,
-    id: TypeId,
-) -> Arc<AssociatedTyDatum<ChalkIr>> {
+    id: AssocTypeId,
+) -> Arc<AssociatedTyDatum> {
     debug!("associated_ty_data {:?}", id);
     let type_alias: TypeAliasId = from_chalk(db, id);
     let trait_ = match type_alias.lookup(db).container {
@@ -565,28 +626,10 @@ pub(crate) fn associated_ty_data_query(
 pub(crate) fn trait_datum_query(
     db: &impl HirDatabase,
     krate: CrateId,
-    trait_id: chalk_ir::TraitId,
-) -> Arc<TraitDatum<ChalkIr>> {
+    trait_id: TraitId,
+) -> Arc<TraitDatum> {
     debug!("trait_datum {:?}", trait_id);
-    if trait_id == UNKNOWN_TRAIT {
-        let trait_datum_bound = chalk_rust_ir::TraitDatumBound { where_clauses: Vec::new() };
-
-        let flags = chalk_rust_ir::TraitFlags {
-            auto: false,
-            marker: false,
-            upstream: true,
-            fundamental: false,
-            non_enumerable: true,
-            coinductive: false,
-        };
-        return Arc::new(TraitDatum {
-            id: trait_id,
-            binders: make_binders(trait_datum_bound, 1),
-            flags,
-            associated_ty_ids: vec![],
-        });
-    }
-    let trait_: TraitId = from_chalk(db, trait_id);
+    let trait_: hir_def::TraitId = from_chalk(db, trait_id);
     let trait_data = db.trait_data(trait_);
     debug!("trait {:?} = {:?}", trait_id, trait_data.name);
     let generic_params = generics(db, trait_.into());
@@ -616,10 +659,10 @@ pub(crate) fn trait_datum_query(
 pub(crate) fn struct_datum_query(
     db: &impl HirDatabase,
     krate: CrateId,
-    struct_id: chalk_ir::StructId,
-) -> Arc<StructDatum<ChalkIr>> {
+    struct_id: StructId,
+) -> Arc<StructDatum> {
     debug!("struct_datum {:?}", struct_id);
-    let type_ctor: TypeCtor = from_chalk(db, struct_id);
+    let type_ctor: TypeCtor = from_chalk(db, TypeName::Struct(struct_id));
     debug!("struct {:?} = {:?}", struct_id, type_ctor);
     let num_params = type_ctor.num_ty_params(db);
     let upstream = type_ctor.krate(db) != Some(krate);
@@ -648,25 +691,27 @@ pub(crate) fn struct_datum_query(
 pub(crate) fn impl_datum_query(
     db: &impl HirDatabase,
     krate: CrateId,
-    impl_id: chalk_ir::ImplId,
-) -> Arc<ImplDatum<ChalkIr>> {
+    impl_id: ImplId,
+) -> Arc<ImplDatum> {
     let _p = ra_prof::profile("impl_datum");
     debug!("impl_datum {:?}", impl_id);
     let impl_: Impl = from_chalk(db, impl_id);
     match impl_ {
         Impl::ImplBlock(impl_block) => impl_block_datum(db, krate, impl_id, impl_block),
-        _ => builtin::impl_datum(db, krate, impl_).map(|d| Arc::new(d.to_chalk(db))),
+        _ => Arc::new(builtin::impl_datum(db, krate, impl_).to_chalk(db)),
     }
-    .unwrap_or_else(invalid_impl_datum)
 }
 
 fn impl_block_datum(
     db: &impl HirDatabase,
     krate: CrateId,
-    chalk_id: chalk_ir::ImplId,
-    impl_id: ImplId,
-) -> Option<Arc<ImplDatum<ChalkIr>>> {
-    let trait_ref = db.impl_trait(impl_id)?;
+    chalk_id: ImplId,
+    impl_id: hir_def::ImplId,
+) -> Arc<ImplDatum> {
+    let trait_ref = db
+        .impl_trait(impl_id)
+        // ImplIds for impls where the trait ref can't be resolved should never reach Chalk
+        .expect("invalid impl passed to Chalk");
     let impl_data = db.impl_data(impl_id);
 
     let generic_params = generics(db, impl_id.into());
@@ -718,29 +763,14 @@ fn impl_block_datum(
         polarity,
         associated_ty_value_ids,
     };
-    Some(Arc::new(impl_datum))
-}
-
-fn invalid_impl_datum() -> Arc<ImplDatum<ChalkIr>> {
-    let trait_ref = chalk_ir::TraitRef {
-        trait_id: UNKNOWN_TRAIT,
-        parameters: vec![chalk_ir::TyData::BoundVar(0).cast().intern().cast()],
-    };
-    let impl_datum_bound = chalk_rust_ir::ImplDatumBound { trait_ref, where_clauses: Vec::new() };
-    let impl_datum = ImplDatum {
-        binders: make_binders(impl_datum_bound, 1),
-        impl_type: chalk_rust_ir::ImplType::External,
-        polarity: chalk_rust_ir::Polarity::Positive,
-        associated_ty_value_ids: Vec::new(),
-    };
     Arc::new(impl_datum)
 }
 
 pub(crate) fn associated_ty_value_query(
     db: &impl HirDatabase,
     krate: CrateId,
-    id: chalk_rust_ir::AssociatedTyValueId,
-) -> Arc<chalk_rust_ir::AssociatedTyValue<ChalkIr>> {
+    id: AssociatedTyValueId,
+) -> Arc<AssociatedTyValue> {
     let data: AssocTyValue = from_chalk(db, id);
     match data {
         AssocTyValue::TypeAlias(type_alias) => {
@@ -754,7 +784,7 @@ fn type_alias_associated_ty_value(
     db: &impl HirDatabase,
     _krate: CrateId,
     type_alias: TypeAliasId,
-) -> Arc<AssociatedTyValue<ChalkIr>> {
+) -> Arc<AssociatedTyValue> {
     let type_alias_data = db.type_alias_data(type_alias);
     let impl_id = match type_alias.lookup(db).container {
         AssocContainerId::ImplId(it) => it,
@@ -786,27 +816,27 @@ fn id_to_chalk<T: InternKey>(salsa_id: T) -> chalk_ir::RawId {
     chalk_ir::RawId { index: salsa_id.as_intern_id().as_u32() }
 }
 
-impl From<chalk_ir::StructId> for crate::TypeCtorId {
-    fn from(struct_id: chalk_ir::StructId) -> Self {
-        id_from_chalk(struct_id.0)
+impl From<StructId> for crate::TypeCtorId {
+    fn from(struct_id: StructId) -> Self {
+        InternKey::from_intern_id(struct_id.0)
     }
 }
 
-impl From<crate::TypeCtorId> for chalk_ir::StructId {
+impl From<crate::TypeCtorId> for StructId {
     fn from(type_ctor_id: crate::TypeCtorId) -> Self {
-        chalk_ir::StructId(id_to_chalk(type_ctor_id))
+        chalk_ir::StructId(type_ctor_id.as_intern_id())
     }
 }
 
-impl From<chalk_ir::ImplId> for crate::traits::GlobalImplId {
-    fn from(impl_id: chalk_ir::ImplId) -> Self {
-        id_from_chalk(impl_id.0)
+impl From<ImplId> for crate::traits::GlobalImplId {
+    fn from(impl_id: ImplId) -> Self {
+        InternKey::from_intern_id(impl_id.0)
     }
 }
 
-impl From<crate::traits::GlobalImplId> for chalk_ir::ImplId {
+impl From<crate::traits::GlobalImplId> for ImplId {
     fn from(impl_id: crate::traits::GlobalImplId) -> Self {
-        chalk_ir::ImplId(id_to_chalk(impl_id))
+        chalk_ir::ImplId(impl_id.as_intern_id())
     }
 }
 

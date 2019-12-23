@@ -10,7 +10,7 @@ use ra_db::{salsa, CrateId};
 
 use crate::{
     method_resolution::CrateImplBlocks,
-    traits::{AssocTyValue, Impl},
+    traits::{chalk, AssocTyValue, Impl},
     CallableDef, FnSig, GenericPredicate, InferenceResult, Substs, TraitRef, Ty, TyDefId, TypeCtor,
     ValueTyDefId,
 };
@@ -77,39 +77,24 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::interned]
     fn intern_assoc_ty_value(&self, assoc_ty_value: AssocTyValue) -> crate::traits::AssocTyValueId;
 
-    #[salsa::invoke(crate::traits::chalk::associated_ty_data_query)]
-    fn associated_ty_data(
-        &self,
-        id: chalk_ir::TypeId,
-    ) -> Arc<chalk_rust_ir::AssociatedTyDatum<chalk_ir::family::ChalkIr>>;
+    #[salsa::invoke(chalk::associated_ty_data_query)]
+    fn associated_ty_data(&self, id: chalk::AssocTypeId) -> Arc<chalk::AssociatedTyDatum>;
 
-    #[salsa::invoke(crate::traits::chalk::trait_datum_query)]
-    fn trait_datum(
-        &self,
-        krate: CrateId,
-        trait_id: chalk_ir::TraitId,
-    ) -> Arc<chalk_rust_ir::TraitDatum<chalk_ir::family::ChalkIr>>;
+    #[salsa::invoke(chalk::trait_datum_query)]
+    fn trait_datum(&self, krate: CrateId, trait_id: chalk::TraitId) -> Arc<chalk::TraitDatum>;
 
-    #[salsa::invoke(crate::traits::chalk::struct_datum_query)]
-    fn struct_datum(
-        &self,
-        krate: CrateId,
-        struct_id: chalk_ir::StructId,
-    ) -> Arc<chalk_rust_ir::StructDatum<chalk_ir::family::ChalkIr>>;
+    #[salsa::invoke(chalk::struct_datum_query)]
+    fn struct_datum(&self, krate: CrateId, struct_id: chalk::StructId) -> Arc<chalk::StructDatum>;
 
     #[salsa::invoke(crate::traits::chalk::impl_datum_query)]
-    fn impl_datum(
-        &self,
-        krate: CrateId,
-        impl_id: chalk_ir::ImplId,
-    ) -> Arc<chalk_rust_ir::ImplDatum<chalk_ir::family::ChalkIr>>;
+    fn impl_datum(&self, krate: CrateId, impl_id: chalk::ImplId) -> Arc<chalk::ImplDatum>;
 
     #[salsa::invoke(crate::traits::chalk::associated_ty_value_query)]
     fn associated_ty_value(
         &self,
         krate: CrateId,
-        id: chalk_rust_ir::AssociatedTyValueId,
-    ) -> Arc<chalk_rust_ir::AssociatedTyValue<chalk_ir::family::ChalkIr>>;
+        id: chalk::AssociatedTyValueId,
+    ) -> Arc<chalk::AssociatedTyValue>;
 
     #[salsa::invoke(crate::traits::trait_solve_query)]
     fn trait_solve(

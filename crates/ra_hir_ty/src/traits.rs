@@ -1,7 +1,7 @@
 //! Trait solving using Chalk.
 use std::sync::{Arc, Mutex};
 
-use chalk_ir::{cast::Cast, family::ChalkIr};
+use chalk_ir::cast::Cast;
 use hir_def::{expr::ExprId, DefWithBodyId, ImplId, TraitId, TypeAliasId};
 use log::debug;
 use ra_db::{impl_intern_key, salsa, CrateId};
@@ -12,7 +12,7 @@ use crate::db::HirDatabase;
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 
-use self::chalk::{from_chalk, ToChalk};
+use self::chalk::{from_chalk, ToChalk, TypeFamily};
 
 pub(crate) mod chalk;
 mod builtin;
@@ -20,7 +20,7 @@ mod builtin;
 #[derive(Debug, Clone)]
 pub struct TraitSolver {
     krate: CrateId,
-    inner: Arc<Mutex<chalk_solve::Solver<ChalkIr>>>,
+    inner: Arc<Mutex<chalk_solve::Solver<TypeFamily>>>,
 }
 
 /// We need eq for salsa
@@ -36,8 +36,8 @@ impl TraitSolver {
     fn solve(
         &self,
         db: &impl HirDatabase,
-        goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<ChalkIr>>>,
-    ) -> Option<chalk_solve::Solution<ChalkIr>> {
+        goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<TypeFamily>>>,
+    ) -> Option<chalk_solve::Solution<TypeFamily>> {
         let context = ChalkContext { db, krate: self.krate };
         debug!("solve goal: {:?}", goal);
         let mut solver = match self.inner.lock() {
@@ -201,17 +201,17 @@ pub(crate) fn trait_solve_query(
 
 fn solution_from_chalk(
     db: &impl HirDatabase,
-    solution: chalk_solve::Solution<ChalkIr>,
+    solution: chalk_solve::Solution<TypeFamily>,
 ) -> Solution {
-    let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<ChalkIr>>| {
+    let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<TypeFamily>>| {
         let value = subst
             .value
             .parameters
             .into_iter()
             .map(|p| {
-                let ty = match p {
-                    chalk_ir::Parameter(chalk_ir::ParameterKind::Ty(ty)) => from_chalk(db, ty),
-                    chalk_ir::Parameter(chalk_ir::ParameterKind::Lifetime(_)) => unimplemented!(),
+                let ty = match p.ty() {
+                    Some(ty) => from_chalk(db, ty.clone()),
+                    None => unimplemented!(),
                 };
                 ty
             })
@@ -291,7 +291,7 @@ impl FnTrait {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClosureFnTraitImplData {
     def: DefWithBodyId,
     expr: ExprId,
@@ -300,7 +300,7 @@ pub struct ClosureFnTraitImplData {
 
 /// An impl. Usually this comes from an impl block, but some built-in types get
 /// synthetic impls.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Impl {
     /// A normal impl from an impl block.
     ImplBlock(ImplId),
