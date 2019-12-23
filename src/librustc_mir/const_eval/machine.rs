@@ -40,14 +40,15 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
             return Ok(false);
         }
 
-        let gid = GlobalId { instance, promoted: None };
-
-        let place = self.const_eval_raw(gid)?;
         let dest = match ret {
             Some((dest, _)) => dest,
             // Don't memoize diverging function calls.
             None => return Ok(false),
         };
+
+        let gid = GlobalId { instance, promoted: None };
+
+        let place = self.const_eval_raw(gid)?;
 
         self.copy_op(place.into(), dest)?;
 
