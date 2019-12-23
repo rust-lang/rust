@@ -5,7 +5,7 @@ use super::lto::{self, SerializedModule};
 use super::symbol_export::ExportedSymbols;
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
-    RLIB_BYTECODE_EXTENSION, WindowsSubsystem
+    WindowsSubsystem, RLIB_BYTECODE_EXTENSION,
 };
 
 use crate::traits::*;
@@ -342,9 +342,11 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let windows_subsystem = {
         let name = subsystem.map(|subsystem| {
             if subsystem != sym::windows && subsystem != sym::console {
-                tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
-                                         `windows` and `console` are allowed",
-                                        subsystem));
+                tcx.sess.fatal(&format!(
+                    "invalid windows subsystem `{}`, only \
+                    `windows` and `console` are allowed",
+                    subsystem
+                ));
             }
             subsystem.to_string()
         });
@@ -355,15 +357,15 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
             let version = match t.arch.as_str() {
                 "x86" => Some("5.01".to_string()),
                 "x86_64" => Some("5.02".to_string()),
-                arch => tcx.sess.fatal(&format!("invalid Windows XP arch `{}`, only \
-                                     `x86` and `x86_64` are supported",
-                                    arch))
+                arch => tcx.sess.fatal(&format!(
+                    "invalid Windows XP arch `{}`, only \
+                    `x86` and `x86_64` are supported",
+                    arch
+                )),
             };
             Some(WindowsSubsystem { name, version })
         } else {
-            name.and_then(|name| Some(WindowsSubsystem {
-                name, version: None
-            }))
+            name.and_then(|name| Some(WindowsSubsystem { name, version: None }))
         }
     };
 

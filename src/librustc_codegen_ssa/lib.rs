@@ -141,7 +141,7 @@ pub struct CrateInfo {
 #[derive(Debug)]
 pub struct WindowsSubsystem {
     pub name: String,
-    pub version: Option<String>
+    pub version: Option<String>,
 }
 
 pub struct CodegenResults {
