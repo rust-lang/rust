@@ -72,7 +72,7 @@ use core::convert::TryInto;
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Cursor<T> {
     inner: T,
     pos: u64,
@@ -941,5 +941,17 @@ mod tests {
         let mut c = Cursor::new(Vec::new());
         c.set_position(<usize>::max_value() as u64 + 1);
         assert!(c.write_all(&[1, 2, 3]).is_err());
+    }
+
+    #[test]
+    fn test_partial_eq() {
+        assert_eq!(Cursor::new(Vec::<u8>::new()), Cursor::new(Vec::<u8>::new()));
+    }
+
+    #[test]
+    fn test_eq() {
+        struct AssertEq<T: Eq>(pub T);
+
+        let _: AssertEq<Cursor<Vec<u8>>> = AssertEq(Cursor::new(Vec::new()));
     }
 }
