@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 348] = [
+pub const ALL_LINTS: [Lint; 349] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1467,6 +1467,13 @@ pub const ALL_LINTS: [Lint; 348] = [
         name: "option_and_then_some",
         group: "complexity",
         desc: "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
+        name: "option_as_ref_deref",
+        group: "complexity",
+        desc: "using `as_ref().map(Deref::deref)`, which is more succinctly expressed as `as_deref()`",
         deprecation: None,
         module: "methods",
     },
