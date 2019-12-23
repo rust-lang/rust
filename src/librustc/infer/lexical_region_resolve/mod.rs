@@ -155,10 +155,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     }
 
     fn dump_constraints(&self, free_regions: &RegionRelations<'_, 'tcx>) {
-        debug!(
-            "----() Start constraint listing (context={:?}) ()----",
-            free_regions.context
-        );
+        debug!("----() Start constraint listing (context={:?}) ()----", free_regions.context);
         for (idx, (constraint, _)) in self.data.constraints.iter().enumerate() {
             debug!("Constraint {} => {:?}", idx, constraint);
         }
@@ -255,12 +252,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Find all the "upper bounds" -- that is, each region `b` such that
         // `r0 <= b` must hold.
-        let (member_upper_bounds, _) = self.collect_concrete_regions(
-            graph,
-            member_vid,
-            OUTGOING,
-            None,
-        );
+        let (member_upper_bounds, _) =
+            self.collect_concrete_regions(graph, member_vid, OUTGOING, None);
 
         // Get an iterator over the *available choice* -- that is,
         // each choice region `c` where `lb <= c` and `c <= ub` for all the
@@ -799,13 +792,13 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // resolution errors here; delay ICE in favor of those errors.
         self.tcx().sess.delay_span_bug(
             self.var_infos[node_idx].origin.span(),
-            &format!("collect_error_for_expanding_node() could not find \
+            &format!(
+                "collect_error_for_expanding_node() could not find \
                       error for var {:?} in universe {:?}, lower_bounds={:#?}, \
                       upper_bounds={:#?}",
-                     node_idx,
-                     node_universe,
-                     lower_bounds,
-                     upper_bounds));
+                node_idx, node_universe, lower_bounds, upper_bounds
+            ),
+        );
     }
 
     fn collect_concrete_regions(

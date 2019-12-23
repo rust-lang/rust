@@ -15,11 +15,11 @@
 
 use crate::token::{self, DelimToken, Token, TokenKind};
 
-use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_macros::HashStable_Generic;
 use rustc_data_structures::sync::Lrc;
-use smallvec::{SmallVec, smallvec};
+use rustc_macros::HashStable_Generic;
+use smallvec::{smallvec, SmallVec};
+use syntax_pos::{Span, DUMMY_SP};
 
 use std::{iter, mem};
 
@@ -51,7 +51,8 @@ where
     DelimSpan: Send + Sync,
     DelimToken: Send + Sync,
     TokenStream: Send + Sync,
-{}
+{
+}
 
 impl TokenTree {
     /// Checks if this TokenTree is equal to the other, regardless of span information.
@@ -118,7 +119,8 @@ impl TokenTree {
 }
 
 impl<CTX> HashStable<CTX> for TokenStream
-    where CTX: crate::HashStableContext
+where
+    CTX: crate::HashStableContext,
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         for sub_tt in self.trees() {
@@ -144,7 +146,7 @@ rustc_data_structures::static_assert_size!(TokenStream, 8);
 #[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum IsJoint {
     Joint,
-    NonJoint
+    NonJoint,
 }
 
 use IsJoint::*;
@@ -160,12 +162,16 @@ impl TokenStream {
             if let Some((_, next)) = iter.peek() {
                 let sp = match (&ts, &next) {
                     (_, (TokenTree::Token(Token { kind: token::Comma, .. }), _)) => continue,
-                    ((TokenTree::Token(token_left), NonJoint),
-                     (TokenTree::Token(token_right), _))
-                    if ((token_left.is_ident() && !token_left.is_reserved_ident())
-                        || token_left.is_lit()) &&
-                        ((token_right.is_ident() && !token_right.is_reserved_ident())
-                        || token_right.is_lit()) => token_left.span,
+                    (
+                        (TokenTree::Token(token_left), NonJoint),
+                        (TokenTree::Token(token_right), _),
+                    ) if ((token_left.is_ident() && !token_left.is_reserved_ident())
+                        || token_left.is_lit())
+                        && ((token_right.is_ident() && !token_right.is_reserved_ident())
+                            || token_right.is_lit()) =>
+                    {
+                        token_left.span
+                    }
                     ((TokenTree::Delimited(sp, ..), NonJoint), _) => sp.entire(),
                     _ => continue,
                 };
@@ -251,10 +257,7 @@ impl TokenStream {
                 // Determine how much the first stream will be extended.
                 // Needed to avoid quadratic blow up from on-the-fly
                 // reallocations (#57735).
-                let num_appends = streams.iter()
-                    .skip(1)
-                    .map(|ts| ts.len())
-                    .sum();
+                let num_appends = streams.iter().skip(1).map(|ts| ts.len()).sum();
 
                 // Get the first stream. If it's `None`, create an empty
                 // stream.
@@ -344,16 +347,13 @@ impl TokenStream {
                 .iter()
                 .enumerate()
                 .map(|(i, (tree, is_joint))| (f(i, tree.clone()), *is_joint))
-                .collect()
+                .collect(),
         ))
     }
 
     pub fn map<F: FnMut(TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
         TokenStream(Lrc::new(
-            self.0
-                .iter()
-                .map(|(tree, is_joint)| (f(tree.clone()), *is_joint))
-                .collect()
+            self.0.iter().map(|(tree, is_joint)| (f(tree.clone()), *is_joint)).collect(),
         ))
     }
 }
@@ -374,15 +374,12 @@ impl TokenStreamBuilder {
         // token tree marked with `Joint`...
         if let Some(TokenStream(ref mut last_stream_lrc)) = self.0.last_mut() {
             if let Some((TokenTree::Token(last_token), Joint)) = last_stream_lrc.last() {
-
                 // ...and `stream` is not empty and the first tree within it is
                 // a token tree...
                 let TokenStream(ref mut stream_lrc) = stream;
                 if let Some((TokenTree::Token(token), is_joint)) = stream_lrc.first() {
-
                     // ...and the two tokens can be glued together...
                     if let Some(glued_tok) = last_token.glue(&token) {
-
                         // ...then do so, by overwriting the last token
                         // tree in `self` and removing the first token tree
                         // from `stream`. This requires using `make_mut()`
@@ -460,7 +457,7 @@ impl Cursor {
     }
 
     pub fn look_ahead(&self, n: usize) -> Option<TokenTree> {
-        self.stream.0[self.index ..].get(n).map(|(tree, _)| tree.clone())
+        self.stream.0[self.index..].get(n).map(|(tree, _)| tree.clone())
     }
 }
 
@@ -472,10 +469,7 @@ pub struct DelimSpan {
 
 impl DelimSpan {
     pub fn from_single(sp: Span) -> Self {
-        DelimSpan {
-            open: sp,
-            close: sp,
-        }
+        DelimSpan { open: sp, close: sp }
     }
 
     pub fn from_pair(open: Span, close: Span) -> Self {

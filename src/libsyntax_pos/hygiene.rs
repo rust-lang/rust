@@ -25,15 +25,15 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
-use crate::GLOBALS;
-use crate::{Span, DUMMY_SP};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
+use crate::GLOBALS;
+use crate::{Span, DUMMY_SP};
 
-use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_macros::HashStable_Generic;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
@@ -59,8 +59,18 @@ pub struct ExpnId(u32);
 
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug,
-         RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Hash,
+    Debug,
+    RustcEncodable,
+    RustcDecodable,
+    HashStable_Generic
+)]
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
@@ -176,8 +186,7 @@ impl HygieneData {
     }
 
     fn expn_data(&self, expn_id: ExpnId) -> &ExpnData {
-        self.expn_data[expn_id.0 as usize].as_ref()
-            .expect("no expansion data for an expansion ID")
+        self.expn_data[expn_id.0 as usize].as_ref().expect("no expansion data for an expansion ID")
     }
 
     fn is_descendant_of(&self, mut expn_id: ExpnId, ancestor: ExpnId) -> bool {
@@ -243,7 +252,10 @@ impl HygieneData {
     }
 
     fn apply_mark(
-        &mut self, ctxt: SyntaxContext, expn_id: ExpnId, transparency: Transparency
+        &mut self,
+        ctxt: SyntaxContext,
+        expn_id: ExpnId,
+        transparency: Transparency,
     ) -> SyntaxContext {
         assert_ne!(expn_id, ExpnId::root());
         if transparency == Transparency::Opaque {
@@ -277,7 +289,10 @@ impl HygieneData {
     }
 
     fn apply_mark_internal(
-        &mut self, ctxt: SyntaxContext, expn_id: ExpnId, transparency: Transparency
+        &mut self,
+        ctxt: SyntaxContext,
+        expn_id: ExpnId,
+        transparency: Transparency,
     ) -> SyntaxContext {
         let syntax_context_data = &mut self.syntax_context_data;
         let mut opaque = syntax_context_data[ctxt.0 as usize].opaque;
@@ -286,38 +301,41 @@ impl HygieneData {
 
         if transparency >= Transparency::Opaque {
             let parent = opaque;
-            opaque = *self.syntax_context_map.entry((parent, expn_id, transparency))
-                                             .or_insert_with(|| {
-                let new_opaque = SyntaxContext(syntax_context_data.len() as u32);
-                syntax_context_data.push(SyntaxContextData {
-                    outer_expn: expn_id,
-                    outer_transparency: transparency,
-                    parent,
-                    opaque: new_opaque,
-                    opaque_and_semitransparent: new_opaque,
-                    dollar_crate_name: kw::DollarCrate,
+            opaque = *self
+                .syntax_context_map
+                .entry((parent, expn_id, transparency))
+                .or_insert_with(|| {
+                    let new_opaque = SyntaxContext(syntax_context_data.len() as u32);
+                    syntax_context_data.push(SyntaxContextData {
+                        outer_expn: expn_id,
+                        outer_transparency: transparency,
+                        parent,
+                        opaque: new_opaque,
+                        opaque_and_semitransparent: new_opaque,
+                        dollar_crate_name: kw::DollarCrate,
+                    });
+                    new_opaque
                 });
-                new_opaque
-            });
         }
 
         if transparency >= Transparency::SemiTransparent {
             let parent = opaque_and_semitransparent;
-            opaque_and_semitransparent =
-                    *self.syntax_context_map.entry((parent, expn_id, transparency))
-                                            .or_insert_with(|| {
-                let new_opaque_and_semitransparent =
-                    SyntaxContext(syntax_context_data.len() as u32);
-                syntax_context_data.push(SyntaxContextData {
-                    outer_expn: expn_id,
-                    outer_transparency: transparency,
-                    parent,
-                    opaque,
-                    opaque_and_semitransparent: new_opaque_and_semitransparent,
-                    dollar_crate_name: kw::DollarCrate,
+            opaque_and_semitransparent = *self
+                .syntax_context_map
+                .entry((parent, expn_id, transparency))
+                .or_insert_with(|| {
+                    let new_opaque_and_semitransparent =
+                        SyntaxContext(syntax_context_data.len() as u32);
+                    syntax_context_data.push(SyntaxContextData {
+                        outer_expn: expn_id,
+                        outer_transparency: transparency,
+                        parent,
+                        opaque,
+                        opaque_and_semitransparent: new_opaque_and_semitransparent,
+                        dollar_crate_name: kw::DollarCrate,
+                    });
+                    new_opaque_and_semitransparent
                 });
-                new_opaque_and_semitransparent
-            });
         }
 
         let parent = ctxt;
@@ -347,19 +365,26 @@ pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {
 
 pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symbol) {
     // The new contexts that need updating are at the end of the list and have `$crate` as a name.
-    let (len, to_update) = HygieneData::with(|data| (
-        data.syntax_context_data.len(),
-        data.syntax_context_data.iter().rev()
-            .take_while(|scdata| scdata.dollar_crate_name == kw::DollarCrate).count()
-    ));
+    let (len, to_update) = HygieneData::with(|data| {
+        (
+            data.syntax_context_data.len(),
+            data.syntax_context_data
+                .iter()
+                .rev()
+                .take_while(|scdata| scdata.dollar_crate_name == kw::DollarCrate)
+                .count(),
+        )
+    });
     // The callback must be called from outside of the `HygieneData` lock,
     // since it will try to acquire it too.
-    let range_to_update = len - to_update .. len;
+    let range_to_update = len - to_update..len;
     let names: Vec<_> =
         range_to_update.clone().map(|idx| get_name(SyntaxContext::from_u32(idx as u32))).collect();
-    HygieneData::with(|data| range_to_update.zip(names.into_iter()).for_each(|(idx, name)| {
-        data.syntax_context_data[idx].dollar_crate_name = name;
-    }))
+    HygieneData::with(|data| {
+        range_to_update.zip(names.into_iter()).for_each(|(idx, name)| {
+            data.syntax_context_data[idx].dollar_crate_name = name;
+        })
+    })
 }
 
 pub fn debug_hygiene_data(verbose: bool) -> String {
@@ -383,10 +408,7 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
             data.syntax_context_data.iter().enumerate().for_each(|(id, ctxt)| {
                 s.push_str(&format!(
                     "\n#{}: parent: {:?}, outer_mark: ({:?}, {:?})",
-                    id,
-                    ctxt.parent,
-                    ctxt.outer_expn,
-                    ctxt.outer_transparency,
+                    id, ctxt.parent, ctxt.outer_expn, ctxt.outer_transparency,
                 ));
             });
             s
@@ -524,8 +546,11 @@ impl SyntaxContext {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
     /// }
     /// ```
-    pub fn reverse_glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span)
-                               -> Option<Option<ExpnId>> {
+    pub fn reverse_glob_adjust(
+        &mut self,
+        expn_id: ExpnId,
+        glob_span: Span,
+    ) -> Option<Option<ExpnId>> {
         HygieneData::with(|data| {
             if data.adjust(self, expn_id).is_some() {
                 return None;
@@ -605,7 +630,9 @@ impl Span {
     }
 
     pub fn fresh_expansion_with_transparency(
-        self, expn_data: ExpnData, transparency: Transparency
+        self,
+        expn_data: ExpnData,
+        transparency: Transparency,
     ) -> Span {
         HygieneData::with(|data| {
             let expn_id = data.fresh_expn(Some(expn_data));
@@ -671,8 +698,12 @@ impl ExpnData {
         }
     }
 
-    pub fn allow_unstable(kind: ExpnKind, call_site: Span, edition: Edition,
-                          allow_internal_unstable: Lrc<[Symbol]>) -> ExpnData {
+    pub fn allow_unstable(
+        kind: ExpnKind,
+        call_site: Span,
+        edition: Edition,
+        allow_internal_unstable: Lrc<[Symbol]>,
+    ) -> ExpnData {
         ExpnData {
             allow_internal_unstable: Some(allow_internal_unstable),
             ..ExpnData::default(kind, call_site, edition)
@@ -695,7 +726,7 @@ pub enum ExpnKind {
     /// Transform done by the compiler on the AST.
     AstPass(AstPass),
     /// Desugaring done by the compiler during HIR lowering.
-    Desugaring(DesugaringKind)
+    Desugaring(DesugaringKind),
 }
 
 impl ExpnKind {
@@ -710,8 +741,17 @@ impl ExpnKind {
 }
 
 /// The kind of macro invocation or definition.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable,
-         Hash, Debug, HashStable_Generic)]
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RustcEncodable,
+    RustcDecodable,
+    Hash,
+    Debug,
+    HashStable_Generic
+)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
     Bang,

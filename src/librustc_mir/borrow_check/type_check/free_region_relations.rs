@@ -11,10 +11,10 @@ use std::rc::Rc;
 use syntax_pos::DUMMY_SP;
 
 use crate::borrow_check::{
+    nll::ToRegionVid,
     type_check::constraint_conversion,
     type_check::{Locations, MirTypeckRegionConstraints},
     universal_regions::UniversalRegions,
-    nll::ToRegionVid,
 };
 
 #[derive(Debug)]
@@ -76,7 +76,8 @@ crate fn create(
             outlives: Default::default(),
             inverse_outlives: Default::default(),
         },
-    }.create()
+    }
+    .create()
 }
 
 impl UniversalRegionRelations<'tcx> {
@@ -84,10 +85,7 @@ impl UniversalRegionRelations<'tcx> {
     /// `inverse_outlives_relation`) that `fr_a: fr_b`. Invoked by the
     /// builder below.
     fn relate_universal_regions(&mut self, fr_a: RegionVid, fr_b: RegionVid) {
-        debug!(
-            "relate_universal_regions: fr_a={:?} outlives fr_b={:?}",
-            fr_a, fr_b
-        );
+        debug!("relate_universal_regions: fr_a={:?} outlives fr_b={:?}", fr_a, fr_b);
         self.outlives.add(fr_a, fr_b);
         self.inverse_outlives.add(fr_b, fr_a);
     }
@@ -126,9 +124,7 @@ impl UniversalRegionRelations<'tcx> {
         // In case we find more than one, reduce to one for
         // convenience.  This is to prevent us from generating more
         // complex constraints, but it will cause spurious errors.
-        let post_dom = self
-            .inverse_outlives
-            .mutual_immediate_postdominator(upper_bounds);
+        let post_dom = self.inverse_outlives.mutual_immediate_postdominator(upper_bounds);
 
         debug!("non_local_bound: post_dom={:?}", post_dom);
 
@@ -145,7 +141,6 @@ impl UniversalRegionRelations<'tcx> {
             .unwrap_or(self.universal_regions.fr_static)
     }
 
-
     /// Finds a "lower bound" for `fr` that is not local. In other
     /// words, returns the largest (*) known region `fr1` that (a) is
     /// outlived by `fr` and (b) is not local.
@@ -159,22 +154,19 @@ impl UniversalRegionRelations<'tcx> {
         // In case we find more than one, reduce to one for
         // convenience.  This is to prevent us from generating more
         // complex constraints, but it will cause spurious errors.
-        let post_dom = self
-            .outlives
-            .mutual_immediate_postdominator(lower_bounds);
+        let post_dom = self.outlives.mutual_immediate_postdominator(lower_bounds);
 
         debug!("non_local_bound: post_dom={:?}", post_dom);
 
-        post_dom
-            .and_then(|&post_dom| {
-                // If the mutual immediate postdom is not local, then
-                // there is no non-local result we can return.
-                if !self.universal_regions.is_local_free_region(post_dom) {
-                    Some(post_dom)
-                } else {
-                    None
-                }
-            })
+        post_dom.and_then(|&post_dom| {
+            // If the mutual immediate postdom is not local, then
+            // there is no non-local result we can return.
+            if !self.universal_regions.is_local_free_region(post_dom) {
+                Some(post_dom)
+            } else {
+                None
+            }
+        })
     }
 
     /// Helper for `non_local_upper_bounds` and `non_local_lower_bounds`.
@@ -222,7 +214,7 @@ impl UniversalRegionRelations<'tcx> {
     }
 
     /// Returns the _non-transitive_ set of known `outlives` constraints between free regions.
-    crate fn known_outlives(&self) -> impl Iterator<Item=(&RegionVid, &RegionVid)> {
+    crate fn known_outlives(&self) -> impl Iterator<Item = (&RegionVid, &RegionVid)> {
         self.outlives.base_edges()
     }
 }
@@ -268,9 +260,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                     .unwrap_or_else(|_| bug!("failed to normalize {:?}", ty));
                 let constraints2 = self.add_implied_bounds(ty);
                 normalized_inputs_and_output.push(ty);
-                constraints1
-                    .into_iter()
-                    .chain(constraints2)
+                constraints1.into_iter().chain(constraints2)
             })
             .collect();
 
@@ -286,10 +276,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
         let fr_static = self.universal_regions.fr_static;
         let fr_fn_body = self.universal_regions.fr_fn_body;
         for fr in self.universal_regions.universal_regions() {
-            debug!(
-                "build: relating free region {:?} to itself and to 'static",
-                fr
-            );
+            debug!("build: relating free region {:?} to itself and to 'static", fr);
             self.relations.relate_universal_regions(fr, fr);
             self.relations.relate_universal_regions(fr_static, fr);
             self.relations.relate_universal_regions(fr, fr_fn_body);
@@ -305,7 +292,8 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                 Locations::All(DUMMY_SP),
                 ConstraintCategory::Internal,
                 &mut self.constraints,
-            ).convert_all(data);
+            )
+            .convert_all(data);
         }
 
         CreateResult {
@@ -321,8 +309,8 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
     /// from this local.
     fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<Rc<QueryRegionConstraints<'tcx>>> {
         debug!("add_implied_bounds(ty={:?})", ty);
-        let (bounds, constraints) =
-            self.param_env
+        let (bounds, constraints) = self
+            .param_env
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
             .fully_perform(self.infcx)
             .unwrap_or_else(|_| bug!("failed to compute implied bounds {:?}", ty));
@@ -356,13 +344,11 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                 }
 
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
-                    self.region_bound_pairs
-                        .push((r_a, GenericKind::Param(param_b)));
+                    self.region_bound_pairs.push((r_a, GenericKind::Param(param_b)));
                 }
 
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
-                    self.region_bound_pairs
-                        .push((r_a, GenericKind::Projection(projection_b)));
+                    self.region_bound_pairs.push((r_a, GenericKind::Projection(projection_b)));
                 }
             }
         }

@@ -1,4 +1,3 @@
-use errors::DiagnosticBuilder;
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -6,10 +5,11 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
-use crate::ty::{self, TyCtxt};
 use crate::ty::error::ExpectedFound;
+use crate::ty::print::{FmtPrinter, Print, RegionHighlightMode};
 use crate::ty::subst::SubstsRef;
-use crate::ty::print::{Print, RegionHighlightMode, FmtPrinter};
+use crate::ty::{self, TyCtxt};
+use errors::DiagnosticBuilder;
 
 use std::fmt::{self, Write};
 
@@ -259,24 +259,16 @@ impl NiceRegionError<'me, 'tcx> {
             }
         });
 
-        let actual_self_ty_has_vid = self
-            .tcx()
-            .any_free_region_meets(&actual_trait_ref.self_ty(), |r| Some(r) == vid);
+        let actual_self_ty_has_vid =
+            self.tcx().any_free_region_meets(&actual_trait_ref.self_ty(), |r| Some(r) == vid);
 
-        let expected_self_ty_has_vid = self
-            .tcx()
-            .any_free_region_meets(&expected_trait_ref.self_ty(), |r| Some(r) == vid);
+        let expected_self_ty_has_vid =
+            self.tcx().any_free_region_meets(&expected_trait_ref.self_ty(), |r| Some(r) == vid);
 
         let any_self_ty_has_vid = actual_self_ty_has_vid || expected_self_ty_has_vid;
 
-        debug!(
-            "try_report_placeholders_trait: actual_has_vid={:?}",
-            actual_has_vid
-        );
-        debug!(
-            "try_report_placeholders_trait: expected_has_vid={:?}",
-            expected_has_vid
-        );
+        debug!("try_report_placeholders_trait: actual_has_vid={:?}", actual_has_vid);
+        debug!("try_report_placeholders_trait: expected_has_vid={:?}", expected_has_vid);
         debug!("try_report_placeholders_trait: has_sub={:?}", has_sub);
         debug!("try_report_placeholders_trait: has_sup={:?}", has_sup);
         debug!(
@@ -336,11 +328,7 @@ impl NiceRegionError<'me, 'tcx> {
 
         impl<'tcx, T> Highlighted<'tcx, T> {
             fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'tcx, U> {
-                Highlighted {
-                    tcx: self.tcx,
-                    highlight: self.highlight,
-                    value: f(self.value),
-                }
+                Highlighted { tcx: self.tcx, highlight: self.highlight, value: f(self.value) }
             }
         }
 
@@ -415,24 +403,21 @@ impl NiceRegionError<'me, 'tcx> {
 
             match (has_sub, has_sup) {
                 (Some(n1), Some(n2)) => {
-                    let _ = write!(note,
+                    let _ = write!(
+                        note,
                         ", for any two lifetimes `'{}` and `'{}`...",
                         std::cmp::min(n1, n2),
                         std::cmp::max(n1, n2),
                     );
                 }
                 (Some(n), _) | (_, Some(n)) => {
-                    let _ = write!(note,
-                        ", for any lifetime `'{}`...",
-                        n,
-                    );
+                    let _ = write!(note, ", for any lifetime `'{}`...", n,);
                 }
-                (None, None) => if let Some(n) = expected_has_vid {
-                    let _ = write!(note,
-                        ", for some specific lifetime `'{}`...",
-                        n,
-                    );
-                },
+                (None, None) => {
+                    if let Some(n) = expected_has_vid {
+                        let _ = write!(note, ", for some specific lifetime `'{}`...", n,);
+                    }
+                }
             }
 
             note

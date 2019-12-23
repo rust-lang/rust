@@ -1,7 +1,7 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
-use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::hir::{FunctionRetTy, TyKind};
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::ty;
 use errors::{Applicability, DiagnosticBuilder};
 
@@ -15,9 +15,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         debug!(
             "try_report_named_anon_conflict(sub={:?}, sup={:?}, error={:?})",
-            sub,
-            sup,
-            self.error,
+            sub, sup, self.error,
         );
 
         // Determine whether the sub and sup consist of one named region ('a)
@@ -36,7 +34,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 self.find_param_with_region(sup, sub).unwrap(),
                 self.tcx().is_suitable_region(sup).unwrap(),
             )
-        } else if self.is_named_region(sup) && self.tcx().is_suitable_region(sub).is_some()
+        } else if self.is_named_region(sup)
+            && self.tcx().is_suitable_region(sub).is_some()
             && self.find_param_with_region(sub, sup).is_some()
         {
             (
@@ -50,14 +49,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         };
 
         debug!("try_report_named_anon_conflict: named = {:?}", named);
-        debug!(
-            "try_report_named_anon_conflict: anon_param_info = {:?}",
-            anon_param_info
-        );
-        debug!(
-            "try_report_named_anon_conflict: region_info = {:?}",
-            region_info
-        );
+        debug!("try_report_named_anon_conflict: anon_param_info = {:?}", anon_param_info);
+        debug!("try_report_named_anon_conflict: region_info = {:?}", region_info);
 
         let (param, new_ty, new_ty_span, br, is_first, scope_def_id, is_impl_item) = (
             anon_param_info.param,

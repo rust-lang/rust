@@ -487,9 +487,7 @@ where
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
-        HashMap {
-            base: base::HashMap::with_hasher(hash_builder),
-        }
+        HashMap { base: base::HashMap::with_hasher(hash_builder) }
     }
 
     /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
@@ -516,9 +514,7 @@ where
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
-        HashMap {
-            base: base::HashMap::with_capacity_and_hasher(capacity, hash_builder),
-        }
+        HashMap { base: base::HashMap::with_capacity_and_hasher(capacity, hash_builder) }
     }
 
     /// Returns a reference to the map's [`BuildHasher`].
@@ -584,9 +580,7 @@ where
     #[inline]
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.base
-            .try_reserve(additional)
-            .map_err(map_collection_alloc_err)
+        self.base.try_reserve(additional).map_err(map_collection_alloc_err)
     }
 
     /// Shrinks the capacity of the map as much as possible. It will drop
@@ -636,10 +630,7 @@ where
     #[inline]
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        assert!(
-            self.capacity() >= min_capacity,
-            "Tried to shrink to a larger capacity"
-        );
+        assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
         self.base.shrink_to(min_capacity);
     }
 
@@ -977,8 +968,7 @@ where
             return false;
         }
 
-        self.iter()
-            .all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
+        self.iter().all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
     }
 }
 
@@ -1053,9 +1043,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 impl<K, V> Clone for Iter<'_, K, V> {
     #[inline]
     fn clone(&self) -> Self {
-        Iter {
-            base: self.base.clone(),
-        }
+        Iter { base: self.base.clone() }
     }
 }
 
@@ -1082,9 +1070,7 @@ impl<'a, K, V> IterMut<'a, K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
-        Iter {
-            base: self.base.rustc_iter(),
-        }
+        Iter { base: self.base.rustc_iter() }
     }
 }
 
@@ -1104,9 +1090,7 @@ impl<K, V> IntoIter<K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
-        Iter {
-            base: self.base.rustc_iter(),
-        }
+        Iter { base: self.base.rustc_iter() }
     }
 }
 
@@ -1127,9 +1111,7 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 impl<K, V> Clone for Keys<'_, K, V> {
     #[inline]
     fn clone(&self) -> Self {
-        Keys {
-            inner: self.inner.clone(),
-        }
+        Keys { inner: self.inner.clone() }
     }
 }
 
@@ -1157,9 +1139,7 @@ pub struct Values<'a, K: 'a, V: 'a> {
 impl<K, V> Clone for Values<'_, K, V> {
     #[inline]
     fn clone(&self) -> Self {
-        Values {
-            inner: self.inner.clone(),
-        }
+        Values { inner: self.inner.clone() }
     }
 }
 
@@ -1186,9 +1166,7 @@ impl<'a, K, V> Drain<'a, K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
-        Iter {
-            base: self.base.rustc_iter(),
-        }
+        Iter { base: self.base.rustc_iter() }
     }
 }
 
@@ -1285,12 +1263,7 @@ where
         K: Borrow<Q>,
         Q: Eq,
     {
-        map_raw_entry(
-            self.map
-                .base
-                .raw_entry_mut()
-                .from_key_hashed_nocheck(hash, k),
-        )
+        map_raw_entry(self.map.base.raw_entry_mut().from_key_hashed_nocheck(hash, k))
     }
 
     /// Creates a `RawEntryMut` from the given hash.
@@ -1650,10 +1623,7 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 #[stable(feature = "debug_hash_map", since = "1.12.0")]
 impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OccupiedEntry")
-            .field("key", self.key())
-            .field("value", self.get())
-            .finish()
+        f.debug_struct("OccupiedEntry").field("key", self.key()).field("value", self.get()).finish()
     }
 }
 
@@ -1719,9 +1689,7 @@ impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     /// ```
     #[inline]
     fn into_iter(self) -> IntoIter<K, V> {
-        IntoIter {
-            base: self.base.into_iter(),
-        }
+        IntoIter { base: self.base.into_iter() }
     }
 }
 
@@ -2051,7 +2019,7 @@ impl<'a, K, V> Entry<'a, K, V> {
             Occupied(mut entry) => {
                 entry.insert(value);
                 entry
-            },
+            }
             Vacant(entry) => entry.insert_entry(value),
         }
     }
@@ -2588,10 +2556,9 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> TryReserveError {
     match err {
         hashbrown::CollectionAllocErr::CapacityOverflow => TryReserveError::CapacityOverflow,
-        hashbrown::CollectionAllocErr::AllocErr { layout } => TryReserveError::AllocError {
-            layout,
-            non_exhaustive: (),
-        },
+        hashbrown::CollectionAllocErr::AllocErr { layout } => {
+            TryReserveError::AllocError { layout, non_exhaustive: () }
+        }
     }
 }
 
@@ -3323,7 +3290,7 @@ mod test_map {
     #[test]
     fn test_entry_take_doesnt_corrupt() {
         #![allow(deprecated)] //rand
-                              // Test for #19292
+        // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
@@ -3483,14 +3450,8 @@ mod test_map {
         }
         let hash1 = compute_hash(&map, 1);
         assert_eq!(map.raw_entry().from_key(&1).unwrap(), (&1, &100));
-        assert_eq!(
-            map.raw_entry().from_hash(hash1, |k| *k == 1).unwrap(),
-            (&1, &100)
-        );
-        assert_eq!(
-            map.raw_entry().from_key_hashed_nocheck(hash1, &1).unwrap(),
-            (&1, &100)
-        );
+        assert_eq!(map.raw_entry().from_hash(hash1, |k| *k == 1).unwrap(), (&1, &100));
+        assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash1, &1).unwrap(), (&1, &100));
         assert_eq!(map.len(), 6);
 
         // Existing key (update)
@@ -3504,14 +3465,8 @@ mod test_map {
         }
         let hash2 = compute_hash(&map, 2);
         assert_eq!(map.raw_entry().from_key(&2).unwrap(), (&2, &200));
-        assert_eq!(
-            map.raw_entry().from_hash(hash2, |k| *k == 2).unwrap(),
-            (&2, &200)
-        );
-        assert_eq!(
-            map.raw_entry().from_key_hashed_nocheck(hash2, &2).unwrap(),
-            (&2, &200)
-        );
+        assert_eq!(map.raw_entry().from_hash(hash2, |k| *k == 2).unwrap(), (&2, &200));
+        assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash2, &2).unwrap(), (&2, &200));
         assert_eq!(map.len(), 6);
 
         // Existing key (take)
@@ -3561,5 +3516,4 @@ mod test_map {
             }
         }
     }
-
 }

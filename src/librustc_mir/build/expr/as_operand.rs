@@ -49,24 +49,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("expr_as_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
-        if let ExprKind::Scope {
-            region_scope,
-            lint_level,
-            value,
-        } = expr.kind
-        {
+        if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             let source_info = this.source_info(expr.span);
             let region_scope = (region_scope, source_info);
-            return this.in_scope(region_scope, lint_level, |this| {
-                this.as_operand(block, scope, value)
-            });
+            return this
+                .in_scope(region_scope, lint_level, |this| this.as_operand(block, scope, value));
         }
 
         let category = Category::of(&expr.kind).unwrap();
-        debug!(
-            "expr_as_operand: category={:?} for={:?}",
-            category, expr.kind
-        );
+        debug!("expr_as_operand: category={:?} for={:?}", category, expr.kind);
         match category {
             Category::Constant => {
                 let constant = this.as_constant(expr);

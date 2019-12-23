@@ -1,14 +1,14 @@
 use std::collections::HashMap;
-use std::process::Command;
-use std::path::PathBuf;
 use std::collections::HashSet;
+use std::path::PathBuf;
+use std::process::Command;
 
 use build_helper::output;
 use serde::Deserialize;
 use serde_json;
 
-use crate::{Build, Crate};
 use crate::cache::INTERNER;
+use crate::{Build, Crate};
 
 #[derive(Deserialize)]
 struct Output {
@@ -71,10 +71,14 @@ fn build_krate(features: &str, build: &mut Build, resolves: &mut Vec<ResolveNode
     // to know what crates to test. Here we run `cargo metadata` to learn about
     // the dependency graph and what `-p` arguments there are.
     let mut cargo = Command::new(&build.initial_cargo);
-    cargo.arg("metadata")
-         .arg("--format-version").arg("1")
-         .arg("--features").arg(features)
-         .arg("--manifest-path").arg(build.src.join(krate).join("Cargo.toml"));
+    cargo
+        .arg("metadata")
+        .arg("--format-version")
+        .arg("1")
+        .arg("--features")
+        .arg(features)
+        .arg("--manifest-path")
+        .arg(build.src.join(krate).join("Cargo.toml"));
     let output = output(&mut cargo);
     let output: Output = serde_json::from_str(&output).unwrap();
     for package in output.packages {
@@ -82,12 +86,7 @@ fn build_krate(features: &str, build: &mut Build, resolves: &mut Vec<ResolveNode
             let name = INTERNER.intern_string(package.name);
             let mut path = PathBuf::from(package.manifest_path);
             path.pop();
-            build.crates.insert(name, Crate {
-                name,
-                id: package.id,
-                deps: HashSet::new(),
-                path,
-            });
+            build.crates.insert(name, Crate { name, id: package.id, deps: HashSet::new(), path });
         }
     }
     resolves.extend(output.resolve.nodes);

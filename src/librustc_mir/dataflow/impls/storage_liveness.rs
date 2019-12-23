@@ -1,13 +1,11 @@
 pub use super::*;
 
-use rustc::mir::*;
-use rustc::mir::visit::{
-    PlaceContext, Visitor, NonMutatingUseContext,
-};
-use std::cell::RefCell;
 use crate::dataflow::BitDenotation;
 use crate::dataflow::HaveBeenBorrowedLocals;
 use crate::dataflow::{DataflowResults, DataflowResultsCursor, DataflowResultsRefCursor};
+use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc::mir::*;
+use std::cell::RefCell;
 
 #[derive(Copy, Clone)]
 pub struct MaybeStorageLive<'a, 'tcx> {
@@ -15,8 +13,7 @@ pub struct MaybeStorageLive<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MaybeStorageLive<'a, 'tcx> {
-    pub fn new(body: &'a Body<'tcx>)
-               -> Self {
+    pub fn new(body: &'a Body<'tcx>) -> Self {
         MaybeStorageLive { body }
     }
 
@@ -27,7 +24,9 @@ impl<'a, 'tcx> MaybeStorageLive<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
     type Idx = Local;
-    fn name() -> &'static str { "maybe_storage_live" }
+    fn name() -> &'static str {
+        "maybe_storage_live"
+    }
     fn bits_per_block(&self) -> usize {
         self.body.local_decls.len()
     }
@@ -38,9 +37,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
         assert_eq!(1, self.body.arg_count);
     }
 
-    fn statement_effect(&self,
-                        trans: &mut GenKillSet<Local>,
-                        loc: Location) {
+    fn statement_effect(&self, trans: &mut GenKillSet<Local>, loc: Location) {
         let stmt = &self.body[loc.block].statements[loc.statement_index];
 
         match stmt.kind {
@@ -50,9 +47,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
         }
     }
 
-    fn terminator_effect(&self,
-                         _trans: &mut GenKillSet<Local>,
-                         _loc: Location) {
+    fn terminator_effect(&self, _trans: &mut GenKillSet<Local>, _loc: Location) {
         // Terminators have no effect
     }
 
@@ -87,9 +82,7 @@ impl<'mir, 'tcx: 'mir> RequiresStorage<'mir, 'tcx> {
     ) -> Self {
         RequiresStorage {
             body,
-            borrowed_locals: RefCell::new(
-                DataflowResultsCursor::new(borrowed_locals, *body)
-            ),
+            borrowed_locals: RefCell::new(DataflowResultsCursor::new(borrowed_locals, *body)),
         }
     }
 
@@ -100,7 +93,9 @@ impl<'mir, 'tcx: 'mir> RequiresStorage<'mir, 'tcx> {
 
 impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
     type Idx = Local;
-    fn name() -> &'static str { "requires_storage" }
+    fn name() -> &'static str {
+        "requires_storage"
+    }
     fn bits_per_block(&self) -> usize {
         self.body.local_decls.len()
     }
@@ -119,7 +114,7 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         let stmt = &self.body[loc.block].statements[loc.statement_index];
         match stmt.kind {
             StatementKind::StorageDead(l) => sets.kill(l),
-            StatementKind::Assign(box(ref place, _))
+            StatementKind::Assign(box (ref place, _))
             | StatementKind::SetDiscriminant { box ref place, .. } => {
                 if let PlaceBase::Local(local) = place.base {
                     sets.gen(local);
@@ -148,7 +143,8 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         if let TerminatorKind::Call {
             destination: Some((Place { base: PlaceBase::Local(local), .. }, _)),
             ..
-        } = self.body[loc.block].terminator().kind {
+        } = self.body[loc.block].terminator().kind
+        {
             sets.gen(local);
         }
     }
@@ -158,10 +154,9 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         // and after the call returns successfully, but not after a panic.
         // Since `propagate_call_unwind` doesn't exist, we have to kill the
         // destination here, and then gen it again in `propagate_call_return`.
-        if let TerminatorKind::Call {
-            destination: Some((ref place, _)),
-            ..
-        } = self.body[loc.block].terminator().kind {
+        if let TerminatorKind::Call { destination: Some((ref place, _)), .. } =
+            self.body[loc.block].terminator().kind
+        {
             if let Some(local) = place.as_local() {
                 sets.kill(local);
             }
@@ -185,10 +180,7 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
 impl<'mir, 'tcx> RequiresStorage<'mir, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
     fn check_for_move(&self, sets: &mut GenKillSet<Local>, loc: Location) {
-        let mut visitor = MoveVisitor {
-            sets,
-            borrowed_locals: &self.borrowed_locals,
-        };
+        let mut visitor = MoveVisitor { sets, borrowed_locals: &self.borrowed_locals };
         visitor.visit_location(self.body, loc);
     }
 

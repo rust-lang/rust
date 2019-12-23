@@ -1,25 +1,22 @@
 use std::collections::hash_map::Entry::*;
 use std::sync::Arc;
 
-use rustc::ty::Instance;
 use rustc::hir;
-use rustc::hir::Node;
+use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::CodegenFnAttrFlags;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadata_symbol_name};
+use rustc::hir::Node;
+use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
 use rustc::session::config;
-use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
-use rustc::util::nodemap::{FxHashMap, DefIdMap};
+use rustc::ty::Instance;
+use rustc::ty::{SymbolName, TyCtxt};
+use rustc::util::nodemap::{DefIdMap, FxHashMap};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_index::vec::IndexVec;
 use syntax::expand::allocator::ALLOCATOR_METHODS;
 
-pub type ExportedSymbols = FxHashMap<
-    CrateNum,
-    Arc<Vec<(String, SymbolExportLevel)>>,
->;
+pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportLevel)>>>;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types.borrow())
@@ -27,18 +24,18 @@ pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
 
 fn crate_export_threshold(crate_type: config::CrateType) -> SymbolExportLevel {
     match crate_type {
-        config::CrateType::Executable |
-        config::CrateType::Staticlib  |
-        config::CrateType::ProcMacro  |
-        config::CrateType::Cdylib     => SymbolExportLevel::C,
-        config::CrateType::Rlib       |
-        config::CrateType::Dylib      => SymbolExportLevel::Rust,
+        config::CrateType::Executable
+        | config::CrateType::Staticlib
+        | config::CrateType::ProcMacro
+        | config::CrateType::Cdylib => SymbolExportLevel::C,
+        config::CrateType::Rlib | config::CrateType::Dylib => SymbolExportLevel::Rust,
     }
 }
 
 pub fn crates_export_threshold(crate_types: &[config::CrateType]) -> SymbolExportLevel {
-    if crate_types.iter().any(|&crate_type|
-        crate_export_threshold(crate_type) == SymbolExportLevel::Rust)
+    if crate_types
+        .iter()
+        .any(|&crate_type| crate_export_threshold(crate_type) == SymbolExportLevel::Rust)
     {
         SymbolExportLevel::Rust
     } else {
@@ -63,10 +60,12 @@ fn reachable_non_generics_provider(
     // export level, however, as they're just implementation details.
     // Down below we'll hardwire all of the symbols to the `Rust` export
     // level instead.
-    let special_runtime_crate = tcx.is_panic_runtime(LOCAL_CRATE) ||
-        tcx.is_compiler_builtins(LOCAL_CRATE);
+    let special_runtime_crate =
+        tcx.is_panic_runtime(LOCAL_CRATE) || tcx.is_compiler_builtins(LOCAL_CRATE);
 
-    let mut reachable_non_generics: DefIdMap<_> = tcx.reachable_set(LOCAL_CRATE).0
+    let mut reachable_non_generics: DefIdMap<_> = tcx
+        .reachable_set(LOCAL_CRATE)
+        .0
         .iter()
         .filter_map(|&hir_id| {
             // We want to ignore some FFI functions that are not exposed from
@@ -89,30 +88,23 @@ fn reachable_non_generics_provider(
                 }
 
                 // Only consider nodes that actually have exported symbols.
-                Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Static(..),
-                    ..
-                }) |
-                Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Fn(..), ..
-                }) |
-                Node::ImplItem(&hir::ImplItem {
-                    kind: hir::ImplItemKind::Method(..),
-                    ..
-                }) => {
+                Node::Item(&hir::Item { kind: hir::ItemKind::Static(..), .. })
+                | Node::Item(&hir::Item { kind: hir::ItemKind::Fn(..), .. })
+                | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Method(..), .. }) => {
                     let def_id = tcx.hir().local_def_id(hir_id);
                     let generics = tcx.generics_of(def_id);
                     if !generics.requires_monomorphization(tcx) &&
                         // Functions marked with #[inline] are only ever codegened
                         // with "internal" linkage and are never exported.
-                        !Instance::mono(tcx, def_id).def.requires_local(tcx) {
+                        !Instance::mono(tcx, def_id).def.requires_local(tcx)
+                    {
                         Some(def_id)
                     } else {
                         None
                     }
                 }
 
-                _ => None
+                _ => None,
             }
         })
         .map(|def_id| {
@@ -125,9 +117,10 @@ fn reachable_non_generics_provider(
                 //
                 // In general though we won't link right if these
                 // symbols are stripped, and LTO currently strips them.
-                if name == "rust_eh_personality" ||
-                   name == "rust_eh_register_frames" ||
-                   name == "rust_eh_unregister_frames" {
+                if name == "rust_eh_personality"
+                    || name == "rust_eh_register_frames"
+                    || name == "rust_eh_unregister_frames"
+                {
                     SymbolExportLevel::C
                 } else {
                     SymbolExportLevel::Rust
@@ -135,9 +128,11 @@ fn reachable_non_generics_provider(
             } else {
                 symbol_export_level(tcx, def_id)
             };
-            debug!("EXPORTED SYMBOL (local): {} ({:?})",
-                   tcx.symbol_name(Instance::mono(tcx, def_id)),
-                   export_level);
+            debug!(
+                "EXPORTED SYMBOL (local): {} ({:?})",
+                tcx.symbol_name(Instance::mono(tcx, def_id)),
+                export_level
+            );
             (def_id, export_level)
         })
         .collect();
@@ -174,15 +169,14 @@ fn exported_symbols_provider_local(
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
-        return Arc::new(vec![])
+        return Arc::new(vec![]);
     }
 
-    let mut symbols: Vec<_> = tcx.reachable_non_generics(LOCAL_CRATE)
-                                 .iter()
-                                 .map(|(&def_id, &level)| {
-                                    (ExportedSymbol::NonGeneric(def_id), level)
-                                 })
-                                 .collect();
+    let mut symbols: Vec<_> = tcx
+        .reachable_non_generics(LOCAL_CRATE)
+        .iter()
+        .map(|(&def_id, &level)| (ExportedSymbol::NonGeneric(def_id), level))
+        .collect();
 
     if tcx.entry_fn(LOCAL_CRATE).is_some() {
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new("main"));
@@ -203,10 +197,8 @@ fn exported_symbols_provider_local(
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.
-        const PROFILER_WEAK_SYMBOLS: [&str; 2] = [
-            "__llvm_profile_raw_version",
-            "__llvm_profile_filename",
-        ];
+        const PROFILER_WEAK_SYMBOLS: [&str; 2] =
+            ["__llvm_profile_raw_version", "__llvm_profile_filename"];
 
         symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
@@ -222,7 +214,7 @@ fn exported_symbols_provider_local(
     }
 
     if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
-        use rustc::mir::mono::{Linkage, Visibility, MonoItem};
+        use rustc::mir::mono::{Linkage, MonoItem, Visibility};
         use rustc::ty::InstanceDef;
 
         // Normally, we require that shared monomorphizations are not hidden,
@@ -230,32 +222,28 @@ fn exported_symbols_provider_local(
         // needs to be exported.
         // However, on platforms that don't allow for Rust dylibs, having
         // external linkage is enough for monomorphization to be linked to.
-        let need_visibility = tcx.sess.target.target.options.dynamic_linking &&
-                              !tcx.sess.target.target.options.only_cdylib;
+        let need_visibility = tcx.sess.target.target.options.dynamic_linking
+            && !tcx.sess.target.target.options.only_cdylib;
 
         let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
 
-        for (mono_item, &(linkage, visibility)) in cgus.iter()
-                                                       .flat_map(|cgu| cgu.items().iter()) {
+        for (mono_item, &(linkage, visibility)) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
             if linkage != Linkage::External {
                 // We can only re-use things with external linkage, otherwise
                 // we'll get a linker error
-                continue
+                continue;
             }
 
             if need_visibility && visibility == Visibility::Hidden {
                 // If we potentially share things from Rust dylibs, they must
                 // not be hidden
-                continue
+                continue;
             }
 
-            if let &MonoItem::Fn(Instance {
-                def: InstanceDef::Item(def_id),
-                substs,
-            }) = mono_item {
+            if let &MonoItem::Fn(Instance { def: InstanceDef::Item(def_id), substs }) = mono_item {
                 if substs.non_erasable_generics().next().is_some() {
-                    symbols.push((ExportedSymbol::Generic(def_id, substs),
-                                  SymbolExportLevel::Rust));
+                    symbols
+                        .push((ExportedSymbol::Generic(def_id, substs), SymbolExportLevel::Rust));
                 }
             }
         }
@@ -280,14 +268,11 @@ fn upstream_monomorphizations_provider(
     let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
 
     let cnum_stable_ids: IndexVec<CrateNum, Fingerprint> = {
-        let mut cnum_stable_ids = IndexVec::from_elem_n(Fingerprint::ZERO,
-                                                        cnums.len() + 1);
+        let mut cnum_stable_ids = IndexVec::from_elem_n(Fingerprint::ZERO, cnums.len() + 1);
 
         for &cnum in cnums.iter() {
-            cnum_stable_ids[cnum] = tcx.def_path_hash(DefId {
-                krate: cnum,
-                index: CRATE_DEF_INDEX,
-            }).0;
+            cnum_stable_ids[cnum] =
+                tcx.def_path_hash(DefId { krate: cnum, index: CRATE_DEF_INDEX }).0;
         }
 
         cnum_stable_ids
@@ -330,8 +315,7 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> b
     if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
         !tcx.reachable_set(LOCAL_CRATE).0.contains(&hir_id)
     } else {
-        bug!("is_unreachable_local_definition called with non-local DefId: {:?}",
-             def_id)
+        bug!("is_unreachable_local_definition called with non-local DefId: {:?}", def_id)
     }
 }
 
@@ -363,10 +347,9 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
         let target = &tcx.sess.target.target.llvm_target;
         // WebAssembly cannot export data symbols, so reduce their export level
         if target.contains("wasm32") || target.contains("emscripten") {
-            if let Some(Node::Item(&hir::Item {
-                kind: hir::ItemKind::Static(..),
-                ..
-            })) = tcx.hir().get_if_local(sym_def_id) {
+            if let Some(Node::Item(&hir::Item { kind: hir::ItemKind::Static(..), .. })) =
+                tcx.hir().get_if_local(sym_def_id)
+            {
                 return SymbolExportLevel::Rust;
             }
         }

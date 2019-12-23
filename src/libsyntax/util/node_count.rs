@@ -1,7 +1,7 @@
 // Simply gives a rought count of the number of nodes in an AST.
 
-use crate::visit::*;
 use crate::ast::*;
+use crate::visit::*;
 use syntax_pos::Span;
 
 pub struct NodeCounter {
@@ -10,9 +10,7 @@ pub struct NodeCounter {
 
 impl NodeCounter {
     pub fn new() -> NodeCounter {
-        NodeCounter {
-            count: 0,
-        }
+        NodeCounter { count: 0 }
     }
 }
 
@@ -97,8 +95,13 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_struct_field(self, s)
     }
-    fn visit_enum_def(&mut self, enum_definition: &EnumDef,
-                      generics: &Generics, item_id: NodeId, _: Span) {
+    fn visit_enum_def(
+        &mut self,
+        enum_definition: &EnumDef,
+        generics: &Generics,
+        item_id: NodeId,
+        _: Span,
+    ) {
         self.count += 1;
         walk_enum_def(self, enum_definition, generics, item_id)
     }

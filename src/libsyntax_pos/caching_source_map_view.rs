@@ -1,6 +1,6 @@
-use rustc_data_structures::sync::Lrc;
 use crate::source_map::SourceMap;
 use crate::{BytePos, SourceFile};
+use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone)]
 struct CacheEntry {
@@ -39,9 +39,10 @@ impl<'cm> CachingSourceMapView<'cm> {
         }
     }
 
-    pub fn byte_pos_to_line_and_col(&mut self,
-                                    pos: BytePos)
-                                    -> Option<(Lrc<SourceFile>, usize, BytePos)> {
+    pub fn byte_pos_to_line_and_col(
+        &mut self,
+        pos: BytePos,
+    ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
         self.time_stamp += 1;
 
         // Check if the position is in one of the cached lines
@@ -49,15 +50,17 @@ impl<'cm> CachingSourceMapView<'cm> {
             if pos >= cache_entry.line_start && pos < cache_entry.line_end {
                 cache_entry.time_stamp = self.time_stamp;
 
-                return Some((cache_entry.file.clone(),
-                             cache_entry.line_number,
-                             pos - cache_entry.line_start));
+                return Some((
+                    cache_entry.file.clone(),
+                    cache_entry.line_number,
+                    pos - cache_entry.line_start,
+                ));
             }
         }
 
         // No cache hit ...
         let mut oldest = 0;
-        for index in 1 .. self.line_cache.len() {
+        for index in 1..self.line_cache.len() {
             if self.line_cache[index].time_stamp < self.line_cache[oldest].time_stamp {
                 oldest = index;
             }
@@ -96,8 +99,10 @@ impl<'cm> CachingSourceMapView<'cm> {
         cache_entry.line_end = line_bounds.1;
         cache_entry.time_stamp = self.time_stamp;
 
-        return Some((cache_entry.file.clone(),
-                     cache_entry.line_number,
-                     pos - cache_entry.line_start));
+        return Some((
+            cache_entry.file.clone(),
+            cache_entry.line_number,
+            pos - cache_entry.line_start,
+        ));
     }
 }

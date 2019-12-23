@@ -21,18 +21,18 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::region_constraints::MemberConstraint;
+use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
+use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::subst::GenericArg;
+use crate::ty::{self, BoundVar, List, Region, TyCtxt};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_serialize::UseSpecializedDecodable;
 use smallvec::SmallVec;
 use std::ops::Index;
 use syntax::source_map::Span;
-use crate::ty::fold::TypeFoldable;
-use crate::ty::subst::GenericArg;
-use crate::ty::{self, BoundVar, List, Region, TyCtxt};
 
 mod canonicalizer;
 
@@ -92,10 +92,7 @@ impl Default for OriginalQueryValues<'tcx> {
         let mut universe_map = SmallVec::default();
         universe_map.push(ty::UniverseIndex::ROOT);
 
-        Self {
-            universe_map,
-            var_values: SmallVec::default(),
-        }
+        Self { universe_map, var_values: SmallVec::default() }
     }
 }
 
@@ -157,7 +154,7 @@ impl CanonicalVarKind {
             CanonicalVarKind::Ty(kind) => match kind {
                 CanonicalTyVarKind::General(ui) => ui,
                 CanonicalTyVarKind::Float | CanonicalTyVarKind::Int => ty::UniverseIndex::ROOT,
-            }
+            },
 
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe,
             CanonicalVarKind::Region(ui) => ui,
@@ -212,8 +209,7 @@ impl QueryRegionConstraints<'_> {
 
 pub type Canonicalized<'tcx, V> = Canonical<'tcx, V>;
 
-pub type CanonicalizedQueryResponse<'tcx, T> =
-    &'tcx Canonical<'tcx, QueryResponse<'tcx, T>>;
+pub type CanonicalizedQueryResponse<'tcx, T> = &'tcx Canonical<'tcx, QueryResponse<'tcx, T>>;
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.
@@ -295,16 +291,8 @@ impl<'tcx, V> Canonical<'tcx, V> {
     /// let b: Canonical<'tcx, (T, Ty<'tcx>)> = a.unchecked_map(|v| (v, ty));
     /// ```
     pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<'tcx, W> {
-        let Canonical {
-            max_universe,
-            variables,
-            value,
-        } = self;
-        Canonical {
-            max_universe,
-            variables,
-            value: map_op(value),
-        }
+        let Canonical { max_universe, variables, value } = self;
+        Canonical { max_universe, variables, value: map_op(value) }
     }
 }
 
@@ -381,15 +369,10 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         match cv_info.kind {
             CanonicalVarKind::Ty(ty_kind) => {
                 let ty = match ty_kind {
-                    CanonicalTyVarKind::General(ui) => {
-                        self.next_ty_var_in_universe(
-                            TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
-                                span,
-                            },
-                            universe_map(ui)
-                        )
-                    }
+                    CanonicalTyVarKind::General(ui) => self.next_ty_var_in_universe(
+                        TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span },
+                        universe_map(ui),
+                    ),
 
                     CanonicalTyVarKind::Int => self.next_int_var(),
 
@@ -400,58 +383,43 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
             CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, name }) => {
                 let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::PlaceholderType {
-                    universe: universe_mapped,
-                    name,
-                };
+                let placeholder_mapped = ty::PlaceholderType { universe: universe_mapped, name };
                 self.tcx.mk_ty(ty::Placeholder(placeholder_mapped)).into()
             }
 
-            CanonicalVarKind::Region(ui) => self.next_region_var_in_universe(
-                RegionVariableOrigin::MiscVariable(span),
-                universe_map(ui),
-            ).into(),
+            CanonicalVarKind::Region(ui) => self
+                .next_region_var_in_universe(
+                    RegionVariableOrigin::MiscVariable(span),
+                    universe_map(ui),
+                )
+                .into(),
 
             CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion { universe, name }) => {
                 let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::PlaceholderRegion {
-                    universe: universe_mapped,
-                    name,
-                };
+                let placeholder_mapped = ty::PlaceholderRegion { universe: universe_mapped, name };
                 self.tcx.mk_region(ty::RePlaceholder(placeholder_mapped)).into()
             }
 
-            CanonicalVarKind::Const(ui) => {
-                self.next_const_var_in_universe(
+            CanonicalVarKind::Const(ui) => self
+                .next_const_var_in_universe(
                     self.next_ty_var_in_universe(
-                        TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span,
-                        },
+                        TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span },
                         universe_map(ui),
                     ),
-                    ConstVariableOrigin {
-                        kind: ConstVariableOriginKind::MiscVariable,
-                        span,
-                    },
+                    ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
                     universe_map(ui),
-                ).into()
-            }
+                )
+                .into(),
 
-            CanonicalVarKind::PlaceholderConst(
-                ty::PlaceholderConst { universe, name },
-            ) => {
+            CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }) => {
                 let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::PlaceholderConst {
-                    universe: universe_mapped,
-                    name,
-                };
-                self.tcx.mk_const(
-                    ty::Const {
+                let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
+                self.tcx
+                    .mk_const(ty::Const {
                         val: ty::ConstKind::Placeholder(placeholder_mapped),
                         ty: self.tcx.types.err, // FIXME(const_generics)
-                    }
-                ).into()
+                    })
+                    .into()
             }
         }
     }
@@ -484,23 +452,25 @@ impl<'tcx> CanonicalVarValues<'tcx> {
         use crate::ty::subst::GenericArgKind;
 
         CanonicalVarValues {
-            var_values: self.var_values.iter()
+            var_values: self
+                .var_values
+                .iter()
                 .zip(0..)
                 .map(|(kind, i)| match kind.unpack() {
-                    GenericArgKind::Type(..) => tcx.mk_ty(
-                        ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())
-                    ).into(),
-                    GenericArgKind::Lifetime(..) => tcx.mk_region(
-                        ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i))
-                    ).into(),
-                    GenericArgKind::Const(ct) => {
-                        tcx.mk_const(ty::Const {
+                    GenericArgKind::Type(..) => {
+                        tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())).into()
+                    }
+                    GenericArgKind::Lifetime(..) => tcx
+                        .mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i)))
+                        .into(),
+                    GenericArgKind::Const(ct) => tcx
+                        .mk_const(ty::Const {
                             ty: ct.ty,
                             val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
-                        }).into()
-                    }
+                        })
+                        .into(),
                 })
-                .collect()
+                .collect(),
         }
     }
 }

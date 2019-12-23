@@ -15,9 +15,6 @@ pub fn target() -> TargetResult {
         target_env: "gnu".to_string(),
         target_vendor: "wrs".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
-        options: TargetOptions {
-            abi_blacklist: super::arm_base::abi_blacklist(),
-            .. base
-        },
+        options: TargetOptions { abi_blacklist: super::arm_base::abi_blacklist(), ..base },
     })
 }

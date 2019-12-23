@@ -32,7 +32,8 @@ fn ordinary() {
     test_literal!(12345.);
     test_literal!(0.9999999);
 
-    if cfg!(miri) { // Miri is too slow
+    if cfg!(miri) {
+        // Miri is too slow
         return;
     }
 
@@ -82,7 +83,8 @@ fn zero() {
     test_literal!(0.0);
     test_literal!(1e-325);
 
-    if cfg!(miri) { // Miri is too slow
+    if cfg!(miri) {
+        // Miri is too slow
         return;
     }
 

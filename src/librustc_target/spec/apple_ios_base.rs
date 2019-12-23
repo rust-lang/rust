@@ -1,8 +1,8 @@
+use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
 use std::env;
 use std::io;
 use std::path::Path;
 use std::process::Command;
-use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
 
 use Arch::*;
 
@@ -25,7 +25,7 @@ impl Arch {
             Arm64 => "arm64",
             I386 => "i386",
             X86_64 => "x86_64",
-            X86_64_macabi => "x86_64"
+            X86_64_macabi => "x86_64",
         }
     }
 }
@@ -41,37 +41,44 @@ pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
         let p = Path::new(&sdkroot);
         match sdk_name {
             // Ignore `SDKROOT` if it's clearly set for the wrong platform.
-            "iphoneos" if sdkroot.contains("iPhoneSimulator.platform")
-                       || sdkroot.contains("MacOSX.platform") => (),
-            "iphonesimulator" if sdkroot.contains("iPhoneOS.platform")
-                              || sdkroot.contains("MacOSX.platform") => (),
-            "macosx10.15" if sdkroot.contains("iPhoneOS.platform")
-                          || sdkroot.contains("iPhoneSimulator.platform") => (),
+            "iphoneos"
+                if sdkroot.contains("iPhoneSimulator.platform")
+                    || sdkroot.contains("MacOSX.platform") =>
+            {
+                ()
+            }
+            "iphonesimulator"
+                if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") =>
+            {
+                ()
+            }
+            "macosx10.15"
+                if sdkroot.contains("iPhoneOS.platform")
+                    || sdkroot.contains("iPhoneSimulator.platform") =>
+            {
+                ()
+            }
             // Ignore `SDKROOT` if it's not a valid path.
             _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => (),
             _ => return Ok(sdkroot),
         }
     }
-    let res = Command::new("xcrun")
-                      .arg("--show-sdk-path")
-                      .arg("-sdk")
-                      .arg(sdk_name)
-                      .output()
-                      .and_then(|output| {
-                          if output.status.success() {
-                              Ok(String::from_utf8(output.stdout).unwrap())
-                          } else {
-                              let error = String::from_utf8(output.stderr);
-                              let error = format!("process exit with error: {}",
-                                                  error.unwrap());
-                              Err(io::Error::new(io::ErrorKind::Other,
-                                                 &error[..]))
-                          }
-                      });
+    let res =
+        Command::new("xcrun").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
+            |output| {
+                if output.status.success() {
+                    Ok(String::from_utf8(output.stdout).unwrap())
+                } else {
+                    let error = String::from_utf8(output.stderr);
+                    let error = format!("process exit with error: {}", error.unwrap());
+                    Err(io::Error::new(io::ErrorKind::Other, &error[..]))
+                }
+            },
+        );
 
     match res {
         Ok(output) => Ok(output.trim().to_string()),
-        Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e))
+        Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e)),
     }
 }
 
@@ -87,13 +94,17 @@ fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
     let sdk_root = get_sdk_root(sdk_name)?;
 
     let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Gcc,
-                vec!["-arch".to_string(),
-                     arch_name.to_string(),
-                     "-isysroot".to_string(),
-                     sdk_root.clone(),
-                     "-Wl,-syslibroot".to_string(),
-                     sdk_root]);
+    args.insert(
+        LinkerFlavor::Gcc,
+        vec![
+            "-arch".to_string(),
+            arch_name.to_string(),
+            "-isysroot".to_string(),
+            sdk_root.clone(),
+            "-Wl,-syslibroot".to_string(),
+            sdk_root,
+        ],
+    );
 
     Ok(args)
 }
@@ -106,7 +117,8 @@ fn target_cpu(arch: Arch) -> String {
         I386 => "yonah",
         X86_64 => "core2",
         X86_64_macabi => "core2",
-    }.to_string()
+    }
+    .to_string()
 }
 
 fn link_env_remove(arch: Arch) -> Vec<String> {
@@ -126,6 +138,6 @@ pub fn opts(arch: Arch) -> Result<TargetOptions, String> {
         link_env_remove: link_env_remove(arch),
         has_elf_tls: false,
         eliminate_frame_pointer: false,
-        .. super::apple_base::opts()
+        ..super::apple_base::opts()
     })
 }

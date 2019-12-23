@@ -1,8 +1,8 @@
-use rustc_parse::validate_attr;
 use rustc_feature::AttributeTemplate;
-use syntax_pos::Symbol;
+use rustc_parse::validate_attr;
 use syntax::ast::MetaItem;
 use syntax_expand::base::ExtCtxt;
+use syntax_pos::Symbol;
 
 pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
     // All the built-in macro attributes are "words" at the moment.

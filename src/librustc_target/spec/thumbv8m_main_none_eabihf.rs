@@ -24,7 +24,7 @@ pub fn target() -> TargetResult {
             // These parameters map to the following LLVM features.
             features: "+fp-armv8,-fp64,-d32".to_string(),
             max_atomic_width: Some(32),
-            .. super::thumb_base::opts()
+            ..super::thumb_base::opts()
         },
     })
 }

@@ -1,7 +1,7 @@
 // Targets the Little-endian Cortex-R4F/R5F processor (ARMv7-R)
 
-use std::default::Default;
 use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use std::default::Default;
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -25,7 +25,7 @@ pub fn target() -> TargetResult {
             max_atomic_width: Some(32),
             abi_blacklist: super::arm_base::abi_blacklist(),
             emit_debug_gdb_scripts: false,
-            .. Default::default()
+            ..Default::default()
         },
     })
 }

@@ -6,40 +6,31 @@ macro_rules! test {
      source_file_start_pos: $source_file_start_pos:expr,
      lines: $lines:expr,
      multi_byte_chars: $multi_byte_chars:expr,
-     non_narrow_chars: $non_narrow_chars:expr,) => (
+     non_narrow_chars: $non_narrow_chars:expr,) => {
+        #[test]
+        fn $test_name() {
+            let (lines, multi_byte_chars, non_narrow_chars) =
+                analyze_source_file($text, BytePos($source_file_start_pos));
 
-    #[test]
-    fn $test_name() {
+            let expected_lines: Vec<BytePos> = $lines.into_iter().map(|pos| BytePos(pos)).collect();
 
-        let (lines, multi_byte_chars, non_narrow_chars) =
-            analyze_source_file($text, BytePos($source_file_start_pos));
+            assert_eq!(lines, expected_lines);
 
-        let expected_lines: Vec<BytePos> = $lines
-            .into_iter()
-            .map(|pos| BytePos(pos))
-            .collect();
+            let expected_mbcs: Vec<MultiByteChar> = $multi_byte_chars
+                .into_iter()
+                .map(|(pos, bytes)| MultiByteChar { pos: BytePos(pos), bytes })
+                .collect();
 
-        assert_eq!(lines, expected_lines);
+            assert_eq!(multi_byte_chars, expected_mbcs);
 
-        let expected_mbcs: Vec<MultiByteChar> = $multi_byte_chars
-            .into_iter()
-            .map(|(pos, bytes)| MultiByteChar {
-                pos: BytePos(pos),
-                bytes,
-            })
-            .collect();
+            let expected_nncs: Vec<NonNarrowChar> = $non_narrow_chars
+                .into_iter()
+                .map(|(pos, width)| NonNarrowChar::new(BytePos(pos), width))
+                .collect();
 
-        assert_eq!(multi_byte_chars, expected_mbcs);
-
-        let expected_nncs: Vec<NonNarrowChar> = $non_narrow_chars
-            .into_iter()
-            .map(|(pos, width)| {
-                NonNarrowChar::new(BytePos(pos), width)
-            })
-            .collect();
-
-        assert_eq!(non_narrow_chars, expected_nncs);
-    })
+            assert_eq!(non_narrow_chars, expected_nncs);
+        }
+    };
 }
 
 test!(

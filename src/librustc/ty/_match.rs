@@ -1,6 +1,6 @@
-use crate::ty::{self, Ty, TyCtxt, InferConst};
 use crate::ty::error::TypeError;
-use crate::ty::relate::{self, Relate, TypeRelation, RelateResult};
+use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use crate::ty::{self, InferConst, Ty, TyCtxt};
 
 /// A type "A" *matches* "B" if the fresh types in B could be
 /// substituted with values so as to make it equal to A. Matching is
@@ -30,53 +30,55 @@ impl Match<'tcx> {
 }
 
 impl TypeRelation<'tcx> for Match<'tcx> {
-    fn tag(&self) -> &'static str { "Match" }
-    fn tcx(&self) -> TyCtxt<'tcx> { self.tcx }
-    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.param_env }
-    fn a_is_expected(&self) -> bool { true } // irrelevant
+    fn tag(&self) -> &'static str {
+        "Match"
+    }
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
+    fn a_is_expected(&self) -> bool {
+        true
+    } // irrelevant
 
-    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
-                                             _: ty::Variance,
-                                             a: &T,
-                                             b: &T)
-                                             -> RelateResult<'tcx, T>
-    {
+    fn relate_with_variance<T: Relate<'tcx>>(
+        &mut self,
+        _: ty::Variance,
+        a: &T,
+        b: &T,
+    ) -> RelateResult<'tcx, T> {
         self.relate(a, b)
     }
 
-    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>)
-               -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?})",
-               self.tag(),
-               a,
-               b);
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
         Ok(a)
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("{}.tys({:?}, {:?})", self.tag(),
-               a, b);
-        if a == b { return Ok(a); }
+        debug!("{}.tys({:?}, {:?})", self.tag(), a, b);
+        if a == b {
+            return Ok(a);
+        }
 
         match (&a.kind, &b.kind) {
-            (_, &ty::Infer(ty::FreshTy(_))) |
-            (_, &ty::Infer(ty::FreshIntTy(_))) |
-            (_, &ty::Infer(ty::FreshFloatTy(_))) => {
-                Ok(a)
-            }
+            (_, &ty::Infer(ty::FreshTy(_)))
+            | (_, &ty::Infer(ty::FreshIntTy(_)))
+            | (_, &ty::Infer(ty::FreshFloatTy(_))) => Ok(a),
 
-            (&ty::Infer(_), _) |
-            (_, &ty::Infer(_)) => {
+            (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
                 Err(TypeError::Sorts(relate::expected_found(self, &a, &b)))
             }
 
-            (&ty::Error, _) | (_, &ty::Error) => {
-                Ok(self.tcx().types.err)
-            }
+            (&ty::Error, _) | (_, &ty::Error) => Ok(self.tcx().types.err),
 
-            _ => {
-                relate::super_relate_tys(self, a, b)
-            }
+            _ => relate::super_relate_tys(self, a, b),
         }
     }
 
@@ -105,9 +107,13 @@ impl TypeRelation<'tcx> for Match<'tcx> {
         relate::super_relate_consts(self, a, b)
     }
 
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'tcx>
+    fn binders<T>(
+        &mut self,
+        a: &ty::Binder<T>,
+        b: &ty::Binder<T>,
+    ) -> RelateResult<'tcx, ty::Binder<T>>
+    where
+        T: Relate<'tcx>,
     {
         Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
     }

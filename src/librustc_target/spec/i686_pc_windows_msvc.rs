@@ -7,8 +7,7 @@ pub fn target() -> TargetResult {
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
-    base.pre_link_args
-        .get_mut(&LinkerFlavor::Msvc).unwrap().push("/LARGEADDRESSAWARE".to_string());
+    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push("/LARGEADDRESSAWARE".to_string());
 
     // Ensure the linker will only produce an image if it can also produce a table of
     // the image's safe exception handlers.

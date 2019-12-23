@@ -19,27 +19,27 @@ use crate::ty::{
 };
 
 use polonius_engine::Atom;
-use rustc_index::bit_set::BitMatrix;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, GraphSuccessors};
-use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
+use rustc_index::bit_set::BitMatrix;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
-use rustc_serialize::{Encodable, Decodable};
+use rustc_serialize::{Decodable, Encodable};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::Index;
 use std::slice;
 use std::{iter, mem, option, u32};
-use syntax::ast::Name;
 pub use syntax::ast::Mutability;
+use syntax::ast::Name;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
-pub use crate::mir::interpret::AssertMessage;
 pub use crate::mir::cache::{BodyAndCache, ReadOnlyBodyAndCache};
+pub use crate::mir::interpret::AssertMessage;
 pub use crate::read_only;
 
 mod cache;
@@ -71,8 +71,18 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 /// The various "big phases" that MIR goes through.
 ///
 /// Warning: ordering of variants is significant.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, HashStable,
-         Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Copy,
+    Clone,
+    RustcEncodable,
+    RustcDecodable,
+    HashStable,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord
+)]
 pub enum MirPhase {
     Build = 0,
     Const = 1,
@@ -167,7 +177,7 @@ impl<'tcx> Body<'tcx> {
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
         control_flow_destroyed: Vec<(Span, String)>,
-        generator_kind : Option<GeneratorKind>,
+        generator_kind: Option<GeneratorKind>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(
@@ -230,11 +240,7 @@ impl<'tcx> Body<'tcx> {
     pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].is_user_variable() {
-                None
-            } else {
-                Some(local)
-            }
+            if self.local_decls[local].is_user_variable() { None } else { Some(local) }
         })
     }
 
@@ -400,7 +406,16 @@ pub struct SourceInfo {
 // Borrow kinds
 
 #[derive(
-    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, HashStable,
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    RustcEncodable,
+    RustcDecodable,
+    HashStable
 )]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -760,9 +775,9 @@ impl<'tcx> LocalDecl<'tcx> {
                 pat_span: _,
             }))) => true,
 
-            LocalInfo::User(
-                ClearCrossCrate::Set(BindingForm::ImplicitSelf(ImplicitSelfKind::Imm)),
-            ) => true,
+            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
+                ImplicitSelfKind::Imm,
+            ))) => true,
 
             _ => false,
         }
@@ -1327,11 +1342,7 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
-        if index < self.statements.len() {
-            &self.statements[index]
-        } else {
-            &self.terminator
-        }
+        if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
     }
 }
 
@@ -1418,13 +1429,9 @@ impl<'tcx> TerminatorKind<'tcx> {
                 values
                     .iter()
                     .map(|&u| {
-                        ty::Const::from_scalar(
-                            tcx,
-                            Scalar::from_uint(u, size).into(),
-                            switch_ty,
-                        )
-                        .to_string()
-                        .into()
+                        ty::Const::from_scalar(tcx, Scalar::from_uint(u, size).into(), switch_ty)
+                            .to_string()
+                            .into()
                     })
                     .chain(iter::once("otherwise".into()))
                     .collect()
@@ -1600,7 +1607,7 @@ impl Debug for Statement<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
-            Assign(box(ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
+            Assign(box (ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
             FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
             Retag(ref kind, ref place) => write!(
                 fmt,
@@ -1621,7 +1628,7 @@ impl Debug for Statement<'_> {
             InlineAsm(ref asm) => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm.asm, asm.outputs, asm.inputs)
             }
-            AscribeUserType(box(ref place, ref c_ty), ref variance) => {
+            AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
             Nop => write!(fmt, "nop"),
@@ -1634,9 +1641,7 @@ impl Debug for Statement<'_> {
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
-#[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, HashStable,
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, HashStable)]
 pub struct Place<'tcx> {
     pub base: PlaceBase<'tcx>,
 
@@ -1646,9 +1651,7 @@ pub struct Place<'tcx> {
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for Place<'tcx> {}
 
-#[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub enum PlaceBase<'tcx> {
     /// local variable
     Local(Local),
@@ -1658,8 +1661,18 @@ pub enum PlaceBase<'tcx> {
 }
 
 /// We store the normalized type to avoid requiring normalization when reading MIR
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, HashStable)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    RustcEncodable,
+    RustcDecodable,
+    HashStable
+)]
 pub struct Static<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: StaticKind<'tcx>,
@@ -1671,7 +1684,16 @@ pub struct Static<'tcx> {
 }
 
 #[derive(
-    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, RustcEncodable, RustcDecodable,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    HashStable,
+    RustcEncodable,
+    RustcDecodable
 )]
 pub enum StaticKind<'tcx> {
     /// Promoted references consist of an id (`Promoted`) and the substs necessary to monomorphize
@@ -1736,12 +1758,11 @@ impl<V, T> ProjectionElem<V, T> {
         match self {
             Self::Deref => true,
 
-            | Self::Field(_, _)
+            Self::Field(_, _)
             | Self::Index(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
-            | Self::Downcast(_, _)
-            => false
+            | Self::Downcast(_, _) => false,
         }
     }
 }
@@ -1750,7 +1771,7 @@ impl<V, T> ProjectionElem<V, T> {
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
-impl<'tcx> Copy for PlaceElem<'tcx> { }
+impl<'tcx> Copy for PlaceElem<'tcx> {}
 
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
 #[cfg(target_arch = "x86_64")]
@@ -1776,10 +1797,7 @@ pub struct PlaceRef<'a, 'tcx> {
 impl<'tcx> Place<'tcx> {
     // FIXME change this to a const fn by also making List::empty a const fn.
     pub fn return_place() -> Place<'tcx> {
-        Place {
-            base: PlaceBase::Local(RETURN_PLACE),
-            projection: List::empty(),
-        }
+        Place { base: PlaceBase::Local(RETURN_PLACE), projection: List::empty() }
     }
 
     /// Returns `true` if this `Place` contains a `Deref` projection.
@@ -1796,14 +1814,10 @@ impl<'tcx> Place<'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self.as_ref() {
-            PlaceRef {
-                base: &PlaceBase::Local(local),
-                projection: &[],
-            } |
-            PlaceRef {
-                base: &PlaceBase::Local(local),
-                projection: &[ProjectionElem::Deref],
-            } => Some(local),
+            PlaceRef { base: &PlaceBase::Local(local), projection: &[] }
+            | PlaceRef { base: &PlaceBase::Local(local), projection: &[ProjectionElem::Deref] } => {
+                Some(local)
+            }
             _ => None,
         }
     }
@@ -1815,19 +1829,13 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
-        PlaceRef {
-            base: &self.base,
-            projection: &self.projection,
-        }
+        PlaceRef { base: &self.base, projection: &self.projection }
     }
 }
 
 impl From<Local> for Place<'_> {
     fn from(local: Local) -> Self {
-        Place {
-            base: local.into(),
-            projection: List::empty(),
-        }
+        Place { base: local.into(), projection: List::empty() }
     }
 }
 
@@ -1844,14 +1852,10 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self {
-            PlaceRef {
-                base: PlaceBase::Local(local),
-                projection: [],
-            } |
-            PlaceRef {
-                base: PlaceBase::Local(local),
-                projection: [ProjectionElem::Deref],
-            } => Some(*local),
+            PlaceRef { base: PlaceBase::Local(local), projection: [] }
+            | PlaceRef { base: PlaceBase::Local(local), projection: [ProjectionElem::Deref] } => {
+                Some(*local)
+            }
             _ => None,
         }
     }
@@ -1934,10 +1938,10 @@ impl Debug for PlaceBase<'_> {
                 write!(fmt, "({}: {:?})", ty::tls::with(|tcx| tcx.def_path_str(def_id)), ty)
             }
             PlaceBase::Static(box self::Static {
-                ty, kind: StaticKind::Promoted(promoted, _), def_id: _
-            }) => {
-                write!(fmt, "({:?}: {:?})", promoted, ty)
-            }
+                ty,
+                kind: StaticKind::Promoted(promoted, _),
+                def_id: _,
+            }) => write!(fmt, "({:?}: {:?})", promoted, ty),
         }
     }
 }
@@ -2333,11 +2337,9 @@ impl Constant<'tcx> {
                 Some(GlobalAlloc::Static(def_id)) => Some(def_id),
                 Some(_) => None,
                 None => {
-                    tcx.sess.delay_span_bug(
-                        DUMMY_SP, "MIR cannot contain dangling const pointers",
-                    );
+                    tcx.sess.delay_span_bug(DUMMY_SP, "MIR cannot contain dangling const pointers");
                     None
-                },
+                }
             },
             _ => None,
         }
@@ -2390,15 +2392,13 @@ impl<'tcx> UserTypeProjections {
         UserTypeProjections { contents: projs.collect() }
     }
 
-    pub fn projections_and_spans(&self)
-        -> impl Iterator<Item = &(UserTypeProjection, Span)> + ExactSizeIterator
-    {
+    pub fn projections_and_spans(
+        &self,
+    ) -> impl Iterator<Item = &(UserTypeProjection, Span)> + ExactSizeIterator {
         self.contents.iter()
     }
 
-    pub fn projections(&self)
-        -> impl Iterator<Item = &UserTypeProjection> + ExactSizeIterator
-    {
+    pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection> + ExactSizeIterator {
         self.contents.iter().map(|&(ref user_type, _span)| user_type)
     }
 
@@ -2566,10 +2566,7 @@ impl<'tcx> graph::WithStartNode for Body<'tcx> {
 }
 
 impl<'tcx> graph::WithSuccessors for Body<'tcx> {
-    fn successors(
-        &self,
-        node: Self::Node,
-    ) -> <Self as GraphSuccessors<'_>>::Iter {
+    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
         self.basic_blocks[node].terminator().successors().cloned()
     }
 }
@@ -2611,7 +2608,7 @@ impl Location {
     pub fn is_predecessor_of<'tcx>(
         &self,
         other: Location,
-        body: ReadOnlyBodyAndCache<'_, 'tcx>
+        body: ReadOnlyBodyAndCache<'_, 'tcx>,
     ) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.
@@ -2812,7 +2809,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
     Hash,
     RustcEncodable,
     RustcDecodable,
-    HashStable,
+    HashStable
 )]
 pub enum ConstraintCategory {
     Return,
@@ -2920,14 +2917,16 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Assert { ref cond, expected, ref msg, target, cleanup } => {
                 use PanicInfo::*;
                 let msg = match msg {
-                    BoundsCheck { ref len, ref index } =>
-                        BoundsCheck {
-                            len: len.fold_with(folder),
-                            index: index.fold_with(folder),
-                        },
-                    Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_)  =>
-                        msg.clone(),
+                    BoundsCheck { ref len, ref index } => {
+                        BoundsCheck { len: len.fold_with(folder), index: index.fold_with(folder) }
+                    }
+                    Panic { .. }
+                    | Overflow(_)
+                    | OverflowNeg
+                    | DivisionByZero
+                    | RemainderByZero
+                    | ResumedAfterReturn(_)
+                    | ResumedAfterPanic(_) => msg.clone(),
                 };
                 Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
             }
@@ -2968,12 +2967,16 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 if cond.visit_with(visitor) {
                     use PanicInfo::*;
                     match msg {
-                        BoundsCheck { ref len, ref index } =>
-                            len.visit_with(visitor) || index.visit_with(visitor),
-                        Panic { .. } | Overflow(_) | OverflowNeg |
-                        DivisionByZero | RemainderByZero |
-                        ResumedAfterReturn(_) | ResumedAfterPanic(_) =>
-                            false
+                        BoundsCheck { ref len, ref index } => {
+                            len.visit_with(visitor) || index.visit_with(visitor)
+                        }
+                        Panic { .. }
+                        | Overflow(_)
+                        | OverflowNeg
+                        | DivisionByZero
+                        | RemainderByZero
+                        | ResumedAfterReturn(_)
+                        | ResumedAfterPanic(_) => false,
                     }
                 } else {
                     false
@@ -3003,10 +3006,7 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorKind {
 
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        Place {
-            base: self.base.fold_with(folder),
-            projection: self.projection.fold_with(folder),
-        }
+        Place { base: self.base.fold_with(folder), projection: self.projection.fold_with(folder) }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
@@ -3060,17 +3060,19 @@ impl<'tcx> TypeFoldable<'tcx> for Static<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for StaticKind<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match self {
-            StaticKind::Promoted(promoted, substs) =>
-                StaticKind::Promoted(promoted.fold_with(folder), substs.fold_with(folder)),
-            StaticKind::Static => StaticKind::Static
+            StaticKind::Promoted(promoted, substs) => {
+                StaticKind::Promoted(promoted.fold_with(folder), substs.fold_with(folder))
+            }
+            StaticKind::Static => StaticKind::Static,
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match self {
-            StaticKind::Promoted(promoted, substs) =>
-                promoted.visit_with(visitor) || substs.visit_with(visitor),
-            StaticKind::Static => { false }
+            StaticKind::Promoted(promoted, substs) => {
+                promoted.visit_with(visitor) || substs.visit_with(visitor)
+            }
+            StaticKind::Static => false,
         }
     }
 }
@@ -3084,9 +3086,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Ref(region, bk, ref place) => {
                 Ref(region.fold_with(folder), bk, place.fold_with(folder))
             }
-            AddressOf(mutability, ref place) => {
-                AddressOf(mutability, place.fold_with(folder))
-            }
+            AddressOf(mutability, ref place) => AddressOf(mutability, place.fold_with(folder)),
             Len(ref place) => Len(place.fold_with(folder)),
             Cast(kind, ref op, ty) => Cast(kind, op.fold_with(folder), ty.fold_with(folder)),
             BinaryOp(op, ref rhs, ref lhs) => {

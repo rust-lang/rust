@@ -3,22 +3,26 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
-use walkdir::{DirEntry, WalkDir};
 use std::fs::File;
 use std::io::Read;
+use walkdir::{DirEntry, WalkDir};
 
 use std::path::Path;
 
 macro_rules! t {
-    ($e:expr, $p:expr) => (match $e {
-        Ok(e) => e,
-        Err(e) => panic!("{} failed on {} with {}", stringify!($e), ($p).display(), e),
-    });
+    ($e:expr, $p:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed on {} with {}", stringify!($e), ($p).display(), e),
+        }
+    };
 
-    ($e:expr) => (match $e {
-        Ok(e) => e,
-        Err(e) => panic!("{} failed with {}", stringify!($e), e),
-    })
+    ($e:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with {}", stringify!($e), e),
+        }
+    };
 }
 
 macro_rules! tidy_error {
@@ -30,19 +34,19 @@ macro_rules! tidy_error {
 }
 
 pub mod bins;
-pub mod style;
-pub mod debug_artifacts;
-pub mod errors;
-pub mod features;
 pub mod cargo;
-pub mod edition;
-pub mod pal;
+pub mod debug_artifacts;
 pub mod deps;
+pub mod edition;
+pub mod error_codes_check;
+pub mod errors;
 pub mod extdeps;
+pub mod features;
+pub mod pal;
+pub mod style;
 pub mod ui_tests;
 pub mod unit_tests;
 pub mod unstable_book;
-pub mod error_codes_check;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
@@ -54,7 +58,6 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/rls",
         "src/tools/rust-installer",
         "src/tools/rustfmt",
-
         // Filter RLS output directories
         "target/rls",
     ];
@@ -62,7 +65,9 @@ fn filter_dirs(path: &Path) -> bool {
 }
 
 fn walk_many(
-    paths: &[&Path], skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&DirEntry, &str)
+    paths: &[&Path],
+    skip: &mut dyn FnMut(&Path) -> bool,
+    f: &mut dyn FnMut(&DirEntry, &str),
 ) {
     for path in paths {
         walk(path, skip, f);
@@ -81,8 +86,7 @@ fn walk(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&Dir
 }
 
 fn walk_no_read(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&DirEntry)) {
-    let walker = WalkDir::new(path).into_iter()
-        .filter_entry(|e| !skip(e.path()));
+    let walker = WalkDir::new(path).into_iter().filter_entry(|e| !skip(e.path()));
     for entry in walker {
         if let Ok(entry) = entry {
             if entry.file_type().is_dir() {

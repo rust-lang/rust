@@ -1,10 +1,10 @@
-use arena::{TypedArena, DroplessArena};
+use arena::{DroplessArena, TypedArena};
+use smallvec::SmallVec;
+use std::cell::RefCell;
+use std::marker::PhantomData;
 use std::mem;
 use std::ptr;
 use std::slice;
-use std::cell::RefCell;
-use std::marker::PhantomData;
-use smallvec::SmallVec;
 
 /// This declares a list of types which can be allocated by `Arena`.
 ///
@@ -226,17 +226,14 @@ impl<'tcx> Arena<'tcx> {
     #[inline]
     pub fn alloc_slice<T: Copy>(&self, value: &[T]) -> &mut [T] {
         if value.len() == 0 {
-            return &mut []
+            return &mut [];
         }
         self.dropless.alloc_slice(value)
     }
 
-    pub fn alloc_from_iter<
-        T: ArenaAllocatable,
-        I: IntoIterator<Item = T>
-    >(
+    pub fn alloc_from_iter<T: ArenaAllocatable, I: IntoIterator<Item = T>>(
         &'a self,
-        iter: I
+        iter: I,
     ) -> &'a mut [T] {
         if !mem::needs_drop::<T>() {
             return self.dropless.alloc_from_iter(iter);
@@ -260,9 +257,7 @@ unsafe fn drop_for_type<T>(to_drop: *mut u8) {
 
 impl Drop for DropType {
     fn drop(&mut self) {
-        unsafe {
-            (self.drop_fn)(self.obj)
-        }
+        unsafe { (self.drop_fn)(self.obj) }
     }
 }
 
@@ -283,19 +278,16 @@ struct DropArena {
 impl DropArena {
     #[inline]
     unsafe fn alloc<T>(&self, object: T) -> &mut T {
-        let mem = self.arena.alloc_raw(
-            mem::size_of::<T>(),
-            mem::align_of::<T>()
-        ) as *mut _ as *mut T;
+        let mem =
+            self.arena.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut _ as *mut T;
         // Write into uninitialized memory.
         ptr::write(mem, object);
         let result = &mut *mem;
         // Record the destructor after doing the allocation as that may panic
         // and would cause `object`'s destuctor to run twice if it was recorded before
-        self.destructors.borrow_mut().push(DropType {
-            drop_fn: drop_for_type::<T>,
-            obj: result as *mut T as *mut u8,
-        });
+        self.destructors
+            .borrow_mut()
+            .push(DropType { drop_fn: drop_for_type::<T>, obj: result as *mut T as *mut u8 });
         result
     }
 
@@ -307,10 +299,10 @@ impl DropArena {
         }
         let len = vec.len();
 
-        let start_ptr = self.arena.alloc_raw(
-            len.checked_mul(mem::size_of::<T>()).unwrap(),
-            mem::align_of::<T>()
-        ) as *mut _ as *mut T;
+        let start_ptr = self
+            .arena
+            .alloc_raw(len.checked_mul(mem::size_of::<T>()).unwrap(), mem::align_of::<T>())
+            as *mut _ as *mut T;
 
         let mut destructors = self.destructors.borrow_mut();
         // Reserve space for the destructors so we can't panic while adding them

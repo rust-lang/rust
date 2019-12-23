@@ -1,22 +1,24 @@
-use crate::deriving::path_std;
-use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
+use crate::deriving::generic::*;
+use crate::deriving::path_std;
 
 use syntax::ast::{self, Ident};
 use syntax::ast::{Expr, MetaItem};
-use syntax_expand::base::{Annotatable, ExtCtxt};
 use syntax::ptr::P;
 use syntax::symbol::sym;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_expand::base::{Annotatable, ExtCtxt};
+use syntax_pos::{Span, DUMMY_SP};
 
-pub fn expand_deriving_debug(cx: &mut ExtCtxt<'_>,
-                             span: Span,
-                             mitem: &MetaItem,
-                             item: &Annotatable,
-                             push: &mut dyn FnMut(Annotatable)) {
+pub fn expand_deriving_debug(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    mitem: &MetaItem,
+    item: &Annotatable,
+    push: &mut dyn FnMut(Annotatable),
+) {
     // &mut ::std::fmt::Formatter
-    let fmtr = Ptr(Box::new(Literal(path_std!(cx, fmt::Formatter))),
-                   Borrowed(None, ast::Mutability::Mut));
+    let fmtr =
+        Ptr(Box::new(Literal(path_std!(cx, fmt::Formatter))), Borrowed(None, ast::Mutability::Mut));
 
     let trait_def = TraitDef {
         span,
@@ -27,18 +29,18 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt<'_>,
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-                          name: "fmt",
-                          generics: LifetimeBounds::empty(),
-                          explicit_self: borrowed_explicit_self(),
-                          args: vec![(fmtr, "f")],
-                          ret_ty: Literal(path_std!(cx, fmt::Result)),
-                          attributes: Vec::new(),
-                          is_unsafe: false,
-                          unify_fieldless_variants: false,
-                          combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                              show_substructure(a, b, c)
-                          })),
-                      }],
+            name: "fmt",
+            generics: LifetimeBounds::empty(),
+            explicit_self: borrowed_explicit_self(),
+            args: vec![(fmtr, "f")],
+            ret_ty: Literal(path_std!(cx, fmt::Result)),
+            attributes: Vec::new(),
+            is_unsafe: false,
+            unify_fieldless_variants: false,
+            combine_substructure: combine_substructure(Box::new(|a, b, c| {
+                show_substructure(a, b, c)
+            })),
+        }],
         associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
@@ -52,9 +54,9 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
         EnumMatching(_, _, v, fields) => (v.ident, &v.data, fields),
-        EnumNonMatchingCollapsed(..) |
-        StaticStruct(..) |
-        StaticEnum(..) => cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`"),
+        EnumNonMatchingCollapsed(..) | StaticStruct(..) | StaticEnum(..) => {
+            cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
+        }
     };
 
     // We want to make sure we have the ctxt set so that we can use unstable methods
@@ -69,8 +71,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     match vdata {
         ast::VariantData::Tuple(..) | ast::VariantData::Unit(..) => {
             // tuple struct/"normal" variant
-            let expr =
-                cx.expr_method_call(span, fmt, cx.ident_of("debug_tuple", span), vec![name]);
+            let expr = cx.expr_method_call(span, fmt, cx.ident_of("debug_tuple", span), vec![name]);
             stmts.push(cx.stmt_let(span, true, builder, expr));
 
             for field in fields {
@@ -78,10 +79,12 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 let field = cx.expr_addr_of(field.span, field.self_.clone());
                 let field = cx.expr_addr_of(field.span, field);
 
-                let expr = cx.expr_method_call(span,
-                                                builder_expr.clone(),
-                                                Ident::new(sym::field, span),
-                                                vec![field]);
+                let expr = cx.expr_method_call(
+                    span,
+                    builder_expr.clone(),
+                    Ident::new(sym::field, span),
+                    vec![field],
+                );
 
                 // Use `let _ = expr;` to avoid triggering the
                 // unused_results lint.
@@ -95,17 +98,20 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
             for field in fields {
-                let name = cx.expr_lit(field.span,
-                                        ast::LitKind::Str(field.name.unwrap().name,
-                                                            ast::StrStyle::Cooked));
+                let name = cx.expr_lit(
+                    field.span,
+                    ast::LitKind::Str(field.name.unwrap().name, ast::StrStyle::Cooked),
+                );
 
                 // Use double indirection to make sure this works for unsized types
                 let field = cx.expr_addr_of(field.span, field.self_.clone());
                 let field = cx.expr_addr_of(field.span, field);
-                let expr = cx.expr_method_call(span,
-                                                builder_expr.clone(),
-                                                Ident::new(sym::field, span),
-                                                vec![name, field]);
+                let expr = cx.expr_method_call(
+                    span,
+                    builder_expr.clone(),
+                    Ident::new(sym::field, span),
+                    vec![name, field],
+                );
                 stmts.push(stmt_let_undescore(cx, span, expr));
             }
         }
@@ -127,9 +133,5 @@ fn stmt_let_undescore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> ast
         span: sp,
         attrs: ast::AttrVec::new(),
     });
-    ast::Stmt {
-        id: ast::DUMMY_NODE_ID,
-        kind: ast::StmtKind::Local(local),
-        span: sp,
-    }
+    ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
 }

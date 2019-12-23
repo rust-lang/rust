@@ -1,4 +1,4 @@
-use crate::spec::{LldFlavor, LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::fuchsia_base::opts();
@@ -15,9 +15,6 @@ pub fn target() -> TargetResult {
         target_env: String::new(),
         target_vendor: String::new(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-        options: TargetOptions {
-            abi_blacklist: super::arm_base::abi_blacklist(),
-            .. base
-        },
+        options: TargetOptions { abi_blacklist: super::arm_base::abi_blacklist(), ..base },
     })
 }

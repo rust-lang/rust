@@ -1,20 +1,17 @@
-use rustc::ty::{self, TyCtxt};
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, Location, Body, Place, ReadOnlyBodyAndCache, Rvalue};
-use rustc::mir::{Statement, StatementKind};
 use rustc::mir::TerminatorKind;
-use rustc::mir::{Operand, BorrowKind, Mutability};
+use rustc::mir::{BasicBlock, Body, Location, Place, ReadOnlyBodyAndCache, Rvalue};
+use rustc::mir::{BorrowKind, Mutability, Operand};
+use rustc::mir::{Statement, StatementKind};
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::graph::dominators::Dominators;
 
 use crate::dataflow::indexes::BorrowIndex;
 
 use crate::borrow_check::{
-    borrow_set::BorrowSet,
-    location::LocationTable,
-    facts::AllFacts,
-    path_utils::*,
-    JustWrite, WriteAndRead, AccessDepth, Deep, Shallow, ReadOrWrite, Activation, Read,
-    Reservation, Write, LocalMutationIsAllowed, MutateMode, ArtificialField, ReadKind, WriteKind,
+    borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, path_utils::*, AccessDepth,
+    Activation, ArtificialField, Deep, JustWrite, LocalMutationIsAllowed, MutateMode, Read,
+    ReadKind, ReadOrWrite, Reservation, Shallow, Write, WriteAndRead, WriteKind,
 };
 
 pub(super) fn generate_invalidates<'tcx>(
@@ -59,40 +56,20 @@ struct InvalidationGenerator<'cx, 'tcx> {
 /// Visits the whole MIR and generates `invalidates()` facts.
 /// Most of the code implementing this was stolen from `borrow_check/mod.rs`.
 impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
-    fn visit_statement(
-        &mut self,
-        statement: &Statement<'tcx>,
-        location: Location,
-    ) {
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         self.check_activations(location);
 
         match statement.kind {
-            StatementKind::Assign(box(ref lhs, ref rhs)) => {
-                self.consume_rvalue(
-                    location,
-                    rhs,
-                );
+            StatementKind::Assign(box (ref lhs, ref rhs)) => {
+                self.consume_rvalue(location, rhs);
 
-                self.mutate_place(
-                    location,
-                    lhs,
-                    Shallow(None),
-                    JustWrite
-                );
+                self.mutate_place(location, lhs, Shallow(None), JustWrite);
             }
             StatementKind::FakeRead(_, _) => {
                 // Only relavent for initialized/liveness/safety checks.
             }
-            StatementKind::SetDiscriminant {
-                ref place,
-                variant_index: _,
-            } => {
-                self.mutate_place(
-                    location,
-                    place,
-                    Shallow(None),
-                    JustWrite,
-                );
+            StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
+                self.mutate_place(location, place, Shallow(None), JustWrite);
             }
             StatementKind::InlineAsm(ref asm) => {
                 for (o, output) in asm.asm.outputs.iter().zip(asm.outputs.iter()) {
@@ -118,10 +95,10 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     self.consume_operand(location, input);
                 }
             }
-            StatementKind::Nop |
-            StatementKind::AscribeUserType(..) |
-            StatementKind::Retag { .. } |
-            StatementKind::StorageLive(..) => {
+            StatementKind::Nop
+            | StatementKind::AscribeUserType(..)
+            | StatementKind::Retag { .. }
+            | StatementKind::StorageLive(..) => {
                 // `Nop`, `AscribeUserType`, `Retag`, and `StorageLive` are irrelevant
                 // to borrow check.
             }
@@ -138,27 +115,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
         self.super_statement(statement, location);
     }
 
-    fn visit_terminator_kind(
-        &mut self,
-        kind: &TerminatorKind<'tcx>,
-        location: Location
-    ) {
+    fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, location: Location) {
         self.check_activations(location);
 
         match kind {
-            TerminatorKind::SwitchInt {
-                ref discr,
-                switch_ty: _,
-                values: _,
-                targets: _,
-            } => {
+            TerminatorKind::SwitchInt { ref discr, switch_ty: _, values: _, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop {
-                location: ref drop_place,
-                target: _,
-                unwind: _,
-            } => {
+            TerminatorKind::Drop { location: ref drop_place, target: _, unwind: _ } => {
                 self.access_place(
                     location,
                     drop_place,
@@ -172,16 +136,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 target: _,
                 unwind: _,
             } => {
-                self.mutate_place(
-                    location,
-                    drop_place,
-                    Deep,
-                    JustWrite,
-                );
-                self.consume_operand(
-                    location,
-                    new_value,
-                );
+                self.mutate_place(location, drop_place, Deep, JustWrite);
+                self.consume_operand(location, new_value);
             }
             TerminatorKind::Call {
                 ref func,
@@ -195,21 +151,10 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     self.consume_operand(location, arg);
                 }
                 if let Some((ref dest, _ /*bb*/)) = *destination {
-                    self.mutate_place(
-                        location,
-                        dest,
-                        Deep,
-                        JustWrite,
-                    );
+                    self.mutate_place(location, dest, Deep, JustWrite);
                 }
             }
-            TerminatorKind::Assert {
-                ref cond,
-                expected: _,
-                ref msg,
-                target: _,
-                cleanup: _,
-            } => {
+            TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
                 self.consume_operand(location, cond);
                 use rustc::mir::interpret::PanicInfo;
                 if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
@@ -217,11 +162,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     self.consume_operand(location, index);
                 }
             }
-            TerminatorKind::Yield {
-                ref value,
-                resume,
-                drop: _,
-            } => {
+            TerminatorKind::Yield { ref value, resume, drop: _ } => {
                 self.consume_operand(location, value);
 
                 // Invalidate all borrows of local places
@@ -246,14 +187,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::Goto { target: _ }
             | TerminatorKind::Abort
             | TerminatorKind::Unreachable
-            | TerminatorKind::FalseEdges {
-                real_target: _,
-                imaginary_target: _,
-            }
-            | TerminatorKind::FalseUnwind {
-                real_target: _,
-                unwind: _,
-            } => {
+            | TerminatorKind::FalseEdges { real_target: _, imaginary_target: _ }
+            | TerminatorKind::FalseUnwind { real_target: _, unwind: _ } => {
                 // no data used, thus irrelevant to borrowck
             }
         }
@@ -280,11 +215,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     }
 
     /// Simulates consumption of an operand.
-    fn consume_operand(
-        &mut self,
-        location: Location,
-        operand: &Operand<'tcx>,
-    ) {
+    fn consume_operand(&mut self, location: Location, operand: &Operand<'tcx>) {
         match *operand {
             Operand::Copy(ref place) => {
                 self.access_place(
@@ -307,17 +238,13 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     }
 
     // Simulates consumption of an rvalue
-    fn consume_rvalue(
-        &mut self,
-        location: Location,
-        rvalue: &Rvalue<'tcx>,
-    ) {
+    fn consume_rvalue(&mut self, location: Location, rvalue: &Rvalue<'tcx>) {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
                 let access_kind = match bk {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
-                    },
+                    }
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
@@ -329,28 +256,21 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                     }
                 };
 
-                self.access_place(
-                    location,
-                    place,
-                    access_kind,
-                    LocalMutationIsAllowed::No,
-                );
+                self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
             Rvalue::AddressOf(mutability, ref place) => {
                 let access_kind = match mutability {
-                    Mutability::Mut => (Deep, Write(WriteKind::MutableBorrow(BorrowKind::Mut {
-                        allow_two_phase_borrow: false,
-                    }))),
+                    Mutability::Mut => (
+                        Deep,
+                        Write(WriteKind::MutableBorrow(BorrowKind::Mut {
+                            allow_two_phase_borrow: false,
+                        })),
+                    ),
                     Mutability::Not => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
                 };
 
-                self.access_place(
-                    location,
-                    place,
-                    access_kind,
-                    LocalMutationIsAllowed::No,
-                );
+                self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
             Rvalue::Use(ref operand)
@@ -380,8 +300,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 self.consume_operand(location, operand2);
             }
 
-            Rvalue::NullaryOp(_op, _ty) => {
-            }
+            Rvalue::NullaryOp(_op, _ty) => {}
 
             Rvalue::Aggregate(_, ref operands) => {
                 for operand in operands {
@@ -414,10 +333,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         debug!(
             "invalidation::check_access_for_conflict(location={:?}, place={:?}, sd={:?}, \
              rw={:?})",
-            location,
-            place,
-            sd,
-            rw,
+            location, place, sd, rw,
         );
         let tcx = self.tcx;
         let body = self.body;
@@ -466,9 +382,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                         this.generate_invalidates(borrow_index, location);
                     }
 
-                    (Reservation(_), _)
-                    | (Activation(_, _), _)
-                    | (Write(_), _) => {
+                    (Reservation(_), _) | (Activation(_, _), _) | (Write(_), _) => {
                         // unique or mutable borrows are invalidated by writes.
                         // Reservations count as writes since we need to check
                         // that activating the borrow will be OK
@@ -481,17 +395,13 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         );
     }
 
-
     /// Generates a new `invalidates(L, B)` fact.
     fn generate_invalidates(&mut self, b: BorrowIndex, l: Location) {
         let lidx = self.location_table.start_index(l);
         self.all_facts.invalidates.push((lidx, b));
     }
 
-    fn check_activations(
-        &mut self,
-        location: Location,
-    ) {
+    fn check_activations(&mut self, location: Location) {
         // Two-phase borrow support: For each activation that is newly
         // generated at this statement, check if it interferes with
         // another borrow.
@@ -507,10 +417,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
             self.access_place(
                 location,
                 &borrow.borrowed_place,
-                (
-                    Deep,
-                    Activation(WriteKind::MutableBorrow(borrow.kind), borrow_index),
-                ),
+                (Deep, Activation(WriteKind::MutableBorrow(borrow.kind), borrow_index)),
                 LocalMutationIsAllowed::No,
             );
 

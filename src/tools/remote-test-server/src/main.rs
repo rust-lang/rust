@@ -27,10 +27,12 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 macro_rules! t {
-    ($e:expr) => (match $e {
-        Ok(e) => e,
-        Err(e) => panic!("{} failed with {}", stringify!($e), e),
-    })
+    ($e:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with {}", stringify!($e), e),
+        }
+    };
 }
 
 static TEST: AtomicUsize = AtomicUsize::new(0);
@@ -42,10 +44,7 @@ struct Config {
 
 impl Config {
     pub fn default() -> Config {
-        Config {
-            remote: false,
-            verbose: false,
-        }
+        Config { remote: false, verbose: false }
     }
 
     pub fn parse_args() -> Config {
@@ -56,7 +55,7 @@ impl Config {
             match &argument[..] {
                 "remote" => {
                     config.remote = true;
-                },
+                }
                 "verbose" | "-v" => {
                     config.verbose = true;
                 }
@@ -95,7 +94,7 @@ fn main() {
         let mut socket = t!(socket);
         let mut buf = [0; 4];
         if socket.read_exact(&mut buf).is_err() {
-            continue
+            continue;
         }
         if &buf[..] == b"ping" {
             t!(socket.write_all(b"pong"));
@@ -207,15 +206,12 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
     // Support libraries were uploaded to `work` earlier, so make sure that's
     // in `LD_LIBRARY_PATH`. Also include our own current dir which may have
     // had some libs uploaded.
-    cmd.env("LD_LIBRARY_PATH",
-            format!("{}:{}", work.display(), path.display()));
+    cmd.env("LD_LIBRARY_PATH", format!("{}:{}", work.display(), path.display()));
 
     // Spawn the child and ferry over stdout/stderr to the socket in a framed
     // fashion (poor man's style)
-    let mut child = t!(cmd.stdin(Stdio::null())
-                          .stdout(Stdio::piped())
-                          .stderr(Stdio::piped())
-                          .spawn());
+    let mut child =
+        t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn());
     drop(lock);
     let mut stdout = child.stdout.take().unwrap();
     let mut stderr = child.stderr.take().unwrap();
@@ -235,8 +231,8 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
         which,
         (code >> 24) as u8,
         (code >> 16) as u8,
-        (code >>  8) as u8,
-        (code >>  0) as u8,
+        (code >> 8) as u8,
+        (code >> 0) as u8,
     ]));
 }
 
@@ -256,8 +252,7 @@ fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
     let len = cmp::min(filename.len() - 1, 50);
     let dst = dir.join(t!(str::from_utf8(&filename[..len])));
     let amt = read_u32(io) as u64;
-    t!(io::copy(&mut io.take(amt),
-                &mut t!(File::create(&dst))));
+    t!(io::copy(&mut io.take(amt), &mut t!(File::create(&dst))));
     t!(fs::set_permissions(&dst, Permissions::from_mode(0o755)));
     dst
 }
@@ -271,13 +266,13 @@ fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
             which,
             (n >> 24) as u8,
             (n >> 16) as u8,
-            (n >>  8) as u8,
-            (n >>  0) as u8,
+            (n >> 8) as u8,
+            (n >> 0) as u8,
         ]));
         if n > 0 {
             t!(dst.write_all(&b[..n]));
         } else {
-            break
+            break;
         }
     }
 }
@@ -285,8 +280,8 @@ fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
 fn read_u32(r: &mut dyn Read) -> u32 {
     let mut len = [0; 4];
     t!(r.read_exact(&mut len));
-    ((len[0] as u32) << 24) |
-    ((len[1] as u32) << 16) |
-    ((len[2] as u32) <<  8) |
-    ((len[3] as u32) <<  0)
+    ((len[0] as u32) << 24)
+        | ((len[1] as u32) << 16)
+        | ((len[2] as u32) << 8)
+        | ((len[3] as u32) << 0)
 }

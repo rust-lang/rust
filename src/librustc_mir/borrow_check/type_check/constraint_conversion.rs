@@ -1,5 +1,5 @@
-use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::canonical::QueryOutlivesConstraint;
+use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
@@ -11,10 +11,10 @@ use syntax_pos::DUMMY_SP;
 
 use crate::borrow_check::{
     constraints::OutlivesConstraint,
+    nll::ToRegionVid,
     region_infer::TypeTest,
     type_check::{Locations, MirTypeckRegionConstraints},
     universal_regions::UniversalRegions,
-    nll::ToRegionVid,
 };
 
 crate struct ConstraintConversion<'a, 'tcx> {
@@ -62,15 +62,10 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         // `self.constraints`, but we also want to be mutating
         // `self.member_constraints`. For now, just swap out the value
         // we want and replace at the end.
-        let mut tmp = std::mem::replace(
-            &mut self.constraints.member_constraints,
-            Default::default(),
-        );
+        let mut tmp =
+            std::mem::replace(&mut self.constraints.member_constraints, Default::default());
         for member_constraint in member_constraints {
-            tmp.push_constraint(
-                member_constraint,
-                |r| self.to_region_vid(r),
-            );
+            tmp.push_constraint(member_constraint, |r| self.to_region_vid(r));
         }
         self.constraints.member_constraints = tmp;
 
@@ -84,24 +79,16 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
         // Extract out various useful fields we'll need below.
         let ConstraintConversion {
-            tcx,
-            region_bound_pairs,
-            implicit_region_bound,
-            param_env,
-            ..
+            tcx, region_bound_pairs, implicit_region_bound, param_env, ..
         } = *self;
 
         // At the moment, we never generate any "higher-ranked"
         // region constraints like `for<'a> 'a: 'b`. At some point
         // when we move to universes, we will, and this assertion
         // will start to fail.
-        let ty::OutlivesPredicate(k1, r2) =
-            query_constraint.no_bound_vars().unwrap_or_else(|| {
-                bug!(
-                    "query_constraint {:?} contained bound vars",
-                    query_constraint,
-                );
-            });
+        let ty::OutlivesPredicate(k1, r2) = query_constraint.no_bound_vars().unwrap_or_else(|| {
+            bug!("query_constraint {:?} contained bound vars", query_constraint,);
+        });
 
         match k1.unpack() {
             GenericArgKind::Lifetime(r1) => {
@@ -121,7 +108,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     region_bound_pairs,
                     implicit_region_bound,
                     param_env,
-                ).type_must_outlive(origin, t1, r2);
+                )
+                .type_must_outlive(origin, t1, r2);
             }
 
             GenericArgKind::Const(_) => {
@@ -139,33 +127,24 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
 
-        TypeTest {
-            generic_kind,
-            lower_bound,
-            locations: self.locations,
-            verify_bound,
-        }
+        TypeTest { generic_kind, lower_bound, locations: self.locations, verify_bound }
     }
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
         if let ty::RePlaceholder(placeholder) = r {
-            self.constraints
-                .placeholder_region(self.infcx, *placeholder)
-                .to_region_vid()
+            self.constraints.placeholder_region(self.infcx, *placeholder).to_region_vid()
         } else {
             self.universal_regions.to_region_vid(r)
         }
     }
 
     fn add_outlives(&mut self, sup: ty::RegionVid, sub: ty::RegionVid) {
-        self.constraints
-            .outlives_constraints
-            .push(OutlivesConstraint {
-                locations: self.locations,
-                category: self.category,
-                sub,
-                sup,
-            });
+        self.constraints.outlives_constraints.push(OutlivesConstraint {
+            locations: self.locations,
+            category: self.category,
+            sub,
+            sup,
+        });
     }
 
     fn add_type_test(&mut self, type_test: TypeTest<'tcx>) {

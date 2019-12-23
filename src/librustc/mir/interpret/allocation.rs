@@ -1,17 +1,17 @@
 //! The virtual memory representation of the MIR interpreter.
 
 use super::{
-    Pointer, InterpResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
+    read_target_uint, write_target_uint, AllocId, InterpResult, Pointer, Scalar, ScalarMaybeUndef,
 };
 
-use crate::ty::layout::{Size, Align};
+use crate::ty::layout::{Align, Size};
 
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::HasDataLayout;
-use syntax::ast::Mutability;
-use std::iter;
-use std::ops::{Range, Deref, DerefMut};
 use std::borrow::Cow;
+use std::iter;
+use std::ops::{Deref, DerefMut, Range};
+use syntax::ast::Mutability;
 
 // NOTE: When adding new fields, make sure to adjust the `Snapshot` impl in
 // `src/librustc_mir/interpret/snapshot.rs`.
@@ -25,9 +25,9 @@ use std::borrow::Cow;
     Hash,
     RustcEncodable,
     RustcDecodable,
-    HashStable,
+    HashStable
 )]
-pub struct Allocation<Tag = (),Extra = ()> {
+pub struct Allocation<Tag = (), Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
     bytes: Vec<u8>,
@@ -92,7 +92,7 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
 }
 
 // For `Tag = ()` and no extra state, we have a trivial implementation.
-impl AllocationExtra<()> for () { }
+impl AllocationExtra<()> for () {}
 
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Tag> Allocation<Tag> {
@@ -140,14 +140,15 @@ impl Allocation<(), ()> {
             bytes: self.bytes,
             size: self.size,
             relocations: Relocations::from_presorted(
-                self.relocations.iter()
+                self.relocations
+                    .iter()
                     // The allocations in the relocations (pointers stored *inside* this allocation)
                     // all get the base pointer tag.
                     .map(|&(offset, ((), alloc))| {
                         let tag = tagger(alloc);
                         (offset, (tag, alloc))
                     })
-                    .collect()
+                    .collect(),
             ),
             undef_mask: self.undef_mask,
             align: self.align,
@@ -189,21 +190,20 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Just a small local helper function to avoid a bit of code repetition.
     /// Returns the range of this allocation that was meant.
     #[inline]
-    fn check_bounds(
-        &self,
-        offset: Size,
-        size: Size
-    ) -> Range<usize> {
+    fn check_bounds(&self, offset: Size, size: Size) -> Range<usize> {
         let end = offset + size; // This does overflow checking.
         assert_eq!(
-            end.bytes() as usize as u64, end.bytes(),
+            end.bytes() as usize as u64,
+            end.bytes(),
             "cannot handle this access on this host architecture"
         );
         let end = end.bytes() as usize;
         assert!(
             end <= self.len(),
             "Out-of-bounds access at offset {}, size {} in allocation of size {}",
-            offset.bytes(), size.bytes(), self.len()
+            offset.bytes(),
+            size.bytes(),
+            self.len()
         );
         (offset.bytes() as usize)..end
     }
@@ -223,8 +223,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
         check_defined_and_ptr: bool,
-    ) -> InterpResult<'tcx, &[u8]>
-    {
+    ) -> InterpResult<'tcx, &[u8]> {
         let range = self.check_bounds(ptr.offset, size);
 
         if check_defined_and_ptr {
@@ -252,8 +251,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> InterpResult<'tcx, &[u8]>
-    {
+    ) -> InterpResult<'tcx, &[u8]> {
         self.get_bytes_internal(cx, ptr, size, true)
     }
 
@@ -267,8 +265,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> InterpResult<'tcx, &[u8]>
-    {
+    ) -> InterpResult<'tcx, &[u8]> {
         self.get_bytes_internal(cx, ptr, size, false)
     }
 
@@ -283,8 +280,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> InterpResult<'tcx, &mut [u8]>
-    {
+    ) -> InterpResult<'tcx, &mut [u8]> {
         let range = self.check_bounds(ptr.offset, size);
 
         self.mark_definedness(ptr, size, true);
@@ -306,8 +302,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-    ) -> InterpResult<'tcx, &[u8]>
-    {
+    ) -> InterpResult<'tcx, &[u8]> {
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         let offset = ptr.offset.bytes() as usize;
         Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
@@ -332,8 +327,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
         allow_ptr_and_undef: bool,
-    ) -> InterpResult<'tcx>
-    {
+    ) -> InterpResult<'tcx> {
         // Check bounds and relocations on the edges.
         self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
         // Check undef and ptr.
@@ -352,9 +346,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-        src: impl IntoIterator<Item=u8>,
-    ) -> InterpResult<'tcx>
-    {
+        src: impl IntoIterator<Item = u8>,
+    ) -> InterpResult<'tcx> {
         let mut src = src.into_iter();
         let (lower, upper) = src.size_hint();
         let len = upper.expect("can only write bounded iterators");
@@ -382,9 +375,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-        size: Size
-    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>>
-    {
+        size: Size,
+    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
         // `get_bytes_unchecked` tests relocation edges.
         let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
         // Undef check happens *after* we established that the alignment is correct.
@@ -404,9 +396,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             match self.relocations.get(&ptr.offset) {
                 Some(&(tag, alloc_id)) => {
                     let ptr = Pointer::new_with_tag(alloc_id, Size::from_bytes(bits as u64), tag);
-                    return Ok(ScalarMaybeUndef::Scalar(ptr.into()))
+                    return Ok(ScalarMaybeUndef::Scalar(ptr.into()));
                 }
-                None => {},
+                None => {}
             }
         }
         // We don't. Just return the bits.
@@ -421,8 +413,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>>
-    {
+    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
         self.read_scalar(cx, ptr, cx.data_layout().pointer_size)
     }
 
@@ -441,14 +432,13 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         val: ScalarMaybeUndef<Tag>,
         type_size: Size,
-    ) -> InterpResult<'tcx>
-    {
+    ) -> InterpResult<'tcx> {
         let val = match val {
             ScalarMaybeUndef::Scalar(scalar) => scalar,
             ScalarMaybeUndef::Undef => {
                 self.mark_definedness(ptr, type_size, false);
                 return Ok(());
-            },
+            }
         };
 
         let bytes = match val.to_bits_or_ptr(type_size, cx) {
@@ -463,10 +453,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         // See if we have to also write a relocation.
         match val {
             Scalar::Ptr(val) => {
-                self.relocations.insert(
-                    ptr.offset,
-                    (val.tag, val.alloc_id),
-                );
+                self.relocations.insert(ptr.offset, (val.tag, val.alloc_id));
             }
             _ => {}
         }
@@ -482,9 +469,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-        val: ScalarMaybeUndef<Tag>
-    ) -> InterpResult<'tcx>
-    {
+        val: ScalarMaybeUndef<Tag>,
+    ) -> InterpResult<'tcx> {
         let ptr_size = cx.data_layout().pointer_size;
         self.write_scalar(cx, ptr.into(), val, ptr_size)
     }
@@ -541,8 +527,10 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
                 return Ok(());
             }
 
-            (relocations.first().unwrap().0,
-             relocations.last().unwrap().0 + cx.data_layout().pointer_size)
+            (
+                relocations.first().unwrap().0,
+                relocations.last().unwrap().0 + cx.data_layout().pointer_size,
+            )
         };
         let start = ptr.offset;
         let end = start + size;
@@ -577,33 +565,22 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     }
 }
 
-
 /// Undefined bytes.
 impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// Checks that a range of bytes is defined. If not, returns the `ReadUndefBytes`
     /// error which will report the first byte which is undefined.
     #[inline]
     fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
-        self.undef_mask.is_range_defined(
-            ptr.offset,
-            ptr.offset + size,
-        ).or_else(|idx| throw_unsup!(ReadUndefBytes(idx)))
+        self.undef_mask
+            .is_range_defined(ptr.offset, ptr.offset + size)
+            .or_else(|idx| throw_unsup!(ReadUndefBytes(idx)))
     }
 
-    pub fn mark_definedness(
-        &mut self,
-        ptr: Pointer<Tag>,
-        size: Size,
-        new_state: bool,
-    ) {
+    pub fn mark_definedness(&mut self, ptr: Pointer<Tag>, size: Size, new_state: bool) {
         if size.bytes() == 0 {
             return;
         }
-        self.undef_mask.set_range(
-            ptr.offset,
-            ptr.offset + size,
-            new_state,
-        );
+        self.undef_mask.set_range(ptr.offset, ptr.offset + size, new_state);
     }
 }
 
@@ -614,17 +591,13 @@ pub struct AllocationDefinedness {
     initial: bool,
     /// The lengths of ranges that are run-length encoded.
     /// The definedness of the ranges alternate starting with `initial`.
-    ranges: smallvec::SmallVec::<[u64; 1]>,
+    ranges: smallvec::SmallVec<[u64; 1]>,
 }
 
 /// Transferring the definedness mask to other allocations.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Creates a run-length encoding of the undef mask.
-    pub fn compress_undef_range(
-        &self,
-        src: Pointer<Tag>,
-        size: Size,
-    ) -> AllocationDefinedness {
+    pub fn compress_undef_range(&self, src: Pointer<Tag>, size: Size) -> AllocationDefinedness {
         // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
         // a naive undef mask copying algorithm would repeatedly have to read the undef mask from
         // the source and write it to the destination. Even if we optimized the memory accesses,
@@ -655,7 +628,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
 
         ranges.push(cur_len);
 
-        AllocationDefinedness { ranges, initial, }
+        AllocationDefinedness { ranges, initial }
     }
 
     /// Applies multiple instances of the run-length encoding to the undef mask.
@@ -747,33 +720,24 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
 
         for i in 0..length {
-            new_relocations.extend(
-                relocations
-                .iter()
-                .map(|&(offset, reloc)| {
-                    // compute offset for current repetition
-                    let dest_offset = dest.offset + (i * size);
-                    (
-                        // shift offsets from source allocation to destination allocation
-                        offset + dest_offset - src.offset,
-                        reloc,
-                    )
-                })
-            );
+            new_relocations.extend(relocations.iter().map(|&(offset, reloc)| {
+                // compute offset for current repetition
+                let dest_offset = dest.offset + (i * size);
+                (
+                    // shift offsets from source allocation to destination allocation
+                    offset + dest_offset - src.offset,
+                    reloc,
+                )
+            }));
         }
 
-        AllocationRelocations {
-            relative_relocations: new_relocations,
-        }
+        AllocationRelocations { relative_relocations: new_relocations }
     }
 
     /// Applies a relocation copy.
     /// The affected range, as defined in the parameters to `prepare_relocation_copy` is expected
     /// to be clear of relocations.
-    pub fn mark_relocation_range(
-        &mut self,
-        relocations: AllocationRelocations<Tag>,
-    ) {
+    pub fn mark_relocation_range(&mut self, relocations: AllocationRelocations<Tag>) {
         self.relocations.insert_presorted(relocations.relative_relocations);
     }
 }
@@ -786,8 +750,18 @@ type Block = u64;
 
 /// A bitmask where each bit refers to the byte with the same index. If the bit is `true`, the byte
 /// is defined. If it is `false` the byte is undefined.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, HashStable)]
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    RustcEncodable,
+    RustcDecodable,
+    HashStable
+)]
 pub struct UndefMask {
     blocks: Vec<Block>,
     len: Size,
@@ -797,10 +771,7 @@ impl UndefMask {
     pub const BLOCK_SIZE: u64 = 64;
 
     pub fn new(size: Size, state: bool) -> Self {
-        let mut m = UndefMask {
-            blocks: vec![],
-            len: Size::ZERO,
-        };
+        let mut m = UndefMask { blocks: vec![], len: Size::ZERO };
         m.grow(size, state);
         m
     }
@@ -816,13 +787,11 @@ impl UndefMask {
         }
 
         // FIXME(oli-obk): optimize this for allocations larger than a block.
-        let idx = (start.bytes()..end.bytes())
-            .map(|i| Size::from_bytes(i))
-            .find(|&i| !self.get(i));
+        let idx = (start.bytes()..end.bytes()).map(|i| Size::from_bytes(i)).find(|&i| !self.get(i));
 
         match idx {
             Some(idx) => Err(idx),
-            None => Ok(())
+            None => Ok(()),
         }
     }
 
@@ -861,7 +830,7 @@ impl UndefMask {
                 self.blocks[blockb] |= u64::max_value() >> (64 - bitb);
             }
             // Fill in all the other blocks (much faster than one bit at a time).
-            for block in (blocka + 1) .. blockb {
+            for block in (blocka + 1)..blockb {
                 self.blocks[block] = u64::max_value();
             }
         } else {
@@ -872,7 +841,7 @@ impl UndefMask {
                 self.blocks[blockb] &= !(u64::max_value() >> (64 - bitb));
             }
             // Fill in all the other blocks (much faster than one bit at a time).
-            for block in (blocka + 1) .. blockb {
+            for block in (blocka + 1)..blockb {
                 self.blocks[block] = 0;
             }
         }

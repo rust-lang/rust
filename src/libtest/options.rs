@@ -72,10 +72,7 @@ pub struct Options {
 
 impl Options {
     pub fn new() -> Options {
-        Options {
-            display_output: false,
-            panic_abort: false,
-        }
+        Options { display_output: false, panic_abort: false }
     }
 
     pub fn display_output(mut self, display_output: bool) -> Options {

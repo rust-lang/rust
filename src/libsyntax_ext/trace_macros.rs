@@ -1,12 +1,13 @@
-use syntax_expand::base::{self, ExtCtxt};
 use syntax::symbol::kw;
+use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax_expand::base::{self, ExtCtxt};
 use syntax_pos::Span;
-use syntax::tokenstream::{TokenTree, TokenStream};
 
-pub fn expand_trace_macros(cx: &mut ExtCtxt<'_>,
-                           sp: Span,
-                           tt: TokenStream)
-                           -> Box<dyn base::MacResult + 'static> {
+pub fn expand_trace_macros(
+    cx: &mut ExtCtxt<'_>,
+    sp: Span,
+    tt: TokenStream,
+) -> Box<dyn base::MacResult + 'static> {
     let mut cursor = tt.into_trees();
     let mut err = false;
     let value = match &cursor.next() {
@@ -15,7 +16,7 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt<'_>,
         _ => {
             err = true;
             false
-        },
+        }
     };
     err |= cursor.next().is_some();
     if err {

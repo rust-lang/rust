@@ -4,36 +4,28 @@
 //! not a lot of interesting happenings here unfortunately.
 
 use std::env;
-use std::str;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str;
 use std::time::Instant;
 
 use build_helper::t;
 
-use crate::config::Config;
 use crate::builder::Builder;
 use crate::cache::Interned;
+use crate::config::Config;
 
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {
-    if target.contains("windows") {
-        format!("{}.lib", name)
-    } else {
-        format!("lib{}.a", name)
-    }
+    if target.contains("windows") { format!("{}.lib", name) } else { format!("lib{}.a", name) }
 }
 
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: &str) -> String {
-    if target.contains("windows") {
-        format!("{}.exe", name)
-    } else {
-        name.to_string()
-    }
+    if target.contains("windows") { format!("{}.exe", name) } else { name.to_string() }
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
@@ -44,7 +36,7 @@ pub fn is_dylib(name: &str) -> bool {
 /// Returns the corresponding relative library directory that the compiler's
 /// dylibs will be found in.
 pub fn libdir(target: &str) -> &'static str {
-    if target.contains("windows") {"bin"} else {"lib"}
+    if target.contains("windows") { "bin" } else { "lib" }
 }
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
@@ -106,9 +98,7 @@ impl Drop for TimeIt {
     fn drop(&mut self) {
         let time = self.1.elapsed();
         if !self.0 {
-            println!("\tfinished in {}.{:03}",
-                    time.as_secs(),
-                    time.subsec_nanos() / 1_000_000);
+            println!("\tfinished in {}.{:03}", time.as_secs(), time.subsec_nanos() / 1_000_000);
         }
     }
 }
@@ -116,7 +106,9 @@ impl Drop for TimeIt {
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
 /// Unix.
 pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
-    if config.dry_run { return Ok(()); }
+    if config.dry_run {
+        return Ok(());
+    }
     let _ = fs::remove_dir(dest);
     return symlink_dir_inner(src, dest);
 
@@ -136,9 +128,9 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
     #[cfg(windows)]
     #[allow(nonstandard_style)]
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
-        use std::ptr;
         use std::ffi::OsStr;
         use std::os::windows::ffi::OsStrExt;
+        use std::ptr;
 
         const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
         const GENERIC_WRITE: DWORD = 0x40000000;
@@ -174,22 +166,25 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
         }
 
         extern "system" {
-            fn CreateFileW(lpFileName: LPCWSTR,
-                           dwDesiredAccess: DWORD,
-                           dwShareMode: DWORD,
-                           lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
-                           dwCreationDisposition: DWORD,
-                           dwFlagsAndAttributes: DWORD,
-                           hTemplateFile: HANDLE)
-                           -> HANDLE;
-            fn DeviceIoControl(hDevice: HANDLE,
-                               dwIoControlCode: DWORD,
-                               lpInBuffer: LPVOID,
-                               nInBufferSize: DWORD,
-                               lpOutBuffer: LPVOID,
-                               nOutBufferSize: DWORD,
-                               lpBytesReturned: LPDWORD,
-                               lpOverlapped: LPOVERLAPPED) -> BOOL;
+            fn CreateFileW(
+                lpFileName: LPCWSTR,
+                dwDesiredAccess: DWORD,
+                dwShareMode: DWORD,
+                lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
+                dwCreationDisposition: DWORD,
+                dwFlagsAndAttributes: DWORD,
+                hTemplateFile: HANDLE,
+            ) -> HANDLE;
+            fn DeviceIoControl(
+                hDevice: HANDLE,
+                dwIoControlCode: DWORD,
+                lpInBuffer: LPVOID,
+                nInBufferSize: DWORD,
+                lpOutBuffer: LPVOID,
+                nOutBufferSize: DWORD,
+                lpBytesReturned: LPDWORD,
+                lpOverlapped: LPOVERLAPPED,
+            ) -> BOOL;
             fn CloseHandle(hObject: HANDLE) -> BOOL;
         }
 
@@ -207,17 +202,18 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
         let path = to_u16s(junction)?;
 
         unsafe {
-            let h = CreateFileW(path.as_ptr(),
-                                GENERIC_WRITE,
-                                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                ptr::null_mut(),
-                                OPEN_EXISTING,
-                                FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
-                                ptr::null_mut());
+            let h = CreateFileW(
+                path.as_ptr(),
+                GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                ptr::null_mut(),
+                OPEN_EXISTING,
+                FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+                ptr::null_mut(),
+            );
 
             let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-            let db = data.as_mut_ptr()
-                            as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
+            let db = data.as_mut_ptr() as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
             let buf = &mut (*db).ReparseTarget as *mut u16;
             let mut i = 0;
             // FIXME: this conversion is very hacky
@@ -232,23 +228,21 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             (*db).ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
             (*db).ReparseTargetMaximumLength = (i * 2) as WORD;
             (*db).ReparseTargetLength = ((i - 1) * 2) as WORD;
-            (*db).ReparseDataLength =
-                    (*db).ReparseTargetLength as DWORD + 12;
+            (*db).ReparseDataLength = (*db).ReparseTargetLength as DWORD + 12;
 
             let mut ret = 0;
-            let res = DeviceIoControl(h as *mut _,
-                                      FSCTL_SET_REPARSE_POINT,
-                                      data.as_ptr() as *mut _,
-                                      (*db).ReparseDataLength + 8,
-                                      ptr::null_mut(), 0,
-                                      &mut ret,
-                                      ptr::null_mut());
+            let res = DeviceIoControl(
+                h as *mut _,
+                FSCTL_SET_REPARSE_POINT,
+                data.as_ptr() as *mut _,
+                (*db).ReparseDataLength + 8,
+                ptr::null_mut(),
+                0,
+                &mut ret,
+                ptr::null_mut(),
+            );
 
-            let out = if res == 0 {
-                Err(io::Error::last_os_error())
-            } else {
-                Ok(())
-            };
+            let out = if res == 0 { Err(io::Error::last_os_error()) } else { Ok(()) };
             CloseHandle(h);
             out
         }
@@ -299,8 +293,11 @@ pub fn forcing_clang_based_tests() -> bool {
             "0" | "no" | "off" => false,
             other => {
                 // Let's make sure typos don't go unnoticed
-                panic!("Unrecognized option '{}' set in \
-                        RUSTBUILD_FORCE_CLANG_BASED_TESTS", other)
+                panic!(
+                    "Unrecognized option '{}' set in \
+                        RUSTBUILD_FORCE_CLANG_BASED_TESTS",
+                    other
+                )
             }
         }
     } else {
@@ -311,11 +308,9 @@ pub fn forcing_clang_based_tests() -> bool {
 pub fn use_host_linker(target: &Interned<String>) -> bool {
     // FIXME: this information should be gotten by checking the linker flavor
     // of the rustc target
-    !(
-        target.contains("emscripten") ||
-        target.contains("wasm32") ||
-        target.contains("nvptx") ||
-        target.contains("fortanix") ||
-        target.contains("fuchsia")
-    )
+    !(target.contains("emscripten")
+        || target.contains("wasm32")
+        || target.contains("nvptx")
+        || target.contains("fortanix")
+        || target.contains("fuchsia"))
 }

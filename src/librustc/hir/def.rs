@@ -1,15 +1,15 @@
 use self::Namespace::*;
 
-use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir;
+use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ty;
 use crate::util::nodemap::DefIdMap;
 
+use rustc_macros::HashStable;
 use syntax::ast;
 use syntax::ast::NodeId;
 use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
-use rustc_macros::HashStable;
 
 use std::fmt::Debug;
 
@@ -84,8 +84,9 @@ impl DefKind {
     pub fn descr(self, def_id: DefId) -> &'static str {
         match self {
             DefKind::Fn => "function",
-            DefKind::Mod if def_id.index == CRATE_DEF_INDEX && def_id.krate != LOCAL_CRATE =>
-                "crate",
+            DefKind::Mod if def_id.index == CRATE_DEF_INDEX && def_id.krate != LOCAL_CRATE => {
+                "crate"
+            }
             DefKind::Mod => "module",
             DefKind::Static => "static",
             DefKind::Enum => "enum",
@@ -96,8 +97,9 @@ impl DefKind {
             DefKind::Struct => "struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
-            DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) =>
-                bug!("impossible struct constructor"),
+            DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) => {
+                bug!("impossible struct constructor")
+            }
             DefKind::OpaqueTy => "opaque type",
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
@@ -162,22 +164,18 @@ pub enum Res<Id = hir::HirId> {
     Def(DefKind, DefId),
 
     // Type namespace
-
     PrimTy(hir::PrimTy),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 
     // Value namespace
-
-    SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
+    SelfCtor(DefId /* impl */), // `DefId` refers to the impl
     Local(Id),
 
     // Macro namespace
-
     NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
 
     // All namespaces
-
     Err,
 }
 
@@ -211,7 +209,9 @@ impl PartialRes {
 
     #[inline]
     pub fn with_unresolved_segments(base_res: Res<NodeId>, mut unresolved_segments: usize) -> Self {
-        if base_res == Res::Err { unresolved_segments = 0 }
+        if base_res == Res::Err {
+            unresolved_segments = 0
+        }
         PartialRes { base_res, unresolved_segments }
     }
 
@@ -256,11 +256,7 @@ pub struct PerNS<T> {
 
 impl<T> PerNS<T> {
     pub fn map<U, F: FnMut(T) -> U>(self, mut f: F) -> PerNS<U> {
-        PerNS {
-            value_ns: f(self.value_ns),
-            type_ns: f(self.type_ns),
-            macro_ns: f(self.macro_ns),
-        }
+        PerNS { value_ns: f(self.value_ns), type_ns: f(self.type_ns), macro_ns: f(self.macro_ns) }
     }
 }
 
@@ -293,13 +289,10 @@ impl<T> PerNS<Option<T>> {
     }
 
     /// Returns an iterator over the items which are `Some`.
-    pub fn present_items(self) -> impl Iterator<Item=T> {
+    pub fn present_items(self) -> impl Iterator<Item = T> {
         use std::iter::once;
 
-        once(self.type_ns)
-            .chain(once(self.value_ns))
-            .chain(once(self.macro_ns))
-            .filter_map(|it| it)
+        once(self.type_ns).chain(once(self.value_ns)).chain(once(self.macro_ns)).filter_map(|it| it)
     }
 }
 
@@ -322,12 +315,7 @@ pub struct Export<Id> {
 
 impl<Id> Export<Id> {
     pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Export<R> {
-        Export {
-            ident: self.ident,
-            res: self.res.map_id(map),
-            span: self.span,
-            vis: self.vis,
-        }
+        Export { ident: self.ident, res: self.res.map_id(map), span: self.span, vis: self.vis }
     }
 }
 
@@ -370,7 +358,7 @@ impl NonMacroAttrKind {
     pub fn is_used(self) -> bool {
         match self {
             NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper => true,
-            NonMacroAttrKind::Builtin | NonMacroAttrKind::Registered  => false,
+            NonMacroAttrKind::Builtin | NonMacroAttrKind::Registered => false,
         }
     }
 }
@@ -381,9 +369,7 @@ impl<Id> Res<Id> {
     where
         Id: Debug,
     {
-        self.opt_def_id().unwrap_or_else(|| {
-            bug!("attempted .def_id() on invalid res: {:?}", self)
-        })
+        self.opt_def_id().unwrap_or_else(|| bug!("attempted .def_id() on invalid res: {:?}", self))
     }
 
     /// Return `Some(..)` with the `DefId` of this `Res` if it has a ID, else `None`.
@@ -391,15 +377,13 @@ impl<Id> Res<Id> {
         match *self {
             Res::Def(_, id) => Some(id),
 
-            Res::Local(..) |
-            Res::PrimTy(..) |
-            Res::SelfTy(..) |
-            Res::SelfCtor(..) |
-            Res::ToolMod |
-            Res::NonMacroAttr(..) |
-            Res::Err => {
-                None
-            }
+            Res::Local(..)
+            | Res::PrimTy(..)
+            | Res::SelfTy(..)
+            | Res::SelfCtor(..)
+            | Res::ToolMod
+            | Res::NonMacroAttr(..)
+            | Res::Err => None,
         }
     }
 

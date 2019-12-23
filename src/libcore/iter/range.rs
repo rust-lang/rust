@@ -9,9 +9,11 @@ use super::{FusedIterator, TrustedLen};
 ///
 /// The `steps_between` function provides a way to efficiently compare
 /// two `Step` objects.
-#[unstable(feature = "step_trait",
-           reason = "likely to be replaced by finer-grained traits",
-           issue = "42168")]
+#[unstable(
+    feature = "step_trait",
+    reason = "likely to be replaced by finer-grained traits",
+    issue = "42168"
+)]
 pub trait Step: Clone + PartialOrd + Sized {
     /// Returns the number of steps between two step objects. The count is
     /// inclusive of `start` and exclusive of `end`.
@@ -170,8 +172,8 @@ macro_rules! step_impl_signed {
 }
 
 step_impl_unsigned!(usize u8 u16 u32 u64 u128);
-step_impl_signed!([isize: usize] [i8: u8] [i16: u16]);
-step_impl_signed!([i32: u32] [i64: u64] [i128: u128]);
+step_impl_signed!([isize: usize][i8: u8][i16: u16]);
+step_impl_signed!([i32: u32][i64: u64][i128: u128]);
 
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
@@ -227,7 +229,7 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         match Step::steps_between(&self.start, &self.end) {
             Some(hint) => (hint, Some(hint)),
-            None => (usize::MAX, None)
+            None => (usize::MAX, None),
         }
     }
 
@@ -236,7 +238,7 @@ impl<A: Step> Iterator for ops::Range<A> {
         if let Some(plus_n) = self.start.add_usize(n) {
             if plus_n < self.end {
                 self.start = plus_n.add_one();
-                return Some(plus_n)
+                return Some(plus_n);
             }
         }
 
@@ -291,7 +293,7 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
         if let Some(minus_n) = self.end.sub_usize(n) {
             if minus_n > self.start {
                 self.end = minus_n.sub_one();
-                return Some(self.end.clone())
+                return Some(self.end.clone());
             }
         }
 
@@ -396,7 +398,9 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     #[inline]
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
-        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
     {
         self.compute_is_empty();
 
@@ -484,8 +488,11 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     }
 
     #[inline]
-    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
     {
         self.compute_is_empty();
 

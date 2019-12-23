@@ -69,11 +69,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::intrinsics;
+use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
+use crate::intrinsics;
 use crate::mem::{self, MaybeUninit};
-use crate::cmp::Ordering;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use crate::intrinsics::copy_nonoverlapping;

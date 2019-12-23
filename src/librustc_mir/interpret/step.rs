@@ -3,8 +3,8 @@
 //! The main entry point is the `step` method.
 
 use rustc::mir;
+use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc::ty::layout::LayoutOf;
-use rustc::mir::interpret::{InterpResult, Scalar, PointerArithmetic};
 
 use super::{InterpCx, Machine};
 
@@ -14,11 +14,8 @@ use super::{InterpCx, Machine};
 fn binop_left_homogeneous(op: mir::BinOp) -> bool {
     use rustc::mir::BinOp::*;
     match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr |
-        Offset | Shl | Shr =>
-            true,
-        Eq | Ne | Lt | Le | Gt | Ge =>
-            false,
+        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Offset | Shl | Shr => true,
+        Eq | Ne | Lt | Le | Gt | Ge => false,
     }
 }
 /// Classify whether an operator is "right-homogeneous", i.e., the RHS has the
@@ -27,11 +24,8 @@ fn binop_left_homogeneous(op: mir::BinOp) -> bool {
 fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     use rustc::mir::BinOp::*;
     match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr |
-        Eq | Ne | Lt | Le | Gt | Ge =>
-            true,
-        Offset | Shl | Shr =>
-            false,
+        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Eq | Ne | Lt | Le | Gt | Ge => true,
+        Offset | Shl | Shr => false,
     }
 }
 
@@ -56,7 +50,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Just go on unwinding.
                 trace!("unwinding: skipping frame");
                 self.pop_stack_frame(/* unwinding */ true)?;
-                return Ok(true)
+                return Ok(true);
             }
         };
         let stmt_id = self.frame().stmt;
@@ -91,12 +85,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.memory.tcx.span = stmt.source_info.span;
 
         match stmt.kind {
-            Assign(box(ref place, ref rvalue)) => self.eval_rvalue_into_place(rvalue, place)?,
+            Assign(box (ref place, ref rvalue)) => self.eval_rvalue_into_place(rvalue, place)?,
 
-            SetDiscriminant {
-                ref place,
-                variant_index,
-            } => {
+            SetDiscriminant { ref place, variant_index } => {
                 let dest = self.eval_place(place)?;
                 self.write_discriminant_index(variant_index, dest)?;
             }
@@ -161,12 +152,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let left = self.read_immediate(self.eval_operand(left, layout)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(self.eval_operand(right, layout)?)?;
-                self.binop_ignore_overflow(
-                    bin_op,
-                    left,
-                    right,
-                    dest,
-                )?;
+                self.binop_ignore_overflow(bin_op, left, right, dest)?;
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
@@ -174,12 +160,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let left = self.read_immediate(self.eval_operand(left, None)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(self.eval_operand(right, layout)?)?;
-                self.binop_with_overflow(
-                    bin_op,
-                    left,
-                    right,
-                    dest,
-                )?;
+                self.binop_with_overflow(bin_op, left, right, dest)?;
             }
 
             UnaryOp(un_op, ref operand) => {
@@ -200,7 +181,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             (dest, active_field_index)
                         }
                     }
-                    _ => (dest, None)
+                    _ => (dest, None),
                 };
 
                 for (i, operand) in operands.iter().enumerate() {
@@ -230,7 +211,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // for big static/const arrays!
                         let rest_ptr = first_ptr.offset(elem_size, self)?;
                         self.memory.copy_repeatedly(
-                            first_ptr, rest_ptr, elem_size, length - 1, /*nonoverlapping:*/true
+                            first_ptr,
+                            rest_ptr,
+                            elem_size,
+                            length - 1,
+                            /*nonoverlapping:*/ true,
                         )?;
                     }
                 }
@@ -242,10 +227,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let mplace = self.force_allocation(src)?;
                 let len = mplace.len(self)?;
                 let size = self.pointer_size();
-                self.write_scalar(
-                    Scalar::from_uint(len, size),
-                    dest,
-                )?;
+                self.write_scalar(Scalar::from_uint(len, size), dest)?;
             }
 
             AddressOf(_, ref place) | Ref(_, _, ref place) => {
@@ -265,13 +247,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             NullaryOp(mir::NullOp::SizeOf, ty) => {
                 let ty = self.subst_from_frame_and_normalize_erasing_regions(ty);
                 let layout = self.layout_of(ty)?;
-                assert!(!layout.is_unsized(),
-                        "SizeOf nullary MIR operator called for unsized type");
+                assert!(
+                    !layout.is_unsized(),
+                    "SizeOf nullary MIR operator called for unsized type"
+                );
                 let size = self.pointer_size();
-                self.write_scalar(
-                    Scalar::from_uint(layout.size.bytes(), size),
-                    dest,
-                )?;
+                self.write_scalar(Scalar::from_uint(layout.size.bytes(), size), dest)?;
             }
 
             Cast(kind, ref operand, _) => {

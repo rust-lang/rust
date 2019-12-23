@@ -5,7 +5,7 @@
 // can be fixed to work with the correct ABI. See #63649 for further
 // discussion.
 
-use crate::abi::call::{FnAbi, ArgAbi};
+use crate::abi::call::{ArgAbi, FnAbi};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     ret.extend_integer_width_to(32);
@@ -21,7 +21,9 @@ pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     }
 
     for arg in &mut fn_abi.args {
-        if arg.is_ignore() { continue; }
+        if arg.is_ignore() {
+            continue;
+        }
         classify_arg(arg);
     }
 }

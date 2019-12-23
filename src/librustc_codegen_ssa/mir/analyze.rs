@@ -1,20 +1,20 @@
 //! An analysis to determine which locals require allocas and
 //! which do not.
 
-use rustc_index::bit_set::BitSet;
-use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::vec::{Idx, IndexVec};
-use rustc::mir::{self, Location, TerminatorKind};
-use rustc::mir::visit::{
-    Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext, NonUseContext,
-};
-use rustc::mir::traversal;
-use rustc::session::config::DebugInfo;
-use rustc::ty;
-use rustc::ty::layout::{LayoutOf, HasTyCtxt};
-use syntax_pos::DUMMY_SP;
 use super::FunctionCx;
 use crate::traits::*;
+use rustc::mir::traversal;
+use rustc::mir::visit::{
+    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
+use rustc::mir::{self, Location, TerminatorKind};
+use rustc::session::config::DebugInfo;
+use rustc::ty;
+use rustc::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_data_structures::graph::dominators::Dominators;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::{Idx, IndexVec};
+use syntax_pos::DUMMY_SP;
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
@@ -24,8 +24,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     analyzer.visit_body(mir);
 
-    for (local, decl) in mir.local_decls.iter_enumerated()
-    {
+    for (local, decl) in mir.local_decls.iter_enumerated() {
         // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
         // of putting everything in allocas just so we can use llvm.dbg.declare.
         if fx.cx.sess().opts.debuginfo == DebugInfo::Full {
@@ -68,14 +67,13 @@ struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
 impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>) -> Self {
-        let invalid_location =
-            mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
+        let invalid_location = mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
         let dominators = fx.mir.dominators();
         let mut analyzer = LocalAnalyzer {
             fx,
             dominators,
             non_ssa_locals: BitSet::new_empty(fx.mir.local_decls.len()),
-            first_assignment: IndexVec::from_elem(invalid_location, &fx.mir.local_decls)
+            first_assignment: IndexVec::from_elem(invalid_location, &fx.mir.local_decls),
         };
 
         // Arguments get assigned to by means of the function being called
@@ -125,9 +123,9 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
 
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => true,
-                _ => false
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
+                | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => true,
+                _ => false,
             };
             if is_consume {
                 let base_ty =
@@ -135,9 +133,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty
-                    .projection_ty(cx.tcx(), elem)
-                    .ty;
+                let elem_ty = base_ty.projection_ty(cx.tcx(), elem).ty;
                 let elem_ty = self.fx.monomorphize(&elem_ty);
                 let span = if let mir::PlaceBase::Local(index) = place_ref.base {
                     self.fx.mir.local_decls[*index].source_info.span
@@ -196,12 +192,9 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             }
 
             self.process_place(
-                &mir::PlaceRef {
-                    base: place_ref.base,
-                    projection: proj_base,
-                },
+                &mir::PlaceRef { base: place_ref.base, projection: proj_base },
                 base_context,
-                location
+                location,
             );
             // HACK(eddyb) this emulates the old `visit_projection_elem`, this
             // entire `visit_place`-like `process_place` method should be rewritten,
@@ -210,7 +203,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 self.visit_local(
                     local,
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                    location
+                    location,
                 );
             }
         } else {
@@ -230,16 +223,17 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             self.visit_projection(place_ref.base, place_ref.projection, context, location);
         }
     }
-
 }
 
 impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
     for LocalAnalyzer<'mir, 'a, 'tcx, Bx>
 {
-    fn visit_assign(&mut self,
-                    place: &mir::Place<'tcx>,
-                    rvalue: &mir::Rvalue<'tcx>,
-                    location: Location) {
+    fn visit_assign(
+        &mut self,
+        place: &mir::Place<'tcx>,
+        rvalue: &mir::Rvalue<'tcx>,
+        location: Location,
+    ) {
         debug!("visit_assign(place={:?}, rvalue={:?})", place, rvalue);
 
         if let Some(index) = place.as_local() {
@@ -249,27 +243,20 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 self.not_ssa(index);
             }
         } else {
-            self.visit_place(
-                place,
-                PlaceContext::MutatingUse(MutatingUseContext::Store),
-                location
-            );
+            self.visit_place(place, PlaceContext::MutatingUse(MutatingUseContext::Store), location);
         }
 
         self.visit_rvalue(rvalue, location);
     }
 
-    fn visit_terminator_kind(&mut self,
-                             kind: &mir::TerminatorKind<'tcx>,
-                             location: Location) {
+    fn visit_terminator_kind(&mut self, kind: &mir::TerminatorKind<'tcx>, location: Location) {
         let check = match *kind {
-            mir::TerminatorKind::Call {
-                func: mir::Operand::Constant(ref c),
-                ref args, ..
-            } => match c.literal.ty.kind {
-                ty::FnDef(did, _) => Some((did, args)),
-                _ => None,
-            },
+            mir::TerminatorKind::Call { func: mir::Operand::Constant(ref c), ref args, .. } => {
+                match c.literal.ty.kind {
+                    ty::FnDef(did, _) => Some((did, args)),
+                    _ => None,
+                }
+            }
             _ => None,
         };
         if let Some((def_id, args)) = check {
@@ -281,7 +268,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                     self.visit_place(
                         place,
                         PlaceContext::MutatingUse(MutatingUseContext::Drop),
-                        location
+                        location,
                     );
                 }
             }
@@ -290,18 +277,12 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         self.super_terminator_kind(kind, location);
     }
 
-    fn visit_place(&mut self,
-                   place: &mir::Place<'tcx>,
-                   context: PlaceContext,
-                   location: Location) {
+    fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         debug!("visit_place(place={:?}, context={:?})", place, context);
         self.process_place(&place.as_ref(), context, location);
     }
 
-    fn visit_local(&mut self,
-                   &local: &mir::Local,
-                   context: PlaceContext,
-                   location: Location) {
+    fn visit_local(&mut self, &local: &mir::Local, context: PlaceContext, location: Location) {
         match context {
             PlaceContext::MutatingUse(MutatingUseContext::Call) => {
                 self.assign(local, location);
@@ -316,11 +297,10 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 }
             }
 
-            PlaceContext::NonUse(_) |
-            PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
+            PlaceContext::NonUse(_) | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
 
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
                 // Reads from uninitialized variables (e.g., in dead code, after
                 // optimizations) require locals to be in (uninitialized) memory.
                 // N.B., there can be uninitialized reads of a local visited after
@@ -329,24 +309,24 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                     Some(assignment_location) => {
                         assignment_location.dominates(location, &self.dominators)
                     }
-                    None => false
+                    None => false,
                 };
                 if !ssa_read {
                     self.not_ssa(local);
                 }
             }
 
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
-            PlaceContext::MutatingUse(MutatingUseContext::Store) |
-            PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
-            PlaceContext::MutatingUse(MutatingUseContext::Borrow) |
-            PlaceContext::MutatingUse(MutatingUseContext::AddressOf) |
-            PlaceContext::MutatingUse(MutatingUseContext::Projection) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect)
+            | PlaceContext::MutatingUse(MutatingUseContext::Store)
+            | PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
+            | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+            | PlaceContext::MutatingUse(MutatingUseContext::AddressOf)
+            | PlaceContext::MutatingUse(MutatingUseContext::Projection)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
                 self.not_ssa(local);
             }
 
@@ -367,7 +347,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 pub enum CleanupKind {
     NotCleanup,
     Funclet,
-    Internal { funclet: mir::BasicBlock }
+    Internal { funclet: mir::BasicBlock },
 }
 
 impl CleanupKind {
@@ -381,29 +361,31 @@ impl CleanupKind {
 }
 
 pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
-    fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
-                              mir: &mir::Body<'tcx>) {
+    fn discover_masters<'tcx>(
+        result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
+        mir: &mir::Body<'tcx>,
+    ) {
         for (bb, data) in mir.basic_blocks().iter_enumerated() {
             match data.terminator().kind {
-                TerminatorKind::Goto { .. } |
-                TerminatorKind::Resume |
-                TerminatorKind::Abort |
-                TerminatorKind::Return |
-                TerminatorKind::GeneratorDrop |
-                TerminatorKind::Unreachable |
-                TerminatorKind::SwitchInt { .. } |
-                TerminatorKind::Yield { .. } |
-                TerminatorKind::FalseEdges { .. } |
-                TerminatorKind::FalseUnwind { .. } => {
-                    /* nothing to do */
-                }
-                TerminatorKind::Call { cleanup: unwind, .. } |
-                TerminatorKind::Assert { cleanup: unwind, .. } |
-                TerminatorKind::DropAndReplace { unwind, .. } |
-                TerminatorKind::Drop { unwind, .. } => {
+                TerminatorKind::Goto { .. }
+                | TerminatorKind::Resume
+                | TerminatorKind::Abort
+                | TerminatorKind::Return
+                | TerminatorKind::GeneratorDrop
+                | TerminatorKind::Unreachable
+                | TerminatorKind::SwitchInt { .. }
+                | TerminatorKind::Yield { .. }
+                | TerminatorKind::FalseEdges { .. }
+                | TerminatorKind::FalseUnwind { .. } => { /* nothing to do */ }
+                TerminatorKind::Call { cleanup: unwind, .. }
+                | TerminatorKind::Assert { cleanup: unwind, .. }
+                | TerminatorKind::DropAndReplace { unwind, .. }
+                | TerminatorKind::Drop { unwind, .. } => {
                     if let Some(unwind) = unwind {
-                        debug!("cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
-                               bb, data, unwind);
+                        debug!(
+                            "cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
+                            bb, data, unwind
+                        );
                         result[unwind] = CleanupKind::Funclet;
                     }
                 }
@@ -411,20 +393,23 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
         }
     }
 
-    fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
-                       mir: &mir::Body<'tcx>) {
+    fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>, mir: &mir::Body<'tcx>) {
         let mut funclet_succs = IndexVec::from_elem(None, mir.basic_blocks());
 
-        let mut set_successor = |funclet: mir::BasicBlock, succ| {
-            match funclet_succs[funclet] {
-                ref mut s @ None => {
-                    debug!("set_successor: updating successor of {:?} to {:?}",
-                           funclet, succ);
-                    *s = Some(succ);
-                },
-                Some(s) => if s != succ {
-                    span_bug!(mir.span, "funclet {:?} has 2 parents - {:?} and {:?}",
-                              funclet, s, succ);
+        let mut set_successor = |funclet: mir::BasicBlock, succ| match funclet_succs[funclet] {
+            ref mut s @ None => {
+                debug!("set_successor: updating successor of {:?} to {:?}", funclet, succ);
+                *s = Some(succ);
+            }
+            Some(s) => {
+                if s != succ {
+                    span_bug!(
+                        mir.span,
+                        "funclet {:?} has 2 parents - {:?} and {:?}",
+                        funclet,
+                        s,
+                        succ
+                    );
                 }
             }
         };
@@ -436,13 +421,14 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 CleanupKind::Internal { funclet } => funclet,
             };
 
-            debug!("cleanup_kinds: {:?}/{:?}/{:?} propagating funclet {:?}",
-                   bb, data, result[bb], funclet);
+            debug!(
+                "cleanup_kinds: {:?}/{:?}/{:?} propagating funclet {:?}",
+                bb, data, result[bb], funclet
+            );
 
             for &succ in data.terminator().successors() {
                 let kind = result[succ];
-                debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}",
-                       funclet, succ, kind);
+                debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}", funclet, succ, kind);
                 match kind {
                     CleanupKind::NotCleanup => {
                         result[succ] = CleanupKind::Internal { funclet };
@@ -457,8 +443,10 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                             // `succ` has 2 different funclet going into it, so it must
                             // be a funclet by itself.
 
-                            debug!("promoting {:?} to a funclet and updating {:?}", succ,
-                                   succ_funclet);
+                            debug!(
+                                "promoting {:?} to a funclet and updating {:?}",
+                                succ, succ_funclet
+                            );
                             result[succ] = CleanupKind::Funclet;
                             set_successor(succ_funclet, succ);
                             set_successor(funclet, succ);

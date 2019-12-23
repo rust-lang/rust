@@ -3,9 +3,9 @@
 //! Since we cannot have a dependency on `librustc`, we implement some types here that are somewhat
 //! redundant. Later, these types can be converted to types for use by the rest of the compiler.
 
-use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_session::declare_lint;
 pub use rustc_session::lint::BufferedEarlyLint;
+use rustc_session::lint::FutureIncompatibleInfo;
 
 declare_lint! {
     pub ILL_FORMED_ATTRIBUTE_INPUT,

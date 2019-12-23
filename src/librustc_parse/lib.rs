@@ -10,9 +10,9 @@ use syntax::sess::ParseSess;
 use syntax::token::{self, Nonterminal};
 use syntax::tokenstream::{self, TokenStream, TokenTree};
 
-use rustc_errors::{PResult, FatalError, Level, Diagnostic};
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::{Span, SourceFile, FileName};
+use rustc_errors::{Diagnostic, FatalError, Level, PResult};
+use syntax_pos::{FileName, SourceFile, Span};
 
 use std::borrow::Cow;
 use std::path::Path;
@@ -24,7 +24,7 @@ pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
 #[macro_use]
 pub mod parser;
-use parser::{Parser, emit_unclosed_delims, make_unclosed_delims_error};
+use parser::{emit_unclosed_delims, make_unclosed_delims_error, Parser};
 pub mod lexer;
 pub mod validate_attr;
 #[macro_use]
@@ -53,9 +53,9 @@ pub enum DirectoryOwnership {
 
 /// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
 macro_rules! panictry_buffer {
-    ($handler:expr, $e:expr) => ({
-        use std::result::Result::{Ok, Err};
+    ($handler:expr, $e:expr) => {{
         use rustc_errors::FatalError;
+        use std::result::Result::{Err, Ok};
         match $e {
             Ok(e) => e,
             Err(errs) => {
@@ -65,7 +65,7 @@ macro_rules! panictry_buffer {
                 FatalError.raise()
             }
         }
-    })
+    }};
 }
 
 pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'a, ast::Crate> {
@@ -73,19 +73,27 @@ pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'
     parser.parse_crate_mod()
 }
 
-pub fn parse_crate_attrs_from_file<'a>(input: &Path, sess: &'a ParseSess)
-                                       -> PResult<'a, Vec<ast::Attribute>> {
+pub fn parse_crate_attrs_from_file<'a>(
+    input: &Path,
+    sess: &'a ParseSess,
+) -> PResult<'a, Vec<ast::Attribute>> {
     let mut parser = new_parser_from_file(sess, input);
     parser.parse_inner_attributes()
 }
 
-pub fn parse_crate_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                       -> PResult<'_, ast::Crate> {
+pub fn parse_crate_from_source_str(
+    name: FileName,
+    source: String,
+    sess: &ParseSess,
+) -> PResult<'_, ast::Crate> {
     new_parser_from_source_str(sess, name, source).parse_crate_mod()
 }
 
-pub fn parse_crate_attrs_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                             -> PResult<'_, Vec<ast::Attribute>> {
+pub fn parse_crate_attrs_from_source_str(
+    name: FileName,
+    source: String,
+    sess: &ParseSess,
+) -> PResult<'_, Vec<ast::Attribute>> {
     new_parser_from_source_str(sess, name, source).parse_inner_attributes()
 }
 
@@ -95,11 +103,8 @@ pub fn parse_stream_from_source_str(
     sess: &ParseSess,
     override_span: Option<Span>,
 ) -> TokenStream {
-    let (stream, mut errors) = source_file_to_stream(
-        sess,
-        sess.source_map().new_source_file(name, source),
-        override_span,
-    );
+    let (stream, mut errors) =
+        source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span);
     emit_unclosed_delims(&mut errors, &sess);
     stream
 }
@@ -111,11 +116,13 @@ pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: Stri
 
 /// Creates a new parser from a source string. Returns any buffered errors from lexing the initial
 /// token stream.
-pub fn maybe_new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
-    -> Result<Parser<'_>, Vec<Diagnostic>>
-{
-    let mut parser = maybe_source_file_to_parser(sess,
-                                                 sess.source_map().new_source_file(name, source))?;
+pub fn maybe_new_parser_from_source_str(
+    sess: &ParseSess,
+    name: FileName,
+    source: String,
+) -> Result<Parser<'_>, Vec<Diagnostic>> {
+    let mut parser =
+        maybe_source_file_to_parser(sess, sess.source_map().new_source_file(name, source))?;
     parser.recurse_into_file_modules = false;
     Ok(parser)
 }
@@ -127,8 +134,10 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> 
 
 /// Creates a new parser, returning buffered diagnostics if the file doesn't exist,
 /// or from lexing the initial token stream.
-pub fn maybe_new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path)
-    -> Result<Parser<'a>, Vec<Diagnostic>> {
+pub fn maybe_new_parser_from_file<'a>(
+    sess: &'a ParseSess,
+    path: &Path,
+) -> Result<Parser<'a>, Vec<Diagnostic>> {
     let file = try_file_to_source_file(sess, path, None).map_err(|db| vec![db])?;
     maybe_source_file_to_parser(sess, file)
 }
@@ -136,11 +145,13 @@ pub fn maybe_new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path)
 /// Given a session, a crate config, a path, and a span, add
 /// the file at the given path to the `source_map`, and returns a parser.
 /// On an error, uses the given span as the source of the problem.
-pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
-                                    path: &Path,
-                                    directory_ownership: DirectoryOwnership,
-                                    module_name: Option<String>,
-                                    sp: Span) -> Parser<'a> {
+pub fn new_sub_parser_from_file<'a>(
+    sess: &'a ParseSess,
+    path: &Path,
+    directory_ownership: DirectoryOwnership,
+    module_name: Option<String>,
+    sp: Span,
+) -> Parser<'a> {
     let mut p = source_file_to_parser(sess, file_to_source_file(sess, path, Some(sp)));
     p.directory.ownership = directory_ownership;
     p.root_module_name = module_name;
@@ -149,8 +160,7 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 
 /// Given a `source_file` and config, returns a parser.
 fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
-    panictry_buffer!(&sess.span_diagnostic,
-                     maybe_source_file_to_parser(sess, source_file))
+    panictry_buffer!(&sess.span_diagnostic, maybe_source_file_to_parser(sess, source_file))
 }
 
 /// Given a `source_file` and config, return a parser. Returns any buffered errors from lexing the
@@ -176,16 +186,17 @@ pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser<'_> 
     stream_to_parser(sess, tts.into_iter().collect(), crate::MACRO_ARGUMENTS)
 }
 
-
 // Base abstractions
 
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's source_map and return the new source_file or
 /// error when a file can't be read.
-fn try_file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
-                   -> Result<Lrc<SourceFile>, Diagnostic> {
-    sess.source_map().load_file(path)
-    .map_err(|e| {
+fn try_file_to_source_file(
+    sess: &ParseSess,
+    path: &Path,
+    spanopt: Option<Span>,
+) -> Result<Lrc<SourceFile>, Diagnostic> {
+    sess.source_map().load_file(path).map_err(|e| {
         let msg = format!("couldn't read {}: {}", path.display(), e);
         let mut diag = Diagnostic::new(Level::Fatal, &msg);
         if let Some(sp) = spanopt {
@@ -197,8 +208,7 @@ fn try_file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 
 /// Given a session and a path and an optional span (for error reporting),
 /// adds the path to the session's `source_map` and returns the new `source_file`.
-fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
-                   -> Lrc<SourceFile> {
+fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>) -> Lrc<SourceFile> {
     match try_file_to_source_file(sess, path, spanopt) {
         Ok(source_file) => source_file,
         Err(d) => {
@@ -315,9 +325,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
         Nonterminal::NtLifetime(ident) => {
             Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
         }
-        Nonterminal::NtTT(ref tt) => {
-            Some(tt.clone().into())
-        }
+        Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
         _ => None,
     };
 
@@ -351,28 +359,33 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // tokens such as extra braces and commas, don't happen.
     if let Some(tokens) = tokens {
         if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
-            return tokens
+            return tokens;
         }
-        info!("cached tokens found, but they're not \"probably equal\", \
-                going with stringified version");
+        info!(
+            "cached tokens found, but they're not \"probably equal\", \
+                going with stringified version"
+        );
     }
-    return tokens_for_real
+    return tokens_for_real;
 }
 
 fn prepend_attrs(
     sess: &ParseSess,
     attrs: &[ast::Attribute],
     tokens: Option<&tokenstream::TokenStream>,
-    span: syntax_pos::Span
+    span: syntax_pos::Span,
 ) -> Option<tokenstream::TokenStream> {
     let tokens = tokens?;
     if attrs.len() == 0 {
-        return Some(tokens.clone())
+        return Some(tokens.clone());
     }
     let mut builder = tokenstream::TokenStreamBuilder::new();
     for attr in attrs {
-        assert_eq!(attr.style, ast::AttrStyle::Outer,
-                   "inner attributes should prevent cached tokens from existing");
+        assert_eq!(
+            attr.style,
+            ast::AttrStyle::Outer,
+            "inner attributes should prevent cached tokens from existing"
+        );
 
         let source = pprust::attribute_to_string(attr);
         let macro_filename = FileName::macro_expansion_source_code(&source);
@@ -382,7 +395,7 @@ fn prepend_attrs(
             ast::AttrKind::DocComment(_) => {
                 let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
                 builder.push(stream);
-                continue
+                continue;
             }
         };
 
@@ -410,7 +423,10 @@ fn prepend_attrs(
         builder.push(tokenstream::TokenTree::token(token::Pound, attr.span));
         let delim_span = tokenstream::DelimSpan::from_single(attr.span);
         builder.push(tokenstream::TokenTree::Delimited(
-            delim_span, token::DelimToken::Bracket, brackets.build().into()));
+            delim_span,
+            token::DelimToken::Bracket,
+            brackets.build().into(),
+        ));
     }
     builder.push(tokens.clone());
     Some(builder.build())

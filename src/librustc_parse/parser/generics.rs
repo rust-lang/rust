@@ -1,11 +1,10 @@
 use super::Parser;
 
 use rustc_errors::PResult;
-use syntax::ast::{self, WhereClause, GenericParam, GenericParamKind, GenericBounds, Attribute};
-use syntax::token;
+use syntax::ast::{self, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause};
 use syntax::source_map::DUMMY_SP;
+use syntax::token;
 use syntax_pos::symbol::{kw, sym};
-
 
 impl<'a> Parser<'a> {
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
@@ -19,16 +18,14 @@ impl<'a> Parser<'a> {
             lifetimes.push(ast::GenericBound::Outlives(self.expect_lifetime()));
 
             if !self.eat_plus() {
-                break
+                break;
             }
         }
         lifetimes
     }
 
     /// Matches `typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?`.
-    fn parse_ty_param(&mut self,
-                      preceding_attrs: Vec<Attribute>)
-                      -> PResult<'a, GenericParam> {
+    fn parse_ty_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
@@ -38,21 +35,15 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
 
-        let default = if self.eat(&token::Eq) {
-            Some(self.parse_ty()?)
-        } else {
-            None
-        };
+        let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
 
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs.into(),
             bounds,
-            kind: GenericParamKind::Type {
-                default,
-            },
-            is_placeholder: false
+            kind: GenericParamKind::Type { default },
+            is_placeholder: false,
         })
     }
 
@@ -71,10 +62,8 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs.into(),
             bounds: Vec::new(),
-            kind: GenericParamKind::Const {
-                ty,
-            },
-            is_placeholder: false
+            kind: GenericParamKind::Const { ty },
+            is_placeholder: false,
         })
     }
 
@@ -87,18 +76,15 @@ impl<'a> Parser<'a> {
             if self.check_lifetime() {
                 let lifetime = self.expect_lifetime();
                 // Parse lifetime parameter.
-                let bounds = if self.eat(&token::Colon) {
-                    self.parse_lt_param_bounds()
-                } else {
-                    Vec::new()
-                };
+                let bounds =
+                    if self.eat(&token::Colon) { self.parse_lt_param_bounds() } else { Vec::new() };
                 params.push(ast::GenericParam {
                     ident: lifetime.ident,
                     id: lifetime.id,
                     attrs: attrs.into(),
                     bounds,
                     kind: ast::GenericParamKind::Lifetime,
-                    is_placeholder: false
+                    is_placeholder: false,
                 });
             } else if self.check_keyword(kw::Const) {
                 // Parse const parameter.
@@ -121,7 +107,7 @@ impl<'a> Parser<'a> {
                     Err(mut err) => {
                         err.cancel();
                         std::mem::replace(self, snapshot);
-                        break
+                        break;
                     }
                 }
             } else {
@@ -146,11 +132,11 @@ impl<'a> Parser<'a> {
                         .emit();
                     }
                 }
-                break
+                break;
             }
 
             if !self.eat(&token::Comma) {
-                break
+                break;
             }
         }
         Ok(params)
@@ -174,10 +160,7 @@ impl<'a> Parser<'a> {
         };
         Ok(ast::Generics {
             params,
-            where_clause: WhereClause {
-                predicates: Vec::new(),
-                span: DUMMY_SP,
-            },
+            where_clause: WhereClause { predicates: Vec::new(), span: DUMMY_SP },
             span,
         })
     }
@@ -188,10 +171,8 @@ impl<'a> Parser<'a> {
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     pub(super) fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
-        let mut where_clause = WhereClause {
-            predicates: Vec::new(),
-            span: self.prev_span.to(self.prev_span),
-        };
+        let mut where_clause =
+            WhereClause { predicates: Vec::new(), span: self.prev_span.to(self.prev_span) };
 
         if !self.eat_keyword(kw::Where) {
             return Ok(where_clause);
@@ -207,8 +188,8 @@ impl<'a> Parser<'a> {
                 generics.span,
                 "generic parameters on `where` clauses are reserved for future use",
             )
-                .span_label(generics.span, "currently unsupported")
-                .emit();
+            .span_label(generics.span, "currently unsupported")
+            .emit();
         }
 
         loop {
@@ -219,20 +200,16 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Colon)?;
                 let bounds = self.parse_lt_param_bounds();
                 where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
-                    ast::WhereRegionPredicate {
-                        span: lo.to(self.prev_span),
-                        lifetime,
-                        bounds,
-                    }
+                    ast::WhereRegionPredicate { span: lo.to(self.prev_span), lifetime, bounds },
                 ));
             } else if self.check_type() {
                 where_clause.predicates.push(self.parse_ty_where_predicate()?);
             } else {
-                break
+                break;
             }
 
             if !self.eat(&token::Comma) {
-                break
+                break;
             }
         }
 
@@ -256,26 +233,22 @@ impl<'a> Parser<'a> {
         let ty = self.parse_ty()?;
         if self.eat(&token::Colon) {
             let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
-            Ok(ast::WherePredicate::BoundPredicate(
-                ast::WhereBoundPredicate {
-                    span: lo.to(self.prev_span),
-                    bound_generic_params: lifetime_defs,
-                    bounded_ty: ty,
-                    bounds,
-                }
-            ))
+            Ok(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+                span: lo.to(self.prev_span),
+                bound_generic_params: lifetime_defs,
+                bounded_ty: ty,
+                bounds,
+            }))
         // FIXME: Decide what should be used here, `=` or `==`.
         // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
         } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
             let rhs_ty = self.parse_ty()?;
-            Ok(ast::WherePredicate::EqPredicate(
-                ast::WhereEqPredicate {
-                    span: lo.to(self.prev_span),
-                    lhs_ty: ty,
-                    rhs_ty,
-                    id: ast::DUMMY_NODE_ID,
-                }
-            ))
+            Ok(ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
+                span: lo.to(self.prev_span),
+                lhs_ty: ty,
+                rhs_ty,
+                id: ast::DUMMY_NODE_ID,
+            }))
         } else {
             self.unexpected()
         }
@@ -298,11 +271,15 @@ impl<'a> Parser<'a> {
         // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
         // because this is what almost always expected in practice, qualified paths in impls
         // (`impl <Type>::AssocTy { ... }`) aren't even allowed by type checker at the moment.
-        self.token == token::Lt &&
-            (self.look_ahead(1, |t| t == &token::Pound || t == &token::Gt) ||
-             self.look_ahead(1, |t| t.is_lifetime() || t.is_ident()) &&
-                self.look_ahead(2, |t| t == &token::Gt || t == &token::Comma ||
-                                       t == &token::Colon || t == &token::Eq) ||
-            self.is_keyword_ahead(1, &[kw::Const]))
+        self.token == token::Lt
+            && (self.look_ahead(1, |t| t == &token::Pound || t == &token::Gt)
+                || self.look_ahead(1, |t| t.is_lifetime() || t.is_ident())
+                    && self.look_ahead(2, |t| {
+                        t == &token::Gt
+                            || t == &token::Comma
+                            || t == &token::Colon
+                            || t == &token::Eq
+                    })
+                || self.is_keyword_ahead(1, &[kw::Const]))
     }
 }

@@ -1,20 +1,20 @@
-use std::fs;
-use std::env;
-use std::path::PathBuf;
-use std::process::{Command, exit};
 use std::collections::HashSet;
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+use std::process::{exit, Command};
 
 use build_helper::t;
 
-use crate::Mode;
-use crate::Compiler;
-use crate::builder::{Step, RunConfig, ShouldRun, Builder, Cargo as CargoCommand};
-use crate::util::{exe, add_lib_path, CiEnv};
-use crate::compile;
-use crate::channel::GitInfo;
-use crate::channel;
+use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
+use crate::channel;
+use crate::channel::GitInfo;
+use crate::compile;
 use crate::toolstate::ToolState;
+use crate::util::{add_lib_path, exe, CiEnv};
+use crate::Compiler;
+use crate::Mode;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -53,14 +53,10 @@ impl Step for ToolBuild {
         let is_optional_tool = self.is_optional_tool;
 
         match self.mode {
-            Mode::ToolRustc => {
-                builder.ensure(compile::Rustc { compiler, target })
-            }
-            Mode::ToolStd => {
-                builder.ensure(compile::Std { compiler, target })
-            }
+            Mode::ToolRustc => builder.ensure(compile::Rustc { compiler, target }),
+            Mode::ToolStd => builder.ensure(compile::Std { compiler, target }),
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
-            _ => panic!("unexpected Mode for tool build")
+            _ => panic!("unexpected Mode for tool build"),
         }
 
         let cargo = prepare_tool_cargo(
@@ -79,12 +75,7 @@ impl Step for ToolBuild {
         let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
             match tool {
-                | "rls"
-                | "cargo"
-                | "clippy-driver"
-                | "miri"
-                | "rustfmt"
-                => {}
+                "rls" | "cargo" | "clippy-driver" | "miri" | "rustfmt" => {}
 
                 _ => return,
             }
@@ -94,9 +85,7 @@ impl Step for ToolBuild {
                     features,
                     filenames,
                     target: _,
-                } => {
-                    (package_id, features, filenames)
-                }
+                } => (package_id, features, filenames),
                 _ => return,
             };
             let features = features.iter().map(|s| s.to_string()).collect::<Vec<_>>();
@@ -105,7 +94,7 @@ impl Step for ToolBuild {
                 let val = (tool, PathBuf::from(&*path), features.clone());
                 // we're only interested in deduplicating rlibs for now
                 if val.1.extension().and_then(|s| s.to_str()) != Some("rlib") {
-                    continue
+                    continue;
                 }
 
                 // Don't worry about compiles that turn out to be host
@@ -132,9 +121,7 @@ impl Step for ToolBuild {
                 // already listed then we need to see if we reused the same
                 // artifact or produced a duplicate.
                 let mut artifacts = builder.tool_artifacts.borrow_mut();
-                let prev_artifacts = artifacts
-                    .entry(target)
-                    .or_default();
+                let prev_artifacts = artifacts.entry(target).or_default();
                 let prev = match prev_artifacts.get(&*id) {
                     Some(prev) => prev,
                     None => {
@@ -160,21 +147,21 @@ impl Step for ToolBuild {
 
                 // ... and otherwise this looks like we duplicated some sort of
                 // compilation, so record it to generate an error later.
-                duplicates.push((
-                    id.to_string(),
-                    val,
-                    prev.clone(),
-                ));
+                duplicates.push((id.to_string(), val, prev.clone()));
             }
         });
 
         if is_expected && !duplicates.is_empty() {
-            println!("duplicate artifacts found when compiling a tool, this \
+            println!(
+                "duplicate artifacts found when compiling a tool, this \
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
-                      than in a previous build:\n");
-            println!("the following dependencies are duplicated although they \
-                      have the same features enabled:");
+                      than in a previous build:\n"
+            );
+            println!(
+                "the following dependencies are duplicated although they \
+                      have the same features enabled:"
+            );
             for (id, cur, prev) in duplicates.drain_filter(|(_, cur, prev)| cur.2 == prev.2) {
                 println!("  {}", id);
                 // same features
@@ -185,24 +172,33 @@ impl Step for ToolBuild {
                 println!("  {}", id);
                 let cur_features: HashSet<_> = cur.2.into_iter().collect();
                 let prev_features: HashSet<_> = prev.2.into_iter().collect();
-                println!("    `{}` additionally enabled features {:?} at {:?}",
-                         cur.0, &cur_features - &prev_features, cur.1);
-                println!("    `{}` additionally enabled features {:?} at {:?}",
-                         prev.0, &prev_features - &cur_features, prev.1);
+                println!(
+                    "    `{}` additionally enabled features {:?} at {:?}",
+                    cur.0,
+                    &cur_features - &prev_features,
+                    cur.1
+                );
+                println!(
+                    "    `{}` additionally enabled features {:?} at {:?}",
+                    prev.0,
+                    &prev_features - &cur_features,
+                    prev.1
+                );
             }
             println!();
-            println!("to fix this you will probably want to edit the local \
+            println!(
+                "to fix this you will probably want to edit the local \
                       src/tools/rustc-workspace-hack/Cargo.toml crate, as \
                       that will update the dependency graph to ensure that \
-                      these crates all share the same feature set");
+                      these crates all share the same feature set"
+            );
             panic!("tools should not compile multiple copies of the same crate");
         }
 
-        builder.save_toolstate(tool, if is_expected {
-            ToolState::TestFail
-        } else {
-            ToolState::BuildFail
-        });
+        builder.save_toolstate(
+            tool,
+            if is_expected { ToolState::TestFail } else { ToolState::BuildFail },
+        );
 
         if !is_expected {
             if !is_optional_tool {
@@ -211,8 +207,8 @@ impl Step for ToolBuild {
                 None
             }
         } else {
-            let cargo_out = builder.cargo_out(compiler, self.mode, target)
-                .join(exe(tool, &compiler.host));
+            let cargo_out =
+                builder.cargo_out(compiler, self.mode, target).join(exe(tool, &compiler.host));
             let bin = builder.tools_dir(compiler).join(exe(tool, &compiler.host));
             builder.copy(&cargo_out, &bin);
             Some(bin)
@@ -240,12 +236,12 @@ pub fn prepare_tool_cargo(
 
     let mut features = extra_features.iter().cloned().collect::<Vec<_>>();
     if builder.build.config.cargo_native_static {
-        if path.ends_with("cargo") ||
-            path.ends_with("rls") ||
-            path.ends_with("clippy") ||
-            path.ends_with("miri") ||
-            path.ends_with("rustbook") ||
-            path.ends_with("rustfmt")
+        if path.ends_with("cargo")
+            || path.ends_with("rls")
+            || path.ends_with("clippy")
+            || path.ends_with("miri")
+            || path.ends_with("rustbook")
+            || path.ends_with("rustfmt")
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
             features.push("rustc-workspace-hack/all-static".to_string());
@@ -395,9 +391,7 @@ pub struct ErrorIndex {
 
 impl ErrorIndex {
     pub fn command(builder: &Builder<'_>, compiler: Compiler) -> Command {
-        let mut cmd = Command::new(builder.ensure(ErrorIndex {
-            compiler
-        }));
+        let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
         add_lib_path(
             vec![PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host))],
             &mut cmd,
@@ -417,22 +411,23 @@ impl Step for ErrorIndex {
         // Compile the error-index in the same stage as rustdoc to avoid
         // recompiling rustdoc twice if we can.
         let stage = if run.builder.top_stage >= 2 { run.builder.top_stage } else { 0 };
-        run.builder.ensure(ErrorIndex {
-            compiler: run.builder.compiler(stage, run.builder.config.build),
-        });
+        run.builder
+            .ensure(ErrorIndex { compiler: run.builder.compiler(stage, run.builder.config.build) });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.compiler.host,
-            tool: "error_index_generator",
-            mode: Mode::ToolRustc,
-            path: "src/tools/error_index_generator",
-            is_optional_tool: false,
-            source_type: SourceType::InTree,
-            extra_features: Vec::new(),
-        }).expect("expected to build -- essential tool")
+        builder
+            .ensure(ToolBuild {
+                compiler: self.compiler,
+                target: self.compiler.host,
+                tool: "error_index_generator",
+                mode: Mode::ToolRustc,
+                path: "src/tools/error_index_generator",
+                is_optional_tool: false,
+                source_type: SourceType::InTree,
+                extra_features: Vec::new(),
+            })
+            .expect("expected to build -- essential tool")
     }
 }
 
@@ -457,16 +452,18 @@ impl Step for RemoteTestServer {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "remote-test-server",
-            mode: Mode::ToolStd,
-            path: "src/tools/remote-test-server",
-            is_optional_tool: false,
-            source_type: SourceType::InTree,
-            extra_features: Vec::new(),
-        }).expect("expected to build -- essential tool")
+        builder
+            .ensure(ToolBuild {
+                compiler: self.compiler,
+                target: self.target,
+                tool: "remote-test-server",
+                mode: Mode::ToolStd,
+                path: "src/tools/remote-test-server",
+                is_optional_tool: false,
+                source_type: SourceType::InTree,
+                extra_features: Vec::new(),
+            })
+            .expect("expected to build -- essential tool")
     }
 }
 
@@ -487,9 +484,8 @@ impl Step for Rustdoc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rustdoc {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
-        });
+        run.builder
+            .ensure(Rustdoc { compiler: run.builder.compiler(run.builder.top_stage, run.host) });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
@@ -525,14 +521,17 @@ impl Step for Rustdoc {
             &[],
         );
 
-        builder.info(&format!("Building rustdoc for stage{} ({})",
-            target_compiler.stage, target_compiler.host));
+        builder.info(&format!(
+            "Building rustdoc for stage{} ({})",
+            target_compiler.stage, target_compiler.host
+        ));
         builder.run(&mut cargo.into());
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
         // rustdoc a different name.
-        let tool_rustdoc = builder.cargo_out(build_compiler, Mode::ToolRustc, target)
+        let tool_rustdoc = builder
+            .cargo_out(build_compiler, Mode::ToolRustc, target)
             .join(exe("rustdoc_tool_binary", &target_compiler.host));
 
         // don't create a stage0-sysroot/bin directory.
@@ -574,16 +573,18 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "cargo",
-            mode: Mode::ToolRustc,
-            path: "src/tools/cargo",
-            is_optional_tool: false,
-            source_type: SourceType::Submodule,
-            extra_features: Vec::new(),
-        }).expect("expected to build -- essential tool")
+        builder
+            .ensure(ToolBuild {
+                compiler: self.compiler,
+                target: self.target,
+                tool: "cargo",
+                mode: Mode::ToolRustc,
+                path: "src/tools/cargo",
+                is_optional_tool: false,
+                source_type: SourceType::Submodule,
+                extra_features: Vec::new(),
+            })
+            .expect("expected to build -- essential tool")
     }
 }
 
@@ -682,7 +683,7 @@ impl<'a> Builder<'a> {
             let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
             for &(ref k, ref v) in self.cc[&compiler.host].env() {
                 if k != "PATH" {
-                    continue
+                    continue;
                 }
                 for path in env::split_paths(v) {
                     if !curpaths.contains(&path) {

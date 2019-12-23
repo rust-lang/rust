@@ -1,5 +1,5 @@
 use super::BackendTypes;
-use rustc::ty::{Ty};
+use rustc::ty::Ty;
 use rustc_target::abi::call::FnAbi;
 
 pub trait AbiBuilderMethods<'tcx>: BackendTypes {

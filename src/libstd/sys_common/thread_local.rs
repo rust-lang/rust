@@ -81,7 +81,7 @@ pub struct StaticKey {
     ///
     /// See `Key::new` for information about when the destructor runs and how
     /// it runs.
-    dtor: Option<unsafe extern fn(*mut u8)>,
+    dtor: Option<unsafe extern "C" fn(*mut u8)>,
 }
 
 /// A type for a safely managed OS-based TLS slot.
@@ -115,11 +115,8 @@ pub struct Key {
 pub const INIT: StaticKey = StaticKey::new(None);
 
 impl StaticKey {
-    pub const fn new(dtor: Option<unsafe extern fn(*mut u8)>) -> StaticKey {
-        StaticKey {
-            key: atomic::AtomicUsize::new(0),
-            dtor,
-        }
+    pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> StaticKey {
+        StaticKey { key: atomic::AtomicUsize::new(0), dtor }
     }
 
     /// Gets the value associated with this TLS key
@@ -127,20 +124,24 @@ impl StaticKey {
     /// This will lazily allocate a TLS key from the OS if one has not already
     /// been allocated.
     #[inline]
-    pub unsafe fn get(&self) -> *mut u8 { imp::get(self.key()) }
+    pub unsafe fn get(&self) -> *mut u8 {
+        imp::get(self.key())
+    }
 
     /// Sets this TLS key to a new value.
     ///
     /// This will lazily allocate a TLS key from the OS if one has not already
     /// been allocated.
     #[inline]
-    pub unsafe fn set(&self, val: *mut u8) { imp::set(self.key(), val) }
+    pub unsafe fn set(&self, val: *mut u8) {
+        imp::set(self.key(), val)
+    }
 
     #[inline]
     unsafe fn key(&self) -> imp::Key {
         match self.key.load(Ordering::Relaxed) {
             0 => self.lazy_init() as imp::Key,
-            n => n as imp::Key
+            n => n as imp::Key,
         }
     }
 
@@ -161,7 +162,7 @@ impl StaticKey {
                 self.key.store(key, Ordering::SeqCst);
             }
             rtassert!(key != 0);
-            return key
+            return key;
         }
 
         // POSIX allows the key created here to be 0, but the compare_and_swap
@@ -186,7 +187,10 @@ impl StaticKey {
             // The CAS succeeded, so we've created the actual key
             0 => key as usize,
             // If someone beat us to the punch, use their key instead
-            n => { imp::destroy(key); n }
+            n => {
+                imp::destroy(key);
+                n
+            }
         }
     }
 }
@@ -204,7 +208,7 @@ impl Key {
     /// Note that the destructor will not be run when the `Key` goes out of
     /// scope.
     #[inline]
-    pub fn new(dtor: Option<unsafe extern fn(*mut u8)>) -> Key {
+    pub fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
         Key { key: unsafe { imp::create(dtor) } }
     }
 
@@ -229,8 +233,7 @@ impl Drop for Key {
     }
 }
 
-pub unsafe fn register_dtor_fallback(t: *mut u8,
-                                     dtor: unsafe extern fn(*mut u8)) {
+pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     // The fallback implementation uses a vanilla OS-based TLS key to track
     // the list of destructors that need to be run for this thread. The key
     // then has its own destructor which runs all the other destructors.
@@ -242,7 +245,7 @@ pub unsafe fn register_dtor_fallback(t: *mut u8,
     // flagged for destruction.
 
     static DTORS: StaticKey = StaticKey::new(Some(run_dtors));
-    type List = Vec<(*mut u8, unsafe extern fn(*mut u8))>;
+    type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
     if DTORS.get().is_null() {
         let v: Box<List> = box Vec::new();
         DTORS.set(Box::into_raw(v) as *mut u8);
@@ -250,7 +253,7 @@ pub unsafe fn register_dtor_fallback(t: *mut u8,
     let list: &mut List = &mut *(DTORS.get() as *mut List);
     list.push((t, dtor));
 
-    unsafe extern fn run_dtors(mut ptr: *mut u8) {
+    unsafe extern "C" fn run_dtors(mut ptr: *mut u8) {
         while !ptr.is_null() {
             let list: Box<List> = Box::from_raw(ptr as *mut List);
             for (ptr, dtor) in list.into_iter() {

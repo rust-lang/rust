@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 
 use log::*;
 
-use crate::common::{self, CompareMode, Config, Mode, PassMode, FailMode};
-use crate::util;
+use crate::common::{self, CompareMode, Config, FailMode, Mode, PassMode};
 use crate::extract_gdb_version;
+use crate::util;
 
 #[cfg(test)]
 mod tests;
@@ -125,18 +125,17 @@ impl EarlyProps {
                     props.ignore = Ignore::Ignore;
                 }
 
-                if config.run_clang_based_tests_with.is_none() &&
-                   config.parse_needs_matching_clang(ln) {
+                if config.run_clang_based_tests_with.is_none()
+                    && config.parse_needs_matching_clang(ln)
+                {
                     props.ignore = Ignore::Ignore;
                 }
 
-                if !rustc_has_profiler_support &&
-                   config.parse_needs_profiler_support(ln) {
+                if !rustc_has_profiler_support && config.parse_needs_profiler_support(ln) {
                     props.ignore = Ignore::Ignore;
                 }
 
-                if !rustc_has_sanitizer_support &&
-                   config.parse_needs_sanitizer_support(ln) {
+                if !rustc_has_sanitizer_support && config.parse_needs_sanitizer_support(ln) {
                     props.ignore = Ignore::Ignore;
                 }
 
@@ -145,13 +144,17 @@ impl EarlyProps {
                 }
             }
 
-            if (config.mode == common::DebugInfoGdb || config.mode == common::DebugInfoGdbLldb) &&
-                props.ignore.can_run_gdb() && ignore_gdb(config, ln) {
+            if (config.mode == common::DebugInfoGdb || config.mode == common::DebugInfoGdbLldb)
+                && props.ignore.can_run_gdb()
+                && ignore_gdb(config, ln)
+            {
                 props.ignore = props.ignore.no_gdb();
             }
 
-            if (config.mode == common::DebugInfoLldb || config.mode == common::DebugInfoGdbLldb) &&
-                props.ignore.can_run_lldb() && ignore_lldb(config, ln) {
+            if (config.mode == common::DebugInfoLldb || config.mode == common::DebugInfoGdbLldb)
+                && props.ignore.can_run_lldb()
+                && ignore_lldb(config, ln)
+            {
                 props.ignore = props.ignore.no_lldb();
             }
 
@@ -207,12 +210,13 @@ impl EarlyProps {
         fn extract_gdb_version_range(line: &str) -> (u32, u32) {
             const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
 
-            let range_components = line.split(&[' ', '-'][..])
-                                       .filter(|word| !word.is_empty())
-                                       .map(extract_gdb_version)
-                                       .skip_while(Option::is_none)
-                                       .take(3) // 3 or more = invalid, so take at most 3.
-                                       .collect::<Vec<Option<u32>>>();
+            let range_components = line
+                .split(&[' ', '-'][..])
+                .filter(|word| !word.is_empty())
+                .map(extract_gdb_version)
+                .skip_while(Option::is_none)
+                .take(3) // 3 or more = invalid, so take at most 3.
+                .collect::<Vec<Option<u32>>>();
 
             match range_components.len() {
                 1 => {
@@ -231,7 +235,8 @@ impl EarlyProps {
         fn ignore_lldb(config: &Config, line: &str) -> bool {
             if let Some(ref actual_version) = config.lldb_version {
                 if line.starts_with("min-lldb-version") {
-                    let min_version = line.trim_end()
+                    let min_version = line
+                        .trim_end()
                         .rsplit(' ')
                         .next()
                         .expect("Malformed lldb version directive");
@@ -254,7 +259,8 @@ impl EarlyProps {
             }
             if let Some(ref actual_version) = config.llvm_version {
                 if line.starts_with("min-llvm-version") {
-                    let min_version = line.trim_end()
+                    let min_version = line
+                        .trim_end()
                         .rsplit(' ')
                         .next()
                         .expect("Malformed llvm version directive");
@@ -262,7 +268,8 @@ impl EarlyProps {
                     // version
                     &actual_version[..] < min_version
                 } else if line.starts_with("min-system-llvm-version") {
-                    let min_version = line.trim_end()
+                    let min_version = line
+                        .trim_end()
                         .rsplit(' ')
                         .next()
                         .expect("Malformed llvm version directive");
@@ -271,16 +278,15 @@ impl EarlyProps {
                     config.system_llvm && &actual_version[..] < min_version
                 } else if line.starts_with("ignore-llvm-version") {
                     // Syntax is: "ignore-llvm-version <version1> [- <version2>]"
-                    let range_components = line.split(' ')
+                    let range_components = line
+                        .split(' ')
                         .skip(1) // Skip the directive.
                         .map(|s| s.trim())
                         .filter(|word| !word.is_empty() && word != &"-")
                         .take(3) // 3 or more = invalid, so take at most 3.
                         .collect::<Vec<&str>>();
                     match range_components.len() {
-                        1 => {
-                            &actual_version[..] == range_components[0]
-                        }
+                        1 => &actual_version[..] == range_components[0],
                         2 => {
                             let v_min = range_components[0];
                             let v_max = range_components[1];
@@ -461,8 +467,7 @@ impl TestProps {
             }
 
             if let Some(flags) = config.parse_compile_flags(ln) {
-                self.compile_flags
-                    .extend(flags.split_whitespace().map(|s| s.to_owned()));
+                self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
             }
 
             if let Some(edition) = config.parse_edition(ln) {
@@ -614,8 +619,10 @@ impl TestProps {
     }
 
     fn update_fail_mode(&mut self, ln: &str, config: &Config) {
-        let check_ui = |mode: &str| if config.mode != Mode::Ui {
-            panic!("`{}-fail` header is only supported in UI tests", mode);
+        let check_ui = |mode: &str| {
+            if config.mode != Mode::Ui {
+                panic!("`{}-fail` header is only supported in UI tests", mode);
+            }
         };
         let fail_mode = if config.parse_name_directive(ln, "check-fail") {
             check_ui("check");
@@ -641,9 +648,10 @@ impl TestProps {
             if config.mode != Mode::Ui && config.mode != Mode::Incremental {
                 panic!("`{}` header is only supported in UI and incremental tests", s);
             }
-            if config.mode == Mode::Incremental &&
-                !revision.map_or(false, |r| r.starts_with("cfail")) &&
-                !self.revisions.iter().all(|r| r.starts_with("cfail")) {
+            if config.mode == Mode::Incremental
+                && !revision.map_or(false, |r| r.starts_with("cfail"))
+                && !self.revisions.iter().all(|r| r.starts_with("cfail"))
+            {
                 panic!("`{}` header is only supported in `cfail` incremental tests", s);
             }
         };
@@ -688,11 +696,7 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
         return;
     }
 
-    let comment = if testfile.to_string_lossy().ends_with(".rs") {
-        "//"
-    } else {
-        "#"
-    };
+    let comment = if testfile.to_string_lossy().ends_with(".rs") { "//" } else { "#" };
 
     // FIXME: would be nice to allow some whitespace between comment and brace :)
     // It took me like 2 days to debug why compile-flags weren’t taken into account for my test :)
@@ -711,7 +715,7 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
             // A comment like `//[foo]` is specific to revision `foo`
             if let Some(close_brace) = ln.find(']') {
                 let open_brace = ln.find('[').unwrap();
-                let lncfg = &ln[open_brace + 1 .. close_brace];
+                let lncfg = &ln[open_brace + 1..close_brace];
                 let matches = match cfg {
                     Some(s) => s == &lncfg[..],
                     None => false,
@@ -720,11 +724,13 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
                     it(ln[(close_brace + 1)..].trim_start());
                 }
             } else {
-                panic!("malformed condition directive: expected `{}foo]`, found `{}`",
-                        comment_with_brace, ln)
+                panic!(
+                    "malformed condition directive: expected `{}foo]`, found `{}`",
+                    comment_with_brace, ln
+                )
             }
         } else if ln.starts_with(comment) {
-            it(ln[comment.len() ..].trim_start());
+            it(ln[comment.len()..].trim_start());
         }
     }
     return;
@@ -743,8 +749,7 @@ impl Config {
     }
 
     fn parse_aux_build(&self, line: &str) -> Option<String> {
-        self.parse_name_value_directive(line, "aux-build")
-            .map(|r| r.trim().to_string())
+        self.parse_name_value_directive(line, "aux-build").map(|r| r.trim().to_string())
     }
 
     fn parse_aux_crate(&self, line: &str) -> Option<(String, String)> {
@@ -834,8 +839,7 @@ impl Config {
     }
 
     fn parse_assembly_output(&self, line: &str) -> Option<String> {
-        self.parse_name_value_directive(line, "assembly-output")
-            .map(|r| r.trim().to_string())
+        self.parse_name_value_directive(line, "assembly-output").map(|r| r.trim().to_string())
     }
 
     fn parse_env(&self, line: &str, name: &str) -> Option<(String, String)> {
@@ -890,10 +894,7 @@ impl Config {
     /// or `normalize-stderr-32bit`.
     fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> ParsedNameDirective {
         if line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-') {
-            let name = line[prefix.len() + 1..]
-                .split(&[':', ' '][..])
-                .next()
-                .unwrap();
+            let name = line[prefix.len() + 1..].split(&[':', ' '][..]).next().unwrap();
 
             if name == "test" ||
                 util::matches_os(&self.target, name) ||             // target
@@ -907,7 +908,8 @@ impl Config {
                     Some(CompareMode::Polonius) => name == "compare-mode-polonius",
                     None => false,
                 } ||
-                (cfg!(debug_assertions) && name == "debug") {
+                (cfg!(debug_assertions) && name == "debug")
+            {
                 ParsedNameDirective::Match
             } else {
                 match self.mode {
@@ -919,27 +921,35 @@ impl Config {
                         } else {
                             ParsedNameDirective::NoMatch
                         }
-                    },
-                    common::DebugInfoCdb => if name == "cdb" {
-                        ParsedNameDirective::Match
-                    } else {
-                        ParsedNameDirective::NoMatch
-                    },
-                    common::DebugInfoGdb => if name == "gdb" {
-                        ParsedNameDirective::Match
-                    } else {
-                        ParsedNameDirective::NoMatch
-                    },
-                    common::DebugInfoLldb => if name == "lldb" {
-                        ParsedNameDirective::Match
-                    } else {
-                        ParsedNameDirective::NoMatch
-                    },
-                    common::Pretty => if name == "pretty" {
-                        ParsedNameDirective::Match
-                    } else {
-                        ParsedNameDirective::NoMatch
-                    },
+                    }
+                    common::DebugInfoCdb => {
+                        if name == "cdb" {
+                            ParsedNameDirective::Match
+                        } else {
+                            ParsedNameDirective::NoMatch
+                        }
+                    }
+                    common::DebugInfoGdb => {
+                        if name == "gdb" {
+                            ParsedNameDirective::Match
+                        } else {
+                            ParsedNameDirective::NoMatch
+                        }
+                    }
+                    common::DebugInfoLldb => {
+                        if name == "lldb" {
+                            ParsedNameDirective::Match
+                        } else {
+                            ParsedNameDirective::NoMatch
+                        }
+                    }
+                    common::Pretty => {
+                        if name == "pretty" {
+                            ParsedNameDirective::Match
+                        } else {
+                            ParsedNameDirective::NoMatch
+                        }
+                    }
                     _ => ParsedNameDirective::NoMatch,
                 }
             }
@@ -958,10 +968,11 @@ impl Config {
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
         // Ensure the directive is a whole word. Do not match "ignore-x86" when
         // the line says "ignore-x86_64".
-        line.starts_with(directive) && match line.as_bytes().get(directive.len()) {
-            None | Some(&b' ') | Some(&b':') => true,
-            _ => false,
-        }
+        line.starts_with(directive)
+            && match line.as_bytes().get(directive.len()) {
+                None | Some(&b' ') | Some(&b':') => true,
+                _ => false,
+            }
     }
 
     pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
@@ -1002,10 +1013,8 @@ impl Config {
 }
 
 pub fn lldb_version_to_int(version_string: &str) -> isize {
-    let error_string = format!(
-        "Encountered LLDB version string with unexpected format: {}",
-        version_string
-    );
+    let error_string =
+        format!("Encountered LLDB version string with unexpected format: {}", version_string);
     version_string.parse().expect(&error_string)
 }
 

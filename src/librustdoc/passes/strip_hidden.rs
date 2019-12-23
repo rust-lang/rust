@@ -2,8 +2,8 @@ use rustc::util::nodemap::DefIdSet;
 use std::mem;
 use syntax::symbol::sym;
 
-use crate::clean::{self, AttributesExt, NestedAttributesExt};
 use crate::clean::Item;
+use crate::clean::{self, AttributesExt, NestedAttributesExt};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
 use crate::passes::{ImplStripper, Pass};
@@ -20,7 +20,7 @@ pub fn strip_hidden(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
 
     // strip all #[doc(hidden)] items
     let krate = {
-        let mut stripper = Stripper{ retained: &mut retained, update_retained: true };
+        let mut stripper = Stripper { retained: &mut retained, update_retained: true };
         stripper.fold_crate(krate)
     };
 

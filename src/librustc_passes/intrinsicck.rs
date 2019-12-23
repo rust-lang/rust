@@ -1,29 +1,23 @@
-use rustc::hir::def::{Res, DefKind};
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
 use rustc::ty::query::Providers;
+use rustc::ty::{self, Ty, TyCtxt};
 
-use rustc_target::spec::abi::Abi::RustIntrinsic;
-use rustc_index::vec::Idx;
-use syntax_pos::{Span, sym};
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_index::vec::Idx;
+use rustc_target::spec::abi::Abi::RustIntrinsic;
+use syntax_pos::{sym, Span};
 
 use rustc_error_codes::*;
 
 fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(
-        module_def_id,
-        &mut ItemVisitor { tcx }.as_deep_visitor()
-    );
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut ItemVisitor { tcx }.as_deep_visitor());
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
-    *providers = Providers {
-        check_mod_intrinsics,
-        ..*providers
-    };
+    *providers = Providers { check_mod_intrinsics, ..*providers };
 }
 
 struct ItemVisitor<'tcx> {
@@ -41,7 +35,7 @@ struct ExprVisitor<'tcx> {
 fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let (def, substs) = match ty.kind {
         ty::Adt(def, substs) => (def, substs),
-        _ => return ty
+        _ => return ty,
     };
 
     if def.variants.len() == 2 && !def.repr.c() && def.repr.int.is_none() {
@@ -68,8 +62,8 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 
 impl ExprVisitor<'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        self.tcx.fn_sig(def_id).abi() == RustIntrinsic &&
-        self.tcx.item_name(def_id) == sym::transmute
+        self.tcx.fn_sig(def_id).abi() == RustIntrinsic
+            && self.tcx.item_name(def_id) == sym::transmute
     }
 
     fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
@@ -87,8 +81,7 @@ impl ExprVisitor<'tcx> {
             let from = unpack_option_like(self.tcx, from);
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (&from.kind, sk_to) {
                 if size_to == Pointer.size(&self.tcx) {
-                    struct_span_err!(self.tcx.sess, span, E0591,
-                                     "can't transmute zero-sized type")
+                    struct_span_err!(self.tcx.sess, span, E0591, "can't transmute zero-sized type")
                         .note(&format!("source type: {}", from))
                         .note(&format!("target type: {}", to))
                         .help("cast with `as` to a pointer instead")
@@ -99,28 +92,26 @@ impl ExprVisitor<'tcx> {
         }
 
         // Try to display a sensible error with as much information as possible.
-        let skeleton_string = |ty: Ty<'tcx>, sk| {
-            match sk {
-                Ok(SizeSkeleton::Known(size)) => {
-                    format!("{} bits", size.bits())
+        let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
+            Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
+            Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{}`", tail),
+            Err(LayoutError::Unknown(bad)) => {
+                if bad == ty {
+                    "this type does not have a fixed size".to_owned()
+                } else {
+                    format!("size can vary because of {}", bad)
                 }
-                Ok(SizeSkeleton::Pointer { tail, .. }) => {
-                    format!("pointer to `{}`", tail)
-                }
-                Err(LayoutError::Unknown(bad)) => {
-                    if bad == ty {
-                        "this type does not have a fixed size".to_owned()
-                    } else {
-                        format!("size can vary because of {}", bad)
-                    }
-                }
-                Err(err) => err.to_string()
             }
+            Err(err) => err.to_string(),
         };
 
-        let mut err = struct_span_err!(self.tcx.sess, span, E0512,
-                                       "cannot transmute between types of different sizes, \
-                                        or dependently-sized types");
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            span,
+            E0512,
+            "cannot transmute between types of different sizes, \
+                                        or dependently-sized types"
+        );
         if from == to {
             err.note(&format!("`{}` does not have a fixed size", from));
         } else {

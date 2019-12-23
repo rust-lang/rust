@@ -5,23 +5,23 @@
 use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use crate::hir::map as hir_map;
 use crate::hir::map::definitions::{DefKey, DefPathTable};
-use rustc_data_structures::svh::Svh;
-use crate::ty::{self, TyCtxt};
-use crate::session::{Session, CrateDisambiguator};
 use crate::session::search_paths::PathKind;
+use crate::session::{CrateDisambiguator, Session};
+use crate::ty::{self, TyCtxt};
+use rustc_data_structures::svh::Svh;
 
+use rustc_data_structures::sync::{self, MetadataRef};
+use rustc_macros::HashStable;
+use rustc_target::spec::Target;
 use std::any::Any;
 use std::path::{Path, PathBuf};
 use syntax::ast;
+use syntax::expand::allocator::AllocatorKind;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use syntax::expand::allocator::AllocatorKind;
-use rustc_target::spec::Target;
-use rustc_data_structures::sync::{self, MetadataRef};
-use rustc_macros::HashStable;
 
-pub use rustc_session::utils::NativeLibraryKind;
 pub use self::NativeLibraryKind::*;
+pub use rustc_session::utils::NativeLibraryKind;
 
 // lonely orphan structs and enums looking for a better home
 
@@ -40,8 +40,18 @@ impl CrateSource {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Copy, Clone,
-         Ord, PartialOrd, Eq, PartialEq, Debug, HashStable)]
+#[derive(
+    RustcEncodable,
+    RustcDecodable,
+    Copy,
+    Clone,
+    Ord,
+    PartialOrd,
+    Eq,
+    PartialEq,
+    Debug,
+    HashStable
+)]
 pub enum DepKind {
     /// A dependency that is only used for its macros, none of which are visible from other crates.
     /// These are included in the metadata only as placeholders and are ignored when decoding.
@@ -74,11 +84,7 @@ pub enum LibSource {
 
 impl LibSource {
     pub fn is_some(&self) -> bool {
-        if let LibSource::Some(_) = *self {
-            true
-        } else {
-            false
-        }
+        if let LibSource::Some(_) = *self { true } else { false }
     }
 
     pub fn option(&self) -> Option<PathBuf> {
@@ -155,14 +161,12 @@ pub enum ExternCrateSource {
 }
 
 pub struct EncodedMetadata {
-    pub raw_data: Vec<u8>
+    pub raw_data: Vec<u8>,
 }
 
 impl EncodedMetadata {
     pub fn new() -> EncodedMetadata {
-        EncodedMetadata {
-            raw_data: Vec::new(),
-        }
+        EncodedMetadata { raw_data: Vec::new() }
     }
 }
 
@@ -175,14 +179,8 @@ impl EncodedMetadata {
 /// metadata in library -- this trait just serves to decouple rustc_metadata from
 /// the archive reader, which depends on LLVM.
 pub trait MetadataLoader {
-    fn get_rlib_metadata(&self,
-                         target: &Target,
-                         filename: &Path)
-                         -> Result<MetadataRef, String>;
-    fn get_dylib_metadata(&self,
-                          target: &Target,
-                          filename: &Path)
-                          -> Result<MetadataRef, String>;
+    fn get_rlib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String>;
+    fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String>;
 }
 
 pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
@@ -234,12 +232,13 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 // topological sort of all crates putting the leaves at the right-most
 // positions.
 pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
-    let mut libs = tcx.crates()
+    let mut libs = tcx
+        .crates()
         .iter()
         .cloned()
         .filter_map(|cnum| {
             if tcx.dep_kind(cnum).macros_only() {
-                return None
+                return None;
             }
             let source = tcx.used_crate_source(cnum);
             let path = match prefer {
@@ -261,8 +260,6 @@ pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum,
         .collect::<Vec<_>>();
     let mut ordering = tcx.postorder_cnums(LOCAL_CRATE).to_owned();
     ordering.reverse();
-    libs.sort_by_cached_key(|&(a, _)| {
-        ordering.iter().position(|x| *x == a)
-    });
+    libs.sort_by_cached_key(|&(a, _)| ordering.iter().position(|x| *x == a));
     libs
 }

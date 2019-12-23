@@ -4,18 +4,9 @@ use rustc_data_structures::sync::Lrc;
 
 fn init_source_map() -> SourceMap {
     let sm = SourceMap::new(FilePathMapping::empty());
-    sm.new_source_file(
-        PathBuf::from("blork.rs").into(),
-        "first line.\nsecond line".to_string(),
-    );
-    sm.new_source_file(
-        PathBuf::from("empty.rs").into(),
-        String::new(),
-    );
-    sm.new_source_file(
-        PathBuf::from("blork2.rs").into(),
-        "first line.\nsecond line".to_string(),
-    );
+    sm.new_source_file(PathBuf::from("blork.rs").into(), "first line.\nsecond line".to_string());
+    sm.new_source_file(PathBuf::from("empty.rs").into(), String::new());
+    sm.new_source_file(PathBuf::from("blork2.rs").into(), "first line.\nsecond line".to_string());
     sm
 }
 
@@ -68,10 +59,14 @@ fn t5() {
 fn init_source_map_mbc() -> SourceMap {
     let sm = SourceMap::new(FilePathMapping::empty());
     // "€" is a three-byte UTF8 char.
-    sm.new_source_file(PathBuf::from("blork.rs").into(),
-                    "fir€st €€€€ line.\nsecond line".to_string());
-    sm.new_source_file(PathBuf::from("blork2.rs").into(),
-                    "first line€€.\n€ second line".to_string());
+    sm.new_source_file(
+        PathBuf::from("blork.rs").into(),
+        "fir€st €€€€ line.\nsecond line".to_string(),
+    );
+    sm.new_source_file(
+        PathBuf::from("blork2.rs").into(),
+        "first line€€.\n€ second line".to_string(),
+    );
     sm
 }
 
@@ -112,7 +107,7 @@ fn t7() {
 fn span_from_selection(input: &str, selection: &str) -> Span {
     assert_eq!(input.len(), selection.len());
     let left_index = selection.find('~').unwrap() as u32;
-    let right_index = selection.rfind('~').map(|x|x as u32).unwrap_or(left_index);
+    let right_index = selection.rfind('~').map(|x| x as u32).unwrap_or(left_index);
     Span::with_root_ctxt(BytePos(left_index), BytePos(right_index + 1))
 }
 
@@ -134,8 +129,8 @@ fn span_to_snippet_and_lines_spanning_multiple_lines() {
     let expected = vec![
         LineInfo { line_index: 1, start_col: CharPos(4), end_col: CharPos(6) },
         LineInfo { line_index: 2, start_col: CharPos(0), end_col: CharPos(3) },
-        LineInfo { line_index: 3, start_col: CharPos(0), end_col: CharPos(5) }
-        ];
+        LineInfo { line_index: 3, start_col: CharPos(0), end_col: CharPos(5) },
+    ];
     assert_eq!(lines.lines, expected);
 }
 
@@ -154,7 +149,7 @@ fn t8() {
 fn t9() {
     let sm = init_source_map();
     let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
-    let sstr =  sm.span_to_string(span);
+    let sstr = sm.span_to_string(span);
 
     assert_eq!(sstr, "blork.rs:2:1: 2:12");
 }
@@ -163,7 +158,7 @@ fn t9() {
 #[test]
 fn span_merging_fail() {
     let sm = SourceMap::new(FilePathMapping::empty());
-    let inputtext  = "bbbb BB\ncc CCC\n";
+    let inputtext = "bbbb BB\ncc CCC\n";
     let selection1 = "     ~~\n      \n";
     let selection2 = "       \n   ~~~\n";
     sm.new_source_file(Path::new("blork.rs").to_owned().into(), inputtext.to_owned());

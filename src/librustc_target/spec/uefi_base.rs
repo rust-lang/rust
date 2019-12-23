@@ -15,27 +15,25 @@ use std::default::Default;
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
 
-    pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Link), vec![
+    pre_link_args.insert(
+        LinkerFlavor::Lld(LldFlavor::Link),
+        vec![
             // Suppress the verbose logo and authorship debugging output, which would needlessly
             // clog any log files.
             "/NOLOGO".to_string(),
-
             // UEFI is fully compatible to non-executable data pages. Tell the compiler that
             // non-code sections can be marked as non-executable, including stack pages. In fact,
             // firmware might enforce this, so we better let the linker know about this, so it
             // will fail if the compiler ever tries placing code on the stack (e.g., trampoline
             // constructs and alike).
             "/NXCOMPAT".to_string(),
-
             // There is no runtime for UEFI targets, prevent them from being linked. UEFI targets
             // must be freestanding.
             "/nodefaultlib".to_string(),
-
             // Non-standard subsystems have no default entry-point in PE+ files. We have to define
             // one. "efi_main" seems to be a common choice amongst other implementations and the
             // spec.
             "/entry:efi_main".to_string(),
-
             // COFF images have a "Subsystem" field in their header, which defines what kind of
             // program it is. UEFI has 3 fields reserved, which are EFI_APPLICATION,
             // EFI_BOOT_SERVICE_DRIVER, and EFI_RUNTIME_DRIVER. We default to EFI_APPLICATION,
@@ -46,7 +44,8 @@ pub fn opts() -> TargetOptions {
             // reserved areas), as well as whether a return from the entry-point is treated as
             // exit (default for applications).
             "/subsystem:efi_application".to_string(),
-        ]);
+        ],
+    );
 
     TargetOptions {
         dynamic_linking: false,
@@ -63,6 +62,6 @@ pub fn opts() -> TargetOptions {
         lld_flavor: LldFlavor::Link,
         pre_link_args,
 
-        .. Default::default()
+        ..Default::default()
     }
 }

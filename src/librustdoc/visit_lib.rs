@@ -1,6 +1,6 @@
-use rustc::middle::privacy::{AccessLevels, AccessLevel};
-use rustc::hir::def::{Res, DefKind};
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
+use rustc::hir::def::{DefKind, Res};
+use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{TyCtxt, Visibility};
 use rustc::util::nodemap::FxHashSet;
 use syntax::symbol::sym;
@@ -22,9 +22,7 @@ pub struct LibEmbargoVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
-    pub fn new(
-        cx: &'a mut crate::core::DocContext<'tcx>
-    ) -> LibEmbargoVisitor<'a, 'tcx> {
+    pub fn new(cx: &'a mut crate::core::DocContext<'tcx>) -> LibEmbargoVisitor<'a, 'tcx> {
         LibEmbargoVisitor {
             tcx: cx.tcx,
             access_levels: &mut cx.renderinfo.get_mut().access_levels,
@@ -60,8 +58,9 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
 
         for item in self.tcx.item_children(def_id).iter() {
             if let Some(def_id) = item.res.opt_def_id() {
-                if self.tcx.def_key(def_id).parent.map_or(false, |d| d == def_id.index) ||
-                    item.vis == Visibility::Public {
+                if self.tcx.def_key(def_id).parent.map_or(false, |d| d == def_id.index)
+                    || item.vis == Visibility::Public
+                {
                     self.visit_item(item.res);
                 }
             }
@@ -71,11 +70,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
     fn visit_item(&mut self, res: Res) {
         let def_id = res.def_id();
         let vis = self.tcx.visibility(def_id);
-        let inherited_item_level = if vis == Visibility::Public {
-            self.prev_level
-        } else {
-            None
-        };
+        let inherited_item_level = if vis == Visibility::Public { self.prev_level } else { None };
 
         let item_level = self.update(def_id, inherited_item_level);
 

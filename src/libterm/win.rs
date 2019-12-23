@@ -5,8 +5,8 @@
 use std::io;
 use std::io::prelude::*;
 
-use crate::Attr;
 use crate::color;
+use crate::Attr;
 use crate::Terminal;
 
 /// A Terminal implementation that uses the Win32 Console API.
@@ -73,11 +73,7 @@ fn color_to_bits(color: color::Color) -> u16 {
         _ => unreachable!(),
     };
 
-    if color >= 8 {
-        bits | 0x8
-    } else {
-        bits
-    }
+    if color >= 8 { bits | 0x8 } else { bits }
 }
 
 fn bits_to_color(bits: u16) -> color::Color {
@@ -126,11 +122,10 @@ impl<T: Write + Send + 'static> WinConsole<T> {
         let bg;
         unsafe {
             let mut buffer_info = MaybeUninit::<CONSOLE_SCREEN_BUFFER_INFO>::uninit();
-            if GetConsoleScreenBufferInfo(
-                GetStdHandle(-11i32 as DWORD),
-                buffer_info.as_mut_ptr()
-            ) != 0 {
-                let buffer_info = buffer_info.assume_init() ;
+            if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as DWORD), buffer_info.as_mut_ptr())
+                != 0
+            {
+                let buffer_info = buffer_info.assume_init();
                 fg = bits_to_color(buffer_info.wAttributes);
                 bg = bits_to_color(buffer_info.wAttributes >> 4);
             } else {
@@ -217,7 +212,8 @@ impl<T: Write + Send + 'static> Terminal for WinConsole<T> {
     }
 
     fn into_inner(self) -> T
-        where Self: Sized
+    where
+        Self: Sized,
     {
         self.buf
     }

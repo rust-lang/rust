@@ -15,7 +15,7 @@ fn test_encode() {
         test(u64::max_value() as u128, base);
         test(u128::max_value(), base);
 
-        for i in 0 .. 1_000 {
+        for i in 0..1_000 {
             test(i * 983, base);
         }
     }

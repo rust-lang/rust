@@ -1,6 +1,6 @@
-use rustc_index::vec::IndexVec;
-use super::{DirectedGraph, WithNumNodes, WithSuccessors, WithStartNode};
+use super::{DirectedGraph, WithNumNodes, WithStartNode, WithSuccessors};
 use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 
 #[cfg(test)]
 mod tests;
@@ -172,7 +172,7 @@ where
     where
         V: TriColorVisitor<G>,
     {
-        use NodeStatus::{Visited, Settled};
+        use NodeStatus::{Settled, Visited};
 
         self.stack.push(Event { node: root, becomes: Visited });
 

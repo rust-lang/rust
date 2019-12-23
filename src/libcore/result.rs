@@ -283,7 +283,7 @@ impl<T, E> Result<T, E> {
     pub fn is_ok(&self) -> bool {
         match *self {
             Ok(_) => true,
-            Err(_) => false
+            Err(_) => false,
         }
     }
 
@@ -328,10 +328,13 @@ impl<T, E> Result<T, E> {
     #[must_use]
     #[inline]
     #[unstable(feature = "option_result_contains", issue = "62358")]
-    pub fn contains<U>(&self, x: &U) -> bool where U: PartialEq<T> {
+    pub fn contains<U>(&self, x: &U) -> bool
+    where
+        U: PartialEq<T>,
+    {
         match self {
             Ok(y) => x == y,
-            Err(_) => false
+            Err(_) => false,
         }
     }
 
@@ -354,10 +357,13 @@ impl<T, E> Result<T, E> {
     #[must_use]
     #[inline]
     #[unstable(feature = "result_contains_err", issue = "62358")]
-    pub fn contains_err<F>(&self, f: &F) -> bool where F: PartialEq<E> {
+    pub fn contains_err<F>(&self, f: &F) -> bool
+    where
+        F: PartialEq<E>,
+    {
         match self {
             Ok(_) => false,
-            Err(e) => f == e
+            Err(e) => f == e,
         }
     }
 
@@ -387,7 +393,7 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok(self) -> Option<T> {
         match self {
-            Ok(x)  => Some(x),
+            Ok(x) => Some(x),
             Err(_) => None,
         }
     }
@@ -414,7 +420,7 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn err(self) -> Option<E> {
         match self {
-            Ok(_)  => None,
+            Ok(_) => None,
             Err(x) => Some(x),
         }
     }
@@ -507,10 +513,10 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn map<U, F: FnOnce(T) -> U>(self, op: F) -> Result<U,E> {
+    pub fn map<U, F: FnOnce(T) -> U>(self, op: F) -> Result<U, E> {
         match self {
             Ok(t) => Ok(op(t)),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
@@ -591,10 +597,10 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn map_err<F, O: FnOnce(E) -> F>(self, op: O) -> Result<T,F> {
+    pub fn map_err<F, O: FnOnce(E) -> F>(self, op: O) -> Result<T, F> {
         match self {
             Ok(t) => Ok(t),
-            Err(e) => Err(op(e))
+            Err(e) => Err(op(e)),
         }
     }
 
@@ -813,7 +819,7 @@ impl<T, E> Result<T, E> {
     pub fn unwrap_or(self, optb: T) -> T {
         match self {
             Ok(t) => t,
-            Err(_) => optb
+            Err(_) => optb,
         }
     }
 
@@ -838,7 +844,7 @@ impl<T, E> Result<T, E> {
     pub fn unwrap_or_else<F: FnOnce(E) -> T>(self, op: F) -> T {
         match self {
             Ok(t) => t,
-            Err(e) => op(e)
+            Err(e) => op(e),
         }
     }
 }
@@ -922,7 +928,6 @@ impl<T: Clone, E> Result<&mut T, E> {
         self.map(|t| t.clone())
     }
 }
-
 
 impl<T, E: fmt::Debug> Result<T, E> {
     /// Unwraps a result, yielding the content of an [`Ok`].
@@ -1100,8 +1105,7 @@ impl<T, E: Deref> Result<T, E> {
     ///
     /// Leaves the original `Result` in-place, creating a new one containing a reference to the
     /// `Err` type's `Deref::Target` type.
-    pub fn as_deref_err(&self) -> Result<&T, &E::Target>
-    {
+    pub fn as_deref_err(&self) -> Result<&T, &E::Target> {
         self.as_ref().map_err(|e| e.deref())
     }
 }
@@ -1112,8 +1116,7 @@ impl<T: Deref, E: Deref> Result<T, E> {
     ///
     /// Leaves the original `Result` in-place, creating a new one containing a reference to both
     /// the `Ok` and `Err` types' `Deref::Target` types.
-    pub fn as_deref(&self) -> Result<&T::Target, &E::Target>
-    {
+    pub fn as_deref(&self) -> Result<&T::Target, &E::Target> {
         self.as_ref().map(|t| t.deref()).map_err(|e| e.deref())
     }
 }
@@ -1135,8 +1138,7 @@ impl<T, E: DerefMut> Result<T, E> {
     ///
     /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
     /// the `Err` type's `Deref::Target` type.
-    pub fn as_deref_mut_err(&mut self) -> Result<&mut T, &mut E::Target>
-    {
+    pub fn as_deref_mut_err(&mut self) -> Result<&mut T, &mut E::Target> {
         self.as_mut().map_err(|e| e.deref_mut())
     }
 }
@@ -1148,8 +1150,7 @@ impl<T: DerefMut, E: DerefMut> Result<T, E> {
     ///
     /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
     /// both the `Ok` and `Err` types' `Deref::Target` types.
-    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E::Target>
-    {
+    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E::Target> {
         self.as_mut().map(|t| t.deref_mut()).map_err(|e| e.deref_mut())
     }
 }
@@ -1211,7 +1212,6 @@ impl<T: Clone, E: Clone> Clone for Result<T, E> {
         }
     }
 }
-
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, E> IntoIterator for Result<T, E> {
@@ -1276,17 +1276,21 @@ impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
 /// [`Result::iter`]: enum.Result.html#method.iter
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Iter<'a, T: 'a> { inner: Option<&'a T> }
+pub struct Iter<'a, T: 'a> {
+    inner: Option<&'a T>,
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a T> { self.inner.take() }
+    fn next(&mut self) -> Option<&'a T> {
+        self.inner.take()
+    }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = if self.inner.is_some() {1} else {0};
+        let n = if self.inner.is_some() { 1 } else { 0 };
         (n, Some(n))
     }
 }
@@ -1294,7 +1298,9 @@ impl<'a, T> Iterator for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a T> { self.inner.take() }
+    fn next_back(&mut self) -> Option<&'a T> {
+        self.inner.take()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1309,7 +1315,9 @@ unsafe impl<A> TrustedLen for Iter<'_, A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
     #[inline]
-    fn clone(&self) -> Self { Iter { inner: self.inner } }
+    fn clone(&self) -> Self {
+        Iter { inner: self.inner }
+    }
 }
 
 /// An iterator over a mutable reference to the [`Ok`] variant of a [`Result`].
@@ -1321,17 +1329,21 @@ impl<T> Clone for Iter<'_, T> {
 /// [`Result::iter_mut`]: enum.Result.html#method.iter_mut
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct IterMut<'a, T: 'a> { inner: Option<&'a mut T> }
+pub struct IterMut<'a, T: 'a> {
+    inner: Option<&'a mut T>,
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a mut T> { self.inner.take() }
+    fn next(&mut self) -> Option<&'a mut T> {
+        self.inner.take()
+    }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = if self.inner.is_some() {1} else {0};
+        let n = if self.inner.is_some() { 1 } else { 0 };
         (n, Some(n))
     }
 }
@@ -1339,7 +1351,9 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a mut T> { self.inner.take() }
+    fn next_back(&mut self) -> Option<&'a mut T> {
+        self.inner.take()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1364,17 +1378,21 @@ unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 /// [`IntoIterator`]: ../iter/trait.IntoIterator.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct IntoIter<T> { inner: Option<T> }
+pub struct IntoIter<T> {
+    inner: Option<T>,
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> { self.inner.take() }
+    fn next(&mut self) -> Option<T> {
+        self.inner.take()
+    }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = if self.inner.is_some() {1} else {0};
+        let n = if self.inner.is_some() { 1 } else { 0 };
         (n, Some(n))
     }
 }
@@ -1382,7 +1400,9 @@ impl<T> Iterator for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> { self.inner.take() }
+    fn next_back(&mut self) -> Option<T> {
+        self.inner.take()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1443,7 +1463,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// Since the third element caused an underflow, no further elements were taken,
     /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
     #[inline]
-    fn from_iter<I: IntoIterator<Item=Result<A, E>>>(iter: I) -> Result<V, E> {
+    fn from_iter<I: IntoIterator<Item = Result<A, E>>>(iter: I) -> Result<V, E> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
@@ -1452,7 +1472,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 }
 
 #[unstable(feature = "try_trait", issue = "42327")]
-impl<T,E> ops::Try for Result<T, E> {
+impl<T, E> ops::Try for Result<T, E> {
     type Ok = T;
     type Error = E;
 

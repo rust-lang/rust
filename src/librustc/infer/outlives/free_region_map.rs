@@ -1,4 +1,4 @@
-use crate::ty::{self, Lift, TyCtxt, Region};
+use crate::ty::{self, Lift, Region, TyCtxt};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default, HashStable)]
@@ -7,11 +7,11 @@ pub struct FreeRegionMap<'tcx> {
     //
     // Invariant: only free regions like `'x` or `'static` are stored
     // in this relation, not scopes.
-    relation: TransitiveRelation<Region<'tcx>>
+    relation: TransitiveRelation<Region<'tcx>>,
 }
 
 impl<'tcx> FreeRegionMap<'tcx> {
-    pub fn elements(&self) -> impl Iterator<Item=&Region<'tcx>> {
+    pub fn elements(&self) -> impl Iterator<Item = &Region<'tcx>> {
         self.relation.elements()
     }
 
@@ -41,7 +41,9 @@ impl<'tcx> FreeRegionMap<'tcx> {
         debug!("lub_free_regions(r_a={:?}, r_b={:?})", r_a, r_b);
         assert!(is_free(r_a));
         assert!(is_free(r_b));
-        let result = if r_a == r_b { r_a } else {
+        let result = if r_a == r_b {
+            r_a
+        } else {
             match self.relation.postdom_upper_bound(&r_a, &r_b) {
                 None => tcx.mk_region(ty::ReStatic),
                 Some(r) => *r,
@@ -62,10 +64,7 @@ pub trait FreeRegionRelations<'tcx> {
 }
 
 impl<'tcx> FreeRegionRelations<'tcx> for FreeRegionMap<'tcx> {
-    fn sub_free_regions(&self,
-                        r_a: Region<'tcx>,
-                        r_b: Region<'tcx>)
-                        -> bool {
+    fn sub_free_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> bool {
         assert!(is_free_or_static(r_a) && is_free_or_static(r_b));
         if let ty::ReStatic = r_b {
             true // `'a <= 'static` is just always true, and not stored in the relation explicitly
@@ -78,7 +77,7 @@ impl<'tcx> FreeRegionRelations<'tcx> for FreeRegionMap<'tcx> {
 fn is_free(r: Region<'_>) -> bool {
     match *r {
         ty::ReEarlyBound(_) | ty::ReFree(_) => true,
-        _ => false
+        _ => false,
     }
 }
 
@@ -92,7 +91,6 @@ fn is_free_or_static(r: Region<'_>) -> bool {
 impl<'a, 'tcx> Lift<'tcx> for FreeRegionMap<'a> {
     type Lifted = FreeRegionMap<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<FreeRegionMap<'tcx>> {
-        self.relation.maybe_map(|&fr| tcx.lift(&fr))
-                     .map(|relation| FreeRegionMap { relation })
+        self.relation.maybe_map(|&fr| tcx.lift(&fr)).map(|relation| FreeRegionMap { relation })
     }
 }

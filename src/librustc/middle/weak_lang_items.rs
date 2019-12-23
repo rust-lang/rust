@@ -1,18 +1,18 @@
 //! Validity checking for weak lang items
 
-use crate::session::config;
 use crate::middle::lang_items;
+use crate::session::config;
 
+use crate::hir;
+use crate::hir::def_id::DefId;
+use crate::hir::intravisit;
+use crate::hir::intravisit::{NestedVisitorMap, Visitor};
+use crate::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::PanicStrategy;
 use syntax::ast;
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{sym, Symbol};
 use syntax_pos::Span;
-use crate::hir::def_id::DefId;
-use crate::hir::intravisit::{Visitor, NestedVisitorMap};
-use crate::hir::intravisit;
-use crate::hir;
-use crate::ty::TyCtxt;
 
 use rustc_error_codes::*;
 

@@ -1,62 +1,61 @@
 use crate::dep_graph::{self, DepNode};
-use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::hir::def::{DefKind, Export};
-use crate::hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
+use crate::hir::def_id::{CrateNum, DefId, DefIndex};
+use crate::hir::{self, CodegenFnAttrs, ItemLocalId, TraitCandidate};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint;
-use crate::middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary, ForeignModule};
-use crate::middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
+use crate::middle::cstore::{CrateSource, DepKind, NativeLibraryKind};
+use crate::middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLibrary};
+use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use crate::middle::lang_items::{LangItem, LanguageItems};
+use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
 use crate::middle::reachable::ReachableSet;
 use crate::middle::region;
-use crate::middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
+use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
 use crate::middle::stability::{self, DeprecationEntry};
-use crate::middle::lib_features::LibFeatures;
-use crate::middle::lang_items::{LanguageItems, LangItem};
-use crate::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
-use crate::mir::interpret::{ConstEvalRawResult, ConstEvalResult};
-use crate::mir::mono::CodegenUnit;
 use crate::mir;
 use crate::mir::interpret::GlobalId;
+use crate::mir::interpret::{ConstEvalRawResult, ConstEvalResult};
+use crate::mir::mono::CodegenUnit;
+use crate::session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use crate::session::CrateDisambiguator;
-use crate::session::config::{EntryFnType, OutputFilenames, OptLevel, SymbolManglingVersion};
-use crate::traits::{self, Vtable};
-use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal,
-    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
-    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
-    CanonicalTypeOpNormalizeGoal, NoSolution,
-};
+use crate::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use crate::traits::query::method_autoderef::MethodAutoderefStepsResult;
-use crate::traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use crate::traits::query::normalize::NormalizationResult;
 use crate::traits::query::outlives_bounds::OutlivesBound;
+use crate::traits::query::{
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
+};
 use crate::traits::specialization_graph;
 use crate::traits::Clauses;
-use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, AdtSizedConstraint};
+use crate::traits::{self, Vtable};
 use crate::ty::steal::Steal;
-use crate::ty::util::NeedsDrop;
 use crate::ty::subst::SubstsRef;
-use crate::util::nodemap::{DefIdSet, DefIdMap};
+use crate::ty::util::NeedsDrop;
+use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
+use crate::util::nodemap::{DefIdMap, DefIdSet};
 use rustc_data_structures::profiling::ProfileCategory::*;
 
-use rustc_data_structures::svh::Svh;
-use rustc_index::vec::IndexVec;
-use rustc_data_structures::fx::{FxIndexMap, FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::StableVec;
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::stable_hasher::StableVec;
+use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::Lrc;
+use rustc_index::vec::IndexVec;
 use rustc_target::spec::PanicStrategy;
 
+use std::any::type_name;
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::sync::Arc;
-use std::any::type_name;
-use syntax_pos::{Span, DUMMY_SP};
-use syntax::attr;
 use syntax::ast;
+use syntax::attr;
 use syntax::symbol::Symbol;
+use syntax_pos::{Span, DUMMY_SP};
 
 #[macro_use]
 mod plumbing;
@@ -64,9 +63,9 @@ use self::plumbing::*;
 pub use self::plumbing::{force_from_dep_node, CycleError};
 
 mod job;
-pub use self::job::{QueryJob, QueryInfo};
 #[cfg(parallel_compiler)]
 pub use self::job::handle_deadlock;
+pub use self::job::{QueryInfo, QueryJob};
 
 mod keys;
 use self::keys::Key;
@@ -75,9 +74,9 @@ mod values;
 use self::values::Value;
 
 mod config;
-pub(crate) use self::config::QueryDescription;
-pub use self::config::QueryConfig;
 use self::config::QueryAccessors;
+pub use self::config::QueryConfig;
+pub(crate) use self::config::QueryDescription;
 
 mod on_disk_cache;
 pub use self::on_disk_cache::OnDiskCache;

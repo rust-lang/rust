@@ -4,14 +4,14 @@
 //! [trait-resolution]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 //! [trait-specialization]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
-use crate::infer::{CombinedSnapshot, InferOk};
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
-use crate::traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
-use crate::traits::IntercrateMode;
+use crate::infer::{CombinedSnapshot, InferOk};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::traits::IntercrateMode;
+use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::Subst;
+use crate::ty::{self, Ty, TyCtxt};
 use syntax::symbol::sym;
 use syntax_pos::DUMMY_SP;
 
@@ -20,13 +20,13 @@ use syntax_pos::DUMMY_SP;
 #[derive(Copy, Clone, Debug)]
 enum InCrate {
     Local,
-    Remote
+    Remote,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum Conflict {
     Upstream,
-    Downstream { used_to_be_broken: bool }
+    Downstream { used_to_be_broken: bool },
 }
 
 pub struct OverlapResult<'tcx> {
@@ -60,13 +60,13 @@ where
     F1: FnOnce(OverlapResult<'_>) -> R,
     F2: FnOnce() -> R,
 {
-    debug!("overlapping_impls(\
+    debug!(
+        "overlapping_impls(\
            impl1_def_id={:?}, \
            impl2_def_id={:?},
            intercrate_mode={:?})",
-           impl1_def_id,
-           impl2_def_id,
-           intercrate_mode);
+        impl1_def_id, impl2_def_id, intercrate_mode
+    );
 
     let overlaps = tcx.infer_ctxt().enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
@@ -140,35 +140,39 @@ fn overlap_within_probe(
     debug!("overlap: b_impl_header={:?}", b_impl_header);
 
     // Do `a` and `b` unify? If not, no overlap.
-    let obligations = match selcx.infcx().at(&ObligationCause::dummy(), param_env)
-                                         .eq_impl_headers(&a_impl_header, &b_impl_header)
+    let obligations = match selcx
+        .infcx()
+        .at(&ObligationCause::dummy(), param_env)
+        .eq_impl_headers(&a_impl_header, &b_impl_header)
     {
         Ok(InferOk { obligations, value: () }) => obligations,
-        Err(_) => return None
+        Err(_) => return None,
     };
 
     debug!("overlap: unification check succeeded");
 
     // Are any of the obligations unsatisfiable? If so, no overlap.
     let infcx = selcx.infcx();
-    let opt_failing_obligation =
-        a_impl_header.predicates
-                     .iter()
-                     .chain(&b_impl_header.predicates)
-                     .map(|p| infcx.resolve_vars_if_possible(p))
-                     .map(|p| Obligation { cause: ObligationCause::dummy(),
-                                           param_env,
-                                           recursion_depth: 0,
-                                           predicate: p })
-                     .chain(obligations)
-                     .find(|o| !selcx.predicate_may_hold_fatal(o));
+    let opt_failing_obligation = a_impl_header
+        .predicates
+        .iter()
+        .chain(&b_impl_header.predicates)
+        .map(|p| infcx.resolve_vars_if_possible(p))
+        .map(|p| Obligation {
+            cause: ObligationCause::dummy(),
+            param_env,
+            recursion_depth: 0,
+            predicate: p,
+        })
+        .chain(obligations)
+        .find(|o| !selcx.predicate_may_hold_fatal(o));
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
     // the new system supports intercrate mode (which coherence needs).
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-        return None
+        return None;
     }
 
     let impl_header = selcx.infcx().resolve_vars_if_possible(&a_impl_header);
@@ -195,8 +199,7 @@ pub fn trait_ref_is_knowable<'tcx>(
         // A trait can be implementable for a trait ref by both the current
         // crate and crates downstream of it. Older versions of rustc
         // were not aware of this, causing incoherence (issue #43355).
-        let used_to_be_broken =
-            orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok();
+        let used_to_be_broken = orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok();
         if used_to_be_broken {
             debug!("trait_ref_is_knowable({:?}) - USED TO BE BROKEN", trait_ref);
         }
@@ -247,10 +250,7 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
-pub fn orphan_check(
-    tcx: TyCtxt<'_>,
-    impl_def_id: DefId,
-) -> Result<(), OrphanCheckErr<'_>> {
+pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanCheckErr<'_>> {
     debug!("orphan_check({:?})", impl_def_id);
 
     // We only except this routine to be invoked on implementations
@@ -260,8 +260,7 @@ pub fn orphan_check(
 
     // If the *trait* is local to the crate, ok.
     if trait_ref.def_id.is_local() {
-        debug!("trait {:?} is local to current crate",
-               trait_ref.def_id);
+        debug!("trait {:?} is local to current crate", trait_ref.def_id);
         return Ok(());
     }
 
@@ -359,12 +358,13 @@ fn orphan_check_trait_ref<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     in_crate: InCrate,
 ) -> Result<(), OrphanCheckErr<'tcx>> {
-    debug!("orphan_check_trait_ref(trait_ref={:?}, in_crate={:?})",
-           trait_ref, in_crate);
+    debug!("orphan_check_trait_ref(trait_ref={:?}, in_crate={:?})", trait_ref, in_crate);
 
     if trait_ref.needs_infer() && trait_ref.needs_subst() {
-        bug!("can't orphan check a trait ref with both params and inference variables {:?}",
-             trait_ref);
+        bug!(
+            "can't orphan check a trait ref with both params and inference variables {:?}",
+            trait_ref
+        );
     }
 
     // Given impl<P1..=Pn> Trait<T1..=Tn> for T0, an impl is valid only
@@ -390,10 +390,8 @@ fn orphan_check_trait_ref<'tcx>(
     }
 
     let mut non_local_spans = vec![];
-    for (i, input_ty) in trait_ref
-        .input_types()
-        .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-        .enumerate()
+    for (i, input_ty) in
+        trait_ref.input_types().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate)).enumerate()
     {
         debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
         let non_local_tys = ty_is_non_local(input_ty, in_crate);
@@ -410,7 +408,7 @@ fn orphan_check_trait_ref<'tcx>(
 
             debug!("orphan_check_trait_ref: uncovered ty local_type: `{:?}`", local_type);
 
-            return Err(OrphanCheckErr::UncoveredTy(input_ty, local_type))
+            return Err(OrphanCheckErr::UncoveredTy(input_ty, local_type));
         }
         if let Some(non_local_tys) = non_local_tys {
             for input_ty in non_local_tys {
@@ -425,19 +423,18 @@ fn orphan_check_trait_ref<'tcx>(
 
 fn ty_is_non_local<'t>(ty: Ty<'t>, in_crate: InCrate) -> Option<Vec<Ty<'t>>> {
     match ty_is_non_local_constructor(ty, in_crate) {
-        Some(ty) => if !fundamental_ty(ty) {
-            Some(vec![ty])
-        } else {
-            let tys: Vec<_> = ty.walk_shallow()
-                .filter_map(|t| ty_is_non_local(t, in_crate))
-                .flat_map(|i| i)
-                .collect();
-            if tys.is_empty() {
-                None
+        Some(ty) => {
+            if !fundamental_ty(ty) {
+                Some(vec![ty])
             } else {
-                Some(tys)
+                let tys: Vec<_> = ty
+                    .walk_shallow()
+                    .filter_map(|t| ty_is_non_local(t, in_crate))
+                    .flat_map(|i| i)
+                    .collect();
+                if tys.is_empty() { None } else { Some(tys) }
             }
-        },
+        }
         None => None,
     }
 }
@@ -446,7 +443,7 @@ fn fundamental_ty(ty: Ty<'_>) -> bool {
     match ty.kind {
         ty::Ref(..) => true,
         ty::Adt(def, _) => def.is_fundamental(),
-        _ => false
+        _ => false,
     }
 }
 
@@ -455,35 +452,30 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
         // The type is local to *this* crate - it will not be
         // local in any other crate.
         InCrate::Remote => false,
-        InCrate::Local => def_id.is_local()
+        InCrate::Local => def_id.is_local(),
     }
 }
 
-fn ty_is_non_local_constructor<'tcx>(
-    ty: Ty<'tcx>,
-    in_crate: InCrate,
-) -> Option<Ty<'tcx>> {
+fn ty_is_non_local_constructor<'tcx>(ty: Ty<'tcx>, in_crate: InCrate) -> Option<Ty<'tcx>> {
     debug!("ty_is_non_local_constructor({:?})", ty);
 
     match ty.kind {
-        ty::Bool |
-        ty::Char |
-        ty::Int(..) |
-        ty::Uint(..) |
-        ty::Float(..) |
-        ty::Str |
-        ty::FnDef(..) |
-        ty::FnPtr(_) |
-        ty::Array(..) |
-        ty::Slice(..) |
-        ty::RawPtr(..) |
-        ty::Ref(..) |
-        ty::Never |
-        ty::Tuple(..) |
-        ty::Param(..) |
-        ty::Projection(..) => {
-            Some(ty)
-        }
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::Str
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Array(..)
+        | ty::Slice(..)
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::Never
+        | ty::Tuple(..)
+        | ty::Param(..)
+        | ty::Projection(..) => Some(ty),
 
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => match in_crate {
             InCrate::Local => Some(ty),
@@ -492,16 +484,20 @@ fn ty_is_non_local_constructor<'tcx>(
             InCrate::Remote => None,
         },
 
-        ty::Adt(def, _) => if def_id_is_local(def.did, in_crate) {
-            None
-        } else {
-            Some(ty)
-        },
-        ty::Foreign(did) => if def_id_is_local(did, in_crate) {
-            None
-        } else {
-            Some(ty)
-        },
+        ty::Adt(def, _) => {
+            if def_id_is_local(def.did, in_crate) {
+                None
+            } else {
+                Some(ty)
+            }
+        }
+        ty::Foreign(did) => {
+            if def_id_is_local(did, in_crate) {
+                None
+            } else {
+                Some(ty)
+            }
+        }
         ty::Opaque(..) => {
             // This merits some explanation.
             // Normally, opaque types are not involed when performing
@@ -533,11 +529,7 @@ fn ty_is_non_local_constructor<'tcx>(
 
         ty::Dynamic(ref tt, ..) => {
             if let Some(principal) = tt.principal() {
-                if def_id_is_local(principal.def_id(), in_crate) {
-                    None
-                } else {
-                    Some(ty)
-                }
+                if def_id_is_local(principal.def_id(), in_crate) { None } else { Some(ty) }
             } else {
                 Some(ty)
             }
@@ -545,11 +537,9 @@ fn ty_is_non_local_constructor<'tcx>(
 
         ty::Error => None,
 
-        ty::UnnormalizedProjection(..) |
-        ty::Closure(..) |
-        ty::Generator(..) |
-        ty::GeneratorWitness(..) => {
-            bug!("ty_is_local invoked on unexpected type: {:?}", ty)
-        }
+        ty::UnnormalizedProjection(..)
+        | ty::Closure(..)
+        | ty::Generator(..)
+        | ty::GeneratorWitness(..) => bug!("ty_is_local invoked on unexpected type: {:?}", ty),
     }
 }

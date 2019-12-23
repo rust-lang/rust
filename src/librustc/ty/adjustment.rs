@@ -1,9 +1,8 @@
 use crate::hir;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_macros::HashStable;
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub enum PointerCast {
@@ -110,10 +109,13 @@ impl<'tcx> OverloadedDeref<'tcx> {
     pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {
         let trait_def_id = match self.mutbl {
             hir::Mutability::Not => tcx.lang_items().deref_trait(),
-            hir::Mutability::Mut => tcx.lang_items().deref_mut_trait()
+            hir::Mutability::Mut => tcx.lang_items().deref_mut_trait(),
         };
-        let method_def_id = tcx.associated_items(trait_def_id.unwrap())
-            .find(|m| m.kind == ty::AssocKind::Method).unwrap().def_id;
+        let method_def_id = tcx
+            .associated_items(trait_def_id.unwrap())
+            .find(|m| m.kind == ty::AssocKind::Method)
+            .unwrap()
+            .def_id;
         (method_def_id, tcx.mk_substs_trait(source, &[]))
     }
 }
@@ -133,7 +135,7 @@ impl<'tcx> OverloadedDeref<'tcx> {
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum AllowTwoPhase {
     Yes,
-    No
+    No,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -172,11 +174,11 @@ pub struct CoerceUnsizedInfo {
     /// coercion is it? This applies to impls of `CoerceUnsized` for
     /// structs, primarily, where we store a bit of info about which
     /// fields need to be coerced.
-    pub custom_kind: Option<CustomCoerceUnsized>
+    pub custom_kind: Option<CustomCoerceUnsized>,
 }
 
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum CustomCoerceUnsized {
     /// Records the index of the field being coerced.
-    Struct(usize)
+    Struct(usize),
 }

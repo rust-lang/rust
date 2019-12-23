@@ -1,29 +1,29 @@
-use rustc_data_structures::sync::Lrc;
-use rustc_feature::UnstableFeatures;
-use rustc_interface::interface;
-use rustc_target::spec::TargetTriple;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::session::{self, config, DiagnosticOutput};
 use rustc::util::common::ErrorReported;
-use syntax::ast;
-use syntax::with_globals;
-use syntax::source_map::SourceMap;
-use syntax::edition::Edition;
+use rustc_data_structures::sync::Lrc;
+use rustc_feature::UnstableFeatures;
+use rustc_interface::interface;
+use rustc_target::spec::TargetTriple;
 use std::env;
 use std::io::{self, Write};
 use std::panic;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
+use syntax::ast;
+use syntax::edition::Edition;
+use syntax::source_map::SourceMap;
 use syntax::symbol::sym;
-use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
+use syntax::with_globals;
+use syntax_pos::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use tempfile::Builder as TempFileBuilder;
 use testing;
 
 use crate::clean::Attributes;
 use crate::config::Options;
-use crate::html::markdown::{self, ErrorCodes, LangString, Ignore};
+use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -54,9 +54,7 @@ pub fn run(options: Options) -> i32 {
         unstable_features: UnstableFeatures::from_environment(),
         lint_cap: Some(::rustc::lint::Level::Allow),
         actually_rustdoc: true,
-        debugging_opts: config::DebuggingOptions {
-            ..config::basic_debugging_options()
-        },
+        debugging_opts: config::DebuggingOptions { ..config::basic_debugging_options() },
         edition: options.edition,
         target_triple: options.target.clone(),
         ..config::Options::default()
@@ -85,48 +83,52 @@ pub fn run(options: Options) -> i32 {
     let mut test_args = options.test_args.clone();
     let display_warnings = options.display_warnings;
 
-    let tests = interface::run_compiler(config, |compiler| compiler.enter(|queries| {
-        let lower_to_hir = queries.lower_to_hir()?;
+    let tests = interface::run_compiler(config, |compiler| {
+        compiler.enter(|queries| {
+            let lower_to_hir = queries.lower_to_hir()?;
 
-        let mut opts = scrape_test_config(lower_to_hir.peek().0.krate());
-        opts.display_warnings |= options.display_warnings;
-        let enable_per_target_ignores = options.enable_per_target_ignores;
-        let mut collector = Collector::new(
-            queries.crate_name()?.peek().to_string(),
-            options,
-            false,
-            opts,
-            Some(compiler.source_map().clone()),
-            None,
-            enable_per_target_ignores,
-        );
+            let mut opts = scrape_test_config(lower_to_hir.peek().0.krate());
+            opts.display_warnings |= options.display_warnings;
+            let enable_per_target_ignores = options.enable_per_target_ignores;
+            let mut collector = Collector::new(
+                queries.crate_name()?.peek().to_string(),
+                options,
+                false,
+                opts,
+                Some(compiler.source_map().clone()),
+                None,
+                enable_per_target_ignores,
+            );
 
-        let mut global_ctxt = queries.global_ctxt()?.take();
+            let mut global_ctxt = queries.global_ctxt()?.take();
 
-        global_ctxt.enter(|tcx| {
-            let krate = tcx.hir().krate();
-            let mut hir_collector = HirCollector {
-                sess: compiler.session(),
-                collector: &mut collector,
-                map: tcx.hir(),
-                codes: ErrorCodes::from(compiler.session().opts
-                                                .unstable_features.is_nightly_build()),
-            };
-            hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
-                intravisit::walk_crate(this, krate);
+            global_ctxt.enter(|tcx| {
+                let krate = tcx.hir().krate();
+                let mut hir_collector = HirCollector {
+                    sess: compiler.session(),
+                    collector: &mut collector,
+                    map: tcx.hir(),
+                    codes: ErrorCodes::from(
+                        compiler.session().opts.unstable_features.is_nightly_build(),
+                    ),
+                };
+                hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
+                    intravisit::walk_crate(this, krate);
+                });
             });
-        });
 
-        let ret : Result<_, ErrorReported> = Ok(collector.tests);
-        ret
-    })).expect("compiler aborted in rustdoc!");
+            let ret: Result<_, ErrorReported> = Ok(collector.tests);
+            ret
+        })
+    })
+    .expect("compiler aborted in rustdoc!");
 
     test_args.insert(0, "rustdoctest".to_string());
 
     testing::test_main(
         &test_args,
         tests,
-        Some(testing::Options::new().display_output(display_warnings))
+        Some(testing::Options::new().display_output(display_warnings)),
     );
 
     0
@@ -136,13 +138,12 @@ pub fn run(options: Options) -> i32 {
 fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     use syntax::print::pprust;
 
-    let mut opts = TestOptions {
-        no_crate_inject: false,
-        display_warnings: false,
-        attrs: Vec::new(),
-    };
+    let mut opts =
+        TestOptions { no_crate_inject: false, display_warnings: false, attrs: Vec::new() };
 
-    let test_attrs: Vec<_> = krate.attrs.iter()
+    let test_attrs: Vec<_> = krate
+        .attrs
+        .iter()
         .filter(|a| a.check_name(sym::doc))
         .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
         .filter(|a| a.check_name(sym::test))
@@ -209,7 +210,7 @@ fn run_test(
             // If the parser used by `make_test` panicked due to a fatal error, pass the test code
             // through unchanged. The error will be reported during compilation.
             (test.to_owned(), 0)
-        },
+        }
         Err(cause) => panic::resume_unwind(cause),
     };
 
@@ -235,30 +236,29 @@ fn run_test(
     }
 
     let outdir = if let Some(mut path) = options.persist_doctests {
-        path.push(format!("{}_{}",
-            filename
-                .to_string()
-                .rsplit('/')
-                .next()
-                .unwrap()
-                .replace(".", "_"),
-                line)
-        );
-        std::fs::create_dir_all(&path)
-            .expect("Couldn't create directory for doctest executables");
+        path.push(format!(
+            "{}_{}",
+            filename.to_string().rsplit('/').next().unwrap().replace(".", "_"),
+            line
+        ));
+        std::fs::create_dir_all(&path).expect("Couldn't create directory for doctest executables");
 
         DirState::Perm(path)
     } else {
-        DirState::Temp(TempFileBuilder::new()
-                        .prefix("rustdoctest")
-                        .tempdir()
-                        .expect("rustdoc needs a tempdir"))
+        DirState::Temp(
+            TempFileBuilder::new()
+                .prefix("rustdoctest")
+                .tempdir()
+                .expect("rustdoc needs a tempdir"),
+        )
     };
     let output_file = outdir.path().join("rust_out");
 
-    let rustc_binary = options.test_builder.as_ref().map(|v| &**v).unwrap_or_else(|| {
-        rustc_interface::util::rustc_path().expect("found rustc")
-    });
+    let rustc_binary = options
+        .test_builder
+        .as_ref()
+        .map(|v| &**v)
+        .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = Command::new(&rustc_binary);
     compiler.arg("--crate-type").arg("bin");
     for cfg in &options.cfgs {
@@ -269,8 +269,7 @@ fn run_test(
     }
     compiler.arg("--edition").arg(&edition.to_string());
     compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", path);
-    compiler.env("UNSTABLE_RUSTDOC_TEST_LINE",
-                 format!("{}", line as isize - line_offset as isize));
+    compiler.env("UNSTABLE_RUSTDOC_TEST_LINE", format!("{}", line as isize - line_offset as isize));
     compiler.arg("-o").arg(&output_file);
     if as_test_harness {
         compiler.arg("--test");
@@ -307,7 +306,7 @@ fn run_test(
     struct Bomb<'a>(&'a str);
     impl Drop for Bomb<'_> {
         fn drop(&mut self) {
-            eprint!("{}",self.0);
+            eprint!("{}", self.0);
         }
     }
 
@@ -368,12 +367,13 @@ fn run_test(
 ///
 /// This function uses the compiler's parser internally. The parser will panic if it encounters a
 /// fatal error while parsing the test.
-pub fn make_test(s: &str,
-                 cratename: Option<&str>,
-                 dont_insert_main: bool,
-                 opts: &TestOptions,
-                 edition: Edition)
-                 -> (String, usize) {
+pub fn make_test(
+    s: &str,
+    cratename: Option<&str>,
+    dont_insert_main: bool,
+    opts: &TestOptions,
+    edition: Edition,
+) -> (String, usize) {
     let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
     let mut line_offset = 0;
@@ -403,9 +403,9 @@ pub fn make_test(s: &str,
     // crate already is included.
     let (already_has_main, already_has_extern_crate, found_macro) = with_globals(edition, || {
         use crate::syntax::{sess::ParseSess, source_map::FilePathMapping};
-        use rustc_parse::maybe_new_parser_from_source_str;
         use errors::emitter::EmitterWriter;
         use errors::Handler;
+        use rustc_parse::maybe_new_parser_from_source_str;
 
         let filename = FileName::anon_source_code(s);
         let source = crates + &everything_else;
@@ -486,11 +486,7 @@ pub fn make_test(s: &str,
         s.lines()
             .map(|line| {
                 let comment = line.find("//");
-                if let Some(comment_begins) = comment {
-                    &line[0..comment_begins]
-                } else {
-                    line
-                }
+                if let Some(comment_begins) = comment { &line[0..comment_begins] } else { line }
             })
             .any(|code| code.contains("fn main"))
     } else {
@@ -515,8 +511,10 @@ pub fn make_test(s: &str,
     } else {
         let returns_result = everything_else.trim_end().ends_with("(())");
         let (main_pre, main_post) = if returns_result {
-            ("fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {",
-             "}\n_inner().unwrap() }")
+            (
+                "fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {",
+                "}\n_inner().unwrap() }",
+            )
         } else {
             ("fn main() {\n", "\n}")
         };
@@ -549,13 +547,13 @@ fn partition_source(s: &str) -> (String, String, String) {
         // shunted into "everything else"
         match state {
             PartitionState::Attrs => {
-                state = if trimline.starts_with("#![") ||
-                    trimline.chars().all(|c| c.is_whitespace()) ||
-                    (trimline.starts_with("//") && !trimline.starts_with("///"))
+                state = if trimline.starts_with("#![")
+                    || trimline.chars().all(|c| c.is_whitespace())
+                    || (trimline.starts_with("//") && !trimline.starts_with("///"))
                 {
                     PartitionState::Attrs
-                } else if trimline.starts_with("extern crate") ||
-                    trimline.starts_with("#[macro_use] extern crate")
+                } else if trimline.starts_with("extern crate")
+                    || trimline.starts_with("#[macro_use] extern crate")
                 {
                     PartitionState::Crates
                 } else {
@@ -563,10 +561,10 @@ fn partition_source(s: &str) -> (String, String, String) {
                 };
             }
             PartitionState::Crates => {
-                state = if trimline.starts_with("extern crate") ||
-                    trimline.starts_with("#[macro_use] extern crate") ||
-                    trimline.chars().all(|c| c.is_whitespace()) ||
-                    (trimline.starts_with("//") && !trimline.starts_with("///"))
+                state = if trimline.starts_with("extern crate")
+                    || trimline.starts_with("#[macro_use] extern crate")
+                    || trimline.chars().all(|c| c.is_whitespace())
+                    || (trimline.starts_with("//") && !trimline.starts_with("///"))
                 {
                     PartitionState::Crates
                 } else {
@@ -643,9 +641,15 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(cratename: String, options: Options, use_headers: bool, opts: TestOptions,
-               source_map: Option<Lrc<SourceMap>>, filename: Option<PathBuf>,
-               enable_per_target_ignores: bool) -> Collector {
+    pub fn new(
+        cratename: String,
+        options: Options,
+        use_headers: bool,
+        opts: TestOptions,
+        source_map: Option<Lrc<SourceMap>>,
+        filename: Option<PathBuf>,
+        enable_per_target_ignores: bool,
+    ) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -707,9 +711,7 @@ impl Tester for Collector {
                 ignore: match config.ignore {
                     Ignore::All => true,
                     Ignore::None => false,
-                    Ignore::Some(ref ignores) => {
-                        ignores.iter().any(|s| target_str.contains(s))
-                    },
+                    Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
                 },
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
@@ -810,14 +812,19 @@ impl Tester for Collector {
         if self.use_headers {
             // We use these headings as test names, so it's good if
             // they're valid identifiers.
-            let name = name.chars().enumerate().map(|(i, c)| {
-                    if (i == 0 && rustc_lexer::is_id_start(c)) ||
-                        (i != 0 && rustc_lexer::is_id_continue(c)) {
+            let name = name
+                .chars()
+                .enumerate()
+                .map(|(i, c)| {
+                    if (i == 0 && rustc_lexer::is_id_start(c))
+                        || (i != 0 && rustc_lexer::is_id_continue(c))
+                    {
                         c
                     } else {
                         '_'
                     }
-                }).collect::<String>();
+                })
+                .collect::<String>();
 
             // Here we try to efficiently assemble the header titles into the
             // test name in the form of `h1::h2::h3::h4::h5::h6`.
@@ -853,10 +860,12 @@ struct HirCollector<'a, 'hir> {
 }
 
 impl<'a, 'hir> HirCollector<'a, 'hir> {
-    fn visit_testable<F: FnOnce(&mut Self)>(&mut self,
-                                            name: String,
-                                            attrs: &[ast::Attribute],
-                                            nested: F) {
+    fn visit_testable<F: FnOnce(&mut Self)>(
+        &mut self,
+        name: String,
+        attrs: &[ast::Attribute],
+        nested: F,
+    ) {
         let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
         if let Some(ref cfg) = attrs.cfg {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
@@ -875,10 +884,12 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
             self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
-            markdown::find_testable_code(&doc,
-                                         self.collector,
-                                         self.codes,
-                                         self.collector.enable_per_target_ignores);
+            markdown::find_testable_code(
+                &doc,
+                self.collector,
+                self.codes,
+                self.collector.enable_per_target_ignores,
+            );
         }
 
         nested(self);
@@ -924,10 +935,12 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
         });
     }
 
-    fn visit_variant(&mut self,
-                     v: &'hir hir::Variant,
-                     g: &'hir hir::Generics,
-                     item_id: hir::HirId) {
+    fn visit_variant(
+        &mut self,
+        v: &'hir hir::Variant,
+        g: &'hir hir::Generics,
+        item_id: hir::HirId,
+    ) {
         self.visit_testable(v.ident.to_string(), &v.attrs, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });

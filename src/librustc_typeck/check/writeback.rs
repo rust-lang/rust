@@ -7,8 +7,8 @@ use crate::check::FnCtxt;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::infer::InferCtxt;
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
+use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -32,9 +32,10 @@ use std::mem;
 // resolve_type_vars_in_body, which creates a new TypeTables which
 // doesn't contain any inference types.
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn resolve_type_vars_in_body(&self, body: &'tcx hir::Body<'tcx>)
-        -> &'tcx ty::TypeckTables<'tcx>
-    {
+    pub fn resolve_type_vars_in_body(
+        &self,
+        body: &'tcx hir::Body<'tcx>,
+    ) -> &'tcx ty::TypeckTables<'tcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
         let item_def_id = self.tcx.hir().local_def_id(item_id);
 
@@ -69,23 +70,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &mut self.tables.borrow_mut().used_trait_imports,
             Lrc::new(DefIdSet::default()),
         );
-        debug!(
-            "used_trait_imports({:?}) = {:?}",
-            item_def_id, used_trait_imports
-        );
+        debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.tables.used_trait_imports = used_trait_imports;
 
-        wbcx.tables.upvar_list = mem::replace(
-            &mut self.tables.borrow_mut().upvar_list,
-            Default::default(),
-        );
+        wbcx.tables.upvar_list =
+            mem::replace(&mut self.tables.borrow_mut().upvar_list, Default::default());
 
         wbcx.tables.tainted_by_errors = self.is_tainted_by_errors();
 
-        debug!(
-            "writeback: tables for {:?} are {:#?}",
-            item_def_id, wbcx.tables
-        );
+        debug!("writeback: tables for {:?} are {:#?}", item_def_id, wbcx.tables);
 
         self.tcx.arena.alloc(wbcx.tables)
     }
@@ -174,10 +167,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             }
                         }
                         hir::ExprKind::AssignOp(..) => {
-                            tables
-                                .adjustments_mut()
-                                .get_mut(lhs.hir_id)
-                                .map(|a| a.pop());
+                            tables.adjustments_mut().get_mut(lhs.hir_id).map(|a| a.pop());
                         }
                         _ => {}
                     }
@@ -230,8 +220,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             // Since this is "after" the other adjustment to be
                             // discarded, we do an extra `pop()`
                             Some(Adjustment {
-                                kind: Adjust::Pointer(PointerCast::Unsize),
-                                ..
+                                kind: Adjust::Pointer(PointerCast::Unsize), ..
                             }) => {
                                 // So the borrow discard actually happens here
                                 a.pop();
@@ -298,9 +287,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
                 if let Some(&bm) = self.fcx.tables.borrow().pat_binding_modes().get(p.hir_id) {
                     self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);
                 } else {
-                    self.tcx()
-                        .sess
-                        .delay_span_bug(p.span, "missing binding mode");
+                    self.tcx().sess.delay_span_bug(p.span, "missing binding mode");
                 }
             }
             hir::PatKind::Struct(_, ref fields, _) => {
@@ -340,19 +327,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
                     let r = upvar_borrow.region;
                     let r = self.resolve(&r, &upvar_id.var_path.hir_id);
-                    ty::UpvarCapture::ByRef(ty::UpvarBorrow {
-                        kind: upvar_borrow.kind,
-                        region: r,
-                    })
+                    ty::UpvarCapture::ByRef(ty::UpvarBorrow { kind: upvar_borrow.kind, region: r })
                 }
             };
-            debug!(
-                "Upvar capture for {:?} resolved to {:?}",
-                upvar_id, new_upvar_capture
-            );
-            self.tables
-                .upvar_capture_map
-                .insert(*upvar_id, new_upvar_capture);
+            debug!("Upvar capture for {:?} resolved to {:?}", upvar_id, new_upvar_capture);
+            self.tables.upvar_capture_map.insert(*upvar_id, new_upvar_capture);
         }
     }
 
@@ -362,13 +341,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id: id,
-            };
-            self.tables
-                .closure_kind_origins_mut()
-                .insert(hir_id, origin);
+            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id: id };
+            self.tables.closure_kind_origins_mut().insert(hir_id, origin);
         }
     }
 
@@ -394,22 +368,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         let mut errors_buffer = Vec::new();
         for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id,
-            };
+            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id };
 
             if cfg!(debug_assertions) && c_ty.has_local_value() {
-                span_bug!(
-                    hir_id.to_span(self.fcx.tcx),
-                    "writeback: `{:?}` is a local value",
-                    c_ty
-                );
+                span_bug!(hir_id.to_span(self.fcx.tcx), "writeback: `{:?}` is a local value", c_ty);
             };
 
-            self.tables
-                .user_provided_types_mut()
-                .insert(hir_id, c_ty.clone());
+            self.tables.user_provided_types_mut().insert(hir_id, c_ty.clone());
 
             if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
                 if self.rustc_dump_user_substs {
@@ -417,10 +382,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     let span = self.tcx().hir().span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
-                    let err = self.tcx().sess.struct_span_err(
-                        span,
-                        &format!("user substs: {:?}", user_substs)
-                    );
+                    let err = self
+                        .tcx()
+                        .sess
+                        .struct_span_err(span, &format!("user substs: {:?}", user_substs));
                     err.buffer(&mut errors_buffer);
                 }
             }
@@ -447,9 +412,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 );
             };
 
-            self.tables
-                .user_provided_sigs
-                .insert(def_id, c_sig.clone());
+            self.tables.user_provided_sigs.insert(def_id, c_sig.clone());
         }
     }
 
@@ -479,7 +442,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // ```
             // figures out the concrete type with `U`, but the stored type is with `T`.
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
-                def_id, opaque_defn, instantiated_ty, span);
+                def_id,
+                opaque_defn,
+                instantiated_ty,
+                span,
+            );
 
             let mut skip_add = false;
 
@@ -507,9 +474,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         substs: opaque_defn.substs,
                     };
 
-                    let old = self.tables
-                        .concrete_opaque_types
-                        .insert(def_id, new);
+                    let old = self.tables.concrete_opaque_types.insert(def_id, new);
                     if let Some(old) = old {
                         if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
                             span_bug!(
@@ -525,33 +490,20 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     }
                 }
             } else {
-                self.tcx().sess.delay_span_bug(
-                    span,
-                    "`opaque_defn` is a local value",
-                );
+                self.tcx().sess.delay_span_bug(span, "`opaque_defn` is a local value");
             }
         }
     }
 
     fn visit_field_id(&mut self, hir_id: hir::HirId) {
-        if let Some(index) = self.fcx
-            .tables
-            .borrow_mut()
-            .field_indices_mut()
-            .remove(hir_id)
-        {
+        if let Some(index) = self.fcx.tables.borrow_mut().field_indices_mut().remove(hir_id) {
             self.tables.field_indices_mut().insert(hir_id, index);
         }
     }
 
     fn visit_node_id(&mut self, span: Span, hir_id: hir::HirId) {
         // Export associated path extensions and method resolutions.
-        if let Some(def) = self.fcx
-            .tables
-            .borrow_mut()
-            .type_dependent_defs_mut()
-            .remove(hir_id)
-        {
+        if let Some(def) = self.fcx.tables.borrow_mut().type_dependent_defs_mut().remove(hir_id) {
             self.tables.type_dependent_defs_mut().insert(hir_id, def);
         }
 
@@ -574,11 +526,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
-        let adjustment = self.fcx
-            .tables
-            .borrow_mut()
-            .adjustments_mut()
-            .remove(hir_id);
+        let adjustment = self.fcx.tables.borrow_mut().adjustments_mut().remove(hir_id);
         match adjustment {
             None => {
                 debug!("no adjustments for node {:?}", hir_id);
@@ -586,23 +534,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(&adjustment, &span);
-                debug!(
-                    "adjustments for node {:?}: {:?}",
-                    hir_id, resolved_adjustment
-                );
-                self.tables
-                    .adjustments_mut()
-                    .insert(hir_id, resolved_adjustment);
+                debug!("adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
+                self.tables.adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }
     }
 
     fn visit_pat_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
-        let adjustment = self.fcx
-            .tables
-            .borrow_mut()
-            .pat_adjustments_mut()
-            .remove(hir_id);
+        let adjustment = self.fcx.tables.borrow_mut().pat_adjustments_mut().remove(hir_id);
         match adjustment {
             None => {
                 debug!("no pat_adjustments for node {:?}", hir_id);
@@ -610,13 +549,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(&adjustment, &span);
-                debug!(
-                    "pat_adjustments for node {:?}: {:?}",
-                    hir_id, resolved_adjustment
-                );
-                self.tables
-                    .pat_adjustments_mut()
-                    .insert(hir_id, resolved_adjustment);
+                debug!("pat_adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
+                self.tables.pat_adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }
     }
@@ -627,14 +561,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id,
-            };
+            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id };
             let fn_sig = self.resolve(fn_sig, &hir_id);
-            self.tables
-                .liberated_fn_sigs_mut()
-                .insert(hir_id, fn_sig.clone());
+            self.tables.liberated_fn_sigs_mut().insert(hir_id, fn_sig.clone());
         }
     }
 
@@ -644,10 +573,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&local_id, ftys) in fcx_tables.fru_field_types().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id,
-            };
+            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id };
             let ftys = self.resolve(ftys, &hir_id);
             self.tables.fru_field_types_mut().insert(hir_id, ftys);
         }
@@ -659,11 +585,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     {
         let x = x.fold_with(&mut Resolver::new(self.fcx, span, self.body));
         if cfg!(debug_assertions) && x.has_local_value() {
-            span_bug!(
-                span.to_span(self.fcx.tcx),
-                "writeback: `{:?}` is a local value",
-                x
-            );
+            span_bug!(span.to_span(self.fcx.tcx), "writeback: `{:?}` is a local value", x);
         }
         x
     }
@@ -709,12 +631,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         span: &'cx dyn Locatable,
         body: &'tcx hir::Body<'tcx>,
     ) -> Resolver<'cx, 'tcx> {
-        Resolver {
-            tcx: fcx.tcx,
-            infcx: fcx,
-            span,
-            body,
-        }
+        Resolver { tcx: fcx.tcx, infcx: fcx, span, body }
     }
 
     fn report_error(&self, t: Ty<'tcx>) {
@@ -735,10 +652,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         match self.infcx.fully_resolve(&t) {
             Ok(t) => t,
             Err(_) => {
-                debug!(
-                    "Resolver::fold_ty: input type `{:?}` not fully resolvable",
-                    t
-                );
+                debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 self.report_error(t);
                 self.tcx().types.err
             }
@@ -755,10 +669,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         match self.infcx.fully_resolve(&ct) {
             Ok(ct) => ct,
             Err(_) => {
-                debug!(
-                    "Resolver::fold_const: input const `{:?}` not fully resolvable",
-                    ct
-                );
+                debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 // FIXME: we'd like to use `self.report_error`, but it doesn't yet
                 // accept a &'tcx ty::Const.
                 self.tcx().consts.err

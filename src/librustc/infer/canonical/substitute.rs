@@ -56,25 +56,20 @@ where
     if var_values.var_values.is_empty() {
         value.clone()
     } else {
-        let fld_r = |br: ty::BoundRegion| {
-            match var_values.var_values[br.assert_bound_var()].unpack() {
+        let fld_r =
+            |br: ty::BoundRegion| match var_values.var_values[br.assert_bound_var()].unpack() {
                 GenericArgKind::Lifetime(l) => l,
                 r => bug!("{:?} is a region but value is {:?}", br, r),
-            }
+            };
+
+        let fld_t = |bound_ty: ty::BoundTy| match var_values.var_values[bound_ty.var].unpack() {
+            GenericArgKind::Type(ty) => ty,
+            r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
         };
 
-        let fld_t = |bound_ty: ty::BoundTy| {
-            match var_values.var_values[bound_ty.var].unpack() {
-                GenericArgKind::Type(ty) => ty,
-                r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
-            }
-        };
-
-        let fld_c = |bound_ct: ty::BoundVar, _| {
-            match var_values.var_values[bound_ct].unpack() {
-                GenericArgKind::Const(ct) => ct,
-                c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
-            }
+        let fld_c = |bound_ct: ty::BoundVar, _| match var_values.var_values[bound_ct].unpack() {
+            GenericArgKind::Const(ct) => ct,
+            c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
         };
 
         tcx.replace_escaping_bound_vars(value, fld_r, fld_t, fld_c).0

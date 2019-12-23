@@ -1,6 +1,6 @@
 use crate::cell::UnsafeCell;
-use crate::sys::mutex::Mutex;
 use crate::sys::condvar::Condvar;
+use crate::sys::mutex::Mutex;
 
 pub struct RWLock {
     lock: Mutex,
@@ -27,11 +27,7 @@ unsafe impl Sync for RWLock {}
 
 impl RWLock {
     pub const fn new() -> RWLock {
-        RWLock {
-            lock: Mutex::new(),
-            cond: Condvar::new(),
-            state: UnsafeCell::new(State::Unlocked),
-        }
+        RWLock { lock: Mutex::new(), cond: Condvar::new(), state: UnsafeCell::new(State::Unlocked) }
     }
 
     #[inline]
@@ -48,7 +44,7 @@ impl RWLock {
         self.lock.lock();
         let ok = (*self.state.get()).inc_readers();
         self.lock.unlock();
-        return ok
+        return ok;
     }
 
     #[inline]
@@ -65,7 +61,7 @@ impl RWLock {
         self.lock.lock();
         let ok = (*self.state.get()).inc_writers();
         self.lock.unlock();
-        return ok
+        return ok;
     }
 
     #[inline]
@@ -106,7 +102,7 @@ impl State {
                 *cnt += 1;
                 true
             }
-            State::Writing => false
+            State::Writing => false,
         }
     }
 
@@ -116,8 +112,7 @@ impl State {
                 *self = State::Writing;
                 true
             }
-            State::Reading(_) |
-            State::Writing => false
+            State::Reading(_) | State::Writing => false,
         }
     }
 
@@ -127,8 +122,7 @@ impl State {
                 *cnt -= 1;
                 *cnt == 0
             }
-            State::Unlocked |
-            State::Writing => invalid(),
+            State::Unlocked | State::Writing => invalid(),
         };
         if zero {
             *self = State::Unlocked;
@@ -139,8 +133,7 @@ impl State {
     fn dec_writers(&mut self) {
         match *self {
             State::Writing => {}
-            State::Unlocked |
-            State::Reading(_) => invalid(),
+            State::Unlocked | State::Reading(_) => invalid(),
         }
         *self = State::Unlocked;
     }

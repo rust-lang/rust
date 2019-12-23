@@ -6,7 +6,7 @@ use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOri
 use crate::middle::region;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::subst::{InternalSubsts, GenericArg, SubstsRef, GenericArgKind};
+use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
 use errors::DiagnosticBuilder;
@@ -24,7 +24,6 @@ pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 /// appear in the return type).
 #[derive(Copy, Clone, Debug)]
 pub struct OpaqueTypeDecl<'tcx> {
-
     /// The opaque type (`ty::Opaque`) for this declaration.
     pub opaque_type: Ty<'tcx>,
 
@@ -467,13 +466,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
-            op: |r| self.member_constraint(
-                opaque_type_def_id,
-                opaque_defn.definition_span,
-                concrete_ty,
-                r,
-                &choice_regions,
-            ),
+            op: |r| {
+                self.member_constraint(
+                    opaque_type_def_id,
+                    opaque_defn.definition_span,
+                    concrete_ty,
+                    r,
+                    &choice_regions,
+                )
+            },
         });
     }
 
@@ -522,9 +523,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err.span_label(span, label);
 
         if nightly_options::is_nightly_build() {
-            help!(err,
-                  "add #![feature(member_constraints)] to the crate attributes \
-                   to enable");
+            help!(
+                err,
+                "add #![feature(member_constraints)] to the crate attributes \
+                   to enable"
+            );
         }
 
         err.emit();
@@ -839,26 +842,28 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             self.opaque_type_def_id,
                             hidden_ty,
                             r,
-                        ).emit();
+                        )
+                        .emit();
                     }
                 }
                 self.tcx.lifetimes.re_empty
             }
             None => {
-                self.tcx.sess
-                    .struct_span_err(
-                        self.span,
-                        "non-defining opaque type use in defining scope"
-                    )
+                self.tcx
+                    .sess
+                    .struct_span_err(self.span, "non-defining opaque type use in defining scope")
                     .span_label(
                         self.span,
-                        format!("lifetime `{}` is part of concrete type but not used in \
-                                 parameter list of the `impl Trait` type alias", r),
+                        format!(
+                            "lifetime `{}` is part of concrete type but not used in \
+                                 parameter list of the `impl Trait` type alias",
+                            r
+                        ),
                     )
                     .emit();
 
                 self.tcx().mk_region(ty::ReStatic)
-            },
+            }
         }
     }
 
@@ -890,32 +895,30 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 // during codegen.
 
                 let generics = self.tcx.generics_of(def_id);
-                let substs =
-                    self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
-                        if index < generics.parent_count {
-                            // Accommodate missing regions in the parent kinds...
-                            self.fold_kind_mapping_missing_regions_to_empty(kind)
-                        } else {
-                            // ...but not elsewhere.
-                            self.fold_kind_normally(kind)
-                        }
-                    }));
+                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
+                    if index < generics.parent_count {
+                        // Accommodate missing regions in the parent kinds...
+                        self.fold_kind_mapping_missing_regions_to_empty(kind)
+                    } else {
+                        // ...but not elsewhere.
+                        self.fold_kind_normally(kind)
+                    }
+                }));
 
                 self.tcx.mk_closure(def_id, substs)
             }
 
             ty::Generator(def_id, substs, movability) => {
                 let generics = self.tcx.generics_of(def_id);
-                let substs =
-                    self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
-                        if index < generics.parent_count {
-                            // Accommodate missing regions in the parent kinds...
-                            self.fold_kind_mapping_missing_regions_to_empty(kind)
-                        } else {
-                            // ...but not elsewhere.
-                            self.fold_kind_normally(kind)
-                        }
-                    }));
+                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
+                    if index < generics.parent_count {
+                        // Accommodate missing regions in the parent kinds...
+                        self.fold_kind_mapping_missing_regions_to_empty(kind)
+                    } else {
+                        // ...but not elsewhere.
+                        self.fold_kind_normally(kind)
+                    }
+                }));
 
                 self.tcx.mk_generator(def_id, substs, movability)
             }
@@ -928,12 +931,15 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(GenericArgKind::Type(t1)) => t1,
                     Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
                     None => {
-                        self.tcx.sess
+                        self.tcx
+                            .sess
                             .struct_span_err(
                                 self.span,
-                                &format!("type parameter `{}` is part of concrete type but not \
+                                &format!(
+                                    "type parameter `{}` is part of concrete type but not \
                                           used in parameter list for the `impl Trait` type alias",
-                                         ty),
+                                    ty
+                                ),
                             )
                             .emit();
 
@@ -958,12 +964,15 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
-                        self.tcx.sess
+                        self.tcx
+                            .sess
                             .struct_span_err(
                                 self.span,
-                                &format!("const parameter `{}` is part of concrete type but not \
+                                &format!(
+                                    "const parameter `{}` is part of concrete type but not \
                                           used in parameter list for the `impl Trait` type alias",
-                                         ct)
+                                    ct
+                                ),
                             )
                             .emit();
 
@@ -1035,8 +1044,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                         let parent_def_id = self.parent_def_id;
                         let def_scope_default = || {
                             let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
-                            parent_def_id == tcx.hir()
-                                                .local_def_id(opaque_parent_hir_id)
+                            parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
                         };
                         let (in_definition_scope, origin) = match tcx.hir().find(opaque_hir_id) {
                             Some(Node::Item(item)) => match item.kind {
@@ -1052,29 +1060,17 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     origin,
                                     ..
                                 }) => (
-                                    may_define_opaque_type(
-                                        tcx,
-                                        self.parent_def_id,
-                                        opaque_hir_id,
-                                    ),
+                                    may_define_opaque_type(tcx, self.parent_def_id, opaque_hir_id),
                                     origin,
                                 ),
-                                _ => {
-                                    (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias)
-                                }
+                                _ => (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias),
                             },
                             Some(Node::ImplItem(item)) => match item.kind {
                                 hir::ImplItemKind::OpaqueTy(_) => (
-                                    may_define_opaque_type(
-                                        tcx,
-                                        self.parent_def_id,
-                                        opaque_hir_id,
-                                    ),
+                                    may_define_opaque_type(tcx, self.parent_def_id, opaque_hir_id),
                                     hir::OpaqueTyOrigin::TypeAlias,
                                 ),
-                                _ => {
-                                    (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias)
-                                }
+                                _ => (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias),
                             },
                             _ => bug!(
                                 "expected (impl) item, found {}",
@@ -1211,11 +1207,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 /// Here, `def_id` is the `DefId` of the defining use of the opaque type (e.g., `f1` or `f2`),
 /// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
-pub fn may_define_opaque_type(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-    opaque_hir_id: hir::HirId,
-) -> bool {
+pub fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: DefId, opaque_hir_id: hir::HirId) -> bool {
     let mut hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Named opaque types can be defined by any siblings or children of siblings.

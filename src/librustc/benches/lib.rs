@@ -8,7 +8,7 @@ use test::Bencher;
 // Static/dynamic method dispatch
 
 struct Struct {
-    field: isize
+    field: isize,
 }
 
 trait Trait {
@@ -25,17 +25,13 @@ impl Trait for Struct {
 fn trait_vtable_method_call(b: &mut Bencher) {
     let s = Struct { field: 10 };
     let t = &s as &dyn Trait;
-    b.iter(|| {
-        t.method()
-    });
+    b.iter(|| t.method());
 }
 
 #[bench]
 fn trait_static_method_call(b: &mut Bencher) {
     let s = Struct { field: 10 };
-    b.iter(|| {
-        s.method()
-    });
+    b.iter(|| s.method());
 }
 
 // Overhead of various match forms
@@ -43,21 +39,17 @@ fn trait_static_method_call(b: &mut Bencher) {
 #[bench]
 fn option_some(b: &mut Bencher) {
     let x = Some(10);
-    b.iter(|| {
-        match x {
-            Some(y) => y,
-            None => 11
-        }
+    b.iter(|| match x {
+        Some(y) => y,
+        None => 11,
     });
 }
 
 #[bench]
 fn vec_pattern(b: &mut Bencher) {
-    let x = [1,2,3,4,5,6];
-    b.iter(|| {
-        match x {
-            [1,2,3,..] => 10,
-            _ => 11,
-        }
+    let x = [1, 2, 3, 4, 5, 6];
+    b.iter(|| match x {
+        [1, 2, 3, ..] => 10,
+        _ => 11,
     });
 }

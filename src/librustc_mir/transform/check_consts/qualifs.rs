@@ -1,8 +1,8 @@
 //! A copy of the `Qualif` trait in `qualify_consts.rs` that is suitable for the new validator.
 
+use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
-use rustc::hir::def_id::DefId;
 use syntax_pos::DUMMY_SP;
 
 use super::Item as ConstCx;
@@ -45,22 +45,21 @@ pub trait Qualif {
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         if let [proj_base @ .., elem] = place.projection {
-            let base_qualif = Self::in_place(cx, per_local, PlaceRef {
-                base: place.base,
-                projection: proj_base,
-            });
-            let qualif = base_qualif && Self::in_any_value_of_ty(
-                cx,
-                Place::ty_from(place.base, proj_base, *cx.body, cx.tcx)
-                    .projection_ty(cx.tcx, elem)
-                    .ty,
-            );
+            let base_qualif =
+                Self::in_place(cx, per_local, PlaceRef { base: place.base, projection: proj_base });
+            let qualif = base_qualif
+                && Self::in_any_value_of_ty(
+                    cx,
+                    Place::ty_from(place.base, proj_base, *cx.body, cx.tcx)
+                        .projection_ty(cx.tcx, elem)
+                        .ty,
+                );
             match elem {
-                ProjectionElem::Deref |
-                ProjectionElem::Subslice { .. } |
-                ProjectionElem::Field(..) |
-                ProjectionElem::ConstantIndex { .. } |
-                ProjectionElem::Downcast(..) => qualif,
+                ProjectionElem::Deref
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::Field(..)
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Downcast(..) => qualif,
 
                 ProjectionElem::Index(local) => qualif || per_local(*local),
             }
@@ -83,18 +82,11 @@ pub trait Qualif {
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         match place {
-            PlaceRef {
-                base: PlaceBase::Local(local),
-                projection: [],
-            } => per_local(*local),
-            PlaceRef {
-                base: PlaceBase::Static(_),
-                projection: [],
-            } => bug!("qualifying already promoted MIR"),
-            PlaceRef {
-                base: _,
-                projection: [.., _],
-            } => Self::in_projection(cx, per_local, place),
+            PlaceRef { base: PlaceBase::Local(local), projection: [] } => per_local(*local),
+            PlaceRef { base: PlaceBase::Static(_), projection: [] } => {
+                bug!("qualifying already promoted MIR")
+            }
+            PlaceRef { base: _, projection: [.., _] } => Self::in_projection(cx, per_local, place),
         }
     }
 
@@ -104,8 +96,9 @@ pub trait Qualif {
         operand: &Operand<'tcx>,
     ) -> bool {
         match *operand {
-            Operand::Copy(ref place) |
-            Operand::Move(ref place) => Self::in_place(cx, per_local, place.as_ref()),
+            Operand::Copy(ref place) | Operand::Move(ref place) => {
+                Self::in_place(cx, per_local, place.as_ref())
+            }
 
             Operand::Constant(ref constant) => {
                 if let Some(static_) = constant.check_static_ptr(cx.tcx) {
@@ -138,16 +131,17 @@ pub trait Qualif {
         match *rvalue {
             Rvalue::NullaryOp(..) => false,
 
-            Rvalue::Discriminant(ref place) |
-            Rvalue::Len(ref place) => Self::in_place(cx, per_local, place.as_ref()),
+            Rvalue::Discriminant(ref place) | Rvalue::Len(ref place) => {
+                Self::in_place(cx, per_local, place.as_ref())
+            }
 
-            Rvalue::Use(ref operand) |
-            Rvalue::Repeat(ref operand, _) |
-            Rvalue::UnaryOp(_, ref operand) |
-            Rvalue::Cast(_, ref operand, _) => Self::in_operand(cx, per_local, operand),
+            Rvalue::Use(ref operand)
+            | Rvalue::Repeat(ref operand, _)
+            | Rvalue::UnaryOp(_, ref operand)
+            | Rvalue::Cast(_, ref operand, _) => Self::in_operand(cx, per_local, operand),
 
-            Rvalue::BinaryOp(_, ref lhs, ref rhs) |
-            Rvalue::CheckedBinaryOp(_, ref lhs, ref rhs) => {
+            Rvalue::BinaryOp(_, ref lhs, ref rhs)
+            | Rvalue::CheckedBinaryOp(_, ref lhs, ref rhs) => {
                 Self::in_operand(cx, per_local, lhs) || Self::in_operand(cx, per_local, rhs)
             }
 
@@ -156,10 +150,11 @@ pub trait Qualif {
                 if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
                     let base_ty = Place::ty_from(&place.base, proj_base, *cx.body, cx.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
-                        return Self::in_place(cx, per_local, PlaceRef {
-                            base: &place.base,
-                            projection: proj_base,
-                        });
+                        return Self::in_place(
+                            cx,
+                            per_local,
+                            PlaceRef { base: &place.base, projection: proj_base },
+                        );
                     }
                 }
 

@@ -1,21 +1,17 @@
 //! Runs rustfmt on the repository.
 
 use crate::Build;
-use std::process::Command;
+use build_helper::t;
 use ignore::WalkBuilder;
 use std::path::Path;
-use build_helper::t;
+use std::process::Command;
 
-fn rustfmt(build: &Build, path: &Path, check: bool) {
-    let rustfmt_path = build.config.initial_rustfmt.as_ref().unwrap_or_else(|| {
-        eprintln!("./x.py fmt is not supported on this channel");
-        std::process::exit(1);
-    });
-
-    let mut cmd = Command::new(&rustfmt_path);
+fn rustfmt(src: &Path, rustfmt: &Path, path: &Path, check: bool) {
+    let mut cmd = Command::new(&rustfmt);
     // avoid the submodule config paths from coming into play,
     // we only allow a single global config for the workspace for now
-    cmd.arg("--config-path").arg(&build.src.canonicalize().unwrap());
+    cmd.arg("--config-path").arg(&src.canonicalize().unwrap());
+    cmd.arg("--edition").arg("2018");
     cmd.arg("--unstable-features");
     cmd.arg("--skip-children");
     if check {
@@ -51,14 +47,21 @@ pub fn format(build: &Build, check: bool) {
     }
     let ignore_fmt = ignore_fmt.build().unwrap();
 
-    let walker = WalkBuilder::new(&build.src)
-        .types(matcher)
-        .overrides(ignore_fmt)
-        .build();
-    for entry in walker {
-        let entry = t!(entry);
-        if entry.file_type().map_or(false, |t| t.is_file()) {
-            rustfmt(build, &entry.path(), check);
-        }
-    }
+    let rustfmt_path = build.config.initial_rustfmt.as_ref().unwrap_or_else(|| {
+        eprintln!("./x.py fmt is not supported on this channel");
+        std::process::exit(1);
+    });
+    let src = build.src.clone();
+    let walker = WalkBuilder::new(&build.src).types(matcher).overrides(ignore_fmt).build_parallel();
+    walker.run(|| {
+        let src = src.clone();
+        let rustfmt_path = rustfmt_path.clone();
+        Box::new(move |entry| {
+            let entry = t!(entry);
+            if entry.file_type().map_or(false, |t| t.is_file()) {
+                rustfmt(&src, &rustfmt_path, &entry.path(), check);
+            }
+            ignore::WalkState::Continue
+        })
+    });
 }

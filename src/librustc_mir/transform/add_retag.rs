@@ -4,9 +4,9 @@
 //! of MIR building, and only after this pass we think of the program has having the
 //! normal MIR semantics.
 
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::mir::*;
 use crate::transform::{MirPass, MirSource};
+use rustc::mir::*;
+use rustc::ty::{self, Ty, TyCtxt};
 
 pub struct AddRetag;
 
@@ -14,9 +14,7 @@ pub struct AddRetag;
 /// after the assignment, we can be sure to obtain the same place value.
 /// (Concurrent accesses by other threads are no problem as these are anyway non-atomic
 /// copies.  Data races are UB.)
-fn is_stable(
-    place: PlaceRef<'_, '_>,
-) -> bool {
+fn is_stable(place: PlaceRef<'_, '_>) -> bool {
     place.projection.iter().all(|elem| {
         match elem {
             // Which place this evaluates to can change with any memory write,
@@ -39,20 +37,21 @@ fn is_stable(
 fn may_be_reference<'tcx>(ty: Ty<'tcx>) -> bool {
     match ty.kind {
         // Primitive types that are not references
-        ty::Bool | ty::Char |
-        ty::Float(_) | ty::Int(_) | ty::Uint(_) |
-        ty::RawPtr(..) | ty::FnPtr(..) |
-        ty::Str | ty::FnDef(..) | ty::Never =>
-            false,
+        ty::Bool
+        | ty::Char
+        | ty::Float(_)
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::RawPtr(..)
+        | ty::FnPtr(..)
+        | ty::Str
+        | ty::FnDef(..)
+        | ty::Never => false,
         // References
         ty::Ref(..) => true,
         ty::Adt(..) if ty.is_box() => true,
         // Compound types are not references
-        ty::Array(..) |
-        ty::Slice(..) |
-        ty::Tuple(..) |
-        ty::Adt(..) =>
-            false,
+        ty::Array(..) | ty::Slice(..) | ty::Tuple(..) | ty::Adt(..) => false,
         // Conservative fallback
         _ => true,
     }
@@ -68,8 +67,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         let needs_retag = |place: &Place<'tcx>| {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
-            is_stable(place.as_ref())
-                && may_be_reference(place.ty(&*local_decls, tcx).ty)
+            is_stable(place.as_ref()) && may_be_reference(place.ty(&*local_decls, tcx).ty)
         };
 
         // PART 1
@@ -81,16 +79,20 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                             // argument declaration.
             };
             // Gather all arguments, skip return value.
-            let places = local_decls.iter_enumerated().skip(1).take(arg_count)
-                    .map(|(local, _)| Place::from(local))
-                    .filter(needs_retag)
-                    .collect::<Vec<_>>();
+            let places = local_decls
+                .iter_enumerated()
+                .skip(1)
+                .take(arg_count)
+                .map(|(local, _)| Place::from(local))
+                .filter(needs_retag)
+                .collect::<Vec<_>>();
             // Emit their retags.
-            basic_blocks[START_BLOCK].statements.splice(0..0,
+            basic_blocks[START_BLOCK].statements.splice(
+                0..0,
                 places.into_iter().map(|place| Statement {
                     source_info,
-                    kind: StatementKind::Retag(RetagKind::FnEntry, box(place)),
-                })
+                    kind: StatementKind::Retag(RetagKind::FnEntry, box (place)),
+                }),
             );
         }
 
@@ -112,8 +114,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                         }
                     }
                 }
-                TerminatorKind::Drop { .. } |
-                TerminatorKind::DropAndReplace { .. } => {
+                TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => {
                     // `Drop` is also a call, but it doesn't return anything so we are good.
                 }
                 _ => {
@@ -123,10 +124,13 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         }
         // Now we go over the returns we collected to retag the return values.
         for (source_info, dest_place, dest_block) in returns {
-            basic_blocks[dest_block].statements.insert(0, Statement {
-                source_info,
-                kind: StatementKind::Retag(RetagKind::Default, box(dest_place)),
-            });
+            basic_blocks[dest_block].statements.insert(
+                0,
+                Statement {
+                    source_info,
+                    kind: StatementKind::Retag(RetagKind::Default, box (dest_place)),
+                },
+            );
         }
 
         // PART 3
@@ -143,14 +147,14 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                     // Assignments of reference or ptr type are the ones where we may have
                     // to update tags.  This includes `x = &[mut] ...` and hence
                     // we also retag after taking a reference!
-                    StatementKind::Assign(box(ref place, ref rvalue)) if needs_retag(place) => {
+                    StatementKind::Assign(box (ref place, ref rvalue)) if needs_retag(place) => {
                         let kind = match rvalue {
                             Rvalue::Ref(_, borrow_kind, _)
-                                if borrow_kind.allows_two_phase_borrow()
-                            =>
-                                RetagKind::TwoPhase,
-                            _ =>
-                                RetagKind::Default,
+                                if borrow_kind.allows_two_phase_borrow() =>
+                            {
+                                RetagKind::TwoPhase
+                            }
+                            _ => RetagKind::Default,
                         };
                         (kind, place.clone())
                     }
@@ -159,10 +163,10 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                 };
                 // Insert a retag after the statement.
                 let source_info = block_data.statements[i].source_info;
-                block_data.statements.insert(i+1, Statement {
-                    source_info,
-                    kind: StatementKind::Retag(retag_kind, box(place)),
-                });
+                block_data.statements.insert(
+                    i + 1,
+                    Statement { source_info, kind: StatementKind::Retag(retag_kind, box (place)) },
+                );
             }
         }
     }

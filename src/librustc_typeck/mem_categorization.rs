@@ -49,13 +49,13 @@
 //! tied to `x`. The type of `x'` will be a borrowed pointer.
 
 use rustc::hir;
-use rustc::hir::PatKind;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::DefId;
-use rustc::hir::def::{Res, DefKind};
+use rustc::hir::PatKind;
 use rustc::infer::InferCtxt;
 use rustc::ty::adjustment;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::fold::TypeFoldable;
+use rustc::ty::{self, Ty, TyCtxt};
 
 use syntax_pos::Span;
 
@@ -105,11 +105,9 @@ impl<'tcx> Place<'tcx> {
     /// The types are in the reverse order that they are applied. So if
     /// `x: &*const u32` and the `Place` is `**x`, then the types returned are
     ///`*const u32` then `&*const u32`.
-    crate fn deref_tys(&self) -> impl Iterator<Item=Ty<'tcx>> + '_ {
-        self.projections.iter().rev().filter_map(|proj| if let Projection::Deref(deref_ty) = *proj {
-            Some(deref_ty)
-        } else {
-            None
+    crate fn deref_tys(&self) -> impl Iterator<Item = Ty<'tcx>> + '_ {
+        self.projections.iter().rev().filter_map(|proj| {
+            if let Projection::Deref(deref_ty) = *proj { Some(deref_ty) } else { None }
         })
     }
 }
@@ -120,13 +118,21 @@ crate trait HirNode {
 }
 
 impl HirNode for hir::Expr {
-    fn hir_id(&self) -> hir::HirId { self.hir_id }
-    fn span(&self) -> Span { self.span }
+    fn hir_id(&self) -> hir::HirId {
+        self.hir_id
+    }
+    fn span(&self) -> Span {
+        self.span
+    }
 }
 
 impl HirNode for hir::Pat {
-    fn hir_id(&self) -> hir::HirId { self.hir_id }
-    fn span(&self) -> Span { self.span }
+    fn hir_id(&self) -> hir::HirId {
+        self.hir_id
+    }
+    fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Clone)]
@@ -161,16 +167,13 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    crate fn type_is_copy_modulo_regions(
-        &self,
-        ty: Ty<'tcx>,
-        span: Span,
-    ) -> bool {
+    crate fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
         self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span)
     }
 
     fn resolve_vars_if_possible<T>(&self, value: &T) -> T
-        where T: TypeFoldable<'tcx>
+    where
+        T: TypeFoldable<'tcx>,
     {
         self.infcx.resolve_vars_if_possible(value)
     }
@@ -179,10 +182,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.infcx.is_tainted_by_errors()
     }
 
-    fn resolve_type_vars_or_error(&self,
-                                  id: hir::HirId,
-                                  ty: Option<Ty<'tcx>>)
-                                  -> McResult<Ty<'tcx>> {
+    fn resolve_type_vars_or_error(
+        &self,
+        id: hir::HirId,
+        ty: Option<Ty<'tcx>>,
+    ) -> McResult<Ty<'tcx>> {
         match ty {
             Some(ty) => {
                 let ty = self.resolve_vars_if_possible(&ty);
@@ -196,8 +200,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             // FIXME
             None if self.is_tainted_by_errors() => Err(()),
             None => {
-                bug!("no type for node {}: {} in mem_categorization",
-                     id, self.tcx().hir().node_to_string(id));
+                bug!(
+                    "no type for node {}: {} in mem_categorization",
+                    id,
+                    self.tcx().hir().node_to_string(id)
+                );
             }
         }
     }
@@ -239,7 +246,6 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.pat_ty_unadjusted(pat)
     }
 
-
     /// Like `pat_ty`, but ignores implicit `&` patterns.
     fn pat_ty_unadjusted(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
         let base_ty = self.node_ty(pat.hir_id)?;
@@ -249,10 +255,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // and if so, figures out what the type *being borrowed* is.
         let ret_ty = match pat.kind {
             PatKind::Binding(..) => {
-                let bm = *self.tables
-                              .pat_binding_modes()
-                              .get(pat.hir_id)
-                              .expect("missing binding mode");
+                let bm =
+                    *self.tables.pat_binding_modes().get(pat.hir_id).expect("missing binding mode");
 
                 if let ty::BindByReference(_) = bm {
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
@@ -295,18 +299,23 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         helper(self, expr, self.tables.expr_adjustments(expr))
     }
 
-    crate fn cat_expr_adjusted(&self, expr: &hir::Expr,
-                             previous: Place<'tcx>,
-                             adjustment: &adjustment::Adjustment<'tcx>)
-                             -> McResult<Place<'tcx>> {
+    crate fn cat_expr_adjusted(
+        &self,
+        expr: &hir::Expr,
+        previous: Place<'tcx>,
+        adjustment: &adjustment::Adjustment<'tcx>,
+    ) -> McResult<Place<'tcx>> {
         self.cat_expr_adjusted_with(expr, || Ok(previous), adjustment)
     }
 
-    fn cat_expr_adjusted_with<F>(&self, expr: &hir::Expr,
-                                 previous: F,
-                                 adjustment: &adjustment::Adjustment<'tcx>)
-                                 -> McResult<Place<'tcx>>
-        where F: FnOnce() -> McResult<Place<'tcx>>
+    fn cat_expr_adjusted_with<F>(
+        &self,
+        expr: &hir::Expr,
+        previous: F,
+        adjustment: &adjustment::Adjustment<'tcx>,
+    ) -> McResult<Place<'tcx>>
+    where
+        F: FnOnce() -> McResult<Place<'tcx>>,
     {
         debug!("cat_expr_adjusted_with({:?}): {:?}", adjustment, expr);
         let target = self.resolve_vars_if_possible(&adjustment.target);
@@ -314,10 +323,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
                 let base = if let Some(deref) = overloaded {
-                    let ref_ty = self.tcx().mk_ref(deref.region, ty::TypeAndMut {
-                        ty: target,
-                        mutbl: deref.mutbl,
-                    });
+                    let ref_ty = self
+                        .tcx()
+                        .mk_ref(deref.region, ty::TypeAndMut { ty: target, mutbl: deref.mutbl });
                     self.cat_rvalue(expr.hir_id, expr.span, ref_ty)
                 } else {
                     previous()?
@@ -325,9 +333,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.cat_deref(expr, base)
             }
 
-            adjustment::Adjust::NeverToAny |
-            adjustment::Adjust::Pointer(_) |
-            adjustment::Adjust::Borrow(_) => {
+            adjustment::Adjust::NeverToAny
+            | adjustment::Adjust::Pointer(_)
+            | adjustment::Adjust::Borrow(_) => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue(expr.hir_id, expr.span, target))
             }
@@ -350,10 +358,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
             hir::ExprKind::Field(ref base, _) => {
                 let base = self.cat_expr(&base)?;
-                debug!("cat_expr(cat_field): id={} expr={:?} base={:?}",
-                       expr.hir_id,
-                       expr,
-                       base);
+                debug!("cat_expr(cat_field): id={} expr={:?} base={:?}", expr.hir_id, expr, base);
                 Ok(self.cat_projection(expr, base, expr_ty))
             }
 
@@ -376,34 +381,44 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
-            hir::ExprKind::Type(ref e, _) => {
-                self.cat_expr(&e)
-            }
+            hir::ExprKind::Type(ref e, _) => self.cat_expr(&e),
 
-            hir::ExprKind::AddrOf(..) | hir::ExprKind::Call(..) |
-            hir::ExprKind::Assign(..) | hir::ExprKind::AssignOp(..) |
-            hir::ExprKind::Closure(..) | hir::ExprKind::Ret(..) |
-            hir::ExprKind::Unary(..) | hir::ExprKind::Yield(..) |
-            hir::ExprKind::MethodCall(..) | hir::ExprKind::Cast(..) | hir::ExprKind::DropTemps(..) |
-            hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) |
-            hir::ExprKind::Binary(..) |
-            hir::ExprKind::Block(..) | hir::ExprKind::Loop(..) | hir::ExprKind::Match(..) |
-            hir::ExprKind::Lit(..) | hir::ExprKind::Break(..) |
-            hir::ExprKind::Continue(..) | hir::ExprKind::Struct(..) | hir::ExprKind::Repeat(..) |
-            hir::ExprKind::InlineAsm(..) | hir::ExprKind::Box(..) | hir::ExprKind::Err => {
-                Ok(self.cat_rvalue(expr.hir_id, expr.span, expr_ty))
-            }
+            hir::ExprKind::AddrOf(..)
+            | hir::ExprKind::Call(..)
+            | hir::ExprKind::Assign(..)
+            | hir::ExprKind::AssignOp(..)
+            | hir::ExprKind::Closure(..)
+            | hir::ExprKind::Ret(..)
+            | hir::ExprKind::Unary(..)
+            | hir::ExprKind::Yield(..)
+            | hir::ExprKind::MethodCall(..)
+            | hir::ExprKind::Cast(..)
+            | hir::ExprKind::DropTemps(..)
+            | hir::ExprKind::Array(..)
+            | hir::ExprKind::Tup(..)
+            | hir::ExprKind::Binary(..)
+            | hir::ExprKind::Block(..)
+            | hir::ExprKind::Loop(..)
+            | hir::ExprKind::Match(..)
+            | hir::ExprKind::Lit(..)
+            | hir::ExprKind::Break(..)
+            | hir::ExprKind::Continue(..)
+            | hir::ExprKind::Struct(..)
+            | hir::ExprKind::Repeat(..)
+            | hir::ExprKind::InlineAsm(..)
+            | hir::ExprKind::Box(..)
+            | hir::ExprKind::Err => Ok(self.cat_rvalue(expr.hir_id, expr.span, expr_ty)),
         }
     }
 
-    crate fn cat_res(&self,
-                   hir_id: hir::HirId,
-                   span: Span,
-                   expr_ty: Ty<'tcx>,
-                   res: Res)
-                   -> McResult<Place<'tcx>> {
-        debug!("cat_res: id={:?} expr={:?} def={:?}",
-               hir_id, expr_ty, res);
+    crate fn cat_res(
+        &self,
+        hir_id: hir::HirId,
+        span: Span,
+        expr_ty: Ty<'tcx>,
+        res: Res,
+    ) -> McResult<Place<'tcx>> {
+        debug!("cat_res: id={:?} expr={:?} def={:?}", hir_id, expr_ty, res);
 
         match res {
             Res::Def(DefKind::Ctor(..), _)
@@ -412,19 +427,15 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::Method, _)
-            | Res::SelfCtor(..) => {
-                Ok(self.cat_rvalue(hir_id, span, expr_ty))
-            }
+            | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, span, expr_ty)),
 
-            Res::Def(DefKind::Static, _) => {
-                Ok(Place {
-                    hir_id,
-                    span,
-                    ty: expr_ty,
-                    base: PlaceBase::StaticItem,
-                    projections: Vec::new(),
-                })
-            }
+            Res::Def(DefKind::Static, _) => Ok(Place {
+                hir_id,
+                span,
+                ty: expr_ty,
+                base: PlaceBase::StaticItem,
+                projections: Vec::new(),
+            }),
 
             Res::Local(var_id) => {
                 if self.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)) {
@@ -440,7 +451,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 }
             }
 
-            def => span_bug!(span, "unexpected definition in memory categorization: {:?}", def)
+            def => span_bug!(span, "unexpected definition in memory categorization: {:?}", def),
         }
     }
 
@@ -477,13 +488,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
     crate fn cat_rvalue(&self, hir_id: hir::HirId, span: Span, expr_ty: Ty<'tcx>) -> Place<'tcx> {
         debug!("cat_rvalue hir_id={:?}, expr_ty={:?}, span={:?}", hir_id, expr_ty, span);
-        let ret = Place {
-            hir_id,
-            span,
-            base: PlaceBase::Rvalue,
-            projections: Vec::new(),
-            ty: expr_ty,
-        };
+        let ret =
+            Place { hir_id, span, base: PlaceBase::Rvalue, projections: Vec::new(), ty: expr_ty };
         debug!("cat_rvalue ret={:?}", ret);
         ret
     }
@@ -507,11 +513,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         ret
     }
 
-    fn cat_overloaded_place(
-        &self,
-        expr: &hir::Expr,
-        base: &hir::Expr,
-    ) -> McResult<Place<'tcx>> {
+    fn cat_overloaded_place(&self, expr: &hir::Expr, base: &hir::Expr) -> McResult<Place<'tcx>> {
         debug!("cat_overloaded_place(expr={:?}, base={:?})", expr, base);
 
         // Reconstruct the output assuming it's a reference with the
@@ -522,22 +524,15 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         let (region, mutbl) = match base_ty.kind {
             ty::Ref(region, _, mutbl) => (region, mutbl),
-            _ => span_bug!(expr.span, "cat_overloaded_place: base is not a reference")
+            _ => span_bug!(expr.span, "cat_overloaded_place: base is not a reference"),
         };
-        let ref_ty = self.tcx().mk_ref(region, ty::TypeAndMut {
-            ty: place_ty,
-            mutbl,
-        });
+        let ref_ty = self.tcx().mk_ref(region, ty::TypeAndMut { ty: place_ty, mutbl });
 
         let base = self.cat_rvalue(expr.hir_id, expr.span, ref_ty);
         self.cat_deref(expr, base)
     }
 
-    fn cat_deref(
-        &self,
-        node: &impl HirNode,
-        base_place: Place<'tcx>,
-    ) -> McResult<Place<'tcx>> {
+    fn cat_deref(&self, node: &impl HirNode, base_place: Place<'tcx>) -> McResult<Place<'tcx>> {
         debug!("cat_deref: base_place={:?}", base_place);
 
         let base_ty = base_place.ty;
@@ -563,14 +558,16 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     crate fn cat_pattern<F>(&self, place: Place<'tcx>, pat: &hir::Pat, mut op: F) -> McResult<()>
-        where F: FnMut(&Place<'tcx>, &hir::Pat),
+    where
+        F: FnMut(&Place<'tcx>, &hir::Pat),
     {
         self.cat_pattern_(place, pat, &mut op)
     }
 
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
     fn cat_pattern_<F>(&self, mut place: Place<'tcx>, pat: &hir::Pat, op: &mut F) -> McResult<()>
-        where F: FnMut(&Place<'tcx>, &hir::Pat)
+    where
+        F: FnMut(&Place<'tcx>, &hir::Pat),
     {
         // Here, `place` is the `Place` being matched and pat is the pattern it
         // is being matched against.
@@ -613,12 +610,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // Then we see that to get the same result, we must start with
         // `deref { deref { place_foo }}` instead of `place_foo` since the pattern is now `Some(x,)`
         // and not `&&Some(x,)`, even though its assigned type is that of `&&Some(x,)`.
-        for _ in 0..self.tables
-                        .pat_adjustments()
-                        .get(pat.hir_id)
-                        .map(|v| v.len())
-                        .unwrap_or(0)
-        {
+        for _ in 0..self.tables.pat_adjustments().get(pat.hir_id).map(|v| v.len()).unwrap_or(0) {
             debug!("cat_pattern: applying adjustment to place={:?}", place);
             place = self.cat_deref(pat, place)?;
         }
@@ -637,8 +629,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         op(&place, pat);
 
         match pat.kind {
-            PatKind::TupleStruct(_, ref subpats, _)
-            | PatKind::Tuple(ref subpats, _) => {
+            PatKind::TupleStruct(_, ref subpats, _) | PatKind::Tuple(ref subpats, _) => {
                 // S(p1, ..., pN) or (p1, ..., pN)
                 for subpat in subpats.iter() {
                     let subpat_ty = self.pat_ty_adjusted(&subpat)?;
@@ -696,8 +687,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 }
             }
 
-            PatKind::Path(_) | PatKind::Binding(.., None) |
-            PatKind::Lit(..) | PatKind::Range(..) | PatKind::Wild => {
+            PatKind::Path(_)
+            | PatKind::Binding(.., None)
+            | PatKind::Lit(..)
+            | PatKind::Range(..)
+            | PatKind::Wild => {
                 // always ok
             }
         }

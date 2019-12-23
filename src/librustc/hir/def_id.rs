@@ -72,7 +72,9 @@ impl CrateNum {
         }
     }
 
-    pub fn as_def_id(&self) -> DefId { DefId { krate: *self, index: CRATE_DEF_INDEX } }
+    pub fn as_def_id(&self) -> DefId {
+        DefId { krate: *self, index: CRATE_DEF_INDEX }
+    }
 }
 
 impl fmt::Display for CrateNum {
@@ -173,10 +175,7 @@ impl LocalDefId {
 
     #[inline]
     pub fn to_def_id(self) -> DefId {
-        DefId {
-            krate: LOCAL_CRATE,
-            index: self.0
-        }
+        DefId { krate: LOCAL_CRATE, index: self.0 }
     }
 }
 

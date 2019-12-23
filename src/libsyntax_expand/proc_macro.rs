@@ -13,17 +13,16 @@ use syntax_pos::{Span, DUMMY_SP};
 const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
 
 pub struct BangProcMacro {
-    pub client: pm::bridge::client::Client<
-        fn(pm::TokenStream) -> pm::TokenStream,
-    >,
+    pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
 }
 
 impl base::ProcMacro for BangProcMacro {
-    fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt<'_>,
-                   span: Span,
-                   input: TokenStream)
-                   -> TokenStream {
+    fn expand<'cx>(
+        &self,
+        ecx: &'cx mut ExtCtxt<'_>,
+        span: Span,
+        input: TokenStream,
+    ) -> TokenStream {
         let server = proc_macro_server::Rustc::new(ecx);
         match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,
@@ -46,12 +45,13 @@ pub struct AttrProcMacro {
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
-    fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt<'_>,
-                   span: Span,
-                   annotation: TokenStream,
-                   annotated: TokenStream)
-                   -> TokenStream {
+    fn expand<'cx>(
+        &self,
+        ecx: &'cx mut ExtCtxt<'_>,
+        span: Span,
+        annotation: TokenStream,
+        annotated: TokenStream,
+    ) -> TokenStream {
         let server = proc_macro_server::Rustc::new(ecx);
         match self.client.run(&EXEC_STRATEGY, server, annotation, annotated) {
             Ok(stream) => stream,
@@ -74,40 +74,44 @@ pub struct ProcMacroDerive {
 }
 
 impl MultiItemModifier for ProcMacroDerive {
-    fn expand(&self,
-              ecx: &mut ExtCtxt<'_>,
-              span: Span,
-              _meta_item: &ast::MetaItem,
-              item: Annotatable)
-              -> Vec<Annotatable> {
+    fn expand(
+        &self,
+        ecx: &mut ExtCtxt<'_>,
+        span: Span,
+        _meta_item: &ast::MetaItem,
+        item: Annotatable,
+    ) -> Vec<Annotatable> {
         let item = match item {
-            Annotatable::Arm(..) |
-            Annotatable::Field(..) |
-            Annotatable::FieldPat(..) |
-            Annotatable::GenericParam(..) |
-            Annotatable::Param(..) |
-            Annotatable::StructField(..) |
-            Annotatable::Variant(..)
-                => panic!("unexpected annotatable"),
+            Annotatable::Arm(..)
+            | Annotatable::Field(..)
+            | Annotatable::FieldPat(..)
+            | Annotatable::GenericParam(..)
+            | Annotatable::Param(..)
+            | Annotatable::StructField(..)
+            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
             Annotatable::Item(item) => item,
-            Annotatable::ImplItem(_) |
-            Annotatable::TraitItem(_) |
-            Annotatable::ForeignItem(_) |
-            Annotatable::Stmt(_) |
-            Annotatable::Expr(_) => {
-                ecx.span_err(span, "proc-macro derives may only be \
-                                    applied to a struct, enum, or union");
-                return Vec::new()
+            Annotatable::ImplItem(_)
+            | Annotatable::TraitItem(_)
+            | Annotatable::ForeignItem(_)
+            | Annotatable::Stmt(_)
+            | Annotatable::Expr(_) => {
+                ecx.span_err(
+                    span,
+                    "proc-macro derives may only be \
+                                    applied to a struct, enum, or union",
+                );
+                return Vec::new();
             }
         };
         match item.kind {
-            ItemKind::Struct(..) |
-            ItemKind::Enum(..) |
-            ItemKind::Union(..) => {},
+            ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..) => {}
             _ => {
-                ecx.span_err(span, "proc-macro derives may only be \
-                                    applied to a struct, enum, or union");
-                return Vec::new()
+                ecx.span_err(
+                    span,
+                    "proc-macro derives may only be \
+                                    applied to a struct, enum, or union",
+                );
+                return Vec::new();
             }
         }
 
@@ -132,19 +136,14 @@ impl MultiItemModifier for ProcMacroDerive {
         let error_count_before = ecx.parse_sess.span_diagnostic.err_count();
         let msg = "proc-macro derive produced unparseable tokens";
 
-        let mut parser = rustc_parse::stream_to_parser(
-            ecx.parse_sess,
-            stream,
-            Some("proc-macro derive"),
-        );
+        let mut parser =
+            rustc_parse::stream_to_parser(ecx.parse_sess, stream, Some("proc-macro derive"));
         let mut items = vec![];
 
         loop {
             match parser.parse_item() {
                 Ok(None) => break,
-                Ok(Some(item)) => {
-                    items.push(Annotatable::Item(item))
-                }
+                Ok(Some(item)) => items.push(Annotatable::Item(item)),
                 Err(mut err) => {
                     // FIXME: handle this better
                     err.cancel();
@@ -153,7 +152,6 @@ impl MultiItemModifier for ProcMacroDerive {
                 }
             }
         }
-
 
         // fail if there have been errors emitted
         if ecx.parse_sess.span_diagnostic.err_count() > error_count_before {

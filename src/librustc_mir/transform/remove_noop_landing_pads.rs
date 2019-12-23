@@ -1,8 +1,8 @@
-use rustc::ty::TyCtxt;
-use rustc::mir::*;
-use rustc_index::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 use crate::util::patch::MirPatch;
+use rustc::mir::*;
+use rustc::ty::TyCtxt;
+use rustc_index::bit_set::BitSet;
 
 /// A pass that removes noop landing pads and replaces jumps to them with
 /// `None`. This is important because otherwise LLVM generates terrible
@@ -11,7 +11,7 @@ pub struct RemoveNoopLandingPads;
 
 pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache<'tcx>) {
     if tcx.sess.no_landing_pads() {
-        return
+        return;
     }
     debug!("remove_noop_landing_pads({:?})", body);
 
@@ -33,15 +33,15 @@ impl RemoveNoopLandingPads {
     ) -> bool {
         for stmt in &body[bb].statements {
             match &stmt.kind {
-                StatementKind::FakeRead(..) |
-                StatementKind::StorageLive(_) |
-                StatementKind::StorageDead(_) |
-                StatementKind::AscribeUserType(..) |
-                StatementKind::Nop => {
+                StatementKind::FakeRead(..)
+                | StatementKind::StorageLive(_)
+                | StatementKind::StorageDead(_)
+                | StatementKind::AscribeUserType(..)
+                | StatementKind::Nop => {
                     // These are all nops in a landing pad
                 }
 
-                StatementKind::Assign(box(place, Rvalue::Use(_))) => {
+                StatementKind::Assign(box (place, Rvalue::Use(_))) => {
                     if place.as_local().is_some() {
                         // Writing to a local (e.g., a drop flag) does not
                         // turn a landing pad to a non-nop
@@ -50,10 +50,10 @@ impl RemoveNoopLandingPads {
                     }
                 }
 
-                StatementKind::Assign { .. } |
-                StatementKind::SetDiscriminant { .. } |
-                StatementKind::InlineAsm { .. } |
-                StatementKind::Retag { .. } => {
+                StatementKind::Assign { .. }
+                | StatementKind::SetDiscriminant { .. }
+                | StatementKind::InlineAsm { .. }
+                | StatementKind::Retag { .. } => {
                     return false;
                 }
             }
@@ -61,26 +61,22 @@ impl RemoveNoopLandingPads {
 
         let terminator = body[bb].terminator();
         match terminator.kind {
-            TerminatorKind::Goto { .. } |
-            TerminatorKind::Resume |
-            TerminatorKind::SwitchInt { .. } |
-            TerminatorKind::FalseEdges { .. } |
-            TerminatorKind::FalseUnwind { .. } => {
-                terminator.successors().all(|&succ| {
-                    nop_landing_pads.contains(succ)
-                })
-            },
-            TerminatorKind::GeneratorDrop |
-            TerminatorKind::Yield { .. } |
-            TerminatorKind::Return |
-            TerminatorKind::Abort |
-            TerminatorKind::Unreachable |
-            TerminatorKind::Call { .. } |
-            TerminatorKind::Assert { .. } |
-            TerminatorKind::DropAndReplace { .. } |
-            TerminatorKind::Drop { .. } => {
-                false
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. } => {
+                terminator.successors().all(|&succ| nop_landing_pads.contains(succ))
             }
+            TerminatorKind::GeneratorDrop
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::Return
+            | TerminatorKind::Abort
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Call { .. }
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::DropAndReplace { .. }
+            | TerminatorKind::Drop { .. } => false,
         }
     }
 

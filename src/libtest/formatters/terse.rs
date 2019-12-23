@@ -1,17 +1,14 @@
-use std::{
-    io,
-    io::prelude::Write,
-};
+use std::{io, io::prelude::Write};
 
-use crate::{
-    types::TestDesc,
-    time,
-    test_result::TestResult,
-    types::NamePadding,
-    console::{ConsoleTestState, OutputLocation},
-    bench::fmt_bench_samples,
-};
 use super::OutputFormatter;
+use crate::{
+    bench::fmt_bench_samples,
+    console::{ConsoleTestState, OutputLocation},
+    test_result::TestResult,
+    time,
+    types::NamePadding,
+    types::TestDesc,
+};
 
 // insert a '\n' after 100 tests in quiet mode
 const QUIET_MODE_MAX_COLUMN: usize = 100;
@@ -74,7 +71,7 @@ impl<T: Write> TerseFormatter<T> {
             // we insert a new line every 100 dots in order to flush the
             // screen when dealing with line-buffered output (e.g., piping to
             // `stamp` in the rust CI).
-            let out = format!(" {}/{}\n", self.test_count+1, self.total_test_count);
+            let out = format!(" {}/{}\n", self.test_count + 1, self.total_test_count);
             self.write_plain(&out)?;
         }
 
@@ -196,9 +193,9 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
     ) -> io::Result<()> {
         match *result {
             TestResult::TrOk => self.write_ok(),
-            TestResult::TrFailed
-                | TestResult::TrFailedMsg(_)
-                | TestResult::TrTimedFail => self.write_failed(),
+            TestResult::TrFailed | TestResult::TrFailedMsg(_) | TestResult::TrTimedFail => {
+                self.write_failed()
+            }
             TestResult::TrIgnored => self.write_ignored(),
             TestResult::TrAllowedFail => self.write_allowed_fail(),
             TestResult::TrBench(ref bs) => {
@@ -214,7 +211,8 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
         self.write_plain(&format!(
             "test {} has been running for over {} seconds\n",
-            desc.name, time::TEST_WARN_TIMEOUT_S
+            desc.name,
+            time::TEST_WARN_TIMEOUT_S
         ))
     }
 

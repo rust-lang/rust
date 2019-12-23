@@ -5,12 +5,10 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(slice_patterns)]
-
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc;
@@ -23,13 +21,13 @@ use rustc::ty::query::Providers;
 
 pub mod ast_validation;
 mod check_const;
-pub mod hir_stats;
-pub mod layout_test;
-pub mod loops;
 pub mod dead;
 pub mod entry;
-mod liveness;
+pub mod hir_stats;
 mod intrinsicck;
+pub mod layout_test;
+mod liveness;
+pub mod loops;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_const::provide(providers);

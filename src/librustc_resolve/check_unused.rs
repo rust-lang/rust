@@ -23,8 +23,8 @@
 //  - `check_crate` finally emits the diagnostics based on the data generated
 //    in the last step
 
-use crate::Resolver;
 use crate::resolve_imports::ImportDirectiveSubclass;
+use crate::Resolver;
 
 use errors::pluralize;
 
@@ -33,7 +33,7 @@ use rustc::{lint, ty};
 use rustc_data_structures::fx::FxHashSet;
 use syntax::ast;
 use syntax::visit::{self, Visitor};
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
 struct UnusedImport<'a> {
     use_tree: &'a ast::UseTree,
@@ -84,14 +84,12 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
         let use_tree = self.base_use_tree.unwrap();
         let item_span = self.item_span;
 
-        self.unused_imports
-            .entry(id)
-            .or_insert_with(|| UnusedImport {
-                use_tree,
-                use_tree_id,
-                item_span,
-                unused: FxHashSet::default(),
-            })
+        self.unused_imports.entry(id).or_insert_with(|| UnusedImport {
+            use_tree,
+            use_tree_id,
+            item_span,
+            unused: FxHashSet::default(),
+        })
     }
 }
 
@@ -227,9 +225,10 @@ impl Resolver<'_> {
     crate fn check_unused(&mut self, krate: &ast::Crate) {
         for directive in self.potentially_unused_imports.iter() {
             match directive.subclass {
-                _ if directive.used.get() ||
-                    directive.vis.get() == ty::Visibility::Public ||
-                    directive.span.is_dummy() => {
+                _ if directive.used.get()
+                    || directive.vis.get() == ty::Visibility::Public
+                    || directive.span.is_dummy() =>
+                {
                     if let ImportDirectiveSubclass::MacroUse = directive.subclass {
                         if !directive.span.is_dummy() {
                             self.lint_buffer.buffer_lint(
@@ -288,21 +287,23 @@ impl Resolver<'_> {
             let len = spans.len();
             spans.sort();
             let ms = MultiSpan::from_spans(spans.clone());
-            let mut span_snippets = spans.iter()
-                .filter_map(|s| {
-                    match visitor.r.session.source_map().span_to_snippet(*s) {
-                        Ok(s) => Some(format!("`{}`", s)),
-                        _ => None,
-                    }
-                }).collect::<Vec<String>>();
+            let mut span_snippets = spans
+                .iter()
+                .filter_map(|s| match visitor.r.session.source_map().span_to_snippet(*s) {
+                    Ok(s) => Some(format!("`{}`", s)),
+                    _ => None,
+                })
+                .collect::<Vec<String>>();
             span_snippets.sort();
-            let msg = format!("unused import{}{}",
-                            pluralize!(len),
-                            if !span_snippets.is_empty() {
-                                format!(": {}", span_snippets.join(", "))
-                            } else {
-                                String::new()
-                            });
+            let msg = format!(
+                "unused import{}{}",
+                pluralize!(len),
+                if !span_snippets.is_empty() {
+                    format!(": {}", span_snippets.join(", "))
+                } else {
+                    String::new()
+                }
+            );
 
             let fix_msg = if fixes.len() == 1 && fixes[0].0 == unused.item_span {
                 "remove the whole `use` item"

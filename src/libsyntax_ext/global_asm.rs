@@ -7,33 +7,32 @@
 /// For example, `global_asm!("some assembly here")` codegens to
 /// LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 /// therefore apply.
-
 use errors::DiagnosticBuilder;
 
-use syntax::ast;
-use syntax::source_map::respan;
-use syntax_expand::base::{self, *};
-use syntax::token;
-use syntax::ptr::P;
-use syntax_pos::Span;
-use syntax::tokenstream::TokenStream;
 use smallvec::smallvec;
+use syntax::ast;
+use syntax::ptr::P;
+use syntax::source_map::respan;
+use syntax::token;
+use syntax::tokenstream::TokenStream;
+use syntax_expand::base::{self, *};
+use syntax_pos::Span;
 
-pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
-                              sp: Span,
-                              tts: TokenStream) -> Box<dyn base::MacResult + 'cx> {
+pub fn expand_global_asm<'cx>(
+    cx: &'cx mut ExtCtxt<'_>,
+    sp: Span,
+    tts: TokenStream,
+) -> Box<dyn base::MacResult + 'cx> {
     match parse_global_asm(cx, sp, tts) {
-        Ok(Some(global_asm)) => {
-            MacEager::items(smallvec![P(ast::Item {
-                ident: ast::Ident::invalid(),
-                attrs: Vec::new(),
-                id: ast::DUMMY_NODE_ID,
-                kind: ast::ItemKind::GlobalAsm(P(global_asm)),
-                vis: respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
-                span: cx.with_def_site_ctxt(sp),
-                tokens: None,
-            })])
-        }
+        Ok(Some(global_asm)) => MacEager::items(smallvec![P(ast::Item {
+            ident: ast::Ident::invalid(),
+            attrs: Vec::new(),
+            id: ast::DUMMY_NODE_ID,
+            kind: ast::ItemKind::GlobalAsm(P(global_asm)),
+            vis: respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
+            span: cx.with_def_site_ctxt(sp),
+            tokens: None,
+        })]),
         Ok(None) => DummyResult::any(sp),
         Err(mut err) => {
             err.emit();
@@ -45,7 +44,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
 fn parse_global_asm<'a>(
     cx: &mut ExtCtxt<'a>,
     sp: Span,
-    tts: TokenStream
+    tts: TokenStream,
 ) -> Result<Option<ast::GlobalAsm>, DiagnosticBuilder<'a>> {
     let mut p = cx.new_parser_from_tts(tts);
 

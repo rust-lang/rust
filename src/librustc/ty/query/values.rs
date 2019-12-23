@@ -1,5 +1,5 @@
-use crate::ty::{self, Ty, TyCtxt, AdtSizedConstraint};
 use crate::ty::util::NeedsDrop;
+use crate::ty::{self, AdtSizedConstraint, Ty, TyCtxt};
 
 use syntax::symbol::Symbol;
 

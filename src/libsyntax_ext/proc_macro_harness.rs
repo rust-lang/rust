@@ -11,8 +11,8 @@ use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax_expand::base::{ExtCtxt, Resolver};
 use syntax_expand::expand::{AstFragment, ExpansionConfig};
-use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene::AstPass;
+use syntax_pos::{Span, DUMMY_SP};
 
 struct ProcMacroDerive {
     trait_name: ast::Name,
@@ -23,18 +23,18 @@ struct ProcMacroDerive {
 
 enum ProcMacroDefType {
     Attr,
-    Bang
+    Bang,
 }
 
 struct ProcMacroDef {
     function_name: Ident,
     span: Span,
-    def_type: ProcMacroDefType
+    def_type: ProcMacroDefType,
 }
 
 enum ProcMacro {
     Derive(ProcMacroDerive),
-    Def(ProcMacroDef)
+    Def(ProcMacroDef),
 }
 
 struct CollectProcMacros<'a> {
@@ -45,14 +45,16 @@ struct CollectProcMacros<'a> {
     is_test_crate: bool,
 }
 
-pub fn inject(sess: &ParseSess,
-              resolver: &mut dyn Resolver,
-              mut krate: ast::Crate,
-              is_proc_macro_crate: bool,
-              has_proc_macro_decls: bool,
-              is_test_crate: bool,
-              num_crate_types: usize,
-              handler: &errors::Handler) -> ast::Crate {
+pub fn inject(
+    sess: &ParseSess,
+    resolver: &mut dyn Resolver,
+    mut krate: ast::Crate,
+    is_proc_macro_crate: bool,
+    has_proc_macro_decls: bool,
+    is_test_crate: bool,
+    num_crate_types: usize,
+    handler: &errors::Handler,
+) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
     let mut cx = ExtCtxt::new(sess, ecfg, resolver);
 
@@ -73,7 +75,7 @@ pub fn inject(sess: &ParseSess,
     let macros = collect.macros;
 
     if !is_proc_macro_crate {
-        return krate
+        return krate;
     }
 
     if num_crate_types > 1 {
@@ -110,28 +112,29 @@ impl<'a> CollectProcMacros<'a> {
             None => return,
         };
         if list.len() != 1 && list.len() != 2 {
-            self.handler.span_err(attr.span,
-                                  "attribute must have either one or two arguments");
-            return
+            self.handler.span_err(attr.span, "attribute must have either one or two arguments");
+            return;
         }
         let trait_attr = match list[0].meta_item() {
             Some(meta_item) => meta_item,
             _ => {
                 self.handler.span_err(list[0].span(), "not a meta item");
-                return
+                return;
             }
         };
         let trait_ident = match trait_attr.ident() {
             Some(trait_ident) if trait_attr.is_word() => trait_ident,
             _ => {
                 self.handler.span_err(trait_attr.span, "must only be one word");
-                return
+                return;
             }
         };
 
         if !trait_ident.name.can_be_raw() {
-            self.handler.span_err(trait_attr.span,
-                                  &format!("`{}` cannot be a name of derive macro", trait_ident));
+            self.handler.span_err(
+                trait_attr.span,
+                &format!("`{}` cannot be a name of derive macro", trait_ident),
+            );
         }
 
         let attributes_attr = list.get(1);
@@ -139,35 +142,39 @@ impl<'a> CollectProcMacros<'a> {
             if !attr.check_name(sym::attributes) {
                 self.handler.span_err(attr.span(), "second argument must be `attributes`")
             }
-            attr.meta_item_list().unwrap_or_else(|| {
-                self.handler.span_err(attr.span(),
-                                      "attribute must be of form: `attributes(foo, bar)`");
-                &[]
-            }).into_iter().filter_map(|attr| {
-                let attr = match attr.meta_item() {
-                    Some(meta_item) => meta_item,
-                    _ => {
-                        self.handler.span_err(attr.span(), "not a meta item");
-                        return None;
-                    }
-                };
+            attr.meta_item_list()
+                .unwrap_or_else(|| {
+                    self.handler
+                        .span_err(attr.span(), "attribute must be of form: `attributes(foo, bar)`");
+                    &[]
+                })
+                .into_iter()
+                .filter_map(|attr| {
+                    let attr = match attr.meta_item() {
+                        Some(meta_item) => meta_item,
+                        _ => {
+                            self.handler.span_err(attr.span(), "not a meta item");
+                            return None;
+                        }
+                    };
 
-                let ident = match attr.ident() {
-                    Some(ident) if attr.is_word() => ident,
-                    _ => {
-                        self.handler.span_err(attr.span, "must only be one word");
-                        return None;
+                    let ident = match attr.ident() {
+                        Some(ident) if attr.is_word() => ident,
+                        _ => {
+                            self.handler.span_err(attr.span, "must only be one word");
+                            return None;
+                        }
+                    };
+                    if !ident.name.can_be_raw() {
+                        self.handler.span_err(
+                            attr.span,
+                            &format!("`{}` cannot be a name of derive helper attribute", ident),
+                        );
                     }
-                };
-                if !ident.name.can_be_raw() {
-                    self.handler.span_err(
-                        attr.span,
-                        &format!("`{}` cannot be a name of derive helper attribute", ident),
-                    );
-                }
 
-                Some(ident.name)
-            }).collect()
+                    Some(ident.name)
+                })
+                .collect()
         } else {
             Vec::new()
         };
@@ -195,7 +202,7 @@ impl<'a> CollectProcMacros<'a> {
             self.macros.push(ProcMacro::Def(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,
-                def_type: ProcMacroDefType::Attr
+                def_type: ProcMacroDefType::Attr,
             }));
         } else {
             let msg = if !self.in_root {
@@ -213,7 +220,7 @@ impl<'a> CollectProcMacros<'a> {
             self.macros.push(ProcMacro::Def(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,
-                def_type: ProcMacroDefType::Bang
+                def_type: ProcMacroDefType::Bang,
             }));
         } else {
             let msg = if !self.in_root {
@@ -254,8 +261,9 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                     let prev_item = prev_attr.get_normal_item();
                     let item = attr.get_normal_item();
                     let path_str = pprust::path_to_string(&item.path);
-                    let msg = if item.path.segments[0].ident.name ==
-                                 prev_item.path.segments[0].ident.name {
+                    let msg = if item.path.segments[0].ident.name
+                        == prev_item.path.segments[0].ident.name
+                    {
                         format!(
                             "only one `#[{}]` attribute is allowed on any given function",
                             path_str,
@@ -269,7 +277,8 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                         )
                     };
 
-                    self.handler.struct_span_err(attr.span, &msg)
+                    self.handler
+                        .struct_span_err(attr.span, &msg)
                         .span_label(prev_attr.span, "previous attribute here")
                         .emit();
 
@@ -287,7 +296,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                 visit::walk_item(self, item);
                 self.in_root = prev_in_root;
                 return;
-            },
+            }
             Some(attr) => attr,
         };
 
@@ -348,10 +357,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //              // ...
 //          ];
 //      }
-fn mk_decls(
-    cx: &mut ExtCtxt<'_>,
-    macros: &[ProcMacro],
-) -> P<ast::Item> {
+fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
     let expn_id = cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::ProcMacroHarness,
@@ -361,10 +367,7 @@ fn mk_decls(
     let span = DUMMY_SP.with_def_site_ctxt(expn_id);
 
     let proc_macro = Ident::new(sym::proc_macro, span);
-    let krate = cx.item(span,
-                        proc_macro,
-                        Vec::new(),
-                        ast::ItemKind::ExternCrate(None));
+    let krate = cx.item(span, proc_macro, Vec::new(), ast::ItemKind::ExternCrate(None));
 
     let bridge = cx.ident_of("bridge", span);
     let client = cx.ident_of("client", span);
@@ -374,70 +377,78 @@ fn mk_decls(
     let bang = cx.ident_of("bang", span);
 
     let decls = {
-        let local_path = |sp: Span, name| {
-            cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![name]))
+        let local_path =
+            |sp: Span, name| cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![name]));
+        let proc_macro_ty_method_path = |method| {
+            cx.expr_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty, method]))
         };
-        let proc_macro_ty_method_path = |method| cx.expr_path(cx.path(span, vec![
-            proc_macro, bridge, client, proc_macro_ty, method,
-        ]));
-        macros.iter().map(|m| {
-            match m {
-                ProcMacro::Derive(cd) => {
-                    cx.expr_call(span, proc_macro_ty_method_path(custom_derive), vec![
+        macros
+            .iter()
+            .map(|m| match m {
+                ProcMacro::Derive(cd) => cx.expr_call(
+                    span,
+                    proc_macro_ty_method_path(custom_derive),
+                    vec![
                         cx.expr_str(cd.span, cd.trait_name),
                         cx.expr_vec_slice(
                             span,
-                            cd.attrs.iter().map(|&s| cx.expr_str(cd.span, s)).collect::<Vec<_>>()
+                            cd.attrs.iter().map(|&s| cx.expr_str(cd.span, s)).collect::<Vec<_>>(),
                         ),
                         local_path(cd.span, cd.function_name),
-                    ])
-                },
+                    ],
+                ),
                 ProcMacro::Def(ca) => {
                     let ident = match ca.def_type {
                         ProcMacroDefType::Attr => attr,
-                        ProcMacroDefType::Bang => bang
+                        ProcMacroDefType::Bang => bang,
                     };
 
-                    cx.expr_call(span, proc_macro_ty_method_path(ident), vec![
-                        cx.expr_str(ca.span, ca.function_name.name),
-                        local_path(ca.span, ca.function_name),
-                    ])
-
+                    cx.expr_call(
+                        span,
+                        proc_macro_ty_method_path(ident),
+                        vec![
+                            cx.expr_str(ca.span, ca.function_name.name),
+                            local_path(ca.span, ca.function_name),
+                        ],
+                    )
                 }
-            }
-        }).collect()
+            })
+            .collect()
     };
 
-    let decls_static = cx.item_static(
-        span,
-        cx.ident_of("_DECLS", span),
-        cx.ty_rptr(span,
-            cx.ty(span, ast::TyKind::Slice(
-                cx.ty_path(cx.path(span,
-                    vec![proc_macro, bridge, client, proc_macro_ty])))),
-            None, ast::Mutability::Not),
-        ast::Mutability::Not,
-        cx.expr_vec_slice(span, decls),
-    ).map(|mut i| {
-        let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);
-        i.attrs.push(cx.attribute(attr));
+    let decls_static = cx
+        .item_static(
+            span,
+            cx.ident_of("_DECLS", span),
+            cx.ty_rptr(
+                span,
+                cx.ty(
+                    span,
+                    ast::TyKind::Slice(
+                        cx.ty_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty])),
+                    ),
+                ),
+                None,
+                ast::Mutability::Not,
+            ),
+            ast::Mutability::Not,
+            cx.expr_vec_slice(span, decls),
+        )
+        .map(|mut i| {
+            let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);
+            i.attrs.push(cx.attribute(attr));
 
-        let deprecated_attr = attr::mk_nested_word_item(
-            Ident::new(sym::deprecated, span)
-        );
-        let allow_deprecated_attr = attr::mk_list_item(
-            Ident::new(sym::allow, span),
-            vec![deprecated_attr]
-        );
-        i.attrs.push(cx.attribute(allow_deprecated_attr));
+            let deprecated_attr = attr::mk_nested_word_item(Ident::new(sym::deprecated, span));
+            let allow_deprecated_attr =
+                attr::mk_list_item(Ident::new(sym::allow, span), vec![deprecated_attr]);
+            i.attrs.push(cx.attribute(allow_deprecated_attr));
 
-        i
-    });
+            i
+        });
 
-    let block = cx.expr_block(cx.block(
-        span,
-        vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)],
-    ));
+    let block = cx.expr_block(
+        cx.block(span, vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),
+    );
 
     let anon_constant = cx.item_const(
         span,

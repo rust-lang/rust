@@ -1,7 +1,7 @@
-use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::hir::def_id::{CrateNum, DefId};
-use crate::ty::{self, DefIdTree, Ty, TyCtxt};
+use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::ty::subst::{GenericArg, Subst};
+use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -58,30 +58,18 @@ pub trait Printer<'tcx>: Sized {
         self.default_print_impl_path(impl_def_id, substs, self_ty, trait_ref)
     }
 
-    fn print_region(
-        self,
-        region: ty::Region<'_>,
-    ) -> Result<Self::Region, Self::Error>;
+    fn print_region(self, region: ty::Region<'_>) -> Result<Self::Region, Self::Error>;
 
-    fn print_type(
-        self,
-        ty: Ty<'tcx>,
-    ) -> Result<Self::Type, Self::Error>;
+    fn print_type(self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error>;
 
     fn print_dyn_existential(
         self,
         predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error>;
 
-    fn print_const(
-        self,
-        ct: &'tcx ty::Const<'tcx>,
-    ) -> Result<Self::Const, Self::Error>;
+    fn print_const(self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
 
-    fn path_crate(
-        self,
-        cnum: CrateNum,
-    ) -> Result<Self::Path, Self::Error>;
+    fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error>;
 
     fn path_qualified(
         self,
@@ -152,33 +140,36 @@ pub trait Printer<'tcx>: Sized {
 
                         // If we have any generic arguments to print, we do that
                         // on top of the same path, but without its own generics.
-                        _ => if !generics.params.is_empty() && substs.len() >= generics.count() {
-                            let args = self.generic_args_to_print(generics, substs);
-                            return self.path_generic_args(
-                                |cx| cx.print_def_path(def_id, parent_substs),
-                                args,
-                            );
+                        _ => {
+                            if !generics.params.is_empty() && substs.len() >= generics.count() {
+                                let args = self.generic_args_to_print(generics, substs);
+                                return self.path_generic_args(
+                                    |cx| cx.print_def_path(def_id, parent_substs),
+                                    args,
+                                );
+                            }
                         }
                     }
 
                     // FIXME(eddyb) try to move this into the parent's printing
                     // logic, instead of doing it when printing the child.
-                    trait_qualify_parent =
-                        generics.has_self &&
-                        generics.parent == Some(parent_def_id) &&
-                        parent_substs.len() == generics.parent_count &&
-                        self.tcx().generics_of(parent_def_id).parent_count == 0;
+                    trait_qualify_parent = generics.has_self
+                        && generics.parent == Some(parent_def_id)
+                        && parent_substs.len() == generics.parent_count
+                        && self.tcx().generics_of(parent_def_id).parent_count == 0;
                 }
 
                 self.path_append(
-                    |cx: Self| if trait_qualify_parent {
-                        let trait_ref = ty::TraitRef::new(
-                            parent_def_id,
-                            cx.tcx().intern_substs(parent_substs),
-                        );
-                        cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
-                    } else {
-                        cx.print_def_path(parent_def_id, parent_substs)
+                    |cx: Self| {
+                        if trait_qualify_parent {
+                            let trait_ref = ty::TraitRef::new(
+                                parent_def_id,
+                                cx.tcx().intern_substs(parent_substs),
+                            );
+                            cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
+                        } else {
+                            cx.print_def_path(parent_def_id, parent_substs)
+                        }
                     },
                     &key.disambiguated_data,
                 )
@@ -199,17 +190,24 @@ pub trait Printer<'tcx>: Sized {
         }
 
         // Don't print args that are the defaults of their respective parameters.
-        own_params.end -= generics.params.iter().rev().take_while(|param| {
-            match param.kind {
-                ty::GenericParamDefKind::Lifetime => false,
-                ty::GenericParamDefKind::Type { has_default, .. } => {
-                    has_default && substs[param.index as usize] == GenericArg::from(
-                        self.tcx().type_of(param.def_id).subst(self.tcx(), substs)
-                    )
+        own_params.end -= generics
+            .params
+            .iter()
+            .rev()
+            .take_while(|param| {
+                match param.kind {
+                    ty::GenericParamDefKind::Lifetime => false,
+                    ty::GenericParamDefKind::Type { has_default, .. } => {
+                        has_default
+                            && substs[param.index as usize]
+                                == GenericArg::from(
+                                    self.tcx().type_of(param.def_id).subst(self.tcx(), substs),
+                                )
+                    }
+                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
                 }
-                ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
-            }
-        }).count();
+            })
+            .count();
 
         &substs[own_params]
     }
@@ -221,8 +219,10 @@ pub trait Printer<'tcx>: Sized {
         self_ty: Ty<'tcx>,
         impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        debug!("default_print_impl_path: impl_def_id={:?}, self_ty={}, impl_trait_ref={:?}",
-               impl_def_id, self_ty, impl_trait_ref);
+        debug!(
+            "default_print_impl_path: impl_def_id={:?}, self_ty={}, impl_trait_ref={:?}",
+            impl_def_id, self_ty, impl_trait_ref
+        );
 
         let key = self.tcx().def_key(impl_def_id);
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
@@ -271,39 +271,38 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
 
         ty::Dynamic(data, ..) => data.principal_def_id(),
 
-        ty::Array(subty, _) |
-        ty::Slice(subty) => characteristic_def_id_of_type(subty),
+        ty::Array(subty, _) | ty::Slice(subty) => characteristic_def_id_of_type(subty),
 
         ty::RawPtr(mt) => characteristic_def_id_of_type(mt.ty),
 
         ty::Ref(_, ty, _) => characteristic_def_id_of_type(ty),
 
-        ty::Tuple(ref tys) => tys.iter()
-                                   .filter_map(|ty| characteristic_def_id_of_type(ty.expect_ty()))
-                                   .next(),
+        ty::Tuple(ref tys) => {
+            tys.iter().filter_map(|ty| characteristic_def_id_of_type(ty.expect_ty())).next()
+        }
 
-        ty::FnDef(def_id, _) |
-        ty::Closure(def_id, _) |
-        ty::Generator(def_id, _, _) |
-        ty::Foreign(def_id) => Some(def_id),
+        ty::FnDef(def_id, _)
+        | ty::Closure(def_id, _)
+        | ty::Generator(def_id, _, _)
+        | ty::Foreign(def_id) => Some(def_id),
 
-        ty::Bool |
-        ty::Char |
-        ty::Int(_) |
-        ty::Uint(_) |
-        ty::Str |
-        ty::FnPtr(_) |
-        ty::Projection(_) |
-        ty::Placeholder(..) |
-        ty::UnnormalizedProjection(..) |
-        ty::Param(_) |
-        ty::Opaque(..) |
-        ty::Infer(_) |
-        ty::Bound(..) |
-        ty::Error |
-        ty::GeneratorWitness(..) |
-        ty::Never |
-        ty::Float(_) => None,
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Str
+        | ty::FnPtr(_)
+        | ty::Projection(_)
+        | ty::Placeholder(..)
+        | ty::UnnormalizedProjection(..)
+        | ty::Param(_)
+        | ty::Opaque(..)
+        | ty::Infer(_)
+        | ty::Bound(..)
+        | ty::Error
+        | ty::GeneratorWitness(..)
+        | ty::Never
+        | ty::Float(_) => None,
     }
 }
 

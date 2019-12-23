@@ -141,11 +141,7 @@ where
             first_constraints2.insert(r2, start1);
         }
 
-        MemberConstraintSet {
-            first_constraints: first_constraints2,
-            constraints,
-            choice_regions,
-        }
+        MemberConstraintSet { first_constraints: first_constraints2, constraints, choice_regions }
     }
 }
 
@@ -153,9 +149,7 @@ impl<R> MemberConstraintSet<'tcx, R>
 where
     R: Copy + Hash + Eq,
 {
-    crate fn all_indices(
-        &self,
-    ) -> impl Iterator<Item = NllMemberConstraintIndex> {
+    crate fn all_indices(&self) -> impl Iterator<Item = NllMemberConstraintIndex> {
         self.constraints.indices()
     }
 

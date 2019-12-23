@@ -5,20 +5,20 @@ use crate::interface::parse_cfgspecs;
 use rustc::lint;
 use rustc::middle::cstore;
 use rustc::session::config::{build_configuration, build_session_options, to_crate_config};
-use rustc::session::config::{LtoCli, LinkerPluginLto, SwitchWithOptPath, ExternEntry};
+use rustc::session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
+use rustc::session::config::{ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc::session::config::{Externs, OutputType, OutputTypes, SymbolManglingVersion};
-use rustc::session::config::{rustc_optgroups, Options, ErrorOutputType, Passes, ExternLocation};
-use rustc::session::{build_session, Session};
 use rustc::session::search_paths::SearchPath;
+use rustc::session::{build_session, Session};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
+use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::PathBuf;
-use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
-use syntax::symbol::sym;
-use syntax::edition::{Edition, DEFAULT_EDITION};
 use syntax;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{ColorConfig, emitter::HumanReadableErrorType, registry};
+use syntax::edition::{Edition, DEFAULT_EDITION};
+use syntax::symbol::sym;
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
 
@@ -40,8 +40,7 @@ where
     S: Into<String>,
     I: IntoIterator<Item = S>,
 {
-    let locations: BTreeSet<_> = locations.into_iter().map(|s| s.into())
-        .collect();
+    let locations: BTreeSet<_> = locations.into_iter().map(|s| s.into()).collect();
 
     ExternEntry {
         location: ExternLocation::ExactPaths(locations),
@@ -95,9 +94,8 @@ fn test_can_print_warnings() {
     });
 
     syntax::with_default_globals(|| {
-        let matches = optgroups()
-            .parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()])
-            .unwrap();
+        let matches =
+            optgroups().parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
         assert!(sess.diagnostic().can_emit_warnings());
     });
@@ -115,10 +113,8 @@ fn test_output_types_tracking_hash_different_paths() {
     let mut v2 = Options::default();
     let mut v3 = Options::default();
 
-    v1.output_types =
-        OutputTypes::new(&[(OutputType::Exe, Some(PathBuf::from("./some/thing")))]);
-    v2.output_types =
-        OutputTypes::new(&[(OutputType::Exe, Some(PathBuf::from("/some/thing")))]);
+    v1.output_types = OutputTypes::new(&[(OutputType::Exe, Some(PathBuf::from("./some/thing")))]);
+    v2.output_types = OutputTypes::new(&[(OutputType::Exe, Some(PathBuf::from("/some/thing")))]);
     v3.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
 
     assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
@@ -159,36 +155,18 @@ fn test_externs_tracking_hash_different_construction_order() {
     let mut v3 = Options::default();
 
     v1.externs = Externs::new(mk_map(vec![
-        (
-            String::from("a"),
-            new_public_extern_entry(vec!["b", "c"])
-        ),
-        (
-            String::from("d"),
-            new_public_extern_entry(vec!["e", "f"])
-        ),
+        (String::from("a"), new_public_extern_entry(vec!["b", "c"])),
+        (String::from("d"), new_public_extern_entry(vec!["e", "f"])),
     ]));
 
     v2.externs = Externs::new(mk_map(vec![
-        (
-            String::from("d"),
-            new_public_extern_entry(vec!["e", "f"])
-        ),
-        (
-            String::from("a"),
-            new_public_extern_entry(vec!["b", "c"])
-        ),
+        (String::from("d"), new_public_extern_entry(vec!["e", "f"])),
+        (String::from("a"), new_public_extern_entry(vec!["b", "c"])),
     ]));
 
     v3.externs = Externs::new(mk_map(vec![
-        (
-            String::from("a"),
-            new_public_extern_entry(vec!["b", "c"])
-        ),
-        (
-            String::from("d"),
-            new_public_extern_entry(vec!["f", "e"])
-        ),
+        (String::from("a"), new_public_extern_entry(vec!["b", "c"])),
+        (String::from("d"), new_public_extern_entry(vec!["f", "e"])),
     ]));
 
     assert_eq!(v1.dep_tracking_hash(), v2.dep_tracking_hash());
@@ -277,49 +255,29 @@ fn test_search_paths_tracking_hash_different_order() {
     };
 
     // Reference
-    v1.search_paths
-        .push(SearchPath::from_cli_opt("native=abc", JSON));
-    v1.search_paths
-        .push(SearchPath::from_cli_opt("crate=def", JSON));
-    v1.search_paths
-        .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
-    v1.search_paths
-        .push(SearchPath::from_cli_opt("framework=jkl", JSON));
-    v1.search_paths
-        .push(SearchPath::from_cli_opt("all=mno", JSON));
+    v1.search_paths.push(SearchPath::from_cli_opt("native=abc", JSON));
+    v1.search_paths.push(SearchPath::from_cli_opt("crate=def", JSON));
+    v1.search_paths.push(SearchPath::from_cli_opt("dependency=ghi", JSON));
+    v1.search_paths.push(SearchPath::from_cli_opt("framework=jkl", JSON));
+    v1.search_paths.push(SearchPath::from_cli_opt("all=mno", JSON));
 
-    v2.search_paths
-        .push(SearchPath::from_cli_opt("native=abc", JSON));
-    v2.search_paths
-        .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
-    v2.search_paths
-        .push(SearchPath::from_cli_opt("crate=def", JSON));
-    v2.search_paths
-        .push(SearchPath::from_cli_opt("framework=jkl", JSON));
-    v2.search_paths
-        .push(SearchPath::from_cli_opt("all=mno", JSON));
+    v2.search_paths.push(SearchPath::from_cli_opt("native=abc", JSON));
+    v2.search_paths.push(SearchPath::from_cli_opt("dependency=ghi", JSON));
+    v2.search_paths.push(SearchPath::from_cli_opt("crate=def", JSON));
+    v2.search_paths.push(SearchPath::from_cli_opt("framework=jkl", JSON));
+    v2.search_paths.push(SearchPath::from_cli_opt("all=mno", JSON));
 
-    v3.search_paths
-        .push(SearchPath::from_cli_opt("crate=def", JSON));
-    v3.search_paths
-        .push(SearchPath::from_cli_opt("framework=jkl", JSON));
-    v3.search_paths
-        .push(SearchPath::from_cli_opt("native=abc", JSON));
-    v3.search_paths
-        .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
-    v3.search_paths
-        .push(SearchPath::from_cli_opt("all=mno", JSON));
+    v3.search_paths.push(SearchPath::from_cli_opt("crate=def", JSON));
+    v3.search_paths.push(SearchPath::from_cli_opt("framework=jkl", JSON));
+    v3.search_paths.push(SearchPath::from_cli_opt("native=abc", JSON));
+    v3.search_paths.push(SearchPath::from_cli_opt("dependency=ghi", JSON));
+    v3.search_paths.push(SearchPath::from_cli_opt("all=mno", JSON));
 
-    v4.search_paths
-        .push(SearchPath::from_cli_opt("all=mno", JSON));
-    v4.search_paths
-        .push(SearchPath::from_cli_opt("native=abc", JSON));
-    v4.search_paths
-        .push(SearchPath::from_cli_opt("crate=def", JSON));
-    v4.search_paths
-        .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
-    v4.search_paths
-        .push(SearchPath::from_cli_opt("framework=jkl", JSON));
+    v4.search_paths.push(SearchPath::from_cli_opt("all=mno", JSON));
+    v4.search_paths.push(SearchPath::from_cli_opt("native=abc", JSON));
+    v4.search_paths.push(SearchPath::from_cli_opt("crate=def", JSON));
+    v4.search_paths.push(SearchPath::from_cli_opt("dependency=ghi", JSON));
+    v4.search_paths.push(SearchPath::from_cli_opt("framework=jkl", JSON));
 
     assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
     assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());
@@ -363,11 +321,7 @@ fn test_native_libs_tracking_hash_different_values() {
     // Change new-name
     v4.libs = vec![
         (String::from("a"), None, Some(cstore::NativeStatic)),
-        (
-            String::from("b"),
-            Some(String::from("X")),
-            Some(cstore::NativeFramework),
-        ),
+        (String::from("b"), Some(String::from("X")), Some(cstore::NativeFramework)),
         (String::from("c"), None, Some(cstore::NativeUnknown)),
     ];
 
@@ -686,9 +640,7 @@ fn test_edition_parsing() {
     let options = Options::default();
     assert!(options.edition == DEFAULT_EDITION);
 
-    let matches = optgroups()
-        .parse(&["--edition=2018".to_string()])
-        .unwrap();
+    let matches = optgroups().parse(&["--edition=2018".to_string()]).unwrap();
     let (sessopts, _) = build_session_options_and_crate_config(matches);
     assert!(sessopts.edition == Edition::Edition2018)
 }

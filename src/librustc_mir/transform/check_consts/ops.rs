@@ -39,10 +39,14 @@ pub trait NonConstOp: std::fmt::Debug {
             item.const_kind()
         );
         if item.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note("A function call isn't allowed in the const's initialization expression \
-                      because the expression's value must be known at compile-time.");
-            err.note("Remember: you can't use a function call inside a const's initialization \
-                      expression! However, you can use it anywhere else.");
+            err.note(
+                "A function call isn't allowed in the const's initialization expression \
+                      because the expression's value must be known at compile-time.",
+            );
+            err.note(
+                "Remember: you can't use a function call inside a const's initialization \
+                      expression! However, you can use it anywhere else.",
+            );
         }
         err.emit();
     }
@@ -62,9 +66,10 @@ impl NonConstOp for Downcast {
 pub struct FnCallIndirect;
 impl NonConstOp for FnCallIndirect {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        let mut err = item.tcx.sess.struct_span_err(
-            span,
-            &format!("function pointers are not allowed in const fn"));
+        let mut err = item
+            .tcx
+            .sess
+            .struct_span_err(span, &format!("function pointers are not allowed in const fn"));
         err.emit();
     }
 }
@@ -105,14 +110,17 @@ impl NonConstOp for FnCallUnstable {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         let FnCallUnstable(def_id, feature) = *self;
 
-        let mut err = item.tcx.sess.struct_span_err(span,
-            &format!("`{}` is not yet stable as a const fn",
-                    item.tcx.def_path_str(def_id)));
+        let mut err = item.tcx.sess.struct_span_err(
+            span,
+            &format!("`{}` is not yet stable as a const fn", item.tcx.def_path_str(def_id)),
+        );
         if nightly_options::is_nightly_build() {
-            help!(&mut err,
-                  "add `#![feature({})]` to the \
+            help!(
+                &mut err,
+                "add `#![feature({})]` to the \
                    crate attributes to enable",
-                  feature);
+                feature
+            );
         }
         err.emit();
     }
@@ -124,15 +132,20 @@ impl NonConstOp for HeapAllocation {
     const IS_SUPPORTED_IN_MIRI: bool = false;
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        let mut err = struct_span_err!(item.tcx.sess, span, E0010,
-                                       "allocations are not allowed in {}s", item.const_kind());
+        let mut err = struct_span_err!(
+            item.tcx.sess,
+            span,
+            E0010,
+            "allocations are not allowed in {}s",
+            item.const_kind()
+        );
         err.span_label(span, format!("allocation not allowed in {}s", item.const_kind()));
         if item.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "The value of statics and constants must be known at compile time, \
                  and they live for the entire lifetime of a program. Creating a boxed \
                  value allocates memory on the heap at runtime, and therefore cannot \
-                 be done at compile time."
+                 be done at compile time.",
             );
         }
         err.emit();
@@ -148,10 +161,7 @@ impl NonConstOp for IfOrMatch {
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         // This should be caught by the HIR const-checker.
-        item.tcx.sess.delay_span_bug(
-            span,
-            "complex control flow is forbidden in a const context",
-        );
+        item.tcx.sess.delay_span_bug(span, "complex control flow is forbidden in a const context");
     }
 }
 
@@ -159,11 +169,14 @@ impl NonConstOp for IfOrMatch {
 pub struct LiveDrop;
 impl NonConstOp for LiveDrop {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        struct_span_err!(item.tcx.sess, span, E0493,
-                         "destructors cannot be evaluated at compile-time")
-            .span_label(span, format!("{}s cannot evaluate destructors",
-                                      item.const_kind()))
-            .emit();
+        struct_span_err!(
+            item.tcx.sess,
+            span,
+            E0493,
+            "destructors cannot be evaluated at compile-time"
+        )
+        .span_label(span, format!("{}s cannot evaluate destructors", item.const_kind()))
+        .emit();
     }
 }
 
@@ -176,10 +189,7 @@ impl NonConstOp for Loop {
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         // This should be caught by the HIR const-checker.
-        item.tcx.sess.delay_span_bug(
-            span,
-            "complex control flow is forbidden in a const context",
-        );
+        item.tcx.sess.delay_span_bug(span, "complex control flow is forbidden in a const context");
     }
 }
 
@@ -187,9 +197,13 @@ impl NonConstOp for Loop {
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        span_err!(item.tcx.sess, span, E0492,
+        span_err!(
+            item.tcx.sess,
+            span,
+            E0492,
             "cannot borrow a constant which may contain \
-            interior mutability, create a static instead");
+            interior mutability, create a static instead"
+        );
     }
 }
 
@@ -205,20 +219,24 @@ impl NonConstOp for MutBorrow {
             &item.tcx.sess.parse_sess,
             sym::const_mut_refs,
             span,
-            &format!("references in {}s may only refer \
-                      to immutable values", item.const_kind())
+            &format!(
+                "references in {}s may only refer \
+                      to immutable values",
+                item.const_kind()
+            ),
         );
-        err.span_label(span, format!("{}s require immutable values",
-                                            item.const_kind()));
+        err.span_label(span, format!("{}s require immutable values", item.const_kind()));
         if item.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note("References in statics and constants may only refer \
+            err.note(
+                "References in statics and constants may only refer \
                       to immutable values.\n\n\
                       Statics are shared everywhere, and if they refer to \
                       mutable data one might violate memory safety since \
                       holding multiple mutable references to shared data \
                       is not allowed.\n\n\
                       If you really want global mutable state, try using \
-                      static mut or a global UnsafeCell.");
+                      static mut or a global UnsafeCell.",
+            );
         }
         err.emit();
     }
@@ -236,8 +254,9 @@ impl NonConstOp for MutAddressOf {
             &item.tcx.sess.parse_sess,
             sym::const_mut_refs,
             span,
-            &format!("`&raw mut` is not allowed in {}s", item.const_kind())
-        ).emit();
+            &format!("`&raw mut` is not allowed in {}s", item.const_kind()),
+        )
+        .emit();
     }
 }
 
@@ -294,11 +313,10 @@ impl NonConstOp for RawPtrDeref {
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         feature_err(
-            &item.tcx.sess.parse_sess, sym::const_raw_ptr_deref, span,
-            &format!(
-                "dereferencing raw pointers in {}s is unstable",
-                item.const_kind(),
-            ),
+            &item.tcx.sess.parse_sess,
+            sym::const_raw_ptr_deref,
+            span,
+            &format!("dereferencing raw pointers in {}s is unstable", item.const_kind(),),
         )
         .emit();
     }
@@ -313,11 +331,10 @@ impl NonConstOp for RawPtrToIntCast {
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         feature_err(
-            &item.tcx.sess.parse_sess, sym::const_raw_ptr_to_usize_cast, span,
-            &format!(
-                "casting pointers to integers in {}s is unstable",
-                item.const_kind(),
-            ),
+            &item.tcx.sess.parse_sess,
+            sym::const_raw_ptr_to_usize_cast,
+            span,
+            &format!("casting pointers to integers in {}s is unstable", item.const_kind(),),
         )
         .emit();
     }
@@ -332,17 +349,20 @@ impl NonConstOp for StaticAccess {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        let mut err = struct_span_err!(item.tcx.sess, span, E0013,
-                                        "{}s cannot refer to statics, use \
-                                        a constant instead", item.const_kind());
+        let mut err = struct_span_err!(
+            item.tcx.sess,
+            span,
+            E0013,
+            "{}s cannot refer to statics, use \
+                                        a constant instead",
+            item.const_kind()
+        );
         if item.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "Static and const variables can refer to other const variables. \
-                    But a const variable cannot refer to a static variable."
+                    But a const variable cannot refer to a static variable.",
             );
-            err.help(
-                "To fix this, the value can be extracted as a const and then used."
-            );
+            err.help("To fix this, the value can be extracted as a const and then used.");
         }
         err.emit();
     }
@@ -355,9 +375,13 @@ impl NonConstOp for ThreadLocalAccess {
     const IS_SUPPORTED_IN_MIRI: bool = false;
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        span_err!(item.tcx.sess, span, E0625,
+        span_err!(
+            item.tcx.sess,
+            span,
+            E0625,
             "thread-local statics cannot be \
-            accessed at compile-time");
+            accessed at compile-time"
+        );
     }
 }
 
@@ -375,7 +399,9 @@ impl NonConstOp for UnionAccess {
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         feature_err(
-            &item.tcx.sess.parse_sess, sym::const_fn_union, span,
+            &item.tcx.sess.parse_sess,
+            sym::const_fn_union,
+            span,
             "unions in const fn are unstable",
         )
         .emit();

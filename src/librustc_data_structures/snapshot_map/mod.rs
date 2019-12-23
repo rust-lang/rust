@@ -1,13 +1,14 @@
 use crate::fx::FxHashMap;
 use std::hash::Hash;
-use std::ops;
 use std::mem;
+use std::ops;
 
 #[cfg(test)]
 mod tests;
 
 pub struct SnapshotMap<K, V>
-    where K: Clone + Eq
+where
+    K: Clone + Eq,
 {
     map: FxHashMap<K, V>,
     undo_log: Vec<UndoLog<K, V>>,
@@ -16,14 +17,11 @@ pub struct SnapshotMap<K, V>
 
 // HACK(eddyb) manual impl avoids `Default` bounds on `K` and `V`.
 impl<K, V> Default for SnapshotMap<K, V>
-    where K: Hash + Clone + Eq
+where
+    K: Hash + Clone + Eq,
 {
     fn default() -> Self {
-        SnapshotMap {
-            map: Default::default(),
-            undo_log: Default::default(),
-            num_open_snapshots: 0,
-        }
+        SnapshotMap { map: Default::default(), undo_log: Default::default(), num_open_snapshots: 0 }
     }
 }
 
@@ -38,7 +36,8 @@ enum UndoLog<K, V> {
 }
 
 impl<K, V> SnapshotMap<K, V>
-    where K: Hash + Clone + Eq
+where
+    K: Hash + Clone + Eq,
 {
     pub fn clear(&mut self) {
         self.map.clear();
@@ -107,13 +106,12 @@ impl<K, V> SnapshotMap<K, V>
         self.num_open_snapshots -= 1;
     }
 
-    pub fn partial_rollback<F>(&mut self,
-                               snapshot: &Snapshot,
-                               should_revert_key: &F)
-        where F: Fn(&K) -> bool
+    pub fn partial_rollback<F>(&mut self, snapshot: &Snapshot, should_revert_key: &F)
+    where
+        F: Fn(&K) -> bool,
     {
         self.assert_open_snapshot(snapshot);
-        for i in (snapshot.len .. self.undo_log.len()).rev() {
+        for i in (snapshot.len..self.undo_log.len()).rev() {
             let reverse = match self.undo_log[i] {
                 UndoLog::Purged => false,
                 UndoLog::Inserted(ref k) => should_revert_key(k),
@@ -153,7 +151,8 @@ impl<K, V> SnapshotMap<K, V>
 }
 
 impl<'k, K, V> ops::Index<&'k K> for SnapshotMap<K, V>
-    where K: Hash + Clone + Eq
+where
+    K: Hash + Clone + Eq,
 {
     type Output = V;
     fn index(&self, key: &'k K) -> &V {

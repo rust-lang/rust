@@ -1,13 +1,12 @@
-use crate::spec::{LldFlavor, LinkArgs, LinkerFlavor, PanicStrategy, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), vec![
-        "--build-id".to_string(),
-        "--hash-style=gnu".to_string(),
-        "--Bstatic".to_string(),
-    ]);
+    pre_link_args.insert(
+        LinkerFlavor::Lld(LldFlavor::Ld),
+        vec!["--build-id".to_string(), "--hash-style=gnu".to_string(), "--Bstatic".to_string()],
+    );
 
     TargetOptions {
         linker: Some("rust-lld".to_owned()),
@@ -21,6 +20,6 @@ pub fn opts() -> TargetOptions {
         relocation_model: "static".to_string(),
         target_family: None,
         tls_model: "initial-exec".to_string(),
-        .. Default::default()
+        ..Default::default()
     }
 }

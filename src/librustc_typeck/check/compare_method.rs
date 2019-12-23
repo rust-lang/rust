@@ -1,18 +1,18 @@
+use errors::{Applicability, DiagnosticId};
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::{self, GenericParamKind, ImplItemKind, TraitItemKind};
-use rustc::hir::def::{Res, DefKind};
 use rustc::infer::{self, InferOk};
-use rustc::ty::{self, TyCtxt, GenericParamDefKind};
-use rustc::ty::util::ExplicitSelf;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
-use rustc::ty::subst::{Subst, InternalSubsts};
+use rustc::ty::subst::{InternalSubsts, Subst};
+use rustc::ty::util::ExplicitSelf;
+use rustc::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc::util::common::ErrorReported;
-use errors::{Applicability, DiagnosticId};
 
-use syntax_pos::Span;
 use syntax::errors::pluralize;
+use syntax_pos::Span;
 
-use super::{Inherited, FnCtxt, potentially_plural_count};
+use super::{potentially_plural_count, FnCtxt, Inherited};
 
 use rustc_error_codes::*;
 
@@ -34,46 +34,34 @@ crate fn compare_impl_method<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
     trait_item_span: Option<Span>,
 ) {
-    debug!("compare_impl_method(impl_trait_ref={:?})",
-           impl_trait_ref);
+    debug!("compare_impl_method(impl_trait_ref={:?})", impl_trait_ref);
 
     let impl_m_span = tcx.sess.source_map().def_span(impl_m_span);
 
-    if let Err(ErrorReported) = compare_self_type(tcx,
-                                                  impl_m,
-                                                  impl_m_span,
-                                                  trait_m,
-                                                  impl_trait_ref) {
+    if let Err(ErrorReported) = compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
+    {
         return;
     }
 
-    if let Err(ErrorReported) = compare_number_of_generics(tcx,
-                                                           impl_m,
-                                                           impl_m_span,
-                                                           trait_m,
-                                                           trait_item_span) {
+    if let Err(ErrorReported) =
+        compare_number_of_generics(tcx, impl_m, impl_m_span, trait_m, trait_item_span)
+    {
         return;
     }
 
-    if let Err(ErrorReported) = compare_number_of_method_arguments(tcx,
-                                                                   impl_m,
-                                                                   impl_m_span,
-                                                                   trait_m,
-                                                                   trait_item_span) {
+    if let Err(ErrorReported) =
+        compare_number_of_method_arguments(tcx, impl_m, impl_m_span, trait_m, trait_item_span)
+    {
         return;
     }
 
-    if let Err(ErrorReported) = compare_synthetic_generics(tcx,
-                                                           impl_m,
-                                                           trait_m) {
+    if let Err(ErrorReported) = compare_synthetic_generics(tcx, impl_m, trait_m) {
         return;
     }
 
-    if let Err(ErrorReported) = compare_predicate_entailment(tcx,
-                                                             impl_m,
-                                                             impl_m_span,
-                                                             trait_m,
-                                                             impl_trait_ref) {
+    if let Err(ErrorReported) =
+        compare_predicate_entailment(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
+    {
         return;
     }
 }
@@ -169,11 +157,9 @@ fn compare_predicate_entailment<'tcx>(
     let impl_to_skol_substs = InternalSubsts::identity_for_item(tcx, impl_m.def_id);
 
     // Create mapping from trait to placeholder.
-    let trait_to_skol_substs = impl_to_skol_substs.rebase_onto(tcx,
-                                                               impl_m.container.id(),
-                                                               trait_to_impl_substs);
-    debug!("compare_impl_method: trait_to_skol_substs={:?}",
-           trait_to_skol_substs);
+    let trait_to_skol_substs =
+        impl_to_skol_substs.rebase_onto(tcx, impl_m.container.id(), trait_to_impl_substs);
+    debug!("compare_impl_method: trait_to_skol_substs={:?}", trait_to_skol_substs);
 
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
@@ -207,8 +193,9 @@ fn compare_predicate_entailment<'tcx>(
     //
     // We then register the obligations from the impl_m and check to see
     // if all constraints hold.
-    hybrid_preds.predicates.extend(
-        trait_m_predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
+    hybrid_preds
+        .predicates
+        .extend(trait_m_predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
 
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
@@ -217,19 +204,20 @@ fn compare_predicate_entailment<'tcx>(
     let param_env = ty::ParamEnv::new(
         tcx.intern_predicates(&hybrid_preds.predicates),
         Reveal::UserFacing,
-        None
+        None,
     );
-    let param_env = traits::normalize_param_env_or_error(tcx,
-                                                         impl_m.def_id,
-                                                         param_env,
-                                                         normalize_cause.clone());
+    let param_env = traits::normalize_param_env_or_error(
+        tcx,
+        impl_m.def_id,
+        param_env,
+        normalize_cause.clone(),
+    );
 
     tcx.infer_ctxt().enter(|infcx| {
         let inh = Inherited::new(infcx, impl_m.def_id);
         let infcx = &inh.infcx;
 
-        debug!("compare_impl_method: caller_bounds={:?}",
-               param_env.caller_bounds);
+        debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds);
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
@@ -237,7 +225,7 @@ fn compare_predicate_entailment<'tcx>(
         let (impl_m_own_bounds, _) = infcx.replace_bound_vars_with_fresh_vars(
             impl_m_span,
             infer::HigherRankedType,
-            &ty::Binder::bind(impl_m_own_bounds.predicates)
+            &ty::Binder::bind(impl_m_own_bounds.predicates),
         );
         for predicate in impl_m_own_bounds {
             let traits::Normalized { value: predicate, obligations } =
@@ -266,64 +254,47 @@ fn compare_predicate_entailment<'tcx>(
         let (impl_sig, _) = infcx.replace_bound_vars_with_fresh_vars(
             impl_m_span,
             infer::HigherRankedType,
-            &tcx.fn_sig(impl_m.def_id)
+            &tcx.fn_sig(impl_m.def_id),
         );
         let impl_sig =
-            inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_hir_id,
-                                              param_env,
-                                              &impl_sig);
+            inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder::bind(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
-        let trait_sig = tcx.liberate_late_bound_regions(
-            impl_m.def_id,
-            &tcx.fn_sig(trait_m.def_id));
+        let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, &tcx.fn_sig(trait_m.def_id));
+        let trait_sig = trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
-            trait_sig.subst(tcx, trait_to_skol_substs);
-        let trait_sig =
-            inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_hir_id,
-                                              param_env,
-                                              &trait_sig);
+            inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::bind(trait_sig));
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
-        let sub_result = infcx.at(&cause, param_env)
-                              .sup(trait_fty, impl_fty)
-                              .map(|InferOk { obligations, .. }| {
-                                  inh.register_predicates(obligations);
-                              });
+        let sub_result = infcx.at(&cause, param_env).sup(trait_fty, impl_fty).map(
+            |InferOk { obligations, .. }| {
+                inh.register_predicates(obligations);
+            },
+        );
 
         if let Err(terr) = sub_result {
-            debug!("sub_types failed: impl ty {:?}, trait ty {:?}",
-                   impl_fty,
-                   trait_fty);
+            debug!("sub_types failed: impl ty {:?}, trait ty {:?}", impl_fty, trait_fty);
 
-            let (impl_err_span, trait_err_span) = extract_spans_for_error_reporting(&infcx,
-                                                                                    param_env,
-                                                                                    &terr,
-                                                                                    &cause,
-                                                                                    impl_m,
-                                                                                    impl_sig,
-                                                                                    trait_m,
-                                                                                    trait_sig);
+            let (impl_err_span, trait_err_span) = extract_spans_for_error_reporting(
+                &infcx, param_env, &terr, &cause, impl_m, impl_sig, trait_m, trait_sig,
+            );
 
-            let cause = ObligationCause {
-                span: impl_err_span,
-                ..cause
-            };
+            let cause = ObligationCause { span: impl_err_span, ..cause };
 
-            let mut diag = struct_span_err!(tcx.sess,
-                                            cause.span(tcx),
-                                            E0053,
-                                            "method `{}` has an incompatible type for trait",
-                                            trait_m.ident);
+            let mut diag = struct_span_err!(
+                tcx.sess,
+                cause.span(tcx),
+                E0053,
+                "method `{}` has an incompatible type for trait",
+                trait_m.ident
+            );
             if let TypeError::Mutability = terr {
                 if let Some(trait_err_span) = trait_err_span {
-                    if let Ok(trait_err_str) = tcx.sess.source_map()
-                                                       .span_to_snippet(trait_err_span) {
+                    if let Ok(trait_err_str) = tcx.sess.source_map().span_to_snippet(trait_err_span)
+                    {
                         diag.span_suggestion(
                             impl_err_span,
                             "consider change the type to match the mutability in trait",
@@ -334,14 +305,16 @@ fn compare_predicate_entailment<'tcx>(
                 }
             }
 
-            infcx.note_type_err(&mut diag,
-                                &cause,
-                                trait_err_span.map(|sp| (sp, "type in trait".to_owned())),
-                                Some(infer::ValuePairs::Types(ExpectedFound {
-                                    expected: trait_fty,
-                                    found: impl_fty,
-                                })),
-                                &terr);
+            infcx.note_type_err(
+                &mut diag,
+                &cause,
+                trait_err_span.map(|sp| (sp, "type in trait".to_owned())),
+                Some(infer::ValuePairs::Types(ExpectedFound {
+                    expected: trait_fty,
+                    found: impl_fty,
+                })),
+                &terr,
+            );
             diag.emit();
             return Err(ErrorReported);
         }
@@ -373,11 +346,12 @@ fn check_region_bounds_on_impl_item<'tcx>(
     let trait_params = trait_generics.own_counts().lifetimes;
     let impl_params = impl_generics.own_counts().lifetimes;
 
-    debug!("check_region_bounds_on_impl_item: \
+    debug!(
+        "check_region_bounds_on_impl_item: \
             trait_generics={:?} \
             impl_generics={:?}",
-           trait_generics,
-           impl_generics);
+        trait_generics, impl_generics
+    );
 
     // Must have same number of early-bound lifetime parameters.
     // Unfortunately, if the user screws up the bounds, then this
@@ -428,9 +402,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
 ) -> (Span, Option<Span>) {
     let tcx = infcx.tcx;
     let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
-    let (impl_m_output, impl_m_iter) = match tcx.hir()
-                                                .expect_impl_item(impl_m_hir_id)
-                                                .kind {
+    let (impl_m_output, impl_m_iter) = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
         ImplItemKind::Method(ref impl_m_sig, _) => {
             (&impl_m_sig.decl.output, impl_m_sig.decl.inputs.iter())
         }
@@ -440,27 +412,27 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
     match *terr {
         TypeError::Mutability => {
             if let Some(trait_m_hir_id) = tcx.hir().as_local_hir_id(trait_m.def_id) {
-                let trait_m_iter = match tcx.hir()
-                                            .expect_trait_item(trait_m_hir_id)
-                                            .kind {
-                    TraitItemKind::Method(ref trait_m_sig, _) => {
-                        trait_m_sig.decl.inputs.iter()
-                    }
+                let trait_m_iter = match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
+                    TraitItemKind::Method(ref trait_m_sig, _) => trait_m_sig.decl.inputs.iter(),
                     _ => bug!("{:?} is not a TraitItemKind::Method", trait_m),
                 };
 
-                impl_m_iter.zip(trait_m_iter).find(|&(ref impl_arg, ref trait_arg)| {
-                    match (&impl_arg.kind, &trait_arg.kind) {
-                        (&hir::TyKind::Rptr(_, ref impl_mt), &hir::TyKind::Rptr(_, ref trait_mt)) |
-                        (&hir::TyKind::Ptr(ref impl_mt), &hir::TyKind::Ptr(ref trait_mt)) => {
-                            impl_mt.mutbl != trait_mt.mutbl
+                impl_m_iter
+                    .zip(trait_m_iter)
+                    .find(|&(ref impl_arg, ref trait_arg)| {
+                        match (&impl_arg.kind, &trait_arg.kind) {
+                            (
+                                &hir::TyKind::Rptr(_, ref impl_mt),
+                                &hir::TyKind::Rptr(_, ref trait_mt),
+                            )
+                            | (&hir::TyKind::Ptr(ref impl_mt), &hir::TyKind::Ptr(ref trait_mt)) => {
+                                impl_mt.mutbl != trait_mt.mutbl
+                            }
+                            _ => false,
                         }
-                        _ => false,
-                    }
-                }).map(|(ref impl_arg, ref trait_arg)| {
-                    (impl_arg.span, Some(trait_arg.span))
-                })
-                .unwrap_or_else(|| (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id)))
+                    })
+                    .map(|(ref impl_arg, ref trait_arg)| (impl_arg.span, Some(trait_arg.span)))
+                    .unwrap_or_else(|| (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id)))
             } else {
                 (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
             }
@@ -477,27 +449,31 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
 
                 let impl_iter = impl_sig.inputs().iter();
                 let trait_iter = trait_sig.inputs().iter();
-                impl_iter.zip(trait_iter)
-                         .zip(impl_m_iter)
-                         .zip(trait_m_iter)
-                         .filter_map(|(((&impl_arg_ty, &trait_arg_ty), impl_arg), trait_arg)|
-                             match infcx.at(&cause, param_env).sub(trait_arg_ty, impl_arg_ty) {
-                                 Ok(_) => None,
-                                 Err(_) => Some((impl_arg.span, Some(trait_arg.span))),
-                             }
-                         )
-                         .next()
-                         .unwrap_or_else(||
-                             if
-                                 infcx.at(&cause, param_env)
-                                      .sup(trait_sig.output(), impl_sig.output())
-                                      .is_err()
-                             {
-                                 (impl_m_output.span(), Some(trait_m_output.span()))
-                             } else {
-                                 (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
-                             }
-                         )
+                impl_iter
+                    .zip(trait_iter)
+                    .zip(impl_m_iter)
+                    .zip(trait_m_iter)
+                    .filter_map(
+                        |(((&impl_arg_ty, &trait_arg_ty), impl_arg), trait_arg)| match infcx
+                            .at(&cause, param_env)
+                            .sub(trait_arg_ty, impl_arg_ty)
+                        {
+                            Ok(_) => None,
+                            Err(_) => Some((impl_arg.span, Some(trait_arg.span))),
+                        },
+                    )
+                    .next()
+                    .unwrap_or_else(|| {
+                        if infcx
+                            .at(&cause, param_env)
+                            .sup(trait_sig.output(), impl_sig.output())
+                            .is_err()
+                        {
+                            (impl_m_output.span(), Some(trait_m_output.span()))
+                        } else {
+                            (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
+                        }
+                    })
             } else {
                 (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
             }
@@ -524,22 +500,20 @@ fn compare_self_type<'tcx>(
     let self_string = |method: &ty::AssocItem| {
         let untransformed_self_ty = match method.container {
             ty::ImplContainer(_) => impl_trait_ref.self_ty(),
-            ty::TraitContainer(_) => tcx.types.self_param
+            ty::TraitContainer(_) => tcx.types.self_param,
         };
         let self_arg_ty = *tcx.fn_sig(method.def_id).input(0).skip_binder();
         let param_env = ty::ParamEnv::reveal_all();
 
         tcx.infer_ctxt().enter(|infcx| {
-            let self_arg_ty = tcx.liberate_late_bound_regions(
-                method.def_id,
-                &ty::Binder::bind(self_arg_ty)
-            );
+            let self_arg_ty =
+                tcx.liberate_late_bound_regions(method.def_id, &ty::Binder::bind(self_arg_ty));
             let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty).is_ok();
             match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
                 ExplicitSelf::ByValue => "self".to_owned(),
                 ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
                 ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-                _ => format!("self: {}", self_arg_ty)
+                _ => format!("self: {}", self_arg_ty),
             }
         })
     };
@@ -549,19 +523,20 @@ fn compare_self_type<'tcx>(
 
         (false, true) => {
             let self_descr = self_string(impl_m);
-            let mut err = struct_span_err!(tcx.sess,
-                                           impl_m_span,
-                                           E0185,
-                                           "method `{}` has a `{}` declaration in the impl, but \
+            let mut err = struct_span_err!(
+                tcx.sess,
+                impl_m_span,
+                E0185,
+                "method `{}` has a `{}` declaration in the impl, but \
                                             not in the trait",
-                                           trait_m.ident,
-                                           self_descr);
+                trait_m.ident,
+                self_descr
+            );
             err.span_label(impl_m_span, format!("`{}` used in impl", self_descr));
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{}`", self_descr));
             } else {
-                err.note_trait_signature(trait_m.ident.to_string(),
-                                         trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.ident.to_string(), trait_m.signature(tcx));
             }
             err.emit();
             return Err(ErrorReported);
@@ -569,19 +544,20 @@ fn compare_self_type<'tcx>(
 
         (true, false) => {
             let self_descr = self_string(trait_m);
-            let mut err = struct_span_err!(tcx.sess,
-                                           impl_m_span,
-                                           E0186,
-                                           "method `{}` has a `{}` declaration in the trait, but \
+            let mut err = struct_span_err!(
+                tcx.sess,
+                impl_m_span,
+                E0186,
+                "method `{}` has a `{}` declaration in the trait, but \
                                             not in the impl",
-                                           trait_m.ident,
-                                           self_descr);
+                trait_m.ident,
+                self_descr
+            );
             err.span_label(impl_m_span, format!("expected `{}` in impl", self_descr));
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{}` used in trait", self_descr));
             } else {
-                err.note_trait_signature(trait_m.ident.to_string(),
-                                         trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.ident.to_string(), trait_m.signature(tcx));
             }
             err.emit();
             return Err(ErrorReported);
@@ -613,39 +589,46 @@ fn compare_number_of_generics<'tcx>(
         if impl_count != trait_count {
             err_occurred = true;
 
-            let (
-                trait_spans,
-                impl_trait_spans,
-            ) = if let Some(trait_hir_id) = tcx.hir().as_local_hir_id(trait_.def_id) {
-                let trait_item = tcx.hir().expect_trait_item(trait_hir_id);
-                if trait_item.generics.params.is_empty() {
-                    (Some(vec![trait_item.generics.span]), vec![])
+            let (trait_spans, impl_trait_spans) =
+                if let Some(trait_hir_id) = tcx.hir().as_local_hir_id(trait_.def_id) {
+                    let trait_item = tcx.hir().expect_trait_item(trait_hir_id);
+                    if trait_item.generics.params.is_empty() {
+                        (Some(vec![trait_item.generics.span]), vec![])
+                    } else {
+                        let arg_spans: Vec<Span> =
+                            trait_item.generics.params.iter().map(|p| p.span).collect();
+                        let impl_trait_spans: Vec<Span> = trait_item
+                            .generics
+                            .params
+                            .iter()
+                            .filter_map(|p| match p.kind {
+                                GenericParamKind::Type {
+                                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                    ..
+                                } => Some(p.span),
+                                _ => None,
+                            })
+                            .collect();
+                        (Some(arg_spans), impl_trait_spans)
+                    }
                 } else {
-                    let arg_spans: Vec<Span> = trait_item.generics.params.iter()
-                        .map(|p| p.span)
-                        .collect();
-                    let impl_trait_spans: Vec<Span> = trait_item.generics.params.iter()
-                        .filter_map(|p| match p.kind {
-                            GenericParamKind::Type {
-                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
-                            } => Some(p.span),
-                            _ => None,
-                        }).collect();
-                    (Some(arg_spans), impl_trait_spans)
-                }
-            } else {
-                (trait_span.map(|s| vec![s]), vec![])
-            };
+                    (trait_span.map(|s| vec![s]), vec![])
+                };
 
             let impl_hir_id = tcx.hir().as_local_hir_id(impl_.def_id).unwrap();
             let impl_item = tcx.hir().expect_impl_item(impl_hir_id);
-            let impl_item_impl_trait_spans: Vec<Span> = impl_item.generics.params.iter()
+            let impl_item_impl_trait_spans: Vec<Span> = impl_item
+                .generics
+                .params
+                .iter()
                 .filter_map(|p| match p.kind {
                     GenericParamKind::Type {
-                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                        ..
                     } => Some(p.span),
                     _ => None,
-                }).collect();
+                })
+                .collect();
             let spans = impl_item.generics.spans();
             let span = spans.primary_span();
 
@@ -670,12 +653,15 @@ fn compare_number_of_generics<'tcx>(
             if let Some(spans) = trait_spans {
                 let mut spans = spans.iter();
                 if let Some(span) = spans.next() {
-                    err.span_label(*span, format!(
-                        "expected {} {} parameter{}",
-                        trait_count,
-                        kind,
-                        pluralize!(trait_count),
-                    ));
+                    err.span_label(
+                        *span,
+                        format!(
+                            "expected {} {} parameter{}",
+                            trait_count,
+                            kind,
+                            pluralize!(trait_count),
+                        ),
+                    );
                 }
                 for span in spans {
                     err.span_label(*span, "");
@@ -685,13 +671,16 @@ fn compare_number_of_generics<'tcx>(
             }
 
             if let Some(span) = span {
-                err.span_label(span, format!(
-                    "found {} {} parameter{}{}",
-                    impl_count,
-                    kind,
-                    pluralize!(impl_count),
-                    suffix.unwrap_or_else(|| String::new()),
-                ));
+                err.span_label(
+                    span,
+                    format!(
+                        "found {} {} parameter{}{}",
+                        impl_count,
+                        kind,
+                        pluralize!(impl_count),
+                        suffix.unwrap_or_else(|| String::new()),
+                    ),
+                );
             }
 
             for span in impl_trait_spans.iter().chain(impl_item_impl_trait_spans.iter()) {
@@ -702,11 +691,7 @@ fn compare_number_of_generics<'tcx>(
         }
     }
 
-    if err_occurred {
-        Err(ErrorReported)
-    } else {
-        Ok(())
-    }
+    if err_occurred { Err(ErrorReported) } else { Ok(()) }
 }
 
 fn compare_number_of_method_arguments<'tcx>(
@@ -725,18 +710,16 @@ fn compare_number_of_method_arguments<'tcx>(
         let trait_span = if let Some(trait_id) = trait_m_hir_id {
             match tcx.hir().expect_trait_item(trait_id).kind {
                 TraitItemKind::Method(ref trait_m_sig, _) => {
-                    let pos = if trait_number_args > 0 {
-                        trait_number_args - 1
-                    } else {
-                        0
-                    };
+                    let pos = if trait_number_args > 0 { trait_number_args - 1 } else { 0 };
                     if let Some(arg) = trait_m_sig.decl.inputs.get(pos) {
                         Some(if pos == 0 {
                             arg.span
                         } else {
-                            Span::new(trait_m_sig.decl.inputs[0].span.lo(),
-                                      arg.span.hi(),
-                                      arg.span.ctxt())
+                            Span::new(
+                                trait_m_sig.decl.inputs[0].span.lo(),
+                                arg.span.hi(),
+                                arg.span.ctxt(),
+                            )
                         })
                     } else {
                         trait_item_span
@@ -750,18 +733,16 @@ fn compare_number_of_method_arguments<'tcx>(
         let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
         let impl_span = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
             ImplItemKind::Method(ref impl_m_sig, _) => {
-                let pos = if impl_number_args > 0 {
-                    impl_number_args - 1
-                } else {
-                    0
-                };
+                let pos = if impl_number_args > 0 { impl_number_args - 1 } else { 0 };
                 if let Some(arg) = impl_m_sig.decl.inputs.get(pos) {
                     if pos == 0 {
                         arg.span
                     } else {
-                        Span::new(impl_m_sig.decl.inputs[0].span.lo(),
-                                  arg.span.hi(),
-                                  arg.span.ctxt())
+                        Span::new(
+                            impl_m_sig.decl.inputs[0].span.lo(),
+                            arg.span.hi(),
+                            arg.span.ctxt(),
+                        )
                     }
                 } else {
                     impl_m_span
@@ -769,24 +750,36 @@ fn compare_number_of_method_arguments<'tcx>(
             }
             _ => bug!("{:?} is not a method", impl_m),
         };
-        let mut err = struct_span_err!(tcx.sess,
-                                       impl_span,
-                                       E0050,
-                                       "method `{}` has {} but the declaration in \
+        let mut err = struct_span_err!(
+            tcx.sess,
+            impl_span,
+            E0050,
+            "method `{}` has {} but the declaration in \
                                         trait `{}` has {}",
-                                       trait_m.ident,
-                                       potentially_plural_count(impl_number_args, "parameter"),
-                                       tcx.def_path_str(trait_m.def_id),
-                                       trait_number_args);
+            trait_m.ident,
+            potentially_plural_count(impl_number_args, "parameter"),
+            tcx.def_path_str(trait_m.def_id),
+            trait_number_args
+        );
         if let Some(trait_span) = trait_span {
-            err.span_label(trait_span, format!("trait requires {}",
-                potentially_plural_count(trait_number_args, "parameter")));
+            err.span_label(
+                trait_span,
+                format!(
+                    "trait requires {}",
+                    potentially_plural_count(trait_number_args, "parameter")
+                ),
+            );
         } else {
-            err.note_trait_signature(trait_m.ident.to_string(),
-                                     trait_m.signature(tcx));
+            err.note_trait_signature(trait_m.ident.to_string(), trait_m.signature(tcx));
         }
-        err.span_label(impl_span, format!("expected {}, found {}",
-            potentially_plural_count(trait_number_args, "parameter"), impl_number_args));
+        err.span_label(
+            impl_span,
+            format!(
+                "expected {}, found {}",
+                potentially_plural_count(trait_number_args, "parameter"),
+                impl_number_args
+            ),
+        );
         err.emit();
         return Err(ErrorReported);
     }
@@ -811,24 +804,24 @@ fn compare_synthetic_generics<'tcx>(
         GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
         GenericParamDefKind::Lifetime | GenericParamDefKind::Const => None,
     });
-    let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| {
-        match param.kind {
-            GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-            GenericParamDefKind::Lifetime | GenericParamDefKind::Const => None,
-        }
+    let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| match param.kind {
+        GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
+        GenericParamDefKind::Lifetime | GenericParamDefKind::Const => None,
     });
-    for ((impl_def_id, impl_synthetic), (trait_def_id, trait_synthetic))
-        in impl_m_type_params.zip(trait_m_type_params)
+    for ((impl_def_id, impl_synthetic), (trait_def_id, trait_synthetic)) in
+        impl_m_type_params.zip(trait_m_type_params)
     {
         if impl_synthetic != trait_synthetic {
             let impl_hir_id = tcx.hir().as_local_hir_id(impl_def_id).unwrap();
             let impl_span = tcx.hir().span(impl_hir_id);
             let trait_span = tcx.def_span(trait_def_id);
-            let mut err = struct_span_err!(tcx.sess,
-                                           impl_span,
-                                           E0643,
-                                           "method `{}` has incompatible signature for trait",
-                                           trait_m.ident);
+            let mut err = struct_span_err!(
+                tcx.sess,
+                impl_span,
+                E0643,
+                "method `{}` has incompatible signature for trait",
+                trait_m.ident
+            );
             err.span_label(trait_span, "declaration in trait here");
             match (impl_synthetic, trait_synthetic) {
                 // The case where the impl method uses `impl Trait` but the trait method uses
@@ -839,11 +832,7 @@ fn compare_synthetic_generics<'tcx>(
                         // try taking the name from the trait impl
                         // FIXME: this is obviously suboptimal since the name can already be used
                         // as another generic argument
-                        let new_name = tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(trait_span)
-                            .ok()?;
+                        let new_name = tcx.sess.source_map().span_to_snippet(trait_span).ok()?;
                         let trait_m = tcx.hir().as_local_hir_id(trait_m.def_id)?;
                         let trait_m = tcx.hir().trait_item(hir::TraitItemId { hir_id: trait_m });
 
@@ -852,22 +841,14 @@ fn compare_synthetic_generics<'tcx>(
 
                         // in case there are no generics, take the spot between the function name
                         // and the opening paren of the argument list
-                        let new_generics_span = tcx
-                            .sess
-                            .source_map()
-                            .generate_fn_name_span(impl_span)?
-                            .shrink_to_hi();
+                        let new_generics_span =
+                            tcx.sess.source_map().generate_fn_name_span(impl_span)?.shrink_to_hi();
                         // in case there are generics, just replace them
-                        let generics_span = impl_m
-                            .generics
-                            .span
-                            .substitute_dummy(new_generics_span);
+                        let generics_span =
+                            impl_m.generics.span.substitute_dummy(new_generics_span);
                         // replace with the generics from the trait
-                        let new_generics = tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(trait_m.generics.span)
-                            .ok()?;
+                        let new_generics =
+                            tcx.sess.source_map().span_to_snippet(trait_m.generics.span).ok()?;
 
                         err.multipart_suggestion(
                             "try changing the `impl Trait` argument to a generic parameter",
@@ -883,7 +864,7 @@ fn compare_synthetic_generics<'tcx>(
                         );
                         Some(())
                     })();
-                },
+                }
                 // The case where the trait method uses `impl Trait`, but the impl method uses
                 // explicit generics.
                 (None, Some(hir::SyntheticTyParamKind::ImplTrait)) => {
@@ -899,8 +880,8 @@ fn compare_synthetic_generics<'tcx>(
                         impl<'v> hir::intravisit::Visitor<'v> for Visitor {
                             fn visit_ty(&mut self, ty: &'v hir::Ty) {
                                 hir::intravisit::walk_ty(self, ty);
-                                if let hir::TyKind::Path(
-                                    hir::QPath::Resolved(None, ref path)) = ty.kind
+                                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) =
+                                    ty.kind
                                 {
                                     if let Res::Def(DefKind::TyParam, def_id) = path.res {
                                         if def_id == self.1 {
@@ -910,8 +891,9 @@ fn compare_synthetic_generics<'tcx>(
                                 }
                             }
                             fn nested_visit_map<'this>(
-                                &'this mut self
-                            ) -> hir::intravisit::NestedVisitorMap<'this, 'v> {
+                                &'this mut self,
+                            ) -> hir::intravisit::NestedVisitorMap<'this, 'v>
+                            {
                                 hir::intravisit::NestedVisitorMap::None
                             }
                         }
@@ -921,25 +903,19 @@ fn compare_synthetic_generics<'tcx>(
                         }
                         let span = visitor.0?;
 
-                        let bounds = impl_m.generics.params.iter().find_map(|param| {
-                            match param.kind {
+                        let bounds =
+                            impl_m.generics.params.iter().find_map(|param| match param.kind {
                                 GenericParamKind::Lifetime { .. } => None,
-                                GenericParamKind::Type { .. } |
-                                GenericParamKind::Const { .. } => {
+                                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
                                     if param.hir_id == impl_hir_id {
                                         Some(&param.bounds)
                                     } else {
                                         None
                                     }
                                 }
-                            }
-                        })?;
+                            })?;
                         let bounds = bounds.first()?.span().to(bounds.last()?.span());
-                        let bounds = tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(bounds)
-                            .ok()?;
+                        let bounds = tcx.sess.source_map().span_to_snippet(bounds).ok()?;
 
                         err.multipart_suggestion(
                             "try removing the generic parameter and using `impl Trait` instead",
@@ -953,18 +929,14 @@ fn compare_synthetic_generics<'tcx>(
                         );
                         Some(())
                     })();
-                },
+                }
                 _ => unreachable!(),
             }
             err.emit();
             error_found = true;
         }
     }
-    if error_found {
-        Err(ErrorReported)
-    } else {
-        Ok(())
-    }
+    if error_found { Err(ErrorReported) } else { Ok(()) }
 }
 
 crate fn compare_const_impl<'tcx>(
@@ -998,28 +970,26 @@ crate fn compare_const_impl<'tcx>(
         let mut cause = ObligationCause::misc(impl_c_span, impl_c_hir_id);
 
         // There is no "body" here, so just pass dummy id.
-        let impl_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                        impl_c_hir_id,
-                                                        param_env,
-                                                        &impl_ty);
+        let impl_ty =
+            inh.normalize_associated_types_in(impl_c_span, impl_c_hir_id, param_env, &impl_ty);
 
         debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
-        let trait_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                         impl_c_hir_id,
-                                                         param_env,
-                                                         &trait_ty);
+        let trait_ty =
+            inh.normalize_associated_types_in(impl_c_span, impl_c_hir_id, param_env, &trait_ty);
 
         debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
-        let err = infcx.at(&cause, param_env)
-                       .sup(trait_ty, impl_ty)
-                       .map(|ok| inh.register_infer_ok_obligations(ok));
+        let err = infcx
+            .at(&cause, param_env)
+            .sup(trait_ty, impl_ty)
+            .map(|ok| inh.register_infer_ok_obligations(ok));
 
         if let Err(terr) = err {
-            debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
-                   impl_ty,
-                   trait_ty);
+            debug!(
+                "checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
+                impl_ty, trait_ty
+            );
 
             // Locate the Span containing just the type of the offending impl
             match tcx.hir().expect_impl_item(impl_c_hir_id).kind {
@@ -1027,12 +997,14 @@ crate fn compare_const_impl<'tcx>(
                 _ => bug!("{:?} is not a impl const", impl_c),
             }
 
-            let mut diag = struct_span_err!(tcx.sess,
-                                            cause.span,
-                                            E0326,
-                                            "implemented const `{}` has an incompatible type for \
+            let mut diag = struct_span_err!(
+                tcx.sess,
+                cause.span,
+                E0326,
+                "implemented const `{}` has an incompatible type for \
                                              trait",
-                                            trait_c.ident);
+                trait_c.ident
+            );
 
             let trait_c_hir_id = tcx.hir().as_local_hir_id(trait_c.def_id);
             let trait_c_span = trait_c_hir_id.map(|trait_c_hir_id| {
@@ -1043,14 +1015,16 @@ crate fn compare_const_impl<'tcx>(
                 }
             });
 
-            infcx.note_type_err(&mut diag,
-                                &cause,
-                                trait_c_span.map(|span| (span, "type in trait".to_owned())),
-                                Some(infer::ValuePairs::Types(ExpectedFound {
-                                    expected: trait_ty,
-                                    found: impl_ty,
-                                })),
-                                &terr);
+            infcx.note_type_err(
+                &mut diag,
+                &cause,
+                trait_c_span.map(|span| (span, "type in trait".to_owned())),
+                Some(infer::ValuePairs::Types(ExpectedFound {
+                    expected: trait_ty,
+                    found: impl_ty,
+                })),
+                &terr,
+            );
             diag.emit();
         }
 
@@ -1093,9 +1067,8 @@ fn compare_type_predicate_entailment(
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorReported> {
     let impl_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
-    let trait_to_impl_substs = impl_substs.rebase_onto(tcx,
-                                                       impl_ty.container.id(),
-                                                       impl_trait_ref.substs);
+    let trait_to_impl_substs =
+        impl_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
 
     let impl_ty_generics = tcx.generics_of(impl_ty.def_id);
     let trait_ty_generics = tcx.generics_of(trait_ty.def_id);
@@ -1138,8 +1111,9 @@ fn compare_type_predicate_entailment(
     // associated type in the trait are assumed.
     let impl_predicates = tcx.predicates_of(impl_ty_predicates.parent.unwrap());
     let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
-    hybrid_preds.predicates.extend(
-        trait_ty_predicates.instantiate_own(tcx, trait_to_impl_substs).predicates);
+    hybrid_preds
+        .predicates
+        .extend(trait_ty_predicates.instantiate_own(tcx, trait_to_impl_substs).predicates);
 
     debug!("compare_type_predicate_entailment: bounds={:?}", hybrid_preds);
 
@@ -1147,18 +1121,19 @@ fn compare_type_predicate_entailment(
     let param_env = ty::ParamEnv::new(
         tcx.intern_predicates(&hybrid_preds.predicates),
         Reveal::UserFacing,
-        None
+        None,
     );
-    let param_env = traits::normalize_param_env_or_error(tcx,
-                                                         impl_ty.def_id,
-                                                         param_env,
-                                                         normalize_cause.clone());
+    let param_env = traits::normalize_param_env_or_error(
+        tcx,
+        impl_ty.def_id,
+        param_env,
+        normalize_cause.clone(),
+    );
     tcx.infer_ctxt().enter(|infcx| {
         let inh = Inherited::new(infcx, impl_ty.def_id);
         let infcx = &inh.infcx;
 
-        debug!("compare_type_predicate_entailment: caller_bounds={:?}",
-               param_env.caller_bounds);
+        debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds);
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 

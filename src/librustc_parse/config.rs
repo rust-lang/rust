@@ -9,19 +9,19 @@
 //! [#64197]: https://github.com/rust-lang/rust/issues/64197
 
 use crate::{parse_in, validate_attr};
-use rustc_feature::Features;
 use rustc_errors::Applicability;
-use syntax::attr::HasAttrs;
-use syntax::feature_gate::{feature_err, get_features};
+use rustc_feature::Features;
+use syntax::ast::{self, AttrItem, Attribute, MetaItem};
 use syntax::attr;
-use syntax::ast::{self, Attribute, AttrItem, MetaItem};
+use syntax::attr::HasAttrs;
 use syntax::edition::Edition;
+use syntax::feature_gate::{feature_err, get_features};
 use syntax::mut_visit::*;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::util::map_in_place::MapInPlace;
-use syntax_pos::Span;
 use syntax_pos::symbol::sym;
+use syntax_pos::Span;
 
 use smallvec::SmallVec;
 
@@ -32,20 +32,22 @@ pub struct StripUnconfigured<'a> {
 }
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
-pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition,
-                allow_features: &Option<Vec<String>>) -> (ast::Crate, Features) {
+pub fn features(
+    mut krate: ast::Crate,
+    sess: &ParseSess,
+    edition: Edition,
+    allow_features: &Option<Vec<String>>,
+) -> (ast::Crate, Features) {
     let features;
     {
-        let mut strip_unconfigured = StripUnconfigured {
-            sess,
-            features: None,
-        };
+        let mut strip_unconfigured = StripUnconfigured { sess, features: None };
 
         let unconfigured_attrs = krate.attrs.clone();
         let err_count = sess.span_diagnostic.err_count();
         if let Some(attrs) = strip_unconfigured.configure(krate.attrs) {
             krate.attrs = attrs;
-        } else { // the entire crate is unconfigured
+        } else {
+            // the entire crate is unconfigured
             krate.attrs = Vec::new();
             krate.module.items = Vec::new();
             return (krate, Features::default());
@@ -70,7 +72,7 @@ macro_rules! configure {
             Some(node) => node,
             None => return Default::default(),
         }
-    }
+    };
 }
 
 const CFG_ATTR_GRAMMAR_HELP: &str = "#[cfg_attr(condition, attribute, other_attribute, ...)]";
@@ -192,26 +194,38 @@ impl<'a> StripUnconfigured<'a> {
 
             let meta_item = match validate_attr::parse_meta(self.sess, attr) {
                 Ok(meta_item) => meta_item,
-                Err(mut err) => { err.emit(); return true; }
+                Err(mut err) => {
+                    err.emit();
+                    return true;
+                }
             };
             let nested_meta_items = if let Some(nested_meta_items) = meta_item.meta_item_list() {
                 nested_meta_items
             } else {
-                return error(meta_item.span, "`cfg` is not followed by parentheses",
-                                             "cfg(/* predicate */)");
+                return error(
+                    meta_item.span,
+                    "`cfg` is not followed by parentheses",
+                    "cfg(/* predicate */)",
+                );
             };
 
             if nested_meta_items.is_empty() {
                 return error(meta_item.span, "`cfg` predicate is not specified", "");
             } else if nested_meta_items.len() > 1 {
-                return error(nested_meta_items.last().unwrap().span(),
-                             "multiple `cfg` predicates are specified", "");
+                return error(
+                    nested_meta_items.last().unwrap().span(),
+                    "multiple `cfg` predicates are specified",
+                    "",
+                );
             }
 
             match nested_meta_items[0].meta_item() {
                 Some(meta_item) => attr::cfg_matches(meta_item, self.sess, self.features),
-                None => error(nested_meta_items[0].span(),
-                              "`cfg` predicate key cannot be a literal", ""),
+                None => error(
+                    nested_meta_items[0].span(),
+                    "`cfg` predicate key cannot be a literal",
+                    "",
+                ),
             }
         })
     }
@@ -227,10 +241,12 @@ impl<'a> StripUnconfigured<'a> {
     /// If attributes are not allowed on expressions, emit an error for `attr`
     pub fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
         if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-            let mut err = feature_err(self.sess,
-                                      sym::stmt_expr_attributes,
-                                      attr.span,
-                                      "attributes on expressions are experimental");
+            let mut err = feature_err(
+                self.sess,
+                sym::stmt_expr_attributes,
+                attr.span,
+                "attributes on expressions are experimental",
+            );
 
             if attr.is_doc_comment() {
                 err.help("`///` is for documentation comments. For a plain comment, use `//`.");
@@ -251,16 +267,18 @@ impl<'a> StripUnconfigured<'a> {
 
     fn configure_variant_data(&mut self, vdata: &mut ast::VariantData) {
         match vdata {
-            ast::VariantData::Struct(fields, ..) | ast::VariantData::Tuple(fields, _) =>
-                fields.flat_map_in_place(|field| self.configure(field)),
+            ast::VariantData::Struct(fields, ..) | ast::VariantData::Tuple(fields, _) => {
+                fields.flat_map_in_place(|field| self.configure(field))
+            }
             ast::VariantData::Unit(_) => {}
         }
     }
 
     pub fn configure_item_kind(&mut self, item: &mut ast::ItemKind) {
         match item {
-            ast::ItemKind::Struct(def, _generics) |
-            ast::ItemKind::Union(def, _generics) => self.configure_variant_data(def),
+            ast::ItemKind::Struct(def, _generics) | ast::ItemKind::Union(def, _generics) => {
+                self.configure_variant_data(def)
+            }
             ast::ItemKind::Enum(ast::EnumDef { variants }, _generics) => {
                 variants.flat_map_in_place(|variant| self.configure(variant));
                 for variant in variants {

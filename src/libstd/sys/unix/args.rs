@@ -10,10 +10,14 @@ use crate::marker::PhantomData;
 use crate::vec;
 
 /// One-time global initialization.
-pub unsafe fn init(argc: isize, argv: *const *const u8) { imp::init(argc, argv) }
+pub unsafe fn init(argc: isize, argv: *const *const u8) {
+    imp::init(argc, argv)
+}
 
 /// One-time global cleanup.
-pub unsafe fn cleanup() { imp::cleanup() }
+pub unsafe fn cleanup() {
+    imp::cleanup()
+}
 
 /// Returns the command line arguments
 pub fn args() -> Args {
@@ -33,36 +37,46 @@ impl Args {
 
 impl Iterator for Args {
     type Item = OsString;
-    fn next(&mut self) -> Option<OsString> { self.iter.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    fn next(&mut self) -> Option<OsString> {
+        self.iter.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
 }
 
 impl ExactSizeIterator for Args {
-    fn len(&self) -> usize { self.iter.len() }
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
 }
 
 impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> { self.iter.next_back() }
+    fn next_back(&mut self) -> Option<OsString> {
+        self.iter.next_back()
+    }
 }
 
-#[cfg(any(target_os = "linux",
-          target_os = "android",
-          target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "netbsd",
-          target_os = "openbsd",
-          target_os = "solaris",
-          target_os = "emscripten",
-          target_os = "haiku",
-          target_os = "l4re",
-          target_os = "fuchsia",
-          target_os = "redox"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "freebsd",
+    target_os = "dragonfly",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "solaris",
+    target_os = "emscripten",
+    target_os = "haiku",
+    target_os = "l4re",
+    target_os = "fuchsia",
+    target_os = "redox"
+))]
 mod imp {
-    use crate::os::unix::prelude::*;
-    use crate::ptr;
+    use super::Args;
     use crate::ffi::{CStr, OsString};
     use crate::marker::PhantomData;
-    use super::Args;
+    use crate::os::unix::prelude::*;
+    use crate::ptr;
 
     use crate::sys_common::mutex::Mutex;
 
@@ -83,10 +97,7 @@ mod imp {
         // On Linux-GNU, we rely on `ARGV_INIT_ARRAY` below to initialize
         // `ARGC` and `ARGV`. But in Miri that does not actually happen so we
         // still initialize here.
-        #[cfg(any(
-            miri,
-            not(all(target_os = "linux", target_env = "gnu"))
-        ))]
+        #[cfg(any(miri, not(all(target_os = "linux", target_env = "gnu"))))]
         really_init(_argc, _argv);
     }
 
@@ -119,57 +130,52 @@ mod imp {
     }
 
     pub fn args() -> Args {
-        Args {
-            iter: clone().into_iter(),
-            _dont_send_or_sync_me: PhantomData
-        }
+        Args { iter: clone().into_iter(), _dont_send_or_sync_me: PhantomData }
     }
 
     fn clone() -> Vec<OsString> {
         unsafe {
             let _guard = LOCK.lock();
-            (0..ARGC).map(|i| {
-                let cstr = CStr::from_ptr(*ARGV.offset(i) as *const libc::c_char);
-                OsStringExt::from_vec(cstr.to_bytes().to_vec())
-            }).collect()
+            (0..ARGC)
+                .map(|i| {
+                    let cstr = CStr::from_ptr(*ARGV.offset(i) as *const libc::c_char);
+                    OsStringExt::from_vec(cstr.to_bytes().to_vec())
+                })
+                .collect()
         }
     }
 }
 
-#[cfg(any(target_os = "macos",
-          target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 mod imp {
+    use super::Args;
     use crate::ffi::CStr;
     use crate::marker::PhantomData;
-    use super::Args;
 
-    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
-    }
+    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
-    pub fn cleanup() {
-    }
+    pub fn cleanup() {}
 
     #[cfg(target_os = "macos")]
     pub fn args() -> Args {
         use crate::os::unix::prelude::*;
-        extern {
+        extern "C" {
             // These functions are in crt_externs.h.
             fn _NSGetArgc() -> *mut libc::c_int;
             fn _NSGetArgv() -> *mut *mut *mut libc::c_char;
         }
 
         let vec = unsafe {
-            let (argc, argv) = (*_NSGetArgc() as isize,
-                                *_NSGetArgv() as *const *const libc::c_char);
-            (0.. argc as isize).map(|i| {
-                let bytes = CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec();
-                OsStringExt::from_vec(bytes)
-            }).collect::<Vec<_>>()
+            let (argc, argv) =
+                (*_NSGetArgc() as isize, *_NSGetArgv() as *const *const libc::c_char);
+            (0..argc as isize)
+                .map(|i| {
+                    let bytes = CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec();
+                    OsStringExt::from_vec(bytes)
+                })
+                .collect::<Vec<_>>()
         };
-        Args {
-            iter: vec.into_iter(),
-            _dont_send_or_sync_me: PhantomData,
-        }
+        Args { iter: vec.into_iter(), _dont_send_or_sync_me: PhantomData }
     }
 
     // As _NSGetArgc and _NSGetArgv aren't mentioned in iOS docs
@@ -190,22 +196,22 @@ mod imp {
         use crate::mem;
         use crate::str;
 
-        extern {
+        extern "C" {
             fn sel_registerName(name: *const libc::c_uchar) -> Sel;
             fn objc_getClass(class_name: *const libc::c_uchar) -> NsId;
         }
 
-        #[cfg(target_arch="aarch64")]
-        extern {
+        #[cfg(target_arch = "aarch64")]
+        extern "C" {
             fn objc_msgSend(obj: NsId, sel: Sel) -> NsId;
-            #[link_name="objc_msgSend"]
+            #[link_name = "objc_msgSend"]
             fn objc_msgSend_ul(obj: NsId, sel: Sel, i: libc::c_ulong) -> NsId;
         }
 
-        #[cfg(not(target_arch="aarch64"))]
-        extern {
+        #[cfg(not(target_arch = "aarch64"))]
+        extern "C" {
             fn objc_msgSend(obj: NsId, sel: Sel, ...) -> NsId;
-            #[link_name="objc_msgSend"]
+            #[link_name = "objc_msgSend"]
             fn objc_msgSend_ul(obj: NsId, sel: Sel, ...) -> NsId;
         }
 
@@ -228,8 +234,7 @@ mod imp {
             let cnt: usize = mem::transmute(objc_msgSend(args, count_sel));
             for i in 0..cnt {
                 let tmp = objc_msgSend_ul(args, object_at_sel, i as libc::c_ulong);
-                let utf_c_str: *const libc::c_char =
-                    mem::transmute(objc_msgSend(tmp, utf8_sel));
+                let utf_c_str: *const libc::c_char = mem::transmute(objc_msgSend(tmp, utf8_sel));
                 let bytes = CStr::from_ptr(utf_c_str).to_bytes();
                 res.push(OsString::from(str::from_utf8(bytes).unwrap()))
             }

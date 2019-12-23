@@ -4,13 +4,13 @@
 // and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
-use crate::ty::TyCtxt;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use syntax::symbol::Symbol;
-use syntax::ast::{Attribute, MetaItem, MetaItemKind};
-use syntax_pos::{Span, sym};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use crate::ty::TyCtxt;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_macros::HashStable;
+use syntax::ast::{Attribute, MetaItem, MetaItemKind};
+use syntax::symbol::Symbol;
+use syntax_pos::{sym, Span};
 
 use rustc_error_codes::*;
 
@@ -23,14 +23,14 @@ pub struct LibFeatures {
 
 impl LibFeatures {
     fn new() -> LibFeatures {
-        LibFeatures {
-            stable: Default::default(),
-            unstable: Default::default(),
-        }
+        LibFeatures { stable: Default::default(), unstable: Default::default() }
     }
 
     pub fn to_vec(&self) -> Vec<(Symbol, Option<Symbol>)> {
-        let mut all_features: Vec<_> = self.stable.iter().map(|(f, s)| (*f, Some(*s)))
+        let mut all_features: Vec<_> = self
+            .stable
+            .iter()
+            .map(|(f, s)| (*f, Some(*s)))
             .chain(self.unstable.iter().map(|f| (*f, None)))
             .collect();
         all_features.sort_unstable_by_key(|f| f.0.as_str());
@@ -45,10 +45,7 @@ pub struct LibFeatureCollector<'tcx> {
 
 impl LibFeatureCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> LibFeatureCollector<'tcx> {
-        LibFeatureCollector {
-            tcx,
-            lib_features: LibFeatures::new(),
-        }
+        LibFeatureCollector { tcx, lib_features: LibFeatures::new() }
     }
 
     fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
@@ -56,9 +53,7 @@ impl LibFeatureCollector<'tcx> {
 
         // Find a stability attribute (i.e., `#[stable (..)]`, `#[unstable (..)]`,
         // `#[rustc_const_unstable (..)]`).
-        if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| {
-            attr.check_name(**stab_attr)
-        }) {
+        if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| attr.check_name(**stab_attr)) {
             let meta_item = attr.meta();
             if let Some(MetaItem { kind: MetaItemKind::List(ref metas), .. }) = meta_item {
                 let mut feature = None;
@@ -104,9 +99,7 @@ impl LibFeatureCollector<'tcx> {
                             &format!(
                                 "feature `{}` is declared stable since {}, \
                                  but was previously declared stable since {}",
-                                feature,
-                                since,
-                                prev_since,
+                                feature, since, prev_since,
                             ),
                         );
                         return;
@@ -133,12 +126,7 @@ impl LibFeatureCollector<'tcx> {
     }
 
     fn span_feature_error(&self, span: Span, msg: &str) {
-        struct_span_err!(
-            self.tcx.sess,
-            span,
-            E0711,
-            "{}", &msg,
-        ).emit();
+        struct_span_err!(self.tcx.sess, span, E0711, "{}", &msg,).emit();
     }
 }
 

@@ -1,5 +1,5 @@
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashSet;
 use syntax::source_map::Span;
 
@@ -7,15 +7,21 @@ use syntax::source_map::Span;
 pub struct Parameter(pub u32);
 
 impl From<ty::ParamTy> for Parameter {
-    fn from(param: ty::ParamTy) -> Self { Parameter(param.index) }
+    fn from(param: ty::ParamTy) -> Self {
+        Parameter(param.index)
+    }
 }
 
 impl From<ty::EarlyBoundRegion> for Parameter {
-    fn from(param: ty::EarlyBoundRegion) -> Self { Parameter(param.index) }
+    fn from(param: ty::EarlyBoundRegion) -> Self {
+        Parameter(param.index)
+    }
 }
 
 impl From<ty::ParamConst> for Parameter {
-    fn from(param: ty::ParamConst) -> Self { Parameter(param.index) }
+    fn from(param: ty::ParamConst) -> Self {
+        Parameter(param.index)
+    }
 }
 
 /// Returns the set of parameters constrained by the impl header.
@@ -39,17 +45,14 @@ pub fn parameters_for<'tcx>(
     t: &impl TypeFoldable<'tcx>,
     include_nonconstraining: bool,
 ) -> Vec<Parameter> {
-    let mut collector = ParameterCollector {
-        parameters: vec![],
-        include_nonconstraining,
-    };
+    let mut collector = ParameterCollector { parameters: vec![], include_nonconstraining };
     t.visit_with(&mut collector);
     collector.parameters
 }
 
 struct ParameterCollector {
     parameters: Vec<Parameter>,
-    include_nonconstraining: bool
+    include_nonconstraining: bool,
 }
 
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
@@ -92,7 +95,6 @@ pub fn identify_constrained_generic_params<'tcx>(
     let mut predicates = predicates.predicates.to_vec();
     setup_constraining_predicates(tcx, &mut predicates, impl_trait_ref, input_parameters);
 }
-
 
 /// Order the predicates in `predicates` such that each parameter is
 /// constrained before it is used, if that is possible, and add the
@@ -159,9 +161,11 @@ pub fn setup_constraining_predicates<'tcx>(
     //   * <U as Iterator>::Item = T
     //   * T: Debug
     //   * U: Iterator
-    debug!("setup_constraining_predicates: predicates={:?} \
+    debug!(
+        "setup_constraining_predicates: predicates={:?} \
             impl_trait_ref={:?} input_parameters={:?}",
-           predicates, impl_trait_ref, input_parameters);
+        predicates, impl_trait_ref, input_parameters
+    );
     let mut i = 0;
     let mut changed = true;
     while changed {
@@ -200,8 +204,10 @@ pub fn setup_constraining_predicates<'tcx>(
             i += 1;
             changed = true;
         }
-        debug!("setup_constraining_predicates: predicates={:?} \
+        debug!(
+            "setup_constraining_predicates: predicates={:?} \
                 i={} impl_trait_ref={:?} input_parameters={:?}",
-               predicates, i, impl_trait_ref, input_parameters);
+            predicates, i, impl_trait_ref, input_parameters
+        );
     }
 }

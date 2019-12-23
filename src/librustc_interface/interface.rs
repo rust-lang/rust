@@ -1,25 +1,25 @@
-use crate::util;
 pub use crate::passes::BoxedResolver;
+use crate::util;
 
 use rustc::lint;
+use rustc::session::config::{self, ErrorOutputType, Input};
 use rustc::session::early_error;
-use rustc::session::config::{self, Input, ErrorOutputType};
 use rustc::session::{DiagnosticOutput, Session};
+use rustc::ty;
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_data_structures::OnDrop;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
 use rustc_parse::new_parser_from_source_str;
-use rustc::ty;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
 use syntax::ast::{self, MetaItemKind};
-use syntax::token;
-use syntax::source_map::{FileName, FileLoader, SourceMap};
 use syntax::sess::ParseSess;
+use syntax::source_map::{FileLoader, FileName, SourceMap};
+use syntax::token;
 use syntax_pos::edition;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
@@ -65,43 +65,48 @@ impl Compiler {
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
     syntax::with_default_globals(move || {
-        let cfg = cfgspecs.into_iter().map(|s| {
-            let sess = ParseSess::with_silent_emitter();
-            let filename = FileName::cfg_spec_source_code(&s);
-            let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
+        let cfg = cfgspecs
+            .into_iter()
+            .map(|s| {
+                let sess = ParseSess::with_silent_emitter();
+                let filename = FileName::cfg_spec_source_code(&s);
+                let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
 
-            macro_rules! error {($reason: expr) => {
-                early_error(ErrorOutputType::default(),
-                            &format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s));
-            }}
-
-            match &mut parser.parse_meta_item() {
-                Ok(meta_item) if parser.token == token::Eof => {
-                    if meta_item.path.segments.len() != 1 {
-                        error!("argument key must be an identifier");
-                    }
-                    match &meta_item.kind {
-                        MetaItemKind::List(..) => {
-                            error!(r#"expected `key` or `key="value"`"#);
-                        }
-                        MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
-                            error!("argument value must be a string");
-                        }
-                        MetaItemKind::NameValue(..) | MetaItemKind::Word => {
-                            let ident = meta_item.ident().expect("multi-segment cfg key");
-                            return (ident.name, meta_item.value_str());
-                        }
-                    }
+                macro_rules! error {
+                    ($reason: expr) => {
+                        early_error(
+                            ErrorOutputType::default(),
+                            &format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s),
+                        );
+                    };
                 }
-                Ok(..) => {}
-                Err(err) => err.cancel(),
-            }
 
-            error!(r#"expected `key` or `key="value"`"#);
-        }).collect::<ast::CrateConfig>();
-        cfg.into_iter().map(|(a, b)| {
-            (a.to_string(), b.map(|b| b.to_string()))
-        }).collect()
+                match &mut parser.parse_meta_item() {
+                    Ok(meta_item) if parser.token == token::Eof => {
+                        if meta_item.path.segments.len() != 1 {
+                            error!("argument key must be an identifier");
+                        }
+                        match &meta_item.kind {
+                            MetaItemKind::List(..) => {
+                                error!(r#"expected `key` or `key="value"`"#);
+                            }
+                            MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
+                                error!("argument value must be a string");
+                            }
+                            MetaItemKind::NameValue(..) | MetaItemKind::Word => {
+                                let ident = meta_item.ident().expect("multi-segment cfg key");
+                                return (ident.name, meta_item.value_str());
+                            }
+                        }
+                    }
+                    Ok(..) => {}
+                    Err(err) => err.cancel(),
+                }
+
+                error!(r#"expected `key` or `key="value"`"#);
+            })
+            .collect::<ast::CrateConfig>();
+        cfg.into_iter().map(|(a, b)| (a.to_string(), b.map(|b| b.to_string()))).collect()
     })
 }
 

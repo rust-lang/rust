@@ -6,8 +6,8 @@ LL |     thread::spawn(move|| {
    | 
   ::: $SRC_DIR/libstd/thread/mod.rs:LL:COL
    |
-LL |     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
-   |                          ---- required by this bound in `std::thread::spawn`
+LL |     F: Send + 'static,
+   |        ---- required by this bound in `std::thread::spawn`
    |
    = help: within `[closure@$DIR/no-send-res-ports.rs:26:19: 30:6 x:main::Foo]`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
    = note: required because it appears within the type `Port<()>`

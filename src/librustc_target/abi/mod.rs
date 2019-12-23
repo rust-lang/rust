@@ -3,7 +3,7 @@ pub use Primitive::*;
 
 use crate::spec::Target;
 
-use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
+use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable_Generic;
@@ -64,23 +64,19 @@ impl TargetDataLayout {
         // Parse an address space index from a string.
         let parse_address_space = |s: &str, cause: &str| {
             s.parse::<u32>().map_err(|err| {
-                format!("invalid address space `{}` for `{}` in \"data-layout\": {}",
-                        s, cause, err)
+                format!("invalid address space `{}` for `{}` in \"data-layout\": {}", s, cause, err)
             })
         };
 
         // Parse a bit count from a string.
         let parse_bits = |s: &str, kind: &str, cause: &str| {
             s.parse::<u64>().map_err(|err| {
-                format!("invalid {} `{}` for `{}` in \"data-layout\": {}",
-                        kind, s, cause, err)
+                format!("invalid {} `{}` for `{}` in \"data-layout\": {}", kind, s, cause, err)
             })
         };
 
         // Parse a size string.
-        let size = |s: &str, cause: &str| {
-            parse_bits(s, "size", cause).map(Size::from_bits)
-        };
+        let size = |s: &str, cause: &str| parse_bits(s, "size", cause).map(Size::from_bits);
 
         // Parse an alignment string.
         let align = |s: &[&str], cause: &str| {
@@ -89,16 +85,12 @@ impl TargetDataLayout {
             }
             let align_from_bits = |bits| {
                 Align::from_bits(bits).map_err(|err| {
-                    format!("invalid alignment for `{}` in \"data-layout\": {}",
-                            cause, err)
+                    format!("invalid alignment for `{}` in \"data-layout\": {}", cause, err)
                 })
             };
             let abi = parse_bits(s[0], "alignment", cause)?;
             let pref = s.get(1).map_or(Ok(abi), |pref| parse_bits(pref, "alignment", cause))?;
-            Ok(AbiAndPrefAlign {
-                abi: align_from_bits(abi)?,
-                pref: align_from_bits(pref)?,
-            })
+            Ok(AbiAndPrefAlign { abi: align_from_bits(abi)?, pref: align_from_bits(pref)? })
         };
 
         let mut dl = TargetDataLayout::default();
@@ -112,15 +104,9 @@ impl TargetDataLayout {
                 [p] if p.starts_with("P") => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
-                ["a", ref a @ ..] => {
-                    dl.aggregate_align = align(a, "a")?
-                }
-                ["f32", ref a @ ..] => {
-                    dl.f32_align = align(a, "f32")?
-                }
-                ["f64", ref a @ ..] => {
-                    dl.f64_align = align(a, "f64")?
-                }
+                ["a", ref a @ ..] => dl.aggregate_align = align(a, "a")?,
+                ["f32", ref a @ ..] => dl.f32_align = align(a, "f32")?,
+                ["f64", ref a @ ..] => dl.f64_align = align(a, "f64")?,
                 [p @ "p", s, ref a @ ..] | [p @ "p0", s, ref a @ ..] => {
                     dl.pointer_size = size(s, p)?;
                     dl.pointer_align = align(a, p)?;
@@ -166,18 +152,23 @@ impl TargetDataLayout {
         // Perform consistency checks against the Target information.
         let endian_str = match dl.endian {
             Endian::Little => "little",
-            Endian::Big => "big"
+            Endian::Big => "big",
         };
         if endian_str != target.target_endian {
-            return Err(format!("inconsistent target specification: \"data-layout\" claims \
+            return Err(format!(
+                "inconsistent target specification: \"data-layout\" claims \
                                 architecture is {}-endian, while \"target-endian\" is `{}`",
-                               endian_str, target.target_endian));
+                endian_str, target.target_endian
+            ));
         }
 
         if dl.pointer_size.bits().to_string() != target.target_pointer_width {
-            return Err(format!("inconsistent target specification: \"data-layout\" claims \
+            return Err(format!(
+                "inconsistent target specification: \"data-layout\" claims \
                                 pointers are {}-bit, while \"target-pointer-width\" is `{}`",
-                               dl.pointer_size.bits(), target.target_pointer_width));
+                dl.pointer_size.bits(),
+                target.target_pointer_width
+            ));
         }
 
         Ok(dl)
@@ -199,7 +190,7 @@ impl TargetDataLayout {
             16 => 1 << 15,
             32 => 1 << 31,
             64 => 1 << 47,
-            bits => panic!("obj_size_bound: unknown pointer bit size {}", bits)
+            bits => panic!("obj_size_bound: unknown pointer bit size {}", bits),
         }
     }
 
@@ -208,7 +199,7 @@ impl TargetDataLayout {
             16 => I16,
             32 => I32,
             64 => I64,
-            bits => panic!("ptr_sized_integer: unknown pointer bit size {}", bits)
+            bits => panic!("ptr_sized_integer: unknown pointer bit size {}", bits),
         }
     }
 
@@ -238,14 +229,14 @@ impl HasDataLayout for TargetDataLayout {
 #[derive(Copy, Clone, PartialEq)]
 pub enum Endian {
     Little,
-    Big
+    Big,
 }
 
 /// Size of a type in bytes.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable_Generic)]
 pub struct Size {
-    raw: u64
+    raw: u64,
 }
 
 impl Size {
@@ -259,9 +250,7 @@ impl Size {
 
     #[inline]
     pub const fn from_bytes(bytes: u64) -> Size {
-        Size {
-            raw: bytes
-        }
+        Size { raw: bytes }
     }
 
     #[inline]
@@ -294,11 +283,7 @@ impl Size {
 
         let bytes = self.bytes().checked_add(offset.bytes())?;
 
-        if bytes < dl.obj_size_bound() {
-            Some(Size::from_bytes(bytes))
-        } else {
-            None
-        }
+        if bytes < dl.obj_size_bound() { Some(Size::from_bytes(bytes)) } else { None }
     }
 
     #[inline]
@@ -306,11 +291,7 @@ impl Size {
         let dl = cx.data_layout();
 
         let bytes = self.bytes().checked_mul(count)?;
-        if bytes < dl.obj_size_bound() {
-            Some(Size::from_bytes(bytes))
-        } else {
-            None
-        }
+        if bytes < dl.obj_size_bound() { Some(Size::from_bytes(bytes)) } else { None }
     }
 }
 
@@ -351,9 +332,7 @@ impl Mul<u64> for Size {
     fn mul(self, count: u64) -> Size {
         match self.bytes().checked_mul(count) {
             Some(bytes) => Size::from_bytes(bytes),
-            None => {
-                panic!("Size::mul: {} * {} doesn't fit in u64", self.bytes(), count)
-            }
+            None => panic!("Size::mul: {} * {} doesn't fit in u64", self.bytes(), count),
         }
     }
 }
@@ -412,9 +391,7 @@ impl Align {
     ///
     /// N.B., for an offset of `0`, this happens to return `2^64`.
     pub fn max_for_offset(offset: Size) -> Align {
-        Align {
-            pow2: offset.bytes().trailing_zeros() as u8,
-        }
+        Align { pow2: offset.bytes().trailing_zeros() as u8 }
     }
 
     /// Lower the alignment, if necessary, such that the given offset
@@ -434,24 +411,15 @@ pub struct AbiAndPrefAlign {
 
 impl AbiAndPrefAlign {
     pub fn new(align: Align) -> AbiAndPrefAlign {
-        AbiAndPrefAlign {
-            abi: align,
-            pref: align,
-        }
+        AbiAndPrefAlign { abi: align, pref: align }
     }
 
     pub fn min(self, other: AbiAndPrefAlign) -> AbiAndPrefAlign {
-        AbiAndPrefAlign {
-            abi: self.abi.min(other.abi),
-            pref: self.pref.min(other.pref),
-        }
+        AbiAndPrefAlign { abi: self.abi.min(other.abi), pref: self.pref.min(other.pref) }
     }
 
     pub fn max(self, other: AbiAndPrefAlign) -> AbiAndPrefAlign {
-        AbiAndPrefAlign {
-            abi: self.abi.max(other.abi),
-            pref: self.pref.max(other.pref),
-        }
+        AbiAndPrefAlign { abi: self.abi.max(other.abi), pref: self.pref.max(other.pref) }
     }
 }
 
@@ -471,8 +439,8 @@ impl Integer {
             I8 => Size::from_bytes(1),
             I16 => Size::from_bytes(2),
             I32 => Size::from_bytes(4),
-            I64  => Size::from_bytes(8),
-            I128  => Size::from_bytes(16),
+            I64 => Size::from_bytes(8),
+            I128 => Size::from_bytes(16),
         }
     }
 
@@ -495,7 +463,7 @@ impl Integer {
             -0x0000_0000_0000_8000..=0x0000_0000_0000_7fff => I16,
             -0x0000_0000_8000_0000..=0x0000_0000_7fff_ffff => I32,
             -0x8000_0000_0000_0000..=0x7fff_ffff_ffff_ffff => I64,
-            _ => I128
+            _ => I128,
         }
     }
 
@@ -549,7 +517,7 @@ pub enum Primitive {
     Int(Integer, bool),
     F32,
     F64,
-    Pointer
+    Pointer,
 }
 
 impl Primitive {
@@ -560,7 +528,7 @@ impl Primitive {
             Int(i, _) => i.size(),
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
-            Pointer => dl.pointer_size
+            Pointer => dl.pointer_size,
         }
     }
 
@@ -571,14 +539,14 @@ impl Primitive {
             Int(i, _) => i.align(dl),
             F32 => dl.f32_align,
             F64 => dl.f64_align,
-            Pointer => dl.pointer_align
+            Pointer => dl.pointer_align,
         }
     }
 
     pub fn is_float(self) -> bool {
         match self {
             F32 | F64 => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -615,11 +583,7 @@ pub struct Scalar {
 
 impl Scalar {
     pub fn is_bool(&self) -> bool {
-        if let Int(I8, _) = self.value {
-            self.valid_range == (0..=1)
-        } else {
-            false
-        }
+        if let Int(I8, _) = self.value { self.valid_range == (0..=1) } else { false }
     }
 
     /// Returns the valid range as a `x..y` range.
@@ -649,10 +613,7 @@ pub enum FieldPlacement {
     Union(usize),
 
     /// Array/vector-like placement, with all fields of identical types.
-    Array {
-        stride: Size,
-        count: u64
-    },
+    Array { stride: Size, count: u64 },
 
     /// Struct-like placement, with precomputed offsets.
     ///
@@ -680,8 +641,8 @@ pub enum FieldPlacement {
         ///
         // FIXME(eddyb) build a better abstraction for permutations, if possible.
         // FIXME(camlorn) also consider small vector  optimization here.
-        memory_index: Vec<u32>
-    }
+        memory_index: Vec<u32>,
+    },
 }
 
 impl FieldPlacement {
@@ -693,7 +654,7 @@ impl FieldPlacement {
                 assert_eq!(usize_count as u64, count);
                 usize_count
             }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets.len()
+            FieldPlacement::Arbitrary { ref offsets, .. } => offsets.len(),
         }
     }
 
@@ -705,14 +666,13 @@ impl FieldPlacement {
                 assert!(i < count);
                 stride * i
             }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets[i]
+            FieldPlacement::Arbitrary { ref offsets, .. } => offsets[i],
         }
     }
 
     pub fn memory_index(&self, i: usize) -> usize {
         match *self {
-            FieldPlacement::Union(_) |
-            FieldPlacement::Array { .. } => i,
+            FieldPlacement::Union(_) | FieldPlacement::Array { .. } => i,
             FieldPlacement::Arbitrary { ref memory_index, .. } => {
                 let r = memory_index[i];
                 assert_eq!(r as usize as u32, r);
@@ -723,7 +683,7 @@ impl FieldPlacement {
 
     /// Gets source indices of the fields by increasing offsets.
     #[inline]
-    pub fn index_by_increasing_offset<'a>(&'a self) -> impl Iterator<Item=usize>+'a {
+    pub fn index_by_increasing_offset<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
         let mut inverse_small = [0u8; 64];
         let mut inverse_big = vec![];
         let use_small = self.count() <= inverse_small.len();
@@ -742,13 +702,13 @@ impl FieldPlacement {
             }
         }
 
-        (0..self.count()).map(move |i| {
-            match *self {
-                FieldPlacement::Union(_) |
-                FieldPlacement::Array { .. } => i,
-                FieldPlacement::Arbitrary { .. } => {
-                    if use_small { inverse_small[i] as usize }
-                    else { inverse_big[i] as usize }
+        (0..self.count()).map(move |i| match *self {
+            FieldPlacement::Union(_) | FieldPlacement::Array { .. } => i,
+            FieldPlacement::Arbitrary { .. } => {
+                if use_small {
+                    inverse_small[i] as usize
+                } else {
+                    inverse_big[i] as usize
                 }
             }
         })
@@ -764,23 +724,20 @@ pub enum Abi {
     ScalarPair(Scalar, Scalar),
     Vector {
         element: Scalar,
-        count: u64
+        count: u64,
     },
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
-    }
+    },
 }
 
 impl Abi {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            Abi::Uninhabited |
-            Abi::Scalar(_) |
-            Abi::ScalarPair(..) |
-            Abi::Vector { .. } => false,
-            Abi::Aggregate { sized } => !sized
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
+            Abi::Aggregate { sized } => !sized,
         }
     }
 
@@ -821,9 +778,7 @@ rustc_index::newtype_index! {
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Variants {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
-    Single {
-        index: VariantIdx,
-    },
+    Single { index: VariantIdx },
 
     /// Enum-likes with more than one inhabited variant: for each case there is
     /// a struct, and they all have space reserved for the discriminant.
@@ -865,15 +820,8 @@ pub struct Niche {
 
 impl Niche {
     pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
-        let niche = Niche {
-            offset,
-            scalar,
-        };
-        if niche.available(cx) > 0 {
-            Some(niche)
-        } else {
-            None
-        }
+        let niche = Niche { offset, scalar };
+        if niche.available(cx) > 0 { Some(niche) } else { None }
     }
 
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
@@ -932,7 +880,7 @@ pub struct LayoutDetails {
     pub largest_niche: Option<Niche>,
 
     pub align: AbiAndPrefAlign,
-    pub size: Size
+    pub size: Size,
 }
 
 impl LayoutDetails {
@@ -961,7 +909,7 @@ impl LayoutDetails {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TyLayout<'a, Ty> {
     pub ty: Ty,
-    pub details: &'a LayoutDetails
+    pub details: &'a LayoutDetails,
 }
 
 impl<'a, Ty> Deref for TyLayout<'a, Ty> {
@@ -993,7 +941,7 @@ pub enum PointerKind {
     UniqueBorrowed,
 
     /// `Box<T>`, unlike `UniqueBorrowed`, it also has `noalias` on returns.
-    UniqueOwned
+    UniqueOwned,
 }
 
 #[derive(Copy, Clone)]
@@ -1010,24 +958,29 @@ pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
         variant_index: VariantIdx,
     ) -> TyLayout<'a, Self>;
     fn field(this: TyLayout<'a, Self>, cx: &C, i: usize) -> C::TyLayout;
-    fn pointee_info_at(
-        this: TyLayout<'a, Self>,
-        cx: &C,
-        offset: Size,
-    ) -> Option<PointeeInfo>;
+    fn pointee_info_at(this: TyLayout<'a, Self>, cx: &C, offset: Size) -> Option<PointeeInfo>;
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
+    where
+        Ty: TyLayoutMethods<'a, C>,
+        C: LayoutOf<Ty = Ty>,
+    {
         Ty::for_variant(self, cx, variant_index)
     }
     pub fn field<C>(self, cx: &C, i: usize) -> C::TyLayout
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
+    where
+        Ty: TyLayoutMethods<'a, C>,
+        C: LayoutOf<Ty = Ty>,
+    {
         Ty::field(self, cx, i)
     }
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
+    where
+        Ty: TyLayoutMethods<'a, C>,
+        C: LayoutOf<Ty = Ty>,
+    {
         Ty::pointee_info_at(self, cx, offset)
     }
 }
@@ -1041,11 +994,9 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// Returns `true` if the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
-            Abi::Scalar(_) |
-            Abi::ScalarPair(..) |
-            Abi::Vector { .. } => false,
+            Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
             Abi::Uninhabited => self.size.bytes() == 0,
-            Abi::Aggregate { sized } => sized && self.size.bytes() == 0
+            Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
     }
 }

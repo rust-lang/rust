@@ -58,22 +58,21 @@
 
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
-       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-       test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
+#![doc(
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
+    test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
+)]
 #![no_std]
 #![needs_allocator]
-
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
-
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
-
 #![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
@@ -150,19 +149,19 @@ pub mod boxed;
 mod boxed {
     pub use std::boxed::Box;
 }
-#[cfg(test)]
-mod tests;
-pub mod collections;
-#[cfg(target_has_atomic = "ptr")]
-pub mod sync;
-pub mod rc;
-pub mod raw_vec;
-pub mod prelude;
 pub mod borrow;
+pub mod collections;
 pub mod fmt;
+pub mod prelude;
+pub mod raw_vec;
+pub mod rc;
 pub mod slice;
 pub mod str;
 pub mod string;
+#[cfg(target_has_atomic = "ptr")]
+pub mod sync;
+#[cfg(test)]
+mod tests;
 pub mod vec;
 
 #[cfg(not(test))]

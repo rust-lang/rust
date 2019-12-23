@@ -8,7 +8,6 @@ pub struct Line {
     pub annotations: Vec<Annotation>,
 }
 
-
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct MultilineAnnotation {
     pub depth: usize,
@@ -28,8 +27,10 @@ impl MultilineAnnotation {
 
     /// Compare two `MultilineAnnotation`s considering only the `Span` they cover.
     pub fn same_span(&self, other: &MultilineAnnotation) -> bool {
-        self.line_start == other.line_start && self.line_end == other.line_end
-            && self.start_col == other.start_col && self.end_col == other.end_col
+        self.line_start == other.line_start
+            && self.line_end == other.line_end
+            && self.start_col == other.start_col
+            && self.end_col == other.end_col
     }
 
     pub fn as_start(&self) -> Annotation {
@@ -38,7 +39,7 @@ impl MultilineAnnotation {
             end_col: self.start_col + 1,
             is_primary: self.is_primary,
             label: None,
-            annotation_type: AnnotationType::MultilineStart(self.depth)
+            annotation_type: AnnotationType::MultilineStart(self.depth),
         }
     }
 
@@ -48,7 +49,7 @@ impl MultilineAnnotation {
             end_col: self.end_col,
             is_primary: self.is_primary,
             label: self.label.clone(),
-            annotation_type: AnnotationType::MultilineEnd(self.depth)
+            annotation_type: AnnotationType::MultilineEnd(self.depth),
         }
     }
 
@@ -58,7 +59,7 @@ impl MultilineAnnotation {
             end_col: 0,
             is_primary: self.is_primary,
             label: None,
-            annotation_type: AnnotationType::MultilineLine(self.depth)
+            annotation_type: AnnotationType::MultilineLine(self.depth),
         }
     }
 }
@@ -117,19 +118,15 @@ pub struct Annotation {
 impl Annotation {
     /// Whether this annotation is a vertical line placeholder.
     pub fn is_line(&self) -> bool {
-        if let AnnotationType::MultilineLine(_) = self.annotation_type {
-            true
-        } else {
-            false
-        }
+        if let AnnotationType::MultilineLine(_) = self.annotation_type { true } else { false }
     }
 
     pub fn is_multiline(&self) -> bool {
         match self.annotation_type {
-            AnnotationType::Multiline(_) |
-            AnnotationType::MultilineStart(_) |
-            AnnotationType::MultilineLine(_) |
-            AnnotationType::MultilineEnd(_) => true,
+            AnnotationType::Multiline(_)
+            | AnnotationType::MultilineStart(_)
+            | AnnotationType::MultilineLine(_)
+            | AnnotationType::MultilineEnd(_) => true,
             _ => false,
         }
     }
@@ -164,8 +161,7 @@ impl Annotation {
     pub fn takes_space(&self) -> bool {
         // Multiline annotations always have to keep vertical space.
         match self.annotation_type {
-            AnnotationType::MultilineStart(_) |
-            AnnotationType::MultilineEnd(_) => true,
+            AnnotationType::MultilineStart(_) | AnnotationType::MultilineEnd(_) => true,
             _ => false,
         }
     }

@@ -1,9 +1,10 @@
 #![unstable(feature = "process_internals", issue = "none")]
 
+use crate::borrow::Borrow;
 use crate::collections::BTreeMap;
-use crate::env::split_paths;
 use crate::env;
-use crate::ffi::{OsString, OsStr};
+use crate::env::split_paths;
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::fs;
 use crate::io::{self, Error, ErrorKind};
@@ -11,18 +12,17 @@ use crate::mem;
 use crate::os::windows::ffi::OsStrExt;
 use crate::path::Path;
 use crate::ptr;
-use crate::sys::mutex::Mutex;
 use crate::sys::c;
-use crate::sys::fs::{OpenOptions, File};
+use crate::sys::cvt;
+use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
+use crate::sys::mutex::Mutex;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
-use crate::sys::cvt;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::sys_common::process::CommandEnv;
-use crate::borrow::Borrow;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
-use libc::{c_void, EXIT_SUCCESS, EXIT_FAILURE};
+use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -41,17 +41,22 @@ impl From<OsString> for EnvKey {
 }
 
 impl From<EnvKey> for OsString {
-    fn from(k: EnvKey) -> Self { k.0 }
+    fn from(k: EnvKey) -> Self {
+        k.0
+    }
 }
 
 impl Borrow<OsStr> for EnvKey {
-    fn borrow(&self) -> &OsStr { &self.0 }
+    fn borrow(&self) -> &OsStr {
+        &self.0
+    }
 }
 
 impl AsRef<OsStr> for EnvKey {
-    fn as_ref(&self) -> &OsStr { &self.0 }
+    fn as_ref(&self) -> &OsStr {
+        &self.0
+    }
 }
-
 
 fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     if str.as_ref().encode_wide().any(|b| b == 0) {
@@ -127,8 +132,11 @@ impl Command {
         self.flags = flags;
     }
 
-    pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
-                 -> io::Result<(Process, StdioPipes)> {
+    pub fn spawn(
+        &mut self,
+        default: Stdio,
+        needs_stdin: bool,
+    ) -> io::Result<(Process, StdioPipes)> {
         let maybe_env = self.env.capture_if_changed();
         // To have the spawning semantics of unix/windows stay the same, we need
         // to read the *child's* PATH if one is provided. See #15149 for more
@@ -138,10 +146,11 @@ impl Command {
                 // Split the value and test each path to see if the
                 // program exists.
                 for path in split_paths(&v) {
-                    let path = path.join(self.program.to_str().unwrap())
-                                   .with_extension(env::consts::EXE_EXTENSION);
+                    let path = path
+                        .join(self.program.to_str().unwrap())
+                        .with_extension(env::consts::EXE_EXTENSION);
                     if fs::metadata(&path).is_ok() {
-                        return Some(path.into_os_string())
+                        return Some(path.into_os_string());
                     }
                 }
             }
@@ -178,32 +187,32 @@ impl Command {
         static CREATE_PROCESS_LOCK: Mutex = Mutex::new();
         let _guard = DropGuard::new(&CREATE_PROCESS_LOCK);
 
-        let mut pipes = StdioPipes {
-            stdin: None,
-            stdout: None,
-            stderr: None,
-        };
+        let mut pipes = StdioPipes { stdin: None, stdout: None, stderr: None };
         let null = Stdio::Null;
-        let default_stdin = if needs_stdin {&default} else {&null};
+        let default_stdin = if needs_stdin { &default } else { &null };
         let stdin = self.stdin.as_ref().unwrap_or(default_stdin);
         let stdout = self.stdout.as_ref().unwrap_or(&default);
         let stderr = self.stderr.as_ref().unwrap_or(&default);
         let stdin = stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin)?;
-        let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE,
-                                      &mut pipes.stdout)?;
-        let stderr = stderr.to_handle(c::STD_ERROR_HANDLE,
-                                      &mut pipes.stderr)?;
+        let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE, &mut pipes.stdout)?;
+        let stderr = stderr.to_handle(c::STD_ERROR_HANDLE, &mut pipes.stderr)?;
         si.hStdInput = stdin.raw();
         si.hStdOutput = stdout.raw();
         si.hStdError = stderr.raw();
 
         unsafe {
-            cvt(c::CreateProcessW(ptr::null(),
-                                  cmd_str.as_mut_ptr(),
-                                  ptr::null_mut(),
-                                  ptr::null_mut(),
-                                  c::TRUE, flags, envp, dirp,
-                                  &mut si, &mut pi))
+            cvt(c::CreateProcessW(
+                ptr::null(),
+                cmd_str.as_mut_ptr(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                c::TRUE,
+                flags,
+                envp,
+                dirp,
+                &mut si,
+                &mut pi,
+            ))
         }?;
 
         // We close the thread handle because we don't care about keeping
@@ -213,7 +222,6 @@ impl Command {
 
         Ok((Process { handle: Handle::new(pi.hProcess) }, pipes))
     }
-
 }
 
 impl fmt::Debug for Command {
@@ -244,24 +252,20 @@ impl<'a> Drop for DropGuard<'a> {
 }
 
 impl Stdio {
-    fn to_handle(&self, stdio_id: c::DWORD, pipe: &mut Option<AnonPipe>)
-                 -> io::Result<Handle> {
+    fn to_handle(&self, stdio_id: c::DWORD, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
         match *self {
             // If no stdio handle is available, then inherit means that it
             // should still be unavailable so propagate the
             // INVALID_HANDLE_VALUE.
-            Stdio::Inherit => {
-                match stdio::get_handle(stdio_id) {
-                    Ok(io) => {
-                        let io = Handle::new(io);
-                        let ret = io.duplicate(0, true,
-                                               c::DUPLICATE_SAME_ACCESS);
-                        io.into_raw();
-                        ret
-                    }
-                    Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
+            Stdio::Inherit => match stdio::get_handle(stdio_id) {
+                Ok(io) => {
+                    let io = Handle::new(io);
+                    let ret = io.duplicate(0, true, c::DUPLICATE_SAME_ACCESS);
+                    io.into_raw();
+                    ret
                 }
-            }
+                Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
+            },
 
             Stdio::MakePipe => {
                 let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
@@ -270,9 +274,7 @@ impl Stdio {
                 Ok(pipes.theirs.into_handle())
             }
 
-            Stdio::Handle(ref handle) => {
-                handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)
-            }
+            Stdio::Handle(ref handle) => handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS),
 
             // Open up a reference to NUL with appropriate read/write
             // permissions as well as the ability to be inherited to child
@@ -288,9 +290,7 @@ impl Stdio {
                 opts.read(stdio_id == c::STD_INPUT_HANDLE);
                 opts.write(stdio_id != c::STD_INPUT_HANDLE);
                 opts.security_attributes(&mut sa);
-                File::open(Path::new("NUL"), &opts).map(|file| {
-                    file.into_handle()
-                })
+                File::open(Path::new("NUL"), &opts).map(|file| file.into_handle())
             }
         }
     }
@@ -323,23 +323,19 @@ pub struct Process {
 
 impl Process {
     pub fn kill(&mut self) -> io::Result<()> {
-        cvt(unsafe {
-            c::TerminateProcess(self.handle.raw(), 1)
-        })?;
+        cvt(unsafe { c::TerminateProcess(self.handle.raw(), 1) })?;
         Ok(())
     }
 
     pub fn id(&self) -> u32 {
-        unsafe {
-            c::GetProcessId(self.handle.raw()) as u32
-        }
+        unsafe { c::GetProcessId(self.handle.raw()) as u32 }
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         unsafe {
             let res = c::WaitForSingleObject(self.handle.raw(), c::INFINITE);
             if res != c::WAIT_OBJECT_0 {
-                return Err(Error::last_os_error())
+                return Err(Error::last_os_error());
             }
             let mut status = 0;
             cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
@@ -362,9 +358,13 @@ impl Process {
         }
     }
 
-    pub fn handle(&self) -> &Handle { &self.handle }
+    pub fn handle(&self) -> &Handle {
+        &self.handle
+    }
 
-    pub fn into_handle(self) -> Handle { self.handle }
+    pub fn into_handle(self) -> Handle {
+        self.handle
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -441,7 +441,7 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
         hProcess: ptr::null_mut(),
         hThread: ptr::null_mut(),
         dwProcessId: 0,
-        dwThreadId: 0
+        dwThreadId: 0,
     }
 }
 
@@ -466,7 +466,8 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
         // it will be dropped entirely when parsed on the other end.
         ensure_no_nuls(arg)?;
         let arg_bytes = &arg.as_inner().inner.as_inner();
-        let quote = force_quotes || arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t')
+        let quote = force_quotes
+            || arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t')
             || arg_bytes.is_empty();
         if quote {
             cmd.push('"' as u16);
@@ -495,8 +496,7 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
     }
 }
 
-fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>)
-             -> io::Result<(*mut c_void, Vec<u16>)> {
+fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut c_void, Vec<u16>)> {
     // On Windows we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
@@ -517,37 +517,33 @@ fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>)
 }
 
 fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
-
     match d {
         Some(dir) => {
             let mut dir_str: Vec<u16> = ensure_no_nuls(dir)?.encode_wide().collect();
             dir_str.push(0);
             Ok((dir_str.as_ptr(), dir_str))
-        },
-        None => Ok((ptr::null(), Vec::new()))
+        }
+        None => Ok((ptr::null(), Vec::new())),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ffi::{OsStr, OsString};
     use super::make_command_line;
+    use crate::ffi::{OsStr, OsString};
 
     #[test]
     fn test_make_command_line() {
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
-            let command_line = &make_command_line(OsStr::new(prog),
-                                                  &args.iter()
-                                                       .map(|a| OsString::from(a))
-                                                       .collect::<Vec<OsString>>())
-                                    .unwrap();
+            let command_line = &make_command_line(
+                OsStr::new(prog),
+                &args.iter().map(|a| OsString::from(a)).collect::<Vec<OsString>>(),
+            )
+            .unwrap();
             String::from_utf16(command_line).unwrap()
         }
 
-        assert_eq!(
-            test_wrapper("prog", &["aaa", "bbb", "ccc"]),
-            "\"prog\" aaa bbb ccc"
-        );
+        assert_eq!(test_wrapper("prog", &["aaa", "bbb", "ccc"]), "\"prog\" aaa bbb ccc");
 
         assert_eq!(
             test_wrapper("C:\\Program Files\\blah\\blah.exe", &["aaa"]),
@@ -557,10 +553,7 @@ mod tests {
             test_wrapper("C:\\Program Files\\test", &["aa\"bb"]),
             "\"C:\\Program Files\\test\" aa\\\"bb"
         );
-        assert_eq!(
-            test_wrapper("echo", &["a b c"]),
-            "\"echo\" \"a b c\""
-        );
+        assert_eq!(test_wrapper("echo", &["a b c"]), "\"echo\" \"a b c\"");
         assert_eq!(
             test_wrapper("echo", &["\" \\\" \\", "\\"]),
             "\"echo\" \"\\\" \\\\\\\" \\\\\" \\"

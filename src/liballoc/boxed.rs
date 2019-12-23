@@ -134,21 +134,21 @@ use core::convert::{From, TryFrom};
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
-use core::iter::{Iterator, FromIterator, FusedIterator};
+use core::iter::{FromIterator, FusedIterator, Iterator};
 use core::marker::{Unpin, Unsize};
 use core::mem;
-use core::pin::Pin;
 use core::ops::{
-    CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
+    CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
 };
+use core::pin::Pin;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 use core::task::{Context, Poll};
 
-use crate::alloc::{self, Global, Alloc};
-use crate::vec::Vec;
+use crate::alloc::{self, Alloc, Global};
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
+use crate::vec::Vec;
 
 /// A pointer type for heap allocation.
 ///
@@ -196,12 +196,10 @@ impl<T> Box<T> {
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
         if layout.size() == 0 {
-            return Box(NonNull::dangling().into())
+            return Box(NonNull::dangling().into());
         }
-        let ptr = unsafe {
-            Global.alloc(layout)
-                .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-        };
+        let ptr =
+            unsafe { Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)) };
         Box(ptr.cast().into())
     }
 
@@ -269,9 +267,7 @@ impl<T> Box<[T]> {
             NonNull::dangling()
         } else {
             unsafe {
-                Global.alloc(layout)
-                    .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-                    .cast()
+                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
             }
         };
         let slice = unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), len) };
@@ -532,7 +528,7 @@ impl<T: ?Sized> Box<T> {
     #[inline]
     pub fn leak<'a>(b: Box<T>) -> &'a mut T
     where
-        T: 'a // Technically not needed, but kept to be explicit.
+        T: 'a, // Technically not needed, but kept to be explicit.
     {
         unsafe { &mut *Box::into_raw(b) }
     }
@@ -625,15 +621,12 @@ impl<T: Clone> Clone for Box<T> {
     }
 }
 
-
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl Clone for Box<str> {
     fn clone(&self) -> Self {
         // this makes a copy of the data
         let buf: Box<[u8]> = self.as_bytes().into();
-        unsafe {
-            from_boxed_utf8_unchecked(buf)
-        }
+        unsafe { from_boxed_utf8_unchecked(buf) }
     }
 }
 
@@ -1053,10 +1046,7 @@ impl<A> FromIterator<A> for Box<[A]> {
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone> Clone for Box<[T]> {
     fn clone(&self) -> Self {
-        let mut new = BoxBuilder {
-            data: RawVec::with_capacity(self.len()),
-            len: 0,
-        };
+        let mut new = BoxBuilder { data: RawVec::with_capacity(self.len()), len: 0 };
 
         let mut target = new.data.ptr();
 
@@ -1152,7 +1142,7 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
  *  could have a method to project a Pin<T> from it.
  */
 #[stable(feature = "pin", since = "1.33.0")]
-impl<T: ?Sized> Unpin for Box<T> { }
+impl<T: ?Sized> Unpin for Box<T> {}
 
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator + Unpin> Generator for Box<G> {

@@ -1,16 +1,16 @@
 //! Used by `rustc` when compiling a plugin crate.
 
+use rustc::hir;
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::ty::query::Providers;
+use rustc::ty::TyCtxt;
 use syntax::attr;
 use syntax::symbol::sym;
 use syntax_pos::Span;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::ty::TyCtxt;
-use rustc::ty::query::Providers;
 
 struct RegistrarFinder {
-    registrars: Vec<(hir::HirId, Span)> ,
+    registrars: Vec<(hir::HirId, Span)>,
 }
 
 impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
@@ -22,11 +22,9 @@ impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
-    }
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
-    }
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
 }
 
 /// Finds the function marked with `#[plugin_registrar]`, if any.
@@ -45,7 +43,7 @@ fn plugin_registrar_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
         1 => {
             let (hir_id, _) = finder.registrars.pop().unwrap();
             Some(tcx.hir().local_def_id(hir_id))
-        },
+        }
         _ => {
             let diagnostic = tcx.sess.diagnostic();
             let mut e = diagnostic.struct_err("multiple plugin registration functions found");
@@ -59,10 +57,6 @@ fn plugin_registrar_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
     }
 }
 
-
 pub fn provide(providers: &mut Providers<'_>) {
-    *providers = Providers {
-        plugin_registrar_fn,
-        ..*providers
-    };
+    *providers = Providers { plugin_registrar_fn, ..*providers };
 }

@@ -1043,7 +1043,7 @@ impl<W: Write> Write for LineWriter<W> {
         }
 
         if suffix.iter().map(|s| s.len()).sum::<usize>() == 0 {
-            return Ok(n)
+            return Ok(n);
         }
         match self.inner.write_vectored(suffix) {
             Ok(i) => Ok(n + i),
@@ -1077,7 +1077,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::io::prelude::*;
-    use crate::io::{self, BufReader, BufWriter, LineWriter, SeekFrom, IoSlice};
+    use crate::io::{self, BufReader, BufWriter, IoSlice, LineWriter, SeekFrom};
     use crate::sync::atomic::{AtomicUsize, Ordering};
     use crate::thread;
 

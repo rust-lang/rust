@@ -12,33 +12,28 @@ use rustc::mir::{
 use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::binary_search_util;
-use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::graph::WithSuccessors;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::graph::vec_graph::VecGraph;
-use rustc_index::vec::IndexVec;
+use rustc_data_structures::graph::WithSuccessors;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
-use syntax_pos::Span;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 use syntax_pos::symbol::Symbol;
+use syntax_pos::Span;
 
 use crate::borrow_check::{
     constraints::{
-        graph::NormalConstraintGraph,
-        ConstraintSccIndex,
-        OutlivesConstraint,
-        OutlivesConstraintSet,
+        graph::NormalConstraintGraph, ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet,
     },
+    diagnostics::{OutlivesSuggestionBuilder, RegionErrorNamingCtx},
     member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
+    nll::{PoloniusOutput, ToRegionVid},
     region_infer::values::{
-        PlaceholderIndices, RegionElement, ToElementIndex, LivenessValues, RegionValueElements,
-        RegionValues,
+        LivenessValues, PlaceholderIndices, RegionElement, RegionValueElements, RegionValues,
+        ToElementIndex,
     },
     type_check::{free_region_relations::UniversalRegionRelations, Locations},
-    diagnostics::{
-        OutlivesSuggestionBuilder, RegionErrorNamingCtx,
-    },
-    nll::{ToRegionVid, PoloniusOutput},
     universal_regions::UniversalRegions,
     Upvar,
 };
@@ -76,8 +71,7 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// Reverse of the SCC constraint graph -- i.e., an edge `A -> B`
     /// exists if `B: A`. Computed lazilly.
-    pub(in crate::borrow_check) rev_constraint_graph:
-        Option<Rc<VecGraph<ConstraintSccIndex>>>,
+    pub(in crate::borrow_check) rev_constraint_graph: Option<Rc<VecGraph<ConstraintSccIndex>>>,
 
     /// The "R0 member of [R1..Rn]" constraints, indexed by SCC.
     pub(in crate::borrow_check) member_constraints:
@@ -96,8 +90,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
     /// visible from this index.
-    pub(in crate::borrow_check) scc_universes:
-        IndexVec<ConstraintSccIndex, ty::UniverseIndex>,
+    pub(in crate::borrow_check) scc_universes: IndexVec<ConstraintSccIndex, ty::UniverseIndex>,
 
     /// Contains a "representative" from each SCC. This will be the
     /// minimal RegionVid belonging to that universe. It is used as a
@@ -106,8 +99,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// of its SCC and be sure that -- if they have the same repr --
     /// they *must* be equal (though not having the same repr does not
     /// mean they are unequal).
-    pub(in crate::borrow_check) scc_representatives:
-        IndexVec<ConstraintSccIndex, ty::RegionVid>,
+    pub(in crate::borrow_check) scc_representatives: IndexVec<ConstraintSccIndex, ty::RegionVid>,
 
     /// The final inferred values of the region variables; we compute
     /// one value per SCC. To get the value for any given *region*,
@@ -119,12 +111,11 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// Information about the universally quantified regions in scope
     /// on this function.
-    pub (in crate::borrow_check) universal_regions: Rc<UniversalRegions<'tcx>>,
+    pub(in crate::borrow_check) universal_regions: Rc<UniversalRegions<'tcx>>,
 
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
-    pub(in crate::borrow_check) universal_region_relations:
-        Rc<UniversalRegionRelations<'tcx>>,
+    pub(in crate::borrow_check) universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
 }
 
 /// Each time that `apply_member_constraint` is successful, it appends
@@ -460,7 +451,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// the member constraints that were applied to the value of a given
     /// region `r`. See `AppliedMemberConstraint`.
     pub(in crate::borrow_check) fn applied_member_constraints(
-        &self, r: impl ToRegionVid
+        &self,
+        r: impl ToRegionVid,
     ) -> &[AppliedMemberConstraint] {
         let scc = self.constraint_sccs.scc(r.to_region_vid());
         binary_search_util::binary_search_slice(
@@ -490,8 +482,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // to store those. Otherwise, we'll pass in `None` to the
         // functions below, which will trigger them to report errors
         // eagerly.
-        let mut outlives_requirements =
-            infcx.tcx.is_closure(mir_def_id).then(|| vec![]);
+        let mut outlives_requirements = infcx.tcx.is_closure(mir_def_id).then(|| vec![]);
 
         self.check_type_tests(
             infcx,
@@ -624,11 +615,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Now take member constraints into account.
         let member_constraints = self.member_constraints.clone();
         for m_c_i in member_constraints.indices(scc_a) {
-            self.apply_member_constraint(
-                scc_a,
-                m_c_i,
-                member_constraints.choice_regions(m_c_i),
-            );
+            self.apply_member_constraint(scc_a, m_c_i, member_constraints.choice_regions(m_c_i));
         }
 
         debug!(
@@ -752,8 +739,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let min_choice_scc = self.constraint_sccs.scc(min_choice);
         debug!(
             "apply_member_constraint: min_choice={:?} best_choice_scc={:?}",
-            min_choice,
-            min_choice_scc,
+            min_choice, min_choice_scc,
         );
         if self.scc_values.add_region(scc, min_choice_scc) {
             self.member_constraints_applied.push(AppliedMemberConstraint {
@@ -784,9 +770,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Compute and return the reverse SCC-based constraint graph (lazilly).
-    fn rev_constraint_graph(
-        &mut self,
-    ) -> Rc<VecGraph<ConstraintSccIndex>> {
+    fn rev_constraint_graph(&mut self) -> Rc<VecGraph<ConstraintSccIndex>> {
         if let Some(g) = &self.rev_constraint_graph {
             return g.clone();
         }
@@ -1138,7 +1122,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///   include the CFG anyhow.
     /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
     ///   a result `'y`.
-    pub (in crate::borrow_check) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
+    pub(in crate::borrow_check) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
         debug!("universal_upper_bound(r={:?}={})", r, self.region_value_str(r));
 
         // Find the smallest universal region that contains all other
@@ -1429,8 +1413,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         subset_errors.dedup();
 
         for (longer_fr, shorter_fr) in subset_errors.into_iter() {
-            debug!("check_polonius_subset_errors: subset_error longer_fr={:?},\
-                shorter_fr={:?}", longer_fr, shorter_fr);
+            debug!(
+                "check_polonius_subset_errors: subset_error longer_fr={:?},\
+                shorter_fr={:?}",
+                longer_fr, shorter_fr
+            );
 
             let propagated = self.try_propagate_universal_region_error(
                 *longer_fr,
@@ -1633,20 +1620,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Shrink `longer_fr` until we find a non-local region (if we do).
             // We'll call it `fr-` -- it's ever so slightly smaller than
             // `longer_fr`.
-            if let Some(fr_minus) =
-                self.universal_region_relations.non_local_lower_bound(longer_fr) {
+            if let Some(fr_minus) = self.universal_region_relations.non_local_lower_bound(longer_fr)
+            {
                 debug!("try_propagate_universal_region_error: fr_minus={:?}", fr_minus);
 
-                let blame_span_category =
-                    self.find_outlives_blame_span(body, longer_fr,
-                                                  NLLRegionVariableOrigin::FreeRegion,shorter_fr);
+                let blame_span_category = self.find_outlives_blame_span(
+                    body,
+                    longer_fr,
+                    NLLRegionVariableOrigin::FreeRegion,
+                    shorter_fr,
+                );
 
                 // Grow `shorter_fr` until we find some non-local regions. (We
                 // always will.)  We'll call them `shorter_fr+` -- they're ever
                 // so slightly larger than `shorter_fr`.
-                let shorter_fr_plus = self
-                    .universal_region_relations
-                    .non_local_upper_bounds(&shorter_fr);
+                let shorter_fr_plus =
+                    self.universal_region_relations.non_local_upper_bounds(&shorter_fr);
                 debug!(
                     "try_propagate_universal_region_error: shorter_fr_plus={:?}",
                     shorter_fr_plus
@@ -1712,7 +1701,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
         let (_, span) = self.find_outlives_blame_span(
-            body, longer_fr, NLLRegionVariableOrigin::Placeholder(placeholder), error_region
+            body,
+            longer_fr,
+            NLLRegionVariableOrigin::Placeholder(placeholder),
+            error_region,
         );
 
         // Obviously, this error message is far from satisfactory.
@@ -1744,9 +1736,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             debug!("check_member_constraint: choice_regions={:?}", choice_regions);
 
             // Did the member region wind up equal to any of the option regions?
-            if let Some(o) = choice_regions.iter().find(|&&o_r| {
-                self.eval_equal(o_r, m_c.member_region_vid)
-            }) {
+            if let Some(o) =
+                choice_regions.iter().find(|&&o_r| self.eval_equal(o_r, m_c.member_region_vid))
+            {
                 debug!("check_member_constraint: evaluated as equal to {:?}", o);
                 continue;
             }

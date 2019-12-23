@@ -22,22 +22,32 @@ use crate::io::{self, Initializer, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{self, Shutdown};
 use crate::os::unix::ffi::OsStrExt;
-use crate::os::unix::io::{RawFd, AsRawFd, FromRawFd, IntoRawFd};
+use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::Path;
-use crate::time::Duration;
-use crate::sys::{self, cvt};
 use crate::sys::net::Socket;
+use crate::sys::{self, cvt};
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::time::Duration;
 
-#[cfg(any(target_os = "linux", target_os = "android",
-          target_os = "dragonfly", target_os = "freebsd",
-          target_os = "openbsd", target_os = "netbsd",
-          target_os = "haiku"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd",
+    target_os = "haiku"
+))]
 use libc::MSG_NOSIGNAL;
-#[cfg(not(any(target_os = "linux", target_os = "android",
-              target_os = "dragonfly", target_os = "freebsd",
-              target_os = "openbsd", target_os = "netbsd",
-              target_os = "haiku")))]
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd",
+    target_os = "haiku"
+)))]
 const MSG_NOSIGNAL: libc::c_int = 0x0;
 
 fn sun_path_offset(addr: &libc::sockaddr_un) -> usize {
@@ -54,13 +64,17 @@ unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::sockl
     let bytes = path.as_os_str().as_bytes();
 
     if bytes.contains(&0) {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                  "paths may not contain interior null bytes"));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "paths may not contain interior null bytes",
+        ));
     }
 
     if bytes.len() >= addr.sun_path.len() {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                  "path must be shorter than SUN_LEN"));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "path must be shorter than SUN_LEN",
+        ));
     }
     for (dst, src) in addr.sun_path.iter_mut().zip(bytes.iter()) {
         *dst = *src as libc::c_char;
@@ -107,7 +121,8 @@ pub struct SocketAddr {
 
 impl SocketAddr {
     fn new<F>(f: F) -> io::Result<SocketAddr>
-        where F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int
+    where
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
     {
         unsafe {
             let mut addr: libc::sockaddr_un = mem::zeroed();
@@ -121,16 +136,15 @@ impl SocketAddr {
         if len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address
-            len = sun_path_offset(&addr) as libc::socklen_t;  // i.e., zero-length address
+            len = sun_path_offset(&addr) as libc::socklen_t; // i.e., zero-length address
         } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                      "file descriptor did not correspond to a Unix socket"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "file descriptor did not correspond to a Unix socket",
+            ));
         }
 
-        Ok(SocketAddr {
-            addr,
-            len,
-        })
+        Ok(SocketAddr { addr, len })
     }
 
     /// Returns `true` if the address is unnamed.
@@ -164,11 +178,7 @@ impl SocketAddr {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn is_unnamed(&self) -> bool {
-        if let AddressKind::Unnamed = self.address() {
-            true
-        } else {
-            false
-        }
+        if let AddressKind::Unnamed = self.address() { true } else { false }
     }
 
     /// Returns the contents of this address if it is a `pathname` address.
@@ -203,11 +213,7 @@ impl SocketAddr {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn as_pathname(&self) -> Option<&Path> {
-        if let AddressKind::Pathname(path) = self.address() {
-            Some(path)
-        } else {
-            None
-        }
+        if let AddressKind::Pathname(path) = self.address() { Some(path) } else { None }
     }
 
     fn address(&self) -> AddressKind<'_> {
@@ -682,17 +688,23 @@ impl IntoRawFd for UnixStream {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for net::TcpStream {
-    fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+    fn as_raw_fd(&self) -> RawFd {
+        *self.as_inner().socket().as_inner()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for net::TcpListener {
-    fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+    fn as_raw_fd(&self) -> RawFd {
+        *self.as_inner().socket().as_inner()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for net::UdpSocket {
-    fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+    fn as_raw_fd(&self) -> RawFd {
+        *self.as_inner().socket().as_inner()
+    }
 }
 
 #[stable(feature = "from_raw_os", since = "1.1.0")]
@@ -1287,21 +1299,21 @@ impl UnixDatagram {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let mut count = 0;
-        let addr = SocketAddr::new(|addr, len| {
-            unsafe {
-                count = libc::recvfrom(*self.0.as_inner(),
-                                       buf.as_mut_ptr() as *mut _,
-                                       buf.len(),
-                                       0,
-                                       addr,
-                                       len);
-                if count > 0 {
-                    1
-                } else if count == 0 {
-                    0
-                } else {
-                    -1
-                }
+        let addr = SocketAddr::new(|addr, len| unsafe {
+            count = libc::recvfrom(
+                *self.0.as_inner(),
+                buf.as_mut_ptr() as *mut _,
+                buf.len(),
+                0,
+                addr,
+                len,
+            );
+            if count > 0 {
+                1
+            } else if count == 0 {
+                0
+            } else {
+                -1
             }
         })?;
 
@@ -1350,12 +1362,14 @@ impl UnixDatagram {
             unsafe {
                 let (addr, len) = sockaddr_un(path)?;
 
-                let count = cvt(libc::sendto(*d.0.as_inner(),
-                                             buf.as_ptr() as *const _,
-                                             buf.len(),
-                                             MSG_NOSIGNAL,
-                                             &addr as *const _ as *const _,
-                                             len))?;
+                let count = cvt(libc::sendto(
+                    *d.0.as_inner(),
+                    buf.as_ptr() as *const _,
+                    buf.len(),
+                    MSG_NOSIGNAL,
+                    &addr as *const _ as *const _,
+                    len,
+                ))?;
                 Ok(count as usize)
             }
         }
@@ -1606,11 +1620,11 @@ impl IntoRawFd for UnixDatagram {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod test {
-    use crate::thread;
-    use crate::io::{self, ErrorKind};
     use crate::io::prelude::*;
-    use crate::time::Duration;
+    use crate::io::{self, ErrorKind};
     use crate::sys_common::io::test::tmpdir;
+    use crate::thread;
+    use crate::time::Duration;
 
     use super::*;
 
@@ -1620,7 +1634,7 @@ mod test {
                 Ok(e) => e,
                 Err(e) => panic!("{}", e),
             }
-        }
+        };
     }
 
     #[test]
@@ -1640,8 +1654,7 @@ mod test {
         });
 
         let mut stream = or_panic!(UnixStream::connect(&socket_path));
-        assert_eq!(Some(&*socket_path),
-                   stream.peer_addr().unwrap().as_pathname());
+        assert_eq!(Some(&*socket_path), stream.peer_addr().unwrap().as_pathname());
         or_panic!(stream.write_all(msg1));
         let mut buf = vec![];
         or_panic!(stream.read_to_end(&mut buf));
@@ -1655,16 +1668,18 @@ mod test {
     fn vectored() {
         let (mut s1, mut s2) = or_panic!(UnixStream::pair());
 
-        let len = or_panic!(s1.write_vectored(
-            &[IoSlice::new(b"hello"), IoSlice::new(b" "), IoSlice::new(b"world!")],
-        ));
+        let len = or_panic!(s1.write_vectored(&[
+            IoSlice::new(b"hello"),
+            IoSlice::new(b" "),
+            IoSlice::new(b"world!")
+        ],));
         assert_eq!(len, 12);
 
         let mut buf1 = [0; 6];
         let mut buf2 = [0; 7];
-        let len = or_panic!(s2.read_vectored(
-            &mut [IoSliceMut::new(&mut buf1), IoSliceMut::new(&mut buf2)],
-        ));
+        let len = or_panic!(
+            s2.read_vectored(&mut [IoSliceMut::new(&mut buf1), IoSliceMut::new(&mut buf2)],)
+        );
         assert_eq!(len, 12);
         assert_eq!(&buf1, b"hello ");
         assert_eq!(&buf2, b"world!\0");
@@ -1744,9 +1759,10 @@ mod test {
     #[test]
     fn long_path() {
         let dir = tmpdir();
-        let socket_path = dir.path()
-                             .join("asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfa\
-                                    sasdfasdfasdasdfasdfasdfadfasdfasdfasdfasdfasdf");
+        let socket_path = dir.path().join(
+            "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfa\
+                                    sasdfasdfasdasdfasdfasdfadfasdfasdfasdfasdfasdf",
+        );
         match UnixStream::connect(&socket_path) {
             Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
             Err(e) => panic!("unexpected error {}", e),
@@ -1805,8 +1821,11 @@ mod test {
 
         let mut buf = [0; 10];
         let kind = stream.read_exact(&mut buf).err().expect("expected error").kind();
-        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
-                "unexpected_error: {:?}", kind);
+        assert!(
+            kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+            "unexpected_error: {:?}",
+            kind
+        );
     }
 
     #[test]
@@ -1827,8 +1846,11 @@ mod test {
         assert_eq!(b"hello world", &buf[..]);
 
         let kind = stream.read_exact(&mut buf).err().expect("expected error").kind();
-        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
-                "unexpected_error: {:?}", kind);
+        assert!(
+            kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+            "unexpected_error: {:?}",
+            kind
+        );
     }
 
     // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors

@@ -1,14 +1,14 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
-use crate::ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
+use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
+use crate::middle::region;
+use crate::mir;
+use crate::ty;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use std::cell::RefCell;
 use std::mem;
-use crate::middle::region;
-use crate::ty;
-use crate::mir;
 
 impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for &'tcx ty::List<T>
 where
@@ -59,14 +59,11 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArg<'t
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>>
-for ty::RegionKind {
+impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            ty::ReErased |
-            ty::ReStatic |
-            ty::ReEmpty => {
+            ty::ReErased | ty::ReStatic | ty::ReEmpty => {
                 // No variant fields to hash for these ...
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
@@ -95,8 +92,7 @@ for ty::RegionKind {
             ty::ReClosureBound(vid) => {
                 vid.hash_stable(hcx, hasher);
             }
-            ty::ReVar(..) |
-            ty::RePlaceholder(..) => {
+            ty::ReVar(..) | ty::RePlaceholder(..) => {
                 bug!("StableHasher: unexpected region {:?}", *self)
             }
         }
@@ -146,8 +142,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
 }
 
 // `Relocations` with default type parameters is a sorted map.
-impl<'a, Tag> HashStable<StableHashingContext<'a>>
-for mir::interpret::Relocations<Tag>
+impl<'a, Tag> HashStable<StableHashingContext<'a>> for mir::interpret::Relocations<Tag>
 where
     Tag: HashStable<StableHashingContext<'a>>,
 {
@@ -201,13 +196,10 @@ where
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>>
-for crate::middle::privacy::AccessLevels {
+impl<'a> HashStable<StableHashingContext<'a>> for crate::middle::privacy::AccessLevels {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            let crate::middle::privacy::AccessLevels {
-                ref map
-            } = *self;
+            let crate::middle::privacy::AccessLevels { ref map } = *self;
 
             map.hash_stable(hcx, hasher);
         });

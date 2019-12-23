@@ -2,7 +2,7 @@ use fortanix_sgx_abi::Tcs;
 
 use super::abi::thread;
 
-use super::waitqueue::{WaitVariable, WaitQueue, SpinMutex, NotifiedTcs, try_lock_or_false};
+use super::waitqueue::{try_lock_or_false, NotifiedTcs, SpinMutex, WaitQueue, WaitVariable};
 
 pub struct Mutex {
     inner: SpinMutex<WaitVariable<bool>>,
@@ -22,8 +22,8 @@ impl Mutex {
         let mut guard = self.inner.lock();
         if *guard.lock_var() {
             // Another thread has the lock, wait
-            WaitQueue::wait(guard, ||{})
-            // Another thread has passed the lock to us
+            WaitQueue::wait(guard, || {})
+        // Another thread has passed the lock to us
         } else {
             // We are just now obtaining the lock
             *guard.lock_var_mut() = true;
@@ -60,7 +60,7 @@ impl Mutex {
 
 struct ReentrantLock {
     owner: Option<Tcs>,
-    count: usize
+    count: usize,
 }
 
 pub struct ReentrantMutex {
@@ -70,7 +70,7 @@ pub struct ReentrantMutex {
 impl ReentrantMutex {
     pub const fn uninitialized() -> ReentrantMutex {
         ReentrantMutex {
-            inner: SpinMutex::new(WaitVariable::new(ReentrantLock { owner: None, count: 0 }))
+            inner: SpinMutex::new(WaitVariable::new(ReentrantLock { owner: None, count: 0 })),
         }
     }
 
@@ -83,14 +83,14 @@ impl ReentrantMutex {
         match guard.lock_var().owner {
             Some(tcs) if tcs != thread::current() => {
                 // Another thread has the lock, wait
-                WaitQueue::wait(guard, ||{});
+                WaitQueue::wait(guard, || {});
                 // Another thread has passed the lock to us
-            },
+            }
             _ => {
                 // We are just now obtaining the lock
                 guard.lock_var_mut().owner = Some(thread::current());
                 guard.lock_var_mut().count += 1;
-            },
+            }
         }
     }
 
@@ -105,7 +105,7 @@ impl ReentrantMutex {
                     // No other waiters, unlock
                     guard.lock_var_mut().count = 0;
                     guard.lock_var_mut().owner = None;
-                },
+                }
                 Ok(mut guard) => {
                     // There was a thread waiting, just pass the lock
                     if let NotifiedTcs::Single(tcs) = guard.notified_tcs() {
@@ -125,13 +125,13 @@ impl ReentrantMutex {
             Some(tcs) if tcs != thread::current() => {
                 // Another thread has the lock
                 false
-            },
+            }
             _ => {
                 // We are just now obtaining the lock
                 guard.lock_var_mut().owner = Some(thread::current());
                 guard.lock_var_mut().count += 1;
                 true
-            },
+            }
         }
     }
 

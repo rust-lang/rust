@@ -1,6 +1,6 @@
 extern crate test;
-use test::Bencher;
 use crate::hex::{FromHex, ToHex};
+use test::Bencher;
 
 #[test]
 pub fn test_to_hex() {
@@ -9,10 +9,8 @@ pub fn test_to_hex() {
 
 #[test]
 pub fn test_from_hex_okay() {
-    assert_eq!("666f6f626172".from_hex().unwrap(),
-               b"foobar");
-    assert_eq!("666F6F626172".from_hex().unwrap(),
-               b"foobar");
+    assert_eq!("666f6f626172".from_hex().unwrap(), b"foobar");
+    assert_eq!("666F6F626172".from_hex().unwrap(), b"foobar");
 }
 
 #[test]
@@ -28,8 +26,7 @@ pub fn test_from_hex_invalid_char() {
 
 #[test]
 pub fn test_from_hex_ignores_whitespace() {
-    assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap(),
-               b"foobar");
+    assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap(), b"foobar");
 }
 
 #[test]
@@ -43,12 +40,8 @@ pub fn test_to_hex_all_bytes() {
 pub fn test_from_hex_all_bytes() {
     for i in 0..256 {
         let ii: &[u8] = &[i as u8];
-        assert_eq!(format!("{:02x}", i as usize).from_hex()
-                                               .unwrap(),
-                   ii);
-        assert_eq!(format!("{:02X}", i as usize).from_hex()
-                                               .unwrap(),
-                   ii);
+        assert_eq!(format!("{:02x}", i as usize).from_hex().unwrap(), ii);
+        assert_eq!(format!("{:02X}", i as usize).from_hex().unwrap(), ii);
     }
 }
 

@@ -1,16 +1,20 @@
-use super::{Parser, PathStyle, PrevTokenKind, TokenType};
 use super::item::ParamCfg;
+use super::{Parser, PathStyle, PrevTokenKind, TokenType};
 
-use crate::{maybe_whole, maybe_recover_from_interpolated_ty_qpath};
+use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
-use rustc_errors::{PResult, Applicability, pluralize};
 use rustc_error_codes::*;
+use rustc_errors::{pluralize, Applicability, PResult};
+use syntax::ast::{
+    self, BareFnTy, FunctionRetTy, GenericParam, Ident, Lifetime, MutTy, Ty, TyKind,
+};
+use syntax::ast::{
+    GenericBound, GenericBounds, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax,
+};
+use syntax::ast::{Mac, Mutability};
 use syntax::ptr::P;
-use syntax::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
-use syntax::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
-use syntax::ast::{Mutability, Mac};
-use syntax::token::{self, Token};
 use syntax::struct_span_err;
+use syntax::token::{self, Token};
 use syntax_pos::source_map::Span;
 use syntax_pos::symbol::kw;
 
@@ -20,8 +24,7 @@ use syntax_pos::symbol::kw;
 /// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
 /// that `IDENT` is not the ident of a fn trait.
 fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
-    t == &token::ModSep || t == &token::Lt ||
-    t == &token::BinOp(token::Shl)
+    t == &token::ModSep || t == &token::Lt || t == &token::BinOp(token::Shl)
 }
 
 impl<'a> Parser<'a> {
@@ -168,7 +171,8 @@ impl<'a> Parser<'a> {
                     self.parse_remaining_bounds(Vec::new(), path, lo, true)
                 }
                 TyKind::TraitObject(mut bounds, TraitObjectSyntax::None)
-                if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
+                    if maybe_bounds && bounds.len() == 1 && !trailing_plus =>
+                {
                     let path = match bounds.remove(0) {
                         GenericBound::Trait(pt, ..) => pt.trait_ref.path,
                         GenericBound::Outlives(..) => self.bug("unexpected lifetime bound"),
@@ -176,7 +180,7 @@ impl<'a> Parser<'a> {
                     self.parse_remaining_bounds(Vec::new(), path, lo, true)
                 }
                 // `(TYPE)`
-                _ => Ok(TyKind::Paren(P(ty)))
+                _ => Ok(TyKind::Paren(P(ty))),
             }
         } else {
             Ok(TyKind::Tup(ts))
@@ -245,9 +249,9 @@ impl<'a> Parser<'a> {
 
     /// Is the current token one of the keywords that signals a bare function type?
     fn token_is_bare_fn_keyword(&mut self) -> bool {
-        self.check_keyword(kw::Fn) ||
-            self.check_keyword(kw::Unsafe) ||
-            self.check_keyword(kw::Extern)
+        self.check_keyword(kw::Fn)
+            || self.check_keyword(kw::Unsafe)
+            || self.check_keyword(kw::Extern)
     }
 
     /// Parses a function pointer type (`TyKind::BareFn`).
@@ -262,17 +266,9 @@ impl<'a> Parser<'a> {
         let unsafety = self.parse_unsafety();
         let ext = self.parse_extern()?;
         self.expect_keyword(kw::Fn)?;
-        let cfg = ParamCfg {
-            is_self_allowed: false,
-            is_name_required: |_| false,
-        };
+        let cfg = ParamCfg { is_self_allowed: false, is_name_required: |_| false };
         let decl = self.parse_fn_decl(cfg, false)?;
-        Ok(TyKind::BareFn(P(BareFnTy {
-            ext,
-            unsafety,
-            generic_params,
-            decl,
-        })))
+        Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params, decl })))
     }
 
     /// Parses an `impl B0 + ... + Bn` type.
@@ -361,7 +357,7 @@ impl<'a> Parser<'a> {
                 Err(neg_sp) => negative_bounds.push(neg_sp),
             }
             if !allow_plus || !self.eat_plus() {
-                break
+                break;
             }
         }
 
@@ -391,10 +387,7 @@ impl<'a> Parser<'a> {
     ) {
         let negative_bounds_len = negative_bounds.len();
         let last_span = *negative_bounds.last().expect("no negative bounds, but still error?");
-        let mut err = self.struct_span_err(
-            negative_bounds,
-            "negative bounds are not supported",
-        );
+        let mut err = self.struct_span_err(negative_bounds, "negative bounds are not supported");
         err.span_label(last_span, "negative bounds are not supported");
         if let Some(bound_list) = colon_span {
             let bound_list = bound_list.to(self.prev_span);
@@ -433,11 +426,7 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_generic_ty_bound(lo, has_parens, question)?
         };
-        Ok(if is_negative {
-            Err(anchor_lo.to(self.prev_span))
-        } else {
-            Ok(bound)
-        })
+        Ok(if is_negative { Err(anchor_lo.to(self.prev_span)) } else { Ok(bound) })
     }
 
     /// Parses a lifetime ("outlives") bound, e.g. `'a`, according to:
@@ -474,14 +463,14 @@ impl<'a> Parser<'a> {
         self.expect(&token::CloseDelim(token::Paren))?;
         let mut err = self.struct_span_err(
             lo.to(self.prev_span),
-            "parenthesized lifetime bounds are not supported"
+            "parenthesized lifetime bounds are not supported",
         );
         if let Ok(snippet) = self.span_to_snippet(inner_span) {
             err.span_suggestion_short(
                 lo.to(self.prev_span),
                 "remove the parentheses",
                 snippet.to_owned(),
-                Applicability::MachineApplicable
+                Applicability::MachineApplicable,
             );
         }
         err.emit();

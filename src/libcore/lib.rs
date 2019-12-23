@@ -49,22 +49,21 @@
 //
 // This cfg won't affect doc tests.
 #![cfg(not(test))]
-
 #![stable(feature = "core", since = "1.6.0")]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
-       html_playground_url = "https://play.rust-lang.org/",
-       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-       test(no_crate_inject, attr(deny(warnings))),
-       test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
+#![doc(
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_playground_url = "https://play.rust-lang.org/",
+    issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
+    test(no_crate_inject, attr(deny(warnings))),
+    test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
+)]
 #![no_core]
-
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
-
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
@@ -148,22 +147,36 @@ mod int_macros;
 #[macro_use]
 mod uint_macros;
 
-#[path = "num/isize.rs"] pub mod isize;
-#[path = "num/i8.rs"]    pub mod i8;
-#[path = "num/i16.rs"]   pub mod i16;
-#[path = "num/i32.rs"]   pub mod i32;
-#[path = "num/i64.rs"]   pub mod i64;
-#[path = "num/i128.rs"]  pub mod i128;
+#[path = "num/i128.rs"]
+pub mod i128;
+#[path = "num/i16.rs"]
+pub mod i16;
+#[path = "num/i32.rs"]
+pub mod i32;
+#[path = "num/i64.rs"]
+pub mod i64;
+#[path = "num/i8.rs"]
+pub mod i8;
+#[path = "num/isize.rs"]
+pub mod isize;
 
-#[path = "num/usize.rs"] pub mod usize;
-#[path = "num/u8.rs"]    pub mod u8;
-#[path = "num/u16.rs"]   pub mod u16;
-#[path = "num/u32.rs"]   pub mod u32;
-#[path = "num/u64.rs"]   pub mod u64;
-#[path = "num/u128.rs"]  pub mod u128;
+#[path = "num/u128.rs"]
+pub mod u128;
+#[path = "num/u16.rs"]
+pub mod u16;
+#[path = "num/u32.rs"]
+pub mod u32;
+#[path = "num/u64.rs"]
+pub mod u64;
+#[path = "num/u8.rs"]
+pub mod u8;
+#[path = "num/usize.rs"]
+pub mod usize;
 
-#[path = "num/f32.rs"]   pub mod f32;
-#[path = "num/f64.rs"]   pub mod f64;
+#[path = "num/f32.rs"]
+pub mod f32;
+#[path = "num/f64.rs"]
+pub mod f64;
 
 #[macro_use]
 pub mod num;
@@ -174,24 +187,24 @@ pub mod prelude;
 
 /* Core modules for ownership management */
 
+pub mod hint;
 pub mod intrinsics;
 pub mod mem;
 pub mod ptr;
-pub mod hint;
 
 /* Core language traits */
 
-#[cfg(not(test))] // See #65860
-pub mod marker;
-pub mod ops;
-#[cfg(not(test))] // See #65860
-pub mod cmp;
+pub mod borrow;
 #[cfg(not(test))] // See #65860
 pub mod clone;
 #[cfg(not(test))] // See #65860
-pub mod default;
+pub mod cmp;
 pub mod convert;
-pub mod borrow;
+#[cfg(not(test))] // See #65860
+pub mod default;
+#[cfg(not(test))] // See #65860
+pub mod marker;
+pub mod ops;
 
 /* Core types and methods on primitives */
 
@@ -199,27 +212,27 @@ pub mod any;
 #[cfg(not(test))] // See #65860
 pub mod array;
 pub mod ascii;
-pub mod sync;
 pub mod cell;
 pub mod char;
+pub mod ffi;
+#[cfg(not(test))] // See #65860
+pub mod iter;
+pub mod option;
 pub mod panic;
 pub mod panicking;
 #[cfg(not(test))] // See #65860
 pub mod pin;
-#[cfg(not(test))] // See #65860
-pub mod iter;
-pub mod option;
 pub mod raw;
 pub mod result;
-pub mod ffi;
+pub mod sync;
 
+#[cfg(not(test))] // See #65860
+pub mod fmt;
+#[cfg(not(test))] // See #65860
+pub mod hash;
 pub mod slice;
 #[cfg(not(test))] // See #65860
 pub mod str;
-#[cfg(not(test))] // See #65860
-pub mod hash;
-#[cfg(not(test))] // See #65860
-pub mod fmt;
 pub mod time;
 
 pub mod unicode;

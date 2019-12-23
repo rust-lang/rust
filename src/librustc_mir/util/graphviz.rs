@@ -8,11 +8,7 @@ use std::io::{self, Write};
 use super::pretty::dump_mir_def_ids;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<W>(
-    tcx: TyCtxt<'_>,
-    single: Option<DefId>,
-    w: &mut W,
-) -> io::Result<()>
+pub fn write_mir_graphviz<W>(tcx: TyCtxt<'_>, single: Option<DefId>, w: &mut W) -> io::Result<()>
 where
     W: Write,
 {
@@ -38,11 +34,7 @@ where
 // Must match `[0-9A-Za-z_]*`. This does not appear in the rendered graph, so
 // it does not have to be user friendly.
 pub fn graphviz_safe_def_name(def_id: DefId) -> String {
-    format!(
-        "{}_{}",
-        def_id.krate.index(),
-        def_id.index.index(),
-    )
+    format!("{}_{}", def_id.krate.index(), def_id.index.index(),)
 }
 
 /// Write a graphviz DOT graph of the MIR.
@@ -88,24 +80,30 @@ where
 ///
 /// `init` and `fini` are callbacks for emitting additional rows of
 /// data (using HTML enclosed with `<tr>` in the emitted text).
-pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
-                                              body: &Body<'_>,
-                                              w: &mut W,
-                                              num_cols: u32,
-                                              init: INIT,
-                                              fini: FINI) -> io::Result<()>
-    where INIT: Fn(&mut W) -> io::Result<()>,
-          FINI: Fn(&mut W) -> io::Result<()>
+pub fn write_node_label<W: Write, INIT, FINI>(
+    block: BasicBlock,
+    body: &Body<'_>,
+    w: &mut W,
+    num_cols: u32,
+    init: INIT,
+    fini: FINI,
+) -> io::Result<()>
+where
+    INIT: Fn(&mut W) -> io::Result<()>,
+    FINI: Fn(&mut W) -> io::Result<()>,
 {
     let data = &body[block];
 
     write!(w, r#"<table border="0" cellborder="1" cellspacing="0">"#)?;
 
     // Basic block number at the top.
-    write!(w, r#"<tr><td {attrs} colspan="{colspan}">{blk}</td></tr>"#,
-           attrs=r#"bgcolor="gray" align="center""#,
-           colspan=num_cols,
-           blk=block.index())?;
+    write!(
+        w,
+        r#"<tr><td {attrs} colspan="{colspan}">{blk}</td></tr>"#,
+        attrs = r#"bgcolor="gray" align="center""#,
+        colspan = num_cols,
+        blk = block.index()
+    )?;
 
     init(w)?;
 
@@ -179,11 +177,7 @@ fn write_graph_label<'tcx, W: Write>(
         if i > 0 {
             write!(w, ", ")?;
         }
-        write!(w,
-               "{:?}: {}",
-               Place::from(arg),
-               escape(&body.local_decls[arg].ty)
-        )?;
+        write!(w, "{:?}: {}", Place::from(arg), escape(&body.local_decls[arg].ty))?;
     }
 
     write!(w, ") -&gt; {}", escape(&body.return_ty()))?;
@@ -197,13 +191,16 @@ fn write_graph_label<'tcx, W: Write>(
             write!(w, "mut ")?;
         }
 
-        write!(w, r#"{:?}: {};<br align="left"/>"#,
-               Place::from(local), escape(&decl.ty))?;
+        write!(w, r#"{:?}: {};<br align="left"/>"#, Place::from(local), escape(&decl.ty))?;
     }
 
     for var_debug_info in &body.var_debug_info {
-        write!(w, r#"debug {} =&gt; {};<br align="left"/>"#,
-               var_debug_info.name, escape(&var_debug_info.place))?;
+        write!(
+            w,
+            r#"debug {} =&gt; {};<br align="left"/>"#,
+            var_debug_info.name,
+            escape(&var_debug_info.place)
+        )?;
     }
 
     writeln!(w, ">;")

@@ -1,5 +1,5 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 use super::apple_ios_base::{opts, Arch};
+use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let base = opts(Arch::X86_64)?;
@@ -14,10 +14,6 @@ pub fn target() -> TargetResult {
         target_env: String::new(),
         target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
-        options: TargetOptions {
-            max_atomic_width: Some(64),
-            stack_probes: true,
-            .. base
-        }
+        options: TargetOptions { max_atomic_width: Some(64), stack_probes: true, ..base },
     })
 }

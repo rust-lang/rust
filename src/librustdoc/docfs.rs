@@ -14,8 +14,8 @@ use errors;
 use std::fs;
 use std::io;
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
 
 macro_rules! try_err {
     ($e:expr, $file:expr) => {{
@@ -38,10 +38,7 @@ pub struct ErrorStorage {
 impl ErrorStorage {
     pub fn new() -> ErrorStorage {
         let (sender, receiver) = channel();
-        ErrorStorage {
-            sender: Some(sender),
-            receiver,
-        }
+        ErrorStorage { sender: Some(sender), receiver }
     }
 
     /// Prints all stored errors. Returns the number of printed errors.
@@ -67,10 +64,7 @@ pub struct DocFS {
 
 impl DocFS {
     pub fn new(errors: &Arc<ErrorStorage>) -> DocFS {
-        DocFS {
-            sync_only: false,
-            errors: Arc::clone(errors),
-        }
+        DocFS { sync_only: false, errors: Arc::clone(errors) }
     }
 
     pub fn set_sync_only(&mut self, sync_only: bool) {
@@ -96,16 +90,16 @@ impl DocFS {
             let contents = contents.as_ref().to_vec();
             let path = path.as_ref().to_path_buf();
             let sender = self.errors.sender.clone().unwrap();
-            rayon::spawn(move || {
-                match fs::write(&path, &contents) {
-                    Ok(_) => {
-                        sender.send(None)
-                            .expect(&format!("failed to send error on \"{}\"", path.display()));
-                    }
-                    Err(e) => {
-                        sender.send(Some(format!("\"{}\": {}", path.display(), e)))
-                            .expect(&format!("failed to send non-error on \"{}\"", path.display()));
-                    }
+            rayon::spawn(move || match fs::write(&path, &contents) {
+                Ok(_) => {
+                    sender
+                        .send(None)
+                        .expect(&format!("failed to send error on \"{}\"", path.display()));
+                }
+                Err(e) => {
+                    sender
+                        .send(Some(format!("\"{}\": {}", path.display(), e)))
+                        .expect(&format!("failed to send non-error on \"{}\"", path.display()));
                 }
             });
             Ok(())

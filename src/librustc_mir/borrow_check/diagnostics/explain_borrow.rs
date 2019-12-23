@@ -3,25 +3,23 @@
 use std::collections::VecDeque;
 
 use rustc::mir::{
-    CastKind, ConstraintCategory, FakeReadCause, Local, Location, Body, Operand, Place, Rvalue,
+    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
     Statement, StatementKind, TerminatorKind,
 };
+use rustc::ty::adjustment::PointerCast;
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::adjustment::{PointerCast};
-use rustc_index::vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
-use syntax_pos::Span;
+use rustc_index::vec::IndexVec;
 use syntax_pos::symbol::Symbol;
+use syntax_pos::Span;
 
 use crate::borrow_check::{
-    borrow_set::BorrowData,
-    region_infer::Cause,
-    nll::ConstraintDescription,
-    MirBorrowckCtxt, WriteKind,
+    borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
+    WriteKind,
 };
 
-use super::{UseSpans, find_use, RegionName};
+use super::{find_use, RegionName, UseSpans};
 
 #[derive(Debug)]
 pub(in crate::borrow_check) enum BorrowExplanation {
@@ -106,10 +104,9 @@ impl BorrowExplanation {
                 let (dtor_desc, type_desc) = match local_decl.ty.kind {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
-                    ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => (
-                        "`Drop` code",
-                        format!("type `{}`", tcx.def_path_str(adt.did)),
-                    ),
+                    ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => {
+                        ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did)))
+                    }
 
                     // Otherwise, just report the whole type (and use
                     // the intentionally fuzzy phrase "destructor")
@@ -245,16 +242,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;
-        debug!(
-            "explain_why_borrow_contains_point: borrow_region_vid={:?}",
-            borrow_region_vid
-        );
+        debug!("explain_why_borrow_contains_point: borrow_region_vid={:?}", borrow_region_vid);
 
         let region_sub = regioncx.find_sub_region_live_at(borrow_region_vid, location);
-        debug!(
-            "explain_why_borrow_contains_point: region_sub={:?}",
-            region_sub
-        );
+        debug!("explain_why_borrow_contains_point: region_sub={:?}", region_sub);
 
         match find_use::find(body, regioncx, tcx, region_sub, location) {
             Some(Cause::LiveVar(local, location)) => {
@@ -281,8 +272,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if self.local_names[local].is_some() {
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
                         if let Some(borrowed_local) = place.as_local() {
-                            if self.local_names[borrowed_local].is_some()
-                                && local != borrowed_local
+                            if self.local_names[borrowed_local].is_some() && local != borrowed_local
                             {
                                 should_note_order = true;
                             }
@@ -310,8 +300,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             region,
                         );
                     if let Some(region_name) = region_name {
-                        let opt_place_desc =
-                            self.describe_place(borrow.borrowed_place.as_ref());
+                        let opt_place_desc = self.describe_place(borrow.borrowed_place.as_ref());
                         BorrowExplanation::MustBeValidFor {
                             category,
                             from_closure,
@@ -320,13 +309,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             opt_place_desc,
                         }
                     } else {
-                        debug!("explain_why_borrow_contains_point: \
-                                Could not generate a region name");
+                        debug!(
+                            "explain_why_borrow_contains_point: \
+                                Could not generate a region name"
+                        );
                         BorrowExplanation::Unexplained
                     }
                 } else {
-                    debug!("explain_why_borrow_contains_point: \
-                            Could not generate an error region vid");
+                    debug!(
+                        "explain_why_borrow_contains_point: \
+                            Could not generate an error region vid"
+                    );
                     BorrowExplanation::Unexplained
                 }
             }
@@ -341,9 +334,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         use_location: Location,
     ) -> bool {
         let back_edge = self.reach_through_backedge(borrow_location, use_location);
-        back_edge.map_or(false, |back_edge| {
-            self.can_reach_head_of_loop(use_location, back_edge)
-        })
+        back_edge.map_or(false, |back_edge| self.can_reach_head_of_loop(use_location, back_edge))
     }
 
     /// Returns the outmost back edge if `from` location can reach `to` location passing through
@@ -381,10 +372,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     block
                         .terminator()
                         .successors()
-                        .map(|bb| Location {
-                            statement_index: 0,
-                            block: *bb,
-                        })
+                        .map(|bb| Location { statement_index: 0, block: *bb })
                         .filter(|s| visited_locations.insert(*s))
                         .map(|s| {
                             if self.is_back_edge(location, s) {
@@ -443,10 +431,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             } else {
                 for bb in block.terminator().successors() {
-                    let successor = Location {
-                        statement_index: 0,
-                        block: *bb,
-                    };
+                    let successor = Location { statement_index: 0, block: *bb };
 
                     if !visited_locations.contains(&successor)
                         && self.find_loop_head_dfs(successor, loop_head, visited_locations)
@@ -490,17 +475,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {
-                    if let TerminatorKind::Call {
-                        ref func,
-                        from_hir_call: true,
-                        ..
-                    } = block.terminator().kind
+                    if let TerminatorKind::Call { ref func, from_hir_call: true, .. } =
+                        block.terminator().kind
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
                             Operand::Constant(c) => c.span,
-                            Operand::Copy(place) |
-                            Operand::Move(place) => {
+                            Operand::Copy(place) | Operand::Move(place) => {
                                 if let Some(l) = place.as_local() {
                                     let local_decl = &self.body.local_decls[l];
                                     if self.local_names[l].is_none() {
@@ -534,19 +515,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let location = borrow.reserve_location;
         let block = &self.body[location.block];
         let stmt = block.statements.get(location.statement_index);
-        debug!(
-            "was_captured_by_trait_object: location={:?} stmt={:?}",
-            location, stmt
-        );
+        debug!("was_captured_by_trait_object: location={:?} stmt={:?}", location, stmt);
 
         // We make a `queue` vector that has the locations we want to visit. As of writing, this
         // will only ever have one item at any given time, but by using a vector, we can pop from
         // it which simplifies the termination logic.
         let mut queue = vec![location];
         let mut target = if let Some(&Statement {
-            kind: StatementKind::Assign(box(ref place, _)),
+            kind: StatementKind::Assign(box (ref place, _)),
             ..
-        }) = stmt {
+        }) = stmt
+        {
             if let Some(local) = place.as_local() {
                 local
             } else {
@@ -556,10 +535,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return false;
         };
 
-        debug!(
-            "was_captured_by_trait: target={:?} queue={:?}",
-            target, queue
-        );
+        debug!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
         while let Some(current_location) = queue.pop() {
             debug!("was_captured_by_trait: target={:?}", target);
             let block = &self.body[current_location.block];
@@ -570,7 +546,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 debug!("was_captured_by_trait_object: stmt={:?}", stmt);
 
                 // The only kind of statement that we care about is assignments...
-                if let StatementKind::Assign(box(place, rvalue)) = &stmt.kind {
+                if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
                     let into = match place.local_or_deref_local() {
                         Some(into) => into,
                         None => {
@@ -584,8 +560,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // If we see a use, we should check whether it is our data, and if so
                         // update the place that we're looking for to that new place.
                         Rvalue::Use(operand) => match operand {
-                            Operand::Copy(place)
-                            | Operand::Move(place) => {
+                            Operand::Copy(place) | Operand::Move(place) => {
                                 if let Some(from) = place.as_local() {
                                     if from == target {
                                         target = into;
@@ -596,31 +571,32 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         },
                         // If we see a unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
-                        Rvalue::Cast(
-                            CastKind::Pointer(PointerCast::Unsize), operand, ty
-                        ) => match operand {
-                            Operand::Copy(place)
-                            | Operand::Move(place) => {
-                                if let Some(from) = place.as_local() {
-                                    if from == target {
-                                        debug!("was_captured_by_trait_object: ty={:?}", ty);
-                                        // Check the type for a trait object.
-                                        return match ty.kind {
-                                            // `&dyn Trait`
-                                            ty::Ref(_, ty, _) if ty.is_trait() => true,
-                                            // `Box<dyn Trait>`
-                                            _ if ty.is_box() && ty.boxed_ty().is_trait() => true,
-                                            // `dyn Trait`
-                                            _ if ty.is_trait() => true,
-                                            // Anything else.
-                                            _ => false,
-                                        };
+                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, ty) => {
+                            match operand {
+                                Operand::Copy(place) | Operand::Move(place) => {
+                                    if let Some(from) = place.as_local() {
+                                        if from == target {
+                                            debug!("was_captured_by_trait_object: ty={:?}", ty);
+                                            // Check the type for a trait object.
+                                            return match ty.kind {
+                                                // `&dyn Trait`
+                                                ty::Ref(_, ty, _) if ty.is_trait() => true,
+                                                // `Box<dyn Trait>`
+                                                _ if ty.is_box() && ty.boxed_ty().is_trait() => {
+                                                    true
+                                                }
+                                                // `dyn Trait`
+                                                _ if ty.is_trait() => true,
+                                                // Anything else.
+                                                _ => false,
+                                            };
+                                        }
                                     }
+                                    return false;
                                 }
-                                return false;
+                                _ => return false,
                             }
-                            _ => return false,
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -632,11 +608,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let terminator = block.terminator();
                 debug!("was_captured_by_trait_object: terminator={:?}", terminator);
 
-                if let TerminatorKind::Call {
-                    destination: Some((place, block)),
-                    args,
-                    ..
-                } = &terminator.kind {
+                if let TerminatorKind::Call { destination: Some((place, block)), args, .. } =
+                    &terminator.kind
+                {
                     if let Some(dest) = place.as_local() {
                         debug!(
                             "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",

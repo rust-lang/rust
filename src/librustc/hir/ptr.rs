@@ -2,26 +2,24 @@
 // frozen anyway). The only reason for doing this instead of replacing `P<T>`
 // with `Box<T>` in HIR, is that `&Box<[T]>` doesn't implement `IntoIterator`.
 
-use std::fmt::{self, Display, Debug};
+use std::fmt::{self, Debug, Display};
 use std::iter::FromIterator;
 use std::ops::Deref;
 use std::{slice, vec};
 
-use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 /// An owned smart pointer.
 #[derive(PartialEq, Eq)]
 pub struct P<T: ?Sized> {
-    ptr: Box<T>
+    ptr: Box<T>,
 }
 
 /// Construct a `P<T>` from a `T` value.
 #[allow(non_snake_case)]
 pub fn P<T: 'static>(value: T) -> P<T> {
-    P {
-        ptr: box value
-    }
+    P { ptr: box value }
 }
 
 impl<T: 'static> P<T> {
@@ -89,7 +87,6 @@ impl<T> P<[T]> {
     }
 }
 
-
 impl<T> Default for P<[T]> {
     /// Creates an empty `P<[T]>`.
     fn default() -> P<[T]> {
@@ -104,7 +101,7 @@ impl<T> From<Vec<T>> for P<[T]> {
 }
 
 impl<T> FromIterator<T> for P<[T]> {
-    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> P<[T]> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> P<[T]> {
         P::from_vec(iter.into_iter().collect())
     }
 }
@@ -130,7 +127,8 @@ impl<T: Decodable> Decodable for P<[T]> {
 }
 
 impl<CTX, T> HashStable<CTX> for P<T>
-    where T: ?Sized + HashStable<CTX>
+where
+    T: ?Sized + HashStable<CTX>,
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         (**self).hash_stable(hcx, hasher);

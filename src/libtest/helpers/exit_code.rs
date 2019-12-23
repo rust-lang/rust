@@ -15,6 +15,6 @@ pub fn get_exit_code(status: ExitStatus) -> Result<i32, String> {
         None => match status.signal() {
             Some(signal) => Err(format!("child process exited with signal {}", signal)),
             None => Err("child process exited with unknown signal".into()),
-        }
+        },
     }
 }

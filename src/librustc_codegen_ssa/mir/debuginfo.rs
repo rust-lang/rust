@@ -1,16 +1,16 @@
-use rustc_index::vec::IndexVec;
+use crate::traits::*;
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::session::config::DebugInfo;
-use rustc::ty::TyCtxt;
 use rustc::ty::layout::{LayoutOf, Size};
-use crate::traits::*;
+use rustc::ty::TyCtxt;
+use rustc_index::vec::IndexVec;
 
-use syntax_pos::{BytePos, Span};
 use syntax::symbol::kw;
+use syntax_pos::{BytePos, Span};
 
-use super::{FunctionCx, LocalRef};
 use super::OperandValue;
+use super::{FunctionCx, LocalRef};
 
 pub struct FunctionDebugContext<D> {
     pub scopes: IndexVec<mir::SourceScope, DebugScope<D>>,
@@ -40,11 +40,7 @@ impl<D> DebugScope<D> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn set_debug_loc(
-        &mut self,
-        bx: &mut Bx,
-        source_info: mir::SourceInfo
-    ) {
+    pub fn set_debug_loc(&mut self, bx: &mut Bx, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
         if let Some(debug_context) = &mut self.debug_context {
             // FIXME(eddyb) get rid of this unwrap somehow.
@@ -62,8 +58,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
-        if !source_info.span.from_expansion() ||
-           self.cx.sess().opts.debugging_opts.debug_macros {
+        if !source_info.span.from_expansion() || self.cx.sess().opts.debugging_opts.debug_macros {
             let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo());
             (scope, source_info.span)
         } else {
@@ -81,18 +76,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // it may so happen that the current span belongs to a different file than the DIScope
     // corresponding to span's containing source scope.  If so, we need to create a DIScope
     // "extension" into that file.
-    fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
-                              -> Option<Bx::DIScope> {
+    fn scope_metadata_for_loc(
+        &self,
+        scope_id: mir::SourceScope,
+        pos: BytePos,
+    ) -> Option<Bx::DIScope> {
         let debug_context = self.debug_context.as_ref()?;
         let scope_metadata = debug_context.scopes[scope_id].scope_metadata;
-        if pos < debug_context.scopes[scope_id].file_start_pos ||
-           pos >= debug_context.scopes[scope_id].file_end_pos {
+        if pos < debug_context.scopes[scope_id].file_start_pos
+            || pos >= debug_context.scopes[scope_id].file_end_pos
+        {
             let sm = self.cx.sess().source_map();
             let defining_crate = debug_context.defining_crate;
             Some(self.cx.extend_scope_to_file(
                 scope_metadata.unwrap(),
                 &sm.lookup_char_pos(pos).file,
-                defining_crate
+                defining_crate,
             ))
         } else {
             scope_metadata
@@ -113,12 +112,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(per_local) => &per_local[local],
             None => return,
         };
-        let whole_local_var = vars.iter().copied().find(|var| {
-            var.place.projection.is_empty()
-        });
-        let has_proj = || vars.iter().any(|var| {
-            !var.place.projection.is_empty()
-        });
+        let whole_local_var = vars.iter().copied().find(|var| var.place.projection.is_empty());
+        let has_proj = || vars.iter().any(|var| !var.place.projection.is_empty());
 
         let (fallback_var, kind) = if self.mir.local_kind(local) == mir::LocalKind::Arg {
             let arg_index = local.index() - 1;
@@ -150,13 +145,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => format!("{:?}", local),
             };
             match local_ref {
-                LocalRef::Place(place) |
-                LocalRef::UnsizedPlace(place) => {
+                LocalRef::Place(place) | LocalRef::UnsizedPlace(place) => {
                     bx.set_var_name(place.llval, &name);
                 }
                 LocalRef::Operand(Some(operand)) => match operand.val {
-                    OperandValue::Ref(x, ..) |
-                    OperandValue::Immediate(x) => {
+                    OperandValue::Ref(x, ..) | OperandValue::Immediate(x) => {
                         bx.set_var_name(x, &name);
                     }
                     OperandValue::Pair(a, b) => {
@@ -165,7 +158,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.set_var_name(a, &(name.clone() + ".0"));
                         bx.set_var_name(b, &(name + ".1"));
                     }
-                }
+                },
                 LocalRef::Operand(None) => {}
             }
         }
@@ -197,31 +190,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // FIXME(eddyb) use smallvec here.
             let mut indirect_offsets = vec![];
 
-            let kind = if var.place.projection.is_empty() {
-                kind
-            } else {
-                VariableKind::LocalVariable
-            };
+            let kind =
+                if var.place.projection.is_empty() { kind } else { VariableKind::LocalVariable };
 
             for elem in &var.place.projection[..] {
                 match *elem {
                     mir::ProjectionElem::Deref => {
                         indirect_offsets.push(Size::ZERO);
                         layout = bx.cx().layout_of(
-                            layout.ty.builtin_deref(true)
+                            layout
+                                .ty
+                                .builtin_deref(true)
                                 .unwrap_or_else(|| {
-                                    span_bug!(
-                                        var.source_info.span,
-                                        "cannot deref `{}`",
-                                        layout.ty,
-                                    )
-                                }).ty,
+                                    span_bug!(var.source_info.span, "cannot deref `{}`", layout.ty,)
+                                })
+                                .ty,
                         );
                     }
                     mir::ProjectionElem::Field(field, _) => {
                         let i = field.index();
-                        let offset = indirect_offsets.last_mut()
-                            .unwrap_or(&mut direct_offset);
+                        let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
                         *offset += layout.fields.offset(i);
                         layout = layout.field(bx.cx(), i);
                     }
@@ -238,8 +226,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let (scope, span) = self.debug_loc(var.source_info);
             if let Some(scope) = scope {
-                bx.declare_local(debug_context, var.name, layout.ty, scope,
-                    base.llval, direct_offset, &indirect_offsets, kind, span);
+                bx.declare_local(
+                    debug_context,
+                    var.name,
+                    layout.ty,
+                    scope,
+                    base.llval,
+                    direct_offset,
+                    &indirect_offsets,
+                    kind,
+                    span,
+                );
             }
         }
     }

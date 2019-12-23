@@ -3,16 +3,16 @@ use Position::*;
 
 use fmt_macros as parse;
 
-use errors::DiagnosticBuilder;
-use errors::Applicability;
 use errors::pluralize;
+use errors::Applicability;
+use errors::DiagnosticBuilder;
 
 use syntax::ast;
-use syntax_expand::base::{self, *};
-use syntax::token;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{sym, Symbol};
+use syntax::token;
 use syntax::tokenstream::TokenStream;
+use syntax_expand::base::{self, *};
 use syntax_pos::{MultiSpan, Span};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -188,10 +188,8 @@ fn parse_args<'a>(
         } else {
             let e = p.parse_expr()?;
             if named {
-                let mut err = ecx.struct_span_err(
-                    e.span,
-                    "positional arguments cannot follow named arguments",
-                );
+                let mut err = ecx
+                    .struct_span_err(e.span, "positional arguments cannot follow named arguments");
                 err.span_label(e.span, "positional arguments must be before named arguments");
                 for (_, pos) in &names {
                     err.span_label(args[*pos].span, "named argument");
@@ -262,7 +260,8 @@ impl<'a, 'b> Context<'a, 'b> {
                             sp.unwrap_or(fmtsp),
                             &format!("unknown format trait `{}`", arg.format.ty),
                         );
-                        err.note("the only appropriate formatting traits are:\n\
+                        err.note(
+                            "the only appropriate formatting traits are:\n\
                                 - ``, which uses the `Display` trait\n\
                                 - `?`, which uses the `Debug` trait\n\
                                 - `e`, which uses the `LowerExp` trait\n\
@@ -271,7 +270,8 @@ impl<'a, 'b> Context<'a, 'b> {
                                 - `p`, which uses the `Pointer` trait\n\
                                 - `b`, which uses the `Binary` trait\n\
                                 - `x`, which uses the `LowerHex` trait\n\
-                                - `X`, which uses the `UpperHex` trait");
+                                - `X`, which uses the `UpperHex` trait",
+                        );
                         if let Some(sp) = sp {
                             for (fmt, name) in &[
                                 ("", "Display"),
@@ -304,8 +304,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
     fn verify_count(&mut self, c: parse::Count) {
         match c {
-            parse::CountImplied |
-            parse::CountIs(..) => {}
+            parse::CountImplied | parse::CountIs(..) => {}
             parse::CountIsParam(i) => {
                 self.verify_arg_type(Exact(i), Count);
             }
@@ -329,22 +328,19 @@ impl<'a, 'b> Context<'a, 'b> {
     /// format string.
     fn report_invalid_references(&self, numbered_position_args: bool) {
         let mut e;
-        let sp = if self.is_literal { // Point at the formatting arguments.
+        let sp = if self.is_literal {
+            // Point at the formatting arguments.
             MultiSpan::from_spans(self.arg_spans.clone())
         } else {
             MultiSpan::from_span(self.fmtsp)
         };
-        let refs = self
-            .invalid_refs
-            .iter()
-            .map(|(r, pos)| (r.to_string(), self.arg_spans.get(*pos)));
+        let refs =
+            self.invalid_refs.iter().map(|(r, pos)| (r.to_string(), self.arg_spans.get(*pos)));
 
         let mut zero_based_note = false;
 
-        let count = self.pieces.len() + self.arg_with_formatting
-            .iter()
-            .filter(|fmt| fmt.precision_span.is_some())
-            .count();
+        let count = self.pieces.len()
+            + self.arg_with_formatting.iter().filter(|fmt| fmt.precision_span.is_some()).count();
         if self.names.is_empty() && !numbered_position_args && count != self.args.len() {
             e = self.ecx.struct_span_err(
                 sp,
@@ -355,7 +351,8 @@ impl<'a, 'b> Context<'a, 'b> {
                     self.describe_num_args(),
                 ),
             );
-            for arg in &self.args { // Point at the arguments that will be formatted.
+            for arg in &self.args {
+                // Point at the arguments that will be formatted.
                 e.span_label(arg.span, "");
             }
         } else {
@@ -377,23 +374,20 @@ impl<'a, 'b> Context<'a, 'b> {
             } else {
                 let pos = MultiSpan::from_spans(spans.into_iter().map(|s| *s.unwrap()).collect());
                 let reg = refs.pop().unwrap();
-                (
-                    format!(
-                        "arguments {head} and {tail}",
-                        head = refs.join(", "),
-                        tail = reg,
-                    ),
-                    pos,
-                )
+                (format!("arguments {head} and {tail}", head = refs.join(", "), tail = reg,), pos)
             };
             if !self.is_literal {
                 sp = MultiSpan::from_span(self.fmtsp);
             }
 
-            e = self.ecx.struct_span_err(sp,
-                &format!("invalid reference to positional {} ({})",
-                         arg_list,
-                         self.describe_num_args()));
+            e = self.ecx.struct_span_err(
+                sp,
+                &format!(
+                    "invalid reference to positional {} ({})",
+                    arg_list,
+                    self.describe_num_args()
+                ),
+            );
             zero_based_note = true;
         };
 
@@ -402,19 +396,24 @@ impl<'a, 'b> Context<'a, 'b> {
                 let span = self.fmtsp.from_inner(span);
                 match fmt.precision {
                     parse::CountIsParam(pos) if pos > self.args.len() => {
-                        e.span_label(span, &format!(
-                            "this precision flag expects an `usize` argument at position {}, \
+                        e.span_label(
+                            span,
+                            &format!(
+                                "this precision flag expects an `usize` argument at position {}, \
                              but {}",
-                            pos,
-                            self.describe_num_args(),
-                        ));
+                                pos,
+                                self.describe_num_args(),
+                            ),
+                        );
                         zero_based_note = true;
                     }
                     parse::CountIsParam(pos) => {
-                        let count = self.pieces.len() + self.arg_with_formatting
-                            .iter()
-                            .filter(|fmt| fmt.precision_span.is_some())
-                            .count();
+                        let count = self.pieces.len()
+                            + self
+                                .arg_with_formatting
+                                .iter()
+                                .filter(|fmt| fmt.precision_span.is_some())
+                                .count();
                         e.span_label(span, &format!(
                             "this precision flag adds an extra required argument at position {}, \
                              which is why there {} expected",
@@ -440,12 +439,15 @@ impl<'a, 'b> Context<'a, 'b> {
                 let span = self.fmtsp.from_inner(span);
                 match fmt.width {
                     parse::CountIsParam(pos) if pos > self.args.len() => {
-                        e.span_label(span, &format!(
-                            "this width flag expects an `usize` argument at position {}, \
+                        e.span_label(
+                            span,
+                            &format!(
+                                "this width flag expects an `usize` argument at position {}, \
                              but {}",
-                            pos,
-                            self.describe_num_args(),
-                        ));
+                                pos,
+                                self.describe_num_args(),
+                            ),
+                        );
                         zero_based_note = true;
                     }
                     _ => {}
@@ -456,8 +458,10 @@ impl<'a, 'b> Context<'a, 'b> {
             e.note("positional arguments are zero-based");
         }
         if !self.arg_with_formatting.is_empty() {
-            e.note("for information about formatting flags, visit \
-                    https://doc.rust-lang.org/std/fmt/index.html");
+            e.note(
+                "for information about formatting flags, visit \
+                    https://doc.rust-lang.org/std/fmt/index.html",
+            );
         }
 
         e.emit();
@@ -556,7 +560,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 // argument. If `i` is not found in `count_positions` then
                 // the error had already been emitted elsewhere.
                 let i = self.count_positions.get(&i).cloned().unwrap_or(0)
-                      + self.count_args_index_offset;
+                    + self.count_args_index_offset;
                 count("Param", Some(self.ecx.expr_usize(sp, i)))
             }
             parse::CountImplied => count("Implied", None),
@@ -601,8 +605,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         }
                     };
                     match arg.position {
-                        parse::ArgumentIs(i)
-                        | parse::ArgumentImplicitlyIs(i) => {
+                        parse::ArgumentIs(i) | parse::ArgumentImplicitlyIs(i) => {
                             // Map to index in final generated argument array
                             // in case of multiple types specified
                             let arg_idx = match arg_index_consumed.get_mut(i) {
@@ -647,8 +650,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
                 let fill = arg.format.fill.unwrap_or(' ');
 
-                let pos_simple =
-                    arg.position.index() == simple_arg.position.index();
+                let pos_simple = arg.position.index() == simple_arg.position.index();
 
                 if arg.format.precision_span.is_some() || arg.format.width_span.is_some() {
                     self.arg_with_formatting.push(arg.format);
@@ -690,7 +692,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "Argument"));
                 Some(self.ecx.expr_struct(
                     sp,
-                                          path,
+                    path,
                     vec![
                         self.ecx.field_imm(sp, self.ecx.ident_of("position", sp), pos),
                         self.ecx.field_imm(sp, self.ecx.ident_of("format", sp), fmt),
@@ -703,9 +705,8 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Actually builds the expression which the format_args! block will be
     /// expanded to.
     fn into_expr(self) -> P<ast::Expr> {
-        let mut locals = Vec::with_capacity(
-            (0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum()
-        );
+        let mut locals =
+            Vec::with_capacity((0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum());
         let mut counts = Vec::with_capacity(self.count_args.len());
         let mut pats = Vec::with_capacity(self.args.len());
         let mut heads = Vec::with_capacity(self.args.len());
@@ -913,9 +914,7 @@ pub fn expand_preparsed_format_args(
 
     let str_style = match fmt_style {
         ast::StrStyle::Cooked => None,
-        ast::StrStyle::Raw(raw) => {
-            Some(raw as usize)
-        },
+        ast::StrStyle::Raw(raw) => Some(raw as usize),
     };
 
     /// Finds the indices of all characters that have been processed and differ between the actual
@@ -934,29 +933,30 @@ pub fn expand_preparsed_format_args(
                     skips.push(*next_pos);
                     let _ = s.next();
                 }
-                ('\\', Some((next_pos, '\n'))) |
-                ('\\', Some((next_pos, 'n'))) |
-                ('\\', Some((next_pos, 't'))) if eat_ws => {
+                ('\\', Some((next_pos, '\n')))
+                | ('\\', Some((next_pos, 'n')))
+                | ('\\', Some((next_pos, 't')))
+                    if eat_ws =>
+                {
                     skips.push(pos);
                     skips.push(*next_pos);
                     let _ = s.next();
                 }
-                (' ', _) |
-                ('\n', _) |
-                ('\t', _) if eat_ws => {
+                (' ', _) | ('\n', _) | ('\t', _) if eat_ws => {
                     skips.push(pos);
                 }
-                ('\\', Some((next_pos, 'n'))) |
-                ('\\', Some((next_pos, 't'))) |
-                ('\\', Some((next_pos, '0'))) |
-                ('\\', Some((next_pos, '\\'))) |
-                ('\\', Some((next_pos, '\''))) |
-                ('\\', Some((next_pos, '\"'))) => {
+                ('\\', Some((next_pos, 'n')))
+                | ('\\', Some((next_pos, 't')))
+                | ('\\', Some((next_pos, '0')))
+                | ('\\', Some((next_pos, '\\')))
+                | ('\\', Some((next_pos, '\'')))
+                | ('\\', Some((next_pos, '\"'))) => {
                     skips.push(*next_pos);
                     let _ = s.next();
                 }
                 ('\\', Some((_, 'x'))) if !is_raw => {
-                    for _ in 0..3 {  // consume `\xAB` literal
+                    for _ in 0..3 {
+                        // consume `\xAB` literal
                         if let Some((pos, _)) = s.next() {
                             skips.push(pos);
                         } else {
@@ -971,7 +971,7 @@ pub fn expand_preparsed_format_args(
                     if let Some((next_pos, next_c)) = s.next() {
                         if next_c == '{' {
                             skips.push(next_pos);
-                            let mut i = 0;  // consume up to 6 hexanumeric chars + closing `}`
+                            let mut i = 0; // consume up to 6 hexanumeric chars + closing `}`
                             while let (Some((next_pos, c)), true) = (s.next(), i < 7) {
                                 if c.is_digit(16) {
                                     skips.push(next_pos);
@@ -987,7 +987,7 @@ pub fn expand_preparsed_format_args(
                             skips.push(next_pos);
                             // We suggest adding `{` and `}` when appropriate, accept it here as if
                             // it were correct
-                            let mut i = 0;  // consume up to 6 hexanumeric chars
+                            let mut i = 0; // consume up to 6 hexanumeric chars
                             while let (Some((next_pos, c)), _) = (s.next(), i < 6) {
                                 if c.is_digit(16) {
                                     skips.push(next_pos);
@@ -999,7 +999,8 @@ pub fn expand_preparsed_format_args(
                         }
                     }
                 }
-                _ if eat_ws => {  // `take_while(|c| c.is_whitespace())`
+                _ if eat_ws => {
+                    // `take_while(|c| c.is_whitespace())`
                     eat_ws = false;
                 }
                 _ => {}
@@ -1017,7 +1018,7 @@ pub fn expand_preparsed_format_args(
         vec![]
     };
 
-    let fmt_str = &fmt_str.as_str();  // for the suggestions below
+    let fmt_str = &fmt_str.as_str(); // for the suggestions below
     let mut parser = parse::Parser::new(fmt_str, str_style, skips, append_newline);
 
     let mut unverified_pieces = Vec::new();
@@ -1032,8 +1033,7 @@ pub fn expand_preparsed_format_args(
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
         let sp = fmt_span.from_inner(err.span);
-        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}",
-                                                     err.description));
+        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}", err.description));
         e.span_label(sp, err.label + " in format string");
         if let Some(note) = err.note {
             e.note(&note);
@@ -1046,9 +1046,7 @@ pub fn expand_preparsed_format_args(
         return DummyResult::raw_expr(sp, true);
     }
 
-    let arg_spans = parser.arg_places.iter()
-        .map(|span| fmt_span.from_inner(*span))
-        .collect();
+    let arg_spans = parser.arg_places.iter().map(|span| fmt_span.from_inner(*span)).collect();
 
     let named_pos: FxHashSet<usize> = names.values().cloned().collect();
 
@@ -1078,22 +1076,21 @@ pub fn expand_preparsed_format_args(
     };
 
     // This needs to happen *after* the Parser has consumed all pieces to create all the spans
-    let pieces = unverified_pieces.into_iter().map(|mut piece| {
-        cx.verify_piece(&piece);
-        cx.resolve_name_inplace(&mut piece);
-        piece
-    }).collect::<Vec<_>>();
+    let pieces = unverified_pieces
+        .into_iter()
+        .map(|mut piece| {
+            cx.verify_piece(&piece);
+            cx.resolve_name_inplace(&mut piece);
+            piece
+        })
+        .collect::<Vec<_>>();
 
-    let numbered_position_args = pieces.iter().any(|arg: &parse::Piece<'_>| {
-        match *arg {
-            parse::String(_) => false,
-            parse::NextArgument(arg) => {
-                match arg.position {
-                    parse::Position::ArgumentIs(_) => true,
-                    _ => false,
-                }
-            }
-        }
+    let numbered_position_args = pieces.iter().any(|arg: &parse::Piece<'_>| match *arg {
+        parse::String(_) => false,
+        parse::NextArgument(arg) => match arg.position {
+            parse::Position::ArgumentIs(_) => true,
+            _ => false,
+        },
     });
 
     cx.build_index_map();
@@ -1118,21 +1115,22 @@ pub fn expand_preparsed_format_args(
     }
 
     // Make sure that all arguments were used and all arguments have types.
-    let errs = cx.arg_types
-                 .iter()
-                 .enumerate()
-                 .filter(|(i, ty)| ty.is_empty() && !cx.count_positions.contains_key(&i))
-                 .map(|(i, _)| {
-                    let msg = if named_pos.contains(&i) {
-                        // named argument
-                        "named argument never used"
-                    } else {
-                        // positional argument
-                        "argument never used"
-                    };
-                    (cx.args[i].span, msg)
-                 })
-                 .collect::<Vec<_>>();
+    let errs = cx
+        .arg_types
+        .iter()
+        .enumerate()
+        .filter(|(i, ty)| ty.is_empty() && !cx.count_positions.contains_key(&i))
+        .map(|(i, _)| {
+            let msg = if named_pos.contains(&i) {
+                // named argument
+                "named argument never used"
+            } else {
+                // positional argument
+                "argument never used"
+            };
+            (cx.args[i].span, msg)
+        })
+        .collect::<Vec<_>>();
 
     let errs_len = errs.len();
     if !errs.is_empty() {

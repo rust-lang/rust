@@ -1,10 +1,10 @@
 pub use CommentStyle::*;
 
 use crate::ast;
-use crate::source_map::SourceMap;
 use crate::sess::ParseSess;
+use crate::source_map::SourceMap;
 
-use syntax_pos::{BytePos, CharPos, Pos, FileName};
+use syntax_pos::{BytePos, CharPos, FileName, Pos};
 
 use std::usize;
 
@@ -33,24 +33,27 @@ pub struct Comment {
 }
 
 pub fn is_line_doc_comment(s: &str) -> bool {
-    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/') ||
-              s.starts_with("//!");
+    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/')
+        || s.starts_with("//!");
     debug!("is {:?} a doc comment? {}", s, res);
     res
 }
 
 pub fn is_block_doc_comment(s: &str) -> bool {
     // Prevent `/**/` from being parsed as a doc comment
-    let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*') ||
-               s.starts_with("/*!")) && s.len() >= 5;
+    let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*')
+        || s.starts_with("/*!"))
+        && s.len() >= 5;
     debug!("is {:?} a doc comment? {}", s, res);
     res
 }
 
 // FIXME(#64197): Try to privatize this again.
 pub fn is_doc_comment(s: &str) -> bool {
-    (s.starts_with("///") && is_line_doc_comment(s)) || s.starts_with("//!") ||
-    (s.starts_with("/**") && is_block_doc_comment(s)) || s.starts_with("/*!")
+    (s.starts_with("///") && is_line_doc_comment(s))
+        || s.starts_with("//!")
+        || (s.starts_with("/**") && is_block_doc_comment(s))
+        || s.starts_with("/*!")
 }
 
 pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
@@ -76,11 +79,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
-        if j > i &&
-           lines[j - 1]
-               .chars()
-               .skip(1)
-               .all(|c| c == '*') {
+        if j > i && lines[j - 1].chars().skip(1).all(|c| c == '*') {
             j -= 1;
         }
 
@@ -122,9 +121,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         }
 
         if can_trim {
-            lines.iter()
-                 .map(|line| (&line[i + 1..line.len()]).to_string())
-                 .collect()
+            lines.iter().map(|line| (&line[i + 1..line.len()]).to_string()).collect()
         } else {
             lines
         }
@@ -140,10 +137,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
     }
 
     if comment.starts_with("/*") {
-        let lines = comment[3..comment.len() - 2]
-                        .lines()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<String>>();
+        let lines =
+            comment[3..comment.len() - 2].lines().map(|s| s.to_string()).collect::<Vec<String>>();
 
         let lines = vertical_trim(lines);
         let lines = horizontal_trim(lines);
@@ -171,15 +166,18 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
 fn trim_whitespace_prefix(s: &str, col: CharPos) -> &str {
     let len = s.len();
     match all_whitespace(&s, col) {
-        Some(col) => if col < len { &s[col..] } else { "" },
+        Some(col) => {
+            if col < len {
+                &s[col..]
+            } else {
+                ""
+            }
+        }
         None => s,
     }
 }
 
-fn split_block_comment_into_lines(
-    text: &str,
-    col: CharPos,
-) -> Vec<String> {
+fn split_block_comment_into_lines(text: &str, col: CharPos) -> Vec<String> {
     let mut res: Vec<String> = vec![];
     let mut lines = text.lines();
     // just push the first line

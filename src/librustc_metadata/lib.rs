@@ -1,5 +1,4 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
@@ -14,8 +13,7 @@
 #![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(stmt_expr_attributes)]
-
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 extern crate libc;
 extern crate proc_macro;
@@ -40,7 +38,7 @@ pub mod locator;
 pub fn validate_crate_name(
     sess: Option<&rustc::session::Session>,
     s: &str,
-    sp: Option<syntax_pos::Span>
+    sp: Option<syntax_pos::Span>,
 ) {
     let mut err_count = 0;
     {
@@ -56,8 +54,12 @@ pub fn validate_crate_name(
             say("crate name must not be empty");
         }
         for c in s.chars() {
-            if c.is_alphanumeric() { continue }
-            if c == '_'  { continue }
+            if c.is_alphanumeric() {
+                continue;
+            }
+            if c == '_' {
+                continue;
+            }
             say(&format!("invalid character `{}` in crate name: `{}`", c, s));
         }
     }

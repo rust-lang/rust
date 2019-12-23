@@ -66,8 +66,7 @@ impl Category {
             | ExprKind::Yield { .. }
             | ExprKind::InlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
-            ExprKind::Literal { .. }
-            | ExprKind::StaticRef { .. } => Some(Category::Constant),
+            ExprKind::Literal { .. } | ExprKind::StaticRef { .. } => Some(Category::Constant),
 
             ExprKind::Loop { .. }
             | ExprKind::Block { .. }

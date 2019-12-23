@@ -3,11 +3,11 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::ItemKind;
 use rustc::ty::layout::HasDataLayout;
+use rustc::ty::layout::HasParamEnv;
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::layout::TargetDataLayout;
 use rustc::ty::layout::TyLayout;
-use rustc::ty::layout::HasParamEnv;
 use rustc::ty::ParamEnv;
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
@@ -17,9 +17,7 @@ use syntax::symbol::sym;
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
-        tcx.hir()
-            .krate()
-            .visit_all_item_likes(&mut VarianceTest { tcx });
+        tcx.hir().krate().visit_all_item_likes(&mut VarianceTest { tcx });
     }
 }
 
@@ -57,9 +55,7 @@ impl VarianceTest<'tcx> {
                 for meta_item in meta_items {
                     match meta_item.name_or_empty() {
                         sym::abi => {
-                            self.tcx
-                                .sess
-                                .span_err(item.span, &format!("abi: {:?}", ty_layout.abi));
+                            self.tcx.sess.span_err(item.span, &format!("abi: {:?}", ty_layout.abi));
                         }
 
                         sym::align => {
@@ -96,9 +92,7 @@ impl VarianceTest<'tcx> {
             }
 
             Err(layout_error) => {
-                self.tcx
-                    .sess
-                    .span_err(item.span, &format!("layout error: {:?}", layout_error));
+                self.tcx.sess.span_err(item.span, &format!("layout error: {:?}", layout_error));
             }
         }
     }

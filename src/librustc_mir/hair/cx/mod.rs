@@ -2,23 +2,23 @@
 //! structures into the HAIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
-use crate::hair::*;
 use crate::hair::util::UserAnnotatedTyHelpers;
+use crate::hair::*;
 
-use rustc_index::vec::Idx;
+use crate::hair::constant::{lit_to_const, LitToConstError};
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::Node;
-use rustc::middle::region;
 use rustc::infer::InferCtxt;
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{GenericArg, InternalSubsts};
+use rustc::middle::region;
 use rustc::ty::layout::VariantIdx;
+use rustc::ty::subst::Subst;
+use rustc::ty::subst::{GenericArg, InternalSubsts};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc_index::vec::Idx;
 use syntax::ast;
 use syntax::attr;
-use syntax::symbol::{Symbol, sym};
-use rustc::hir;
-use crate::hair::constant::{lit_to_const, LitToConstError};
+use syntax::symbol::{sym, Symbol};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'tcx> {
@@ -59,10 +59,8 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
-            hir::BodyOwnerKind::Const |
-            hir::BodyOwnerKind::Static(_) => hir::Constness::Const,
-            hir::BodyOwnerKind::Closure |
-            hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
+            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => hir::Constness::Const,
+            hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
         };
 
         let attrs = tcx.hir().attrs(src_id);
@@ -145,7 +143,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
                 self.tcx.sess.span_err(sp, "could not evaluate float literal (see issue #31407)");
                 // create a dummy value and continue compiling
                 Const::from_bits(self.tcx, 0, self.param_env.and(ty))
-            },
+            }
             Err(LitToConstError::Reported) => {
                 // create a dummy value and continue compiling
                 Const::from_bits(self.tcx, 0, self.param_env.and(ty))
@@ -156,17 +154,18 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pat<'tcx> {
         let p = match self.tcx.hir().get(p.hir_id) {
             Node::Pat(p) | Node::Binding(p) => p,
-            node => bug!("pattern became {:?}", node)
+            node => bug!("pattern became {:?}", node),
         };
         Pat::from_hir(self.tcx, self.param_env.and(self.identity_substs), self.tables(), p)
     }
 
-    pub fn trait_method(&mut self,
-                        trait_def_id: DefId,
-                        method_name: Symbol,
-                        self_ty: Ty<'tcx>,
-                        params: &[GenericArg<'tcx>])
-                        -> &'tcx ty::Const<'tcx> {
+    pub fn trait_method(
+        &mut self,
+        trait_def_id: DefId,
+        method_name: Symbol,
+        self_ty: Ty<'tcx>,
+        params: &[GenericArg<'tcx>],
+    ) -> &'tcx ty::Const<'tcx> {
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {
             if item.kind == ty::AssocKind::Method && item.ident.name == method_name {
@@ -180,9 +179,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     }
 
     pub fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: VariantIdx) -> Vec<Field> {
-        (0..adt_def.variants[variant_index].fields.len())
-            .map(Field::new)
-            .collect()
+        (0..adt_def.variants[variant_index].fields.len()).map(Field::new).collect()
     }
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {

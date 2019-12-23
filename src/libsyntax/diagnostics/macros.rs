@@ -1,8 +1,8 @@
 #[macro_export]
 macro_rules! diagnostic_used {
-    ($code:ident) => (
+    ($code:ident) => {
         let _ = $code;
-    )
+    };
 }
 
 #[macro_export]
@@ -98,10 +98,10 @@ macro_rules! struct_span_err {
 
 #[macro_export]
 macro_rules! stringify_error_code {
-    ($code:ident) => ({
+    ($code:ident) => {{
         $crate::diagnostic_used!($code);
         $crate::errors::DiagnosticId::Error(stringify!($code).to_owned())
-    })
+    }};
 }
 
 #[macro_export]

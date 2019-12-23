@@ -6,9 +6,7 @@ use syntax::symbol::sym;
 use rustc_error_codes::*;
 
 pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
-    tcx.hir()
-       .krate()
-       .visit_all_item_likes(&mut OutlivesTest { tcx });
+    tcx.hir().krate().visit_all_item_likes(&mut OutlivesTest { tcx });
 }
 
 struct OutlivesTest<'tcx> {
@@ -23,13 +21,7 @@ impl ItemLikeVisitor<'tcx> for OutlivesTest<'tcx> {
         // attribute and report an error with various results if found.
         if self.tcx.has_attr(item_def_id, sym::rustc_outlives) {
             let inferred_outlives_of = self.tcx.inferred_outlives_of(item_def_id);
-            span_err!(
-                self.tcx.sess,
-                item.span,
-                E0640,
-                "{:?}",
-                inferred_outlives_of
-            );
+            span_err!(self.tcx.sess, item.span, E0640, "{:?}", inferred_outlives_of);
         }
     }
 

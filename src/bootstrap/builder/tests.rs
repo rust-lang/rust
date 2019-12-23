@@ -11,12 +11,10 @@ fn configure(host: &[&str], target: &[&str]) -> Config {
     config.skip_only_host_steps = false;
     config.dry_run = true;
     // try to avoid spurious failures in dist where we create/delete each others file
-    let dir = config.out.join("tmp-rustbuild-tests").join(
-        &thread::current()
-            .name()
-            .unwrap_or("unknown")
-            .replace(":", "-"),
-    );
+    let dir = config
+        .out
+        .join("tmp-rustbuild-tests")
+        .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
     t!(fs::create_dir_all(&dir));
     config.out = dir;
     config.build = INTERNER.intern_str("A");
@@ -46,26 +44,15 @@ fn dist_baseline() {
 
     let a = INTERNER.intern_str("A");
 
-    assert_eq!(
-        first(builder.cache.all::<dist::Docs>()),
-        &[dist::Docs { host: a },]
-    );
-    assert_eq!(
-        first(builder.cache.all::<dist::Mingw>()),
-        &[dist::Mingw { host: a },]
-    );
+    assert_eq!(first(builder.cache.all::<dist::Docs>()), &[dist::Docs { host: a },]);
+    assert_eq!(first(builder.cache.all::<dist::Mingw>()), &[dist::Mingw { host: a },]);
     assert_eq!(
         first(builder.cache.all::<dist::Rustc>()),
-        &[dist::Rustc {
-            compiler: Compiler { host: a, stage: 2 }
-        },]
+        &[dist::Rustc { compiler: Compiler { host: a, stage: 2 } },]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Std>()),
-        &[dist::Std {
-            compiler: Compiler { host: a, stage: 1 },
-            target: a,
-        },]
+        &[dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },]
     );
     assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
 }
@@ -81,10 +68,7 @@ fn dist_with_targets() {
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
-        &[
-            dist::Docs { host: a },
-            dist::Docs { host: b },
-        ]
+        &[dist::Docs { host: a }, dist::Docs { host: b },]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Mingw>()),
@@ -92,21 +76,13 @@ fn dist_with_targets() {
     );
     assert_eq!(
         first(builder.cache.all::<dist::Rustc>()),
-        &[dist::Rustc {
-            compiler: Compiler { host: a, stage: 2 }
-        },]
+        &[dist::Rustc { compiler: Compiler { host: a, stage: 2 } },]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Std>()),
         &[
-            dist::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            dist::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: b,
-            },
+            dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+            dist::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
         ]
     );
     assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
@@ -123,10 +99,7 @@ fn dist_with_hosts() {
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
-        &[
-            dist::Docs { host: a },
-            dist::Docs { host: b },
-        ]
+        &[dist::Docs { host: a }, dist::Docs { host: b },]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Mingw>()),
@@ -135,25 +108,15 @@ fn dist_with_hosts() {
     assert_eq!(
         first(builder.cache.all::<dist::Rustc>()),
         &[
-            dist::Rustc {
-                compiler: Compiler { host: a, stage: 2 }
-            },
-            dist::Rustc {
-                compiler: Compiler { host: b, stage: 2 }
-            },
+            dist::Rustc { compiler: Compiler { host: a, stage: 2 } },
+            dist::Rustc { compiler: Compiler { host: b, stage: 2 } },
         ]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Std>()),
         &[
-            dist::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            dist::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
+            dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+            dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
         ]
     );
     assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
@@ -172,23 +135,13 @@ fn dist_only_cross_host() {
 
     assert_eq!(
         first(builder.cache.all::<dist::Rustc>()),
-        &[
-            dist::Rustc {
-                compiler: Compiler { host: b, stage: 2 }
-            },
-        ]
+        &[dist::Rustc { compiler: Compiler { host: b, stage: 2 } },]
     );
     assert_eq!(
         first(builder.cache.all::<compile::Rustc>()),
         &[
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 0 },
-                target: a,
-            },
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
+            compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
+            compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: b },
         ]
     );
 }
@@ -205,46 +158,25 @@ fn dist_with_targets_and_hosts() {
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
-        &[
-            dist::Docs { host: a },
-            dist::Docs { host: b },
-            dist::Docs { host: c },
-        ]
+        &[dist::Docs { host: a }, dist::Docs { host: b }, dist::Docs { host: c },]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Mingw>()),
-        &[
-            dist::Mingw { host: a },
-            dist::Mingw { host: b },
-            dist::Mingw { host: c },
-        ]
+        &[dist::Mingw { host: a }, dist::Mingw { host: b }, dist::Mingw { host: c },]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Rustc>()),
         &[
-            dist::Rustc {
-                compiler: Compiler { host: a, stage: 2 }
-            },
-            dist::Rustc {
-                compiler: Compiler { host: b, stage: 2 }
-            },
+            dist::Rustc { compiler: Compiler { host: a, stage: 2 } },
+            dist::Rustc { compiler: Compiler { host: b, stage: 2 } },
         ]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Std>()),
         &[
-            dist::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            dist::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
-            dist::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: c,
-            },
+            dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+            dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+            dist::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
         ]
     );
     assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
@@ -264,36 +196,19 @@ fn dist_with_target_flag() {
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
-        &[
-            dist::Docs { host: a },
-            dist::Docs { host: b },
-            dist::Docs { host: c },
-        ]
+        &[dist::Docs { host: a }, dist::Docs { host: b }, dist::Docs { host: c },]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Mingw>()),
-        &[
-            dist::Mingw { host: a },
-            dist::Mingw { host: b },
-            dist::Mingw { host: c },
-        ]
+        &[dist::Mingw { host: a }, dist::Mingw { host: b }, dist::Mingw { host: c },]
     );
     assert_eq!(first(builder.cache.all::<dist::Rustc>()), &[]);
     assert_eq!(
         first(builder.cache.all::<dist::Std>()),
         &[
-            dist::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            dist::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
-            dist::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: c,
-            },
+            dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+            dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+            dist::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
         ]
     );
     assert_eq!(first(builder.cache.all::<dist::Src>()), &[]);
@@ -310,10 +225,7 @@ fn dist_with_same_targets_and_hosts() {
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
-        &[
-            dist::Docs { host: a },
-            dist::Docs { host: b },
-        ]
+        &[dist::Docs { host: a }, dist::Docs { host: b },]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Mingw>()),
@@ -322,68 +234,35 @@ fn dist_with_same_targets_and_hosts() {
     assert_eq!(
         first(builder.cache.all::<dist::Rustc>()),
         &[
-            dist::Rustc {
-                compiler: Compiler { host: a, stage: 2 }
-            },
-            dist::Rustc {
-                compiler: Compiler { host: b, stage: 2 }
-            },
+            dist::Rustc { compiler: Compiler { host: a, stage: 2 } },
+            dist::Rustc { compiler: Compiler { host: b, stage: 2 } },
         ]
     );
     assert_eq!(
         first(builder.cache.all::<dist::Std>()),
         &[
-            dist::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            dist::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
+            dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+            dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
         ]
     );
     assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
     assert_eq!(
         first(builder.cache.all::<compile::Std>()),
         &[
-            compile::Std {
-                compiler: Compiler { host: a, stage: 0 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: b,
-            },
+            compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
+            compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+            compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
+            compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+            compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
         ]
     );
     assert_eq!(
         first(builder.cache.all::<compile::Assemble>()),
         &[
-            compile::Assemble {
-                target_compiler: Compiler { host: a, stage: 0 },
-            },
-            compile::Assemble {
-                target_compiler: Compiler { host: a, stage: 1 },
-            },
-            compile::Assemble {
-                target_compiler: Compiler { host: a, stage: 2 },
-            },
-            compile::Assemble {
-                target_compiler: Compiler { host: b, stage: 2 },
-            },
+            compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
+            compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
+            compile::Assemble { target_compiler: Compiler { host: a, stage: 2 } },
+            compile::Assemble { target_compiler: Compiler { host: b, stage: 2 } },
         ]
     );
 }
@@ -401,76 +280,28 @@ fn build_default() {
     assert_eq!(
         first(builder.cache.all::<compile::Std>()),
         &[
-            compile::Std {
-                compiler: Compiler { host: a, stage: 0 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: b, stage: 2 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: b,
-            },
-            compile::Std {
-                compiler: Compiler { host: b, stage: 2 },
-                target: b,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: c,
-            },
-            compile::Std {
-                compiler: Compiler { host: b, stage: 2 },
-                target: c,
-            },
+            compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
+            compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+            compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
+            compile::Std { compiler: Compiler { host: b, stage: 2 }, target: a },
+            compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+            compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
+            compile::Std { compiler: Compiler { host: b, stage: 2 }, target: b },
+            compile::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
+            compile::Std { compiler: Compiler { host: b, stage: 2 }, target: c },
         ]
     );
     assert!(!builder.cache.all::<compile::Assemble>().is_empty());
     assert_eq!(
         first(builder.cache.all::<compile::Rustc>()),
         &[
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 0 },
-                target: a,
-            },
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 2 },
-                target: a,
-            },
-            compile::Rustc {
-                compiler: Compiler { host: b, stage: 2 },
-                target: a,
-            },
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 2 },
-                target: b,
-            },
-            compile::Rustc {
-                compiler: Compiler { host: b, stage: 2 },
-                target: b,
-            },
+            compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
+            compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: a },
+            compile::Rustc { compiler: Compiler { host: a, stage: 2 }, target: a },
+            compile::Rustc { compiler: Compiler { host: b, stage: 2 }, target: a },
+            compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: b },
+            compile::Rustc { compiler: Compiler { host: a, stage: 2 }, target: b },
+            compile::Rustc { compiler: Compiler { host: b, stage: 2 }, target: b },
         ]
     );
 }
@@ -490,76 +321,32 @@ fn build_with_target_flag() {
     assert_eq!(
         first(builder.cache.all::<compile::Std>()),
         &[
-            compile::Std {
-                compiler: Compiler { host: a, stage: 0 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: b, stage: 2 },
-                target: a,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: b,
-            },
-            compile::Std {
-                compiler: Compiler { host: b, stage: 2 },
-                target: b,
-            },
-            compile::Std {
-                compiler: Compiler { host: a, stage: 2 },
-                target: c,
-            },
-            compile::Std {
-                compiler: Compiler { host: b, stage: 2 },
-                target: c,
-            },
+            compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
+            compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+            compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
+            compile::Std { compiler: Compiler { host: b, stage: 2 }, target: a },
+            compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+            compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
+            compile::Std { compiler: Compiler { host: b, stage: 2 }, target: b },
+            compile::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
+            compile::Std { compiler: Compiler { host: b, stage: 2 }, target: c },
         ]
     );
     assert_eq!(
         first(builder.cache.all::<compile::Assemble>()),
         &[
-            compile::Assemble {
-                target_compiler: Compiler { host: a, stage: 0 },
-            },
-            compile::Assemble {
-                target_compiler: Compiler { host: a, stage: 1 },
-            },
-            compile::Assemble {
-                target_compiler: Compiler { host: a, stage: 2 },
-            },
-            compile::Assemble {
-                target_compiler: Compiler { host: b, stage: 2 },
-            },
+            compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
+            compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
+            compile::Assemble { target_compiler: Compiler { host: a, stage: 2 } },
+            compile::Assemble { target_compiler: Compiler { host: b, stage: 2 } },
         ]
     );
     assert_eq!(
         first(builder.cache.all::<compile::Rustc>()),
         &[
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 0 },
-                target: a,
-            },
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 1 },
-                target: a,
-            },
-            compile::Rustc {
-                compiler: Compiler { host: a, stage: 1 },
-                target: b,
-            },
+            compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
+            compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: a },
+            compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: b },
         ]
     );
 }
@@ -585,10 +372,8 @@ fn test_with_no_doc_stage0() {
 
     let host = INTERNER.intern_str("A");
 
-    builder.run_step_descriptions(
-        &[StepDescription::from::<test::Crate>()],
-        &["src/libstd".into()],
-    );
+    builder
+        .run_step_descriptions(&[StepDescription::from::<test::Crate>()], &["src/libstd".into()]);
 
     // Ensure we don't build any compiler artifacts.
     assert!(!builder.cache.contains::<compile::Rustc>());
@@ -607,9 +392,7 @@ fn test_with_no_doc_stage0() {
 #[test]
 fn test_exclude() {
     let mut config = configure(&[], &[]);
-    config.exclude = vec![
-        "src/tools/tidy".into(),
-    ];
+    config.exclude = vec!["src/tools/tidy".into()];
     config.cmd = Subcommand::Test {
         paths: Vec::new(),
         test_args: Vec::new(),

@@ -1,22 +1,17 @@
 use super::*;
 
 extern crate test;
-use std::f64;
-use std::io::prelude::*;
-use std::io;
 use self::test::test::Bencher;
+use std::f64;
+use std::io;
+use std::io::prelude::*;
 
 // Test vectors generated from R, using the script src/etc/stat-test-vectors.r.
 
 macro_rules! assert_approx_eq {
     ($a: expr, $b: expr) => {{
         let (a, b) = (&$a, &$b);
-        assert!(
-            (*a - *b).abs() < 1.0e-6,
-            "{} is not approximately equal to {}",
-            *a,
-            *b
-        );
+        assert!((*a - *b).abs() < 1.0e-6, "{} is not approximately equal to {}", *a, *b);
     }};
 }
 

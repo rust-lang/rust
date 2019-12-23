@@ -2,10 +2,10 @@
 
 //! ncurses-compatible compiled terminfo format parsing (term(5))
 
+use super::super::TermInfo;
 use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
-use super::super::TermInfo;
 
 #[cfg(test)]
 mod tests;
@@ -195,9 +195,7 @@ pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, Strin
     // Check magic number
     let magic = t!(read_le_u16(file));
     if magic != 0x011A {
-        return Err(format!("invalid magic number: expected {:x}, found {:x}",
-                           0x011A,
-                           magic));
+        return Err(format!("invalid magic number: expected {:x}, found {:x}", 0x011A, magic));
     }
 
     // According to the spec, these fields must be >= -1 where -1 means that the feature is not
@@ -209,7 +207,7 @@ pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, Strin
                 -1 => 0,
                 _ => return Err("incompatible file: length fields must be  >= -1".to_string()),
             }
-        }}
+        }};
     }
 
     let names_bytes = read_nonneg!();
@@ -242,9 +240,7 @@ pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, Strin
         Err(_) => return Err("input not utf-8".to_string()),
     };
 
-    let term_names: Vec<String> = names_str.split('|')
-                                           .map(|s| s.to_string())
-                                           .collect();
+    let term_names: Vec<String> = names_str.split('|').map(|s| s.to_string()).collect();
     // consume NUL
     if t!(read_byte(file)) != b'\0' {
         return Err("incompatible file: missing null terminator for names section".to_string());
@@ -271,49 +267,46 @@ pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, Strin
     };
 
     let string_map: HashMap<String, Vec<u8>> = if string_offsets_count > 0 {
-        let string_offsets: Vec<u16> = t!((0..string_offsets_count)
-                                                .map(|_| read_le_u16(file))
-                                                .collect());
+        let string_offsets: Vec<u16> =
+            t!((0..string_offsets_count).map(|_| read_le_u16(file)).collect());
 
         let mut string_table = Vec::new();
         t!(file.take(string_table_bytes as u64).read_to_end(&mut string_table));
 
-        t!(string_offsets.into_iter().enumerate().filter(|&(_, offset)| {
-            // non-entry
-            offset != 0xFFFF
-        }).map(|(i, offset)| {
-            let offset = offset as usize;
+        t!(string_offsets
+            .into_iter()
+            .enumerate()
+            .filter(|&(_, offset)| {
+                // non-entry
+                offset != 0xFFFF
+            })
+            .map(|(i, offset)| {
+                let offset = offset as usize;
 
-            let name = if snames[i] == "_" {
-                stringfnames[i]
-            } else {
-                snames[i]
-            };
+                let name = if snames[i] == "_" { stringfnames[i] } else { snames[i] };
 
-            if offset == 0xFFFE {
-                // undocumented: FFFE indicates cap@, which means the capability is not present
-                // unsure if the handling for this is correct
-                return Ok((name.to_string(), Vec::new()));
-            }
+                if offset == 0xFFFE {
+                    // undocumented: FFFE indicates cap@, which means the capability is not present
+                    // unsure if the handling for this is correct
+                    return Ok((name.to_string(), Vec::new()));
+                }
 
-            // Find the offset of the NUL we want to go to
-            let nulpos = string_table[offset..string_table_bytes].iter().position(|&b| b == 0);
-            match nulpos {
-                Some(len) => Ok((name.to_string(), string_table[offset..offset + len].to_vec())),
-                None => Err("invalid file: missing NUL in string_table".to_string()),
-            }
-        }).collect())
+                // Find the offset of the NUL we want to go to
+                let nulpos = string_table[offset..string_table_bytes].iter().position(|&b| b == 0);
+                match nulpos {
+                    Some(len) => {
+                        Ok((name.to_string(), string_table[offset..offset + len].to_vec()))
+                    }
+                    None => Err("invalid file: missing NUL in string_table".to_string()),
+                }
+            })
+            .collect())
     } else {
         HashMap::new()
     };
 
     // And that's all there is to it
-    Ok(TermInfo {
-        names: term_names,
-        bools: bools_map,
-        numbers: numbers_map,
-        strings: string_map,
-    })
+    Ok(TermInfo { names: term_names, bools: bools_map, numbers: numbers_map, strings: string_map })
 }
 
 /// Creates a dummy TermInfo struct for msys terminals

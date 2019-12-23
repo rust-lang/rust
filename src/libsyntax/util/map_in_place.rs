@@ -1,20 +1,25 @@
-use std::ptr;
 use smallvec::{Array, SmallVec};
+use std::ptr;
 
 pub trait MapInPlace<T>: Sized {
-    fn map_in_place<F>(&mut self, mut f: F) where F: FnMut(T) -> T {
+    fn map_in_place<F>(&mut self, mut f: F)
+    where
+        F: FnMut(T) -> T,
+    {
         self.flat_map_in_place(|e| Some(f(e)))
     }
 
     fn flat_map_in_place<F, I>(&mut self, f: F)
-        where F: FnMut(T) -> I,
-              I: IntoIterator<Item=T>;
+    where
+        F: FnMut(T) -> I,
+        I: IntoIterator<Item = T>;
 }
 
 impl<T> MapInPlace<T> for Vec<T> {
     fn flat_map_in_place<F, I>(&mut self, mut f: F)
-        where F: FnMut(T) -> I,
-              I: IntoIterator<Item=T>
+    where
+        F: FnMut(T) -> I,
+        I: IntoIterator<Item = T>,
     {
         let mut read_i = 0;
         let mut write_i = 0;
@@ -58,8 +63,9 @@ impl<T> MapInPlace<T> for Vec<T> {
 
 impl<T, A: Array<Item = T>> MapInPlace<T> for SmallVec<A> {
     fn flat_map_in_place<F, I>(&mut self, mut f: F)
-        where F: FnMut(T) -> I,
-              I: IntoIterator<Item=T>
+    where
+        F: FnMut(T) -> I,
+        I: IntoIterator<Item = T>,
     {
         let mut read_i = 0;
         let mut write_i = 0;

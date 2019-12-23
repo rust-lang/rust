@@ -1,5 +1,5 @@
 use crate::mbe::macro_parser;
-use crate::mbe::{TokenTree, KleeneOp, KleeneToken, SequenceRepetition, Delimited};
+use crate::mbe::{Delimited, KleeneOp, KleeneToken, SequenceRepetition, TokenTree};
 
 use syntax::ast;
 use syntax::print::pprust;
@@ -47,12 +47,7 @@ pub(super) fn parse(
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(
-            tree,
-            &mut trees,
-            expect_matchers,
-            sess,
-        );
+        let tree = parse_tree(tree, &mut trees, expect_matchers, sess);
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
@@ -117,11 +112,7 @@ fn parse_tree(
                     sess.span_diagnostic.span_err(span.entire(), &msg);
                 }
                 // Parse the contents of the sequence itself
-                let sequence = parse(
-                    tts.into(),
-                    expect_matchers,
-                    sess,
-                );
+                let sequence = parse(tts.into(), expect_matchers, sess);
                 // Get the Kleene operator and optional separator
                 let (separator, kleene) = parse_sep_and_kleene_op(trees, span.entire(), sess);
                 // Count the number of captured "names" (i.e., named metavars)
@@ -168,14 +159,7 @@ fn parse_tree(
         // descend into the delimited set and further parse it.
         tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             span,
-            Lrc::new(Delimited {
-                delim,
-                tts: parse(
-                    tts.into(),
-                    expect_matchers,
-                    sess,
-                ),
-            }),
+            Lrc::new(Delimited { delim, tts: parse(tts.into(), expect_matchers, sess) }),
         ),
     }
 }

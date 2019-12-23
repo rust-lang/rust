@@ -21,24 +21,24 @@ use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use crate::hir::intravisit as hir_visit;
 use crate::hir::intravisit::Visitor;
 use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
-use crate::lint::{EarlyLintPass, LateLintPass, EarlyLintPassObject, LateLintPassObject};
-use crate::lint::{Level, Lint, LintId, LintPass, LintBuffer, FutureIncompatibleInfo};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
+use crate::lint::{EarlyLintPass, EarlyLintPassObject, LateLintPass, LateLintPassObject};
+use crate::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId, LintPass};
 use crate::middle::privacy::AccessLevels;
 use crate::session::Session;
-use crate::ty::{self, print::Printer, subst::GenericArg, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
-use crate::util::nodemap::FxHashMap;
+use crate::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use crate::util::common::time;
+use crate::util::nodemap::FxHashMap;
 
 use errors::DiagnosticBuilder;
+use rustc_data_structures::sync::{self, join, par_iter, ParallelIterator};
 use std::slice;
-use rustc_data_structures::sync::{self, ParallelIterator, join, par_iter};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
-use syntax_pos::{MultiSpan, Span, symbol::Symbol};
+use syntax_pos::{symbol::Symbol, MultiSpan, Span};
 
 use rustc_error_codes::*;
 
@@ -143,7 +143,8 @@ impl LintStore {
     }
 
     pub fn get_lint_groups<'t>(&'t self) -> Vec<(&'static str, Vec<LintId>, bool)> {
-        self.lint_groups.iter()
+        self.lint_groups
+            .iter()
             .filter(|(_, LintGroup { depr, .. })| {
                 // Don't display deprecated lint groups.
                 depr.is_none()
@@ -156,7 +157,7 @@ impl LintStore {
 
     pub fn register_early_pass(
         &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
     ) {
         self.early_passes.push(Box::new(pass));
     }
@@ -194,36 +195,39 @@ impl LintStore {
 
             if let Some(FutureIncompatibleInfo { edition, .. }) = lint.future_incompatible {
                 if let Some(edition) = edition {
-                    self.lint_groups.entry(edition.lint_name())
+                    self.lint_groups
+                        .entry(edition.lint_name())
                         .or_insert(LintGroup {
                             lint_ids: vec![],
                             from_plugin: lint.is_plugin,
                             depr: None,
                         })
-                        .lint_ids.push(id);
+                        .lint_ids
+                        .push(id);
                 }
 
-                self.lint_groups.entry("future_incompatible")
+                self.lint_groups
+                    .entry("future_incompatible")
                     .or_insert(LintGroup {
                         lint_ids: vec![],
                         from_plugin: lint.is_plugin,
                         depr: None,
                     })
-                    .lint_ids.push(id);
+                    .lint_ids
+                    .push(id);
             }
         }
     }
 
-    pub fn register_group_alias(
-        &mut self,
-        lint_name: &'static str,
-        alias: &'static str,
-    ) {
-        self.lint_groups.insert(alias, LintGroup {
-            lint_ids: vec![],
-            from_plugin: false,
-            depr: Some(LintAlias { name: lint_name, silent: true }),
-        });
+    pub fn register_group_alias(&mut self, lint_name: &'static str, alias: &'static str) {
+        self.lint_groups.insert(
+            alias,
+            LintGroup {
+                lint_ids: vec![],
+                from_plugin: false,
+                depr: Some(LintAlias { name: lint_name, silent: true }),
+            },
+        );
     }
 
     pub fn register_group(
@@ -235,18 +239,17 @@ impl LintStore {
     ) {
         let new = self
             .lint_groups
-            .insert(name, LintGroup {
-                lint_ids: to,
-                from_plugin,
-                depr: None,
-            })
+            .insert(name, LintGroup { lint_ids: to, from_plugin, depr: None })
             .is_none();
         if let Some(deprecated) = deprecated_name {
-            self.lint_groups.insert(deprecated, LintGroup {
-                lint_ids: vec![],
-                from_plugin,
-                depr: Some(LintAlias { name, silent: false }),
-            });
+            self.lint_groups.insert(
+                deprecated,
+                LintGroup {
+                    lint_ids: vec![],
+                    from_plugin,
+                    depr: Some(LintAlias { name, silent: false }),
+                },
+            );
         }
 
         if !new {
@@ -257,7 +260,7 @@ impl LintStore {
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.get(new_name) {
             Some(&Id(lint_id)) => lint_id.clone(),
-            _ => bug!("invalid lint renaming of {} to {}", old_name, new_name)
+            _ => bug!("invalid lint renaming of {} to {}", old_name, new_name),
         };
         self.by_name.insert(old_name.to_string(), Renamed(new_name.to_string(), target));
     }
@@ -269,39 +272,28 @@ impl LintStore {
     pub fn find_lints(&self, mut lint_name: &str) -> Result<Vec<LintId>, FindLintError> {
         match self.by_name.get(lint_name) {
             Some(&Id(lint_id)) => Ok(vec![lint_id]),
-            Some(&Renamed(_, lint_id)) => {
-                Ok(vec![lint_id])
-            },
-            Some(&Removed(_)) => {
-                Err(FindLintError::Removed)
-            },
-            None => {
-                loop {
-                    return match self.lint_groups.get(lint_name) {
-                        Some(LintGroup {lint_ids, depr, .. }) => {
-                            if let Some(LintAlias { name, .. }) = depr {
-                                lint_name = name;
-                                continue;
-                            }
-                            Ok(lint_ids.clone())
+            Some(&Renamed(_, lint_id)) => Ok(vec![lint_id]),
+            Some(&Removed(_)) => Err(FindLintError::Removed),
+            None => loop {
+                return match self.lint_groups.get(lint_name) {
+                    Some(LintGroup { lint_ids, depr, .. }) => {
+                        if let Some(LintAlias { name, .. }) = depr {
+                            lint_name = name;
+                            continue;
                         }
-                        None => Err(FindLintError::Removed)
-                    };
-                }
-            }
+                        Ok(lint_ids.clone())
+                    }
+                    None => Err(FindLintError::Removed),
+                };
+            },
         }
     }
 
     /// Checks the validity of lint names derived from the command line
-    pub fn check_lint_name_cmdline(&self,
-                                   sess: &Session,
-                                   lint_name: &str,
-                                   level: Level) {
+    pub fn check_lint_name_cmdline(&self, sess: &Session, lint_name: &str, level: Level) {
         let db = match self.check_lint_name(lint_name, None) {
             CheckLintNameResult::Ok(_) => None,
-            CheckLintNameResult::Warning(ref msg, _) => {
-                Some(sess.struct_warn(msg))
-            },
+            CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
             CheckLintNameResult::NoLint(suggestion) => {
                 let mut err = struct_err!(sess, E0602, "unknown lint: `{}`", lint_name);
 
@@ -323,14 +315,16 @@ impl LintStore {
         };
 
         if let Some(mut db) = db {
-            let msg = format!("requested on the command line with `{} {}`",
-                              match level {
-                                  Level::Allow => "-A",
-                                  Level::Warn => "-W",
-                                  Level::Deny => "-D",
-                                  Level::Forbid => "-F",
-                              },
-                              lint_name);
+            let msg = format!(
+                "requested on the command line with `{} {}`",
+                match level {
+                    Level::Allow => "-A",
+                    Level::Warn => "-W",
+                    Level::Deny => "-D",
+                    Level::Forbid => "-F",
+                },
+                lint_name
+            );
             db.note(&msg);
             db.emit();
         }
@@ -370,10 +364,7 @@ impl LintStore {
         }
         match self.by_name.get(&complete_name) {
             Some(&Renamed(ref new_name, _)) => CheckLintNameResult::Warning(
-                format!(
-                    "lint `{}` has been renamed to `{}`",
-                    complete_name, new_name
-                ),
+                format!("lint `{}` has been renamed to `{}`", complete_name, new_name),
                 Some(new_name.to_owned()),
             ),
             Some(&Removed(ref reason)) => CheckLintNameResult::Warning(
@@ -391,10 +382,7 @@ impl LintStore {
                         return if *silent {
                             CheckLintNameResult::Ok(&lint_ids)
                         } else {
-                            CheckLintNameResult::Tool(Err((
-                                Some(&lint_ids),
-                                name.to_string(),
-                            )))
+                            CheckLintNameResult::Tool(Err((Some(&lint_ids), name.to_string())))
                         };
                     }
                     CheckLintNameResult::Ok(&lint_ids)
@@ -414,9 +402,8 @@ impl LintStore {
             None => match self.lint_groups.get(&*complete_name) {
                 // Now we are sure, that this lint exists nowhere
                 None => {
-                    let symbols = self.by_name.keys()
-                        .map(|name| Symbol::intern(&name))
-                        .collect::<Vec<_>>();
+                    let symbols =
+                        self.by_name.keys().map(|name| Symbol::intern(&name)).collect::<Vec<_>>();
 
                     let suggestion =
                         find_best_match_for_name(symbols.iter(), &lint_name.to_lowercase(), None);
@@ -430,10 +417,7 @@ impl LintStore {
                         return if *silent {
                             CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
                         } else {
-                            CheckLintNameResult::Tool(Err((
-                                Some(&lint_ids),
-                                name.to_string(),
-                            )))
+                            CheckLintNameResult::Tool(Err((Some(&lint_ids), name.to_string())))
                         };
                     }
                     CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
@@ -513,45 +497,52 @@ pub trait LintContext: Sized {
     fn sess(&self) -> &Session;
     fn lints(&self) -> &LintStore;
 
-    fn lookup_and_emit<S: Into<MultiSpan>>(&self,
-                                           lint: &'static Lint,
-                                           span: Option<S>,
-                                           msg: &str) {
+    fn lookup_and_emit<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: Option<S>, msg: &str) {
         self.lookup(lint, span, msg).emit();
     }
 
-    fn lookup_and_emit_with_diagnostics<S: Into<MultiSpan>>(&self,
-                                                            lint: &'static Lint,
-                                                            span: Option<S>,
-                                                            msg: &str,
-                                                            diagnostic: BuiltinLintDiagnostics) {
+    fn lookup_and_emit_with_diagnostics<S: Into<MultiSpan>>(
+        &self,
+        lint: &'static Lint,
+        span: Option<S>,
+        msg: &str,
+        diagnostic: BuiltinLintDiagnostics,
+    ) {
         let mut db = self.lookup(lint, span, msg);
         diagnostic.run(self.sess(), &mut db);
         db.emit();
     }
 
-    fn lookup<S: Into<MultiSpan>>(&self,
-                                  lint: &'static Lint,
-                                  span: Option<S>,
-                                  msg: &str)
-                                  -> DiagnosticBuilder<'_>;
+    fn lookup<S: Into<MultiSpan>>(
+        &self,
+        lint: &'static Lint,
+        span: Option<S>,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_>;
 
     /// Emit a lint at the appropriate level, for a particular span.
     fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
-    fn struct_span_lint<S: Into<MultiSpan>>(&self,
-                                            lint: &'static Lint,
-                                            span: S,
-                                            msg: &str)
-                                            -> DiagnosticBuilder<'_> {
+    fn struct_span_lint<S: Into<MultiSpan>>(
+        &self,
+        lint: &'static Lint,
+        span: S,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_> {
         self.lookup(lint, Some(span), msg)
     }
 
     /// Emit a lint and note at the appropriate level, for a particular span.
-    fn span_lint_note(&self, lint: &'static Lint, span: Span, msg: &str,
-                      note_span: Span, note: &str) {
+    fn span_lint_note(
+        &self,
+        lint: &'static Lint,
+        span: Span,
+        msg: &str,
+        note_span: Span,
+        note: &str,
+    ) {
         let mut err = self.lookup(lint, Some(span), msg);
         if note_span == span {
             err.note(note);
@@ -562,8 +553,7 @@ pub trait LintContext: Sized {
     }
 
     /// Emit a lint and help at the appropriate level, for a particular span.
-    fn span_lint_help(&self, lint: &'static Lint, span: Span,
-                      msg: &str, help: &str) {
+    fn span_lint_help(&self, lint: &'static Lint, span: Span, msg: &str, help: &str) {
         let mut err = self.lookup(lint, Some(span), msg);
         self.span_lint(lint, span, msg);
         err.span_help(span, help);
@@ -575,7 +565,6 @@ pub trait LintContext: Sized {
         self.lookup_and_emit(lint, None as Option<Span>, msg);
     }
 }
-
 
 impl<'a> EarlyContext<'a> {
     fn new(
@@ -610,7 +599,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
                 early_lint.lint_id.lint,
                 Some(early_lint.span.clone()),
                 &early_lint.msg,
-                early_lint.diagnostic
+                early_lint.diagnostic,
             );
         }
     }
@@ -618,11 +607,9 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     /// Merge the lints specified by any lint attributes into the
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
-    fn with_lint_attrs<F>(&mut self,
-                          id: ast::NodeId,
-                          attrs: &'a [ast::Attribute],
-                          f: F)
-        where F: FnOnce(&mut Self)
+    fn with_lint_attrs<F>(&mut self, id: ast::NodeId, attrs: &'a [ast::Attribute], f: F)
+    where
+        F: FnOnce(&mut Self),
     {
         let push = self.context.builder.push(attrs, &self.context.lint_store);
         self.check_id(id);
@@ -655,18 +642,17 @@ impl LintContext for LateContext<'_, '_> {
         &*self.lint_store
     }
 
-    fn lookup<S: Into<MultiSpan>>(&self,
-                                  lint: &'static Lint,
-                                  span: Option<S>,
-                                  msg: &str)
-                                  -> DiagnosticBuilder<'_> {
+    fn lookup<S: Into<MultiSpan>>(
+        &self,
+        lint: &'static Lint,
+        span: Option<S>,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_> {
         let hir_id = self.last_node_with_lint_attrs;
 
         match span {
             Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, msg),
-            None => {
-                self.tcx.struct_lint_node(lint, hir_id, msg)
-            },
+            None => self.tcx.struct_lint_node(lint, hir_id, msg),
         }
     }
 }
@@ -683,11 +669,12 @@ impl LintContext for EarlyContext<'_> {
         &*self.lint_store
     }
 
-    fn lookup<S: Into<MultiSpan>>(&self,
-                                  lint: &'static Lint,
-                                  span: Option<S>,
-                                  msg: &str)
-                                  -> DiagnosticBuilder<'_> {
+    fn lookup<S: Into<MultiSpan>>(
+        &self,
+        lint: &'static Lint,
+        span: Option<S>,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_> {
         self.builder.struct_lint(lint, span.map(|s| s.into()), msg)
     }
 }
@@ -758,10 +745,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 Ok(())
             }
 
-            fn print_const(
-                self,
-                _ct: &'tcx ty::Const<'tcx>,
-            ) -> Result<Self::Const, Self::Error> {
+            fn print_const(self, _ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
                 Ok(())
             }
 
@@ -798,15 +782,11 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
 
                 // This shouldn't ever be needed, but just in case:
                 path.push(match trait_ref {
-                    Some(trait_ref) => {
-                        Symbol::intern(
-                            &format!(
-                                "<impl {} for {}>",
-                                trait_ref.print_only_trait_path(),
-                                self_ty
-                            )
-                        )
-                    },
+                    Some(trait_ref) => Symbol::intern(&format!(
+                        "<impl {} for {}>",
+                        trait_ref.print_only_trait_path(),
+                        self_ty
+                    )),
                     None => Symbol::intern(&format!("<impl {}>", self_ty)),
                 });
 
@@ -839,9 +819,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             }
         }
 
-        AbsolutePathPrinter { tcx: self.tcx }
-            .print_def_path(def_id, &[])
-            .unwrap()
+        AbsolutePathPrinter { tcx: self.tcx }.print_def_path(def_id, &[]).unwrap()
     }
 }
 
@@ -858,11 +836,9 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
     /// Merge the lints specified by any lint attributes into the
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
-    fn with_lint_attrs<F>(&mut self,
-                          id: hir::HirId,
-                          attrs: &'tcx [ast::Attribute],
-                          f: F)
-        where F: FnOnce(&mut Self)
+    fn with_lint_attrs<F>(&mut self, id: hir::HirId, attrs: &'tcx [ast::Attribute], f: F)
+    where
+        F: FnOnce(&mut Self),
     {
         let prev = self.context.last_node_with_lint_attrs;
         self.context.last_node_with_lint_attrs = id;
@@ -873,12 +849,12 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
     }
 
     fn with_param_env<F>(&mut self, id: hir::HirId, f: F)
-        where F: FnOnce(&mut Self),
+    where
+        F: FnOnce(&mut Self),
     {
         let old_param_env = self.context.param_env;
-        self.context.param_env = self.context.tcx.param_env(
-            self.context.tcx.hir().local_def_id(id)
-        );
+        self.context.param_env =
+            self.context.tcx.param_env(self.context.tcx.hir().local_def_id(id));
         f(self);
         self.context.param_env = old_param_env;
     }
@@ -901,7 +877,8 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
 }
 
 impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
-for LateContextAndPass<'a, 'tcx, T> {
+    for LateContextAndPass<'a, 'tcx, T>
+{
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
     /// deep-walking.
@@ -976,8 +953,14 @@ for LateContextAndPass<'a, 'tcx, T> {
         hir_visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(&mut self, fk: hir_visit::FnKind<'tcx>, decl: &'tcx hir::FnDecl,
-                body_id: hir::BodyId, span: Span, id: hir::HirId) {
+    fn visit_fn(
+        &mut self,
+        fk: hir_visit::FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl,
+        body_id: hir::BodyId,
+        span: Span,
+        id: hir::HirId,
+    ) {
         // Wrap in tables here, not just in visit_nested_body,
         // in order for `check_fn` to be able to use them.
         let old_tables = self.context.tables;
@@ -989,12 +972,14 @@ for LateContextAndPass<'a, 'tcx, T> {
         self.context.tables = old_tables;
     }
 
-    fn visit_variant_data(&mut self,
-                        s: &'tcx hir::VariantData<'tcx>,
-                        _: ast::Name,
-                        _: &'tcx hir::Generics,
-                        _: hir::HirId,
-                        _: Span) {
+    fn visit_variant_data(
+        &mut self,
+        s: &'tcx hir::VariantData<'tcx>,
+        _: ast::Name,
+        _: &'tcx hir::Generics,
+        _: hir::HirId,
+        _: Span,
+    ) {
         lint_callback!(self, check_struct_def, s);
         hir_visit::walk_struct_def(self, s);
         lint_callback!(self, check_struct_def_post, s);
@@ -1007,10 +992,12 @@ for LateContextAndPass<'a, 'tcx, T> {
         })
     }
 
-    fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant<'tcx>,
-                     g: &'tcx hir::Generics,
-                     item_id: hir::HirId) {
+    fn visit_variant(
+        &mut self,
+        v: &'tcx hir::Variant<'tcx>,
+        g: &'tcx hir::Generics,
+        item_id: hir::HirId,
+    ) {
         self.with_lint_attrs(v.id, &v.attrs, |cx| {
             lint_callback!(cx, check_variant, v);
             hir_visit::walk_variant(cx, v, g, item_id);
@@ -1066,8 +1053,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         hir_visit::walk_where_predicate(self, p);
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef,
-                            m: hir::TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef, m: hir::TraitBoundModifier) {
         lint_callback!(self, check_poly_trait_ref, t, m);
         hir_visit::walk_poly_trait_ref(self, t, m);
     }
@@ -1157,8 +1143,13 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'a>, decl: &'a ast::FnDecl,
-                span: Span, id: ast::NodeId) {
+    fn visit_fn(
+        &mut self,
+        fk: ast_visit::FnKind<'a>,
+        decl: &'a ast::FnDecl,
+        span: Span,
+        id: ast::NodeId,
+    ) {
         run_early_pass!(self, check_fn, fk, decl, span, id);
         self.check_id(id);
         ast_visit::walk_fn(self, fk, decl, span);
@@ -1346,10 +1337,7 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         only_module: true,
     };
 
-    let mut cx = LateContextAndPass {
-        context,
-        pass
-    };
+    let mut cx = LateContextAndPass { context, pass };
 
     let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
     cx.process_mod(module, span, hir_id);
@@ -1372,8 +1360,8 @@ pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
     late_lint_mod_pass(tcx, module_def_id, builtin_lints);
 
-    let mut passes: Vec<_> = tcx.lint_store.late_module_passes
-                                .iter().map(|pass| (pass)()).collect();
+    let mut passes: Vec<_> =
+        tcx.lint_store.late_module_passes.iter().map(|pass| (pass)()).collect();
 
     if !passes.is_empty() {
         late_lint_mod_pass(tcx, module_def_id, LateLintPassObjects { lints: &mut passes[..] });
@@ -1396,10 +1384,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
         only_module: false,
     };
 
-    let mut cx = LateContextAndPass {
-        context,
-        pass
-    };
+    let mut cx = LateContextAndPass { context, pass };
 
     // Visit the whole crate.
     cx.with_lint_attrs(hir::CRATE_HIR_ID, &krate.attrs, |cx| {
@@ -1414,8 +1399,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
 }
 
 fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
-    let mut passes = tcx.lint_store
-        .late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
+    let mut passes = tcx.lint_store.late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
 
     if !tcx.sess.opts.debugging_opts.no_interleave_lints {
         if !passes.is_empty() {
@@ -1430,8 +1414,8 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
             });
         }
 
-        let mut passes: Vec<_> = tcx.lint_store.late_module_passes
-                                    .iter().map(|pass| (pass)()).collect();
+        let mut passes: Vec<_> =
+            tcx.lint_store.late_module_passes.iter().map(|pass| (pass)()).collect();
 
         for pass in &mut passes {
             time(tcx.sess, &format!("running late module lint: {}", pass.name()), || {
@@ -1446,19 +1430,22 @@ pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     tcx: TyCtxt<'tcx>,
     builtin_lints: impl FnOnce() -> T + Send,
 ) {
-    join(|| {
-        time(tcx.sess, "crate lints", || {
-            // Run whole crate non-incremental lints
-            late_lint_crate(tcx, builtin_lints());
-        });
-    }, || {
-        time(tcx.sess, "module lints", || {
-            // Run per-module lints
-            par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                tcx.ensure().lint_mod(tcx.hir().local_def_id(module));
+    join(
+        || {
+            time(tcx.sess, "crate lints", || {
+                // Run whole crate non-incremental lints
+                late_lint_crate(tcx, builtin_lints());
             });
-        });
-    });
+        },
+        || {
+            time(tcx.sess, "module lints", || {
+                // Run per-module lints
+                par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    tcx.ensure().lint_mod(tcx.hir().local_def_id(module));
+                });
+            });
+        },
+    );
 }
 
 struct EarlyLintPassObjects<'a> {
@@ -1534,8 +1521,8 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     let mut buffered = lint_buffer.unwrap_or_default();
 
     if !sess.opts.debugging_opts.no_interleave_lints {
-        buffered = early_lint_crate(sess, lint_store, krate, builtin_lints, buffered,
-            pre_expansion);
+        buffered =
+            early_lint_crate(sess, lint_store, krate, builtin_lints, buffered, pre_expansion);
 
         if !passes.is_empty() {
             buffered = early_lint_crate(

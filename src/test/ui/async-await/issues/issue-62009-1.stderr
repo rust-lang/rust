@@ -35,7 +35,7 @@ LL |     (|_| 2333).await;
    | 
   ::: $SRC_DIR/libstd/future.rs:LL:COL
    |
-LL |     F: Future
+LL |     F: Future,
    |        ------ required by this bound in `std::future::poll_with_tls_context`
 
 error: aborting due to 4 previous errors

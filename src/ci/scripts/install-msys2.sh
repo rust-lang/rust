@@ -12,8 +12,10 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
-    choco install msys2 --params="/InstallDir:$(ciCheckoutPath)/msys2 /NoPath" -y --no-progress
-    mkdir -p "$(ciCheckoutPath)/msys2/home/${USERNAME}"
-
-    ciCommandAddPath "$(ciCheckoutPath)/msys2/usr/bin"
+    for RETRY_COUNT in 1 2 3 4 5 6 7 8 9 10; do
+        choco install msys2 \
+            --params="/InstallDir:$(ciCheckoutPath)/msys2 /NoPath" -y --no-progress \
+            && mkdir -p "$(ciCheckoutPath)/msys2/home/${USERNAME}" \
+            && ciCommandAddPath "$(ciCheckoutPath)/msys2/usr/bin" && break
+    done
 fi

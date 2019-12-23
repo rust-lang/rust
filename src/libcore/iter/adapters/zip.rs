@@ -2,7 +2,7 @@
 
 use crate::cmp;
 
-use super::super::{Iterator, DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen};
+use super::super::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedLen};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -27,7 +27,9 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
     }
     fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
         while let Some(x) = Iterator::next(self) {
-            if n == 0 { return Some(x) }
+            if n == 0 {
+                return Some(x);
+            }
             n -= 1;
         }
         None
@@ -35,7 +37,10 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
+impl<A, B> Iterator for Zip<A, B>
+where
+    A: Iterator,
+    B: Iterator,
 {
     type Item = (A::Item, B::Item);
 
@@ -56,7 +61,8 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B> DoubleEndedIterator for Zip<A, B> where
+impl<A, B> DoubleEndedIterator for Zip<A, B>
+where
     A: DoubleEndedIterator + ExactSizeIterator,
     B: DoubleEndedIterator + ExactSizeIterator,
 {
@@ -75,14 +81,17 @@ trait ZipImpl<A, B> {
     fn size_hint(&self) -> (usize, Option<usize>);
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
     fn next_back(&mut self) -> Option<Self::Item>
-        where A: DoubleEndedIterator + ExactSizeIterator,
-              B: DoubleEndedIterator + ExactSizeIterator;
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator;
 }
 
 // General Zip impl
 #[doc(hidden)]
 impl<A, B> ZipImpl<A, B> for Zip<A, B>
-    where A: Iterator, B: Iterator
+where
+    A: Iterator,
+    B: Iterator,
 {
     type Item = (A::Item, B::Item);
     default fn new(a: A, b: B) -> Self {
@@ -90,7 +99,7 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
             a,
             b,
             index: 0, // unused
-            len: 0, // unused
+            len: 0,   // unused
         }
     }
 
@@ -108,17 +117,22 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
 
     #[inline]
     default fn next_back(&mut self) -> Option<(A::Item, B::Item)>
-        where A: DoubleEndedIterator + ExactSizeIterator,
-              B: DoubleEndedIterator + ExactSizeIterator
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
     {
         let a_sz = self.a.len();
         let b_sz = self.b.len();
         if a_sz != b_sz {
             // Adjust a, b to equal length
             if a_sz > b_sz {
-                for _ in 0..a_sz - b_sz { self.a.next_back(); }
+                for _ in 0..a_sz - b_sz {
+                    self.a.next_back();
+                }
             } else {
-                for _ in 0..b_sz - a_sz { self.b.next_back(); }
+                for _ in 0..b_sz - a_sz {
+                    self.b.next_back();
+                }
             }
         }
         match (self.a.next_back(), self.b.next_back()) {
@@ -136,10 +150,10 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         let lower = cmp::min(a_lower, b_lower);
 
         let upper = match (a_upper, b_upper) {
-            (Some(x), Some(y)) => Some(cmp::min(x,y)),
+            (Some(x), Some(y)) => Some(cmp::min(x, y)),
             (Some(x), None) => Some(x),
             (None, Some(y)) => Some(y),
-            (None, None) => None
+            (None, None) => None,
         };
 
         (lower, upper)
@@ -148,16 +162,13 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
 
 #[doc(hidden)]
 impl<A, B> ZipImpl<A, B> for Zip<A, B>
-    where A: TrustedRandomAccess, B: TrustedRandomAccess
+where
+    A: TrustedRandomAccess,
+    B: TrustedRandomAccess,
 {
     fn new(a: A, b: B) -> Self {
         let len = cmp::min(a.len(), b.len());
-        Zip {
-            a,
-            b,
-            index: 0,
-            len,
-        }
+        Zip { a, b, index: 0, len }
     }
 
     #[inline]
@@ -165,9 +176,7 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         if self.index < self.len {
             let i = self.index;
             self.index += 1;
-            unsafe {
-                Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
-            }
+            unsafe { Some((self.a.get_unchecked(i), self.b.get_unchecked(i))) }
         } else if A::may_have_side_effect() && self.index < self.a.len() {
             // match the base implementation's potential side effects
             unsafe {
@@ -194,10 +203,14 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
             let i = self.index;
             self.index += 1;
             if A::may_have_side_effect() {
-                unsafe { self.a.get_unchecked(i); }
+                unsafe {
+                    self.a.get_unchecked(i);
+                }
             }
             if B::may_have_side_effect() {
-                unsafe { self.b.get_unchecked(i); }
+                unsafe {
+                    self.b.get_unchecked(i);
+                }
             }
         }
 
@@ -206,8 +219,9 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
 
     #[inline]
     fn next_back(&mut self) -> Option<(A::Item, B::Item)>
-        where A: DoubleEndedIterator + ExactSizeIterator,
-              B: DoubleEndedIterator + ExactSizeIterator
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
     {
         // Adjust a, b to equal length
         if A::may_have_side_effect() {
@@ -229,9 +243,7 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         if self.index < self.len {
             self.len -= 1;
             let i = self.len;
-            unsafe {
-                Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
-            }
+            unsafe { Some((self.a.get_unchecked(i), self.b.get_unchecked(i))) }
         } else {
             None
         }
@@ -240,12 +252,17 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> ExactSizeIterator for Zip<A, B>
-    where A: ExactSizeIterator, B: ExactSizeIterator {}
+where
+    A: ExactSizeIterator,
+    B: ExactSizeIterator,
+{
+}
 
 #[doc(hidden)]
 unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
-    where A: TrustedRandomAccess,
-          B: TrustedRandomAccess,
+where
+    A: TrustedRandomAccess,
+    B: TrustedRandomAccess,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> (A::Item, B::Item) {
         (self.a.get_unchecked(i), self.b.get_unchecked(i))
@@ -258,12 +275,19 @@ unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A, B> FusedIterator for Zip<A, B>
-    where A: FusedIterator, B: FusedIterator, {}
+where
+    A: FusedIterator,
+    B: FusedIterator,
+{
+}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A, B> TrustedLen for Zip<A, B>
-    where A: TrustedLen, B: TrustedLen,
-{}
+where
+    A: TrustedLen,
+    B: TrustedLen,
+{
+}
 
 /// An iterator whose items are random-accessible efficiently
 ///
@@ -275,7 +299,7 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
 /// .get_unchecked() must return distinct mutable references for distinct
 /// indices (if applicable), and must return a valid reference if index is in
 /// 0..self.len().
-pub(crate) unsafe trait TrustedRandomAccess : ExactSizeIterator {
+pub(crate) unsafe trait TrustedRandomAccess: ExactSizeIterator {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item;
     /// Returns `true` if getting an iterator element may have
     /// side effects. Remember to take inner iterators into account.

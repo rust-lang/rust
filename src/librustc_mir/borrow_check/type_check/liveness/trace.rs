@@ -4,8 +4,8 @@ use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
-use rustc_index::bit_set::HybridBitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_index::bit_set::HybridBitSet;
 use std::rc::Rc;
 
 use crate::dataflow::indexes::MovePathIndex;
@@ -171,12 +171,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             if !live_locals.contains(&local) {
                 let local_ty = self.cx.body.local_decls[local].ty;
                 if local_ty.has_free_regions() {
-                    self.cx.add_drop_live_facts_for(
-                        local,
-                        local_ty,
-                        &[location],
-                        &locations,
-                    );
+                    self.cx.add_drop_live_facts_for(local, local_ty, &[location], &locations);
                 }
             }
         }

@@ -23,9 +23,7 @@ pub unsafe fn raw(r: &RWLock) -> *mut AtomicU32 {
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
-const NEW: RWLock = RWLock {
-    lock: UnsafeCell::new(AtomicU32::new(abi::LOCK_UNLOCKED.0)),
-};
+const NEW: RWLock = RWLock { lock: UnsafeCell::new(AtomicU32::new(abi::LOCK_UNLOCKED.0)) };
 
 impl RWLock {
     pub const fn new() -> RWLock {
@@ -79,11 +77,7 @@ impl RWLock {
             let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
             assert_eq!(ret, abi::errno::SUCCESS, "Failed to acquire read lock");
             let event = event.assume_init();
-            assert_eq!(
-                event.error,
-                abi::errno::SUCCESS,
-                "Failed to acquire read lock"
-            );
+            assert_eq!(event.error, abi::errno::SUCCESS, "Failed to acquire read lock");
 
             RDLOCKS_ACQUIRED += 1;
         }
@@ -122,11 +116,7 @@ impl RWLock {
             } else {
                 // No threads waiting or not the last read lock. Just decrement
                 // the read lock count.
-                assert_ne!(
-                    old & !abi::LOCK_KERNEL_MANAGED.0,
-                    0,
-                    "This rwlock is not locked"
-                );
+                assert_ne!(old & !abi::LOCK_KERNEL_MANAGED.0, 0, "This rwlock is not locked");
                 assert_eq!(
                     old & abi::LOCK_WRLOCKED.0,
                     0,
@@ -189,11 +179,7 @@ impl RWLock {
             let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
             assert_eq!(ret, abi::errno::SUCCESS, "Failed to acquire write lock");
             let event = event.assume_init();
-            assert_eq!(
-                event.error,
-                abi::errno::SUCCESS,
-                "Failed to acquire write lock"
-            );
+            assert_eq!(event.error, abi::errno::SUCCESS, "Failed to acquire write lock");
         }
     }
 

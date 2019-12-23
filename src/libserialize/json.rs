@@ -182,17 +182,17 @@
 //! }
 //! ```
 
-use self::JsonEvent::*;
-use self::ErrorCode::*;
-use self::ParserError::*;
 use self::DecoderError::*;
-use self::ParserState::*;
+use self::ErrorCode::*;
 use self::InternalStackElement::*;
+use self::JsonEvent::*;
+use self::ParserError::*;
+use self::ParserState::*;
 
 use std::borrow::Cow;
-use std::collections::{HashMap, BTreeMap};
-use std::io::prelude::*;
+use std::collections::{BTreeMap, HashMap};
 use std::io;
+use std::io::prelude::*;
 use std::mem::swap;
 use std::num::FpCategory as Fp;
 use std::ops::Index;
@@ -218,10 +218,17 @@ pub enum Json {
 pub type Array = Vec<Json>;
 pub type Object = BTreeMap<string::String, Json>;
 
-pub struct PrettyJson<'a> { inner: &'a Json }
+pub struct PrettyJson<'a> {
+    inner: &'a Json,
+}
 
-pub struct AsJson<'a, T> { inner: &'a T }
-pub struct AsPrettyJson<'a, T> { inner: &'a T, indent: Option<usize> }
+pub struct AsJson<'a, T> {
+    inner: &'a T,
+}
+pub struct AsPrettyJson<'a, T> {
+    inner: &'a T,
+    indent: Option<usize>,
+}
 
 /// The errors that can arise while parsing a JSON stream.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -261,7 +268,7 @@ pub enum DecoderError {
     ExpectedError(string::String, string::String),
     MissingFieldError(string::String),
     UnknownVariantError(string::String),
-    ApplicationError(string::String)
+    ApplicationError(string::String),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -297,7 +304,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
 pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
-        Err(e) => return Err(ParseError(e))
+        Err(e) => return Err(ParseError(e)),
     };
 
     let mut decoder = Decoder::new(json);
@@ -339,7 +346,9 @@ impl fmt::Display for DecoderError {
 }
 
 impl std::error::Error for DecoderError {
-    fn description(&self) -> &str { "decoder error" }
+    fn description(&self) -> &str {
+        "decoder error"
+    }
 }
 
 impl fmt::Display for EncoderError {
@@ -350,14 +359,18 @@ impl fmt::Display for EncoderError {
 }
 
 impl std::error::Error for EncoderError {
-    fn description(&self) -> &str { "encoder error" }
+    fn description(&self) -> &str {
+        "encoder error"
+    }
 }
 
 impl From<fmt::Error> for EncoderError {
     /// Converts a [`fmt::Error`] into `EncoderError`
     ///
     /// This conversion does not allocate memory.
-    fn from(err: fmt::Error) -> EncoderError { EncoderError::FmtError(err) }
+    fn from(err: fmt::Error) -> EncoderError {
+        EncoderError::FmtError(err)
+    }
 }
 
 pub type EncodeResult = Result<(), EncoderError>;
@@ -405,7 +418,9 @@ fn escape_str(wr: &mut dyn fmt::Write, v: &str) -> EncodeResult {
             b'\x1e' => "\\u001e",
             b'\x1f' => "\\u001f",
             b'\x7f' => "\\u007f",
-            _ => { continue; }
+            _ => {
+                continue;
+            }
         };
 
         if start < i {
@@ -453,7 +468,7 @@ fn fmt_number_or_null(v: f64) -> string::String {
 
 /// A structure for implementing serialization to JSON.
 pub struct Encoder<'a> {
-    writer: &'a mut (dyn fmt::Write+'a),
+    writer: &'a mut (dyn fmt::Write + 'a),
     is_emitting_map_key: bool,
 }
 
@@ -461,46 +476,74 @@ impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
     pub fn new(writer: &'a mut dyn fmt::Write) -> Encoder<'a> {
-        Encoder { writer, is_emitting_map_key: false, }
+        Encoder { writer, is_emitting_map_key: false }
     }
 }
 
 macro_rules! emit_enquoted_if_mapkey {
-    ($enc:ident,$e:expr) => ({
+    ($enc:ident,$e:expr) => {{
         if $enc.is_emitting_map_key {
             write!($enc.writer, "\"{}\"", $e)?;
         } else {
             write!($enc.writer, "{}", $e)?;
         }
         Ok(())
-    })
+    }};
 }
 
 impl<'a> crate::Encoder for Encoder<'a> {
     type Error = EncoderError;
 
     fn emit_unit(&mut self) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "null")?;
         Ok(())
     }
 
-    fn emit_usize(&mut self, v: usize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u128(&mut self, v: u128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_usize(&mut self, v: usize) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u128(&mut self, v: u128) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
 
-    fn emit_isize(&mut self, v: isize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i128(&mut self, v: i128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_isize(&mut self, v: isize) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i128(&mut self, v: i128) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i64(&mut self, v: i64) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if v {
             write!(self.writer, "true")?;
         } else {
@@ -523,17 +566,15 @@ impl<'a> crate::Encoder for Encoder<'a> {
         escape_str(self.writer, v)
     }
 
-    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult where
+    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         f(self)
     }
 
-    fn emit_enum_variant<F>(&mut self,
-                            name: &str,
-                            _id: usize,
-                            cnt: usize,
-                            f: F) -> EncodeResult where
+    fn emit_enum_variant<F>(&mut self, name: &str, _id: usize, cnt: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         // enums are encoded as strings or objects
@@ -542,7 +583,9 @@ impl<'a> crate::Encoder for Encoder<'a> {
         if cnt == 0 {
             escape_str(self.writer, name)
         } else {
-            if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+            if self.is_emitting_map_key {
+                return Err(EncoderError::BadHashmapKey);
+            }
             write!(self.writer, "{{\"variant\":")?;
             escape_str(self.writer, name)?;
             write!(self.writer, ",\"fields\":[")?;
@@ -552,145 +595,198 @@ impl<'a> crate::Encoder for Encoder<'a> {
         }
     }
 
-    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx != 0 {
             write!(self.writer, ",")?;
         }
         f(self)
     }
 
-    fn emit_enum_struct_variant<F>(&mut self,
-                                   name: &str,
-                                   id: usize,
-                                   cnt: usize,
-                                   f: F) -> EncodeResult where
+    fn emit_enum_struct_variant<F>(
+        &mut self,
+        name: &str,
+        id: usize,
+        cnt: usize,
+        f: F,
+    ) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_enum_variant(name, id, cnt, f)
     }
 
-    fn emit_enum_struct_variant_field<F>(&mut self,
-                                         _: &str,
-                                         idx: usize,
-                                         f: F) -> EncodeResult where
+    fn emit_enum_struct_variant_field<F>(&mut self, _: &str, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_enum_variant_arg(idx, f)
     }
 
-    fn emit_struct<F>(&mut self, _: &str, _: usize, f: F) -> EncodeResult where
+    fn emit_struct<F>(&mut self, _: &str, _: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "{{")?;
         f(self)?;
         write!(self.writer, "}}")?;
         Ok(())
     }
 
-    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult where
+    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        if idx != 0 { write!(self.writer, ",")?; }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
+        if idx != 0 {
+            write!(self.writer, ",")?;
+        }
         escape_str(self.writer, name)?;
         write!(self.writer, ":")?;
         f(self)
     }
 
-    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult where
+    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_tuple_struct<F>(&mut self, _name: &str, len: usize, f: F) -> EncodeResult where
+    fn emit_tuple_struct<F>(&mut self, _name: &str, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_option<F>(&mut self, f: F) -> EncodeResult where
+    fn emit_option<F>(&mut self, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         f(self)
     }
     fn emit_option_none(&mut self) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_unit()
     }
-    fn emit_option_some<F>(&mut self, f: F) -> EncodeResult where
+    fn emit_option_some<F>(&mut self, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         f(self)
     }
 
-    fn emit_seq<F>(&mut self, _len: usize, f: F) -> EncodeResult where
+    fn emit_seq<F>(&mut self, _len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "[")?;
         f(self)?;
         write!(self.writer, "]")?;
         Ok(())
     }
 
-    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx != 0 {
             write!(self.writer, ",")?;
         }
         f(self)
     }
 
-    fn emit_map<F>(&mut self, _len: usize, f: F) -> EncodeResult where
+    fn emit_map<F>(&mut self, _len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "{{")?;
         f(self)?;
         write!(self.writer, "}}")?;
         Ok(())
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        if idx != 0 { write!(self.writer, ",")? }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
+        if idx != 0 {
+            write!(self.writer, ",")?
+        }
         self.is_emitting_map_key = true;
         f(self)?;
         self.is_emitting_map_key = false;
         Ok(())
     }
 
-    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult where
+    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, ":")?;
         f(self)
     }
@@ -699,7 +795,7 @@ impl<'a> crate::Encoder for Encoder<'a> {
 /// Another encoder for JSON, but prints out human-readable JSON instead of
 /// compact data
 pub struct PrettyEncoder<'a> {
-    writer: &'a mut (dyn fmt::Write+'a),
+    writer: &'a mut (dyn fmt::Write + 'a),
     curr_indent: usize,
     indent: usize,
     is_emitting_map_key: bool,
@@ -708,12 +804,7 @@ pub struct PrettyEncoder<'a> {
 impl<'a> PrettyEncoder<'a> {
     /// Creates a new encoder whose output will be written to the specified writer
     pub fn new(writer: &'a mut dyn fmt::Write) -> PrettyEncoder<'a> {
-        PrettyEncoder {
-            writer,
-            curr_indent: 0,
-            indent: 2,
-            is_emitting_map_key: false,
-        }
+        PrettyEncoder { writer, curr_indent: 0, indent: 2, is_emitting_map_key: false }
     }
 
     /// Sets the number of spaces to indent for each level.
@@ -730,27 +821,55 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
     type Error = EncoderError;
 
     fn emit_unit(&mut self) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "null")?;
         Ok(())
     }
 
-    fn emit_usize(&mut self, v: usize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u128(&mut self, v: u128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_usize(&mut self, v: usize) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u128(&mut self, v: u128) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
 
-    fn emit_isize(&mut self, v: isize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i128(&mut self, v: i128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_isize(&mut self, v: isize) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i128(&mut self, v: i128) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i64(&mut self, v: i64) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if v {
             write!(self.writer, "true")?;
         } else {
@@ -773,24 +892,23 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         escape_str(self.writer, v)
     }
 
-    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult where
+    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         f(self)
     }
 
-    fn emit_enum_variant<F>(&mut self,
-                            name: &str,
-                            _id: usize,
-                            cnt: usize,
-                            f: F)
-                            -> EncodeResult where
+    fn emit_enum_variant<F>(&mut self, name: &str, _id: usize, cnt: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if cnt == 0 {
             escape_str(self.writer, name)
         } else {
-            if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+            if self.is_emitting_map_key {
+                return Err(EncoderError::BadHashmapKey);
+            }
             writeln!(self.writer, "{{")?;
             self.curr_indent += self.indent;
             spaces(self.writer, self.curr_indent)?;
@@ -812,10 +930,13 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         }
     }
 
-    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx != 0 {
             writeln!(self.writer, ",")?;
         }
@@ -823,32 +944,39 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         f(self)
     }
 
-    fn emit_enum_struct_variant<F>(&mut self,
-                                   name: &str,
-                                   id: usize,
-                                   cnt: usize,
-                                   f: F) -> EncodeResult where
+    fn emit_enum_struct_variant<F>(
+        &mut self,
+        name: &str,
+        id: usize,
+        cnt: usize,
+        f: F,
+    ) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_enum_variant(name, id, cnt, f)
     }
 
-    fn emit_enum_struct_variant_field<F>(&mut self,
-                                         _: &str,
-                                         idx: usize,
-                                         f: F) -> EncodeResult where
+    fn emit_enum_struct_variant_field<F>(&mut self, _: &str, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_enum_variant_arg(idx, f)
     }
 
-
-    fn emit_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult where
+    fn emit_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if len == 0 {
             write!(self.writer, "{{}}")?;
         } else {
@@ -863,10 +991,13 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult where
+    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx == 0 {
             writeln!(self.writer)?;
         } else {
@@ -878,53 +1009,76 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         f(self)
     }
 
-    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult where
+    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_tuple_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult where
+    fn emit_tuple_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_option<F>(&mut self, f: F) -> EncodeResult where
+    fn emit_option<F>(&mut self, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         f(self)
     }
     fn emit_option_none(&mut self) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_unit()
     }
-    fn emit_option_some<F>(&mut self, f: F) -> EncodeResult where
+    fn emit_option_some<F>(&mut self, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         f(self)
     }
 
-    fn emit_seq<F>(&mut self, len: usize, f: F) -> EncodeResult where
+    fn emit_seq<F>(&mut self, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if len == 0 {
             write!(self.writer, "[]")?;
         } else {
@@ -939,10 +1093,13 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx == 0 {
             writeln!(self.writer)?;
         } else {
@@ -952,10 +1109,13 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         f(self)
     }
 
-    fn emit_map<F>(&mut self, len: usize, f: F) -> EncodeResult where
+    fn emit_map<F>(&mut self, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if len == 0 {
             write!(self.writer, "{{}}")?;
         } else {
@@ -970,10 +1130,13 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx == 0 {
             writeln!(self.writer)?;
         } else {
@@ -986,10 +1149,13 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult where
+    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, ": ")?;
         f(self)
     }
@@ -1029,19 +1195,19 @@ impl Json {
         PrettyJson { inner: self }
     }
 
-     /// If the Json value is an Object, returns the value associated with the provided key.
+    /// If the Json value is an Object, returns the value associated with the provided key.
     /// Otherwise, returns None.
     pub fn find(&self, key: &str) -> Option<&Json> {
         match *self {
             Json::Object(ref map) => map.get(key),
-            _ => None
+            _ => None,
         }
     }
 
     /// Attempts to get a nested Json Object for each key in `keys`.
     /// If any key is found not to exist, `find_path` will return `None`.
     /// Otherwise, it will return the Json value associated with the final key.
-    pub fn find_path<'a>(&'a self, keys: &[&str]) -> Option<&'a Json>{
+    pub fn find_path<'a>(&'a self, keys: &[&str]) -> Option<&'a Json> {
         let mut target = self;
         for key in keys {
             target = target.find(*key)?;
@@ -1054,21 +1220,19 @@ impl Json {
     /// or the Json value is not an Object, returns `None`.
     pub fn search(&self, key: &str) -> Option<&Json> {
         match *self {
-            Json::Object(ref map) => {
-                match map.get(key) {
-                    Some(json_value) => Some(json_value),
-                    None => {
-                        for v in map.values() {
-                            match v.search(key) {
-                                x if x.is_some() => return x,
-                                _ => ()
-                            }
+            Json::Object(ref map) => match map.get(key) {
+                Some(json_value) => Some(json_value),
+                None => {
+                    for v in map.values() {
+                        match v.search(key) {
+                            x if x.is_some() => return x,
+                            _ => (),
                         }
-                        None
                     }
+                    None
                 }
             },
-            _ => None
+            _ => None,
         }
     }
 
@@ -1082,7 +1246,7 @@ impl Json {
     pub fn as_object(&self) -> Option<&Object> {
         match *self {
             Json::Object(ref map) => Some(map),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1096,7 +1260,7 @@ impl Json {
     pub fn as_array(&self) -> Option<&Array> {
         match *self {
             Json::Array(ref array) => Some(&*array),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1110,7 +1274,7 @@ impl Json {
     pub fn as_string(&self) -> Option<&str> {
         match *self {
             Json::String(ref s) => Some(&s[..]),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1152,7 +1316,7 @@ impl Json {
         match *self {
             Json::I64(n) => Some(n),
             Json::U64(n) => Some(n as i64),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1162,7 +1326,7 @@ impl Json {
         match *self {
             Json::I64(n) => Some(n as u64),
             Json::U64(n) => Some(n),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1173,7 +1337,7 @@ impl Json {
             Json::I64(n) => Some(n as f64),
             Json::U64(n) => Some(n as f64),
             Json::F64(n) => Some(n),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1187,7 +1351,7 @@ impl Json {
     pub fn as_boolean(&self) -> Option<bool> {
         match *self {
             Json::Boolean(b) => Some(b),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1201,12 +1365,12 @@ impl Json {
     pub fn as_null(&self) -> Option<()> {
         match *self {
             Json::Null => Some(()),
-            _ => None
+            _ => None,
         }
     }
 }
 
-impl<'a> Index<&'a str>  for Json {
+impl<'a> Index<&'a str> for Json {
     type Output = Json;
 
     fn index(&self, idx: &'a str) -> &Json {
@@ -1220,7 +1384,7 @@ impl Index<usize> for Json {
     fn index(&self, idx: usize) -> &Json {
         match *self {
             Json::Array(ref v) => &v[idx],
-            _ => panic!("can only index Json with usize if it is an array")
+            _ => panic!("can only index Json with usize if it is an array"),
         }
     }
 }
@@ -1291,10 +1455,14 @@ impl Stack {
     }
 
     /// Returns The number of elements in the Stack.
-    pub fn len(&self) -> usize { self.stack.len() }
+    pub fn len(&self) -> usize {
+        self.stack.len()
+    }
 
     /// Returns `true` if the stack is empty.
-    pub fn is_empty(&self) -> bool { self.stack.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.stack.is_empty()
+    }
 
     /// Provides access to the StackElement at a given index.
     /// lower indices are at the bottom of the stack while higher indices are
@@ -1302,19 +1470,22 @@ impl Stack {
     pub fn get(&self, idx: usize) -> StackElement<'_> {
         match self.stack[idx] {
             InternalIndex(i) => StackElement::Index(i),
-            InternalKey(start, size) => {
-                StackElement::Key(str::from_utf8(
-                    &self.str_buffer[start as usize .. start as usize + size as usize])
-                        .unwrap())
-            }
+            InternalKey(start, size) => StackElement::Key(
+                str::from_utf8(&self.str_buffer[start as usize..start as usize + size as usize])
+                    .unwrap(),
+            ),
         }
     }
 
     /// Compares this stack with an array of StackElement<'_>s.
     pub fn is_equal_to(&self, rhs: &[StackElement<'_>]) -> bool {
-        if self.stack.len() != rhs.len() { return false; }
+        if self.stack.len() != rhs.len() {
+            return false;
+        }
         for (i, r) in rhs.iter().enumerate() {
-            if self.get(i) != *r { return false; }
+            if self.get(i) != *r {
+                return false;
+            }
         }
         true
     }
@@ -1322,9 +1493,13 @@ impl Stack {
     /// Returns `true` if the bottom-most elements of this stack are the same as
     /// the ones passed as parameter.
     pub fn starts_with(&self, rhs: &[StackElement<'_>]) -> bool {
-        if self.stack.len() < rhs.len() { return false; }
+        if self.stack.len() < rhs.len() {
+            return false;
+        }
         for (i, r) in rhs.iter().enumerate() {
-            if self.get(i) != *r { return false; }
+            if self.get(i) != *r {
+                return false;
+            }
         }
         true
     }
@@ -1332,10 +1507,14 @@ impl Stack {
     /// Returns `true` if the top-most elements of this stack are the same as
     /// the ones passed as parameter.
     pub fn ends_with(&self, rhs: &[StackElement<'_>]) -> bool {
-        if self.stack.len() < rhs.len() { return false; }
+        if self.stack.len() < rhs.len() {
+            return false;
+        }
         let offset = self.stack.len() - rhs.len();
         for (i, r) in rhs.iter().enumerate() {
-            if self.get(i + offset) != *r { return false; }
+            if self.get(i + offset) != *r {
+                return false;
+            }
         }
         true
     }
@@ -1345,11 +1524,9 @@ impl Stack {
         match self.stack.last() {
             None => None,
             Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
-            Some(&InternalKey(start, size)) => {
-                Some(StackElement::Key(str::from_utf8(
-                    &self.str_buffer[start as usize .. (start+size) as usize]
-                ).unwrap()))
-            }
+            Some(&InternalKey(start, size)) => Some(StackElement::Key(
+                str::from_utf8(&self.str_buffer[start as usize..(start + size) as usize]).unwrap(),
+            )),
         }
     }
 
@@ -1389,8 +1566,10 @@ impl Stack {
     fn bump_index(&mut self) {
         let len = self.stack.len();
         let idx = match *self.stack.last().unwrap() {
-            InternalIndex(i) => { i + 1 }
-            _ => { panic!(); }
+            InternalIndex(i) => i + 1,
+            _ => {
+                panic!();
+            }
         };
         self.stack[len - 1] = InternalIndex(idx);
     }
@@ -1410,7 +1589,7 @@ pub struct Parser<T> {
     state: ParserState,
 }
 
-impl<T: Iterator<Item=char>> Iterator for Parser<T> {
+impl<T: Iterator<Item = char>> Iterator for Parser<T> {
     type Item = JsonEvent;
 
     fn next(&mut self) -> Option<JsonEvent> {
@@ -1433,7 +1612,7 @@ impl<T: Iterator<Item=char>> Iterator for Parser<T> {
     }
 }
 
-impl<T: Iterator<Item=char>> Parser<T> {
+impl<T: Iterator<Item = char>> Parser<T> {
     /// Creates the JSON parser.
     pub fn new(rdr: T) -> Parser<T> {
         let mut p = Parser {
@@ -1454,8 +1633,12 @@ impl<T: Iterator<Item=char>> Parser<T> {
         &self.stack
     }
 
-    fn eof(&self) -> bool { self.ch.is_none() }
-    fn ch_or_null(&self) -> char { self.ch.unwrap_or('\x00') }
+    fn eof(&self) -> bool {
+        self.ch.is_none()
+    }
+    fn ch_or_null(&self) -> char {
+        self.ch.unwrap_or('\x00')
+    }
     fn bump(&mut self) {
         self.ch = self.rdr.next();
 
@@ -1480,10 +1663,9 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     fn parse_whitespace(&mut self) {
-        while self.ch_is(' ') ||
-              self.ch_is('\n') ||
-              self.ch_is('\t') ||
-              self.ch_is('\r') { self.bump(); }
+        while self.ch_is(' ') || self.ch_is('\n') || self.ch_is('\t') || self.ch_is('\r') {
+            self.bump();
+        }
     }
 
     fn parse_number(&mut self) -> JsonEvent {
@@ -1496,7 +1678,9 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
         let res = match self.parse_u64() {
             Ok(res) => res,
-            Err(e) => { return Error(e); }
+            Err(e) => {
+                return Error(e);
+            }
         };
 
         if self.ch_is('.') || self.ch_is('e') || self.ch_is('E') {
@@ -1505,14 +1689,18 @@ impl<T: Iterator<Item=char>> Parser<T> {
             if self.ch_is('.') {
                 res = match self.parse_decimal(res) {
                     Ok(res) => res,
-                    Err(e) => { return Error(e); }
+                    Err(e) => {
+                        return Error(e);
+                    }
                 };
             }
 
             if self.ch_is('e') || self.ch_is('E') {
                 res = match self.parse_exponent(res) {
                     Ok(res) => res,
-                    Err(e) => { return Error(e); }
+                    Err(e) => {
+                        return Error(e);
+                    }
                 };
             }
 
@@ -1544,19 +1732,21 @@ impl<T: Iterator<Item=char>> Parser<T> {
                 self.bump();
 
                 // A leading '0' must be the only digit before the decimal point.
-                if let '0' ..= '9' = self.ch_or_null() {
-                    return self.error(InvalidNumber)
+                if let '0'..='9' = self.ch_or_null() {
+                    return self.error(InvalidNumber);
                 }
-            },
-            '1' ..= '9' => {
+            }
+            '1'..='9' => {
                 while !self.eof() {
                     match self.ch_or_null() {
-                        c @ '0' ..= '9' => {
+                        c @ '0'..='9' => {
                             accum = accum.wrapping_mul(10);
                             accum = accum.wrapping_add((c as u64) - ('0' as u64));
 
                             // Detect overflow by comparing to the last value.
-                            if accum <= last_accum { return self.error(InvalidNumber); }
+                            if accum <= last_accum {
+                                return self.error(InvalidNumber);
+                            }
 
                             self.bump();
                         }
@@ -1575,14 +1765,14 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
         // Make sure a digit follows the decimal place.
         match self.ch_or_null() {
-            '0' ..= '9' => (),
-             _ => return self.error(InvalidNumber)
+            '0'..='9' => (),
+            _ => return self.error(InvalidNumber),
         }
 
         let mut dec = 1.0;
         while !self.eof() {
             match self.ch_or_null() {
-                c @ '0' ..= '9' => {
+                c @ '0'..='9' => {
                     dec /= 10.0;
                     res += (((c as isize) - ('0' as isize)) as f64) * dec;
                     self.bump();
@@ -1609,18 +1799,18 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
         // Make sure a digit follows the exponent place.
         match self.ch_or_null() {
-            '0' ..= '9' => (),
-            _ => return self.error(InvalidNumber)
+            '0'..='9' => (),
+            _ => return self.error(InvalidNumber),
         }
         while !self.eof() {
             match self.ch_or_null() {
-                c @ '0' ..= '9' => {
+                c @ '0'..='9' => {
                     exp *= 10;
                     exp += (c as usize) - ('0' as usize);
 
                     self.bump();
                 }
-                _ => break
+                _ => break,
             }
         }
 
@@ -1640,14 +1830,14 @@ impl<T: Iterator<Item=char>> Parser<T> {
         while i < 4 && !self.eof() {
             self.bump();
             n = match self.ch_or_null() {
-                c @ '0' ..= '9' => n * 16 + ((c as u16) - ('0' as u16)),
+                c @ '0'..='9' => n * 16 + ((c as u16) - ('0' as u16)),
                 'a' | 'A' => n * 16 + 10,
                 'b' | 'B' => n * 16 + 11,
                 'c' | 'C' => n * 16 + 12,
                 'd' | 'D' => n * 16 + 13,
                 'e' | 'E' => n * 16 + 14,
                 'f' | 'F' => n * 16 + 15,
-                _ => return self.error(InvalidEscape)
+                _ => return self.error(InvalidEscape),
             };
 
             i += 1;
@@ -1682,13 +1872,11 @@ impl<T: Iterator<Item=char>> Parser<T> {
                     'r' => res.push('\r'),
                     't' => res.push('\t'),
                     'u' => match self.decode_hex_escape()? {
-                        0xDC00 ..= 0xDFFF => {
-                            return self.error(LoneLeadingSurrogateInHexEscape)
-                        }
+                        0xDC00..=0xDFFF => return self.error(LoneLeadingSurrogateInHexEscape),
 
                         // Non-BMP characters are encoded as a sequence of
                         // two hex escapes, representing UTF-16 surrogates.
-                        n1 @ 0xD800 ..= 0xDBFF => {
+                        n1 @ 0xD800..=0xDBFF => {
                             match (self.next_char(), self.next_char()) {
                                 (Some('\\'), Some('u')) => (),
                                 _ => return self.error(UnexpectedEndOfHexEscape),
@@ -1696,10 +1884,10 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
                             let n2 = self.decode_hex_escape()?;
                             if n2 < 0xDC00 || n2 > 0xDFFF {
-                                return self.error(LoneLeadingSurrogateInHexEscape)
+                                return self.error(LoneLeadingSurrogateInHexEscape);
                             }
-                            let c = (u32::from(n1 - 0xD800) << 10 |
-                                     u32::from(n2 - 0xDC00)) + 0x1_0000;
+                            let c =
+                                (u32::from(n1 - 0xD800) << 10 | u32::from(n2 - 0xDC00)) + 0x1_0000;
                             res.push(char::from_u32(c).unwrap());
                         }
 
@@ -1718,9 +1906,9 @@ impl<T: Iterator<Item=char>> Parser<T> {
                     Some('"') => {
                         self.bump();
                         return Ok(res);
-                    },
+                    }
                     Some(c) => res.push(c),
-                    None => unreachable!()
+                    None => unreachable!(),
                 }
             }
         }
@@ -1910,12 +2098,14 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     fn parse_value(&mut self) -> JsonEvent {
-        if self.eof() { return self.error_event(EOFWhileParsingValue); }
+        if self.eof() {
+            return self.error_event(EOFWhileParsingValue);
+        }
         match self.ch_or_null() {
-            'n' => { self.parse_ident("ull", NullValue) }
-            't' => { self.parse_ident("rue", BooleanValue(true)) }
-            'f' => { self.parse_ident("alse", BooleanValue(false)) }
-            '0' ..= '9' | '-' => self.parse_number(),
+            'n' => self.parse_ident("ull", NullValue),
+            't' => self.parse_ident("rue", BooleanValue(true)),
+            'f' => self.parse_ident("alse", BooleanValue(false)),
+            '0'..='9' | '-' => self.parse_number(),
             '"' => match self.parse_str() {
                 Ok(s) => StringValue(s),
                 Err(e) => Error(e),
@@ -1928,7 +2118,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
                 self.bump();
                 ObjectStart
             }
-            _ => { self.error_event(InvalidSyntax) }
+            _ => self.error_event(InvalidSyntax),
         }
     }
 
@@ -1953,10 +2143,10 @@ pub struct Builder<T> {
     token: Option<JsonEvent>,
 }
 
-impl<T: Iterator<Item=char>> Builder<T> {
+impl<T: Iterator<Item = char>> Builder<T> {
     /// Creates a JSON Builder.
     pub fn new(src: T) -> Builder<T> {
-        Builder { parser: Parser::new(src), token: None, }
+        Builder { parser: Parser::new(src), token: None }
     }
 
     // Decode a Json value from a Parser.
@@ -1966,8 +2156,12 @@ impl<T: Iterator<Item=char>> Builder<T> {
         self.bump();
         match self.token {
             None => {}
-            Some(Error(ref e)) => { return Err(e.clone()); }
-            ref tok => { panic!("unexpected token {:?}", tok.clone()); }
+            Some(Error(ref e)) => {
+                return Err(e.clone());
+            }
+            ref tok => {
+                panic!("unexpected token {:?}", tok.clone());
+            }
         }
         result
     }
@@ -2007,7 +2201,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
             }
             match self.build_value() {
                 Ok(v) => values.push(v),
-                Err(e) => { return Err(e) }
+                Err(e) => return Err(e),
             }
             self.bump();
         }
@@ -2020,18 +2214,30 @@ impl<T: Iterator<Item=char>> Builder<T> {
 
         loop {
             match self.token {
-                Some(ObjectEnd) => { return Ok(Json::Object(values)); }
-                Some(Error(ref e)) => { return Err(e.clone()); }
-                None => { break; }
+                Some(ObjectEnd) => {
+                    return Ok(Json::Object(values));
+                }
+                Some(Error(ref e)) => {
+                    return Err(e.clone());
+                }
+                None => {
+                    break;
+                }
                 _ => {}
             }
             let key = match self.parser.stack().top() {
-                Some(StackElement::Key(k)) => { k.to_owned() }
-                _ => { panic!("invalid state"); }
+                Some(StackElement::Key(k)) => k.to_owned(),
+                _ => {
+                    panic!("invalid state");
+                }
             };
             match self.build_value() {
-                Ok(value) => { values.insert(key, value); }
-                Err(e) => { return Err(e); }
+                Ok(value) => {
+                    values.insert(key, value);
+                }
+                Err(e) => {
+                    return Err(e);
+                }
             }
             self.bump();
         }
@@ -2043,12 +2249,12 @@ impl<T: Iterator<Item=char>> Builder<T> {
 pub fn from_reader(rdr: &mut dyn Read) -> Result<Json, BuilderError> {
     let mut contents = Vec::new();
     match rdr.read_to_end(&mut contents) {
-        Ok(c)  => c,
-        Err(e) => return Err(io_error_to_error(e))
+        Ok(c) => c,
+        Err(e) => return Err(io_error_to_error(e)),
     };
     let s = match str::from_utf8(&contents).ok() {
         Some(s) => s,
-        _       => return Err(SyntaxError(NotUtf8, 0, 0))
+        _ => return Err(SyntaxError(NotUtf8, 0, 0)),
     };
     let mut builder = Builder::new(s.chars());
     builder.build()
@@ -2077,22 +2283,18 @@ impl Decoder {
 }
 
 macro_rules! expect {
-    ($e:expr, Null) => ({
+    ($e:expr, Null) => {{
         match $e {
             Json::Null => Ok(()),
-            other => Err(ExpectedError("Null".to_owned(),
-                                       other.to_string()))
+            other => Err(ExpectedError("Null".to_owned(), other.to_string())),
         }
-    });
-    ($e:expr, $t:ident) => ({
+    }};
+    ($e:expr, $t:ident) => {{
         match $e {
             Json::$t(v) => Ok(v),
-            other => {
-                Err(ExpectedError(stringify!($t).to_owned(),
-                                  other.to_string()))
-            }
+            other => Err(ExpectedError(stringify!($t).to_owned(), other.to_string())),
         }
-    })
+    }};
 }
 
 macro_rules! read_primitive {
@@ -2134,7 +2336,9 @@ impl crate::Decoder for Decoder {
     read_primitive! { read_i64, i64 }
     read_primitive! { read_i128, i128 }
 
-    fn read_f32(&mut self) -> DecodeResult<f32> { self.read_f64().map(|x| x as f32) }
+    fn read_f32(&mut self) -> DecodeResult<f32> {
+        self.read_f64().map(|x| x as f32)
+    }
 
     fn read_f64(&mut self) -> DecodeResult<f64> {
         match self.pop() {
@@ -2148,9 +2352,9 @@ impl crate::Decoder for Decoder {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_owned(), s)),
                 }
-            },
+            }
             Json::Null => Ok(f64::NAN),
-            value => Err(ExpectedError("Number".to_owned(), value.to_string()))
+            value => Err(ExpectedError("Number".to_owned(), value.to_string())),
         }
     }
 
@@ -2174,76 +2378,71 @@ impl crate::Decoder for Decoder {
         expect!(self.pop(), String).map(Cow::Owned)
     }
 
-    fn read_enum<T, F>(&mut self, _name: &str, f: F) -> DecodeResult<T> where
+    fn read_enum<T, F>(&mut self, _name: &str, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_enum_variant<T, F>(&mut self, names: &[&str],
-                               mut f: F) -> DecodeResult<T>
-        where F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
+    fn read_enum_variant<T, F>(&mut self, names: &[&str], mut f: F) -> DecodeResult<T>
+    where
+        F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
     {
         let name = match self.pop() {
             Json::String(s) => s,
             Json::Object(mut o) => {
                 let n = match o.remove(&"variant".to_owned()) {
                     Some(Json::String(s)) => s,
-                    Some(val) => {
-                        return Err(ExpectedError("String".to_owned(), val.to_string()))
-                    }
-                    None => {
-                        return Err(MissingFieldError("variant".to_owned()))
-                    }
+                    Some(val) => return Err(ExpectedError("String".to_owned(), val.to_string())),
+                    None => return Err(MissingFieldError("variant".to_owned())),
                 };
                 match o.remove(&"fields".to_string()) {
                     Some(Json::Array(l)) => {
                         self.stack.extend(l.into_iter().rev());
-                    },
-                    Some(val) => {
-                        return Err(ExpectedError("Array".to_owned(), val.to_string()))
                     }
-                    None => {
-                        return Err(MissingFieldError("fields".to_owned()))
-                    }
+                    Some(val) => return Err(ExpectedError("Array".to_owned(), val.to_string())),
+                    None => return Err(MissingFieldError("fields".to_owned())),
                 }
                 n
             }
-            json => {
-                return Err(ExpectedError("String or Object".to_owned(), json.to_string()))
-            }
+            json => return Err(ExpectedError("String or Object".to_owned(), json.to_string())),
         };
         let idx = match names.iter().position(|n| *n == &name[..]) {
             Some(idx) => idx,
-            None => return Err(UnknownVariantError(name))
+            None => return Err(UnknownVariantError(name)),
         };
         f(self, idx)
     }
 
-    fn read_enum_variant_arg<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
+    fn read_enum_variant_arg<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where
+    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T>
+    where
         F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
     {
         self.read_enum_variant(names, f)
     }
 
-
-    fn read_enum_struct_variant_field<T, F>(&mut self,
-                                         _name: &str,
-                                         idx: usize,
-                                         f: F)
-                                         -> DecodeResult<T> where
+    fn read_enum_struct_variant_field<T, F>(
+        &mut self,
+        _name: &str,
+        idx: usize,
+        f: F,
+    ) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_enum_variant_arg(idx, f)
     }
 
-    fn read_struct<T, F>(&mut self, _name: &str, _len: usize, f: F) -> DecodeResult<T> where
+    fn read_struct<T, F>(&mut self, _name: &str, _len: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         let value = f(self)?;
@@ -2251,11 +2450,8 @@ impl crate::Decoder for Decoder {
         Ok(value)
     }
 
-    fn read_struct_field<T, F>(&mut self,
-                               name: &str,
-                               _idx: usize,
-                               f: F)
-                               -> DecodeResult<T> where
+    fn read_struct_field<T, F>(&mut self, name: &str, _idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         let mut obj = expect!(self.pop(), Object)?;
@@ -2269,7 +2465,7 @@ impl crate::Decoder for Decoder {
                     Ok(x) => x,
                     Err(_) => return Err(MissingFieldError(name.to_string())),
                 }
-            },
+            }
             Some(json) => {
                 self.stack.push(json);
                 f(self)?
@@ -2279,7 +2475,8 @@ impl crate::Decoder for Decoder {
         Ok(value)
     }
 
-    fn read_tuple<T, F>(&mut self, tuple_len: usize, f: F) -> DecodeResult<T> where
+    fn read_tuple<T, F>(&mut self, tuple_len: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_seq(move |d, len| {
@@ -2291,41 +2488,42 @@ impl crate::Decoder for Decoder {
         })
     }
 
-    fn read_tuple_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T> where
+    fn read_tuple_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_seq_elt(idx, f)
     }
 
-    fn read_tuple_struct<T, F>(&mut self,
-                               _name: &str,
-                               len: usize,
-                               f: F)
-                               -> DecodeResult<T> where
+    fn read_tuple_struct<T, F>(&mut self, _name: &str, len: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_tuple(len, f)
     }
 
-    fn read_tuple_struct_arg<T, F>(&mut self,
-                                   idx: usize,
-                                   f: F)
-                                   -> DecodeResult<T> where
+    fn read_tuple_struct_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_tuple_arg(idx, f)
     }
 
-    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where
+    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T>
+    where
         F: FnMut(&mut Decoder, bool) -> DecodeResult<T>,
     {
         match self.pop() {
             Json::Null => f(self, false),
-            value => { self.stack.push(value); f(self, true) }
+            value => {
+                self.stack.push(value);
+                f(self, true)
+            }
         }
     }
 
-    fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T> where
+    fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
     {
         let array = expect!(self.pop(), Array)?;
@@ -2334,13 +2532,15 @@ impl crate::Decoder for Decoder {
         f(self, len)
     }
 
-    fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
+    fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T> where
+    fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
     {
         let obj = expect!(self.pop(), Object)?;
@@ -2352,14 +2552,16 @@ impl crate::Decoder for Decoder {
         f(self, len)
     }
 
-    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
-       F: FnOnce(&mut Decoder) -> DecodeResult<T>,
+    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    where
+        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
-       F: FnOnce(&mut Decoder) -> DecodeResult<T>,
+    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    where
+        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
@@ -2400,36 +2602,48 @@ macro_rules! to_json_impl_u64 {
 to_json_impl_u64! { usize, u8, u16, u32, u64 }
 
 impl ToJson for Json {
-    fn to_json(&self) -> Json { self.clone() }
+    fn to_json(&self) -> Json {
+        self.clone()
+    }
 }
 
 impl ToJson for f32 {
-    fn to_json(&self) -> Json { f64::from(*self).to_json() }
+    fn to_json(&self) -> Json {
+        f64::from(*self).to_json()
+    }
 }
 
 impl ToJson for f64 {
     fn to_json(&self) -> Json {
         match self.classify() {
             Fp::Nan | Fp::Infinite => Json::Null,
-            _                  => Json::F64(*self)
+            _ => Json::F64(*self),
         }
     }
 }
 
 impl ToJson for () {
-    fn to_json(&self) -> Json { Json::Null }
+    fn to_json(&self) -> Json {
+        Json::Null
+    }
 }
 
 impl ToJson for bool {
-    fn to_json(&self) -> Json { Json::Boolean(*self) }
+    fn to_json(&self) -> Json {
+        Json::Boolean(*self)
+    }
 }
 
 impl ToJson for str {
-    fn to_json(&self) -> Json { Json::String(self.to_string()) }
+    fn to_json(&self) -> Json {
+        Json::String(self.to_string())
+    }
 }
 
 impl ToJson for string::String {
-    fn to_json(&self) -> Json { Json::String((*self).clone()) }
+    fn to_json(&self) -> Json {
+        Json::String((*self).clone())
+    }
 }
 
 macro_rules! tuple_impl {
@@ -2451,25 +2665,29 @@ macro_rules! tuple_impl {
     }
 }
 
-tuple_impl!{A}
-tuple_impl!{A, B}
-tuple_impl!{A, B, C}
-tuple_impl!{A, B, C, D}
-tuple_impl!{A, B, C, D, E}
-tuple_impl!{A, B, C, D, E, F}
-tuple_impl!{A, B, C, D, E, F, G}
-tuple_impl!{A, B, C, D, E, F, G, H}
-tuple_impl!{A, B, C, D, E, F, G, H, I}
-tuple_impl!{A, B, C, D, E, F, G, H, I, J}
-tuple_impl!{A, B, C, D, E, F, G, H, I, J, K}
-tuple_impl!{A, B, C, D, E, F, G, H, I, J, K, L}
+tuple_impl! {A}
+tuple_impl! {A, B}
+tuple_impl! {A, B, C}
+tuple_impl! {A, B, C, D}
+tuple_impl! {A, B, C, D, E}
+tuple_impl! {A, B, C, D, E, F}
+tuple_impl! {A, B, C, D, E, F, G}
+tuple_impl! {A, B, C, D, E, F, G, H}
+tuple_impl! {A, B, C, D, E, F, G, H, I}
+tuple_impl! {A, B, C, D, E, F, G, H, I, J}
+tuple_impl! {A, B, C, D, E, F, G, H, I, J, K}
+tuple_impl! {A, B, C, D, E, F, G, H, I, J, K, L}
 
 impl<A: ToJson> ToJson for [A] {
-    fn to_json(&self) -> Json { Json::Array(self.iter().map(|elt| elt.to_json()).collect()) }
+    fn to_json(&self) -> Json {
+        Json::Array(self.iter().map(|elt| elt.to_json()).collect())
+    }
 }
 
 impl<A: ToJson> ToJson for Vec<A> {
-    fn to_json(&self) -> Json { Json::Array(self.iter().map(|elt| elt.to_json()).collect()) }
+    fn to_json(&self) -> Json {
+        Json::Array(self.iter().map(|elt| elt.to_json()).collect())
+    }
 }
 
 impl<A: ToJson> ToJson for BTreeMap<string::String, A> {
@@ -2492,11 +2710,11 @@ impl<A: ToJson> ToJson for HashMap<string::String, A> {
     }
 }
 
-impl<A:ToJson> ToJson for Option<A> {
+impl<A: ToJson> ToJson for Option<A> {
     fn to_json(&self) -> Json {
         match *self {
             None => Json::Null,
-            Some(ref value) => value.to_json()
+            Some(ref value) => value.to_json(),
         }
     }
 }
@@ -2509,7 +2727,7 @@ impl<'a, 'b> fmt::Write for FormatShim<'a, 'b> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         match self.inner.write_str(s) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }
@@ -2521,7 +2739,7 @@ impl fmt::Display for Json {
         let mut encoder = Encoder::new(&mut shim);
         match self.encode(&mut encoder) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }
@@ -2533,7 +2751,7 @@ impl<'a> fmt::Display for PrettyJson<'a> {
         let mut encoder = PrettyEncoder::new(&mut shim);
         match self.inner.encode(&mut encoder) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }
@@ -2545,7 +2763,7 @@ impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
         let mut encoder = Encoder::new(&mut shim);
         match self.inner.encode(&mut encoder) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }
@@ -2568,7 +2786,7 @@ impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
         }
         match self.inner.encode(&mut encoder) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }

@@ -1,5 +1,5 @@
-use crate::lint::{EarlyLintPass, LintPass, EarlyContext, LintArray, LintContext};
-use syntax::ast::{Stmt, StmtKind, ExprKind};
+use crate::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
+use syntax::ast::{ExprKind, Stmt, StmtKind};
 use syntax::errors::Applicability;
 
 declare_lint! {
@@ -26,11 +26,7 @@ impl EarlyLintPass for RedundantSemicolon {
                             } else {
                                 "unnecessary trailing semicolon"
                             };
-                            let mut err = cx.struct_span_lint(
-                                REDUNDANT_SEMICOLON,
-                                stmt.span,
-                                &msg
-                            );
+                            let mut err = cx.struct_span_lint(REDUNDANT_SEMICOLON, stmt.span, &msg);
                             let suggest_msg = if multiple {
                                 "remove these semicolons"
                             } else {
@@ -40,7 +36,7 @@ impl EarlyLintPass for RedundantSemicolon {
                                 stmt.span,
                                 &suggest_msg,
                                 String::new(),
-                                Applicability::MaybeIncorrect
+                                Applicability::MaybeIncorrect,
                             );
                             err.emit();
                         }

@@ -17,22 +17,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
         let place = Place::from(temp);
-        debug!("temp: created temp {:?} with type {:?}",
-               place, self.local_decls[temp].ty);
+        debug!("temp: created temp {:?} with type {:?}", place, self.local_decls[temp].ty);
         place
     }
 
     /// Convenience function for creating a literal operand, one
     /// without any user type annotation.
-    pub fn literal_operand(&mut self,
-                           span: Span,
-                           literal: &'tcx ty::Const<'tcx>)
-                           -> Operand<'tcx> {
-        let constant = box Constant {
-            span,
-            user_ty: None,
-            literal,
-        };
+    pub fn literal_operand(&mut self, span: Span, literal: &'tcx ty::Const<'tcx>) -> Operand<'tcx> {
+        let constant = box Constant { span, user_ty: None, literal };
         Operand::Constant(constant)
     }
 
@@ -48,20 +40,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.literal_operand(span, literal)
     }
 
-    pub fn push_usize(&mut self,
-                      block: BasicBlock,
-                      source_info: SourceInfo,
-                      value: u64)
-                      -> Place<'tcx> {
+    pub fn push_usize(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        value: u64,
+    ) -> Place<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty, source_info.span);
         self.cfg.push_assign_constant(
-            block, source_info, &temp,
+            block,
+            source_info,
+            &temp,
             Constant {
                 span: source_info.span,
                 user_ty: None,
                 literal: self.hir.usize_literal(value),
-            });
+            },
+        );
         temp
     }
 

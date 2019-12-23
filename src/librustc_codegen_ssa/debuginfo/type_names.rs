@@ -1,7 +1,7 @@
 // Type Names for Debug Info.
 
 use rustc::hir::{self, def_id::DefId};
-use rustc::ty::{self, Ty, TyCtxt, subst::SubstsRef};
+use rustc::ty::{self, subst::SubstsRef, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
@@ -44,7 +44,7 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Adt(def, substs) => {
             push_item_name(tcx, def.did, qualified, output);
             push_type_params(tcx, substs, output, visited);
-        },
+        }
         ty::Tuple(component_types) => {
             output.push('(');
             for &component_type in component_types {
@@ -56,8 +56,8 @@ pub fn push_debuginfo_type_name<'tcx>(
                 output.pop();
             }
             output.push(')');
-        },
-        ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
+        }
+        ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl }) => {
             if !cpp_like_names {
                 output.push('*');
             }
@@ -71,7 +71,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             if cpp_like_names {
                 output.push('*');
             }
-        },
+        }
         ty::Ref(_, inner_type, mutbl) => {
             if !cpp_like_names {
                 output.push('&');
@@ -83,13 +83,13 @@ pub fn push_debuginfo_type_name<'tcx>(
             if cpp_like_names {
                 output.push('*');
             }
-        },
+        }
         ty::Array(inner_type, len) => {
             output.push('[');
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);
             output.push_str(&format!("; {}", len.eval_usize(tcx, ty::ParamEnv::reveal_all())));
             output.push(']');
-        },
+        }
         ty::Slice(inner_type) => {
             if cpp_like_names {
                 output.push_str("slice<");
@@ -104,19 +104,17 @@ pub fn push_debuginfo_type_name<'tcx>(
             } else {
                 output.push(']');
             }
-        },
+        }
         ty::Dynamic(ref trait_data, ..) => {
             if let Some(principal) = trait_data.principal() {
-                let principal = tcx.normalize_erasing_late_bound_regions(
-                    ty::ParamEnv::reveal_all(),
-                    &principal,
-                );
+                let principal = tcx
+                    .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &principal);
                 push_item_name(tcx, principal.def_id, false, output);
                 push_type_params(tcx, principal.substs, output, visited);
             } else {
                 output.push_str("dyn '_");
             }
-        },
+        }
         ty::FnDef(..) | ty::FnPtr(_) => {
             // We've encountered a weird 'recursive type'
             // Currently, the only way to generate such a type
@@ -135,7 +133,6 @@ pub fn push_debuginfo_type_name<'tcx>(
                 output.push_str("<recursive_type>");
                 return;
             }
-
 
             let sig = t.fn_sig(tcx);
             output.push_str(sig.unsafety().prefix_str());
@@ -174,7 +171,6 @@ pub fn push_debuginfo_type_name<'tcx>(
                 push_debuginfo_type_name(tcx, sig.output(), true, output, visited);
             }
 
-
             // We only keep the type in 'visited'
             // for the duration of the body of this method.
             // It's fine for a particular function type
@@ -185,7 +181,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             // directly back to the type we're currently
             // processing
             visited.remove(t);
-        },
+        }
         ty::Closure(def_id, ..) => {
             output.push_str(&format!(
                 "closure-{}",
@@ -198,17 +194,20 @@ pub fn push_debuginfo_type_name<'tcx>(
                 tcx.def_key(def_id).disambiguated_data.disambiguator
             ));
         }
-        ty::Error |
-        ty::Infer(_) |
-        ty::Placeholder(..) |
-        ty::UnnormalizedProjection(..) |
-        ty::Projection(..) |
-        ty::Bound(..) |
-        ty::Opaque(..) |
-        ty::GeneratorWitness(..) |
-        ty::Param(_) => {
-            bug!("debuginfo: Trying to create type name for \
-                  unexpected type: {:?}", t);
+        ty::Error
+        | ty::Infer(_)
+        | ty::Placeholder(..)
+        | ty::UnnormalizedProjection(..)
+        | ty::Projection(..)
+        | ty::Bound(..)
+        | ty::Opaque(..)
+        | ty::GeneratorWitness(..)
+        | ty::Param(_) => {
+            bug!(
+                "debuginfo: Trying to create type name for \
+                  unexpected type: {:?}",
+                t
+            );
         }
     }
 

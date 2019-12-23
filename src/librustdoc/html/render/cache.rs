@@ -1,18 +1,18 @@
-use crate::clean::{self, GetDefId, AttributesExt};
+use crate::clean::{self, AttributesExt, GetDefId};
 use crate::fold::DocFolder;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc::middle::privacy::AccessLevels;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use std::collections::BTreeMap;
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::collections::BTreeMap;
 use syntax::source_map::FileName;
 use syntax::symbol::sym;
 
 use serde::Serialize;
 
-use super::{ItemType, IndexItem, IndexItemFunctionType, Impl, shorten, plain_summary_line};
-use super::{Type, RenderInfo};
+use super::{plain_summary_line, shorten, Impl, IndexItem, IndexItemFunctionType, ItemType};
+use super::{RenderInfo, Type};
 
 /// Indicates where an external crate can be found.
 pub enum ExternalLocation {
@@ -92,7 +92,6 @@ crate struct Cache {
     pub crate_version: Option<String>,
 
     // Private fields only used when initially crawling a crate to build a cache
-
     stack: Vec<String>,
     parent_stack: Vec<DefId>,
     parent_is_trait_impl: bool,
@@ -142,9 +141,8 @@ impl Cache {
             owned_box_did,
         } = renderinfo;
 
-        let external_paths = external_paths.into_iter()
-            .map(|(k, (v, t))| (k, (v, ItemType::from(t))))
-            .collect();
+        let external_paths =
+            external_paths.into_iter().map(|(k, (v, t))| (k, (v, ItemType::from(t)))).collect();
 
         let mut cache = Cache {
             impls: Default::default(),
@@ -181,8 +179,9 @@ impl Cache {
                 _ => PathBuf::new(),
             };
             let extern_url = extern_html_root_urls.get(&e.name).map(|u| &**u);
-            cache.extern_locations.insert(n, (e.name.clone(), src_root,
-                                            extern_location(e, extern_url, &dst)));
+            cache
+                .extern_locations
+                .insert(n, (e.name.clone(), src_root, extern_location(e, extern_url, &dst)));
 
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
             cache.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
@@ -237,9 +236,10 @@ impl DocFolder for Cache {
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
         if let clean::ImplItem(ref i) = item.inner {
-            if self.masked_crates.contains(&item.def_id.krate) ||
-               i.trait_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate)) ||
-               i.for_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate)) {
+            if self.masked_crates.contains(&item.def_id.krate)
+                || i.trait_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate))
+                || i.for_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate))
+            {
                 return None;
             }
         }
@@ -254,9 +254,10 @@ impl DocFolder for Cache {
         if let clean::ImplItem(ref i) = item.inner {
             if let Some(did) = i.trait_.def_id() {
                 if i.blanket_impl.is_none() {
-                    self.implementors.entry(did).or_default().push(Impl {
-                        impl_item: item.clone(),
-                    });
+                    self.implementors
+                        .entry(did)
+                        .or_default()
+                        .push(Impl { impl_item: item.clone() });
                 }
             }
         }
@@ -265,19 +266,22 @@ impl DocFolder for Cache {
         if let Some(ref s) = item.name {
             let (parent, is_inherent_impl_item) = match item.inner {
                 clean::StrippedItem(..) => ((None, None), false),
-                clean::AssocConstItem(..) |
-                clean::TypedefItem(_, true) if self.parent_is_trait_impl => {
+                clean::AssocConstItem(..) | clean::TypedefItem(_, true)
+                    if self.parent_is_trait_impl =>
+                {
                     // skip associated items in trait impls
                     ((None, None), false)
                 }
-                clean::AssocTypeItem(..) |
-                clean::TyMethodItem(..) |
-                clean::StructFieldItem(..) |
-                clean::VariantItem(..) => {
-                    ((Some(*self.parent_stack.last().unwrap()),
-                      Some(&self.stack[..self.stack.len() - 1])),
-                     false)
-                }
+                clean::AssocTypeItem(..)
+                | clean::TyMethodItem(..)
+                | clean::StructFieldItem(..)
+                | clean::VariantItem(..) => (
+                    (
+                        Some(*self.parent_stack.last().unwrap()),
+                        Some(&self.stack[..self.stack.len() - 1]),
+                    ),
+                    false,
+                ),
                 clean::MethodItem(..) | clean::AssocConstItem(..) => {
                     if self.parent_stack.is_empty() {
                         ((None, None), false)
@@ -289,18 +293,17 @@ impl DocFolder for Cache {
                             // for where the type was defined. On the other
                             // hand, `paths` always has the right
                             // information if present.
-                            Some(&(ref fqp, ItemType::Trait)) |
-                            Some(&(ref fqp, ItemType::Struct)) |
-                            Some(&(ref fqp, ItemType::Union)) |
-                            Some(&(ref fqp, ItemType::Enum)) =>
-                                Some(&fqp[..fqp.len() - 1]),
+                            Some(&(ref fqp, ItemType::Trait))
+                            | Some(&(ref fqp, ItemType::Struct))
+                            | Some(&(ref fqp, ItemType::Union))
+                            | Some(&(ref fqp, ItemType::Enum)) => Some(&fqp[..fqp.len() - 1]),
                             Some(..) => Some(&*self.stack),
-                            None => None
+                            None => None,
                         };
                         ((Some(*last), path), true)
                     }
                 }
-                _ => ((None, Some(&*self.stack)), false)
+                _ => ((None, Some(&*self.stack)), false),
             };
 
             match parent {
@@ -341,25 +344,32 @@ impl DocFolder for Cache {
         };
 
         match item.inner {
-            clean::StructItem(..) | clean::EnumItem(..) |
-            clean::TypedefItem(..) | clean::TraitItem(..) |
-            clean::FunctionItem(..) | clean::ModuleItem(..) |
-            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
-            clean::ConstantItem(..) | clean::StaticItem(..) |
-            clean::UnionItem(..) | clean::ForeignTypeItem |
-            clean::MacroItem(..) | clean::ProcMacroItem(..)
-            if !self.stripped_mod => {
+            clean::StructItem(..)
+            | clean::EnumItem(..)
+            | clean::TypedefItem(..)
+            | clean::TraitItem(..)
+            | clean::FunctionItem(..)
+            | clean::ModuleItem(..)
+            | clean::ForeignFunctionItem(..)
+            | clean::ForeignStaticItem(..)
+            | clean::ConstantItem(..)
+            | clean::StaticItem(..)
+            | clean::UnionItem(..)
+            | clean::ForeignTypeItem
+            | clean::MacroItem(..)
+            | clean::ProcMacroItem(..)
+                if !self.stripped_mod =>
+            {
                 // Re-exported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
                 // however, that a re-exported item doesn't show up in the
                 // `public_items` map, so we can skip inserting into the
                 // paths map if there was already an entry present and we're
                 // not a public item.
-                if !self.paths.contains_key(&item.def_id) ||
-                   self.access_levels.is_public(item.def_id)
+                if !self.paths.contains_key(&item.def_id)
+                    || self.access_levels.is_public(item.def_id)
                 {
-                    self.paths.insert(item.def_id,
-                                      (self.stack.clone(), item.type_()));
+                    self.paths.insert(item.def_id, (self.stack.clone(), item.type_()));
                 }
                 self.add_aliases(&item);
             }
@@ -373,8 +383,7 @@ impl DocFolder for Cache {
 
             clean::PrimitiveItem(..) => {
                 self.add_aliases(&item);
-                self.paths.insert(item.def_id, (self.stack.clone(),
-                                                item.type_()));
+                self.paths.insert(item.def_id, (self.stack.clone(), item.type_()));
             }
 
             _ => {}
@@ -383,8 +392,11 @@ impl DocFolder for Cache {
         // Maintain the parent stack
         let orig_parent_is_trait_impl = self.parent_is_trait_impl;
         let parent_pushed = match item.inner {
-            clean::TraitItem(..) | clean::EnumItem(..) | clean::ForeignTypeItem |
-            clean::StructItem(..) | clean::UnionItem(..) => {
+            clean::TraitItem(..)
+            | clean::EnumItem(..)
+            | clean::ForeignTypeItem
+            | clean::StructItem(..)
+            | clean::UnionItem(..) => {
                 self.parent_stack.push(item.def_id);
                 self.parent_is_trait_impl = false;
                 true
@@ -392,14 +404,14 @@ impl DocFolder for Cache {
             clean::ImplItem(ref i) => {
                 self.parent_is_trait_impl = i.trait_.is_some();
                 match i.for_ {
-                    clean::ResolvedPath{ did, .. } => {
+                    clean::ResolvedPath { did, .. } => {
                         self.parent_stack.push(did);
                         true
                     }
                     ref t => {
-                        let prim_did = t.primitive_type().and_then(|t| {
-                            self.primitive_locations.get(&t).cloned()
-                        });
+                        let prim_did = t
+                            .primitive_type()
+                            .and_then(|t| self.primitive_locations.get(&t).cloned());
                         match prim_did {
                             Some(did) => {
                                 self.parent_stack.push(did);
@@ -410,7 +422,7 @@ impl DocFolder for Cache {
                     }
                 }
             }
-            _ => false
+            _ => false,
         };
 
         // Once we've recursively found all the generics, hoard off all the
@@ -423,16 +435,16 @@ impl DocFolder for Cache {
                 let mut dids = FxHashSet::default();
                 if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
                     match i.for_ {
-                        clean::ResolvedPath { did, .. } |
-                        clean::BorrowedRef {
+                        clean::ResolvedPath { did, .. }
+                        | clean::BorrowedRef {
                             type_: box clean::ResolvedPath { did, .. }, ..
                         } => {
                             dids.insert(did);
                         }
                         ref t => {
-                            let did = t.primitive_type().and_then(|t| {
-                                self.primitive_locations.get(&t).cloned()
-                            });
+                            let did = t
+                                .primitive_type()
+                                .and_then(|t| self.primitive_locations.get(&t).cloned());
 
                             if let Some(did) = did {
                                 dids.insert(did);
@@ -450,9 +462,7 @@ impl DocFolder for Cache {
                 } else {
                     unreachable!()
                 };
-                let impl_item = Impl {
-                    impl_item: item,
-                };
+                let impl_item = Impl { impl_item: item };
                 if impl_item.trait_did().map_or(true, |d| self.traits.contains_key(&d)) {
                     for did in dids {
                         self.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
@@ -467,8 +477,12 @@ impl DocFolder for Cache {
             }
         });
 
-        if pushed { self.stack.pop().unwrap(); }
-        if parent_pushed { self.parent_stack.pop().unwrap(); }
+        if pushed {
+            self.stack.pop().unwrap();
+        }
+        if parent_pushed {
+            self.parent_stack.pop().unwrap();
+        }
         self.stripped_mod = orig_stripped_mod;
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
         ret
@@ -478,30 +492,32 @@ impl DocFolder for Cache {
 impl Cache {
     fn add_aliases(&mut self, item: &clean::Item) {
         if item.def_id.index == CRATE_DEF_INDEX {
-            return
+            return;
         }
         if let Some(ref item_name) = item.name {
-            let path = self.paths.get(&item.def_id)
-                                 .map(|p| p.0[..p.0.len() - 1].join("::"))
-                                 .unwrap_or("std".to_owned());
-            for alias in item.attrs.lists(sym::doc)
-                                   .filter(|a| a.check_name(sym::alias))
-                                   .filter_map(|a| a.value_str()
-                                                    .map(|s| s.to_string().replace("\"", "")))
-                                   .filter(|v| !v.is_empty())
-                                   .collect::<FxHashSet<_>>()
-                                   .into_iter() {
-                self.aliases.entry(alias)
-                            .or_insert(Vec::with_capacity(1))
-                            .push(IndexItem {
-                                ty: item.type_(),
-                                name: item_name.to_string(),
-                                path: path.clone(),
-                                desc: shorten(plain_summary_line(item.doc_value())),
-                                parent: None,
-                                parent_idx: None,
-                                search_type: get_index_search_type(&item),
-                            });
+            let path = self
+                .paths
+                .get(&item.def_id)
+                .map(|p| p.0[..p.0.len() - 1].join("::"))
+                .unwrap_or("std".to_owned());
+            for alias in item
+                .attrs
+                .lists(sym::doc)
+                .filter(|a| a.check_name(sym::alias))
+                .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
+                .filter(|v| !v.is_empty())
+                .collect::<FxHashSet<_>>()
+                .into_iter()
+            {
+                self.aliases.entry(alias).or_insert(Vec::with_capacity(1)).push(IndexItem {
+                    ty: item.type_(),
+                    name: item_name.to_string(),
+                    path: path.clone(),
+                    desc: shorten(plain_summary_line(item.doc_value())),
+                    parent: None,
+                    parent_idx: None,
+                    search_type: get_index_search_type(&item),
+                });
             }
         }
     }
@@ -509,9 +525,11 @@ impl Cache {
 
 /// Attempts to find where an external crate is located, given that we're
 /// rendering in to the specified source destination.
-fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Path)
-    -> ExternalLocation
-{
+fn extern_location(
+    e: &clean::ExternalCrate,
+    extern_url: Option<&str>,
+    dst: &Path,
+) -> ExternalLocation {
     use ExternalLocation::*;
     // See if there's documentation generated into the local directory
     let local_location = dst.join(&e.name);
@@ -529,16 +547,19 @@ fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Pat
 
     // Failing that, see if there's an attribute specifying where to find this
     // external crate
-    e.attrs.lists(sym::doc)
-     .filter(|a| a.check_name(sym::html_root_url))
-     .filter_map(|a| a.value_str())
-     .map(|url| {
-        let mut url = url.to_string();
-        if !url.ends_with("/") {
-            url.push('/')
-        }
-        Remote(url)
-    }).next().unwrap_or(Unknown) // Well, at least we tried.
+    e.attrs
+        .lists(sym::doc)
+        .filter(|a| a.check_name(sym::html_root_url))
+        .filter_map(|a| a.value_str())
+        .map(|url| {
+            let mut url = url.to_string();
+            if !url.ends_with("/") {
+                url.push('/')
+            }
+            Remote(url)
+        })
+        .next()
+        .unwrap_or(Unknown) // Well, at least we tried.
 }
 
 /// Builds the search index from the collected metadata
@@ -547,9 +568,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = vec![];
 
-    let Cache { ref mut search_index,
-                ref orphan_impl_items,
-                ref paths, .. } = *cache;
+    let Cache { ref mut search_index, ref orphan_impl_items, ref paths, .. } = *cache;
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
@@ -596,9 +615,11 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         crate_items.push(&*item);
     }
 
-    let crate_doc = krate.module.as_ref().map(|module| {
-        shorten(plain_summary_line(module.doc_value()))
-    }).unwrap_or(String::new());
+    let crate_doc = krate
+        .module
+        .as_ref()
+        .map(|module| shorten(plain_summary_line(module.doc_value())))
+        .unwrap_or(String::new());
 
     #[derive(Serialize)]
     struct CrateData<'a> {
@@ -630,17 +651,14 @@ fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
         _ => return None,
     };
 
-    let inputs = all_types.iter().map(|arg| {
-        get_index_type(&arg)
-    }).filter(|a| a.name.is_some()).collect();
-    let output = ret_types.iter().map(|arg| {
-        get_index_type(&arg)
-    }).filter(|a| a.name.is_some()).collect::<Vec<_>>();
-    let output = if output.is_empty() {
-        None
-    } else {
-        Some(output)
-    };
+    let inputs =
+        all_types.iter().map(|arg| get_index_type(&arg)).filter(|a| a.name.is_some()).collect();
+    let output = ret_types
+        .iter()
+        .map(|arg| get_index_type(&arg))
+        .filter(|a| a.name.is_some())
+        .collect::<Vec<_>>();
+    let output = if output.is_empty() { None } else { Some(output) };
 
     Some(IndexItemFunctionType { inputs, output })
 }
@@ -667,21 +685,17 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
         clean::Primitive(ref p) => Some(format!("{:?}", p)),
         clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),
         // FIXME: add all from clean::Type.
-        _ => None
+        _ => None,
     }
 }
 
 fn get_generics(clean_type: &clean::Type) -> Option<Vec<String>> {
-    clean_type.generics()
-              .and_then(|types| {
-                  let r = types.iter()
-                               .filter_map(|t| get_index_type_name(t, false))
-                               .map(|s| s.to_ascii_lowercase())
-                               .collect::<Vec<_>>();
-                  if r.is_empty() {
-                      None
-                  } else {
-                      Some(r)
-                  }
-              })
+    clean_type.generics().and_then(|types| {
+        let r = types
+            .iter()
+            .filter_map(|t| get_index_type_name(t, false))
+            .map(|s| s.to_ascii_lowercase())
+            .collect::<Vec<_>>();
+        if r.is_empty() { None } else { Some(r) }
+    })
 }

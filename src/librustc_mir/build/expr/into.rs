@@ -20,10 +20,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         expr: Expr<'tcx>,
     ) -> BlockAnd<()> {
-        debug!(
-            "into_expr(destination={:?}, block={:?}, expr={:?})",
-            destination, block, expr
-        );
+        debug!("into_expr(destination={:?}, block={:?}, expr={:?})", destination, block, expr);
 
         // since we frequently have to reference `self` from within a
         // closure, where `self` would be shadowed, it's easier to
@@ -43,15 +40,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let block_and = match expr.kind {
-            ExprKind::Scope {
-                region_scope,
-                lint_level,
-                value,
-            } => {
+            ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, source_info);
-                this.in_scope(region_scope, lint_level, |this| {
-                    this.into(destination, block, value)
-                })
+                this.in_scope(region_scope, lint_level, |this| this.into(destination, block, value))
             }
             ExprKind::Block { body: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
@@ -68,20 +59,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // (#66975) Source could be a const of type `!`, so has to
                 // exist in the generated MIR.
-                unpack!(block = this.as_temp(
-                    block,
-                    this.local_scope(),
-                    source,
-                    Mutability::Mut,
-                ));
+                unpack!(block = this.as_temp(block, this.local_scope(), source, Mutability::Mut,));
 
                 // This is an optimization. If the expression was a call then we already have an
                 // unreachable block. Don't bother to terminate it and create a new one.
                 if is_call {
                     block.unit()
                 } else {
-                    this.cfg
-                        .terminate(block, source_info, TerminatorKind::Unreachable);
+                    this.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
                     let end_block = this.cfg.start_new_block();
                     end_block.unit()
                 }
@@ -122,22 +107,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     true_block,
                     source_info,
                     destination,
-                    Constant {
-                        span: expr_span,
-                        user_ty: None,
-                        literal: this.hir.true_literal(),
-                    },
+                    Constant { span: expr_span, user_ty: None, literal: this.hir.true_literal() },
                 );
 
                 this.cfg.push_assign_constant(
                     false_block,
                     source_info,
                     destination,
-                    Constant {
-                        span: expr_span,
-                        user_ty: None,
-                        literal: this.hir.false_literal(),
-                    },
+                    Constant { span: expr_span, user_ty: None, literal: this.hir.false_literal() },
                 );
 
                 // Link up both branches:
@@ -259,9 +236,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     success.unit()
                 }
             }
-            ExprKind::Use { source } => {
-                this.into(destination, block, source)
-            }
+            ExprKind::Use { source } => this.into(destination, block, source),
             ExprKind::Borrow { arg, borrow_kind } => {
                 // We don't do this in `as_rvalue` because we use `as_place`
                 // for borrow expressions, so we cannot create an `RValue` that
@@ -272,18 +247,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     BorrowKind::Shared => unpack!(block = this.as_read_only_place(block, arg)),
                     _ => unpack!(block = this.as_place(block, arg)),
                 };
-                let borrow = Rvalue::Ref(
-                    this.hir.tcx().lifetimes.re_erased,
-                    borrow_kind,
-                    arg_place,
-                );
+                let borrow =
+                    Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place);
                 this.cfg.push_assign(block, source_info, destination, borrow);
                 block.unit()
             }
-            ExprKind::AddressOf {
-                mutability,
-                arg,
-            } => {
+            ExprKind::AddressOf { mutability, arg } => {
                 let place = match mutability {
                     hir::Mutability::Not => this.as_read_only_place(block, arg),
                     hir::Mutability::Mut => this.as_place(block, arg),
@@ -292,59 +261,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
-            ExprKind::Adt {
-                adt_def,
-                variant_index,
-                substs,
-                user_ty,
-                fields,
-                base,
-            } => {
+            ExprKind::Adt { adt_def, variant_index, substs, user_ty, fields, base } => {
                 // See the notes for `ExprKind::Array` in `as_rvalue` and for
                 // `ExprKind::Borrow` above.
                 let is_union = adt_def.is_union();
-                let active_field_index = if is_union {
-                    Some(fields[0].name.index())
-                } else {
-                    None
-                };
+                let active_field_index = if is_union { Some(fields[0].name.index()) } else { None };
 
-                let scope =  this.local_scope();
+                let scope = this.local_scope();
 
                 // first process the set of fields that were provided
                 // (evaluating them in order given by user)
                 let fields_map: FxHashMap<_, _> = fields
                     .into_iter()
-                    .map(|f| {
-                        (
-                            f.name,
-                            unpack!(block = this.as_operand(block, scope, f.expr)),
-                        )
-                    }).collect();
+                    .map(|f| (f.name, unpack!(block = this.as_operand(block, scope, f.expr))))
+                    .collect();
 
                 let field_names = this.hir.all_fields(adt_def, variant_index);
 
-                let fields = if let Some(FruInfo { base, field_types }) = base {
-                    let base = unpack!(block = this.as_place(block, base));
+                let fields =
+                    if let Some(FruInfo { base, field_types }) = base {
+                        let base = unpack!(block = this.as_place(block, base));
 
-                    // MIR does not natively support FRU, so for each
-                    // base-supplied field, generate an operand that
-                    // reads it from the base.
-                    field_names
-                        .into_iter()
-                        .zip(field_types.into_iter())
-                        .map(|(n, ty)| match fields_map.get(&n) {
-                            Some(v) => v.clone(),
-                            None => this.consume_by_copy_or_move(
-                                this.hir.tcx().mk_place_field(base.clone(), n, ty),
-                            ),
-                        }).collect()
-                } else {
-                    field_names
-                        .iter()
-                        .filter_map(|n| fields_map.get(n).cloned())
-                        .collect()
-                };
+                        // MIR does not natively support FRU, so for each
+                        // base-supplied field, generate an operand that
+                        // reads it from the base.
+                        field_names
+                            .into_iter()
+                            .zip(field_types.into_iter())
+                            .map(|(n, ty)| match fields_map.get(&n) {
+                                Some(v) => v.clone(),
+                                None => this.consume_by_copy_or_move(
+                                    this.hir.tcx().mk_place_field(base.clone(), n, ty),
+                                ),
+                            })
+                            .collect()
+                    } else {
+                        field_names.iter().filter_map(|n| fields_map.get(n).cloned()).collect()
+                    };
 
                 let inferred_ty = expr.ty;
                 let user_ty = user_ty.map(|ty| {
@@ -365,11 +318,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     destination,
-                    Rvalue::Aggregate(adt, fields)
+                    Rvalue::Aggregate(adt, fields),
                 );
                 block.unit()
             }
-
 
             // These cases don't actually need a destination
             ExprKind::Assign { .. }
@@ -384,16 +336,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             // Avoid creating a temporary
-            ExprKind::VarRef { .. } |
-            ExprKind::SelfRef |
-            ExprKind::PlaceTypeAscription { .. } |
-            ExprKind::ValueTypeAscription { .. } => {
+            ExprKind::VarRef { .. }
+            | ExprKind::SelfRef
+            | ExprKind::PlaceTypeAscription { .. }
+            | ExprKind::ValueTypeAscription { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
-                this.cfg
-                    .push_assign(block, source_info, destination, rvalue);
+                this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
             ExprKind::Index { .. } | ExprKind::Deref { .. } | ExprKind::Field { .. } => {
@@ -403,16 +354,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // value is Sized. Usually, this is caught in type checking, but
                 // in the case of box expr there is no such check.
                 if !destination.projection.is_empty() {
-                    this.local_decls
-                        .push(LocalDecl::new_temp(expr.ty, expr.span));
+                    this.local_decls.push(LocalDecl::new_temp(expr.ty, expr.span));
                 }
 
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
-                this.cfg
-                    .push_assign(block, source_info, destination, rvalue);
+                this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
 

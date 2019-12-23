@@ -5,9 +5,9 @@ use rustc_index::vec::IndexVec;
 use syntax_pos::DUMMY_SP;
 
 use crate::borrow_check::{
-    type_check::Locations,
     constraints::OutlivesConstraintIndex,
-    constraints::{OutlivesConstraintSet, OutlivesConstraint},
+    constraints::{OutlivesConstraint, OutlivesConstraintSet},
+    type_check::Locations,
 };
 
 /// The construct graph organizes the constraints by their end-points.
@@ -78,11 +78,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
     /// R2` is treated as an edge `R1 -> R2`. We use this graph to
     /// construct SCCs for region inference but also for error
     /// reporting.
-    crate fn new(
-        direction: D,
-        set: &OutlivesConstraintSet,
-        num_region_vars: usize,
-    ) -> Self {
+    crate fn new(direction: D, set: &OutlivesConstraintSet, num_region_vars: usize) -> Self {
         let mut first_constraints = IndexVec::from_elem_n(None, num_region_vars);
         let mut next_constraints = IndexVec::from_elem(None, &set.outlives);
 
@@ -94,11 +90,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
             *head = Some(idx);
         }
 
-        Self {
-            _direction: direction,
-            first_constraints,
-            next_constraints,
-        }
+        Self { _direction: direction, first_constraints, next_constraints }
     }
 
     /// Given the constraint set from which this graph was built
@@ -132,13 +124,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
         } else {
             //otherwise, just setup the iterator as normal
             let first = self.first_constraints[region_sup];
-            Edges {
-                graph: self,
-                constraints,
-                pointer: first,
-                next_static_idx: None,
-                static_region,
-           }
+            Edges { graph: self, constraints, pointer: first, next_static_idx: None, static_region }
         }
     }
 }
@@ -160,12 +146,11 @@ impl<'s, D: ConstraintGraphDirecton> Iterator for Edges<'s, D> {
 
             Some(self.constraints[p])
         } else if let Some(next_static_idx) = self.next_static_idx {
-            self.next_static_idx =
-                if next_static_idx == (self.graph.first_constraints.len() - 1) {
-                    None
-                } else {
-                    Some(next_static_idx + 1)
-                };
+            self.next_static_idx = if next_static_idx == (self.graph.first_constraints.len() - 1) {
+                None
+            } else {
+                Some(next_static_idx + 1)
+            };
 
             Some(OutlivesConstraint {
                 sup: self.static_region,
@@ -198,11 +183,7 @@ impl<'s, D: ConstraintGraphDirecton> RegionGraph<'s, D> {
         constraint_graph: &'s ConstraintGraph<D>,
         static_region: RegionVid,
     ) -> Self {
-        Self {
-            set,
-            constraint_graph,
-            static_region,
-        }
+        Self { set, constraint_graph, static_region }
     }
 
     /// Given a region `R`, iterate over all regions `R1` such that
@@ -237,10 +218,7 @@ impl<'s, D: ConstraintGraphDirecton> graph::WithNumNodes for RegionGraph<'s, D> 
 }
 
 impl<'s, D: ConstraintGraphDirecton> graph::WithSuccessors for RegionGraph<'s, D> {
-    fn successors(
-        &self,
-        node: Self::Node,
-    ) -> <Self as graph::GraphSuccessors<'_>>::Iter {
+    fn successors(&self, node: Self::Node) -> <Self as graph::GraphSuccessors<'_>>::Iter {
         self.outgoing_regions(node)
     }
 }

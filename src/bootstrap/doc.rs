@@ -10,17 +10,17 @@
 use std::collections::HashSet;
 use std::fs;
 use std::io;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
 use crate::Mode;
 use build_helper::{t, up_to_date};
 
-use crate::util::symlink_dir;
 use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
-use crate::tool::{self, prepare_tool_cargo, Tool, SourceType};
+use crate::cache::{Interned, INTERNER};
 use crate::compile;
-use crate::cache::{INTERNER, Interned};
 use crate::config::Config;
+use crate::tool::{self, prepare_tool_cargo, SourceType, Tool};
+use crate::util::symlink_dir;
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr;)+) => {
@@ -88,15 +88,11 @@ impl Step for UnstableBook {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(UnstableBook {
-            target: run.target,
-        });
+        run.builder.ensure(UnstableBook { target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(UnstableBookGen {
-            target: self.target,
-        });
+        builder.ensure(UnstableBookGen { target: self.target });
         builder.ensure(RustbookSrc {
             target: self.target,
             name: INTERNER.intern_str("unstable-book"),
@@ -121,10 +117,7 @@ impl Step for CargoBook {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CargoBook {
-            target: run.target,
-            name: INTERNER.intern_str("cargo"),
-        });
+        run.builder.ensure(CargoBook { target: run.target, name: INTERNER.intern_str("cargo") });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -141,11 +134,7 @@ impl Step for CargoBook {
 
         let _ = fs::remove_dir_all(&out);
 
-        builder.run(builder.tool_cmd(Tool::Rustbook)
-                       .arg("build")
-                       .arg(&src)
-                       .arg("-d")
-                       .arg(out));
+        builder.run(builder.tool_cmd(Tool::Rustbook).arg("build").arg(&src).arg("-d").arg(out));
     }
 }
 
@@ -180,16 +169,12 @@ impl Step for RustbookSrc {
         let rustbook = builder.tool_exe(Tool::Rustbook);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
         if up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
-            return
+            return;
         }
         builder.info(&format!("Rustbook ({}) - {}", target, name));
         let _ = fs::remove_dir_all(&out);
 
-        builder.run(rustbook_cmd
-                       .arg("build")
-                       .arg(&src)
-                       .arg("-d")
-                       .arg(out));
+        builder.run(rustbook_cmd.arg("build").arg(&src).arg("-d").arg(out));
     }
 }
 
@@ -262,10 +247,7 @@ impl Step for TheBook {
         });
 
         // build the version info page and CSS
-        builder.ensure(Standalone {
-            compiler,
-            target,
-        });
+        builder.ensure(Standalone { compiler, target });
 
         // build the redirect pages
         builder.info(&format!("Documenting book redirect pages ({})", target));
@@ -297,13 +279,20 @@ fn invoke_rustdoc(
 
     let out = out.join("book");
 
-    cmd.arg("--html-after-content").arg(&footer)
-        .arg("--html-before-content").arg(&version_info)
-        .arg("--html-in-header").arg(&header)
+    cmd.arg("--html-after-content")
+        .arg(&footer)
+        .arg("--html-before-content")
+        .arg(&version_info)
+        .arg("--html-in-header")
+        .arg(&header)
         .arg("--markdown-no-toc")
-        .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
-        .arg("-o").arg(&out).arg(&path)
-        .arg("--markdown-css").arg("../rust.css");
+        .arg("--markdown-playground-url")
+        .arg("https://play.rust-lang.org/")
+        .arg("-o")
+        .arg(&out)
+        .arg(&path)
+        .arg("--markdown-css")
+        .arg("../rust.css");
 
     builder.run(&mut cmd);
 }
@@ -366,33 +355,39 @@ impl Step for Standalone {
             let path = file.path();
             let filename = path.file_name().unwrap().to_str().unwrap();
             if !filename.ends_with(".md") || filename == "README.md" {
-                continue
+                continue;
             }
 
             let html = out.join(filename).with_extension("html");
             let rustdoc = builder.rustdoc(compiler);
-            if up_to_date(&path, &html) &&
-               up_to_date(&footer, &html) &&
-               up_to_date(&favicon, &html) &&
-               up_to_date(&full_toc, &html) &&
-               (builder.config.dry_run || up_to_date(&version_info, &html)) &&
-               (builder.config.dry_run || up_to_date(&rustdoc, &html)) {
-                continue
+            if up_to_date(&path, &html)
+                && up_to_date(&footer, &html)
+                && up_to_date(&favicon, &html)
+                && up_to_date(&full_toc, &html)
+                && (builder.config.dry_run || up_to_date(&version_info, &html))
+                && (builder.config.dry_run || up_to_date(&rustdoc, &html))
+            {
+                continue;
             }
 
             let mut cmd = builder.rustdoc_cmd(compiler);
-            cmd.arg("--html-after-content").arg(&footer)
-               .arg("--html-before-content").arg(&version_info)
-               .arg("--html-in-header").arg(&favicon)
-               .arg("--markdown-no-toc")
-               .arg("--index-page").arg(&builder.src.join("src/doc/index.md"))
-               .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
-               .arg("-o").arg(&out)
-               .arg(&path);
+            cmd.arg("--html-after-content")
+                .arg(&footer)
+                .arg("--html-before-content")
+                .arg(&version_info)
+                .arg("--html-in-header")
+                .arg(&favicon)
+                .arg("--markdown-no-toc")
+                .arg("--index-page")
+                .arg(&builder.src.join("src/doc/index.md"))
+                .arg("--markdown-playground-url")
+                .arg("https://play.rust-lang.org/")
+                .arg("-o")
+                .arg(&out)
+                .arg(&path);
 
             if filename == "not_found.md" {
-                cmd.arg("--markdown-css")
-                   .arg("https://doc.rust-lang.org/rust.css");
+                cmd.arg("--markdown-css").arg("https://doc.rust-lang.org/rust.css");
             } else {
                 cmd.arg("--markdown-css").arg("rust.css");
             }
@@ -417,10 +412,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Std {
-            stage: run.builder.top_stage,
-            target: run.target
-        });
+        run.builder.ensure(Std { stage: run.builder.top_stage, target: run.target });
     }
 
     /// Compile all standard library documentation.
@@ -436,8 +428,7 @@ impl Step for Std {
         let compiler = builder.compiler(stage, builder.config.build);
 
         builder.ensure(compile::Std { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Std)
-                           .join(target).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::Std).join(target).join("doc");
 
         // Here what we're doing is creating a *symlink* (directory junction on
         // Windows) to the final output location. This is not done as an
@@ -462,18 +453,21 @@ impl Step for Std {
 
             // Keep a whitelist so we do not build internal stdlib crates, these will be
             // build by the rustc step later if enabled.
-            cargo.arg("-Z").arg("unstable-options")
-                 .arg("-p").arg(package);
+            cargo.arg("-Z").arg("unstable-options").arg("-p").arg(package);
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
             // FIXME: Cargo should probably do this itself.
             t!(fs::create_dir_all(out_dir.join(package)));
-            cargo.arg("--")
-                 .arg("--markdown-css").arg("rust.css")
-                 .arg("--markdown-no-toc")
-                 .arg("--generate-redirect-pages")
-                 .arg("--resource-suffix").arg(crate::channel::CFG_RELEASE_NUM)
-                 .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
+            cargo
+                .arg("--")
+                .arg("--markdown-css")
+                .arg("rust.css")
+                .arg("--markdown-no-toc")
+                .arg("--generate-redirect-pages")
+                .arg("--resource-suffix")
+                .arg(crate::channel::CFG_RELEASE_NUM)
+                .arg("--index-page")
+                .arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo.into());
         };
@@ -501,10 +495,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rustc {
-            stage: run.builder.top_stage,
-            target: run.target,
-        });
+        run.builder.ensure(Rustc { stage: run.builder.top_stage, target: run.target });
     }
 
     /// Generates compiler documentation.
@@ -568,7 +559,7 @@ impl Step for Rustc {
 fn find_compiler_crates(
     builder: &Builder<'_>,
     name: &Interned<String>,
-    crates: &mut HashSet<Interned<String>>
+    crates: &mut HashSet<Interned<String>>,
 ) {
     // Add current crate.
     crates.insert(*name);
@@ -597,10 +588,7 @@ impl Step for Rustdoc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rustdoc {
-            stage: run.builder.top_stage,
-            target: run.target,
-        });
+        run.builder.ensure(Rustdoc { stage: run.builder.top_stage, target: run.target });
     }
 
     /// Generates compiler documentation.
@@ -633,9 +621,7 @@ impl Step for Rustdoc {
         builder.ensure(tool::Rustdoc { compiler: compiler });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
-        let out_dir = builder.stage_out(compiler, Mode::ToolRustc)
-            .join(target)
-            .join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
         t!(fs::create_dir_all(&out_dir));
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
@@ -648,7 +634,7 @@ impl Step for Rustdoc {
             "doc",
             "src/tools/rustdoc",
             SourceType::InTree,
-            &[]
+            &[],
         );
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -676,9 +662,7 @@ impl Step for ErrorIndex {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(ErrorIndex {
-            target: run.target,
-        });
+        run.builder.ensure(ErrorIndex { target: run.target });
     }
 
     /// Generates the HTML rendered error-index by running the
@@ -690,10 +674,7 @@ impl Step for ErrorIndex {
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(2, builder.config.build);
-        let mut index = tool::ErrorIndex::command(
-            builder,
-            compiler,
-        );
+        let mut index = tool::ErrorIndex::command(builder, compiler);
         index.arg("html");
         index.arg(out.join("error-index.html"));
         index.arg(crate::channel::CFG_RELEASE_NUM);
@@ -721,9 +702,7 @@ impl Step for UnstableBookGen {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(UnstableBookGen {
-            target: run.target,
-        });
+        run.builder.ensure(UnstableBookGen { target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -751,9 +730,7 @@ fn symlink_dir_force(config: &Config, src: &Path, dst: &Path) -> io::Result<()> 
         } else {
             // handle directory junctions on windows by falling back to
             // `remove_dir`.
-            fs::remove_file(dst).or_else(|_| {
-                fs::remove_dir(dst)
-            })?;
+            fs::remove_file(dst).or_else(|_| fs::remove_dir(dst))?;
         }
     }
 

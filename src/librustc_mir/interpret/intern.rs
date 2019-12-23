@@ -11,22 +11,19 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use syntax::ast::Mutability;
 
-use super::{
-    AllocId, Allocation, InterpCx, Machine, MemoryKind, MPlaceTy, Scalar, ValueVisitor,
-};
+use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, Scalar, ValueVisitor};
 
-pub trait CompileTimeMachine<'mir, 'tcx> =
-    Machine<
-        'mir,
-        'tcx,
-        MemoryKinds = !,
-        PointerTag = (),
-        ExtraFnVal = !,
-        FrameExtra = (),
-        MemoryExtra = (),
-        AllocExtra = (),
-        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
-    >;
+pub trait CompileTimeMachine<'mir, 'tcx> = Machine<
+    'mir,
+    'tcx,
+    MemoryKinds = !,
+    PointerTag = (),
+    ExtraFnVal = !,
+    FrameExtra = (),
+    MemoryExtra = (),
+    AllocExtra = (),
+    MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
+>;
 
 struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
     /// The ectx from which we intern.
@@ -95,23 +92,19 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
             // treat dangling pointers like other statics
             // just to stop trying to recurse into them
             return Ok(Some(IsStaticOrFn));
-        },
+        }
     };
     // This match is just a canary for future changes to `MemoryKind`, which most likely need
     // changes in this function.
     match kind {
-        MemoryKind::Stack | MemoryKind::Vtable | MemoryKind::CallerLocation => {},
+        MemoryKind::Stack | MemoryKind::Vtable | MemoryKind::CallerLocation => {}
     }
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
     // read-only memory, and also by Miri when evluating other constants/statics that
     // access this one.
     if mode == InternMode::Static {
         // When `ty` is `None`, we assume no interior mutability.
-        let frozen = ty.map_or(true, |ty| ty.is_freeze(
-            ecx.tcx.tcx,
-            ecx.param_env,
-            ecx.tcx.span,
-        ));
+        let frozen = ty.map_or(true, |ty| ty.is_freeze(ecx.tcx.tcx, ecx.param_env, ecx.tcx.span));
         // For statics, allocation mutability is the combination of the place mutability and
         // the type mutability.
         // The entire allocation needs to be mutable if it contains an `UnsafeCell` anywhere.
@@ -127,7 +120,8 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
         // initial value was computed.
         // Constants are never mutable.
         assert_eq!(
-            mutability, Mutability::Not,
+            mutability,
+            Mutability::Not,
             "Something went very wrong: mutability requested for a constant"
         );
         alloc.mutability = Mutability::Not;
@@ -146,21 +140,12 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir
         mutability: Mutability,
         ty: Option<Ty<'tcx>>,
     ) -> InterpResult<'tcx, Option<IsStaticOrFn>> {
-        intern_shallow(
-            self.ecx,
-            self.leftover_allocations,
-            self.mode,
-            alloc_id,
-            mutability,
-            ty,
-        )
+        intern_shallow(self.ecx, self.leftover_allocations, self.mode, alloc_id, mutability, ty)
     }
 }
 
-impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>
-    ValueVisitor<'mir, 'tcx, M>
-for
-    InternVisitor<'rt, 'mir, 'tcx, M>
+impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
+    for InternVisitor<'rt, 'mir, 'tcx, M>
 {
     type V = MPlaceTy<'tcx>;
 
@@ -172,7 +157,7 @@ for
     fn visit_aggregate(
         &mut self,
         mplace: MPlaceTy<'tcx>,
-        fields: impl Iterator<Item=InterpResult<'tcx, Self::V>>,
+        fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
             if Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type() {
@@ -181,7 +166,8 @@ for
                 // allocations.
                 let old = std::mem::replace(&mut self.mutability, Mutability::Mut);
                 assert_ne!(
-                    self.mode, InternMode::Const,
+                    self.mode,
+                    InternMode::Const,
                     "UnsafeCells are not allowed behind references in constants. This should have \
                     been prevented statically by const qualification. If this were allowed one \
                     would be able to change a constant at one use site and other use sites could \
@@ -204,8 +190,7 @@ for
             let mplace = self.ecx.ref_to_mplace(value)?;
             // Handle trait object vtables
             if let ty::Dynamic(..) =
-                self.ecx.tcx.struct_tail_erasing_lifetimes(
-                    referenced_ty, self.ecx.param_env).kind
+                self.ecx.tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind
             {
                 if let Ok(vtable) = mplace.meta.unwrap().to_ptr() {
                     // explitly choose `Immutable` here, since vtables are immutable, even
@@ -223,23 +208,20 @@ for
                 // const qualification enforces it. We can lift it in the future.
                 match (self.mode, mutability) {
                     // immutable references are fine everywhere
-                    (_, hir::Mutability::Not) => {},
+                    (_, hir::Mutability::Not) => {}
                     // all is "good and well" in the unsoundness of `static mut`
 
                     // mutable references are ok in `static`. Either they are treated as immutable
                     // because they are behind an immutable one, or they are behind an `UnsafeCell`
                     // and thus ok.
-                    (InternMode::Static, hir::Mutability::Mut) => {},
+                    (InternMode::Static, hir::Mutability::Mut) => {}
                     // we statically prevent `&mut T` via `const_qualif` and double check this here
-                    (InternMode::ConstBase, hir::Mutability::Mut) |
-                    (InternMode::Const, hir::Mutability::Mut) => {
-                        match referenced_ty.kind {
-                            ty::Array(_, n)
-                                if n.eval_usize(self.ecx.tcx.tcx, self.ecx.param_env) == 0 => {}
-                            ty::Slice(_)
-                                if mplace.meta.unwrap().to_machine_usize(self.ecx)? == 0 => {}
-                            _ => bug!("const qualif failed to prevent mutable references"),
-                        }
+                    (InternMode::ConstBase, hir::Mutability::Mut)
+                    | (InternMode::Const, hir::Mutability::Mut) => match referenced_ty.kind {
+                        ty::Array(_, n)
+                            if n.eval_usize(self.ecx.tcx.tcx, self.ecx.param_env) == 0 => {}
+                        ty::Slice(_) if mplace.meta.unwrap().to_machine_usize(self.ecx)? == 0 => {}
+                        _ => bug!("const qualif failed to prevent mutable references"),
                     },
                 }
                 // Compute the mutability with which we'll start visiting the allocation. This is
@@ -260,7 +242,7 @@ for
                 match self.intern_shallow(ptr.alloc_id, mutability, Some(mplace.layout.ty))? {
                     // No need to recurse, these are interned already and statics may have
                     // cycles, so we don't want to recurse there
-                    Some(IsStaticOrFn) => {},
+                    Some(IsStaticOrFn) => {}
                     // intern everything referenced by this value. The mutability is taken from the
                     // reference. It is checked above that mutable references only happen in
                     // `static mut`
@@ -301,7 +283,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
         base_intern_mode,
         ret.ptr.to_ptr()?.alloc_id,
         base_mutability,
-        Some(ret.layout.ty)
+        Some(ret.layout.ty),
     )?;
 
     while let Some(((mplace, mutability, mode), _)) = ref_tracking.todo.pop() {
@@ -311,7 +293,8 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             mode,
             leftover_allocations,
             mutability,
-        }.visit_value(mplace);
+        }
+        .visit_value(mplace);
         if let Err(error) = interned {
             // This can happen when e.g. the tag of an enum is not a valid discriminant. We do have
             // to read enum discriminants in order to find references in enum variant fields.
@@ -322,8 +305,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                         diag.note(crate::const_eval::note_on_undefined_behavior_error());
                         diag.emit();
                     }
-                    Err(ErrorHandled::TooGeneric) |
-                    Err(ErrorHandled::Reported) => {},
+                    Err(ErrorHandled::TooGeneric) | Err(ErrorHandled::Reported) => {}
                 }
             }
         }

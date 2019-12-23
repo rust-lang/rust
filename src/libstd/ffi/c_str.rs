@@ -1,5 +1,5 @@
 use crate::ascii;
-use crate::borrow::{Cow, Borrow};
+use crate::borrow::{Borrow, Cow};
 use crate::cmp::Ordering;
 use crate::error::Error;
 use crate::fmt::{self, Write};
@@ -206,7 +206,7 @@ pub struct CStr {
     //        just a raw `c_char` along with some form of marker to make
     //        this an unsized type. Essentially `sizeof(&CStr)` should be the
     //        same as `sizeof(&c_char)` but `CStr` should be an unsized type.
-    inner: [c_char]
+    inner: [c_char],
 }
 
 /// An error indicating that an interior nul byte was found.
@@ -264,14 +264,10 @@ enum FromBytesWithNulErrorKind {
 
 impl FromBytesWithNulError {
     fn interior_nul(pos: usize) -> FromBytesWithNulError {
-        FromBytesWithNulError {
-            kind: FromBytesWithNulErrorKind::InteriorNul(pos),
-        }
+        FromBytesWithNulError { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
     }
     fn not_nul_terminated() -> FromBytesWithNulError {
-        FromBytesWithNulError {
-            kind: FromBytesWithNulErrorKind::NotNulTerminated,
-        }
+        FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
 }
 
@@ -493,11 +489,10 @@ impl CString {
 
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_string(self) -> Result<String, IntoStringError> {
-        String::from_utf8(self.into_bytes())
-            .map_err(|e| IntoStringError {
-                error: e.utf8_error(),
-                inner: unsafe { CString::from_vec_unchecked(e.into_bytes()) },
-            })
+        String::from_utf8(self.into_bytes()).map_err(|e| IntoStringError {
+            error: e.utf8_error(),
+            inner: unsafe { CString::from_vec_unchecked(e.into_bytes()) },
+        })
     }
 
     /// Consumes the `CString` and returns the underlying byte buffer.
@@ -645,7 +640,9 @@ impl CString {
 impl Drop for CString {
     #[inline]
     fn drop(&mut self) {
-        unsafe { *self.inner.get_unchecked_mut(0) = 0; }
+        unsafe {
+            *self.inner.get_unchecked_mut(0) = 0;
+        }
     }
 }
 
@@ -711,7 +708,9 @@ impl Default for CString {
 #[stable(feature = "cstr_borrow", since = "1.3.0")]
 impl Borrow<CStr> for CString {
     #[inline]
-    fn borrow(&self) -> &CStr { self }
+    fn borrow(&self) -> &CStr {
+        self
+    }
 }
 
 #[stable(feature = "cstring_from_cow_cstr", since = "1.28.0")]
@@ -856,7 +855,9 @@ impl NulError {
     /// assert_eq!(nul_error.nul_position(), 7);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn nul_position(&self) -> usize { self.0 }
+    pub fn nul_position(&self) -> usize {
+        self.0
+    }
 
     /// Consumes this error, returning the underlying vector of bytes which
     /// generated the error in the first place.
@@ -870,12 +871,16 @@ impl NulError {
     /// assert_eq!(nul_error.into_vec(), b"foo\0bar");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_vec(self) -> Vec<u8> { self.1 }
+    pub fn into_vec(self) -> Vec<u8> {
+        self.1
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for NulError {
-    fn description(&self) -> &str { "nul byte found in data" }
+    fn description(&self) -> &str {
+        "nul byte found in data"
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -892,8 +897,7 @@ impl From<NulError> for io::Error {
     /// [`NulError`]: ../ffi/struct.NulError.html
     /// [`io::Error`]: ../io/struct.Error.html
     fn from(_: NulError) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidInput,
-                       "data provided contains a nul byte")
+        io::Error::new(io::ErrorKind::InvalidInput, "data provided contains a nul byte")
     }
 }
 
@@ -901,10 +905,10 @@ impl From<NulError> for io::Error {
 impl Error for FromBytesWithNulError {
     fn description(&self) -> &str {
         match self.kind {
-            FromBytesWithNulErrorKind::InteriorNul(..) =>
-                "data provided contains an interior nul byte",
-            FromBytesWithNulErrorKind::NotNulTerminated =>
-                "data provided is not nul terminated",
+            FromBytesWithNulErrorKind::InteriorNul(..) => {
+                "data provided contains an interior nul byte"
+            }
+            FromBytesWithNulErrorKind::NotNulTerminated => "data provided is not nul terminated",
         }
     }
 }
@@ -1033,8 +1037,7 @@ impl CStr {
     /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    pub fn from_bytes_with_nul(bytes: &[u8])
-                               -> Result<&CStr, FromBytesWithNulError> {
+    pub fn from_bytes_with_nul(bytes: &[u8]) -> Result<&CStr, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         if let Some(nul_pos) = nul_pos {
             if nul_pos + 1 != bytes.len() {
@@ -1342,10 +1345,10 @@ impl AsRef<CStr> for CString {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::os::raw::c_char;
     use crate::borrow::Cow::{Borrowed, Owned};
-    use crate::hash::{Hash, Hasher};
     use crate::collections::hash_map::DefaultHasher;
+    use crate::hash::{Hash, Hasher};
+    use crate::os::raw::c_char;
     use crate::rc::Rc;
     use crate::sync::Arc;
 
@@ -1504,9 +1507,7 @@ mod tests {
 
     #[test]
     fn cstr_const_constructor() {
-        const CSTR: &CStr = unsafe {
-            CStr::from_bytes_with_nul_unchecked(b"Hello, world!\0")
-        };
+        const CSTR: &CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"Hello, world!\0") };
 
         assert_eq!(CSTR.to_str().unwrap(), "Hello, world!");
     }

@@ -120,9 +120,9 @@
 
 use self::Ordering::*;
 
-use crate::intrinsics;
 use crate::cell::UnsafeCell;
 use crate::fmt;
+use crate::intrinsics;
 
 use crate::hint::spin_loop;
 
@@ -313,7 +313,7 @@ pub enum Ordering {
 #[rustc_deprecated(
     since = "1.34.0",
     reason = "the `new` function is now preferred",
-    suggestion = "AtomicBool::new(false)",
+    suggestion = "AtomicBool::new(false)"
 )]
 pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
 
@@ -557,12 +557,13 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "8")]
-    pub fn compare_exchange(&self,
-                            current: bool,
-                            new: bool,
-                            success: Ordering,
-                            failure: Ordering)
-                            -> Result<bool, bool> {
+    pub fn compare_exchange(
+        &self,
+        current: bool,
+        new: bool,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<bool, bool> {
         match unsafe {
             atomic_compare_exchange(self.v.get(), current as u8, new as u8, success, failure)
         } {
@@ -613,12 +614,13 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "8")]
-    pub fn compare_exchange_weak(&self,
-                                 current: bool,
-                                 new: bool,
-                                 success: Ordering,
-                                 failure: Ordering)
-                                 -> Result<bool, bool> {
+    pub fn compare_exchange_weak(
+        &self,
+        current: bool,
+        new: bool,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<bool, bool> {
         match unsafe {
             atomic_compare_exchange_weak(self.v.get(), current as u8, new as u8, success, failure)
         } {
@@ -834,9 +836,7 @@ impl AtomicBool {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_mut_ptr",
-           reason = "recently added",
-           issue = "66893")]
+    #[unstable(feature = "atomic_mut_ptr", reason = "recently added", issue = "66893")]
     pub fn as_mut_ptr(&self) -> *mut bool {
         self.v.get() as *mut bool
     }
@@ -1073,18 +1073,21 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "ptr")]
-    pub fn compare_exchange(&self,
-                            current: *mut T,
-                            new: *mut T,
-                            success: Ordering,
-                            failure: Ordering)
-                            -> Result<*mut T, *mut T> {
+    pub fn compare_exchange(
+        &self,
+        current: *mut T,
+        new: *mut T,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<*mut T, *mut T> {
         unsafe {
-            let res = atomic_compare_exchange(self.p.get() as *mut usize,
-                                              current as usize,
-                                              new as usize,
-                                              success,
-                                              failure);
+            let res = atomic_compare_exchange(
+                self.p.get() as *mut usize,
+                current as usize,
+                new as usize,
+                success,
+                failure,
+            );
             match res {
                 Ok(x) => Ok(x as *mut T),
                 Err(x) => Err(x as *mut T),
@@ -1133,18 +1136,21 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "ptr")]
-    pub fn compare_exchange_weak(&self,
-                                 current: *mut T,
-                                 new: *mut T,
-                                 success: Ordering,
-                                 failure: Ordering)
-                                 -> Result<*mut T, *mut T> {
+    pub fn compare_exchange_weak(
+        &self,
+        current: *mut T,
+        new: *mut T,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<*mut T, *mut T> {
         unsafe {
-            let res = atomic_compare_exchange_weak(self.p.get() as *mut usize,
-                                                   current as usize,
-                                                   new as usize,
-                                                   success,
-                                                   failure);
+            let res = atomic_compare_exchange_weak(
+                self.p.get() as *mut usize,
+                current as usize,
+                new as usize,
+                success,
+                failure,
+            );
             match res {
                 Ok(x) => Ok(x as *mut T),
                 Err(x) => Err(x as *mut T),
@@ -1166,14 +1172,18 @@ impl From<bool> for AtomicBool {
     /// assert_eq!(format!("{:?}", atomic_bool), "true")
     /// ```
     #[inline]
-    fn from(b: bool) -> Self { Self::new(b) }
+    fn from(b: bool) -> Self {
+        Self::new(b)
+    }
 }
 
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "atomic_from", since = "1.23.0")]
 impl<T> From<*mut T> for AtomicPtr<T> {
     #[inline]
-    fn from(p: *mut T) -> Self { Self::new(p) }
+    fn from(p: *mut T) -> Self {
+        Self::new(p)
+    }
 }
 
 #[cfg(target_has_atomic_load_store = "8")]
@@ -2156,20 +2166,26 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[cfg(target_pointer_width = "16")]
 macro_rules! ptr_width {
-    () => { 2 }
+    () => {
+        2
+    };
 }
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[cfg(target_pointer_width = "32")]
 macro_rules! ptr_width {
-    () => { 4 }
+    () => {
+        4
+    };
 }
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[cfg(target_pointer_width = "64")]
 macro_rules! ptr_width {
-    () => { 8 }
+    () => {
+        8
+    };
 }
 #[cfg(target_has_atomic_load_store = "ptr")]
-atomic_int!{
+atomic_int! {
     cfg(target_has_atomic = "ptr"),
     stable(feature = "rust1", since = "1.0.0"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
@@ -2187,7 +2203,7 @@ atomic_int!{
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
 #[cfg(target_has_atomic_load_store = "ptr")]
-atomic_int!{
+atomic_int! {
     cfg(target_has_atomic = "ptr"),
     stable(feature = "rust1", since = "1.0.0"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
@@ -2279,12 +2295,13 @@ unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_compare_exchange<T>(dst: *mut T,
-                                     old: T,
-                                     new: T,
-                                     success: Ordering,
-                                     failure: Ordering)
-                                     -> Result<T, T> {
+unsafe fn atomic_compare_exchange<T>(
+    dst: *mut T,
+    old: T,
+    new: T,
+    success: Ordering,
+    failure: Ordering,
+) -> Result<T, T> {
     let (val, ok) = match (success, failure) {
         (Acquire, Acquire) => intrinsics::atomic_cxchg_acq(dst, old, new),
         (Release, Relaxed) => intrinsics::atomic_cxchg_rel(dst, old, new),
@@ -2304,12 +2321,13 @@ unsafe fn atomic_compare_exchange<T>(dst: *mut T,
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_compare_exchange_weak<T>(dst: *mut T,
-                                          old: T,
-                                          new: T,
-                                          success: Ordering,
-                                          failure: Ordering)
-                                          -> Result<T, T> {
+unsafe fn atomic_compare_exchange_weak<T>(
+    dst: *mut T,
+    old: T,
+    new: T,
+    success: Ordering,
+    failure: Ordering,
+) -> Result<T, T> {
     let (val, ok) = match (success, failure) {
         (Acquire, Acquire) => intrinsics::atomic_cxchgweak_acq(dst, old, new),
         (Release, Relaxed) => intrinsics::atomic_cxchgweak_rel(dst, old, new),
@@ -2525,7 +2543,6 @@ pub fn fence(order: Ordering) {
     }
 }
 
-
 /// A compiler memory fence.
 ///
 /// `compiler_fence` does not emit any machine code, but restricts the kinds
@@ -2612,7 +2629,6 @@ pub fn compiler_fence(order: Ordering) {
         }
     }
 }
-
 
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]

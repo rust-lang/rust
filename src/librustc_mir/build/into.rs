@@ -18,12 +18,9 @@ pub(in crate::build) trait EvalInto<'tcx> {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn into<E>(&mut self,
-                   destination: &Place<'tcx>,
-                   block: BasicBlock,
-                   expr: E)
-                   -> BlockAnd<()>
-        where E: EvalInto<'tcx>
+    pub fn into<E>(&mut self, destination: &Place<'tcx>, block: BasicBlock, expr: E) -> BlockAnd<()>
+    where
+        E: EvalInto<'tcx>,
     {
         expr.eval_into(self, destination, block)
     }

@@ -1,23 +1,20 @@
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::middle::cstore::{self, NativeLibrary};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use syntax::attr;
-use syntax::source_map::Span;
 use syntax::feature_gate::feature_err;
+use syntax::source_map::Span;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::{span_err, struct_span_err};
 
 use rustc_error_codes::*;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
-    let mut collector = Collector {
-        tcx,
-        libs: Vec::new(),
-    };
+    let mut collector = Collector { tcx, libs: Vec::new() };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
     collector.process_command_line();
     return collector.libs;
@@ -42,10 +39,8 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
             _ => return,
         };
 
-        if fm.abi == Abi::Rust ||
-            fm.abi == Abi::RustIntrinsic ||
-            fm.abi == Abi::PlatformIntrinsic {
-            return
+        if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
+            return;
         }
 
         // Process all of the #[link(..)]-style arguments
@@ -77,10 +72,16 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                         "framework" => cstore::NativeFramework,
                         "raw-dylib" => cstore::NativeRawDylib,
                         k => {
-                            struct_span_err!(self.tcx.sess, item.span(), E0458,
-                                      "unknown kind: `{}`", k)
-                                .span_label(item.span(), "unknown kind")
-                                .span_label(m.span, "").emit();
+                            struct_span_err!(
+                                self.tcx.sess,
+                                item.span(),
+                                E0458,
+                                "unknown kind: `{}`",
+                                k
+                            )
+                            .span_label(item.span(), "unknown kind")
+                            .span_label(m.span, "")
+                            .emit();
                             cstore::NativeUnknown
                         }
                     };
@@ -92,10 +93,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                         None => continue, // skip like historical compilers
                     };
                     if cfg.is_empty() {
-                        self.tcx.sess.span_err(
-                            item.span(),
-                            "`cfg()` must have an argument",
-                        );
+                        self.tcx.sess.span_err(item.span(), "`cfg()` must have an argument");
                     } else if let cfg @ Some(..) = cfg[0].meta_item() {
                         lib.cfg = cfg.cloned();
                     } else {
@@ -119,11 +117,15 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
             // #[link(wasm_import_module = "...")] without the `name`.
             let requires_name = kind_specified || lib.wasm_import_module.is_none();
             if lib.name.is_none() && requires_name {
-                struct_span_err!(self.tcx.sess, m.span, E0459,
-                                 "`#[link(...)]` specified without \
-                                  `name = \"foo\"`")
-                    .span_label(m.span, "missing `name` argument")
-                    .emit();
+                struct_span_err!(
+                    self.tcx.sess,
+                    m.span,
+                    E0459,
+                    "`#[link(...)]` specified without \
+                                  `name = \"foo\"`"
+                )
+                .span_label(m.span, "missing `name` argument")
+                .emit();
             }
             self.register_native_lib(Some(m.span), lib);
         }
@@ -138,16 +140,20 @@ impl Collector<'tcx> {
         if lib.name.as_ref().map(|&s| s == kw::Invalid).unwrap_or(false) {
             match span {
                 Some(span) => {
-                    struct_span_err!(self.tcx.sess, span, E0454,
-                                     "`#[link(name = \"\")]` given with empty name")
-                        .span_label(span, "empty name given")
-                        .emit();
+                    struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0454,
+                        "`#[link(name = \"\")]` given with empty name"
+                    )
+                    .span_label(span, "empty name given")
+                    .emit();
                 }
                 None => {
                     self.tcx.sess.err("empty library name given via `-l`");
                 }
             }
-            return
+            return;
         }
         let is_osx = self.tcx.sess.target.target.options.is_like_osx;
         if lib.kind == cstore::NativeFramework && !is_osx {
@@ -161,24 +167,21 @@ impl Collector<'tcx> {
             feature_err(&self.tcx.sess.parse_sess, sym::link_cfg, span.unwrap(), "is unstable")
                 .emit();
         }
-        if lib.kind == cstore::NativeStaticNobundle &&
-           !self.tcx.features().static_nobundle
-        {
+        if lib.kind == cstore::NativeStaticNobundle && !self.tcx.features().static_nobundle {
             feature_err(
                 &self.tcx.sess.parse_sess,
                 sym::static_nobundle,
                 span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
-                "kind=\"static-nobundle\" is unstable"
+                "kind=\"static-nobundle\" is unstable",
             )
             .emit();
         }
-        if lib.kind == cstore::NativeRawDylib &&
-           !self.tcx.features().raw_dylib {
+        if lib.kind == cstore::NativeRawDylib && !self.tcx.features().raw_dylib {
             feature_err(
                 &self.tcx.sess.parse_sess,
                 sym::raw_dylib,
                 span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
-                "kind=\"raw-dylib\" is unstable"
+                "kind=\"raw-dylib\" is unstable",
             )
             .emit();
         }
@@ -191,21 +194,29 @@ impl Collector<'tcx> {
         let mut renames = FxHashSet::default();
         for &(ref name, ref new_name, _) in &self.tcx.sess.opts.libs {
             if let &Some(ref new_name) = new_name {
-                let any_duplicate = self.libs
+                let any_duplicate = self
+                    .libs
                     .iter()
                     .filter_map(|lib| lib.name.as_ref())
                     .any(|n| n.as_str() == *name);
                 if new_name.is_empty() {
-                    self.tcx.sess.err(
-                        &format!("an empty renaming target was specified for library `{}`",name));
+                    self.tcx.sess.err(&format!(
+                        "an empty renaming target was specified for library `{}`",
+                        name
+                    ));
                 } else if !any_duplicate {
-                    self.tcx.sess.err(&format!("renaming of the library `{}` was specified, \
+                    self.tcx.sess.err(&format!(
+                        "renaming of the library `{}` was specified, \
                                                 however this crate contains no `#[link(...)]` \
-                                                attributes referencing this library.", name));
+                                                attributes referencing this library.",
+                        name
+                    ));
                 } else if !renames.insert(name) {
-                    self.tcx.sess.err(&format!("multiple renamings were \
+                    self.tcx.sess.err(&format!(
+                        "multiple renamings were \
                                                 specified for library `{}` .",
-                                               name));
+                        name
+                    ));
                 }
             }
         }
@@ -221,20 +232,23 @@ impl Collector<'tcx> {
             // If we've already added any native libraries with the same
             // name, they will be pulled out into `existing`, so that we
             // can move them to the end of the list below.
-            let mut existing = self.libs.drain_filter(|lib| {
-                if let Some(lib_name) = lib.name {
-                    if lib_name.as_str() == *name {
-                        if let Some(k) = kind {
-                            lib.kind = k;
+            let mut existing = self
+                .libs
+                .drain_filter(|lib| {
+                    if let Some(lib_name) = lib.name {
+                        if lib_name.as_str() == *name {
+                            if let Some(k) = kind {
+                                lib.kind = k;
+                            }
+                            if let &Some(ref new_name) = new_name {
+                                lib.name = Some(Symbol::intern(new_name));
+                            }
+                            return true;
                         }
-                        if let &Some(ref new_name) = new_name {
-                            lib.name = Some(Symbol::intern(new_name));
-                        }
-                        return true;
                     }
-                }
-                false
-            }).collect::<Vec<_>>();
+                    false
+                })
+                .collect::<Vec<_>>();
             if existing.is_empty() {
                 // Add if not found
                 let new_name = new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>

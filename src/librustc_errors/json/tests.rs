@@ -41,9 +41,7 @@ impl<T: Write> Write for Shared<T> {
 
 fn with_default_globals(f: impl FnOnce()) {
     let globals = syntax_pos::Globals::new(syntax_pos::edition::DEFAULT_EDITION);
-    syntax_pos::GLOBALS.set(&globals, || {
-        syntax_pos::GLOBALS.set(&globals, f)
-    })
+    syntax_pos::GLOBALS.set(&globals, || syntax_pos::GLOBALS.set(&globals, f))
 }
 
 /// Test the span yields correct positions in JSON.

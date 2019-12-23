@@ -1,14 +1,12 @@
 use super::{ConstEvalResult, ErrorHandled, GlobalId};
 
-use crate::mir;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, TyCtxt};
+use crate::mir;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
+use crate::ty::{self, TyCtxt};
 use syntax_pos::Span;
 
-
 impl<'tcx> TyCtxt<'tcx> {
-
     /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
     /// that can't take any generic arguments like statics, const items or enum discriminants. If a
     /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
@@ -19,10 +17,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // encountered.
         let substs = InternalSubsts::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, substs);
-        let cid = GlobalId {
-            instance,
-            promoted: None,
-        };
+        let cid = GlobalId { instance, promoted: None };
         let param_env = self.param_env(def_id);
         self.const_eval_validated(param_env.and(cid))
     }
@@ -41,14 +36,9 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-        span: Option<Span>
+        span: Option<Span>,
     ) -> ConstEvalResult<'tcx> {
-        let instance = ty::Instance::resolve(
-            self,
-            param_env,
-            def_id,
-            substs,
-        );
+        let instance = ty::Instance::resolve(self, param_env, def_id, substs);
         if let Some(instance) = instance {
             self.const_eval_instance(param_env, instance, span)
         } else {
@@ -60,12 +50,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         instance: ty::Instance<'tcx>,
-        span: Option<Span>
+        span: Option<Span>,
     ) -> ConstEvalResult<'tcx> {
-        let cid = GlobalId {
-            instance,
-            promoted: None,
-        };
+        let cid = GlobalId { instance, promoted: None };
         if let Some(span) = span {
             self.at(span).const_eval_validated(param_env.and(cid))
         } else {
@@ -77,12 +64,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_promoted(
         self,
         instance: ty::Instance<'tcx>,
-        promoted: mir::Promoted
+        promoted: mir::Promoted,
     ) -> ConstEvalResult<'tcx> {
-        let cid = GlobalId {
-            instance,
-            promoted: Some(promoted),
-        };
+        let cid = GlobalId { instance, promoted: Some(promoted) };
         let param_env = ty::ParamEnv::reveal_all();
         self.const_eval_validated(param_env.and(cid))
     }

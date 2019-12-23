@@ -1,20 +1,20 @@
 use super::*;
 use crate::dep_graph::{DepGraph, DepKind, DepNodeIndex};
 use crate::hir;
+use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
+use crate::hir::intravisit::{NestedVisitorMap, Visitor};
 use crate::hir::map::HirEntryMap;
-use crate::hir::def_id::{LOCAL_CRATE, CrateNum};
-use crate::hir::intravisit::{Visitor, NestedVisitorMap};
-use rustc_data_structures::svh::Svh;
-use rustc_index::vec::IndexVec;
 use crate::ich::Fingerprint;
 use crate::middle::cstore::CrateStore;
 use crate::session::CrateDisambiguator;
 use crate::session::Session;
 use crate::util::nodemap::FxHashMap;
+use rustc_data_structures::svh::Svh;
+use rustc_index::vec::IndexVec;
+use std::iter::repeat;
 use syntax::ast::NodeId;
 use syntax::source_map::SourceMap;
 use syntax_pos::Span;
-use std::iter::repeat;
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -82,11 +82,13 @@ fn alloc_hir_dep_nodes<I>(
 where
     I: for<'a> HashStable<StableHashingContext<'a>>,
 {
-    let sig = dep_graph.input_task(
-        def_path_hash.to_dep_node(DepKind::Hir),
-        &mut *hcx,
-        HirItemLike { item_like: &item_like, hash_bodies: false },
-    ).1;
+    let sig = dep_graph
+        .input_task(
+            def_path_hash.to_dep_node(DepKind::Hir),
+            &mut *hcx,
+            HirItemLike { item_like: &item_like, hash_bodies: false },
+        )
+        .1;
     let (full, hash) = input_dep_node_and_hash(
         dep_graph,
         hcx,
@@ -98,13 +100,14 @@ where
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
-    pub(super) fn root(sess: &'a Session,
-                       krate: &'hir Crate<'hir>,
-                       dep_graph: &'a DepGraph,
-                       definitions: &'a definitions::Definitions,
-                       hir_to_node_id: &'a FxHashMap<HirId, NodeId>,
-                       mut hcx: StableHashingContext<'a>)
-                -> NodeCollector<'a, 'hir> {
+    pub(super) fn root(
+        sess: &'a Session,
+        krate: &'hir Crate<'hir>,
+        dep_graph: &'a DepGraph,
+        definitions: &'a definitions::Definitions,
+        hir_to_node_id: &'a FxHashMap<HirId, NodeId>,
+        mut hcx: StableHashingContext<'a>,
+    ) -> NodeCollector<'a, 'hir> {
         let root_mod_def_path_hash = definitions.def_path_hash(CRATE_DEF_INDEX);
 
         let mut hir_body_nodes = Vec::new();
@@ -161,36 +164,43 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hcx,
             hir_body_nodes,
         };
-        collector.insert_entry(hir::CRATE_HIR_ID, Entry {
-            parent: hir::CRATE_HIR_ID,
-            dep_node: root_mod_sig_dep_index,
-            node: Node::Crate,
-        });
+        collector.insert_entry(
+            hir::CRATE_HIR_ID,
+            Entry {
+                parent: hir::CRATE_HIR_ID,
+                dep_node: root_mod_sig_dep_index,
+                node: Node::Crate,
+            },
+        );
 
         collector
     }
 
-    pub(super) fn finalize_and_compute_crate_hash(mut self,
-                                                  crate_disambiguator: CrateDisambiguator,
-                                                  cstore: &dyn CrateStore,
-                                                  commandline_args_hash: u64)
-                                                  -> (HirEntryMap<'hir>, Svh)
-    {
+    pub(super) fn finalize_and_compute_crate_hash(
+        mut self,
+        crate_disambiguator: CrateDisambiguator,
+        cstore: &dyn CrateStore,
+        commandline_args_hash: u64,
+    ) -> (HirEntryMap<'hir>, Svh) {
         self.hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
-        let node_hashes = self
-            .hir_body_nodes
-            .iter()
-            .fold(Fingerprint::ZERO, |combined_fingerprint, &(def_path_hash, fingerprint)| {
+        let node_hashes = self.hir_body_nodes.iter().fold(
+            Fingerprint::ZERO,
+            |combined_fingerprint, &(def_path_hash, fingerprint)| {
                 combined_fingerprint.combine(def_path_hash.0.combine(fingerprint))
-            });
+            },
+        );
 
-        let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
-            let name = cstore.crate_name_untracked(cnum);
-            let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
-            let hash = cstore.crate_hash_untracked(cnum);
-            (name, disambiguator, hash)
-        }).collect();
+        let mut upstream_crates: Vec<_> = cstore
+            .crates_untracked()
+            .iter()
+            .map(|&cnum| {
+                let name = cstore.crate_name_untracked(cnum);
+                let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
+                let hash = cstore.crate_hash_untracked(cnum);
+                (name, disambiguator, hash)
+            })
+            .collect();
 
         upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
 
@@ -211,7 +221,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let crate_hash_input = (
             ((node_hashes, upstream_crates), source_file_names),
-            (commandline_args_hash, crate_disambiguator.to_fingerprint())
+            (commandline_args_hash, crate_disambiguator.to_fingerprint()),
         );
 
         let (_, crate_hash) = input_dep_node_and_hash(
@@ -255,10 +265,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
             if hir_id.owner != self.current_dep_node_owner {
                 let node_str = match self.definitions.opt_def_index(node_id) {
-                    Some(def_index) => {
-                        self.definitions.def_path(def_index).to_string_no_crate()
-                    }
-                    None => format!("{:?}", node)
+                    Some(def_index) => self.definitions.def_path(def_index).to_string_no_crate(),
+                    None => format!("{:?}", node),
                 };
 
                 let forgot_str = if hir_id == crate::hir::DUMMY_HIR_ID {
@@ -273,9 +281,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?}){}",
                     self.source_map.span_to_string(span),
                     node_str,
-                    self.definitions
-                        .def_path(self.current_dep_node_owner)
-                        .to_string_no_crate(),
+                    self.definitions.def_path(self.current_dep_node_owner).to_string_no_crate(),
                     self.current_dep_node_owner,
                     self.definitions.def_path(hir_id.owner).to_string_no_crate(),
                     hir_id.owner,
@@ -287,22 +293,22 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         self.insert_entry(hir_id, entry);
     }
 
-    fn with_parent<F: FnOnce(&mut Self)>(
-        &mut self,
-        parent_node_id: HirId,
-        f: F,
-    ) {
+    fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_node_id: HirId, f: F) {
         let parent_node = self.parent_node;
         self.parent_node = parent_node_id;
         f(self);
         self.parent_node = parent_node;
     }
 
-    fn with_dep_node_owner<T: for<'b> HashStable<StableHashingContext<'b>>,
-                           F: FnOnce(&mut Self)>(&mut self,
-                                                 dep_node_owner: DefIndex,
-                                                 item_like: &T,
-                                                 f: F) {
+    fn with_dep_node_owner<
+        T: for<'b> HashStable<StableHashingContext<'b>>,
+        F: FnOnce(&mut Self),
+    >(
+        &mut self,
+        dep_node_owner: DefIndex,
+        item_like: &T,
+        f: F,
+    ) {
         let prev_owner = self.current_dep_node_owner;
         let prev_signature_dep_index = self.current_signature_dep_index;
         let prev_full_dep_index = self.current_full_dep_index;
@@ -369,8 +375,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
         debug!("visit_item: {:?}", i);
-        debug_assert_eq!(i.hir_id.owner,
-                         self.definitions.opt_def_index(self.hir_to_node_id[&i.hir_id]).unwrap());
+        debug_assert_eq!(
+            i.hir_id.owner,
+            self.definitions.opt_def_index(self.hir_to_node_id[&i.hir_id]).unwrap()
+        );
         self.with_dep_node_owner(i.hir_id.owner, i, |this| {
             this.insert(i.span, i.hir_id, Node::Item(i));
             this.with_parent(i.hir_id, |this| {
@@ -399,8 +407,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
-        debug_assert_eq!(ti.hir_id.owner,
-                         self.definitions.opt_def_index(self.hir_to_node_id[&ti.hir_id]).unwrap());
+        debug_assert_eq!(
+            ti.hir_id.owner,
+            self.definitions.opt_def_index(self.hir_to_node_id[&ti.hir_id]).unwrap()
+        );
         self.with_dep_node_owner(ti.hir_id.owner, ti, |this| {
             this.insert(ti.span, ti.hir_id, Node::TraitItem(ti));
 
@@ -411,8 +421,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) {
-        debug_assert_eq!(ii.hir_id.owner,
-                         self.definitions.opt_def_index(self.hir_to_node_id[&ii.hir_id]).unwrap());
+        debug_assert_eq!(
+            ii.hir_id.owner,
+            self.definitions.opt_def_index(self.hir_to_node_id[&ii.hir_id]).unwrap()
+        );
         self.with_dep_node_owner(ii.hir_id.owner, ii, |this| {
             this.insert(ii.span, ii.hir_id, Node::ImplItem(ii));
 
@@ -423,11 +435,8 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_pat(&mut self, pat: &'hir Pat) {
-        let node = if let PatKind::Binding(..) = pat.kind {
-            Node::Binding(pat)
-        } else {
-            Node::Pat(pat)
-        };
+        let node =
+            if let PatKind::Binding(..) = pat.kind { Node::Binding(pat) } else { Node::Pat(pat) };
         self.insert(pat.span, pat.hir_id, node);
 
         self.with_parent(pat.hir_id, |this| {
@@ -492,8 +501,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_fn(&mut self, fk: intravisit::FnKind<'hir>, fd: &'hir FnDecl,
-                b: BodyId, s: Span, id: HirId) {
+    fn visit_fn(
+        &mut self,
+        fk: intravisit::FnKind<'hir>,
+        fd: &'hir FnDecl,
+        b: BodyId,
+        s: Span,
+        id: HirId,
+    ) {
         assert_eq!(self.parent_node, id);
         intravisit::walk_fn(self, fk, fd, b, s, id);
     }
@@ -507,9 +522,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_local(&mut self, l: &'hir Local) {
         self.insert(l.span, l.hir_id, Node::Local(l));
-        self.with_parent(l.hir_id, |this| {
-            intravisit::walk_local(this, l)
-        })
+        self.with_parent(l.hir_id, |this| intravisit::walk_local(this, l))
     }
 
     fn visit_lifetime(&mut self, lifetime: &'hir Lifetime) {
@@ -518,9 +531,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_vis(&mut self, visibility: &'hir Visibility) {
         match visibility.node {
-            VisibilityKind::Public |
-            VisibilityKind::Crate(_) |
-            VisibilityKind::Inherited => {}
+            VisibilityKind::Public | VisibilityKind::Crate(_) | VisibilityKind::Inherited => {}
             VisibilityKind::Restricted { hir_id, .. } => {
                 self.insert(visibility.span, hir_id, Node::Visibility(visibility));
                 self.with_parent(hir_id, |this| {
@@ -560,13 +571,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_trait_item_ref(&mut self, ii: &'hir TraitItemRef) {
         // Do not visit the duplicate information in TraitItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
-        let TraitItemRef {
-            id,
-            ident: _,
-            kind: _,
-            span: _,
-            defaultness: _,
-        } = *ii;
+        let TraitItemRef { id, ident: _, kind: _, span: _, defaultness: _ } = *ii;
 
         self.visit_nested_trait_item(id);
     }
@@ -574,14 +579,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_impl_item_ref(&mut self, ii: &'hir ImplItemRef) {
         // Do not visit the duplicate information in ImplItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
-        let ImplItemRef {
-            id,
-            ident: _,
-            kind: _,
-            span: _,
-            vis: _,
-            defaultness: _,
-        } = *ii;
+        let ImplItemRef { id, ident: _, kind: _, span: _, vis: _, defaultness: _ } = *ii;
 
         self.visit_nested_impl_item(id);
     }

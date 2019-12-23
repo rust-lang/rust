@@ -1,4 +1,4 @@
-use rustc::infer::nll_relate::{TypeRelating, TypeRelatingDelegate, NormalizationStrategy};
+use rustc::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::ConstraintCategory;
 use rustc::traits::query::Fallible;
@@ -30,8 +30,9 @@ pub(super) fn relate_types<'tcx>(
     TypeRelating::new(
         infcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
-        v
-    ).relate(&a, &b)?;
+        v,
+    )
+    .relate(&a, &b)?;
     Ok(())
 }
 
@@ -53,12 +54,7 @@ impl NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) -> Self {
-        Self {
-            infcx,
-            borrowck_context,
-            locations,
-            category,
-        }
+        Self { infcx, borrowck_context, locations, category }
     }
 }
 
@@ -76,10 +72,7 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
         }
     }
 
-    fn next_placeholder_region(
-        &mut self,
-        placeholder: ty::PlaceholderRegion
-    ) -> ty::Region<'tcx> {
+    fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
         if let Some(borrowck_context) = &mut self.borrowck_context {
             borrowck_context.constraints.placeholder_region(self.infcx, placeholder)
         } else {
@@ -88,25 +81,22 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     }
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
-        self.infcx
-            .next_nll_region_var_in_universe(NLLRegionVariableOrigin::Existential {
-                from_forall: false
-            }, universe)
+        self.infcx.next_nll_region_var_in_universe(
+            NLLRegionVariableOrigin::Existential { from_forall: false },
+            universe,
+        )
     }
 
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>) {
         if let Some(borrowck_context) = &mut self.borrowck_context {
             let sub = borrowck_context.universal_regions.to_region_vid(sub);
             let sup = borrowck_context.universal_regions.to_region_vid(sup);
-            borrowck_context
-                .constraints
-                .outlives_constraints
-                .push(OutlivesConstraint {
-                    sup,
-                    sub,
-                    locations: self.locations,
-                    category: self.category,
-                });
+            borrowck_context.constraints.outlives_constraints.push(OutlivesConstraint {
+                sup,
+                sub,
+                locations: self.locations,
+                category: self.category,
+            });
         }
     }
 

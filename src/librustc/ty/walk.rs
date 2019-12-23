@@ -16,7 +16,7 @@ pub struct TypeWalker<'tcx> {
 
 impl<'tcx> TypeWalker<'tcx> {
     pub fn new(ty: Ty<'tcx>) -> TypeWalker<'tcx> {
-        TypeWalker { stack: smallvec![ty], last_subtree: 1, }
+        TypeWalker { stack: smallvec![ty], last_subtree: 1 }
     }
 
     /// Skips the subtree of types corresponding to the last type
@@ -42,9 +42,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     fn next(&mut self) -> Option<Ty<'tcx>> {
         debug!("next(): stack={:?}", self.stack);
         match self.stack.pop() {
-            None => {
-                None
-            }
+            None => None,
             Some(ty) => {
                 self.last_subtree = self.stack.len();
                 push_subtypes(&mut self.stack, ty);
@@ -69,10 +67,19 @@ pub fn walk_shallow(ty: Ty<'_>) -> smallvec::IntoIter<TypeWalkerArray<'_>> {
 // types as they are written).
 fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
     match parent_ty.kind {
-        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) |
-        ty::Str | ty::Infer(_) | ty::Param(_) | ty::Never | ty::Error |
-        ty::Placeholder(..) | ty::Bound(..) | ty::Foreign(..) => {
-        }
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Str
+        | ty::Infer(_)
+        | ty::Param(_)
+        | ty::Never
+        | ty::Error
+        | ty::Placeholder(..)
+        | ty::Bound(..)
+        | ty::Foreign(..) => {}
         ty::Array(ty, len) => {
             if let ty::ConstKind::Unevaluated(_, substs) = len.val {
                 stack.extend(substs.types().rev());
@@ -96,11 +103,12 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
             stack.extend(obj.iter().rev().flat_map(|predicate| {
                 let (substs, opt_ty) = match *predicate.skip_binder() {
                     ty::ExistentialPredicate::Trait(tr) => (tr.substs, None),
-                    ty::ExistentialPredicate::Projection(p) =>
-                        (p.substs, Some(p.ty)),
+                    ty::ExistentialPredicate::Projection(p) => (p.substs, Some(p.ty)),
                     ty::ExistentialPredicate::AutoTrait(_) =>
-                        // Empty iterator
-                        (ty::InternalSubsts::empty(), None),
+                    // Empty iterator
+                    {
+                        (ty::InternalSubsts::empty(), None)
+                    }
                 };
 
                 substs.types().rev().chain(opt_ty)
@@ -109,8 +117,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::Adt(_, substs) | ty::Opaque(_, substs) => {
             stack.extend(substs.types().rev());
         }
-        ty::Closure(_, ref substs)
-        | ty::Generator(_, ref substs, _) => {
+        ty::Closure(_, ref substs) | ty::Generator(_, ref substs, _) => {
             stack.extend(substs.types().rev());
         }
         ty::GeneratorWitness(ts) => {

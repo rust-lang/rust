@@ -4,13 +4,13 @@
 
 use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_index::vec::Idx;
 use rustc_macros::{symbols, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 
-use std::cmp::{PartialEq, PartialOrd, Ord};
+use std::cmp::{Ord, PartialEq, PartialOrd};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
@@ -894,12 +894,8 @@ impl fmt::Display for Ident {
 impl UseSpecializedEncodable for Ident {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("Ident", 2, |s| {
-            s.emit_struct_field("name", 0, |s| {
-                self.name.encode(s)
-            })?;
-            s.emit_struct_field("span", 1, |s| {
-                self.span.encode(s)
-            })
+            s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
+            s.emit_struct_field("span", 1, |s| self.span.encode(s))
         })
     }
 }
@@ -944,18 +940,14 @@ impl Symbol {
     /// Access the symbol's chars. This is a slowish operation because it
     /// requires locking the symbol interner.
     pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        with_interner(|interner| {
-            f(interner.get(self))
-        })
+        with_interner(|interner| f(interner.get(self)))
     }
 
     /// Convert to a `SymbolStr`. This is a slowish operation because it
     /// requires locking the symbol interner.
     pub fn as_str(self) -> SymbolStr {
         with_interner(|interner| unsafe {
-            SymbolStr {
-                string: std::mem::transmute::<&str, &str>(interner.get(self))
-            }
+            SymbolStr { string: std::mem::transmute::<&str, &str>(interner.get(self)) }
         })
     }
 
@@ -1030,14 +1022,11 @@ impl Interner {
 
         // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
         // UTF-8.
-        let string: &str = unsafe {
-            str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes()))
-        };
+        let string: &str =
+            unsafe { str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes())) };
         // It is safe to extend the arena allocation to `'static` because we only access
         // these while the arena is still alive.
-        let string: &'static str =  unsafe {
-            &*(string as *const str)
-        };
+        let string: &'static str = unsafe { &*(string as *const str) };
         self.strings.push(string);
         self.names.insert(string, name);
         name
@@ -1058,8 +1047,8 @@ pub mod kw {
 
 // This module has a very short name because it's used a lot.
 pub mod sym {
-    use std::convert::TryInto;
     use super::Symbol;
+    use std::convert::TryInto;
 
     symbols!();
 
@@ -1091,12 +1080,12 @@ impl Symbol {
 
     /// A keyword or reserved identifier that can be used as a path segment.
     pub fn is_path_segment_keyword(self) -> bool {
-        self == kw::Super ||
-        self == kw::SelfLower ||
-        self == kw::SelfUpper ||
-        self == kw::Crate ||
-        self == kw::PathRoot ||
-        self == kw::DollarCrate
+        self == kw::Super
+            || self == kw::SelfLower
+            || self == kw::SelfUpper
+            || self == kw::Crate
+            || self == kw::PathRoot
+            || self == kw::DollarCrate
     }
 
     /// Returns `true` if the symbol is `true` or `false`.
@@ -1120,15 +1109,15 @@ impl Ident {
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::As && self.name <= kw::While ||
-        self.name.is_used_keyword_2018() && self.span.rust_2018()
+        self.name >= kw::As && self.name <= kw::While
+            || self.name.is_used_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::Abstract && self.name <= kw::Yield ||
-        self.name.is_unused_keyword_2018() && self.span.rust_2018()
+        self.name >= kw::Abstract && self.name <= kw::Yield
+            || self.name.is_unused_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
@@ -1187,7 +1176,9 @@ impl !Sync for SymbolStr {}
 impl std::ops::Deref for SymbolStr {
     type Target = str;
     #[inline]
-    fn deref(&self) -> &str { self.string }
+    fn deref(&self) -> &str {
+        self.string
+    }
 }
 
 impl fmt::Debug for SymbolStr {

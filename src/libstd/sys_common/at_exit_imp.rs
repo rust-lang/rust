@@ -2,8 +2,8 @@
 //!
 //! Documentation can be found on the `rt::at_exit` function.
 
-use crate::ptr;
 use crate::mem;
+use crate::ptr;
 use crate::sys_common::mutex::Mutex;
 
 type Queue = Vec<Box<dyn FnOnce()>>;
@@ -31,7 +31,7 @@ unsafe fn init() -> bool {
         QUEUE = Box::into_raw(state);
     } else if QUEUE == DONE {
         // can't re-init after a cleanup
-        return false
+        return false;
     }
 
     true

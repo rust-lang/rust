@@ -24,20 +24,20 @@
 //! generator yield points, all pre-existing references are invalidated, so this
 //! doesn't matter).
 
+use crate::transform::MirSource;
+use crate::util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 use rustc::mir::visit::{
-    PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext, NonUseContext,
+    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
 };
 use rustc::mir::Local;
 use rustc::mir::*;
 use rustc::ty::{self, TyCtxt};
+use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_data_structures::work_queue::WorkQueue;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use crate::transform::MirSource;
-use crate::util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 
 pub type LiveVarSet = BitSet<Local>;
 
@@ -56,22 +56,14 @@ pub struct LivenessResult {
 
 /// Computes which local variables are live within the given function
 /// `mir`, including drops.
-pub fn liveness_of_locals(
-    body: ReadOnlyBodyAndCache<'_, '_>,
-) -> LivenessResult {
+pub fn liveness_of_locals(body: ReadOnlyBodyAndCache<'_, '_>) -> LivenessResult {
     let num_live_vars = body.local_decls.len();
 
-    let def_use: IndexVec<_, DefsUses> = body
-        .basic_blocks()
-        .iter()
-        .map(|b| block(b, num_live_vars))
-        .collect();
+    let def_use: IndexVec<_, DefsUses> =
+        body.basic_blocks().iter().map(|b| block(b, num_live_vars)).collect();
 
-    let mut outs: IndexVec<_, LiveVarSet> = body
-        .basic_blocks()
-        .indices()
-        .map(|_| LiveVarSet::new_empty(num_live_vars))
-        .collect();
+    let mut outs: IndexVec<_, LiveVarSet> =
+        body.basic_blocks().indices().map(|_| LiveVarSet::new_empty(num_live_vars)).collect();
 
     let mut bits = LiveVarSet::new_empty(num_live_vars);
 
@@ -83,8 +75,7 @@ pub fn liveness_of_locals(
     // FIXME(ecstaticmorse): Reverse post-order on the reverse CFG may generate a better iteration
     // order when cycles are present, but the overhead of computing the reverse CFG may outweigh
     // any benefits. Benchmark this and find out.
-    let mut dirty_queue: WorkQueue<BasicBlock>
-        = WorkQueue::with_none(body.basic_blocks().len());
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks().len());
     for (bb, _) in traversal::postorder(&body) {
         dirty_queue.insert(bb);
     }
@@ -192,8 +183,7 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
     }
 }
 
-struct DefsUsesVisitor
-{
+struct DefsUsesVisitor {
     defs_uses: DefsUses,
 }
 
@@ -238,8 +228,7 @@ impl DefsUses {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for DefsUsesVisitor
-{
+impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
         match categorize(context) {
             Some(DefUse::Def) => self.defs_uses.add_def(local),
@@ -249,10 +238,7 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor
     }
 }
 
-fn block(
-    b: &BasicBlockData<'_>,
-    locals: usize,
-) -> DefsUses {
+fn block(b: &BasicBlockData<'_>, locals: usize) -> DefsUses {
     let mut visitor = DefsUsesVisitor {
         defs_uses: DefsUses {
             defs: LiveVarSet::new_empty(locals),
@@ -260,10 +246,7 @@ fn block(
         },
     };
 
-    let dummy_location = Location {
-        block: BasicBlock::new(0),
-        statement_index: 0,
-    };
+    let dummy_location = Location { block: BasicBlock::new(0), statement_index: 0 };
 
     // Visit the various parts of the basic block in reverse. If we go
     // forward, the logic in `add_def` and `add_use` would be wrong.
@@ -325,10 +308,8 @@ pub fn write_mir_fn<'tcx>(
     write_mir_intro(tcx, src, body, w)?;
     for block in body.basic_blocks().indices() {
         let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LiveVarSet>| {
-            let live: Vec<String> = result[block]
-                .iter()
-                .map(|local| format!("{:?}", local))
-                .collect();
+            let live: Vec<String> =
+                result[block].iter().map(|local| format!("{:?}", local)).collect();
             writeln!(w, "{} {{{}}}", prefix, live.join(", "))
         };
         write_basic_block(tcx, block, body, &mut |_, _| Ok(()), w)?;

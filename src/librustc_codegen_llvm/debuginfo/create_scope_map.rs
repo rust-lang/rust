@@ -1,10 +1,10 @@
-use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, DebugScope};
 use super::metadata::file_metadata;
-use super::utils::{DIB, span_start};
+use super::utils::{span_start, DIB};
+use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 
+use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIScope, DISubprogram};
-use crate::common::CodegenCx;
 use rustc::mir::{Body, SourceScope};
 
 use libc::c_uint;
@@ -36,12 +36,14 @@ pub fn compute_mir_scopes(
     }
 }
 
-fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
-                  mir: &Body<'_>,
-                  fn_metadata: &'ll DISubprogram,
-                  has_variables: &BitSet<SourceScope>,
-                  debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
-                  scope: SourceScope) {
+fn make_mir_scope(
+    cx: &CodegenCx<'ll, '_>,
+    mir: &Body<'_>,
+    fn_metadata: &'ll DISubprogram,
+    has_variables: &BitSet<SourceScope>,
+    debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
+    scope: SourceScope,
+) {
     if debug_context.scopes[scope].is_valid() {
         return;
     }
@@ -75,9 +77,7 @@ fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
     }
 
     let loc = span_start(cx, scope_data.span);
-    let file_metadata = file_metadata(cx,
-                                      &loc.file.name,
-                                      debug_context.defining_crate);
+    let file_metadata = file_metadata(cx, &loc.file.name, debug_context.defining_crate);
 
     let scope_metadata = unsafe {
         Some(llvm::LLVMRustDIBuilderCreateLexicalBlock(
@@ -85,7 +85,8 @@ fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
             parent_scope.scope_metadata.unwrap(),
             file_metadata,
             loc.line as c_uint,
-            loc.col.to_usize() as c_uint))
+            loc.col.to_usize() as c_uint,
+        ))
     };
     debug_context.scopes[scope] = DebugScope {
         scope_metadata,

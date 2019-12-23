@@ -5,17 +5,17 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use crate::build::Builder;
 use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
-use crate::hair::*;
+use crate::build::Builder;
 use crate::hair::pattern::compare_const_vals;
-use rustc_index::bit_set::BitSet;
-use rustc_data_structures::fx::FxHashMap;
-use rustc::ty::{self, Ty, adjustment::PointerCast};
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::layout::VariantIdx;
-use rustc::mir::*;
+use crate::hair::*;
 use rustc::hir::RangeEnd;
+use rustc::mir::*;
+use rustc::ty::layout::VariantIdx;
+use rustc::ty::util::IntTypeExt;
+use rustc::ty::{self, adjustment::PointerCast, Ty};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_index::bit_set::BitSet;
 use syntax_pos::symbol::sym;
 
 use std::cmp::Ordering;
@@ -26,15 +26,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// It is a bug to call this with a simplifiable pattern.
     pub fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
-            PatKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => {
-                Test {
-                    span: match_pair.pattern.span,
-                    kind: TestKind::Switch {
-                        adt_def,
-                        variants: BitSet::new_empty(adt_def.variants.len()),
-                    },
-                }
-            }
+            PatKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
+                span: match_pair.pattern.span,
+                kind: TestKind::Switch {
+                    adt_def,
+                    variants: BitSet::new_empty(adt_def.variants.len()),
+                },
+            },
 
             PatKind::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
                 // For integers, we use a `SwitchInt` match, which allows
@@ -48,82 +46,66 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // added below in add_cases_to_switch
                         options: vec![],
                         indices: Default::default(),
-                    }
+                    },
                 }
             }
 
-            PatKind::Constant { value } => {
-                Test {
-                    span: match_pair.pattern.span,
-                    kind: TestKind::Eq {
-                        value,
-                        ty: match_pair.pattern.ty.clone()
-                    }
-                }
-            }
+            PatKind::Constant { value } => Test {
+                span: match_pair.pattern.span,
+                kind: TestKind::Eq { value, ty: match_pair.pattern.ty.clone() },
+            },
 
             PatKind::Range(range) => {
                 assert_eq!(range.lo.ty, match_pair.pattern.ty);
                 assert_eq!(range.hi.ty, match_pair.pattern.ty);
-                Test {
-                    span: match_pair.pattern.span,
-                    kind: TestKind::Range(range),
-                }
+                Test { span: match_pair.pattern.span, kind: TestKind::Range(range) }
             }
 
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let len = prefix.len() + suffix.len();
-                let op = if slice.is_some() {
-                    BinOp::Ge
-                } else {
-                    BinOp::Eq
-                };
+                let op = if slice.is_some() { BinOp::Ge } else { BinOp::Eq };
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Len { len: len as u64, op: op },
                 }
             }
 
-            PatKind::Or { .. } => {
-                self.hir.tcx().sess.span_fatal(
-                    match_pair.pattern.span,
-                    "or-patterns are not fully implemented yet"
-                )
-            }
+            PatKind::Or { .. } => self
+                .hir
+                .tcx()
+                .sess
+                .span_fatal(match_pair.pattern.span, "or-patterns are not fully implemented yet"),
 
-            PatKind::AscribeUserType { .. } |
-            PatKind::Array { .. } |
-            PatKind::Wild |
-            PatKind::Binding { .. } |
-            PatKind::Leaf { .. } |
-            PatKind::Deref { .. } => {
-                self.error_simplifyable(match_pair)
-            }
+            PatKind::AscribeUserType { .. }
+            | PatKind::Array { .. }
+            | PatKind::Wild
+            | PatKind::Binding { .. }
+            | PatKind::Leaf { .. }
+            | PatKind::Deref { .. } => self.error_simplifyable(match_pair),
         }
     }
 
-    pub fn add_cases_to_switch<'pat>(&mut self,
-                                     test_place: &Place<'tcx>,
-                                     candidate: &Candidate<'pat, 'tcx>,
-                                     switch_ty: Ty<'tcx>,
-                                     options: &mut Vec<u128>,
-                                     indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
-                                     -> bool
-    {
+    pub fn add_cases_to_switch<'pat>(
+        &mut self,
+        test_place: &Place<'tcx>,
+        candidate: &Candidate<'pat, 'tcx>,
+        switch_ty: Ty<'tcx>,
+        options: &mut Vec<u128>,
+        indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+    ) -> bool {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
             Some(match_pair) => match_pair,
-            _ => { return false; }
+            _ => {
+                return false;
+            }
         };
 
         match *match_pair.pattern.kind {
             PatKind::Constant { value } => {
-                indices.entry(value)
-                       .or_insert_with(|| {
-                           options.push(value.eval_bits(
-                               self.hir.tcx(), self.hir.param_env, switch_ty,
-                           ));
-                           options.len() - 1
-                       });
+                indices.entry(value).or_insert_with(|| {
+                    options.push(value.eval_bits(self.hir.tcx(), self.hir.param_env, switch_ty));
+                    options.len() - 1
+                });
                 true
             }
             PatKind::Variant { .. } => {
@@ -131,36 +113,37 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             PatKind::Range(range) => {
                 // Check that none of the switch values are in the range.
-                self.values_not_contained_in_range(range, indices)
-                    .unwrap_or(false)
+                self.values_not_contained_in_range(range, indices).unwrap_or(false)
             }
-            PatKind::Slice { .. } |
-            PatKind::Array { .. } |
-            PatKind::Wild |
-            PatKind::Or { .. } |
-            PatKind::Binding { .. } |
-            PatKind::AscribeUserType { .. } |
-            PatKind::Leaf { .. } |
-            PatKind::Deref { .. } => {
+            PatKind::Slice { .. }
+            | PatKind::Array { .. }
+            | PatKind::Wild
+            | PatKind::Or { .. }
+            | PatKind::Binding { .. }
+            | PatKind::AscribeUserType { .. }
+            | PatKind::Leaf { .. }
+            | PatKind::Deref { .. } => {
                 // don't know how to add these patterns to a switch
                 false
             }
         }
     }
 
-    pub fn add_variants_to_switch<'pat>(&mut self,
-                                        test_place: &Place<'tcx>,
-                                        candidate: &Candidate<'pat, 'tcx>,
-                                        variants: &mut BitSet<VariantIdx>)
-                                        -> bool
-    {
+    pub fn add_variants_to_switch<'pat>(
+        &mut self,
+        test_place: &Place<'tcx>,
+        candidate: &Candidate<'pat, 'tcx>,
+        variants: &mut BitSet<VariantIdx>,
+    ) -> bool {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
             Some(match_pair) => match_pair,
-            _ => { return false; }
+            _ => {
+                return false;
+            }
         };
 
         match *match_pair.pattern.kind {
-            PatKind::Variant { adt_def: _ , variant_index,  .. } => {
+            PatKind::Variant { adt_def: _, variant_index, .. } => {
                 // We have a pattern testing for variant `variant_index`
                 // set the corresponding index to true
                 variants.insert(variant_index);
@@ -180,11 +163,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test: &Test<'tcx>,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
-        debug!("perform_test({:?}, {:?}: {:?}, {:?})",
-               block,
-               place,
-               place.ty(&self.local_decls, self.hir.tcx()),
-               test);
+        debug!(
+            "perform_test({:?}, {:?}: {:?}, {:?})",
+            block,
+            place,
+            place.ty(&self.local_decls, self.hir.tcx()),
+            test
+        );
 
         let source_info = self.source_info(test.span);
         match test.kind {
@@ -218,19 +203,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }
                 targets.push(otherwise_block);
-                debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
-                       num_enum_variants, values, variants);
+                debug!(
+                    "num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
+                    num_enum_variants, values, variants
+                );
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
-                self.cfg.push_assign(block, source_info, &discr,
-                                     Rvalue::Discriminant(place.clone()));
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    &discr,
+                    Rvalue::Discriminant(place.clone()),
+                );
                 assert_eq!(values.len() + 1, targets.len());
-                self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
-                    discr: Operand::Move(discr),
-                    switch_ty: discr_ty,
-                    values: From::from(values),
-                    targets,
-                });
+                self.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::SwitchInt {
+                        discr: Operand::Move(discr),
+                        switch_ty: discr_ty,
+                        values: From::from(values),
+                        targets,
+                    },
+                );
             }
 
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
@@ -241,7 +236,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let (true_bb, false_bb) = match options[0] {
                             1 => (first_bb, second_bb),
                             0 => (second_bb, first_bb),
-                            v => span_bug!(test.span, "expected boolean value but got {:?}", v)
+                            v => span_bug!(test.span, "expected boolean value but got {:?}", v),
                         };
                         TerminatorKind::if_(
                             self.hir.tcx(),
@@ -325,8 +320,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let actual = self.temp(usize_ty, test.span);
 
                 // actual = len(place)
-                self.cfg.push_assign(block, source_info,
-                                     &actual, Rvalue::Len(place.clone()));
+                self.cfg.push_assign(block, source_info, &actual, Rvalue::Len(place.clone()));
 
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
@@ -365,23 +359,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let result = self.temp(bool_ty, source_info.span);
 
         // result = op(left, right)
-        self.cfg.push_assign(
-            block,
-            source_info,
-            &result,
-            Rvalue::BinaryOp(op, left, right),
-        );
+        self.cfg.push_assign(block, source_info, &result, Rvalue::BinaryOp(op, left, right));
 
         // branch based on result
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::if_(
-                self.hir.tcx(),
-                Operand::Move(result),
-                success_block,
-                fail_block,
-            ),
+            TerminatorKind::if_(self.hir.tcx(), Operand::Move(result), success_block, fail_block),
         );
     }
 
@@ -417,31 +401,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let opt_ref_test_ty = unsize(value.ty);
         match (opt_ref_ty, opt_ref_test_ty) {
             // nothing to do, neither is an array
-            (None, None) => {},
-            (Some((region, elem_ty, _)), _) |
-            (None, Some((region, elem_ty, _))) => {
+            (None, None) => {}
+            (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
                 let tcx = self.hir.tcx();
                 // make both a slice
                 ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
                 if opt_ref_ty.is_some() {
                     let temp = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
-                        block, source_info, &temp, Rvalue::Cast(
-                            CastKind::Pointer(PointerCast::Unsize), val, ty
-                        )
+                        block,
+                        source_info,
+                        &temp,
+                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), val, ty),
                     );
                     val = Operand::Move(temp);
                 }
                 if opt_ref_test_ty.is_some() {
                     let slice = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
-                        block, source_info, &slice, Rvalue::Cast(
-                            CastKind::Pointer(PointerCast::Unsize), expect, ty
-                        )
+                        block,
+                        source_info,
+                        &slice,
+                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), expect, ty),
                     );
                     expect = Operand::Move(slice);
                 }
-            },
+            }
         }
 
         let deref_ty = match ty.kind {
@@ -456,23 +441,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let eq_result = self.temp(bool_ty, source_info.span);
         let eq_block = self.cfg.start_new_block();
         let cleanup = self.diverge_cleanup();
-        self.cfg.terminate(block, source_info, TerminatorKind::Call {
-            func: Operand::Constant(box Constant {
-                span: source_info.span,
+        self.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::Call {
+                func: Operand::Constant(box Constant {
+                    span: source_info.span,
 
-                // FIXME(#54571): This constant comes from user input (a
-                // constant in a pattern).  Are there forms where users can add
-                // type annotations here?  For example, an associated constant?
-                // Need to experiment.
-                user_ty: None,
+                    // FIXME(#54571): This constant comes from user input (a
+                    // constant in a pattern).  Are there forms where users can add
+                    // type annotations here?  For example, an associated constant?
+                    // Need to experiment.
+                    user_ty: None,
 
-                literal: method,
-            }),
-            args: vec![val, expect],
-            destination: Some((eq_result.clone(), eq_block)),
-            cleanup: Some(cleanup),
-            from_hir_call: false,
-        });
+                    literal: method,
+                }),
+                args: vec![val, expect],
+                destination: Some((eq_result.clone(), eq_block)),
+                cleanup: Some(cleanup),
+                from_hir_call: false,
+            },
+        );
 
         if let [success_block, fail_block] = *make_target_blocks(self) {
             // check the result
@@ -530,22 +519,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let (match_pair_index, match_pair) = candidate.match_pairs
-            .iter()
-            .enumerate()
-            .find(|&(_, mp)| mp.place == *test_place)?;
+        let (match_pair_index, match_pair) =
+            candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == *test_place)?;
 
         match (&test.kind, &*match_pair.pattern.kind) {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
-            (&TestKind::Switch { adt_def: tested_adt_def, .. },
-             &PatKind::Variant { adt_def, variant_index, ref subpatterns, .. }) => {
+            (
+                &TestKind::Switch { adt_def: tested_adt_def, .. },
+                &PatKind::Variant { adt_def, variant_index, ref subpatterns, .. },
+            ) => {
                 assert_eq!(adt_def, tested_adt_def);
-                self.candidate_after_variant_switch(match_pair_index,
-                                                    adt_def,
-                                                    variant_index,
-                                                    subpatterns,
-                                                    candidate);
+                self.candidate_after_variant_switch(
+                    match_pair_index,
+                    adt_def,
+                    variant_index,
+                    subpatterns,
+                    candidate,
+                );
                 Some(variant_index.as_usize())
             }
 
@@ -556,19 +547,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            (&TestKind::SwitchInt { switch_ty: _, options: _, ref indices },
-             &PatKind::Constant { ref value })
-            if is_switch_ty(match_pair.pattern.ty) => {
+            (
+                &TestKind::SwitchInt { switch_ty: _, options: _, ref indices },
+                &PatKind::Constant { ref value },
+            ) if is_switch_ty(match_pair.pattern.ty) => {
                 let index = indices[value];
                 self.candidate_without_match_pair(match_pair_index, candidate);
                 Some(index)
             }
 
-            (&TestKind::SwitchInt { switch_ty: _, ref options, ref indices },
-             &PatKind::Range(range)) => {
-                let not_contained = self
-                    .values_not_contained_in_range(range, indices)
-                    .unwrap_or(false);
+            (
+                &TestKind::SwitchInt { switch_ty: _, ref options, ref indices },
+                &PatKind::Range(range),
+            ) => {
+                let not_contained =
+                    self.values_not_contained_in_range(range, indices).unwrap_or(false);
 
                 if not_contained {
                     // No switch values are contained in the pattern range,
@@ -582,18 +575,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             (&TestKind::SwitchInt { .. }, _) => None,
 
-            (&TestKind::Len { len: test_len, op: BinOp::Eq },
-             &PatKind::Slice { ref prefix, ref slice, ref suffix }) => {
+            (
+                &TestKind::Len { len: test_len, op: BinOp::Eq },
+                &PatKind::Slice { ref prefix, ref slice, ref suffix },
+            ) => {
                 let pat_len = (prefix.len() + suffix.len()) as u64;
                 match (test_len.cmp(&pat_len), slice) {
                     (Ordering::Equal, &None) => {
                         // on true, min_len = len = $actual_length,
                         // on false, len != $actual_length
-                        self.candidate_after_slice_test(match_pair_index,
-                                                        candidate,
-                                                        prefix,
-                                                        slice.as_ref(),
-                                                        suffix);
+                        self.candidate_after_slice_test(
+                            match_pair_index,
+                            candidate,
+                            prefix,
+                            slice.as_ref(),
+                            suffix,
+                        );
                         Some(0)
                     }
                     (Ordering::Less, _) => {
@@ -615,19 +612,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (&TestKind::Len { len: test_len, op: BinOp::Ge },
-             &PatKind::Slice { ref prefix, ref slice, ref suffix }) => {
+            (
+                &TestKind::Len { len: test_len, op: BinOp::Ge },
+                &PatKind::Slice { ref prefix, ref slice, ref suffix },
+            ) => {
                 // the test is `$actual_len >= test_len`
                 let pat_len = (prefix.len() + suffix.len()) as u64;
                 match (test_len.cmp(&pat_len), slice) {
-                    (Ordering::Equal, &Some(_))  => {
+                    (Ordering::Equal, &Some(_)) => {
                         // $actual_len >= test_len = pat_len,
                         // so we can match.
-                        self.candidate_after_slice_test(match_pair_index,
-                                                        candidate,
-                                                        prefix,
-                                                        slice.as_ref(),
-                                                        suffix);
+                        self.candidate_after_slice_test(
+                            match_pair_index,
+                            candidate,
+                            prefix,
+                            slice.as_ref(),
+                            suffix,
+                        );
                         Some(0)
                     }
                     (Ordering::Less, _) | (Ordering::Equal, &None) => {
@@ -649,19 +650,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (&TestKind::Range(test),
-             &PatKind::Range(pat)) => {
+            (&TestKind::Range(test), &PatKind::Range(pat)) => {
                 if test == pat {
-                    self.candidate_without_match_pair(
-                        match_pair_index,
-                        candidate,
-                    );
+                    self.candidate_without_match_pair(match_pair_index, candidate);
                     return Some(0);
                 }
 
                 let no_overlap = (|| {
-                    use std::cmp::Ordering::*;
                     use rustc::hir::RangeEnd::*;
+                    use std::cmp::Ordering::*;
 
                     let tcx = self.hir.tcx();
 
@@ -701,8 +698,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             (&TestKind::Range { .. }, _) => None,
 
-            (&TestKind::Eq { .. }, _) |
-            (&TestKind::Len { .. }, _) => {
+            (&TestKind::Eq { .. }, _) | (&TestKind::Len { .. }, _) => {
                 // These are all binary tests.
                 //
                 // FIXME(#29623) we can be more clever here
@@ -725,19 +721,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate.match_pairs.remove(match_pair_index);
     }
 
-    fn candidate_after_slice_test<'pat>(&mut self,
-                                        match_pair_index: usize,
-                                        candidate: &mut Candidate<'pat, 'tcx>,
-                                        prefix: &'pat [Pat<'tcx>],
-                                        opt_slice: Option<&'pat Pat<'tcx>>,
-                                        suffix: &'pat [Pat<'tcx>]) {
+    fn candidate_after_slice_test<'pat>(
+        &mut self,
+        match_pair_index: usize,
+        candidate: &mut Candidate<'pat, 'tcx>,
+        prefix: &'pat [Pat<'tcx>],
+        opt_slice: Option<&'pat Pat<'tcx>>,
+        suffix: &'pat [Pat<'tcx>],
+    ) {
         let removed_place = candidate.match_pairs.remove(match_pair_index).place;
         self.prefix_slice_suffix(
             &mut candidate.match_pairs,
             &removed_place,
             prefix,
             opt_slice,
-            suffix);
+            suffix,
+        );
     }
 
     fn candidate_after_variant_switch<'pat>(
@@ -755,7 +754,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // we want to create a set of derived match-patterns like
         // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
         let elem = ProjectionElem::Downcast(
-            Some(adt_def.variants[variant_index].ident.name), variant_index);
+            Some(adt_def.variants[variant_index].ident.name),
+            variant_index,
+        );
         let downcast_place = tcx.mk_place_elem(match_pair.place, elem); // `(x as Variant)`
         let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
             // e.g., `(x as Variant).0`
@@ -769,9 +770,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn error_simplifyable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
-        span_bug!(match_pair.pattern.span,
-                  "simplifyable pattern found: {:?}",
-                  match_pair.pattern)
+        span_bug!(match_pair.pattern.span, "simplifyable pattern found: {:?}", match_pair.pattern)
     }
 
     fn const_range_contains(
@@ -787,8 +786,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let b = compare_const_vals(tcx, value, range.hi, self.hir.param_env, range.lo.ty)?;
 
         match (b, range.end) {
-            (Less, _) |
-            (Equal, RangeEnd::Included) if a != Greater => Some(true),
+            (Less, _) | (Equal, RangeEnd::Included) if a != Greater => Some(true),
             _ => Some(false),
         }
     }
@@ -811,9 +809,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 impl Test<'_> {
     pub(super) fn targets(&self) -> usize {
         match self.kind {
-            TestKind::Eq { .. } | TestKind::Range(_) | TestKind::Len { .. } => {
-                2
-            }
+            TestKind::Eq { .. } | TestKind::Range(_) | TestKind::Len { .. } => 2,
             TestKind::Switch { adt_def, .. } => {
                 // While the switch that we generate doesn't test for all
                 // variants, we have a target for each variant and the

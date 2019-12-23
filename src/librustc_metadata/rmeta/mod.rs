@@ -3,22 +3,22 @@ use table::{Table, TableBuilder};
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
-use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
-use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary, ForeignModule};
 use rustc::middle::lang_items;
 use rustc::mir;
-use rustc::session::CrateDisambiguator;
 use rustc::session::config::SymbolManglingVersion;
-use rustc::ty::{self, Ty, ReprOptions};
-use rustc_target::spec::{PanicStrategy, TargetTriple};
-use rustc_index::vec::IndexVec;
+use rustc::session::CrateDisambiguator;
+use rustc::ty::{self, ReprOptions, Ty};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
+use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::Encoder;
-use syntax::{ast, attr};
+use rustc_target::spec::{PanicStrategy, TargetTriple};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
+use syntax::{ast, attr};
 use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
@@ -32,8 +32,7 @@ mod encoder;
 mod table;
 
 crate fn rustc_version() -> String {
-    format!("rustc {}",
-            option_env!("CFG_VERSION").unwrap_or("unknown version"))
+    format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown version"))
 }
 
 /// Metadata encoding version.
@@ -46,8 +45,7 @@ const METADATA_VERSION: u8 = 5;
 /// This header is followed by the position of the `CrateRoot`,
 /// which is encoded as a 32-bit big-endian unsigned integer,
 /// and further followed by the rustc version string.
-crate const METADATA_HEADER: &[u8; 8] =
-    &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
+crate const METADATA_HEADER: &[u8; 8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 /// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
 /// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
@@ -106,8 +104,9 @@ impl<T> LazyMeta for [T] {
 // FIXME(#59875) the `Meta` parameter only exists to dodge
 // invariance wrt `T` (coming from the `meta: T::Meta` field).
 struct Lazy<T, Meta = <T as LazyMeta>::Meta>
-    where T: ?Sized + LazyMeta<Meta = Meta>,
-          Meta: 'static + Copy,
+where
+    T: ?Sized + LazyMeta<Meta = Meta>,
+    Meta: 'static + Copy,
 {
     position: NonZeroUsize,
     meta: Meta,
@@ -115,12 +114,8 @@ struct Lazy<T, Meta = <T as LazyMeta>::Meta>
 }
 
 impl<T: ?Sized + LazyMeta> Lazy<T> {
-     fn from_position_and_meta(position: NonZeroUsize, meta: T::Meta) -> Lazy<T> {
-        Lazy {
-            position,
-            meta,
-            _marker: PhantomData,
-        }
+    fn from_position_and_meta(position: NonZeroUsize, meta: T::Meta) -> Lazy<T> {
+        Lazy { position, meta, _marker: PhantomData }
     }
 }
 
@@ -365,7 +360,6 @@ struct ImplData {
     coerce_unsized_info: Option<ty::adjustment::CoerceUnsizedInfo>,
 }
 
-
 /// Describes whether the container of an associated item
 /// is a trait or an impl and whether, in a trait, it has
 /// a default, or an in impl, whether it's marked "default".
@@ -380,24 +374,21 @@ enum AssocContainer {
 impl AssocContainer {
     fn with_def_id(&self, def_id: DefId) -> ty::AssocItemContainer {
         match *self {
-            AssocContainer::TraitRequired |
-            AssocContainer::TraitWithDefault => ty::TraitContainer(def_id),
+            AssocContainer::TraitRequired | AssocContainer::TraitWithDefault => {
+                ty::TraitContainer(def_id)
+            }
 
-            AssocContainer::ImplDefault |
-            AssocContainer::ImplFinal => ty::ImplContainer(def_id),
+            AssocContainer::ImplDefault | AssocContainer::ImplFinal => ty::ImplContainer(def_id),
         }
     }
 
     fn defaultness(&self) -> hir::Defaultness {
         match *self {
-            AssocContainer::TraitRequired => hir::Defaultness::Default {
-                has_value: false,
-            },
+            AssocContainer::TraitRequired => hir::Defaultness::Default { has_value: false },
 
-            AssocContainer::TraitWithDefault |
-            AssocContainer::ImplDefault => hir::Defaultness::Default {
-                has_value: true,
-            },
+            AssocContainer::TraitWithDefault | AssocContainer::ImplDefault => {
+                hir::Defaultness::Default { has_value: true }
+            }
 
             AssocContainer::ImplFinal => hir::Defaultness::Final,
         }

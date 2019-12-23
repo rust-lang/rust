@@ -1,38 +1,37 @@
-pub use crate::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use crate::code_stats::CodeStats;
+pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
-use crate::lint;
-use crate::filesearch;
 use crate::config::{self, OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
+use crate::filesearch;
+use crate::lint;
 use crate::search_paths::{PathKind, SearchPath};
 use crate::utils::duration_to_secs_str;
 use rustc_errors::ErrorReported;
 
 use rustc_data_structures::base_n;
-use rustc_data_structures::sync::{
-    self, Lrc, Lock, OneThread, Once, AtomicU64, AtomicUsize, Ordering,
-    Ordering::SeqCst,
-};
 use rustc_data_structures::impl_stable_hash_via_hash;
+use rustc_data_structures::sync::{
+    self, AtomicU64, AtomicUsize, Lock, Lrc, Once, OneThread, Ordering, Ordering::SeqCst,
+};
 
-use rustc_errors::{DiagnosticBuilder, DiagnosticId, Applicability};
-use rustc_errors::emitter::{Emitter, EmitterWriter};
-use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
-use syntax_pos::edition::Edition;
-use rustc_errors::json::JsonEmitter;
-use syntax_pos::source_map;
 use crate::parse::ParseSess;
+use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
+use rustc_errors::emitter::HumanReadableErrorType;
+use rustc_errors::emitter::{Emitter, EmitterWriter};
+use rustc_errors::json::JsonEmitter;
+use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use syntax_pos::edition::Edition;
+use syntax_pos::source_map;
 use syntax_pos::{MultiSpan, Span};
 
-use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
+use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 
 use std;
 use std::cell::{self, RefCell};
@@ -41,8 +40,8 @@ use std::fmt;
 use std::io::Write;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
-use std::time::Duration;
 use std::sync::Arc;
+use std::time::Duration;
 
 pub struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
@@ -177,11 +176,7 @@ impl Session {
         *self.crate_disambiguator.get()
     }
 
-    pub fn struct_span_warn<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: &str,
-    ) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
@@ -195,11 +190,7 @@ impl Session {
     pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_warn(msg)
     }
-    pub fn struct_span_err<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: &str,
-    ) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_err(sp, msg)
     }
     pub fn struct_span_err_with_code<S: Into<MultiSpan>>(
@@ -214,18 +205,10 @@ impl Session {
     pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_err(msg)
     }
-    pub fn struct_err_with_code(
-        &self,
-        msg: &str,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
+    pub fn struct_err_with_code(&self, msg: &str, code: DiagnosticId) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_err_with_code(msg, code)
     }
-    pub fn struct_span_fatal<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: &str,
-    ) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
     pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
@@ -249,9 +232,7 @@ impl Session {
         msg: &str,
         code: DiagnosticId,
     ) -> ! {
-        self.diagnostic()
-            .span_fatal_with_code(sp, msg, code)
-            .raise()
+        self.diagnostic().span_fatal_with_code(sp, msg, code).raise()
     }
     pub fn fatal(&self, msg: &str) -> ! {
         self.diagnostic().fatal(msg).raise()
@@ -300,11 +281,7 @@ impl Session {
         let old_count = self.err_count();
         let result = f();
         let errors = self.err_count() - old_count;
-        if errors == 0 {
-            Ok(result)
-        } else {
-            Err(ErrorReported)
-        }
+        if errors == 0 { Ok(result) } else { Err(ErrorReported) }
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_warn(sp, msg)
@@ -347,9 +324,7 @@ impl Session {
         span_maybe: Option<Span>,
     ) {
         let id_span_message = (msg_id, span_maybe, message.to_owned());
-        let fresh = self.one_time_diagnostics
-            .borrow_mut()
-            .insert(id_span_message);
+        let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
         if fresh {
             match method {
                 DiagnosticBuilderMethod::Note => {
@@ -394,13 +369,7 @@ impl Session {
         msg_id: DiagnosticMessageId,
         message: &str,
     ) {
-        self.diag_once(
-            diag_builder,
-            DiagnosticBuilderMethod::Note,
-            msg_id,
-            message,
-            None,
-        );
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, msg_id, message, None);
     }
 
     pub fn diag_span_suggestion_once<'a, 'b>(
@@ -445,8 +414,7 @@ impl Session {
         self.opts.debugging_opts.asm_comments
     }
     pub fn verify_llvm_ir(&self) -> bool {
-        self.opts.debugging_opts.verify_llvm_ir
-            || cfg!(always_verify_llvm_ir)
+        self.opts.debugging_opts.verify_llvm_ir || cfg!(always_verify_llvm_ir)
     }
     pub fn borrowck_stats(&self) -> bool {
         self.opts.debugging_opts.borrowck_stats
@@ -489,9 +457,7 @@ impl Session {
                 // The user explicitly opted out of any kind of LTO
                 return config::Lto::No;
             }
-            config::LtoCli::Yes |
-            config::LtoCli::Fat |
-            config::LtoCli::NoParam => {
+            config::LtoCli::Yes | config::LtoCli::Fat | config::LtoCli::NoParam => {
                 // All of these mean fat LTO
                 return config::Lto::Fat;
             }
@@ -543,15 +509,10 @@ impl Session {
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
     pub fn panic_strategy(&self) -> PanicStrategy {
-        self.opts
-            .cg
-            .panic
-            .unwrap_or(self.target.target.options.panic_strategy)
+        self.opts.cg.panic.unwrap_or(self.target.target.options.panic_strategy)
     }
     pub fn fewer_names(&self) -> bool {
-        let more_names = self.opts
-            .output_types
-            .contains_key(&OutputType::LlvmAssembly)
+        let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
             || self.opts.output_types.contains_key(&OutputType::Bitcode);
 
         // Address sanitizer and memory sanitizer use alloca name when reporting an issue.
@@ -596,11 +557,7 @@ impl Session {
         // then see if the `-crt-static` feature was passed to disable that.
         // Otherwise if we don't have a static crt by default then see if the
         // `+crt-static` feature was passed.
-        if self.target.target.options.crt_static_default {
-            !found_negative
-        } else {
-            found_positive
-        }
+        if self.target.target.options.crt_static_default { !found_negative } else { found_positive }
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
@@ -618,17 +575,11 @@ impl Session {
     /// Returns the symbol name for the registrar function,
     /// given the crate `Svh` and the function `DefIndex`.
     pub fn generate_plugin_registrar_symbol(&self, disambiguator: CrateDisambiguator) -> String {
-        format!(
-            "__rustc_plugin_registrar_{}__",
-            disambiguator.to_fingerprint().to_hex()
-        )
+        format!("__rustc_plugin_registrar_{}__", disambiguator.to_fingerprint().to_hex())
     }
 
     pub fn generate_proc_macro_decls_symbol(&self, disambiguator: CrateDisambiguator) -> String {
-        format!(
-            "__rustc_proc_macro_decls_{}__",
-            disambiguator.to_fingerprint().to_hex()
-        )
+        format!("__rustc_proc_macro_decls_{}__", disambiguator.to_fingerprint().to_hex())
     }
 
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
@@ -677,17 +628,11 @@ impl Session {
 
         if let IncrCompSession::NotInitialized = *incr_comp_session {
         } else {
-            panic!(
-                "Trying to initialize IncrCompSession `{:?}`",
-                *incr_comp_session
-            )
+            panic!("Trying to initialize IncrCompSession `{:?}`", *incr_comp_session)
         }
 
-        *incr_comp_session = IncrCompSession::Active {
-            session_directory: session_dir,
-            lock_file,
-            load_dep_graph,
-        };
+        *incr_comp_session =
+            IncrCompSession::Active { session_directory: session_dir, lock_file, load_dep_graph };
     }
 
     pub fn finalize_incr_comp_session(&self, new_directory_path: PathBuf) {
@@ -695,60 +640,39 @@ impl Session {
 
         if let IncrCompSession::Active { .. } = *incr_comp_session {
         } else {
-            panic!(
-                "trying to finalize `IncrCompSession` `{:?}`",
-                *incr_comp_session
-            );
+            panic!("trying to finalize `IncrCompSession` `{:?}`", *incr_comp_session);
         }
 
         // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::Finalized {
-            session_directory: new_directory_path,
-        };
+        *incr_comp_session = IncrCompSession::Finalized { session_directory: new_directory_path };
     }
 
     pub fn mark_incr_comp_session_as_invalid(&self) {
         let mut incr_comp_session = self.incr_comp_session.borrow_mut();
 
         let session_directory = match *incr_comp_session {
-            IncrCompSession::Active {
-                ref session_directory,
-                ..
-            } => session_directory.clone(),
+            IncrCompSession::Active { ref session_directory, .. } => session_directory.clone(),
             IncrCompSession::InvalidBecauseOfErrors { .. } => return,
-            _ => panic!(
-                "trying to invalidate `IncrCompSession` `{:?}`",
-                *incr_comp_session
-            ),
+            _ => panic!("trying to invalidate `IncrCompSession` `{:?}`", *incr_comp_session),
         };
 
         // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors {
-            session_directory,
-        };
+        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
     }
 
     pub fn incr_comp_session_dir(&self) -> cell::Ref<'_, PathBuf> {
         let incr_comp_session = self.incr_comp_session.borrow();
-        cell::Ref::map(
-            incr_comp_session,
-            |incr_comp_session| match *incr_comp_session {
-                IncrCompSession::NotInitialized => panic!(
-                    "trying to get session directory from `IncrCompSession`: {:?}",
-                    *incr_comp_session,
-                ),
-                IncrCompSession::Active {
-                    ref session_directory,
-                    ..
-                }
-                | IncrCompSession::Finalized {
-                    ref session_directory,
-                }
-                | IncrCompSession::InvalidBecauseOfErrors {
-                    ref session_directory,
-                } => session_directory,
-            },
-        )
+        cell::Ref::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
+            IncrCompSession::NotInitialized => panic!(
+                "trying to get session directory from `IncrCompSession`: {:?}",
+                *incr_comp_session,
+            ),
+            IncrCompSession::Active { ref session_directory, .. }
+            | IncrCompSession::Finalized { ref session_directory }
+            | IncrCompSession::InvalidBecauseOfErrors { ref session_directory } => {
+                session_directory
+            }
+        })
     }
 
     pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
@@ -764,12 +688,18 @@ impl Session {
             "Total time spent decoding DefPath tables:      {}",
             duration_to_secs_str(*self.perf_stats.decode_def_path_tables_time.lock())
         );
-        println!("Total queries canonicalized:                   {}",
-                 self.perf_stats.queries_canonicalized.load(Ordering::Relaxed));
-        println!("normalize_ty_after_erasing_regions:            {}",
-                 self.perf_stats.normalize_ty_after_erasing_regions.load(Ordering::Relaxed));
-        println!("normalize_projection_ty:                       {}",
-                 self.perf_stats.normalize_projection_ty.load(Ordering::Relaxed));
+        println!(
+            "Total queries canonicalized:                   {}",
+            self.perf_stats.queries_canonicalized.load(Ordering::Relaxed)
+        );
+        println!(
+            "normalize_ty_after_erasing_regions:            {}",
+            self.perf_stats.normalize_ty_after_erasing_regions.load(Ordering::Relaxed)
+        );
+        println!(
+            "normalize_projection_ty:                       {}",
+            self.perf_stats.normalize_projection_ty.load(Ordering::Relaxed)
+        );
     }
 
     /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
@@ -892,8 +822,7 @@ impl Session {
 
         let dbg_opts = &self.opts.debugging_opts;
 
-        let relro_level = dbg_opts.relro_level
-            .unwrap_or(self.target.target.options.relro_level);
+        let relro_level = dbg_opts.relro_level.unwrap_or(self.target.target.options.relro_level);
 
         // Only enable this optimization by default if full relro is also enabled.
         // In this case, lazy binding was already unavailable, so nothing is lost.
@@ -963,7 +892,7 @@ fn default_emitter(
                 };
                 Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
             }
-        },
+        }
         (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
             JsonEmitter::stderr(
                 Some(registry),
@@ -971,7 +900,8 @@ fn default_emitter(
                 pretty,
                 json_rendered,
                 external_macro_backtrace,
-            ).ui_testing(sopts.debugging_opts.ui_testing),
+            )
+            .ui_testing(sopts.debugging_opts.ui_testing),
         ),
         (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
             JsonEmitter::new(
@@ -981,14 +911,15 @@ fn default_emitter(
                 pretty,
                 json_rendered,
                 external_macro_backtrace,
-            ).ui_testing(sopts.debugging_opts.ui_testing),
+            )
+            .ui_testing(sopts.debugging_opts.ui_testing),
         ),
     }
 }
 
 pub enum DiagnosticOutput {
     Default,
-    Raw(Box<dyn Write + Send>)
+    Raw(Box<dyn Write + Send>),
 }
 
 pub fn build_session_with_source_map(
@@ -1037,13 +968,7 @@ pub fn build_session_with_source_map(
         },
     );
 
-    build_session_(
-        sopts,
-        local_crate_source_file,
-        diagnostic_handler,
-        source_map,
-        lint_caps,
-    )
+    build_session_(sopts, local_crate_source_file, diagnostic_handler, source_map, lint_caps)
 }
 
 fn build_session_(
@@ -1053,44 +978,34 @@ fn build_session_(
     source_map: Lrc<source_map::SourceMap>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 ) -> Session {
-    let self_profiler =
-        if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile {
-            let directory = if let Some(ref directory) = d {
-                directory
-            } else {
-                std::path::Path::new(".")
-            };
+    let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile
+    {
+        let directory =
+            if let Some(ref directory) = d { directory } else { std::path::Path::new(".") };
 
-            let profiler = SelfProfiler::new(
-                directory,
-                sopts.crate_name.as_ref().map(|s| &s[..]),
-                &sopts.debugging_opts.self_profile_events
-            );
-            match profiler {
-                Ok(profiler) => {
-                    Some(Arc::new(profiler))
-                },
-                Err(e) => {
-                    early_warn(sopts.error_format, &format!("failed to create profiler: {}", e));
-                    None
-                }
+        let profiler = SelfProfiler::new(
+            directory,
+            sopts.crate_name.as_ref().map(|s| &s[..]),
+            &sopts.debugging_opts.self_profile_events,
+        );
+        match profiler {
+            Ok(profiler) => Some(Arc::new(profiler)),
+            Err(e) => {
+                early_warn(sopts.error_format, &format!("failed to create profiler: {}", e));
+                None
             }
-        } else {
-            None
-        };
+        }
+    } else {
+        None
+    };
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
-    let host = Target::search(&host_triple).unwrap_or_else(|e|
-        span_diagnostic
-            .fatal(&format!("Error loading host specification: {}", e))
-            .raise()
-    );
+    let host = Target::search(&host_triple).unwrap_or_else(|e| {
+        span_diagnostic.fatal(&format!("Error loading host specification: {}", e)).raise()
+    });
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
 
-    let parse_sess = ParseSess::with_span_handler(
-        span_diagnostic,
-        source_map,
-    );
+    let parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
         None => filesearch::get_or_default_sysroot(),
@@ -1118,11 +1033,9 @@ fn build_session_(
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
     let print_fuel = AtomicU64::new(0);
 
-    let working_dir = env::current_dir().unwrap_or_else(|e|
-        parse_sess.span_diagnostic
-            .fatal(&format!("Current directory is invalid: {}", e))
-            .raise()
-    );
+    let working_dir = env::current_dir().unwrap_or_else(|e| {
+        parse_sess.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)).raise()
+    });
     let working_dir = file_path_mapping.map_prefix(working_dir);
 
     let cgu_reuse_tracker = if sopts.debugging_opts.query_dep_graph {
@@ -1184,19 +1097,24 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // bitcode during ThinLTO. Therefore we disallow dynamic linking on MSVC
     // when compiling for LLD ThinLTO. This way we can validly just not generate
     // the `dllimport` attributes and `__imp_` symbols in that case.
-    if sess.opts.cg.linker_plugin_lto.enabled() &&
-       sess.opts.cg.prefer_dynamic &&
-       sess.target.target.options.is_like_msvc {
-        sess.err("Linker plugin based LTO is not supported together with \
-                  `-C prefer-dynamic` when targeting MSVC");
+    if sess.opts.cg.linker_plugin_lto.enabled()
+        && sess.opts.cg.prefer_dynamic
+        && sess.target.target.options.is_like_msvc
+    {
+        sess.err(
+            "Linker plugin based LTO is not supported together with \
+                  `-C prefer-dynamic` when targeting MSVC",
+        );
     }
 
     // Make sure that any given profiling data actually exists so LLVM can't
     // decide to silently skip PGO.
     if let Some(ref path) = sess.opts.cg.profile_use {
         if !path.exists() {
-            sess.err(&format!("File `{}` passed to `-C profile-use` does not exist.",
-                              path.display()));
+            sess.err(&format!(
+                "File `{}` passed to `-C profile-use` does not exist.",
+                path.display()
+            ));
         }
     }
 
@@ -1206,13 +1124,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // does not crash and will probably generate a corrupted binary.
     // We should only display this error if we're actually going to run PGO.
     // If we're just supposed to print out some data, don't show the error (#61002).
-    if sess.opts.cg.profile_generate.enabled() &&
-       sess.target.target.options.is_like_msvc &&
-       sess.panic_strategy() == PanicStrategy::Unwind &&
-       sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs) {
-        sess.err("Profile-guided optimization does not yet work in conjunction \
+    if sess.opts.cg.profile_generate.enabled()
+        && sess.target.target.options.is_like_msvc
+        && sess.panic_strategy() == PanicStrategy::Unwind
+        && sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs)
+    {
+        sess.err(
+            "Profile-guided optimization does not yet work in conjunction \
                   with `-Cpanic=unwind` on Windows when targeting MSVC. \
-                  See https://github.com/rust-lang/rust/issues/61002 for details.");
+                  See https://github.com/rust-lang/rust/issues/61002 for details.",
+        );
     }
 }
 
@@ -1252,11 +1173,7 @@ pub enum IncrCompSession {
     NotInitialized,
     /// This is the state during which the session directory is private and can
     /// be modified.
-    Active {
-        session_directory: PathBuf,
-        lock_file: flock::Lock,
-        load_dep_graph: bool,
-    },
+    Active { session_directory: PathBuf, lock_file: flock::Lock, load_dep_graph: bool },
     /// This is the state after the session directory has been finalized. In this
     /// state, the contents of the directory must not be modified any more.
     Finalized { session_directory: PathBuf },
@@ -1272,8 +1189,9 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
             let (short, color_config) = kind.unzip();
             Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
         }
-        config::ErrorOutputType::Json { pretty, json_rendered } =>
-            Box::new(JsonEmitter::basic(pretty, json_rendered, false)),
+        config::ErrorOutputType::Json { pretty, json_rendered } => {
+            Box::new(JsonEmitter::basic(pretty, json_rendered, false))
+        }
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
     handler.struct_fatal(msg).emit();
@@ -1286,8 +1204,9 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
             let (short, color_config) = kind.unzip();
             Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
         }
-        config::ErrorOutputType::Json { pretty, json_rendered } =>
-            Box::new(JsonEmitter::basic(pretty, json_rendered, false)),
+        config::ErrorOutputType::Json { pretty, json_rendered } => {
+            Box::new(JsonEmitter::basic(pretty, json_rendered, false))
+        }
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
     handler.struct_warn(msg).emit();

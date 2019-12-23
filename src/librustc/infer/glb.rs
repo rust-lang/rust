@@ -1,11 +1,11 @@
 use super::combine::CombineFields;
-use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
+use super::InferCtxt;
 use super::Subtype;
 
 use crate::traits::ObligationCause;
-use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::relate::{Relate, RelateResult, TypeRelation};
+use crate::ty::{self, Ty, TyCtxt};
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'combine, 'infcx, 'tcx> {
@@ -23,20 +23,28 @@ impl<'combine, 'infcx, 'tcx> Glb<'combine, 'infcx, 'tcx> {
 }
 
 impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
-    fn tag(&self) -> &'static str { "Glb" }
+    fn tag(&self) -> &'static str {
+        "Glb"
+    }
 
-    fn tcx(&self) -> TyCtxt<'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.fields.tcx()
+    }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.fields.param_env }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.fields.param_env
+    }
 
-    fn a_is_expected(&self) -> bool { self.a_is_expected }
+    fn a_is_expected(&self) -> bool {
+        self.a_is_expected
+    }
 
-    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
-                                             variance: ty::Variance,
-                                             a: &T,
-                                             b: &T)
-                                             -> RelateResult<'tcx, T>
-    {
+    fn relate_with_variance<T: Relate<'tcx>>(
+        &mut self,
+        variance: ty::Variance,
+        a: &T,
+        b: &T,
+    ) -> RelateResult<'tcx, T> {
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
@@ -50,12 +58,12 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
         lattice::super_lattice_tys(self, a, b)
     }
 
-    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>)
-               -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?})",
-               self.tag(),
-               a,
-               b);
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
 
         let origin = Subtype(box self.fields.trace.clone());
         Ok(self.fields.infcx.borrow_region_constraints().glb_regions(self.tcx(), origin, a, b))
@@ -69,9 +77,13 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'tcx>
+    fn binders<T>(
+        &mut self,
+        a: &ty::Binder<T>,
+        b: &ty::Binder<T>,
+    ) -> RelateResult<'tcx, ty::Binder<T>>
+    where
+        T: Relate<'tcx>,
     {
         debug!("binders(a={:?}, b={:?})", a, b);
 

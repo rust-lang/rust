@@ -11,9 +11,8 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax_pos::Span;
 
 use super::{
-    Allocation, AllocId, InterpResult, Scalar, AllocationExtra, AssertMessage,
-    InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
-    Frame, Operand,
+    AllocId, Allocation, AllocationExtra, AssertMessage, Frame, ImmTy, InterpCx, InterpResult,
+    Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -28,7 +27,7 @@ pub enum StackPopInfo {
 
     /// Indicates that we should stop unwinding,
     /// as we've reached a catch frame
-    StopUnwinding
+    StopUnwinding,
 }
 
 /// Whether this kind of memory is allowed to leak
@@ -42,14 +41,16 @@ pub trait AllocMap<K: Hash + Eq, V> {
     /// Deliberately takes `&mut` because that is sufficient, and some implementations
     /// can be more efficient then (using `RefCell::get_mut`).
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
-        where K: Borrow<Q>;
+    where
+        K: Borrow<Q>;
 
     /// Inserts a new entry into the map.
     fn insert(&mut self, k: K, v: V) -> Option<V>;
 
     /// Removes an entry from the map.
     fn remove<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> Option<V>
-        where K: Borrow<Q>;
+    where
+        K: Borrow<Q>;
 
     /// Returns data based the keys and values in the map.
     fn filter_map_collect<T>(&self, f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T>;
@@ -57,20 +58,12 @@ pub trait AllocMap<K: Hash + Eq, V> {
     /// Returns a reference to entry `k`. If no such entry exists, call
     /// `vacant` and either forward its error, or add its result to the map
     /// and return a reference to *that*.
-    fn get_or<E>(
-        &self,
-        k: K,
-        vacant: impl FnOnce() -> Result<V, E>
-    ) -> Result<&V, E>;
+    fn get_or<E>(&self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&V, E>;
 
     /// Returns a mutable reference to entry `k`. If no such entry exists, call
     /// `vacant` and either forward its error, or add its result to the map
     /// and return a reference to *that*.
-    fn get_mut_or<E>(
-        &mut self,
-        k: K,
-        vacant: impl FnOnce() -> Result<V, E>
-    ) -> Result<&mut V, E>;
+    fn get_mut_or<E>(&mut self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&mut V, E>;
 
     /// Read-only lookup.
     fn get(&self, k: K) -> Option<&V> {
@@ -111,13 +104,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     type AllocExtra: AllocationExtra<Self::PointerTag> + 'static;
 
     /// Memory's allocation map
-    type MemoryMap:
-        AllocMap<
+    type MemoryMap: AllocMap<
             AllocId,
-            (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag, Self::AllocExtra>)
-        > +
-        Default +
-        Clone;
+            (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag, Self::AllocExtra>),
+        > + Default
+        + Clone;
 
     /// The memory kind to use for copied statics -- or None if statics should not be mutated
     /// and thus any such attempt will cause a `ModifiedStatic` error to be raised.
@@ -221,9 +212,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Called before a `StaticKind::Static` value is accessed.
-    fn before_access_static(
-        _allocation: &Allocation,
-    ) -> InterpResult<'tcx> {
+    fn before_access_static(_allocation: &Allocation) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -254,10 +243,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Return the "base" tag for the given *static* allocation: the one that is used for direct
     /// accesses to this static/const/fn allocation. If `id` is not a static allocation,
     /// this will return an unusable tag (i.e., accesses will be UB)!
-    fn tag_static_base_pointer(
-        memory_extra: &Self::MemoryExtra,
-        id: AllocId,
-    ) -> Self::PointerTag;
+    fn tag_static_base_pointer(memory_extra: &Self::MemoryExtra, id: AllocId) -> Self::PointerTag;
 
     /// Executes a retagging operation
     #[inline]
@@ -276,7 +262,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn stack_pop(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _extra: Self::FrameExtra,
-        _unwinding: bool
+        _unwinding: bool,
     ) -> InterpResult<'tcx, StackPopInfo> {
         // By default, we do not support unwinding from panics
         Ok(StackPopInfo::Normal)
@@ -290,7 +276,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
             err_unsup!(InvalidNullPointerUsage)
         } else {
             err_unsup!(ReadBytesAsPointer)
-        }).into())
+        })
+        .into())
     }
 
     fn ptr_to_int(

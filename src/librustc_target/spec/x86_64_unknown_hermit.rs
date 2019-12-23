@@ -1,4 +1,4 @@
-use crate::spec::{LldFlavor, LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::hermit_base::opts();

@@ -71,8 +71,10 @@ impl RWLock {
         let r = libc::pthread_rwlock_wrlock(self.inner.get());
         // See comments above for why we check for EDEADLK and write_locked. We
         // also need to check that num_readers is 0.
-        if r == libc::EDEADLK || *self.write_locked.get() ||
-           self.num_readers.load(Ordering::Relaxed) != 0 {
+        if r == libc::EDEADLK
+            || *self.write_locked.get()
+            || self.num_readers.load(Ordering::Relaxed) != 0
+        {
             if r == 0 {
                 self.raw_unlock();
             }

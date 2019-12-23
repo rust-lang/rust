@@ -56,9 +56,7 @@ This API is completely unstable and subject to change.
 */
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
 #![allow(non_camel_case_types)]
-
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -68,13 +66,15 @@ This API is completely unstable and subject to change.
 #![feature(nll)]
 #![feature(slice_patterns)]
 #![feature(never_type)]
+#![recursion_limit = "256"]
 
-#![recursion_limit="256"]
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate syntax;
 
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
-
-#[macro_use] extern crate rustc;
+#[macro_use]
+extern crate rustc;
 
 // This is used by Clippy.
 pub mod expr_use_visitor;
@@ -85,28 +85,28 @@ mod check_unused;
 mod coherence;
 mod collect;
 mod constrained_generic_params;
-mod structured_errors;
 mod impl_wf_check;
 mod mem_categorization;
 mod namespace;
 mod outlives;
+mod structured_errors;
 mod variance;
 
-use rustc_target::spec::abi::Abi;
-use rustc::hir::{self, Node};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::{self, Node};
 use rustc::infer::InferOk;
 use rustc::lint;
 use rustc::middle;
 use rustc::session;
-use rustc::util::common::ErrorReported;
 use rustc::session::config::EntryFnType;
 use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
+use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::query::Providers;
 use rustc::util;
-use syntax_pos::{DUMMY_SP, Span};
+use rustc::util::common::ErrorReported;
+use rustc_target::spec::abi::Abi;
+use syntax_pos::{Span, DUMMY_SP};
 use util::common::time;
 
 use rustc_error_codes::*;
@@ -121,8 +121,12 @@ pub struct TypeAndSubsts<'tcx> {
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl, abi: Abi, span: Span) {
     if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
-        let mut err = struct_span_err!(tcx.sess, span, E0045,
-            "C-variadic function must have C or cdecl calling convention");
+        let mut err = struct_span_err!(
+            tcx.sess,
+            span,
+            E0045,
+            "C-variadic function must have C or cdecl calling convention"
+        );
         err.span_label(span, "C-variadics require C or cdecl calling convention").emit();
     }
 }
@@ -167,7 +171,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         let msg = "`main` function is not allowed to have generic \
-                                   parameters".to_owned();
+                                   parameters"
+                            .to_owned();
                         let label = "`main` cannot have generic parameters".to_string();
                         struct_span_err!(tcx.sess, generics.span, E0131, "{}", msg)
                             .span_label(generics.span, label)
@@ -175,10 +180,14 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                         error = true;
                     }
                     if let Some(sp) = generics.where_clause.span() {
-                        struct_span_err!(tcx.sess, sp, E0646,
-                            "`main` function is not allowed to have a `where` clause")
-                            .span_label(sp, "`main` cannot have a `where` clause")
-                            .emit();
+                        struct_span_err!(
+                            tcx.sess,
+                            sp,
+                            E0646,
+                            "`main` function is not allowed to have a `where` clause"
+                        )
+                        .span_label(sp, "`main` cannot have a `where` clause")
+                        .emit();
                         error = true;
                     }
                     if error {
@@ -197,26 +206,23 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                 tcx.mk_unit()
             };
 
-            let se_ty = tcx.mk_fn_ptr(ty::Binder::bind(
-                tcx.mk_fn_sig(
-                    iter::empty(),
-                    expected_return_type,
-                    false,
-                    hir::Unsafety::Normal,
-                    Abi::Rust
-                )
-            ));
+            let se_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
+                iter::empty(),
+                expected_return_type,
+                false,
+                hir::Unsafety::Normal,
+                Abi::Rust,
+            )));
 
             require_same_types(
                 tcx,
                 &ObligationCause::new(main_span, main_id, ObligationCauseCode::MainFunctionType),
                 se_ty,
-                tcx.mk_fn_ptr(actual));
+                tcx.mk_fn_ptr(actual),
+            );
         }
         _ => {
-            span_bug!(main_span,
-                      "main has a non-function type: found `{}`",
-                      main_t);
+            span_bug!(main_span, "main has a non-function type: found `{}`", main_t);
         }
     }
 }
@@ -231,18 +237,25 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
-                        struct_span_err!(tcx.sess, generics.span, E0132,
-                            "start function is not allowed to have type parameters")
-                            .span_label(generics.span,
-                                        "start function cannot have type parameters")
-                            .emit();
+                        struct_span_err!(
+                            tcx.sess,
+                            generics.span,
+                            E0132,
+                            "start function is not allowed to have type parameters"
+                        )
+                        .span_label(generics.span, "start function cannot have type parameters")
+                        .emit();
                         error = true;
                     }
                     if let Some(sp) = generics.where_clause.span() {
-                        struct_span_err!(tcx.sess, sp, E0647,
-                            "start function is not allowed to have a `where` clause")
-                            .span_label(sp, "start function cannot have a `where` clause")
-                            .emit();
+                        struct_span_err!(
+                            tcx.sess,
+                            sp,
+                            E0647,
+                            "start function is not allowed to have a `where` clause"
+                        )
+                        .span_label(sp, "start function cannot have a `where` clause")
+                        .emit();
                         error = true;
                     }
                     if error {
@@ -251,29 +264,23 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 }
             }
 
-            let se_ty = tcx.mk_fn_ptr(ty::Binder::bind(
-                tcx.mk_fn_sig(
-                    [
-                        tcx.types.isize,
-                        tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
-                    ].iter().cloned(),
-                    tcx.types.isize,
-                    false,
-                    hir::Unsafety::Normal,
-                    Abi::Rust
-                )
-            ));
+            let se_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
+                [tcx.types.isize, tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))].iter().cloned(),
+                tcx.types.isize,
+                false,
+                hir::Unsafety::Normal,
+                Abi::Rust,
+            )));
 
             require_same_types(
                 tcx,
                 &ObligationCause::new(start_span, start_id, ObligationCauseCode::StartFunctionType),
                 se_ty,
-                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id)));
+                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id)),
+            );
         }
         _ => {
-            span_bug!(start_span,
-                      "start has a non-function type: found `{}`",
-                      start_t);
+            span_bug!(start_span, "start has a non-function type: found `{}`", start_t);
         }
     }
 }
@@ -311,25 +318,21 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            time(tcx.sess, "outlives testing", ||
-                outlives::test::test_inferred_outlives(tcx));
+            time(tcx.sess, "outlives testing", || outlives::test::test_inferred_outlives(tcx));
         })?;
     }
 
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "impl wf inference", ||
-             impl_wf_check::impl_wf_check(tcx));
+        time(tcx.sess, "impl wf inference", || impl_wf_check::impl_wf_check(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-      time(tcx.sess, "coherence checking", ||
-          coherence::check_coherence(tcx));
+        time(tcx.sess, "coherence checking", || coherence::check_coherence(tcx));
     })?;
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            time(tcx.sess, "variance testing", ||
-                variance::test::test_variance(tcx));
+            time(tcx.sess, "variance testing", || variance::test::test_variance(tcx));
         })?;
     }
 
@@ -348,11 +351,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
-    if tcx.sess.err_count() == 0 {
-        Ok(())
-    } else {
-        Err(ErrorReported)
-    }
+    if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorReported) }
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get
@@ -368,10 +367,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
     astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
 }
 
-pub fn hir_trait_to_predicates<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    hir_trait: &hir::TraitRef,
-) -> Bounds<'tcx> {
+pub fn hir_trait_to_predicates<'tcx>(tcx: TyCtxt<'tcx>, hir_trait: &hir::TraitRef) -> Bounds<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
@@ -380,7 +376,12 @@ pub fn hir_trait_to_predicates<'tcx>(
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
     let mut bounds = Bounds::default();
     let _ = AstConv::instantiate_poly_trait_ref_inner(
-        &item_cx, hir_trait, DUMMY_SP, tcx.types.err, &mut bounds, true
+        &item_cx,
+        hir_trait,
+        DUMMY_SP,
+        tcx.types.err,
+        &mut bounds,
+        true,
     );
 
     bounds

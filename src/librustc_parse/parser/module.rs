@@ -1,14 +1,14 @@
-use super::Parser;
-use super::item::ItemInfo;
 use super::diagnostics::Error;
+use super::item::ItemInfo;
+use super::Parser;
 
 use crate::{new_sub_parser_from_file, DirectoryOwnership};
 
 use rustc_errors::PResult;
+use syntax::ast::{self, Attribute, Crate, Ident, ItemKind, Mod};
 use syntax::attr;
-use syntax::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
 use syntax::token::{self, TokenKind};
-use syntax_pos::source_map::{SourceMap, Span, DUMMY_SP, FileName};
+use syntax_pos::source_map::{FileName, SourceMap, Span, DUMMY_SP};
 use syntax_pos::symbol::sym;
 
 use std::path::{self, Path, PathBuf};
@@ -39,11 +39,8 @@ impl<'a> Parser<'a> {
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     pub(super) fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
-        let (in_cfg, outer_attrs) = crate::config::process_configure_mod(
-            self.sess,
-            self.cfg_mods,
-            outer_attrs,
-        );
+        let (in_cfg, outer_attrs) =
+            crate::config::process_configure_mod(self.sess, self.cfg_mods, outer_attrs);
 
         let id_span = self.token.span;
         let id = self.parse_ident()?;
@@ -56,11 +53,7 @@ impl<'a> Parser<'a> {
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
                 Ok((id, ItemKind::Mod(module), Some(attrs)))
             } else {
-                let placeholder = ast::Mod {
-                    inner: DUMMY_SP,
-                    items: Vec::new(),
-                    inline: false
-                };
+                let placeholder = ast::Mod { inner: DUMMY_SP, items: Vec::new(), inline: false };
                 Ok((id, ItemKind::Mod(placeholder), None))
             }
         } else {
@@ -94,24 +87,16 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let hi = if self.token.span.is_dummy() {
-            inner_lo
-        } else {
-            self.prev_span
-        };
+        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_span };
 
-        Ok(Mod {
-            inner: inner_lo.to(hi),
-            items,
-            inline: true
-        })
+        Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
     }
 
     fn submod_path(
         &mut self,
         id: ast::Ident,
         outer_attrs: &[Attribute],
-        id_sp: Span
+        id_sp: Span,
     ) -> PResult<'a, ModulePathSuccess> {
         if let Some(path) = Parser::submod_path_from_attr(outer_attrs, &self.directory.path) {
             return Ok(ModulePathSuccess {
@@ -132,31 +117,32 @@ impl<'a> Parser<'a> {
 
         let relative = match self.directory.ownership {
             DirectoryOwnership::Owned { relative } => relative,
-            DirectoryOwnership::UnownedViaBlock |
-            DirectoryOwnership::UnownedViaMod => None,
+            DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod => None,
         };
-        let paths = Parser::default_submod_path(
-                        id, relative, &self.directory.path, self.sess.source_map());
+        let paths =
+            Parser::default_submod_path(id, relative, &self.directory.path, self.sess.source_map());
 
         match self.directory.ownership {
             DirectoryOwnership::Owned { .. } => {
                 paths.result.map_err(|err| self.span_fatal_err(id_sp, err))
-            },
+            }
             DirectoryOwnership::UnownedViaBlock => {
-                let msg =
-                    "Cannot declare a non-inline module inside a block \
+                let msg = "Cannot declare a non-inline module inside a block \
                     unless it has a path attribute";
                 let mut err = self.diagnostic().struct_span_err(id_sp, msg);
                 if paths.path_exists {
-                    let msg = format!("Maybe `use` the module `{}` instead of redeclaring it",
-                                      paths.name);
+                    let msg = format!(
+                        "Maybe `use` the module `{}` instead of redeclaring it",
+                        paths.name
+                    );
                     err.span_note(id_sp, &msg);
                 }
                 Err(err)
             }
             DirectoryOwnership::UnownedViaMod => {
-                let mut err = self.diagnostic().struct_span_err(id_sp,
-                    "cannot declare a new module at this location");
+                let mut err = self
+                    .diagnostic()
+                    .struct_span_err(id_sp, "cannot declare a new module at this location");
                 if !id_sp.is_dummy() {
                     let src_path = self.sess.source_map().span_to_filename(id_sp);
                     if let FileName::Real(src_path) = src_path {
@@ -164,18 +150,27 @@ impl<'a> Parser<'a> {
                             let mut dest_path = src_path.clone();
                             dest_path.set_file_name(stem);
                             dest_path.push("mod.rs");
-                            err.span_note(id_sp,
-                                    &format!("maybe move this module `{}` to its own \
-                                                directory via `{}`", src_path.display(),
-                                            dest_path.display()));
+                            err.span_note(
+                                id_sp,
+                                &format!(
+                                    "maybe move this module `{}` to its own \
+                                                directory via `{}`",
+                                    src_path.display(),
+                                    dest_path.display()
+                                ),
+                            );
                         }
                     }
                 }
                 if paths.path_exists {
-                    err.span_note(id_sp,
-                                  &format!("... or maybe `use` the module `{}` instead \
+                    err.span_note(
+                        id_sp,
+                        &format!(
+                            "... or maybe `use` the module `{}` instead \
                                             of possibly redeclaring it",
-                                           paths.name));
+                            paths.name
+                        ),
+                    );
                 }
                 Err(err)
             }
@@ -203,8 +198,8 @@ impl<'a> Parser<'a> {
         id: ast::Ident,
         relative: Option<ast::Ident>,
         dir_path: &Path,
-        source_map: &SourceMap) -> ModulePath
-    {
+        source_map: &SourceMap,
+    ) -> ModulePath {
         // If we're in a foo.rs file instead of a mod.rs file,
         // we need to look for submodules in
         // `./foo/<id>.rs` and `./foo/<id>/mod.rs` rather than
@@ -219,8 +214,8 @@ impl<'a> Parser<'a> {
 
         let mod_name = id.name.to_string();
         let default_path_str = format!("{}{}.rs", relative_prefix, mod_name);
-        let secondary_path_str = format!("{}{}{}mod.rs",
-                                         relative_prefix, mod_name, path::MAIN_SEPARATOR);
+        let secondary_path_str =
+            format!("{}{}{}mod.rs", relative_prefix, mod_name, path::MAIN_SEPARATOR);
         let default_path = dir_path.join(&default_path_str);
         let secondary_path = dir_path.join(&secondary_path_str);
         let default_exists = source_map.file_exists(&default_path);
@@ -229,15 +224,11 @@ impl<'a> Parser<'a> {
         let result = match (default_exists, secondary_exists) {
             (true, false) => Ok(ModulePathSuccess {
                 path: default_path,
-                directory_ownership: DirectoryOwnership::Owned {
-                    relative: Some(id),
-                },
+                directory_ownership: DirectoryOwnership::Owned { relative: Some(id) },
             }),
             (false, true) => Ok(ModulePathSuccess {
                 path: secondary_path,
-                directory_ownership: DirectoryOwnership::Owned {
-                    relative: None,
-                },
+                directory_ownership: DirectoryOwnership::Owned { relative: None },
             }),
             (false, false) => Err(Error::FileNotFoundForModule {
                 mod_name: mod_name.clone(),
@@ -252,11 +243,7 @@ impl<'a> Parser<'a> {
             }),
         };
 
-        ModulePath {
-            name: mod_name,
-            path_exists: default_exists || secondary_exists,
-            result,
-        }
+        ModulePath { name: mod_name, path_exists: default_exists || secondary_exists, result }
     }
 
     /// Reads a module from a source file.
@@ -271,7 +258,7 @@ impl<'a> Parser<'a> {
         if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
             let mut err = String::from("circular modules: ");
             let len = included_mod_stack.len();
-            for p in &included_mod_stack[i.. len] {
+            for p in &included_mod_stack[i..len] {
                 err.push_str(&p.to_string_lossy());
                 err.push_str(" -> ");
             }
@@ -304,7 +291,8 @@ impl<'a> Parser<'a> {
             // For example, a `mod z { ... }` inside `x/y.rs` should set the current
             // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
             if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
-                if let Some(ident) = relative.take() { // remove the relative offset
+                if let Some(ident) = relative.take() {
+                    // remove the relative offset
                     self.directory.path.to_mut().push(&*ident.as_str());
                 }
             }

@@ -71,7 +71,8 @@ fn test_writer_hasher() {
     let ptr = 5_usize as *mut i32;
     assert_eq!(hash(&ptr), 5);
 
-    if cfg!(miri) { // Miri cannot hash pointers
+    if cfg!(miri) {
+        // Miri cannot hash pointers
         return;
     }
 

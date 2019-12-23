@@ -3,5 +3,5 @@
 #![feature(test)]
 #![feature(fn_traits)]
 
-pub mod vec;
 pub mod bit_set;
+pub mod vec;

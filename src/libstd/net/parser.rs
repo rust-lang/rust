@@ -222,8 +222,7 @@ impl<'a> Parser<'a> {
     }
 
     fn read_ip_addr(&mut self) -> Option<IpAddr> {
-        self.read_ipv4_addr().map(IpAddr::V4)
-            .or_else(|| self.read_ipv6_addr().map(IpAddr::V6))
+        self.read_ipv4_addr().map(IpAddr::V4).or_else(|| self.read_ipv6_addr().map(IpAddr::V6))
     }
 
     fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
@@ -254,7 +253,8 @@ impl<'a> Parser<'a> {
     }
 
     fn read_socket_addr(&mut self) -> Option<SocketAddr> {
-        self.read_socket_addr_v4().map(SocketAddr::V4)
+        self.read_socket_addr_v4()
+            .map(SocketAddr::V4)
             .or_else(|| self.read_socket_addr_v6().map(SocketAddr::V6))
     }
 }

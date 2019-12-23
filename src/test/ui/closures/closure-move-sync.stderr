@@ -6,8 +6,8 @@ LL |     let t = thread::spawn(|| {
    | 
   ::: $SRC_DIR/libstd/thread/mod.rs:LL:COL
    |
-LL |     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
-   |                          ---- required by this bound in `std::thread::spawn`
+LL |     F: Send + 'static,
+   |        ---- required by this bound in `std::thread::spawn`
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&std::sync::mpsc::Receiver<()>`
@@ -21,8 +21,8 @@ LL |     thread::spawn(|| tx.send(()).unwrap());
    | 
   ::: $SRC_DIR/libstd/thread/mod.rs:LL:COL
    |
-LL |     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
-   |                          ---- required by this bound in `std::thread::spawn`
+LL |     F: Send + 'static,
+   |        ---- required by this bound in `std::thread::spawn`
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Sender<()>`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&std::sync::mpsc::Sender<()>`

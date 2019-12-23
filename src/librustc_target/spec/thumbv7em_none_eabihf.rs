@@ -35,7 +35,7 @@ pub fn target() -> TargetResult {
             // ARMv7-M Architecture Reference Manual - A2.5 The optional floating-point extension
             features: "+vfp4,-d32,-fp64".to_string(),
             max_atomic_width: Some(32),
-            .. super::thumb_base::opts()
-        }
+            ..super::thumb_base::opts()
+        },
     })
 }

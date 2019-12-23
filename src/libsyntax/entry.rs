@@ -1,5 +1,5 @@
-use crate::attr;
 use crate::ast::{Item, ItemKind};
+use crate::attr;
 use crate::symbol::sym;
 
 pub enum EntryPointType {

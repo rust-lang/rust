@@ -55,8 +55,7 @@ enum LIUState {
 fn line_is_url(columns: usize, line: &str) -> bool {
     // more basic check for error_codes.rs, to avoid complexity in implementing two state machines
     if columns == ERROR_CODE_COLS {
-        return line.starts_with("[") &&
-            line.contains("]:") && line.contains("http");
+        return line.starts_with("[") && line.contains("]:") && line.contains("http");
     }
 
     use self::LIUState::*;
@@ -65,25 +64,21 @@ fn line_is_url(columns: usize, line: &str) -> bool {
 
     for tok in line.split_whitespace() {
         match (state, tok) {
-            (EXP_COMMENT_START, "//") |
-            (EXP_COMMENT_START, "///") |
-            (EXP_COMMENT_START, "//!") => state = EXP_LINK_LABEL_OR_URL,
+            (EXP_COMMENT_START, "//") | (EXP_COMMENT_START, "///") | (EXP_COMMENT_START, "//!") => {
+                state = EXP_LINK_LABEL_OR_URL
+            }
 
             (EXP_LINK_LABEL_OR_URL, w)
-                if w.len() >= 4 && w.starts_with('[') && w.ends_with("]:")
-                => state = EXP_URL,
+                if w.len() >= 4 && w.starts_with('[') && w.ends_with("]:") =>
+            {
+                state = EXP_URL
+            }
 
-            (EXP_LINK_LABEL_OR_URL, w)
-                if is_url(w)
-                => state = EXP_END,
+            (EXP_LINK_LABEL_OR_URL, w) if is_url(w) => state = EXP_END,
 
-            (EXP_URL, w)
-                if is_url(w) || w.starts_with("../")
-                => state = EXP_END,
+            (EXP_URL, w) if is_url(w) || w.starts_with("../") => state = EXP_END,
 
-            (_, w)
-                if w.len() > columns && is_url(w)
-                => state = EXP_END,
+            (_, w) if w.len() > columns && is_url(w) => state = EXP_END,
 
             (_, _) => {}
         }
@@ -119,8 +114,9 @@ fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> 
         return Directive::Deny;
     }
     // Update `can_contain` when changing this
-    if contents.contains(&format!("// ignore-tidy-{}", check)) ||
-        contents.contains(&format!("# ignore-tidy-{}", check)) {
+    if contents.contains(&format!("// ignore-tidy-{}", check))
+        || contents.contains(&format!("# ignore-tidy-{}", check))
+    {
         Directive::Ignore(false)
     } else {
         Directive::Deny
@@ -142,17 +138,13 @@ pub fn check(path: &Path, bad: &mut bool) {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md"];
-        if extensions.iter().all(|e| !filename.ends_with(e)) ||
-           filename.starts_with(".#") {
-            return
+        if extensions.iter().all(|e| !filename.ends_with(e)) || filename.starts_with(".#") {
+            return;
         }
 
-        if filename.ends_with(".md") &&
-           file.parent()
-               .unwrap()
-               .file_name()
-               .unwrap()
-               .to_string_lossy() != "error_codes" {
+        if filename.ends_with(".md")
+            && file.parent().unwrap().file_name().unwrap().to_string_lossy() != "error_codes"
+        {
             // We don't want to check all ".md" files (almost of of them aren't compliant
             // currently), just the long error code explanation ones.
             return;
@@ -168,8 +160,8 @@ pub fn check(path: &Path, bad: &mut bool) {
             COLS
         };
 
-        let can_contain = contents.contains("// ignore-tidy-") ||
-            contents.contains("# ignore-tidy-");
+        let can_contain =
+            contents.contains("// ignore-tidy-") || contents.contains("# ignore-tidy-");
         let mut skip_cr = contains_ignore_directive(can_contain, &contents, "cr");
         let mut skip_undocumented_unsafe =
             contains_ignore_directive(can_contain, &contents, "undocumented-unsafe");
@@ -189,8 +181,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
-            if line.chars().count() > max_columns &&
-                !long_line_is_ok(max_columns, line) {
+            if line.chars().count() > max_columns && !long_line_is_ok(max_columns, line) {
                 suppressible_tidy_err!(
                     err,
                     skip_line_length,
@@ -228,11 +219,11 @@ pub fn check(path: &Path, bad: &mut bool) {
             } else {
                 last_safety_comment = false;
             }
-            if (line.starts_with("// Copyright") ||
-                line.starts_with("# Copyright") ||
-                line.starts_with("Copyright"))
-                && (line.contains("Rust Developers") ||
-                    line.contains("Rust Project Developers")) {
+            if (line.starts_with("// Copyright")
+                || line.starts_with("# Copyright")
+                || line.starts_with("Copyright"))
+                && (line.contains("Rust Developers") || line.contains("Rust Project Developers"))
+            {
                 suppressible_tidy_err!(
                     err,
                     skip_copyright,

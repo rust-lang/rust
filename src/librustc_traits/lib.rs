@@ -4,8 +4,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate log;
@@ -15,11 +14,11 @@ extern crate rustc;
 mod chalk_context;
 mod dropck_outlives;
 mod evaluate_obligation;
-mod implied_outlives_bounds;
-mod normalize_projection_ty;
-mod normalize_erasing_regions;
-pub mod lowering;
 mod generic_types;
+mod implied_outlives_bounds;
+pub mod lowering;
+mod normalize_erasing_regions;
+mod normalize_projection_ty;
 mod type_op;
 
 use rustc::ty::query::Providers;

@@ -1,7 +1,7 @@
 use syntax::ast;
-use syntax_expand::base::{self, DummyResult};
 use syntax::symbol::Symbol;
 use syntax::tokenstream::TokenStream;
+use syntax_expand::base::{self, DummyResult};
 
 use std::string::String;
 
@@ -20,8 +20,7 @@ pub fn expand_concat(
     for e in es {
         match e.kind {
             ast::ExprKind::Lit(ref lit) => match lit.kind {
-                ast::LitKind::Str(ref s, _)
-                | ast::LitKind::Float(ref s, _) => {
+                ast::LitKind::Str(ref s, _) | ast::LitKind::Float(ref s, _) => {
                     accumulator.push_str(&s.as_str());
                 }
                 ast::LitKind::Char(c) => {

@@ -1,9 +1,9 @@
 use crate::borrow::Borrow;
 use crate::collections::TryReserveError;
 use crate::fmt;
-use crate::hash::{Hash, BuildHasher};
+use crate::hash::{BuildHasher, Hash};
 use crate::iter::{Chain, FromIterator, FusedIterator};
-use crate::ops::{BitOr, BitAnd, BitXor, Sub};
+use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use super::map::{self, HashMap, Keys, RandomState};
 
@@ -264,8 +264,9 @@ impl<T, S> HashSet<T, S> {
 }
 
 impl<T, S> HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
@@ -380,7 +381,7 @@ impl<T, S> HashSet<T, S>
     /// set.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
     #[inline]
-    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+    #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.map.try_reserve(additional)
     }
@@ -430,7 +431,7 @@ impl<T, S> HashSet<T, S>
     /// assert!(set.capacity() >= 2);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.map.shrink_to(min_capacity)
     }
@@ -461,10 +462,7 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> Difference<'a, T, S> {
-        Difference {
-            iter: self.iter(),
-            other,
-        }
+        Difference { iter: self.iter(), other }
     }
 
     /// Visits the values representing the symmetric difference,
@@ -490,9 +488,10 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn symmetric_difference<'a>(&'a self,
-                                    other: &'a HashSet<T, S>)
-                                    -> SymmetricDifference<'a, T, S> {
+    pub fn symmetric_difference<'a>(
+        &'a self,
+        other: &'a HashSet<T, S>,
+    ) -> SymmetricDifference<'a, T, S> {
         SymmetricDifference { iter: self.difference(other).chain(other.difference(self)) }
     }
 
@@ -518,15 +517,9 @@ impl<T, S> HashSet<T, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
         if self.len() <= other.len() {
-            Intersection {
-                iter: self.iter(),
-                other,
-            }
+            Intersection { iter: self.iter(), other }
         } else {
-            Intersection {
-                iter: other.iter(),
-                other: self,
-            }
+            Intersection { iter: other.iter(), other: self }
         }
     }
 
@@ -552,13 +545,9 @@ impl<T, S> HashSet<T, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
         if self.len() >= other.len() {
-            Union {
-                iter: self.iter().chain(other.difference(self)),
-            }
+            Union { iter: self.iter().chain(other.difference(self)) }
         } else {
-            Union {
-                iter: other.iter().chain(self.difference(other)),
-            }
+            Union { iter: other.iter().chain(self.difference(other)) }
         }
     }
 
@@ -583,8 +572,9 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
-        where T: Borrow<Q>,
-              Q: Hash + Eq
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.map.contains_key(value)
     }
@@ -610,8 +600,9 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
-        where T: Borrow<Q>,
-              Q: Hash + Eq
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.map.get_key_value(value).map(|(k, _)| k)
     }
@@ -663,9 +654,10 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[unstable(feature = "hash_set_entry", issue = "60896")]
     pub fn get_or_insert_with<Q: ?Sized, F>(&mut self, value: &Q, f: F) -> &T
-        where T: Borrow<Q>,
-              Q: Hash + Eq,
-              F: FnOnce(&Q) -> T
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq,
+        F: FnOnce(&Q) -> T,
     {
         // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
         // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
@@ -717,11 +709,7 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_subset(&self, other: &HashSet<T, S>) -> bool {
-        if self.len() <= other.len() {
-            self.iter().all(|v| other.contains(v))
-        } else {
-            false
-        }
+        if self.len() <= other.len() { self.iter().all(|v| other.contains(v)) } else { false }
     }
 
     /// Returns `true` if the set is a superset of another,
@@ -824,8 +812,9 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
-        where T: Borrow<Q>,
-              Q: Hash + Eq
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.map.remove(value).is_some()
     }
@@ -851,8 +840,9 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
-        where T: Borrow<Q>,
-              Q: Hash + Eq
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.map.remove_entry(value).map(|(k, _)| k)
     }
@@ -873,7 +863,8 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, mut f: F)
-        where F: FnMut(&T) -> bool
+    where
+        F: FnMut(&T) -> bool,
     {
         self.map.retain(|k, _| f(k));
     }
@@ -881,8 +872,9 @@ impl<T, S> HashSet<T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> PartialEq for HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
     fn eq(&self, other: &HashSet<T, S>) -> bool {
         if self.len() != other.len() {
@@ -895,15 +887,17 @@ impl<T, S> PartialEq for HashSet<T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> Eq for HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> fmt::Debug for HashSet<T, S>
-    where T: Eq + Hash + fmt::Debug,
-          S: BuildHasher
+where
+    T: Eq + Hash + fmt::Debug,
+    S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
@@ -912,8 +906,9 @@ impl<T, S> fmt::Debug for HashSet<T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> FromIterator<T> for HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher + Default
+where
+    T: Eq + Hash,
+    S: BuildHasher + Default,
 {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> HashSet<T, S> {
@@ -925,8 +920,9 @@ impl<T, S> FromIterator<T> for HashSet<T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> Extend<T> for HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
@@ -936,8 +932,9 @@ impl<T, S> Extend<T> for HashSet<T, S>
 
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
 impl<'a, T, S> Extend<&'a T> for HashSet<T, S>
-    where T: 'a + Eq + Hash + Copy,
-          S: BuildHasher
+where
+    T: 'a + Eq + Hash + Copy,
+    S: BuildHasher,
 {
     #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
@@ -947,8 +944,9 @@ impl<'a, T, S> Extend<&'a T> for HashSet<T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> Default for HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher + Default
+where
+    T: Eq + Hash,
+    S: BuildHasher + Default,
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     #[inline]
@@ -959,8 +957,9 @@ impl<T, S> Default for HashSet<T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> BitOr<&HashSet<T, S>> for &HashSet<T, S>
-    where T: Eq + Hash + Clone,
-          S: BuildHasher + Default
+where
+    T: Eq + Hash + Clone,
+    S: BuildHasher + Default,
 {
     type Output = HashSet<T, S>;
 
@@ -991,8 +990,9 @@ impl<T, S> BitOr<&HashSet<T, S>> for &HashSet<T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> BitAnd<&HashSet<T, S>> for &HashSet<T, S>
-    where T: Eq + Hash + Clone,
-          S: BuildHasher + Default
+where
+    T: Eq + Hash + Clone,
+    S: BuildHasher + Default,
 {
     type Output = HashSet<T, S>;
 
@@ -1023,8 +1023,9 @@ impl<T, S> BitAnd<&HashSet<T, S>> for &HashSet<T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> BitXor<&HashSet<T, S>> for &HashSet<T, S>
-    where T: Eq + Hash + Clone,
-          S: BuildHasher + Default
+where
+    T: Eq + Hash + Clone,
+    S: BuildHasher + Default,
 {
     type Output = HashSet<T, S>;
 
@@ -1055,8 +1056,9 @@ impl<T, S> BitXor<&HashSet<T, S>> for &HashSet<T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> Sub<&HashSet<T, S>> for &HashSet<T, S>
-    where T: Eq + Hash + Clone,
-          S: BuildHasher + Default
+where
+    T: Eq + Hash + Clone,
+    S: BuildHasher + Default,
 {
     type Output = HashSet<T, S>;
 
@@ -1280,9 +1282,7 @@ impl<K> FusedIterator for IntoIter<K> {}
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let entries_iter = self.iter
-            .iter()
-            .map(|(k, _)| k);
+        let entries_iter = self.iter.iter().map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
     }
 }
@@ -1313,9 +1313,7 @@ impl<K> FusedIterator for Drain<'_, K> {}
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let entries_iter = self.iter
-            .iter()
-            .map(|(k, _)| k);
+        let entries_iter = self.iter.iter().map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
     }
 }
@@ -1330,8 +1328,9 @@ impl<T, S> Clone for Intersection<'_, T, S> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Iterator for Intersection<'a, T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
     type Item = &'a T;
 
@@ -1354,8 +1353,9 @@ impl<'a, T, S> Iterator for Intersection<'a, T, S>
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T, S> fmt::Debug for Intersection<'_, T, S>
-    where T: fmt::Debug + Eq + Hash,
-          S: BuildHasher
+where
+    T: fmt::Debug + Eq + Hash,
+    S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
@@ -1364,8 +1364,9 @@ impl<T, S> fmt::Debug for Intersection<'_, T, S>
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, S> FusedIterator for Intersection<'_, T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
 }
 
@@ -1379,8 +1380,9 @@ impl<T, S> Clone for Difference<'_, T, S> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Iterator for Difference<'a, T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
     type Item = &'a T;
 
@@ -1403,15 +1405,17 @@ impl<'a, T, S> Iterator for Difference<'a, T, S>
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, S> FusedIterator for Difference<'_, T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T, S> fmt::Debug for Difference<'_, T, S>
-    where T: fmt::Debug + Eq + Hash,
-          S: BuildHasher
+where
+    T: fmt::Debug + Eq + Hash,
+    S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
@@ -1428,8 +1432,9 @@ impl<T, S> Clone for SymmetricDifference<'_, T, S> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Iterator for SymmetricDifference<'a, T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
     type Item = &'a T;
 
@@ -1445,15 +1450,17 @@ impl<'a, T, S> Iterator for SymmetricDifference<'a, T, S>
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, S> FusedIterator for SymmetricDifference<'_, T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T, S> fmt::Debug for SymmetricDifference<'_, T, S>
-    where T: fmt::Debug + Eq + Hash,
-          S: BuildHasher
+where
+    T: fmt::Debug + Eq + Hash,
+    S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
@@ -1470,15 +1477,17 @@ impl<T, S> Clone for Union<'_, T, S> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, S> FusedIterator for Union<'_, T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T, S> fmt::Debug for Union<'_, T, S>
-    where T: fmt::Debug + Eq + Hash,
-          S: BuildHasher
+where
+    T: fmt::Debug + Eq + Hash,
+    S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
@@ -1487,8 +1496,9 @@ impl<T, S> fmt::Debug for Union<'_, T, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Iterator for Union<'a, T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
+where
+    T: Eq + Hash,
+    S: BuildHasher,
 {
     type Item = &'a T;
 
@@ -1513,20 +1523,24 @@ fn assert_covariance() {
     fn into_iter<'new>(v: IntoIter<&'static str>) -> IntoIter<&'new str> {
         v
     }
-    fn difference<'a, 'new>(v: Difference<'a, &'static str, RandomState>)
-                            -> Difference<'a, &'new str, RandomState> {
+    fn difference<'a, 'new>(
+        v: Difference<'a, &'static str, RandomState>,
+    ) -> Difference<'a, &'new str, RandomState> {
         v
     }
-    fn symmetric_difference<'a, 'new>(v: SymmetricDifference<'a, &'static str, RandomState>)
-                                      -> SymmetricDifference<'a, &'new str, RandomState> {
+    fn symmetric_difference<'a, 'new>(
+        v: SymmetricDifference<'a, &'static str, RandomState>,
+    ) -> SymmetricDifference<'a, &'new str, RandomState> {
         v
     }
-    fn intersection<'a, 'new>(v: Intersection<'a, &'static str, RandomState>)
-                              -> Intersection<'a, &'new str, RandomState> {
+    fn intersection<'a, 'new>(
+        v: Intersection<'a, &'static str, RandomState>,
+    ) -> Intersection<'a, &'new str, RandomState> {
         v
     }
-    fn union<'a, 'new>(v: Union<'a, &'static str, RandomState>)
-                       -> Union<'a, &'new str, RandomState> {
+    fn union<'a, 'new>(
+        v: Union<'a, &'static str, RandomState>,
+    ) -> Union<'a, &'new str, RandomState> {
         v
     }
     fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> {
@@ -1536,8 +1550,8 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use super::HashSet;
     use super::super::map::RandomState;
+    use super::HashSet;
 
     #[test]
     fn test_zero_capacities() {

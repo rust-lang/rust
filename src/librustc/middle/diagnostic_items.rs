@@ -13,10 +13,10 @@ use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::ty::TyCtxt;
 use crate::util::nodemap::FxHashMap;
 
-use syntax::ast;
-use syntax::symbol::{Symbol, sym};
-use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir;
+use crate::hir::itemlikevisit::ItemLikeVisitor;
+use syntax::ast;
+use syntax::symbol::{sym, Symbol};
 
 struct DiagnosticItemCollector<'tcx> {
     // items from this crate
@@ -40,10 +40,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
 
 impl<'tcx> DiagnosticItemCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> DiagnosticItemCollector<'tcx> {
-        DiagnosticItemCollector {
-            tcx,
-            items: Default::default(),
-        }
+        DiagnosticItemCollector { tcx, items: Default::default() }
     }
 
     fn observe_item(&mut self, attrs: &[ast::Attribute], hir_id: hir::HirId) {
@@ -67,17 +64,21 @@ fn collect_item(
             let mut err = match tcx.hir().span_if_local(item_def_id) {
                 Some(span) => tcx.sess.struct_span_err(
                     span,
-                    &format!("duplicate diagnostic item found: `{}`.", name)),
+                    &format!("duplicate diagnostic item found: `{}`.", name),
+                ),
                 None => tcx.sess.struct_err(&format!(
-                        "duplicate diagnostic item in crate `{}`: `{}`.",
-                        tcx.crate_name(item_def_id.krate),
-                        name)),
+                    "duplicate diagnostic item in crate `{}`: `{}`.",
+                    tcx.crate_name(item_def_id.krate),
+                    name
+                )),
             };
             if let Some(span) = tcx.hir().span_if_local(original_def_id) {
                 span_note!(&mut err, span, "first defined here.");
             } else {
-                err.note(&format!("first defined in crate `{}`.",
-                                    tcx.crate_name(original_def_id.krate)));
+                err.note(&format!(
+                    "first defined in crate `{}`.",
+                    tcx.crate_name(original_def_id.krate)
+                ));
             }
             err.emit();
         }
@@ -87,11 +88,7 @@ fn collect_item(
 /// Extract the first `rustc_diagnostic_item = "$name"` out of a list of attributes.
 fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
     attrs.iter().find_map(|attr| {
-        if attr.check_name(sym::rustc_diagnostic_item) {
-            attr.value_str()
-        } else {
-            None
-        }
+        if attr.check_name(sym::rustc_diagnostic_item) { attr.value_str() } else { None }
     })
 }
 
@@ -105,7 +102,6 @@ pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {
 
     tcx.arena.alloc(collector.items)
 }
-
 
 /// Traverse and collect all the diagnostic items in all crates.
 pub fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {

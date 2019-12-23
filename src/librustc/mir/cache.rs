@@ -1,10 +1,10 @@
-use rustc_index::vec::IndexVec;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use crate::ich::StableHashingContext;
 use crate::mir::{BasicBlock, BasicBlockData, Body, LocalDecls, Location, Successors};
-use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
+use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_index::vec::IndexVec;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::iter;
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::vec::IntoIter;
@@ -34,9 +34,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Cache {
 
 impl Cache {
     pub fn new() -> Self {
-        Self {
-            predecessors: None,
-        }
+        Self { predecessors: None }
     }
 
     pub fn invalidate_predecessors(&mut self) {
@@ -72,7 +70,7 @@ impl Cache {
     fn unwrap_predecessor_locations<'a>(
         &'a self,
         loc: Location,
-        body: &'a Body<'a>
+        body: &'a Body<'a>,
     ) -> impl Iterator<Item = Location> + 'a {
         let if_zero_locations = if loc.statement_index == 0 {
             let predecessor_blocks = self.unwrap_predecessors_for(loc.block);
@@ -97,7 +95,7 @@ impl Cache {
 
     pub fn basic_blocks_mut<'a, 'tcx>(
         &mut self,
-        body: &'a mut Body<'tcx>
+        body: &'a mut Body<'tcx>,
     ) -> &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         debug!("bbm: Clearing predecessors cache for body at: {:?}", body.span.data());
         self.invalidate_predecessors();
@@ -106,7 +104,7 @@ impl Cache {
 
     pub fn basic_blocks_and_local_decls_mut<'a, 'tcx>(
         &mut self,
-        body: &'a mut Body<'tcx>
+        body: &'a mut Body<'tcx>,
     ) -> (&'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &'a mut LocalDecls<'tcx>) {
         debug!("bbaldm: Clearing predecessors cache for body at: {:?}", body.span.data());
         self.invalidate_predecessors();
@@ -122,21 +120,16 @@ pub struct BodyAndCache<'tcx> {
 
 impl BodyAndCache<'tcx> {
     pub fn new(body: Body<'tcx>) -> Self {
-        Self {
-            body,
-            cache: Cache::new(),
-        }
+        Self { body, cache: Cache::new() }
     }
 }
 
 #[macro_export]
 macro_rules! read_only {
-    ($body:expr) => {
-        {
-            $body.ensure_predecessors();
-            $body.unwrap_read_only()
-        }
-    };
+    ($body:expr) => {{
+        $body.ensure_predecessors();
+        $body.unwrap_read_only()
+    }};
 }
 
 impl BodyAndCache<'tcx> {
@@ -157,7 +150,7 @@ impl BodyAndCache<'tcx> {
     }
 
     pub fn basic_blocks_and_local_decls_mut(
-        &mut self
+        &mut self,
     ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
         self.cache.basic_blocks_and_local_decls_mut(&mut self.body)
     }
@@ -201,11 +194,9 @@ impl ReadOnlyBodyAndCache<'a, 'tcx> {
     fn new(body: &'a Body<'tcx>, cache: &'a Cache) -> Self {
         assert!(
             cache.predecessors.is_some(),
-            "Cannot construct ReadOnlyBodyAndCache without computed predecessors");
-        Self {
-            body,
-            cache,
-        }
+            "Cannot construct ReadOnlyBodyAndCache without computed predecessors"
+        );
+        Self { body, cache }
     }
 
     pub fn predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
@@ -239,10 +230,7 @@ impl graph::GraphPredecessors<'graph> for ReadOnlyBodyAndCache<'a, 'tcx> {
 }
 
 impl graph::WithPredecessors for ReadOnlyBodyAndCache<'a, 'tcx> {
-    fn predecessors(
-        &self,
-        node: Self::Node,
-    ) -> <Self as GraphPredecessors<'_>>::Iter {
+    fn predecessors(&self, node: Self::Node) -> <Self as GraphPredecessors<'_>>::Iter {
         self.cache.unwrap_predecessors_for(node).to_vec().into_iter()
     }
 }
@@ -260,10 +248,7 @@ impl graph::WithStartNode for ReadOnlyBodyAndCache<'a, 'tcx> {
 }
 
 impl graph::WithSuccessors for ReadOnlyBodyAndCache<'a, 'tcx> {
-    fn successors(
-        &self,
-        node: Self::Node,
-    ) -> <Self as GraphSuccessors<'_>>::Iter {
+    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
         self.body.successors(node)
     }
 }
@@ -272,7 +257,6 @@ impl<'a, 'b, 'tcx> graph::GraphSuccessors<'b> for ReadOnlyBodyAndCache<'a, 'tcx>
     type Item = BasicBlock;
     type Iter = iter::Cloned<Successors<'b>>;
 }
-
 
 impl Deref for ReadOnlyBodyAndCache<'a, 'tcx> {
     type Target = &'a Body<'tcx>;

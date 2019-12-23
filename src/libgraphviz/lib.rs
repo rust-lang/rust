@@ -271,16 +271,17 @@
 //!
 //! * [DOT language](http://www.graphviz.org/doc/info/lang.html)
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
-       test(attr(allow(unused_variables), deny(warnings))))]
-
+#![doc(
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    test(attr(allow(unused_variables), deny(warnings)))
+)]
 #![feature(nll)]
 
 use LabelText::*;
 
 use std::borrow::Cow;
-use std::io::prelude::*;
 use std::io;
+use std::io::prelude::*;
 
 /// The text for a graphviz label on a node or edge.
 pub enum LabelText<'a> {
@@ -402,7 +403,7 @@ impl<'a> Id<'a> {
             Some(c) if c.is_ascii_alphabetic() || c == '_' => {}
             _ => return Err(()),
         }
-        if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' ) {
+        if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
             return Err(());
         }
 
@@ -475,10 +476,7 @@ pub trait Labeller<'a> {
 /// Escape tags in such a way that it is suitable for inclusion in a
 /// Graphviz HTML label.
 pub fn escape_html(s: &str) -> String {
-    s.replace("&", "&amp;")
-     .replace("\"", "&quot;")
-     .replace("<", "&lt;")
-     .replace(">", "&gt;")
+    s.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 }
 
 impl<'a> LabelText<'a> {
@@ -495,7 +493,8 @@ impl<'a> LabelText<'a> {
     }
 
     fn escape_char<F>(c: char, mut f: F)
-        where F: FnMut(char)
+    where
+        F: FnMut(char),
     {
         match c {
             // not escaping \\, since Graphviz escString needs to
@@ -559,8 +558,8 @@ impl<'a> LabelText<'a> {
     }
 }
 
-pub type Nodes<'a,N> = Cow<'a,[N]>;
-pub type Edges<'a,E> = Cow<'a,[E]>;
+pub type Nodes<'a, N> = Cow<'a, [N]>;
+pub type Edges<'a, E> = Cow<'a, [E]>;
 
 // (The type parameters in GraphWalk should be associated items,
 // when/if Rust supports such.)
@@ -607,25 +606,24 @@ pub fn default_options() -> Vec<RenderOption> {
 
 /// Renders directed graph `g` into the writer `w` in DOT syntax.
 /// (Simple wrapper around `render_opts` that passes a default set of options.)
-pub fn render<'a,N,E,G,W>(g: &'a G, w: &mut W) -> io::Result<()>
-    where N: Clone + 'a,
-          E: Clone + 'a,
-          G: Labeller<'a, Node=N, Edge=E> + GraphWalk<'a, Node=N, Edge=E>,
-          W: Write
+pub fn render<'a, N, E, G, W>(g: &'a G, w: &mut W) -> io::Result<()>
+where
+    N: Clone + 'a,
+    E: Clone + 'a,
+    G: Labeller<'a, Node = N, Edge = E> + GraphWalk<'a, Node = N, Edge = E>,
+    W: Write,
 {
     render_opts(g, w, &[])
 }
 
 /// Renders directed graph `g` into the writer `w` in DOT syntax.
 /// (Main entry point for the library.)
-pub fn render_opts<'a, N, E, G, W>(g: &'a G,
-                                   w: &mut W,
-                                   options: &[RenderOption])
-                                   -> io::Result<()>
-    where N: Clone + 'a,
-          E: Clone + 'a,
-          G: Labeller<'a, Node=N, Edge=E> + GraphWalk<'a, Node=N, Edge=E>,
-          W: Write
+pub fn render_opts<'a, N, E, G, W>(g: &'a G, w: &mut W, options: &[RenderOption]) -> io::Result<()>
+where
+    N: Clone + 'a,
+    E: Clone + 'a,
+    G: Labeller<'a, Node = N, Edge = E> + GraphWalk<'a, Node = N, Edge = E>,
+    W: Write,
 {
     writeln!(w, "digraph {} {{", g.graph_id().as_slice())?;
     for n in g.nodes().iter() {

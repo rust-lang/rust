@@ -1,13 +1,13 @@
 use fmt_macros::{Parser, Piece, Position};
 
 use crate::hir::def_id::DefId;
-use crate::ty::{self, TyCtxt, GenericParamDefKind};
+use crate::ty::{self, GenericParamDefKind, TyCtxt};
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 
 use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;
-use syntax::symbol::{Symbol, kw, sym};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
 
 use rustc_error_codes::*;
@@ -40,8 +40,7 @@ fn parse_error(
     label: &str,
     note: Option<&str>,
 ) -> ErrorReported {
-    let mut diag = struct_span_err!(
-        tcx.sess, span, E0232, "{}", message);
+    let mut diag = struct_span_err!(tcx.sess, span, E0232, "{}", message);
     diag.span_label(span, label);
     if let Some(note) = note {
         diag.note(note);
@@ -64,17 +63,27 @@ impl<'tcx> OnUnimplementedDirective {
         let condition = if is_root {
             None
         } else {
-            let cond = item_iter.next().ok_or_else(||
-                parse_error(tcx, span,
-                            "empty `on`-clause in `#[rustc_on_unimplemented]`",
-                            "empty on-clause here",
-                            None)
-            )?.meta_item().ok_or_else(||
-                parse_error(tcx, span,
-                            "invalid `on`-clause in `#[rustc_on_unimplemented]`",
-                            "invalid on-clause here",
-                            None)
-            )?;
+            let cond = item_iter
+                .next()
+                .ok_or_else(|| {
+                    parse_error(
+                        tcx,
+                        span,
+                        "empty `on`-clause in `#[rustc_on_unimplemented]`",
+                        "empty on-clause here",
+                        None,
+                    )
+                })?
+                .meta_item()
+                .ok_or_else(|| {
+                    parse_error(
+                        tcx,
+                        span,
+                        "invalid `on`-clause in `#[rustc_on_unimplemented]`",
+                        "invalid on-clause here",
+                        None,
+                    )
+                })?;
             attr::eval_condition(cond, &tcx.sess.parse_sess, &mut |_| true);
             Some(cond.clone())
         };
@@ -86,9 +95,8 @@ impl<'tcx> OnUnimplementedDirective {
         let mut subcommands = vec![];
 
         let parse_value = |value_str| {
-                OnUnimplementedFormatString::try_parse(tcx, trait_def_id, value_str, span)
-                    .map(Some)
-            };
+            OnUnimplementedFormatString::try_parse(tcx, trait_def_id, value_str, span).map(Some)
+        };
 
         for item in item_iter {
             if item.check_name(sym::message) && message.is_none() {
@@ -111,8 +119,11 @@ impl<'tcx> OnUnimplementedDirective {
                     enclosing_scope = parse_value(enclosing_scope_)?;
                     continue;
                 }
-            } else if item.check_name(sym::on) && is_root &&
-                message.is_none() && label.is_none() && note.is_none()
+            } else if item.check_name(sym::on)
+                && is_root
+                && message.is_none()
+                && label.is_none()
+                && note.is_none()
             {
                 if let Some(items) = item.meta_item_list() {
                     if let Ok(subcommand) =
@@ -122,15 +133,18 @@ impl<'tcx> OnUnimplementedDirective {
                     } else {
                         errored = true;
                     }
-                    continue
+                    continue;
                 }
             }
 
             // nothing found
-            parse_error(tcx, item.span(),
-                        "this attribute must have a valid value",
-                        "expected value here",
-                        Some(r#"eg `#[rustc_on_unimplemented(message="foo")]`"#));
+            parse_error(
+                tcx,
+                item.span(),
+                "this attribute must have a valid value",
+                "expected value here",
+                Some(r#"eg `#[rustc_on_unimplemented(message="foo")]`"#),
+            );
         }
 
         if errored {
@@ -142,7 +156,7 @@ impl<'tcx> OnUnimplementedDirective {
                 message,
                 label,
                 note,
-                enclosing_scope
+                enclosing_scope,
             })
         }
     }
@@ -168,7 +182,11 @@ impl<'tcx> OnUnimplementedDirective {
                 message: None,
                 subcommands: vec![],
                 label: Some(OnUnimplementedFormatString::try_parse(
-                    tcx, trait_def_id, value, attr.span)?),
+                    tcx,
+                    trait_def_id,
+                    value,
+                    attr.span,
+                )?),
                 note: None,
                 enclosing_scope: None,
             }))
@@ -195,14 +213,11 @@ impl<'tcx> OnUnimplementedDirective {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
                     c.ident().map_or(false, |ident| {
-                        options.contains(&(
-                            ident.name,
-                            c.value_str().map(|s| s.to_string())
-                        ))
+                        options.contains(&(ident.name, c.value_str().map(|s| s.to_string())))
                     })
                 }) {
                     debug!("evaluate: skipping {:?} due to condition", command);
-                    continue
+                    continue;
                 }
             }
             debug!("evaluate: {:?} succeeded", command);
@@ -223,7 +238,8 @@ impl<'tcx> OnUnimplementedDirective {
             }
         }
 
-        let options: FxHashMap<Symbol, String> = options.into_iter()
+        let options: FxHashMap<Symbol, String> = options
+            .into_iter()
             .filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned())))
             .collect();
         OnUnimplementedNote {
@@ -273,23 +289,33 @@ impl<'tcx> OnUnimplementedFormatString {
                     // `{ItemContext}` is allowed
                     Position::ArgumentNamed(s) if s == sym::item_context => (),
                     // So is `{A}` if A is a type parameter
-                    Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
-                        param.name == s
-                    }) {
-                        Some(_) => (),
-                        None => {
-                            span_err!(tcx.sess, span, E0230,
-                                      "there is no parameter `{}` on trait `{}`", s, name);
-                            result = Err(ErrorReported);
+                    Position::ArgumentNamed(s) => {
+                        match generics.params.iter().find(|param| param.name == s) {
+                            Some(_) => (),
+                            None => {
+                                span_err!(
+                                    tcx.sess,
+                                    span,
+                                    E0230,
+                                    "there is no parameter `{}` on trait `{}`",
+                                    s,
+                                    name
+                                );
+                                result = Err(ErrorReported);
+                            }
                         }
-                    },
+                    }
                     // `{:1}` and `{}` are not to be used
                     Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
-                        span_err!(tcx.sess, span, E0231,
-                                  "only named substitution parameters are allowed");
+                        span_err!(
+                            tcx.sess,
+                            span,
+                            E0231,
+                            "only named substitution parameters are allowed"
+                        );
                         result = Err(ErrorReported);
                     }
-                }
+                },
             }
         }
 
@@ -305,31 +331,32 @@ impl<'tcx> OnUnimplementedFormatString {
         let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.def_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
-        let generic_map = generics.params.iter().filter_map(|param| {
-            let value = match param.kind {
-                GenericParamDefKind::Type { .. } |
-                GenericParamDefKind::Const => {
-                    trait_ref.substs[param.index as usize].to_string()
-                },
-                GenericParamDefKind::Lifetime => return None
-            };
-            let name = param.name;
-            Some((name, value))
-        }).collect::<FxHashMap<Symbol, String>>();
+        let generic_map = generics
+            .params
+            .iter()
+            .filter_map(|param| {
+                let value = match param.kind {
+                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
+                        trait_ref.substs[param.index as usize].to_string()
+                    }
+                    GenericParamDefKind::Lifetime => return None,
+                };
+                let name = param.name;
+                Some((name, value))
+            })
+            .collect::<FxHashMap<Symbol, String>>();
         let empty_string = String::new();
 
         let s = self.0.as_str();
         let parser = Parser::new(&s, None, vec![], false);
         let item_context = (options.get(&sym::item_context)).unwrap_or(&empty_string);
-        parser.map(|p|
-            match p {
+        parser
+            .map(|p| match p {
                 Piece::String(s) => s,
                 Piece::NextArgument(a) => match a.position {
                     Position::ArgumentNamed(s) => match generic_map.get(&s) {
                         Some(val) => val,
-                        None if s == name => {
-                            &trait_str
-                        }
+                        None if s == name => &trait_str,
                         None => {
                             if let Some(val) = options.get(&s) {
                                 val
@@ -339,15 +366,19 @@ impl<'tcx> OnUnimplementedFormatString {
                             } else if s == sym::item_context {
                                 &item_context
                             } else {
-                                bug!("broken on_unimplemented {:?} for {:?}: \
+                                bug!(
+                                    "broken on_unimplemented {:?} for {:?}: \
                                       no argument matching {:?}",
-                                     self.0, trait_ref, s)
+                                    self.0,
+                                    trait_ref,
+                                    s
+                                )
                             }
                         }
                     },
-                    _ => bug!("broken on_unimplemented {:?} - bad format arg", self.0)
-                }
-            }
-        ).collect()
+                    _ => bug!("broken on_unimplemented {:?} - bad format arg", self.0),
+                },
+            })
+            .collect()
     }
 }

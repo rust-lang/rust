@@ -1,10 +1,10 @@
 //! This pass removes the unwind branch of all the terminators when the no-landing-pads option is
 //! specified.
 
-use rustc::ty::TyCtxt;
-use rustc::mir::*;
-use rustc::mir::visit::MutVisitor;
 use crate::transform::{MirPass, MirSource};
+use rustc::mir::visit::MutVisitor;
+use rustc::mir::*;
+use rustc::ty::TyCtxt;
 
 pub struct NoLandingPads<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -33,9 +33,7 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads<'tcx> {
         self.tcx
     }
 
-    fn visit_terminator_kind(&mut self,
-                        kind: &mut TerminatorKind<'tcx>,
-                        location: Location) {
+    fn visit_terminator_kind(&mut self, kind: &mut TerminatorKind<'tcx>, location: Location) {
         if let Some(unwind) = kind.unwind_mut() {
             unwind.take();
         }

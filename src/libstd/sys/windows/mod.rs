@@ -1,16 +1,17 @@
 #![allow(missing_docs, nonstandard_style)]
 
-use crate::ptr;
 use crate::ffi::{OsStr, OsString};
 use crate::io::ErrorKind;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
+use crate::ptr;
 use crate::time::Duration;
 
-pub use libc::strlen;
 pub use self::rand::hashmap_random_keys;
+pub use libc::strlen;
 
-#[macro_use] pub mod compat;
+#[macro_use]
+pub mod compat;
 
 pub mod alloc;
 pub mod args;
@@ -49,8 +50,7 @@ cfg_if::cfg_if! {
 }
 
 #[cfg(not(test))]
-pub fn init() {
-}
+pub fn init() {}
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as c::DWORD {
@@ -85,8 +85,10 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
         let mut maybe_result: Vec<u16> = s.encode_wide().collect();
         if maybe_result.iter().any(|&u| u == 0) {
-            return Err(crate::io::Error::new(ErrorKind::InvalidInput,
-                                        "strings passed to WinAPI cannot contain NULs"));
+            return Err(crate::io::Error::new(
+                ErrorKind::InvalidInput,
+                "strings passed to WinAPI cannot contain NULs",
+            ));
         }
         maybe_result.push(0);
         Ok(maybe_result)
@@ -109,8 +111,9 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
 // yielded the data which has been read from the syscall. The return value
 // from this closure is then the return value of the function.
 fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> crate::io::Result<T>
-    where F1: FnMut(*mut u16, c::DWORD) -> c::DWORD,
-          F2: FnOnce(&[u16]) -> T
+where
+    F1: FnMut(*mut u16, c::DWORD) -> c::DWORD,
+    F2: FnOnce(&[u16]) -> T,
 {
     // Start off with a stack buf but then spill over to the heap if we end up
     // needing more space.
@@ -148,7 +151,7 @@ fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> crate::io::Result<T>
             } else if k >= n {
                 n = k;
             } else {
-                return Ok(f2(&buf[..k]))
+                return Ok(f2(&buf[..k]));
             }
         }
     }
@@ -159,20 +162,23 @@ fn os2path(s: &[u16]) -> PathBuf {
 }
 
 #[allow(dead_code)] // Only used in backtrace::gnu::get_executable_filename()
-fn wide_char_to_multi_byte(code_page: u32,
-                           flags: u32,
-                           s: &[u16],
-                           no_default_char: bool)
-                           -> crate::io::Result<Vec<i8>> {
+fn wide_char_to_multi_byte(
+    code_page: u32,
+    flags: u32,
+    s: &[u16],
+    no_default_char: bool,
+) -> crate::io::Result<Vec<i8>> {
     unsafe {
-        let mut size = c::WideCharToMultiByte(code_page,
-                                              flags,
-                                              s.as_ptr(),
-                                              s.len() as i32,
-                                              ptr::null_mut(),
-                                              0,
-                                              ptr::null(),
-                                              ptr::null_mut());
+        let mut size = c::WideCharToMultiByte(
+            code_page,
+            flags,
+            s.as_ptr(),
+            s.len() as i32,
+            ptr::null_mut(),
+            0,
+            ptr::null(),
+            ptr::null_mut(),
+        );
         if size == 0 {
             return Err(crate::io::Error::last_os_error());
         }
@@ -181,21 +187,24 @@ fn wide_char_to_multi_byte(code_page: u32,
         buf.set_len(size as usize);
 
         let mut used_default_char = c::FALSE;
-        size = c::WideCharToMultiByte(code_page,
-                                      flags,
-                                      s.as_ptr(),
-                                      s.len() as i32,
-                                      buf.as_mut_ptr(),
-                                      buf.len() as i32,
-                                      ptr::null(),
-                                      if no_default_char { &mut used_default_char }
-                                      else { ptr::null_mut() });
+        size = c::WideCharToMultiByte(
+            code_page,
+            flags,
+            s.as_ptr(),
+            s.len() as i32,
+            buf.as_mut_ptr(),
+            buf.len() as i32,
+            ptr::null(),
+            if no_default_char { &mut used_default_char } else { ptr::null_mut() },
+        );
         if size == 0 {
             return Err(crate::io::Error::last_os_error());
         }
         if no_default_char && used_default_char == c::TRUE {
-            return Err(crate::io::Error::new(crate::io::ErrorKind::InvalidData,
-                                      "string cannot be converted to requested code page"));
+            return Err(crate::io::Error::new(
+                crate::io::ErrorKind::InvalidData,
+                "string cannot be converted to requested code page",
+            ));
         }
 
         buf.set_len(size as usize);
@@ -208,7 +217,7 @@ pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
     match v.iter().position(|c| *c == 0) {
         // don't include the 0
         Some(i) => &v[..i],
-        None => v
+        None => v,
     }
 }
 
@@ -227,11 +236,7 @@ macro_rules! impl_is_zero {
 impl_is_zero! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 
 pub fn cvt<I: IsZero>(i: I) -> crate::io::Result<I> {
-    if i.is_zero() {
-        Err(crate::io::Error::last_os_error())
-    } else {
-        Ok(i)
-    }
+    if i.is_zero() { Err(crate::io::Error::last_os_error()) } else { Ok(i) }
 }
 
 pub fn dur2timeout(dur: Duration) -> c::DWORD {
@@ -242,17 +247,12 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
     // * Nanosecond precision is rounded up
     // * Greater than u32::MAX milliseconds (50 days) is rounded up to INFINITE
     //   (never time out).
-    dur.as_secs().checked_mul(1000).and_then(|ms| {
-        ms.checked_add((dur.subsec_nanos() as u64) / 1_000_000)
-    }).and_then(|ms| {
-        ms.checked_add(if dur.subsec_nanos() % 1_000_000 > 0 {1} else {0})
-    }).map(|ms| {
-        if ms > <c::DWORD>::max_value() as u64 {
-            c::INFINITE
-        } else {
-            ms as c::DWORD
-        }
-    }).unwrap_or(c::INFINITE)
+    dur.as_secs()
+        .checked_mul(1000)
+        .and_then(|ms| ms.checked_add((dur.subsec_nanos() as u64) / 1_000_000))
+        .and_then(|ms| ms.checked_add(if dur.subsec_nanos() % 1_000_000 > 0 { 1 } else { 0 }))
+        .map(|ms| if ms > <c::DWORD>::max_value() as u64 { c::INFINITE } else { ms as c::DWORD })
+        .unwrap_or(c::INFINITE)
 }
 
 // On Windows, use the processor-specific __fastfail mechanism.  In Windows 8

@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use crate::externalfiles::ExternalHtml;
 use crate::html::escape::Escape;
-use crate::html::render::ensure_trailing_slash;
 use crate::html::format::{Buffer, Print};
+use crate::html::render::ensure_trailing_slash;
 
 #[derive(Clone)]
 pub struct Layout {
@@ -39,7 +39,8 @@ pub fn render<T: Print, S: Print>(
     themes: &[PathBuf],
 ) -> String {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
-    format!("<!DOCTYPE html>\
+    format!(
+        "<!DOCTYPE html>\
 <html lang=\"en\">\
 <head>\
     <meta charset=\"utf-8\">\
@@ -120,85 +121,104 @@ pub fn render<T: Print, S: Print>(
     <script defer src=\"{root_path}search-index{suffix}.js\"></script>\
 </body>\
 </html>",
-    css_extension = if layout.css_file_extension.is_some() {
-        format!("<link rel=\"stylesheet\" \
+        css_extension = if layout.css_file_extension.is_some() {
+            format!(
+                "<link rel=\"stylesheet\" \
                        type=\"text/css\" \
                        href=\"{static_root_path}theme{suffix}.css\">",
                 static_root_path = static_root_path,
-                suffix=page.resource_suffix)
-    } else {
-        String::new()
-    },
-    content   = Buffer::html().to_display(t),
-    static_root_path = static_root_path,
-    root_path = page.root_path,
-    css_class = page.css_class,
-    logo      = {
-        let p = format!("{}{}", page.root_path, layout.krate);
-        let p = ensure_trailing_slash(&p);
-        if layout.logo.is_empty() {
-            format!("<a href='{path}index.html'>\
+                suffix = page.resource_suffix
+            )
+        } else {
+            String::new()
+        },
+        content = Buffer::html().to_display(t),
+        static_root_path = static_root_path,
+        root_path = page.root_path,
+        css_class = page.css_class,
+        logo = {
+            let p = format!("{}{}", page.root_path, layout.krate);
+            let p = ensure_trailing_slash(&p);
+            if layout.logo.is_empty() {
+                format!(
+                    "<a href='{path}index.html'>\
                      <div class='logo-container'>\
                      <img src='{static_root_path}rust-logo{suffix}.png' alt='logo'></div></a>",
-                    path=p,
-                    static_root_path=static_root_path,
-                    suffix=page.resource_suffix)
-        } else {
-            format!("<a href='{}index.html'>\
+                    path = p,
+                    static_root_path = static_root_path,
+                    suffix = page.resource_suffix
+                )
+            } else {
+                format!(
+                    "<a href='{}index.html'>\
                      <div class='logo-container'><img src='{}' alt='logo'></div></a>",
-                    p,
-                    layout.logo)
-        }
-    },
-    title     = page.title,
-    description = page.description,
-    keywords = page.keywords,
-    favicon   = if layout.favicon.is_empty() {
-        format!(r#"<link rel="shortcut icon" href="{static_root_path}favicon{suffix}.ico">"#,
-                static_root_path=static_root_path,
-                suffix=page.resource_suffix)
-    } else {
-        format!(r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)
-    },
-    in_header = layout.external_html.in_header,
-    before_content = layout.external_html.before_content,
-    after_content = layout.external_html.after_content,
-    sidebar   = Buffer::html().to_display(sidebar),
-    krate     = layout.krate,
-    themes = themes.iter()
-                   .filter_map(|t| t.file_stem())
-                   .filter_map(|t| t.to_str())
-                   .map(|t| format!(r#"<link rel="stylesheet" type="text/css" href="{}.css">"#,
-                                    Escape(&format!("{}{}{}",
-                                                    static_root_path,
-                                                    t,
-                                                    page.resource_suffix))))
-                   .collect::<String>(),
-    suffix=page.resource_suffix,
-    static_extra_scripts=page.static_extra_scripts.iter().map(|e| {
-        format!("<script src=\"{static_root_path}{extra_script}.js\"></script>",
-                static_root_path=static_root_path,
-                extra_script=e)
-    }).collect::<String>(),
-    extra_scripts=page.extra_scripts.iter().map(|e| {
-        format!("<script src=\"{root_path}{extra_script}.js\"></script>",
-                root_path=page.root_path,
-                extra_script=e)
-    }).collect::<String>(),
-    filter_crates=if layout.generate_search_filter {
-        "<select id=\"crate-search\">\
+                    p, layout.logo
+                )
+            }
+        },
+        title = page.title,
+        description = page.description,
+        keywords = page.keywords,
+        favicon = if layout.favicon.is_empty() {
+            format!(
+                r#"<link rel="shortcut icon" href="{static_root_path}favicon{suffix}.ico">"#,
+                static_root_path = static_root_path,
+                suffix = page.resource_suffix
+            )
+        } else {
+            format!(r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)
+        },
+        in_header = layout.external_html.in_header,
+        before_content = layout.external_html.before_content,
+        after_content = layout.external_html.after_content,
+        sidebar = Buffer::html().to_display(sidebar),
+        krate = layout.krate,
+        themes = themes
+            .iter()
+            .filter_map(|t| t.file_stem())
+            .filter_map(|t| t.to_str())
+            .map(|t| format!(
+                r#"<link rel="stylesheet" type="text/css" href="{}.css">"#,
+                Escape(&format!("{}{}{}", static_root_path, t, page.resource_suffix))
+            ))
+            .collect::<String>(),
+        suffix = page.resource_suffix,
+        static_extra_scripts = page
+            .static_extra_scripts
+            .iter()
+            .map(|e| {
+                format!(
+                    "<script src=\"{static_root_path}{extra_script}.js\"></script>",
+                    static_root_path = static_root_path,
+                    extra_script = e
+                )
+            })
+            .collect::<String>(),
+        extra_scripts = page
+            .extra_scripts
+            .iter()
+            .map(|e| {
+                format!(
+                    "<script src=\"{root_path}{extra_script}.js\"></script>",
+                    root_path = page.root_path,
+                    extra_script = e
+                )
+            })
+            .collect::<String>(),
+        filter_crates = if layout.generate_search_filter {
+            "<select id=\"crate-search\">\
             <option value=\"All crates\">All crates</option>\
         </select>"
-    } else {
-        ""
-    },
+        } else {
+            ""
+        },
     )
 }
 
 pub fn redirect(url: &str) -> String {
     // <script> triggers a redirect before refresh, so this is fine.
     format!(
-r##"<!DOCTYPE html>
+        r##"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta http-equiv="refresh" content="0;URL={url}">
@@ -208,6 +228,6 @@ r##"<!DOCTYPE html>
     <script>location.replace("{url}" + location.search + location.hash);</script>
 </body>
 </html>"##,
-    url = url,
+        url = url,
     )
 }

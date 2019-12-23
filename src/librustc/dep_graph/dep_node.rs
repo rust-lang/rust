@@ -49,31 +49,31 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use crate::mir;
-use crate::mir::interpret::GlobalId;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::map::DefPathHash;
 use crate::hir::HirId;
+use crate::mir;
+use crate::mir::interpret::GlobalId;
 
 use crate::ich::{Fingerprint, StableHashingContext};
-use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+use crate::traits;
+use crate::traits::query::{
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
+};
+use crate::ty::subst::SubstsRef;
+use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 use std::hash::Hash;
 use syntax_pos::symbol::Symbol;
-use crate::traits;
-use crate::traits::query::{
-    CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
-    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalPredicateGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
-};
-use crate::ty::{self, TyCtxt, ParamEnvAnd, Ty};
-use crate::ty::subst::SubstsRef;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
 // is repeated (i.e., which sub-expression of the macro we are in) but don't need
 // to actually use any of the arguments.
 macro_rules! erase {
-    ($x:tt) => ({})
+    ($x:tt) => {{}};
 }
 
 macro_rules! replace {
@@ -81,13 +81,21 @@ macro_rules! replace {
 }
 
 macro_rules! is_anon_attr {
-    (anon) => (true);
-    ($attr:ident) => (false);
+    (anon) => {
+        true
+    };
+    ($attr:ident) => {
+        false
+    };
 }
 
 macro_rules! is_eval_always_attr {
-    (eval_always) => (true);
-    ($attr:ident) => (false);
+    (eval_always) => {
+        true
+    };
+    ($attr:ident) => {
+        false
+    };
 }
 
 macro_rules! contains_anon_attr {
@@ -382,7 +390,6 @@ impl fmt::Debug for DepNode {
     }
 }
 
-
 impl DefPathHash {
     pub fn to_dep_node(self, kind: DepKind) -> DepNode {
         DepNode::from_def_path_hash(kind, self)
@@ -517,10 +524,7 @@ impl<'tcx> DepNodeParams<'tcx> for CrateNum {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
 
     fn to_fingerprint(&self, tcx: TyCtxt<'_>) -> Fingerprint {
-        let def_id = DefId {
-            krate: *self,
-            index: CRATE_DEF_INDEX,
-        };
+        let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
         tcx.def_path_hash(def_id).0
     }
 
@@ -547,9 +551,7 @@ impl<'tcx> DepNodeParams<'tcx> for (DefId, DefId) {
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         let (def_id_0, def_id_1) = *self;
 
-        format!("({}, {})",
-                tcx.def_path_debug_str(def_id_0),
-                tcx.def_path_debug_str(def_id_1))
+        format!("({}, {})", tcx.def_path_debug_str(def_id_0), tcx.def_path_debug_str(def_id_1))
     }
 }
 
@@ -560,10 +562,7 @@ impl<'tcx> DepNodeParams<'tcx> for HirId {
     // method but it's faster to combine the hashes than to instantiate a full
     // hashing context and stable-hashing state.
     fn to_fingerprint(&self, tcx: TyCtxt<'_>) -> Fingerprint {
-        let HirId {
-            owner,
-            local_id,
-        } = *self;
+        let HirId { owner, local_id } = *self;
 
         let def_path_hash = tcx.def_path_hash(DefId::local(owner));
         let local_id = Fingerprint::from_smaller_hash(local_id.as_u32().into());
@@ -577,10 +576,21 @@ impl<'tcx> DepNodeParams<'tcx> for HirId {
 /// some independent path or string that persists between runs without
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, HashStable)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    RustcEncodable,
+    RustcDecodable,
+    HashStable
+)]
 pub struct WorkProductId {
-    hash: Fingerprint
+    hash: Fingerprint,
 }
 
 impl WorkProductId {
@@ -588,14 +598,10 @@ impl WorkProductId {
         let mut hasher = StableHasher::new();
         cgu_name.len().hash(&mut hasher);
         cgu_name.hash(&mut hasher);
-        WorkProductId {
-            hash: hasher.finish()
-        }
+        WorkProductId { hash: hasher.finish() }
     }
 
     pub fn from_fingerprint(fingerprint: Fingerprint) -> WorkProductId {
-        WorkProductId {
-            hash: fingerprint
-        }
+        WorkProductId { hash: fingerprint }
     }
 }

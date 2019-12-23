@@ -1,13 +1,10 @@
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::middle::cstore::ForeignModule;
 use rustc::ty::TyCtxt;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {
-    let mut collector = Collector {
-        tcx,
-        modules: Vec::new(),
-    };
+    let mut collector = Collector { tcx, modules: Vec::new() };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
     return collector.modules;
 }
@@ -24,13 +21,10 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
             _ => return,
         };
 
-        let foreign_items = fm.items.iter()
-            .map(|it| self.tcx.hir().local_def_id(it.hir_id))
-            .collect();
-        self.modules.push(ForeignModule {
-            foreign_items,
-            def_id: self.tcx.hir().local_def_id(it.hir_id),
-        });
+        let foreign_items =
+            fm.items.iter().map(|it| self.tcx.hir().local_def_id(it.hir_id)).collect();
+        self.modules
+            .push(ForeignModule { foreign_items, def_id: self.tcx.hir().local_def_id(it.hir_id) });
     }
 
     fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'tcx>) {}

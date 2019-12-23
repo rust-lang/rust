@@ -1,7 +1,7 @@
-use rustc::ty::TyCtxt;
-use rustc::mir::*;
-use rustc_index::vec::{Idx, IndexVec};
 use crate::transform::{MirPass, MirSource};
+use rustc::mir::*;
+use rustc::ty::TyCtxt;
+use rustc_index::vec::{Idx, IndexVec};
 
 #[derive(PartialEq)]
 pub enum AddCallGuards {
@@ -31,9 +31,7 @@ pub use self::AddCallGuards::*;
  */
 
 impl<'tcx> MirPass<'tcx> for AddCallGuards {
-    fn run_pass(
-        &self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
-    ) {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         self.add_call_guards(body);
     }
 }
@@ -50,13 +48,15 @@ impl AddCallGuards {
         for block in body.basic_blocks_mut() {
             match block.terminator {
                 Some(Terminator {
-                    kind: TerminatorKind::Call {
-                        destination: Some((_, ref mut destination)),
-                        cleanup,
-                        ..
-                    }, source_info
-                }) if pred_count[*destination] > 1 &&
-                      (cleanup.is_some() || self == &AllCallEdges) =>
+                    kind:
+                        TerminatorKind::Call {
+                            destination: Some((_, ref mut destination)),
+                            cleanup,
+                            ..
+                        },
+                    source_info,
+                }) if pred_count[*destination] > 1
+                    && (cleanup.is_some() || self == &AllCallEdges) =>
                 {
                     // It's a critical edge, break it
                     let call_guard = BasicBlockData {
@@ -64,8 +64,8 @@ impl AddCallGuards {
                         is_cleanup: block.is_cleanup,
                         terminator: Some(Terminator {
                             source_info,
-                            kind: TerminatorKind::Goto { target: *destination }
-                        })
+                            kind: TerminatorKind::Goto { target: *destination },
+                        }),
                     };
 
                     // Get the index it will be when inserted into the MIR

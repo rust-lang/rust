@@ -20,6 +20,7 @@ pub mod alloc;
 pub mod args;
 pub mod cmath;
 pub mod env;
+pub mod fast_thread_local;
 pub mod fs;
 pub mod io;
 pub mod memchr;
@@ -29,11 +30,10 @@ pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod stack_overflow;
-pub mod thread;
-pub mod time;
 pub mod stdio;
+pub mod thread;
 pub mod thread_local;
-pub mod fast_thread_local;
+pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
@@ -53,16 +53,14 @@ cfg_if::cfg_if! {
 }
 
 #[cfg(not(test))]
-pub fn init() {
-}
+pub fn init() {}
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::new(crate::io::ErrorKind::Other,
-                   "operation not supported on wasm yet")
+    crate::io::Error::new(crate::io::ErrorKind::Other, "operation not supported on wasm yet")
 }
 
 pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
@@ -80,7 +78,7 @@ pub unsafe fn strlen(mut s: *const c_char) -> usize {
         n += 1;
         s = s.offset(1);
     }
-    return n
+    return n;
 }
 
 pub unsafe fn abort_internal() -> ! {

@@ -8,7 +8,7 @@ fn test_const_from_raw_parts() {
     assert_eq!(SLICE, FROM_RAW);
 
     let slice = &[1, 2, 3, 4, 5];
-    let from_raw = unsafe { &*slice_from_raw_parts(slice.as_ptr(), 2) } ;
+    let from_raw = unsafe { &*slice_from_raw_parts(slice.as_ptr(), 2) };
     assert_eq!(&slice[..2], from_raw);
 }
 

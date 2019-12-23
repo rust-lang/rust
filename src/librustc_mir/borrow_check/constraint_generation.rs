@@ -6,16 +6,12 @@ use rustc::mir::{
     Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UserTypeProjection,
 };
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{self, RegionVid, Ty};
 use rustc::ty::subst::SubstsRef;
+use rustc::ty::{self, RegionVid, Ty};
 
 use crate::borrow_check::{
-    borrow_set::BorrowSet,
-    location::LocationTable,
-    nll::ToRegionVid,
-    facts::AllFacts,
-    region_infer::values::LivenessValues,
-    places_conflict,
+    borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, nll::ToRegionVid,
+    places_conflict, region_infer::values::LivenessValues,
 };
 
 pub(super) fn generate_constraints<'cx, 'tcx>(
@@ -80,11 +76,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
             | TyContext::YieldTy(SourceInfo { span, .. })
             | TyContext::UserTy(span)
             | TyContext::LocalDecl { source_info: SourceInfo { span, .. }, .. } => {
-                span_bug!(
-                    span,
-                    "should not be visiting outside of the CFG: {:?}",
-                    ty_context
-                );
+                span_bug!(span, "should not be visiting outside of the CFG: {:?}", ty_context);
             }
             TyContext::Location(location) => {
                 self.add_regular_live_constraint(ty, location);
@@ -94,11 +86,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
         self.super_ty(ty);
     }
 
-    fn visit_statement(
-        &mut self,
-        statement: &Statement<'tcx>,
-        location: Location,
-    ) {
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         if let Some(all_facts) = self.all_facts {
             let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
             all_facts.cfg_edge.push((
@@ -108,8 +96,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
 
             all_facts.cfg_edge.push((
                 self.location_table.mid_index(location),
-                self.location_table
-                    .start_index(location.successor_within_block()),
+                self.location_table.start_index(location.successor_within_block()),
             ));
 
             // If there are borrows on this now dead local, we need to record them as `killed`.
@@ -127,12 +114,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
         self.super_statement(statement, location);
     }
 
-    fn visit_assign(
-        &mut self,
-        place: &Place<'tcx>,
-        rvalue: &Rvalue<'tcx>,
-        location: Location,
-    ) {
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         // When we see `X = ...`, then kill borrows of
         // `(*X).foo` and so forth.
         self.record_killed_borrows_for_place(place, location);
@@ -140,11 +122,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
         self.super_assign(place, rvalue, location);
     }
 
-    fn visit_terminator(
-        &mut self,
-        terminator: &Terminator<'tcx>,
-        location: Location,
-    ) {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         if let Some(all_facts) = self.all_facts {
             let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
             all_facts.cfg_edge.push((
@@ -157,8 +135,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
             for successor_block in successor_blocks {
                 all_facts.cfg_edge.push((
                     self.location_table.mid_index(location),
-                    self.location_table
-                        .start_index(successor_block.start_location()),
+                    self.location_table.start_index(successor_block.start_location()),
                 ));
             }
         }
@@ -193,17 +170,12 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        debug!(
-            "add_regular_live_constraint(live_ty={:?}, location={:?})",
-            live_ty, location
-        );
+        debug!("add_regular_live_constraint(live_ty={:?}, location={:?})", live_ty, location);
 
-        self.infcx
-            .tcx
-            .for_each_free_region(&live_ty, |live_region| {
-                let vid = live_region.to_region_vid();
-                self.liveness_constraints.add_element(vid, location);
-            });
+        self.infcx.tcx.for_each_free_region(&live_ty, |live_region| {
+            let vid = live_region.to_region_vid();
+            self.liveness_constraints.add_element(vid, location);
+        });
     }
 
     /// When recording facts for Polonius, records the borrows on the specified place
@@ -219,11 +191,8 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
             //   of the borrows are killed: the ones whose `borrowed_place`
             //   conflicts with the `place`.
             match place.as_ref() {
-                PlaceRef {
-                    base: &PlaceBase::Local(local),
-                    projection: &[],
-                } |
-                PlaceRef {
+                PlaceRef { base: &PlaceBase::Local(local), projection: &[] }
+                | PlaceRef {
                     base: &PlaceBase::Local(local),
                     projection: &[ProjectionElem::Deref],
                 } => {
@@ -241,17 +210,11 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
                     );
                 }
 
-                PlaceRef {
-                    base: &PlaceBase::Static(_),
-                    ..
-                } => {
+                PlaceRef { base: &PlaceBase::Static(_), .. } => {
                     // Ignore kills of static or static mut variables.
                 }
 
-                PlaceRef {
-                    base: &PlaceBase::Local(local),
-                    projection: &[.., _],
-                } => {
+                PlaceRef { base: &PlaceBase::Local(local), projection: &[.., _] } => {
                     // Kill conflicting borrows of the innermost local.
                     debug!(
                         "Recording `killed` facts for borrows of \

@@ -21,7 +21,6 @@ fn starts_with_str(b: &mut Bencher) {
     })
 }
 
-
 #[bench]
 fn ends_with_char(b: &mut Bencher) {
     let text = black_box("kdjsfhlakfhlsghlkvcnljknfqiunvcijqenwodind");

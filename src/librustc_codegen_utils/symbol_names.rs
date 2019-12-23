@@ -88,12 +88,12 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
+use rustc::hir::Node;
+use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt, Instance};
-use rustc::mir::mono::{MonoItem, InstantiationMode};
+use rustc::ty::{self, Instance, TyCtxt};
 
 use syntax_pos::symbol::Symbol;
 
@@ -104,9 +104,7 @@ mod v0;
 
 pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
-        symbol_name: |tcx, instance| ty::SymbolName {
-            name: symbol_name(tcx, instance),
-        },
+        symbol_name: |tcx, instance| ty::SymbolName { name: symbol_name(tcx, instance) },
 
         ..*providers
     };
@@ -160,8 +158,8 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
     //
     // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
     if is_foreign {
-        if tcx.sess.target.target.arch != "wasm32" ||
-            !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id)
+        if tcx.sess.target.target.arch != "wasm32"
+            || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id)
         {
             if let Some(name) = attrs.link_name {
                 return name;

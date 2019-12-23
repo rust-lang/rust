@@ -1,6 +1,5 @@
 #![allow(rustc::default_hash_types)]
-
-#![recursion_limit="128"]
+#![recursion_limit = "128"]
 
 extern crate proc_macro;
 
@@ -9,10 +8,10 @@ use synstructure::decl_derive;
 use proc_macro::TokenStream;
 
 mod hash_stable;
-mod type_foldable;
 mod lift;
 mod query;
 mod symbols;
+mod type_foldable;
 
 #[proc_macro]
 pub fn rustc_queries(input: TokenStream) -> TokenStream {

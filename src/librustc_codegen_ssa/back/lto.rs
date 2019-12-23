@@ -4,8 +4,8 @@ use crate::ModuleCodegen;
 
 use rustc_errors::FatalError;
 
-use std::sync::Arc;
 use std::ffi::CString;
+use std::sync::Arc;
 
 pub struct ThinModule<B: WriteBackendMethods> {
     pub shared: Arc<ThinShared<B>>,
@@ -38,7 +38,6 @@ pub struct ThinShared<B: WriteBackendMethods> {
     pub serialized_modules: Vec<SerializedModule<B::ModuleBuffer>>,
     pub module_names: Vec<CString>,
 }
-
 
 pub enum LtoModuleCodegen<B: WriteBackendMethods> {
     Fat {
@@ -90,7 +89,6 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
         }
     }
 }
-
 
 pub enum SerializedModule<M: ModuleBufferMethods> {
     Local(M),

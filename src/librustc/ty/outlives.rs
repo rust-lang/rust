@@ -2,8 +2,8 @@
 // refers to rules defined in RFC 1214 (`OutlivesFooBar`), so see that
 // RFC for reference.
 
-use smallvec::SmallVec;
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use smallvec::SmallVec;
 
 #[derive(Debug)]
 pub enum Component<'tcx> {
@@ -48,8 +48,11 @@ pub enum Component<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     /// Push onto `out` all the things that must outlive `'a` for the condition
     /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
-    pub fn push_outlives_components(&self, ty0: Ty<'tcx>,
-                                    out: &mut SmallVec<[Component<'tcx>; 4]>) {
+    pub fn push_outlives_components(
+        &self,
+        ty0: Ty<'tcx>,
+        out: &mut SmallVec<[Component<'tcx>; 4]>,
+    ) {
         self.compute_components(ty0, out);
         debug!("components({:?}) = {:?}", ty0, out);
     }

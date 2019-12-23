@@ -5,8 +5,19 @@ use rustc_macros::HashStable_Generic;
 #[cfg(test)]
 mod tests;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable,
-         Clone, Copy, Debug, HashStable_Generic)]
+#[derive(
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    RustcEncodable,
+    RustcDecodable,
+    Clone,
+    Copy,
+    Debug,
+    HashStable_Generic
+)]
 pub enum Abi {
     // N.B., this ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
@@ -33,7 +44,7 @@ pub enum Abi {
     RustIntrinsic,
     RustCall,
     PlatformIntrinsic,
-    Unadjusted
+    Unadjusted,
 }
 
 #[derive(Copy, Clone)]
@@ -50,28 +61,27 @@ pub struct AbiData {
 #[allow(non_upper_case_globals)]
 const AbiDatas: &[AbiData] = &[
     // Platform-specific ABIs
-    AbiData {abi: Abi::Cdecl, name: "cdecl", generic: false },
-    AbiData {abi: Abi::Stdcall, name: "stdcall", generic: false },
-    AbiData {abi: Abi::Fastcall, name: "fastcall", generic: false },
-    AbiData {abi: Abi::Vectorcall, name: "vectorcall", generic: false},
-    AbiData {abi: Abi::Thiscall, name: "thiscall", generic: false},
-    AbiData {abi: Abi::Aapcs, name: "aapcs", generic: false },
-    AbiData {abi: Abi::Win64, name: "win64", generic: false },
-    AbiData {abi: Abi::SysV64, name: "sysv64", generic: false },
-    AbiData {abi: Abi::PtxKernel, name: "ptx-kernel", generic: false },
-    AbiData {abi: Abi::Msp430Interrupt, name: "msp430-interrupt", generic: false },
-    AbiData {abi: Abi::X86Interrupt, name: "x86-interrupt", generic: false },
-    AbiData {abi: Abi::AmdGpuKernel, name: "amdgpu-kernel", generic: false },
-    AbiData {abi: Abi::EfiApi, name: "efiapi", generic: false },
-
+    AbiData { abi: Abi::Cdecl, name: "cdecl", generic: false },
+    AbiData { abi: Abi::Stdcall, name: "stdcall", generic: false },
+    AbiData { abi: Abi::Fastcall, name: "fastcall", generic: false },
+    AbiData { abi: Abi::Vectorcall, name: "vectorcall", generic: false },
+    AbiData { abi: Abi::Thiscall, name: "thiscall", generic: false },
+    AbiData { abi: Abi::Aapcs, name: "aapcs", generic: false },
+    AbiData { abi: Abi::Win64, name: "win64", generic: false },
+    AbiData { abi: Abi::SysV64, name: "sysv64", generic: false },
+    AbiData { abi: Abi::PtxKernel, name: "ptx-kernel", generic: false },
+    AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt", generic: false },
+    AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt", generic: false },
+    AbiData { abi: Abi::AmdGpuKernel, name: "amdgpu-kernel", generic: false },
+    AbiData { abi: Abi::EfiApi, name: "efiapi", generic: false },
     // Cross-platform ABIs
-    AbiData {abi: Abi::Rust, name: "Rust", generic: true },
-    AbiData {abi: Abi::C, name: "C", generic: true },
-    AbiData {abi: Abi::System, name: "system", generic: true },
-    AbiData {abi: Abi::RustIntrinsic, name: "rust-intrinsic", generic: true },
-    AbiData {abi: Abi::RustCall, name: "rust-call", generic: true },
-    AbiData {abi: Abi::PlatformIntrinsic, name: "platform-intrinsic", generic: true },
-    AbiData {abi: Abi::Unadjusted, name: "unadjusted", generic: true },
+    AbiData { abi: Abi::Rust, name: "Rust", generic: true },
+    AbiData { abi: Abi::C, name: "C", generic: true },
+    AbiData { abi: Abi::System, name: "system", generic: true },
+    AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic", generic: true },
+    AbiData { abi: Abi::RustCall, name: "rust-call", generic: true },
+    AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic", generic: true },
+    AbiData { abi: Abi::Unadjusted, name: "unadjusted", generic: true },
 ];
 
 /// Returns the ABI with the given name (if any).

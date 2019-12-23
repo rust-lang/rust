@@ -1,17 +1,13 @@
 use crate::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::{
-    lint::FutureIncompatibleInfo,
     hir,
+    lint::FutureIncompatibleInfo,
     ty::{
         self,
         adjustment::{Adjust, Adjustment},
     },
 };
-use syntax::{
-    errors::Applicability,
-    symbol::sym,
-};
-
+use syntax::{errors::Applicability, symbol::sym};
 
 declare_lint! {
     pub ARRAY_INTO_ITER,
@@ -40,7 +36,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIntoIter {
             // `IntoIterator::into_iter`.
             let def_id = cx.tables.type_dependent_def_id(expr.hir_id).unwrap();
             match cx.tcx.trait_of_item(def_id) {
-                Some(trait_id) if cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_id) => {},
+                Some(trait_id) if cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_id) => {}
                 _ => return,
             };
 
@@ -62,8 +58,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIntoIter {
 
             // Emit lint diagnostic.
             let target = match cx.tables.expr_ty_adjusted(receiver_arg).kind {
-                ty::Ref(_, ty::TyS { kind: ty::Array(..), ..}, _) => "[T; N]",
-                ty::Ref(_, ty::TyS { kind: ty::Slice(..), ..}, _) => "[T]",
+                ty::Ref(_, ty::TyS { kind: ty::Array(..), .. }, _) => "[T; N]",
+                ty::Ref(_, ty::TyS { kind: ty::Slice(..), .. }, _) => "[T]",
 
                 // We know the original first argument type is an array type,
                 // we know that the first adjustment was an autoref coercion

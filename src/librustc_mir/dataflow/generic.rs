@@ -195,8 +195,7 @@ impl CursorPosition {
     }
 }
 
-type ResultsRefCursor<'a, 'mir, 'tcx, A> =
-    ResultsCursor<'mir, 'tcx, A, &'a Results<'tcx, A>>;
+type ResultsRefCursor<'a, 'mir, 'tcx, A> = ResultsCursor<'mir, 'tcx, A, &'a Results<'tcx, A>>;
 
 /// Inspect the results of dataflow analysis.
 ///
@@ -291,11 +290,9 @@ where
 
         let term = self.body.basic_blocks()[target.block].terminator();
         if let mir::TerminatorKind::Call {
-            destination: Some((return_place, _)),
-            func,
-            args,
-            ..
-        } = &term.kind {
+            destination: Some((return_place, _)), func, args, ..
+        } = &term.kind
+        {
             if !self.is_call_return_effect_applied {
                 self.is_call_return_effect_applied = true;
                 self.results.borrow().analysis.apply_call_return_effect(
@@ -321,7 +318,7 @@ where
         if let CursorPosition::After(Location { statement_index: curr_index, .. }) = self.pos {
             match curr_index.cmp(&target_index) {
                 Ordering::Equal => return,
-                Ordering::Less => {},
+                Ordering::Less => {}
                 Ordering::Greater => self.seek_to_block_start(target_block),
             }
         }
@@ -401,15 +398,7 @@ where
         let mut entry_sets = IndexVec::from_elem(bottom_value_set, body.basic_blocks());
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
 
-        Engine {
-            analysis,
-            bits_per_block,
-            tcx,
-            body,
-            def_id,
-            dead_unwinds,
-            entry_sets,
-        }
+        Engine { analysis, bits_per_block, tcx, body, def_id, dead_unwinds, entry_sets }
     }
 
     pub fn iterate_to_fixpoint(mut self) -> Results<'tcx, A> {
@@ -442,14 +431,7 @@ where
             );
         }
 
-        let Engine {
-            tcx,
-            body,
-            def_id,
-            analysis,
-            entry_sets,
-            ..
-        } = self;
+        let Engine { tcx, body, def_id, analysis, entry_sets, .. } = self;
 
         let results = Results { analysis, entry_sets };
 
@@ -570,8 +552,8 @@ fn get_dataflow_graphviz_output_path(
         .filter(|attr| attr.check_name(sym::rustc_mir))
         .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 
-    let borrowck_graphviz_postflow = rustc_mir_attrs
-        .find(|attr| attr.check_name(sym::borrowck_graphviz_postflow))?;
+    let borrowck_graphviz_postflow =
+        rustc_mir_attrs.find(|attr| attr.check_name(sym::borrowck_graphviz_postflow))?;
 
     let path_and_suffix = match borrowck_graphviz_postflow.value_str() {
         Some(p) => p,
@@ -601,7 +583,7 @@ fn write_dataflow_graphviz_results<A: Analysis<'tcx>>(
     body: &mir::Body<'tcx>,
     def_id: DefId,
     path: &Path,
-    results: &Results<'tcx, A>
+    results: &Results<'tcx, A>,
 ) -> io::Result<()> {
     debug!("printing dataflow results for {:?} to {}", def_id, path.display());
 

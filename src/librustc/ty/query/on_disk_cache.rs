@@ -1,30 +1,30 @@
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::hir;
-use crate::hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
+use crate::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::definitions::DefPathHash;
 use crate::ich::{CachingSourceMapView, Fingerprint};
-use crate::mir::{self, interpret};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
+use crate::mir::{self, interpret};
 use crate::session::{CrateDisambiguator, Session};
-use crate::ty::{self, Ty};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
+use crate::ty::{self, Ty};
 use crate::util::common::{time, time_ext};
 
 use errors::Diagnostic;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
-use rustc_index::vec::{IndexVec, Idx};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{
-    Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,
-    UseSpecializedDecodable, UseSpecializedEncodable, opaque,
+    opaque, Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,
+    UseSpecializedDecodable, UseSpecializedEncodable,
 };
 use std::mem;
 use syntax::ast::{Ident, NodeId};
 use syntax::source_map::{SourceMap, StableSourceFileId};
-use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
 use syntax_pos::hygiene::{ExpnId, SyntaxContext};
+use syntax_pos::{BytePos, SourceFile, Span, DUMMY_SP};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -165,10 +165,10 @@ impl<'sess> OnDiskCache<'sess> {
             // Allocate `SourceFileIndex`es.
             let (file_to_file_index, file_index_to_stable_id) = {
                 let files = tcx.sess.source_map().files();
-                let mut file_to_file_index = FxHashMap::with_capacity_and_hasher(
-                    files.len(), Default::default());
-                let mut file_index_to_stable_id = FxHashMap::with_capacity_and_hasher(
-                    files.len(), Default::default());
+                let mut file_to_file_index =
+                    FxHashMap::with_capacity_and_hasher(files.len(), Default::default());
+                let mut file_index_to_stable_id =
+                    FxHashMap::with_capacity_and_hasher(files.len(), Default::default());
 
                 for (index, file) in files.iter().enumerate() {
                     let index = SourceFileIndex(index as u32);
@@ -222,7 +222,9 @@ impl<'sess> OnDiskCache<'sess> {
             })?;
 
             // Encode diagnostics.
-            let diagnostics_index: EncodedDiagnosticsIndex = self.current_diagnostics.borrow()
+            let diagnostics_index: EncodedDiagnosticsIndex = self
+                .current_diagnostics
+                .borrow()
                 .iter()
                 .map(|(dep_node_index, diagnostics)| {
                     let pos = AbsoluteBytePos::new(encoder.position());
@@ -250,11 +252,7 @@ impl<'sess> OnDiskCache<'sess> {
                         let id = encoder.interpret_allocs_inverse[idx];
                         let pos = encoder.position() as u32;
                         interpret_alloc_index.push(pos);
-                        interpret::specialized_encode_alloc_id(
-                            &mut encoder,
-                            tcx,
-                            id,
-                        )?;
+                        interpret::specialized_encode_alloc_id(&mut encoder, tcx, id)?;
                     }
                     n = new_n;
                 }
@@ -262,7 +260,8 @@ impl<'sess> OnDiskCache<'sess> {
             };
 
             let sorted_cnums = sorted_cnums_including_local_crate(tcx);
-            let prev_cnums: Vec<_> = sorted_cnums.iter()
+            let prev_cnums: Vec<_> = sorted_cnums
+                .iter()
                 .map(|&cnum| {
                     let crate_name = tcx.original_crate_name(cnum).to_string();
                     let crate_disambiguator = tcx.crate_disambiguator(cnum);
@@ -272,13 +271,16 @@ impl<'sess> OnDiskCache<'sess> {
 
             // Encode the file footer.
             let footer_pos = encoder.position() as u64;
-            encoder.encode_tagged(TAG_FILE_FOOTER, &Footer {
-                file_index_to_stable_id,
-                prev_cnums,
-                query_result_index,
-                diagnostics_index,
-                interpret_alloc_index,
-            })?;
+            encoder.encode_tagged(
+                TAG_FILE_FOOTER,
+                &Footer {
+                    file_index_to_stable_id,
+                    prev_cnums,
+                    query_result_index,
+                    diagnostics_index,
+                    interpret_alloc_index,
+                },
+            )?;
 
             // Encode the position of the footer as the last 8 bytes of the
             // file so we know where to look for it.
@@ -306,11 +308,8 @@ impl<'sess> OnDiskCache<'sess> {
         tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
     ) -> Vec<Diagnostic> {
-        let diagnostics: Option<EncodedDiagnostics> = self.load_indexed(
-            tcx,
-            dep_node_index,
-            &self.prev_diagnostics_index,
-            "diagnostics");
+        let diagnostics: Option<EncodedDiagnostics> =
+            self.load_indexed(tcx, dep_node_index, &self.prev_diagnostics_index, "diagnostics");
 
         diagnostics.unwrap_or_default()
     }
@@ -320,9 +319,11 @@ impl<'sess> OnDiskCache<'sess> {
     /// the next compilation session.
     #[inline(never)]
     #[cold]
-    pub fn store_diagnostics(&self,
-                             dep_node_index: DepNodeIndex,
-                             diagnostics: ThinVec<Diagnostic>) {
+    pub fn store_diagnostics(
+        &self,
+        dep_node_index: DepNodeIndex,
+        diagnostics: ThinVec<Diagnostic>,
+    ) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
         let prev = current_diagnostics.insert(dep_node_index, diagnostics.into());
         debug_assert!(prev.is_none());
@@ -338,10 +339,7 @@ impl<'sess> OnDiskCache<'sess> {
     where
         T: Decodable,
     {
-        self.load_indexed(tcx,
-                          dep_node_index,
-                          &self.query_result_index,
-                          "query result")
+        self.load_indexed(tcx, dep_node_index, &self.query_result_index, "query result")
     }
 
     /// Stores a diagnostic emitted during computation of an anonymous query.
@@ -350,9 +348,11 @@ impl<'sess> OnDiskCache<'sess> {
     /// 1:1 relationship between query-key and `DepNode`.
     #[inline(never)]
     #[cold]
-    pub fn store_diagnostics_for_anon_node(&self,
-                                           dep_node_index: DepNodeIndex,
-                                           diagnostics: ThinVec<Diagnostic>) {
+    pub fn store_diagnostics_for_anon_node(
+        &self,
+        dep_node_index: DepNodeIndex,
+        diagnostics: ThinVec<Diagnostic>,
+    ) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
 
         let x = current_diagnostics.entry(dep_node_index).or_insert(Vec::new());
@@ -373,9 +373,7 @@ impl<'sess> OnDiskCache<'sess> {
         let pos = index.get(&dep_node_index).cloned()?;
 
         // Initialize `cnum_map` using the value from the thread that finishes the closure first.
-        self.cnum_map.init_nonlocking_same(|| {
-            Self::compute_cnum_map(tcx, &self.prev_cnums[..])
-        });
+        self.cnum_map.init_nonlocking_same(|| Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
 
         let mut decoder = CacheDecoder {
             tcx,
@@ -403,17 +401,17 @@ impl<'sess> OnDiskCache<'sess> {
         prev_cnums: &[(u32, String, CrateDisambiguator)],
     ) -> IndexVec<CrateNum, Option<CrateNum>> {
         tcx.dep_graph.with_ignore(|| {
-            let current_cnums = tcx.all_crate_nums(LOCAL_CRATE).iter().map(|&cnum| {
-                let crate_name = tcx.original_crate_name(cnum)
-                                    .to_string();
-                let crate_disambiguator = tcx.crate_disambiguator(cnum);
-                ((crate_name, crate_disambiguator), cnum)
-            }).collect::<FxHashMap<_,_>>();
+            let current_cnums = tcx
+                .all_crate_nums(LOCAL_CRATE)
+                .iter()
+                .map(|&cnum| {
+                    let crate_name = tcx.original_crate_name(cnum).to_string();
+                    let crate_disambiguator = tcx.crate_disambiguator(cnum);
+                    ((crate_name, crate_disambiguator), cnum)
+                })
+                .collect::<FxHashMap<_, _>>();
 
-            let map_size = prev_cnums.iter()
-                                     .map(|&(cnum, ..)| cnum)
-                                     .max()
-                                     .unwrap_or(0) + 1;
+            let map_size = prev_cnums.iter().map(|&(cnum, ..)| cnum).max().unwrap_or(0) + 1;
             let mut map = IndexVec::from_elem_n(None, map_size as usize);
 
             for &(prev_cnum, ref crate_name, crate_disambiguator) in prev_cnums {
@@ -452,11 +450,16 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
             ..
         } = *self;
 
-        file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
-            let stable_id = file_index_to_stable_id[&index];
-            source_map.source_file_by_stable_id(stable_id)
-                .expect("failed to lookup `SourceFile` in new context")
-        }).clone()
+        file_index_to_file
+            .borrow_mut()
+            .entry(index)
+            .or_insert_with(|| {
+                let stable_id = file_index_to_stable_id[&index];
+                source_map
+                    .source_file_by_stable_id(stable_id)
+                    .expect("failed to lookup `SourceFile` in new context")
+            })
+            .clone()
     }
 }
 
@@ -513,18 +516,18 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
         self.opaque.data[self.opaque.position()]
     }
 
-    fn cached_ty_for_shorthand<F>(&mut self,
-                                  shorthand: usize,
-                                  or_insert_with: F)
-                                  -> Result<Ty<'tcx>, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>
+    fn cached_ty_for_shorthand<F>(
+        &mut self,
+        shorthand: usize,
+        or_insert_with: F,
+    ) -> Result<Ty<'tcx>, Self::Error>
+    where
+        F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>,
     {
         let tcx = self.tcx();
 
-        let cache_key = ty::CReaderCacheKey {
-            cnum: CrateNum::ReservedForIncrCompCache,
-            pos: shorthand,
-        };
+        let cache_key =
+            ty::CReaderCacheKey { cnum: CrateNum::ReservedForIncrCompCache, pos: shorthand };
 
         if let Some(&ty) = tcx.rcache.borrow().get(&cache_key) {
             return Ok(ty);
@@ -537,7 +540,8 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     }
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
-        where F: FnOnce(&mut Self) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
     {
         debug_assert!(pos < self.opaque.data.len());
 
@@ -549,9 +553,7 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     }
 
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
-        self.cnum_map[cnum].unwrap_or_else(|| {
-            bug!("could not find new `CrateNum` for {:?}", cnum)
-        })
+        self.cnum_map[cnum].unwrap_or_else(|| bug!("could not find new `CrateNum` for {:?}", cnum))
     }
 }
 
@@ -597,13 +599,14 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
             span
         };
         Ok(match expn_data_tag {
-            TAG_NO_EXPN_DATA => {
-                location()
-            }
+            TAG_NO_EXPN_DATA => location(),
             TAG_EXPN_DATA_INLINE => {
                 let (expn_data, transparency) = Decodable::decode(self)?;
                 recover_from_expn_data(
-                    self, expn_data, transparency, AbsoluteBytePos::new(self.opaque.position())
+                    self,
+                    expn_data,
+                    transparency,
+                    AbsoluteBytePos::new(self.opaque.position()),
                 )
             }
             TAG_EXPN_DATA_SHORTHAND => {
@@ -617,9 +620,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
                     recover_from_expn_data(self, expn_data, transparency, pos)
                 }
             }
-            _ => {
-                unreachable!()
-            }
+            _ => unreachable!(),
         })
     }
 }
@@ -668,10 +669,7 @@ impl<'a, 'tcx> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx> {
         let def_path_hash = DefPathHash::decode(self)?;
 
         // Use the `DefPathHash` to map to the current `DefId`.
-        let def_id = self.tcx()
-                         .def_path_hash_to_def_id
-                         .as_ref()
-                         .unwrap()[&def_path_hash];
+        let def_id = self.tcx().def_path_hash_to_def_id.as_ref().unwrap()[&def_path_hash];
 
         debug_assert!(def_id.is_local());
 
@@ -680,10 +678,7 @@ impl<'a, 'tcx> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx> {
 
         // Reconstruct the `HirId` and look up the corresponding `NodeId` in the
         // context of the current session.
-        Ok(hir::HirId {
-            owner: def_id.index,
-            local_id
-        })
+        Ok(hir::HirId { owner: def_id.index, local_id })
     }
 }
 
@@ -716,9 +711,7 @@ impl<'a, 'tcx, T: Decodable> SpecializedDecoder<mir::ClearCrossCrate<T>>
                 let val = T::decode(self)?;
                 Ok(mir::ClearCrossCrate::Set(val))
             }
-            _ => {
-                unreachable!()
-            }
+            _ => unreachable!(),
         }
     }
 }
@@ -754,7 +747,7 @@ where
     fn encode_tagged<T: Encodable, V: Encodable>(
         &mut self,
         tag: T,
-        value: &V
+        value: &V,
     ) -> Result<(), E::Error> {
         let start_pos = self.position();
 
@@ -779,7 +772,7 @@ where
                 self.interpret_allocs_inverse.push(*alloc_id);
                 e.insert(idx);
                 idx
-            },
+            }
         };
 
         index.encode(self)
@@ -796,11 +789,11 @@ where
         }
 
         let span_data = span.data();
-        let (file_lo, line_lo, col_lo) = match self.source_map
-                                                   .byte_pos_to_line_and_col(span_data.lo) {
-            Some(pos) => pos,
-            None => return TAG_INVALID_SPAN.encode(self)
-        };
+        let (file_lo, line_lo, col_lo) =
+            match self.source_map.byte_pos_to_line_and_col(span_data.lo) {
+                Some(pos) => pos,
+                None => return TAG_INVALID_SPAN.encode(self),
+            };
 
         if !file_lo.contains(span_data.hi) {
             return TAG_INVALID_SPAN.encode(self);
@@ -872,8 +865,7 @@ where
 {
     #[inline]
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
-        ty_codec::encode_with_shorthand(self, ty,
-            |encoder| &mut encoder.type_shorthands)
+        ty_codec::encode_with_shorthand(self, ty, |encoder| &mut encoder.type_shorthands)
     }
 }
 
@@ -883,11 +875,13 @@ where
     E: 'a + TyEncoder,
 {
     #[inline]
-    fn specialized_encode(&mut self,
-                          predicates: &&'tcx [(ty::Predicate<'tcx>, Span)])
-                          -> Result<(), Self::Error> {
-        ty_codec::encode_spanned_predicates(self, predicates,
-            |encoder| &mut encoder.predicate_shorthands)
+    fn specialized_encode(
+        &mut self,
+        predicates: &&'tcx [(ty::Predicate<'tcx>, Span)],
+    ) -> Result<(), Self::Error> {
+        ty_codec::encode_spanned_predicates(self, predicates, |encoder| {
+            &mut encoder.predicate_shorthands
+        })
     }
 }
 
@@ -897,10 +891,7 @@ where
 {
     #[inline]
     fn specialized_encode(&mut self, id: &hir::HirId) -> Result<(), Self::Error> {
-        let hir::HirId {
-            owner,
-            local_id,
-        } = *id;
+        let hir::HirId { owner, local_id } = *id;
 
         let def_path_hash = self.tcx.hir().definitions().def_path_hash(owner);
 
@@ -964,13 +955,9 @@ where
     T: Encodable,
 {
     #[inline]
-    fn specialized_encode(&mut self,
-                          val: &mir::ClearCrossCrate<T>)
-                          -> Result<(), Self::Error> {
+    fn specialized_encode(&mut self, val: &mir::ClearCrossCrate<T>) -> Result<(), Self::Error> {
         match *val {
-            mir::ClearCrossCrate::Clear => {
-                TAG_CLEAR_CROSS_CRATE_CLEAR.encode(self)
-            }
+            mir::ClearCrossCrate::Clear => TAG_CLEAR_CROSS_CRATE_CLEAR.encode(self),
             mir::ClearCrossCrate::Set(ref val) => {
                 TAG_CLEAR_CROSS_CRATE_SET.encode(self)?;
                 val.encode(self)
@@ -1047,7 +1034,7 @@ impl<'a> SpecializedDecoder<IntEncodedWithFixedSize> for opaque::Decoder<'a> {
         let mut value: u64 = 0;
         let start_pos = self.position();
 
-        for i in 0 .. IntEncodedWithFixedSize::ENCODED_SIZE {
+        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
             let byte: u8 = Decodable::decode(self)?;
             value |= (byte as u64) << (i * 8);
         }
@@ -1068,8 +1055,7 @@ where
     Q: super::config::QueryDescription<'tcx, Value: Encodable>,
     E: 'a + TyEncoder,
 {
-    let desc = &format!("encode_query_results for {}",
-        ::std::any::type_name::<Q>());
+    let desc = &format!("encode_query_results for {}", ::std::any::type_name::<Q>());
 
     time_ext(tcx.sess.time_extended(), desc, || {
         let shards = Q::query_cache(tcx).lock_shards();

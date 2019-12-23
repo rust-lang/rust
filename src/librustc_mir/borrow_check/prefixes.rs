@@ -10,8 +10,8 @@
 use super::MirBorrowckCtxt;
 
 use rustc::hir;
-use rustc::ty::{self, TyCtxt};
 use rustc::mir::{Place, PlaceBase, PlaceRef, ProjectionElem, ReadOnlyBodyAndCache};
+use rustc::ty::{self, TyCtxt};
 
 pub trait IsPrefixOf<'cx, 'tcx> {
     fn is_prefix_of(&self, other: PlaceRef<'cx, 'tcx>) -> bool;
@@ -53,12 +53,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         place_ref: PlaceRef<'cx, 'tcx>,
         kind: PrefixSet,
     ) -> Prefixes<'cx, 'tcx> {
-        Prefixes {
-            next: Some(place_ref),
-            kind,
-            body: self.body,
-            tcx: self.infcx.tcx,
-        }
+        Prefixes { next: Some(place_ref), kind, body: self.body, tcx: self.infcx.tcx }
     }
 }
 

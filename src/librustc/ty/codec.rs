@@ -7,15 +7,15 @@
 // persisting to incr. comp. caches.
 
 use crate::arena::ArenaAllocatable;
-use crate::hir::def_id::{DefId, CrateNum};
+use crate::hir::def_id::{CrateNum, DefId};
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
+use crate::mir::{self, interpret::Allocation};
+use crate::ty::subst::SubstsRef;
+use crate::ty::{self, List, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
+use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use std::hash::Hash;
 use std::intrinsics;
-use crate::ty::{self, List, Ty, TyCtxt};
-use crate::ty::subst::SubstsRef;
-use crate::mir::{self, interpret::Allocation};
 use syntax_pos::Span;
 
 /// The shorthand encoding uses an enum's variant index `usize`
@@ -55,13 +55,11 @@ impl TyEncoder for opaque::Encoder {
 }
 
 /// Encode the given value or a previously cached shorthand.
-pub fn encode_with_shorthand<E, T, M>(encoder: &mut E,
-                                      value: &T,
-                                      cache: M)
-                                      -> Result<(), E::Error>
-    where E: TyEncoder,
-          M: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<T, usize>,
-          T: EncodableWithShorthand,
+pub fn encode_with_shorthand<E, T, M>(encoder: &mut E, value: &T, cache: M) -> Result<(), E::Error>
+where
+    E: TyEncoder,
+    M: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<T, usize>,
+    T: EncodableWithShorthand,
 {
     let existing_shorthand = cache(encoder).get(value).cloned();
     if let Some(shorthand) = existing_shorthand {
@@ -98,8 +96,9 @@ pub fn encode_spanned_predicates<'tcx, E, C>(
     predicates: &'tcx [(ty::Predicate<'tcx>, Span)],
     cache: C,
 ) -> Result<(), E::Error>
-    where E: TyEncoder,
-          C: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<ty::Predicate<'tcx>, usize>,
+where
+    E: TyEncoder,
+    C: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<ty::Predicate<'tcx>, usize>,
 {
     predicates.len().encode(encoder)?;
     for (predicate, span) in predicates {
@@ -116,14 +115,17 @@ pub trait TyDecoder<'tcx>: Decoder {
 
     fn position(&self) -> usize;
 
-    fn cached_ty_for_shorthand<F>(&mut self,
-                                  shorthand: usize,
-                                  or_insert_with: F)
-                                  -> Result<Ty<'tcx>, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>;
+    fn cached_ty_for_shorthand<F>(
+        &mut self,
+        shorthand: usize,
+        or_insert_with: F,
+    ) -> Result<Ty<'tcx>, Self::Error>
+    where
+        F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>;
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
-        where F: FnOnce(&mut Self) -> R;
+    where
+        F: FnOnce(&mut Self) -> R;
 
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum;
 
@@ -191,20 +193,21 @@ where
 {
     let tcx = decoder.tcx();
     Ok(tcx.arena.alloc_from_iter(
-        (0..decoder.read_usize()?).map(|_| {
-            // Handle shorthands first, if we have an usize > 0x80.
-            let predicate = if decoder.positioned_at_shorthand() {
-                let pos = decoder.read_usize()?;
-                assert!(pos >= SHORTHAND_OFFSET);
-                let shorthand = pos - SHORTHAND_OFFSET;
+        (0..decoder.read_usize()?)
+            .map(|_| {
+                // Handle shorthands first, if we have an usize > 0x80.
+                let predicate = if decoder.positioned_at_shorthand() {
+                    let pos = decoder.read_usize()?;
+                    assert!(pos >= SHORTHAND_OFFSET);
+                    let shorthand = pos - SHORTHAND_OFFSET;
 
-                decoder.with_position(shorthand, ty::Predicate::decode)
-            } else {
-                ty::Predicate::decode(decoder)
-            }?;
-            Ok((predicate, Decodable::decode(decoder)?))
-        })
-        .collect::<Result<Vec<_>, _>>()?,
+                    decoder.with_position(shorthand, ty::Predicate::decode)
+                } else {
+                    ty::Predicate::decode(decoder)
+                }?;
+                Ok((predicate, Decodable::decode(decoder)?))
+            })
+            .collect::<Result<Vec<_>, _>>()?,
     ))
 }
 
@@ -264,8 +267,7 @@ where
     D: TyDecoder<'tcx>,
 {
     let len = decoder.read_usize()?;
-    Ok(decoder.tcx()
-              .mk_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
+    Ok(decoder.tcx().mk_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
 }
 
 #[inline]
@@ -274,10 +276,9 @@ where
     D: TyDecoder<'tcx>,
 {
     let len = decoder.read_usize()?;
-    let interned: Result<Vec<CanonicalVarInfo>, _> = (0..len).map(|_| Decodable::decode(decoder))
-                                                             .collect();
-    Ok(decoder.tcx()
-              .intern_canonical_var_infos(interned?.as_slice()))
+    let interned: Result<Vec<CanonicalVarInfo>, _> =
+        (0..len).map(|_| Decodable::decode(decoder)).collect();
+    Ok(decoder.tcx().intern_canonical_var_infos(interned?.as_slice()))
 }
 
 #[inline]

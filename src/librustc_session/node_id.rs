@@ -1,6 +1,6 @@
-use std::fmt;
 use rustc_index::vec::Idx;
-use rustc_serialize::{Encoder, Decoder};
+use rustc_serialize::{Decoder, Encoder};
+use std::fmt;
 use syntax_pos::ExpnId;
 
 rustc_index::newtype_index! {

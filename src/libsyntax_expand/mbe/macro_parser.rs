@@ -76,8 +76,8 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
+use rustc_parse::parser::{FollowedByType, Parser, PathStyle};
 use rustc_parse::Directory;
-use rustc_parse::parser::{Parser, PathStyle, FollowedByType};
 use syntax::ast::{Ident, Name};
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
@@ -85,7 +85,7 @@ use syntax::symbol::{kw, sym, Symbol};
 use syntax::token::{self, DocComment, Nonterminal, Token};
 use syntax::tokenstream::TokenStream;
 
-use errors::{PResult, FatalError};
+use errors::{FatalError, PResult};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::Span;
 
@@ -190,7 +190,6 @@ struct MatcherPos<'root, 'tt> {
 
     // The following fields are used if we are matching a repetition. If we aren't, they should be
     // `None`.
-
     /// The KleeneOp of this sequence if we are in a repetition.
     seq_op: Option<mbe::KleeneOp>,
 
@@ -281,13 +280,14 @@ crate type NamedParseResult = ParseResult<FxHashMap<Ident, NamedMatch>>;
 /// Count how many metavars are named in the given matcher `ms`.
 pub(super) fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
-        count + match *elt {
-            TokenTree::Sequence(_, ref seq) => seq.num_captures,
-            TokenTree::Delimited(_, ref delim) => count_names(&delim.tts),
-            TokenTree::MetaVar(..) => 0,
-            TokenTree::MetaVarDecl(..) => 1,
-            TokenTree::Token(..) => 0,
-        }
+        count
+            + match *elt {
+                TokenTree::Sequence(_, ref seq) => seq.num_captures,
+                TokenTree::Delimited(_, ref delim) => count_names(&delim.tts),
+                TokenTree::MetaVar(..) => 0,
+                TokenTree::MetaVarDecl(..) => 1,
+                TokenTree::Token(..) => 0,
+            }
     })
 }
 
@@ -298,7 +298,8 @@ fn create_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
     } else {
         let empty_matches = Lrc::new(SmallVec::new());
         vec![empty_matches; len]
-    }.into_boxed_slice()
+    }
+    .into_boxed_slice()
 }
 
 /// Generates the top-level matcher position in which the "dot" is before the first token of the
@@ -370,27 +371,27 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
         ret_val: &mut FxHashMap<Ident, NamedMatch>,
     ) -> Result<(), (syntax_pos::Span, String)> {
         match *m {
-            TokenTree::Sequence(_, ref seq) => for next_m in &seq.tts {
-                n_rec(sess, next_m, res.by_ref(), ret_val)?
-            },
-            TokenTree::Delimited(_, ref delim) => for next_m in &delim.tts {
-                n_rec(sess, next_m, res.by_ref(), ret_val)?;
-            },
+            TokenTree::Sequence(_, ref seq) => {
+                for next_m in &seq.tts {
+                    n_rec(sess, next_m, res.by_ref(), ret_val)?
+                }
+            }
+            TokenTree::Delimited(_, ref delim) => {
+                for next_m in &delim.tts {
+                    n_rec(sess, next_m, res.by_ref(), ret_val)?;
+                }
+            }
             TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
                 if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
                     return Err((span, "missing fragment specifier".to_string()));
                 }
             }
-            TokenTree::MetaVarDecl(sp, bind_name, _) => {
-                match ret_val.entry(bind_name) {
-                    Vacant(spot) => {
-                        spot.insert(res.next().unwrap());
-                    }
-                    Occupied(..) => {
-                        return Err((sp, format!("duplicated bind name: {}", bind_name)))
-                    }
+            TokenTree::MetaVarDecl(sp, bind_name, _) => match ret_val.entry(bind_name) {
+                Vacant(spot) => {
+                    spot.insert(res.next().unwrap());
                 }
-            }
+                Occupied(..) => return Err((sp, format!("duplicated bind name: {}", bind_name))),
+            },
             TokenTree::MetaVar(..) | TokenTree::Token(..) => (),
         }
 
@@ -503,11 +504,7 @@ fn inner_parse_loop<'root, 'tt>(
                 if idx == len && item.sep.is_some() {
                     // We have a separator, and it is the current token. We can advance past the
                     // separator token.
-                    if item.sep
-                        .as_ref()
-                        .map(|sep| token_name_eq(token, sep))
-                        .unwrap_or(false)
-                    {
+                    if item.sep.as_ref().map(|sep| token_name_eq(token, sep)).unwrap_or(false) {
                         item.idx += 1;
                         next_items.push(item);
                     }
@@ -587,14 +584,11 @@ fn inner_parse_loop<'root, 'tt>(
                 //
                 // At the beginning of the loop, if we reach the end of the delimited submatcher,
                 // we pop the stack to backtrack out of the descent.
-                seq @ TokenTree::Delimited(..) |
-                seq @ TokenTree::Token(Token { kind: DocComment(..), .. }) => {
+                seq @ TokenTree::Delimited(..)
+                | seq @ TokenTree::Token(Token { kind: DocComment(..), .. }) => {
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;
-                    item.stack.push(MatcherTtFrame {
-                        elts: lower_elts,
-                        idx,
-                    });
+                    item.stack.push(MatcherTtFrame { elts: lower_elts, idx });
                     item.idx = 0;
                     cur_items.push(item);
                 }
@@ -637,14 +631,8 @@ pub(super) fn parse(
     recurse_into_modules: bool,
 ) -> NamedParseResult {
     // Create a parser that can be used for the "black box" parts.
-    let mut parser = Parser::new(
-        sess,
-        tts,
-        directory,
-        recurse_into_modules,
-        true,
-        rustc_parse::MACRO_ARGUMENTS,
-    );
+    let mut parser =
+        Parser::new(sess, tts, directory, recurse_into_modules, true, rustc_parse::MACRO_ARGUMENTS);
 
     // A queue of possible matcher positions. We initialize it with the matcher position in which
     // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then
@@ -693,10 +681,8 @@ pub(super) fn parse(
         // either the parse is ambiguous (which should never happen) or there is a syntax error.
         if parser.token == token::Eof {
             if eof_items.len() == 1 {
-                let matches = eof_items[0]
-                    .matches
-                    .iter_mut()
-                    .map(|dv| Lrc::make_mut(dv).pop().unwrap());
+                let matches =
+                    eof_items[0].matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
                 return nameize(sess, ms, matches);
             } else if eof_items.len() > 1 {
                 return Error(
@@ -705,11 +691,14 @@ pub(super) fn parse(
                 );
             } else {
                 return Failure(
-                    Token::new(token::Eof, if parser.token.span.is_dummy() {
-                        parser.token.span
-                    } else {
-                        sess.source_map().next_point(parser.token.span)
-                    }),
+                    Token::new(
+                        token::Eof,
+                        if parser.token.span.is_dummy() {
+                            parser.token.span
+                        } else {
+                            sess.source_map().next_point(parser.token.span)
+                        },
+                    ),
                     "missing tokens in macro arguments",
                 );
             }
@@ -746,10 +735,7 @@ pub(super) fn parse(
         // If there are no possible next positions AND we aren't waiting for the black-box parser,
         // then there is a syntax error.
         else if bb_items.is_empty() && next_items.is_empty() {
-            return Failure(
-                parser.token.take(),
-                "no rules expected this token in macro call",
-            );
+            return Failure(parser.token.take(), "no rules expected this token in macro call");
         }
         // Dump all possible `next_items` into `cur_items` for the next iteration.
         else if !next_items.is_empty() {
@@ -804,9 +790,11 @@ fn may_begin_with(token: &Token, name: Name) -> bool {
     }
 
     match name {
-        sym::expr => token.can_begin_expr()
+        sym::expr => {
+            token.can_begin_expr()
             // This exception is here for backwards compatibility.
-            && !token.is_keyword(kw::Let),
+            && !token.is_keyword(kw::Let)
+        }
         sym::ty => token.can_begin_type(),
         sym::ident => get_macro_name(token).is_some(),
         sym::literal => token.can_begin_literal_or_bool(),
@@ -914,22 +902,26 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
         sym::literal => token::NtLiteral(p.parse_literal_maybe_minus()?),
         sym::ty => token::NtTy(p.parse_ty()?),
         // this could be handled like a token, since it is one
-        sym::ident => if let Some((name, is_raw)) = get_macro_name(&p.token) {
-            let span = p.token.span;
-            p.bump();
-            token::NtIdent(Ident::new(name, span), is_raw)
-        } else {
-            let token_str = pprust::token_to_string(&p.token);
-            return Err(p.fatal(&format!("expected ident, found {}", &token_str)));
+        sym::ident => {
+            if let Some((name, is_raw)) = get_macro_name(&p.token) {
+                let span = p.token.span;
+                p.bump();
+                token::NtIdent(Ident::new(name, span), is_raw)
+            } else {
+                let token_str = pprust::token_to_string(&p.token);
+                return Err(p.fatal(&format!("expected ident, found {}", &token_str)));
+            }
         }
         sym::path => token::NtPath(p.parse_path(PathStyle::Type)?),
         sym::meta => token::NtMeta(p.parse_attr_item()?),
         sym::vis => token::NtVis(p.parse_visibility(FollowedByType::Yes)?),
-        sym::lifetime => if p.check_lifetime() {
-            token::NtLifetime(p.expect_lifetime().ident)
-        } else {
-            let token_str = pprust::token_to_string(&p.token);
-            return Err(p.fatal(&format!("expected a lifetime, found `{}`", &token_str)));
+        sym::lifetime => {
+            if p.check_lifetime() {
+                token::NtLifetime(p.expect_lifetime().ident)
+            } else {
+                let token_str = pprust::token_to_string(&p.token);
+                return Err(p.fatal(&format!("expected a lifetime, found `{}`", &token_str)));
+            }
         }
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.

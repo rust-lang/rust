@@ -2,12 +2,12 @@
 //! process.
 
 use rustc::hir::def_id::DefId;
-use rustc::lint as lint;
+use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::mem;
-use syntax_pos::{DUMMY_SP, InnerSpan, Span};
 use std::ops::Range;
+use syntax_pos::{InnerSpan, Span, DUMMY_SP};
 
 use crate::clean::{self, GetDefId, Item};
 use crate::core::DocContext;
@@ -57,7 +57,6 @@ pub struct Pass {
     pub description: &'static str,
 }
 
-
 /// The full list of passes.
 pub const PASSES: &[Pass] = &[
     CHECK_PRIVATE_ITEMS_DOC_TESTS,
@@ -99,19 +98,12 @@ pub const DEFAULT_PRIVATE_PASSES: &[Pass] = &[
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
-pub const DEFAULT_COVERAGE_PASSES: &[Pass] = &[
-    COLLECT_TRAIT_IMPLS,
-    STRIP_HIDDEN,
-    STRIP_PRIVATE,
-    CALCULATE_DOC_COVERAGE,
-];
+pub const DEFAULT_COVERAGE_PASSES: &[Pass] =
+    &[COLLECT_TRAIT_IMPLS, STRIP_HIDDEN, STRIP_PRIVATE, CALCULATE_DOC_COVERAGE];
 
 /// The list of default passes run when `--doc-coverage --document-private-items` is passed to
 /// rustdoc.
-pub const PRIVATE_COVERAGE_PASSES: &[Pass] = &[
-    COLLECT_TRAIT_IMPLS,
-    CALCULATE_DOC_COVERAGE,
-];
+pub const PRIVATE_COVERAGE_PASSES: &[Pass] = &[COLLECT_TRAIT_IMPLS, CALCULATE_DOC_COVERAGE];
 
 /// A shorthand way to refer to which set of passes to use, based on the presence of
 /// `--no-defaults` or `--document-private-items`.
@@ -229,9 +221,7 @@ impl<'a> DocFolder for Stripper<'a> {
             // implementations of traits are always public.
             clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
             // Struct variant fields have inherited visibility
-            clean::VariantItem(clean::Variant {
-                kind: clean::VariantKind::Struct(..),
-            }) => true,
+            clean::VariantItem(clean::Variant { kind: clean::VariantKind::Struct(..) }) => true,
             _ => false,
         };
 
@@ -281,8 +271,10 @@ impl<'a> DocFolder for ImplStripper<'a> {
                 for typaram in generics {
                     if let Some(did) = typaram.def_id() {
                         if did.is_local() && !self.retained.contains(&did) {
-                            debug!("ImplStripper: stripped item in trait's generics; \
-                                    removing impl");
+                            debug!(
+                                "ImplStripper: stripped item in trait's generics; \
+                                    removing impl"
+                            );
                             return None;
                         }
                     }
@@ -298,9 +290,7 @@ struct ImportStripper;
 impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
-            clean::ExternCrateItem(..) | clean::ImportItem(..)
-                if i.visibility != clean::Public =>
-            {
+            clean::ExternCrateItem(..) | clean::ImportItem(..) if i.visibility != clean::Public => {
                 None
             }
             _ => self.fold_item_recur(i),
@@ -332,9 +322,7 @@ pub fn look_for_tests<'tcx>(
         }
     }
 
-    let mut tests = Tests {
-        found_tests: 0,
-    };
+    let mut tests = Tests { found_tests: 0 };
 
     find_testable_code(&dox, &mut tests, ErrorCodes::No, false);
 
@@ -344,16 +332,19 @@ pub fn look_for_tests<'tcx>(
             lint::builtin::MISSING_DOC_CODE_EXAMPLES,
             hir_id,
             sp,
-            "missing code example in this documentation");
+            "missing code example in this documentation",
+        );
         diag.emit();
-    } else if check_missing_code == false &&
-              tests.found_tests > 0 &&
-              !cx.renderinfo.borrow().access_levels.is_public(item.def_id) {
+    } else if check_missing_code == false
+        && tests.found_tests > 0
+        && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
+    {
         let mut diag = cx.tcx.struct_span_lint_hir(
             lint::builtin::PRIVATE_DOC_TESTS,
             hir_id,
             span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
-            "documentation test in private item");
+            "documentation test in private item",
+        );
         diag.emit();
     }
 }
@@ -391,11 +382,7 @@ crate fn source_span_for_markdown_range(
         return None;
     }
 
-    let snippet = cx
-        .sess()
-        .source_map()
-        .span_to_snippet(span_of_attrs(attrs)?)
-        .ok()?;
+    let snippet = cx.sess().source_map().span_to_snippet(span_of_attrs(attrs)?).ok()?;
 
     let starting_line = markdown[..md_range.start].matches('\n').count();
     let ending_line = starting_line + markdown[md_range.start..md_range.end].matches('\n').count();

@@ -1,9 +1,9 @@
 //! Implementations of serialization for structures found in liballoc
 
-use std::hash::{Hash, BuildHasher};
+use std::hash::{BuildHasher, Hash};
 
-use crate::{Decodable, Encodable, Decoder, Encoder};
-use std::collections::{LinkedList, VecDeque, BTreeMap, BTreeSet, HashMap, HashSet};
+use crate::{Decodable, Decoder, Encodable, Encoder};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -44,7 +44,7 @@ impl<T: Encodable> Encodable for LinkedList<T> {
     }
 }
 
-impl<T:Decodable> Decodable for LinkedList<T> {
+impl<T: Decodable> Decodable for LinkedList<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<LinkedList<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut list = LinkedList::new();
@@ -67,7 +67,7 @@ impl<T: Encodable> Encodable for VecDeque<T> {
     }
 }
 
-impl<T:Decodable> Decodable for VecDeque<T> {
+impl<T: Decodable> Decodable for VecDeque<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<VecDeque<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut deque: VecDeque<T> = VecDeque::with_capacity(len);
@@ -80,8 +80,9 @@ impl<T:Decodable> Decodable for VecDeque<T> {
 }
 
 impl<K, V> Encodable for BTreeMap<K, V>
-    where K: Encodable + PartialEq + Ord,
-          V: Encodable
+where
+    K: Encodable + PartialEq + Ord,
+    V: Encodable,
 {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         e.emit_map(self.len(), |e| {
@@ -97,8 +98,9 @@ impl<K, V> Encodable for BTreeMap<K, V>
 }
 
 impl<K, V> Decodable for BTreeMap<K, V>
-    where K: Decodable + PartialEq + Ord,
-          V: Decodable
+where
+    K: Decodable + PartialEq + Ord,
+    V: Decodable,
 {
     fn decode<D: Decoder>(d: &mut D) -> Result<BTreeMap<K, V>, D::Error> {
         d.read_map(|d, len| {
@@ -114,7 +116,8 @@ impl<K, V> Decodable for BTreeMap<K, V>
 }
 
 impl<T> Encodable for BTreeSet<T>
-    where T: Encodable + PartialEq + Ord
+where
+    T: Encodable + PartialEq + Ord,
 {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
@@ -129,7 +132,8 @@ impl<T> Encodable for BTreeSet<T>
 }
 
 impl<T> Decodable for BTreeSet<T>
-    where T: Decodable + PartialEq + Ord
+where
+    T: Decodable + PartialEq + Ord,
 {
     fn decode<D: Decoder>(d: &mut D) -> Result<BTreeSet<T>, D::Error> {
         d.read_seq(|d, len| {
@@ -143,9 +147,10 @@ impl<T> Decodable for BTreeSet<T>
 }
 
 impl<K, V, S> Encodable for HashMap<K, V, S>
-    where K: Encodable + Eq,
-          V: Encodable,
-          S: BuildHasher,
+where
+    K: Encodable + Eq,
+    V: Encodable,
+    S: BuildHasher,
 {
     fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_map(self.len(), |e| {
@@ -161,9 +166,10 @@ impl<K, V, S> Encodable for HashMap<K, V, S>
 }
 
 impl<K, V, S> Decodable for HashMap<K, V, S>
-    where K: Decodable + Hash + Eq,
-          V: Decodable,
-          S: BuildHasher + Default,
+where
+    K: Decodable + Hash + Eq,
+    V: Decodable,
+    S: BuildHasher + Default,
 {
     fn decode<D: Decoder>(d: &mut D) -> Result<HashMap<K, V, S>, D::Error> {
         d.read_map(|d, len| {
@@ -180,8 +186,9 @@ impl<K, V, S> Decodable for HashMap<K, V, S>
 }
 
 impl<T, S> Encodable for HashSet<T, S>
-    where T: Encodable + Eq,
-          S: BuildHasher,
+where
+    T: Encodable + Eq,
+    S: BuildHasher,
 {
     fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
@@ -196,8 +203,9 @@ impl<T, S> Encodable for HashSet<T, S>
 }
 
 impl<T, S> Decodable for HashSet<T, S>
-    where T: Decodable + Hash + Eq,
-          S: BuildHasher + Default,
+where
+    T: Decodable + Hash + Eq,
+    S: BuildHasher + Default,
 {
     fn decode<D: Decoder>(d: &mut D) -> Result<HashSet<T, S>, D::Error> {
         d.read_seq(|d, len| {
@@ -212,9 +220,10 @@ impl<T, S> Decodable for HashSet<T, S>
 }
 
 impl<K, V, S> Encodable for indexmap::IndexMap<K, V, S>
-    where K: Encodable + Hash + Eq,
-          V: Encodable,
-          S: BuildHasher,
+where
+    K: Encodable + Hash + Eq,
+    V: Encodable,
+    S: BuildHasher,
 {
     fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_map(self.len(), |e| {
@@ -230,9 +239,10 @@ impl<K, V, S> Encodable for indexmap::IndexMap<K, V, S>
 }
 
 impl<K, V, S> Decodable for indexmap::IndexMap<K, V, S>
-    where K: Decodable + Hash + Eq,
-          V: Decodable,
-          S: BuildHasher + Default,
+where
+    K: Decodable + Hash + Eq,
+    V: Decodable,
+    S: BuildHasher + Default,
 {
     fn decode<D: Decoder>(d: &mut D) -> Result<indexmap::IndexMap<K, V, S>, D::Error> {
         d.read_map(|d, len| {
@@ -249,8 +259,9 @@ impl<K, V, S> Decodable for indexmap::IndexMap<K, V, S>
 }
 
 impl<T, S> Encodable for indexmap::IndexSet<T, S>
-    where T: Encodable + Hash + Eq,
-          S: BuildHasher,
+where
+    T: Encodable + Hash + Eq,
+    S: BuildHasher,
 {
     fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
@@ -265,8 +276,9 @@ impl<T, S> Encodable for indexmap::IndexSet<T, S>
 }
 
 impl<T, S> Decodable for indexmap::IndexSet<T, S>
-    where T: Decodable + Hash + Eq,
-          S: BuildHasher + Default,
+where
+    T: Decodable + Hash + Eq,
+    S: BuildHasher + Default,
 {
     fn decode<D: Decoder>(d: &mut D) -> Result<indexmap::IndexSet<T, S>, D::Error> {
         d.read_seq(|d, len| {

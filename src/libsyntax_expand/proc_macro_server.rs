@@ -1,22 +1,22 @@
 use crate::base::ExtCtxt;
 
-use rustc_parse::{parse_stream_from_source_str, nt_to_tokenstream};
+use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use syntax::ast;
-use syntax::util::comments;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::token;
 use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
-use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
+use syntax::util::comments;
 use syntax_pos::symbol::{kw, sym, Symbol};
+use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 
 use errors::Diagnostic;
 use rustc_data_structures::sync::Lrc;
 
-use pm::{Delimiter, Level, LineColumn, Spacing};
 use pm::bridge::{server, TokenTree};
-use std::{ascii, panic};
+use pm::{Delimiter, Level, LineColumn, Spacing};
 use std::ops::Bound;
+use std::{ascii, panic};
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -51,19 +51,16 @@ impl ToInternal<token::DelimToken> for Delimiter {
 impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
     for TokenTree<Group, Punct, Ident, Literal>
 {
-    fn from_internal(((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>))
-                    -> Self {
+    fn from_internal(
+        ((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>),
+    ) -> Self {
         use syntax::token::*;
 
         let joint = is_joint == Joint;
         let Token { kind, span } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
-                return TokenTree::Group(Group {
-                    delimiter,
-                    stream: tts.into(),
-                    span,
-                });
+                return TokenTree::Group(Group { delimiter, stream: tts.into(), span });
             }
             tokenstream::TokenTree::Token(token) => token,
         };
@@ -198,11 +195,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
 
         let (ch, joint, span) = match self {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
-            TokenTree::Group(Group {
-                delimiter,
-                stream,
-                span,
-            }) => {
+            TokenTree::Group(Group { delimiter, stream, span }) => {
                 return tokenstream::TokenTree::Delimited(
                     span,
                     delimiter.to_internal(),
@@ -236,7 +229,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 return vec![a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal { lit, span }) => {
-                return tokenstream::TokenTree::token(Literal(lit), span).into()
+                return tokenstream::TokenTree::token(Literal(lit), span).into();
             }
         };
 
@@ -306,8 +299,10 @@ pub struct Punct {
 
 impl Punct {
     fn new(ch: char, joint: bool, span: Span) -> Punct {
-        const LEGAL_CHARS: &[char] = &['=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^',
-                                       '&', '|', '@', '.', ',', ';', ':', '#', '$', '?', '\''];
+        const LEGAL_CHARS: &[char] = &[
+            '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';',
+            ':', '#', '$', '?', '\'',
+        ];
         if !LEGAL_CHARS.contains(&ch) {
             panic!("unsupported character `{:?}`", ch)
         }
@@ -373,10 +368,7 @@ impl<'a> Rustc<'a> {
     }
 
     fn lit(&mut self, kind: token::LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Literal {
-        Literal {
-            lit: token::Lit::new(kind, symbol, suffix),
-            span: server::Span::call_site(self),
-        }
+        Literal { lit: token::Lit::new(kind, symbol, suffix), span: server::Span::call_site(self) }
     }
 }
 
@@ -419,10 +411,7 @@ impl server::TokenStream for Rustc<'_> {
         tree.to_internal()
     }
     fn into_iter(&mut self, stream: Self::TokenStream) -> Self::TokenStreamIter {
-        TokenStreamIter {
-            cursor: stream.trees(),
-            stack: vec![],
-        }
+        TokenStreamIter { cursor: stream.trees(), stack: vec![] }
     }
 }
 
@@ -467,11 +456,7 @@ impl server::TokenStreamIter for Rustc<'_> {
 
 impl server::Group for Rustc<'_> {
     fn new(&mut self, delimiter: Delimiter, stream: Self::TokenStream) -> Self::Group {
-        Group {
-            delimiter,
-            stream,
-            span: DelimSpan::from_single(server::Span::call_site(self)),
-        }
+        Group { delimiter, stream, span: DelimSpan::from_single(server::Span::call_site(self)) }
     }
     fn delimiter(&mut self, group: &Self::Group) -> Delimiter {
         group.delimiter
@@ -501,11 +486,7 @@ impl server::Punct for Rustc<'_> {
         punct.ch
     }
     fn spacing(&mut self, punct: Self::Punct) -> Spacing {
-        if punct.joint {
-            Spacing::Joint
-        } else {
-            Spacing::Alone
-        }
+        if punct.joint { Spacing::Joint } else { Spacing::Alone }
     }
     fn span(&mut self, punct: Self::Punct) -> Self::Span {
         punct.span
@@ -683,17 +664,11 @@ impl server::Span for Rustc<'_> {
     }
     fn start(&mut self, span: Self::Span) -> LineColumn {
         let loc = self.sess.source_map().lookup_char_pos(span.lo());
-        LineColumn {
-            line: loc.line,
-            column: loc.col.to_usize(),
-        }
+        LineColumn { line: loc.line, column: loc.col.to_usize() }
     }
     fn end(&mut self, span: Self::Span) -> LineColumn {
         let loc = self.sess.source_map().lookup_char_pos(span.hi());
-        LineColumn {
-            line: loc.line,
-            column: loc.col.to_usize(),
-        }
+        LineColumn { line: loc.line, column: loc.col.to_usize() }
     }
     fn join(&mut self, first: Self::Span, second: Self::Span) -> Option<Self::Span> {
         let self_loc = self.sess.source_map().lookup_char_pos(first.lo());
@@ -708,7 +683,7 @@ impl server::Span for Rustc<'_> {
     fn resolved_at(&mut self, span: Self::Span, at: Self::Span) -> Self::Span {
         span.with_ctxt(at.ctxt())
     }
-    fn source_text(&mut self,  span: Self::Span) -> Option<String> {
+    fn source_text(&mut self, span: Self::Span) -> Option<String> {
         self.sess.source_map().span_to_snippet(span).ok()
     }
 }

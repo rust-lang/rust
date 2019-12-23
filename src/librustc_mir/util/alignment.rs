@@ -1,5 +1,5 @@
-use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
+use rustc::ty::{self, TyCtxt};
 
 /// Returns `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
@@ -16,7 +16,7 @@ where
     debug!("is_disaligned({:?})", place);
     if !is_within_packed(tcx, local_decls, place) {
         debug!("is_disaligned({:?}) - not within packed", place);
-        return false
+        return false;
     }
 
     let ty = place.ty(local_decls, tcx).ty;
@@ -48,9 +48,7 @@ where
             ProjectionElem::Field(..) => {
                 let ty = Place::ty_from(&place.base, proj_base, local_decls, tcx).ty;
                 match ty.kind {
-                    ty::Adt(def, _) if def.repr.packed() => {
-                        return true
-                    }
+                    ty::Adt(def, _) if def.repr.packed() => return true,
                     _ => {}
                 }
             }

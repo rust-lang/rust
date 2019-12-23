@@ -2,8 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-const GRAPHVIZ_POSTFLOW_MSG: &'static str =
-    "`borrowck_graphviz_postflow` attribute in test";
+const GRAPHVIZ_POSTFLOW_MSG: &'static str = "`borrowck_graphviz_postflow` attribute in test";
 
 pub fn check(path: &Path, bad: &mut bool) {
     let test_dir: PathBuf = path.join("test");

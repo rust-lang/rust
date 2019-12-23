@@ -1,17 +1,17 @@
 use self::InternalDebugLocation::*;
 
-use super::utils::{debug_context, span_start};
 use super::metadata::UNKNOWN_COLUMN_NUMBER;
+use super::utils::{debug_context, span_start};
 use rustc_codegen_ssa::mir::debuginfo::FunctionDebugContext;
 
+use crate::builder::Builder;
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
-use crate::builder::Builder;
-use rustc_codegen_ssa::traits::*;
 use log::debug;
+use rustc_codegen_ssa::traits::*;
 
 use libc::c_uint;
-use syntax_pos::{Span, Pos};
+use syntax_pos::{Pos, Span};
 
 /// Sets the current debug location at the beginning of the span.
 ///
@@ -32,33 +32,25 @@ pub fn set_source_location<D>(
     set_debug_location(bx, dbg_loc);
 }
 
-
 #[derive(Copy, Clone, PartialEq)]
 pub enum InternalDebugLocation<'ll> {
     KnownLocation { scope: &'ll DIScope, line: usize, col: usize },
-    UnknownLocation
+    UnknownLocation,
 }
 
 impl InternalDebugLocation<'ll> {
     pub fn new(scope: &'ll DIScope, line: usize, col: usize) -> Self {
-        KnownLocation {
-            scope,
-            line,
-            col,
-        }
+        KnownLocation { scope, line, col }
     }
 }
 
-pub fn set_debug_location(
-    bx: &Builder<'_, 'll, '_>,
-    debug_location: InternalDebugLocation<'ll>
-) {
+pub fn set_debug_location(bx: &Builder<'_, 'll, '_>, debug_location: InternalDebugLocation<'ll>) {
     let metadata_node = match debug_location {
         KnownLocation { scope, line, col } => {
             // For MSVC, set the column number to zero.
             // Otherwise, emit it. This mimics clang behaviour.
             // See discussion in https://github.com/rust-lang/rust/issues/42921
-            let col_used =  if bx.sess().target.target.options.is_like_msvc {
+            let col_used = if bx.sess().target.target.options.is_like_msvc {
                 UNKNOWN_COLUMN_NUMBER
             } else {
                 col as c_uint
@@ -71,7 +63,8 @@ pub fn set_debug_location(
                     line as c_uint,
                     col_used,
                     scope,
-                    None))
+                    None,
+                ))
             }
         }
         UnknownLocation => {

@@ -1,18 +1,18 @@
-use crate::llvm;
-use crate::context::CodegenCx;
-use crate::type_of::LayoutLlvmExt;
 use crate::builder::Builder;
+use crate::context::CodegenCx;
+use crate::llvm;
+use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
 use rustc::hir;
-use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
+use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::traits::*;
 use syntax_pos::Span;
 
-use std::ffi::{CStr, CString};
-use libc::{c_uint, c_char};
+use libc::{c_char, c_uint};
 use log::debug;
+use std::ffi::{CStr, CString};
 
 impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_inline_asm(
@@ -43,24 +43,26 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             inputs = indirect_outputs;
         }
 
-        let clobbers = ia.clobbers.iter()
-                                  .map(|s| format!("~{{{}}}", &s));
+        let clobbers = ia.clobbers.iter().map(|s| format!("~{{{}}}", &s));
 
         // Default per-arch clobbers
         // Basically what clang does
         let arch_clobbers = match &self.sess().target.target.arch[..] {
-            "x86" | "x86_64"  => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
+            "x86" | "x86_64" => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
             "mips" | "mips64" => vec!["~{$1}"],
-            _                 => Vec::new()
+            _ => Vec::new(),
         };
 
-        let all_constraints =
-            ia.outputs.iter().map(|out| out.constraint.to_string())
-              .chain(ia.inputs.iter().map(|s| s.to_string()))
-              .chain(ext_constraints)
-              .chain(clobbers)
-              .chain(arch_clobbers.iter().map(|s| s.to_string()))
-              .collect::<Vec<String>>().join(",");
+        let all_constraints = ia
+            .outputs
+            .iter()
+            .map(|out| out.constraint.to_string())
+            .chain(ia.inputs.iter().map(|s| s.to_string()))
+            .chain(ext_constraints)
+            .chain(clobbers)
+            .chain(arch_clobbers.iter().map(|s| s.to_string()))
+            .collect::<Vec<String>>()
+            .join(",");
 
         debug!("Asm Constraints: {}", &all_constraints);
 
@@ -69,7 +71,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let output_type = match num_outputs {
             0 => self.type_void(),
             1 => output_types[0],
-            _ => self.type_struct(&output_types, false)
+            _ => self.type_struct(&output_types, false),
         };
 
         let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
@@ -82,7 +84,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             output_type,
             ia.volatile,
             ia.alignstack,
-            ia.dialect
+            ia.dialect,
         );
         if r.is_none() {
             return false;
@@ -100,13 +102,15 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         // back to source locations.  See #17552.
         unsafe {
             let key = "srcloc";
-            let kind = llvm::LLVMGetMDKindIDInContext(self.llcx,
-                key.as_ptr() as *const c_char, key.len() as c_uint);
+            let kind = llvm::LLVMGetMDKindIDInContext(
+                self.llcx,
+                key.as_ptr() as *const c_char,
+                key.len() as c_uint,
+            );
 
             let val: &'ll Value = self.const_i32(span.ctxt().outer_expn().as_u32() as i32);
 
-            llvm::LLVMSetMetadata(r, kind,
-                llvm::LLVMMDNodeInContext(self.llcx, &val, 1));
+            llvm::LLVMSetMetadata(r, kind, llvm::LLVMMDNodeInContext(self.llcx, &val, 1));
         }
 
         true
@@ -132,15 +136,16 @@ fn inline_asm_call(
     alignstack: bool,
     dia: ::syntax::ast::AsmDialect,
 ) -> Option<&'ll Value> {
-    let volatile = if volatile { llvm::True }
-                    else        { llvm::False };
-    let alignstack = if alignstack { llvm::True }
-                        else          { llvm::False };
+    let volatile = if volatile { llvm::True } else { llvm::False };
+    let alignstack = if alignstack { llvm::True } else { llvm::False };
 
-    let argtys = inputs.iter().map(|v| {
-        debug!("Asm Input Type: {:?}", *v);
-        bx.cx.val_ty(*v)
-    }).collect::<Vec<_>>();
+    let argtys = inputs
+        .iter()
+        .map(|v| {
+            debug!("Asm Input Type: {:?}", *v);
+            bx.cx.val_ty(*v)
+        })
+        .collect::<Vec<_>>();
 
     debug!("Asm Output Type: {:?}", output);
     let fty = bx.cx.type_func(&argtys[..], output);

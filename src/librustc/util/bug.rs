@@ -2,7 +2,7 @@
 
 use crate::ty::tls;
 use std::fmt;
-use syntax_pos::{Span, MultiSpan};
+use syntax_pos::{MultiSpan, Span};
 
 #[cold]
 #[inline(never)]

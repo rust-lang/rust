@@ -1,12 +1,12 @@
-use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
-use syntax::symbol::{Ident, Symbol, kw, sym};
-use syntax_expand::expand::ExpansionConfig;
+use syntax::symbol::{kw, sym, Ident, Symbol};
+use syntax::{ast, attr};
 use syntax_expand::base::{ExtCtxt, Resolver};
-use syntax_pos::DUMMY_SP;
+use syntax_expand::expand::ExpansionConfig;
 use syntax_pos::hygiene::AstPass;
+use syntax_pos::DUMMY_SP;
 
 pub fn inject(
     mut krate: ast::Crate,
@@ -41,20 +41,18 @@ pub fn inject(
     let ecfg = ExpansionConfig::default("std_lib_injection".to_string());
     let cx = ExtCtxt::new(sess, ecfg, resolver);
 
-
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &name in names.iter().rev() {
-        let ident = if rust_2018 {
-            Ident::new(name, span)
-        } else {
-            Ident::new(name, call_site)
-        };
-        krate.module.items.insert(0, cx.item(
-            span,
-            ident,
-            vec![cx.attribute(cx.meta_word(span, sym::macro_use))],
-            ast::ItemKind::ExternCrate(alt_std_name),
-        ));
+        let ident = if rust_2018 { Ident::new(name, span) } else { Ident::new(name, call_site) };
+        krate.module.items.insert(
+            0,
+            cx.item(
+                span,
+                ident,
+                vec![cx.attribute(cx.meta_word(span, sym::macro_use))],
+                ast::ItemKind::ExternCrate(alt_std_name),
+            ),
+        );
     }
 
     // The crates have been injected, the assumption is that the first one is
@@ -62,11 +60,12 @@ pub fn inject(
     let name = names[0];
 
     let import_path = if rust_2018 {
-        [name, sym::prelude, sym::v1].iter()
-            .map(|symbol| ast::Ident::new(*symbol, span)).collect()
+        [name, sym::prelude, sym::v1].iter().map(|symbol| ast::Ident::new(*symbol, span)).collect()
     } else {
-        [kw::PathRoot, name, sym::prelude, sym::v1].iter()
-            .map(|symbol| ast::Ident::new(*symbol, span)).collect()
+        [kw::PathRoot, name, sym::prelude, sym::v1]
+            .iter()
+            .map(|symbol| ast::Ident::new(*symbol, span))
+            .collect()
     };
 
     let use_item = cx.item(

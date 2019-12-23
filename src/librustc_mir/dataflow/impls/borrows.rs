@@ -1,14 +1,14 @@
-use rustc::mir::{self, Location, Place, PlaceBase, Body};
-use rustc::ty::{self, TyCtxt};
+use rustc::mir::{self, Body, Location, Place, PlaceBase};
 use rustc::ty::RegionVid;
+use rustc::ty::{self, TyCtxt};
 
-use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 
 use crate::borrow_check::{
-    ToRegionVid, BorrowSet, BorrowData, RegionInferenceContext, PlaceExt, PlaceConflictBias,
-    places_conflict,
+    places_conflict, BorrowData, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext,
+    ToRegionVid,
 };
 use crate::dataflow::{BitDenotation, BottomValue, GenKillSet};
 
@@ -43,7 +43,7 @@ struct StackEntry {
     bb: mir::BasicBlock,
     lo: usize,
     hi: usize,
-    first_part_only: bool
+    first_part_only: bool,
 }
 
 fn precompute_borrows_out_of_scope<'tcx>(
@@ -77,16 +77,13 @@ fn precompute_borrows_out_of_scope<'tcx>(
 
     while let Some(StackEntry { bb, lo, hi, first_part_only }) = stack.pop() {
         let mut finished_early = first_part_only;
-        for i in lo ..= hi {
+        for i in lo..=hi {
             let location = Location { block: bb, statement_index: i };
             // If region does not contain a point at the location, then add to list and skip
             // successor locations.
             if !regioncx.region_contains(borrow_region, location) {
                 debug!("borrow {:?} gets killed at {:?}", borrow_index, location);
-                borrows_out_of_scope_at_location
-                    .entry(location)
-                    .or_default()
-                    .push(borrow_index);
+                borrows_out_of_scope_at_location.entry(location).or_default().push(borrow_index);
                 finished_early = true;
                 break;
             }
@@ -97,7 +94,8 @@ fn precompute_borrows_out_of_scope<'tcx>(
             let bb_data = &body[bb];
             assert!(hi == bb_data.statements.len());
             for &succ_bb in bb_data.terminator().successors() {
-                visited.entry(succ_bb)
+                visited
+                    .entry(succ_bb)
                     .and_modify(|lo| {
                         // `succ_bb` has been seen before. If it wasn't
                         // fully processed, add its first part to `stack`
@@ -145,9 +143,14 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             let borrow_region = borrow_data.region.to_region_vid();
             let location = borrow_set.borrows[borrow_index].reserve_location;
 
-            precompute_borrows_out_of_scope(body, &nonlexical_regioncx,
-                                            &mut borrows_out_of_scope_at_location,
-                                            borrow_index, borrow_region, location);
+            precompute_borrows_out_of_scope(
+                body,
+                &nonlexical_regioncx,
+                &mut borrows_out_of_scope_at_location,
+                borrow_index,
+                borrow_region,
+                location,
+            );
         }
 
         Borrows {
@@ -160,7 +163,9 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         }
     }
 
-    crate fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> { &self.borrow_set.borrows }
+    crate fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> {
+        &self.borrow_set.borrows
+    }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
         &self.borrow_set.borrows[idx].reserve_location
@@ -168,9 +173,11 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 
     /// Add all borrows to the kill set, if those borrows are out of scope at `location`.
     /// That means they went out of a nonlexical scope
-    fn kill_loans_out_of_scope_at_location(&self,
-                                           trans: &mut GenKillSet<BorrowIndex>,
-                                           location: Location) {
+    fn kill_loans_out_of_scope_at_location(
+        &self,
+        trans: &mut GenKillSet<BorrowIndex>,
+        location: Location,
+    ) {
         // NOTE: The state associated with a given `location`
         // reflects the dataflow on entry to the statement.
         // Iterate over each of the borrows that we've precomputed
@@ -188,20 +195,12 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 
     /// Kill any borrows that conflict with `place`.
-    fn kill_borrows_on_place(
-        &self,
-        trans: &mut GenKillSet<BorrowIndex>,
-        place: &Place<'tcx>
-    ) {
+    fn kill_borrows_on_place(&self, trans: &mut GenKillSet<BorrowIndex>, place: &Place<'tcx>) {
         debug!("kill_borrows_on_place: place={:?}", place);
 
         if let PlaceBase::Local(local) = place.base {
-            let other_borrows_of_local = self
-                .borrow_set
-                .local_map
-                .get(&local)
-                .into_iter()
-                .flat_map(|bs| bs.into_iter());
+            let other_borrows_of_local =
+                self.borrow_set.local_map.get(&local).into_iter().flat_map(|bs| bs.into_iter());
 
             // If the borrowed place is a local with no projections, all other borrows of this
             // local must conflict. This is purely an optimization so we don't have to call
@@ -217,16 +216,16 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             // pair of array indices are unequal, so that when `places_conflict` returns true, we
             // will be assured that two places being compared definitely denotes the same sets of
             // locations.
-            let definitely_conflicting_borrows = other_borrows_of_local
-                .filter(|&&i| {
-                    places_conflict(
-                        self.tcx,
-                        self.param_env,
-                        self.body,
-                        &self.borrow_set.borrows[i].borrowed_place,
-                        place,
-                        PlaceConflictBias::NoOverlap)
-                });
+            let definitely_conflicting_borrows = other_borrows_of_local.filter(|&&i| {
+                places_conflict(
+                    self.tcx,
+                    self.param_env,
+                    self.body,
+                    &self.borrow_set.borrows[i].borrowed_place,
+                    place,
+                    PlaceConflictBias::NoOverlap,
+                )
+            });
 
             trans.kill_all(definitely_conflicting_borrows);
         }
@@ -235,7 +234,9 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
     type Idx = BorrowIndex;
-    fn name() -> &'static str { "borrows" }
+    fn name() -> &'static str {
+        "borrows"
+    }
     fn bits_per_block(&self) -> usize {
         self.borrow_set.borrows.len() * 2
     }
@@ -245,19 +246,13 @@ impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
         // function execution, so this method has no effect.
     }
 
-    fn before_statement_effect(&self,
-                               trans: &mut GenKillSet<Self::Idx>,
-                               location: Location) {
-        debug!("Borrows::before_statement_effect trans: {:?} location: {:?}",
-               trans, location);
+    fn before_statement_effect(&self, trans: &mut GenKillSet<Self::Idx>, location: Location) {
+        debug!("Borrows::before_statement_effect trans: {:?} location: {:?}", trans, location);
         self.kill_loans_out_of_scope_at_location(trans, location);
     }
 
-    fn statement_effect(&self,
-                        trans: &mut GenKillSet<Self::Idx>,
-                        location: Location) {
-        debug!("Borrows::statement_effect: trans={:?} location={:?}",
-               trans, location);
+    fn statement_effect(&self, trans: &mut GenKillSet<Self::Idx>, location: Location) {
+        debug!("Borrows::statement_effect: trans={:?} location={:?}", trans, location);
 
         let block = &self.body.basic_blocks().get(location.block).unwrap_or_else(|| {
             panic!("could not find block at location {:?}", location);
@@ -268,7 +263,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
 
         debug!("Borrows::statement_effect: stmt={:?}", stmt);
         match stmt.kind {
-            mir::StatementKind::Assign(box(ref lhs, ref rhs)) => {
+            mir::StatementKind::Assign(box (ref lhs, ref rhs)) => {
                 if let mir::Rvalue::Ref(_, _, ref place) = *rhs {
                     if place.ignore_borrow(
                         self.tcx,
@@ -303,27 +298,21 @@ impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
                 }
             }
 
-            mir::StatementKind::FakeRead(..) |
-            mir::StatementKind::SetDiscriminant { .. } |
-            mir::StatementKind::StorageLive(..) |
-            mir::StatementKind::Retag { .. } |
-            mir::StatementKind::AscribeUserType(..) |
-            mir::StatementKind::Nop => {}
-
+            mir::StatementKind::FakeRead(..)
+            | mir::StatementKind::SetDiscriminant { .. }
+            | mir::StatementKind::StorageLive(..)
+            | mir::StatementKind::Retag { .. }
+            | mir::StatementKind::AscribeUserType(..)
+            | mir::StatementKind::Nop => {}
         }
     }
 
-    fn before_terminator_effect(&self,
-                                trans: &mut GenKillSet<Self::Idx>,
-                                location: Location) {
-        debug!("Borrows::before_terminator_effect: trans={:?} location={:?}",
-               trans, location);
+    fn before_terminator_effect(&self, trans: &mut GenKillSet<Self::Idx>, location: Location) {
+        debug!("Borrows::before_terminator_effect: trans={:?} location={:?}", trans, location);
         self.kill_loans_out_of_scope_at_location(trans, location);
     }
 
-    fn terminator_effect(&self,
-                         _: &mut GenKillSet<Self::Idx>,
-                         _: Location) {}
+    fn terminator_effect(&self, _: &mut GenKillSet<Self::Idx>, _: Location) {}
 
     fn propagate_call_return(
         &self,

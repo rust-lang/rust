@@ -1,19 +1,17 @@
+use rustc::hir;
+use rustc::hir::def_id::DefId;
 use rustc::infer::at::ToTrace;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::InferCtxt;
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::traits::query::type_op::ascribe_user_type::AscribeUserType;
 use rustc::traits::query::type_op::eq::Eq;
 use rustc::traits::query::type_op::normalize::Normalize;
 use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
 use rustc::traits::query::type_op::subtype::Subtype;
 use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{
-    Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt,
-};
+use rustc::traits::{Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{GenericArg, Subst, UserSubsts, UserSelfTy};
+use rustc::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
 use rustc::ty::{
     FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
 };
@@ -38,22 +36,19 @@ fn type_op_ascribe_user_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, AscribeUserType<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
-            let (
-                param_env, AscribeUserType { mir_ty, def_id, user_substs }
-            ) = key.into_parts();
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
+        let (param_env, AscribeUserType { mir_ty, def_id, user_substs }) = key.into_parts();
 
-            debug!(
-                "type_op_ascribe_user_type: mir_ty={:?} def_id={:?} user_substs={:?}",
-                mir_ty, def_id, user_substs
-            );
+        debug!(
+            "type_op_ascribe_user_type: mir_ty={:?} def_id={:?} user_substs={:?}",
+            mir_ty, def_id, user_substs
+        );
 
-            let mut cx = AscribeUserTypeCx { infcx, param_env, fulfill_cx };
-            cx.relate_mir_and_user_ty(mir_ty, def_id, user_substs)?;
+        let mut cx = AscribeUserTypeCx { infcx, param_env, fulfill_cx };
+        cx.relate_mir_and_user_ty(mir_ty, def_id, user_substs)?;
 
-            Ok(())
-        })
+        Ok(())
+    })
 }
 
 struct AscribeUserTypeCx<'me, 'tcx> {
@@ -81,10 +76,11 @@ impl AscribeUserTypeCx<'me, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        Ok(self.infcx
+        Ok(self
+            .infcx
             .at(&ObligationCause::dummy(), self.param_env)
-           .relate(a, variance, b)?
-           .into_value_registering_obligations(self.infcx, self.fulfill_cx))
+            .relate(a, variance, b)?
+            .into_value_registering_obligations(self.infcx, self.fulfill_cx))
     }
 
     fn prove_predicate(&mut self, predicate: Predicate<'tcx>) {
@@ -111,10 +107,7 @@ impl AscribeUserTypeCx<'me, 'tcx> {
         def_id: DefId,
         user_substs: UserSubsts<'tcx>,
     ) -> Result<(), NoSolution> {
-        let UserSubsts {
-            user_self_ty,
-            substs,
-        } = user_substs;
+        let UserSubsts { user_self_ty, substs } = user_substs;
         let tcx = self.tcx();
 
         let ty = tcx.type_of(def_id);
@@ -129,18 +122,14 @@ impl AscribeUserTypeCx<'me, 'tcx> {
         // Also, normalize the `instantiated_predicates`
         // because otherwise we wind up with duplicate "type
         // outlives" error messages.
-        let instantiated_predicates = self.tcx()
-            .predicates_of(def_id)
-            .instantiate(self.tcx(), substs);
+        let instantiated_predicates =
+            self.tcx().predicates_of(def_id).instantiate(self.tcx(), substs);
         for instantiated_predicate in instantiated_predicates.predicates {
             let instantiated_predicate = self.normalize(instantiated_predicate);
             self.prove_predicate(instantiated_predicate);
         }
 
-        if let Some(UserSelfTy {
-            impl_def_id,
-            self_ty,
-        }) = user_self_ty {
+        if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
             let impl_self_ty = self.tcx().type_of(impl_def_id);
             let impl_self_ty = self.subst(impl_self_ty, &substs);
             let impl_self_ty = self.normalize(impl_self_ty);
@@ -170,14 +159,13 @@ fn type_op_eq<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Eq<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
-            let (param_env, Eq { a, b }) = key.into_parts();
-            Ok(infcx
-                .at(&ObligationCause::dummy(), param_env)
-                .eq(a, b)?
-                .into_value_registering_obligations(infcx, fulfill_cx))
-        })
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
+        let (param_env, Eq { a, b }) = key.into_parts();
+        Ok(infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .eq(a, b)?
+            .into_value_registering_obligations(infcx, fulfill_cx))
+    })
 }
 
 fn type_op_normalize<T>(
@@ -189,9 +177,8 @@ where
     T: fmt::Debug + TypeFoldable<'tcx> + Lift<'tcx>,
 {
     let (param_env, Normalize { value }) = key.into_parts();
-    let Normalized { value, obligations } = infcx
-        .at(&ObligationCause::dummy(), param_env)
-        .normalize(&value)?;
+    let Normalized { value, obligations } =
+        infcx.at(&ObligationCause::dummy(), param_env).normalize(&value)?;
     fulfill_cx.register_predicate_obligations(infcx, obligations);
     Ok(value)
 }
@@ -200,59 +187,53 @@ fn type_op_normalize_ty(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Ty<'tcx>>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>, NoSolution> {
-    tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, type_op_normalize)
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_normalize_predicate(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Predicate<'tcx>>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, Predicate<'tcx>>>, NoSolution> {
-    tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, type_op_normalize)
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_normalize_fn_sig(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<FnSig<'tcx>>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, FnSig<'tcx>>>, NoSolution> {
-    tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, type_op_normalize)
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_normalize_poly_fn_sig(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<PolyFnSig<'tcx>>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, PolyFnSig<'tcx>>>, NoSolution> {
-    tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, type_op_normalize)
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_subtype<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Subtype<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
-            let (param_env, Subtype { sub, sup }) = key.into_parts();
-            Ok(infcx
-                .at(&ObligationCause::dummy(), param_env)
-                .sup(sup, sub)?
-                .into_value_registering_obligations(infcx, fulfill_cx))
-        })
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
+        let (param_env, Subtype { sub, sup }) = key.into_parts();
+        Ok(infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .sup(sup, sub)?
+            .into_value_registering_obligations(infcx, fulfill_cx))
+    })
 }
 
 fn type_op_prove_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, ProvePredicate<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
-            let (param_env, ProvePredicate { predicate }) = key.into_parts();
-            fulfill_cx.register_predicate_obligation(
-                infcx,
-                Obligation::new(ObligationCause::dummy(), param_env, predicate),
-            );
-            Ok(())
-        })
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
+        let (param_env, ProvePredicate { predicate }) = key.into_parts();
+        fulfill_cx.register_predicate_obligation(
+            infcx,
+            Obligation::new(ObligationCause::dummy(), param_env, predicate),
+        );
+        Ok(())
+    })
 }

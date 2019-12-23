@@ -5,7 +5,7 @@ use crate::io::prelude::*;
 use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
-use crate::io::{self, Initializer, BufReader, LineWriter, IoSlice, IoSliceMut};
+use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
 use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -50,7 +50,9 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
-fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
+fn stdin_raw() -> io::Result<StdinRaw> {
+    stdio::Stdin::new().map(StdinRaw)
+}
 
 /// Constructs a new raw handle to the standard output stream of this process.
 ///
@@ -61,7 +63,9 @@ fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
+fn stdout_raw() -> io::Result<StdoutRaw> {
+    stdio::Stdout::new().map(StdoutRaw)
+}
 
 /// Constructs a new raw handle to the standard error stream of this process.
 ///
@@ -70,10 +74,14 @@ fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
+fn stderr_raw() -> io::Result<StderrRaw> {
+    stdio::Stderr::new().map(StderrRaw)
+}
 
 impl Read for StdinRaw {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf)
+    }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
@@ -85,22 +93,30 @@ impl Read for StdinRaw {
     }
 }
 impl Write for StdoutRaw {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
-    fn flush(&mut self) -> io::Result<()> { self.0.flush() }
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
+    }
 }
 impl Write for StderrRaw {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
-    fn flush(&mut self) -> io::Result<()> { self.0.flush() }
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
+    }
 }
 
 enum Maybe<T> {
@@ -112,7 +128,7 @@ impl<W: io::Write> io::Write for Maybe<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
             Maybe::Real(ref mut w) => handle_ebadf(w.write(buf), buf.len()),
-            Maybe::Fake => Ok(buf.len())
+            Maybe::Fake => Ok(buf.len()),
         }
     }
 
@@ -127,7 +143,7 @@ impl<W: io::Write> io::Write for Maybe<W> {
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
-            Maybe::Fake => Ok(())
+            Maybe::Fake => Ok(()),
         }
     }
 }
@@ -136,14 +152,14 @@ impl<R: io::Read> io::Read for Maybe<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match *self {
             Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), 0),
-            Maybe::Fake => Ok(0)
+            Maybe::Fake => Ok(0),
         }
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         match self {
             Maybe::Real(r) => handle_ebadf(r.read_vectored(bufs), 0),
-            Maybe::Fake => Ok(0)
+            Maybe::Fake => Ok(0),
         }
     }
 }
@@ -151,7 +167,7 @@ impl<R: io::Read> io::Read for Maybe<R> {
 fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
     match r {
         Err(ref e) if stdio::is_ebadf(e) => Ok(default),
-        r => r
+        r => r,
     }
 }
 
@@ -242,16 +258,14 @@ pub struct StdinLock<'a> {
 pub fn stdin() -> Stdin {
     static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new();
     return Stdin {
-        inner: unsafe {
-            INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown")
-        },
+        inner: unsafe { INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown") },
     };
 
     fn stdin_init() -> Arc<Mutex<BufReader<Maybe<StdinRaw>>>> {
         // This must not reentrantly access `INSTANCE`
         let stdin = match stdin_raw() {
             Ok(stdin) => Maybe::Real(stdin),
-            _ => Maybe::Fake
+            _ => Maybe::Fake,
         };
 
         Arc::new(Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin)))
@@ -370,8 +384,12 @@ impl Read for StdinLock<'_> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl BufRead for StdinLock<'_> {
-    fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
-    fn consume(&mut self, n: usize) { self.inner.consume(n) }
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        self.inner.fill_buf()
+    }
+    fn consume(&mut self, n: usize) {
+        self.inner.consume(n)
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -466,9 +484,7 @@ pub struct StdoutLock<'a> {
 pub fn stdout() -> Stdout {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
     return Stdout {
-        inner: unsafe {
-            INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown")
-        },
+        inner: unsafe { INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown") },
     };
 
     fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> {
@@ -625,9 +641,7 @@ pub struct StderrLock<'a> {
 pub fn stderr() -> Stderr {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
     return Stderr {
-        inner: unsafe {
-            INSTANCE.get(stderr_init).expect("cannot access stderr during shutdown")
-        },
+        inner: unsafe { INSTANCE.get(stderr_init).expect("cannot access stderr during shutdown") },
     };
 
     fn stderr_init() -> Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> {
@@ -720,16 +734,16 @@ impl fmt::Debug for StderrLock<'_> {
 ///
 /// Note that this does not need to be called for all new threads; the default
 /// output handle is to the process's stderr stream.
-#[unstable(feature = "set_stdio",
-           reason = "this function may disappear completely or be replaced \
+#[unstable(
+    feature = "set_stdio",
+    reason = "this function may disappear completely or be replaced \
                      with a more general mechanism",
-           issue = "none")]
+    issue = "none"
+)]
 #[doc(hidden)]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
-    LOCAL_STDERR.with(move |slot| {
-        mem::replace(&mut *slot.borrow_mut(), sink)
-    }).and_then(|mut s| {
+    LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
     })
@@ -743,16 +757,16 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 ///
 /// Note that this does not need to be called for all new threads; the default
 /// output handle is to the process's stdout stream.
-#[unstable(feature = "set_stdio",
-           reason = "this function may disappear completely or be replaced \
+#[unstable(
+    feature = "set_stdio",
+    reason = "this function may disappear completely or be replaced \
                      with a more general mechanism",
-           issue = "none")]
+    issue = "none"
+)]
 #[doc(hidden)]
 pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
-    LOCAL_STDOUT.with(move |slot| {
-        mem::replace(&mut *slot.borrow_mut(), sink)
-    }).and_then(|mut s| {
+    LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
     })
@@ -770,41 +784,44 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 /// However, if the actual I/O causes an error, this function does panic.
 fn print_to<T>(
     args: fmt::Arguments<'_>,
-    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
+    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write + Send>>>>,
     global_s: fn() -> T,
     label: &str,
-)
-where
+) where
     T: Write,
 {
-    let result = local_s.try_with(|s| {
-        if let Ok(mut borrowed) = s.try_borrow_mut() {
-            if let Some(w) = borrowed.as_mut() {
-                return w.write_fmt(args);
+    let result = local_s
+        .try_with(|s| {
+            if let Ok(mut borrowed) = s.try_borrow_mut() {
+                if let Some(w) = borrowed.as_mut() {
+                    return w.write_fmt(args);
+                }
             }
-        }
-        global_s().write_fmt(args)
-    }).unwrap_or_else(|_| {
-        global_s().write_fmt(args)
-    });
+            global_s().write_fmt(args)
+        })
+        .unwrap_or_else(|_| global_s().write_fmt(args));
 
     if let Err(e) = result {
         panic!("failed printing to {}: {}", label, e);
     }
 }
 
-#[unstable(feature = "print_internals",
-           reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "none")]
+#[unstable(
+    feature = "print_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
 #[doc(hidden)]
 #[cfg(not(test))]
 pub fn _print(args: fmt::Arguments<'_>) {
     print_to(args, &LOCAL_STDOUT, stdout, "stdout");
 }
 
-#[unstable(feature = "print_internals",
-           reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "none")]
+#[unstable(
+    feature = "print_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
 #[doc(hidden)]
 #[cfg(not(test))]
 pub fn _eprint(args: fmt::Arguments<'_>) {
@@ -816,9 +833,9 @@ pub use realstd::io::{_eprint, _print};
 
 #[cfg(test)]
 mod tests {
-    use crate::panic::{UnwindSafe, RefUnwindSafe};
-    use crate::thread;
     use super::*;
+    use crate::panic::{RefUnwindSafe, UnwindSafe};
+    use crate::thread;
 
     #[test]
     fn stdout_unwind_safe() {
@@ -852,7 +869,9 @@ mod tests {
             let _a = stderr();
             let _a = _a.lock();
             panic!();
-        }).join().unwrap_err();
+        })
+        .join()
+        .unwrap_err();
 
         let _a = stdin();
         let _a = _a.lock();

@@ -1,20 +1,28 @@
-use crate::symbol::{Symbol, sym};
+use crate::symbol::{sym, Symbol};
 use std::fmt;
 use std::str::FromStr;
 
 use rustc_macros::HashStable_Generic;
 
 /// The edition of the compiler (RFC 2052)
-#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug,
-         RustcEncodable, RustcDecodable, Eq, HashStable_Generic)]
+#[derive(
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    PartialOrd,
+    Debug,
+    RustcEncodable,
+    RustcDecodable,
+    Eq,
+    HashStable_Generic
+)]
 pub enum Edition {
     // editions must be kept in order, oldest to newest
-
     /// The 2015 edition
     Edition2015,
     /// The 2018 edition
     Edition2018,
-
     // when adding new editions, be sure to update:
     //
     // - Update the `ALL_EDITIONS` const
@@ -69,7 +77,7 @@ impl FromStr for Edition {
         match s {
             "2015" => Ok(Edition::Edition2015),
             "2018" => Ok(Edition::Edition2018),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

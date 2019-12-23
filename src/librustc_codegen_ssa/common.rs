@@ -1,16 +1,16 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use rustc::ty::{Ty, TyCtxt};
 use rustc::session::Session;
+use rustc::ty::{Ty, TyCtxt};
 use syntax_pos::Span;
 
-use rustc::hir::def_id::DefId;
-use rustc::middle::lang_items::LangItem;
 use crate::base;
 use crate::traits::*;
+use rustc::hir::def_id::DefId;
+use rustc::middle::lang_items::LangItem;
 
-use rustc::hir;
 use crate::traits::BuilderMethods;
+use rustc::hir;
 
 use rustc_error_codes::*;
 
@@ -24,9 +24,8 @@ pub enum IntPredicate {
     IntSGT,
     IntSGE,
     IntSLT,
-    IntSLE
+    IntSLE,
 }
-
 
 #[allow(dead_code)]
 pub enum RealPredicate {
@@ -45,7 +44,7 @@ pub enum RealPredicate {
     RealULT,
     RealULE,
     RealUNE,
-    RealPredicateTrue
+    RealPredicateTrue,
 }
 
 pub enum AtomicRmwBinOp {
@@ -59,7 +58,7 @@ pub enum AtomicRmwBinOp {
     AtomicMax,
     AtomicMin,
     AtomicUMax,
-    AtomicUMin
+    AtomicUMin,
 }
 
 pub enum AtomicOrdering {
@@ -112,8 +111,8 @@ pub enum TypeKind {
 //            for now we content ourselves with providing a no-op HashStable
 //            implementation for CGUs.
 mod temp_stable_hash_impls {
-    use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
     use crate::ModuleCodegen;
+    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
     impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
         fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
@@ -158,11 +157,7 @@ pub fn build_unchecked_rshift<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
     let is_signed = lhs_t.is_signed();
-    if is_signed {
-        bx.ashr(lhs, rhs)
-    } else {
-        bx.lshr(lhs, rhs)
-    }
+    if is_signed { bx.ashr(lhs, rhs) } else { bx.lshr(lhs, rhs) }
 }
 
 fn shift_mask_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -190,16 +185,12 @@ pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             } else {
                 bx.const_uint(mask_llty, val)
             }
-        },
+        }
         TypeKind::Vector => {
-            let mask = shift_mask_val(
-                bx,
-                bx.element_type(llty),
-                bx.element_type(mask_llty),
-                invert
-            );
+            let mask =
+                shift_mask_val(bx, bx.element_type(llty), bx.element_type(mask_llty), invert);
             bx.vector_splat(bx.vector_length(mask_llty), mask)
-        },
+        }
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }
 }

@@ -1,17 +1,19 @@
 //! Contains `ParseSess` which holds state living beyond what one `Parser` might.
 //! It also serves as an input to the parser itself.
 
-use crate::node_id::NodeId;
 use crate::lint::BufferedEarlyLint;
+use crate::node_id::NodeId;
 
-use rustc_errors::{Applicability, emitter::SilentEmitter, Handler, ColorConfig, DiagnosticBuilder};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use rustc_data_structures::sync::{Lrc, Lock, Once};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::{Lock, Lrc, Once};
+use rustc_errors::{
+    emitter::SilentEmitter, Applicability, ColorConfig, DiagnosticBuilder, Handler,
+};
 use rustc_feature::UnstableFeatures;
-use syntax_pos::{Symbol, Span, MultiSpan};
 use syntax_pos::edition::Edition;
 use syntax_pos::hygiene::ExpnId;
-use syntax_pos::source_map::{SourceMap, FilePathMapping};
+use syntax_pos::source_map::{FilePathMapping, SourceMap};
+use syntax_pos::{MultiSpan, Span, Symbol};
 
 use std::path::PathBuf;
 use std::str;
@@ -31,11 +33,7 @@ impl GatedSpans {
     /// Feature gate the given `span` under the given `feature`
     /// which is same `Symbol` used in `active.rs`.
     pub fn gate(&self, feature: Symbol, span: Span) {
-        self.spans
-            .borrow_mut()
-            .entry(feature)
-            .or_default()
-            .push(span);
+        self.spans.borrow_mut().entry(feature).or_default().push(span);
     }
 
     /// Ungate the last span under the given `feature`.
@@ -43,12 +41,7 @@ impl GatedSpans {
     ///
     /// Using this is discouraged unless you have a really good reason to.
     pub fn ungate_last(&self, feature: Symbol, span: Span) {
-        let removed_span = self.spans
-            .borrow_mut()
-            .entry(feature)
-            .or_default()
-            .pop()
-            .unwrap();
+        let removed_span = self.spans.borrow_mut().entry(feature).or_default().pop().unwrap();
         debug_assert_eq!(span, removed_span);
     }
 
@@ -56,10 +49,7 @@ impl GatedSpans {
     ///
     /// Using this is discouraged unless you have a really good reason to.
     pub fn is_ungated(&self, feature: Symbol) -> bool {
-        self.spans
-            .borrow()
-            .get(&feature)
-            .map_or(true, |spans| spans.is_empty())
+        self.spans.borrow().get(&feature).map_or(true, |spans| spans.is_empty())
     }
 
     /// Prepend the given set of `spans` onto the set in `self`.
@@ -98,19 +88,11 @@ pub struct ParseSess {
 impl ParseSess {
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
         let cm = Lrc::new(SourceMap::new(file_path_mapping));
-        let handler = Handler::with_tty_emitter(
-            ColorConfig::Auto,
-            true,
-            None,
-            Some(cm.clone()),
-        );
+        let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, None, Some(cm.clone()));
         ParseSess::with_span_handler(handler, cm)
     }
 
-    pub fn with_span_handler(
-        handler: Handler,
-        source_map: Lrc<SourceMap>,
-    ) -> Self {
+    pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> Self {
         Self {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
@@ -147,7 +129,7 @@ impl ParseSess {
         msg: &str,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
-            buffered_lints.push(BufferedEarlyLint{
+            buffered_lints.push(BufferedEarlyLint {
                 span: span.into(),
                 id,
                 msg: msg.into(),
