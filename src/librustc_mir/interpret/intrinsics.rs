@@ -5,7 +5,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
     self,
-    interpret::{ConstValue, InterpResult, Scalar},
+    interpret::{ConstValue, GlobalId, InterpResult, Scalar},
     BinOp,
 };
 use rustc::ty;
