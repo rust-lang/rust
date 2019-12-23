@@ -122,14 +122,11 @@ impl<'tcx> CValue<'tcx> {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(ptr) => {
-                let clif_ty = match layout.abi {
-                    layout::Abi::Scalar(ref scalar) => scalar_to_clif_type(fx.tcx, scalar.clone()),
-                    layout::Abi::Vector { ref element, count } => {
-                        scalar_to_clif_type(fx.tcx, element.clone())
-                            .by(u16::try_from(count).unwrap()).unwrap()
-                    }
+                let scalar = match layout.abi {
+                    layout::Abi::Scalar(ref scalar) => scalar.clone(),
                     _ => unreachable!(),
                 };
+                let clif_ty = scalar_to_clif_type(fx.tcx, scalar);
                 ptr.load(fx, clif_ty, MemFlags::new())
             }
             CValueInner::ByVal(value) => value,
