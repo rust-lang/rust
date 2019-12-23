@@ -293,7 +293,7 @@ fn main() {
     }
 
     #[test]
-    fn closure_parameter() {
+    fn closure_parameters() {
         let (analysis, file_id) = single_file(
             r#"
 fn main() {
@@ -301,6 +301,11 @@ fn main() {
     (0..2).for_each(|increment| {
         start += increment;
     })
+
+    let multiply = |a, b, c, d| a * b * c * d;
+    let _: i32 = multiply(1, 2, 3, 4);
+
+    let return_42 = || 42;
 }"#,
         );
 
@@ -315,6 +320,36 @@ fn main() {
                 range: [57; 66),
                 kind: TypeHint,
                 label: "i32",
+            },
+            InlayHint {
+                range: [114; 122),
+                kind: TypeHint,
+                label: "|…| -> i32",
+            },
+            InlayHint {
+                range: [126; 127),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [129; 130),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [132; 133),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [135; 136),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [201; 210),
+                kind: TypeHint,
+                label: "|| -> i32",
             },
         ]
         "###
