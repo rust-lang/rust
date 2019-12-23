@@ -588,6 +588,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // `StaticKind` once and for all.
                 return self.const_eval(GlobalId { instance, promoted: None });
             }
+            ty::ConstKind::Infer(..)
+            | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(..) => {
+                bug!("eval_const_to_op: Unexpected ConstKind {:?}", val)
+            }
             ty::ConstKind::Value(val_val) => val_val,
         };
         // Other cases need layout.
