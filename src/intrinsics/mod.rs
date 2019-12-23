@@ -267,10 +267,10 @@ macro simd_cmp {
 }
 
 macro simd_int_binop {
-    ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_int_binop!($fx, $intrinsic, $op|$op($x, $y) -> $ret);
+    ($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_int_binop!($fx, $op|$op($x, $y) -> $ret);
     },
-    ($fx:expr, $intrinsic:expr, $op_u:ident|$op_s:ident($x:ident, $y:ident) -> $ret:ident) => {
+    ($fx:expr, $op_u:ident|$op_s:ident($x:ident, $y:ident) -> $ret:ident) => {
         let (lane_layout, lane_count) = lane_type_and_count($fx.tcx, $x.layout());
         let x_val = $x.load_vector($fx);
         let y_val = $y.load_vector($fx);
@@ -285,10 +285,10 @@ macro simd_int_binop {
 }
 
 macro simd_int_flt_binop {
-    ($fx:expr, $intrinsic:expr, $op:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_int_flt_binop!($fx, $intrinsic, $op|$op|$op_f($x, $y) -> $ret);
+    ($fx:expr, $op:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_int_flt_binop!($fx, $op|$op|$op_f($x, $y) -> $ret);
     },
-    ($fx:expr, $intrinsic:expr, $op_u:ident|$op_s:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
+    ($fx:expr, $op_u:ident|$op_s:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
         let (lane_layout, lane_count) = lane_type_and_count($fx.tcx, $x.layout());
         let x_val = $x.load_vector($fx);
         let y_val = $y.load_vector($fx);
@@ -303,7 +303,7 @@ macro simd_int_flt_binop {
     },
 }
 
-macro simd_flt_binop($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
+macro simd_flt_binop($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
     let (lane_layout, lane_count) = lane_type_and_count($fx.tcx, $x.layout());
     let x_val = $x.load_vector($fx);
     let y_val = $y.load_vector($fx);

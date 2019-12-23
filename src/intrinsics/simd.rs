@@ -127,38 +127,38 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_add, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, iadd|fadd(x, y) -> ret);
+            simd_int_flt_binop!(fx, iadd|fadd(x, y) -> ret);
         };
         simd_sub, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, isub|fsub(x, y) -> ret);
+            simd_int_flt_binop!(fx, isub|fsub(x, y) -> ret);
         };
         simd_mul, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, imul|fmul(x, y) -> ret);
+            simd_int_flt_binop!(fx, imul|fmul(x, y) -> ret);
         };
         simd_div, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, udiv|sdiv|fdiv(x, y) -> ret);
+            simd_int_flt_binop!(fx, udiv|sdiv|fdiv(x, y) -> ret);
         };
         simd_shl, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, ishl(x, y) -> ret);
+            simd_int_binop!(fx, ishl(x, y) -> ret);
         };
         simd_shr, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, ushr|sshr(x, y) -> ret);
+            simd_int_binop!(fx, ushr|sshr(x, y) -> ret);
         };
         simd_and, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, band(x, y) -> ret);
+            simd_int_binop!(fx, band(x, y) -> ret);
         };
         simd_or, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, bor(x, y) -> ret);
+            simd_int_binop!(fx, bor(x, y) -> ret);
         };
         simd_xor, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, bxor(x, y) -> ret);
+            simd_int_binop!(fx, bxor(x, y) -> ret);
         };
 
         simd_fmin, (c x, c y) {
-            simd_flt_binop!(fx, intrinsic, fmin(x, y) -> ret);
+            simd_flt_binop!(fx, fmin(x, y) -> ret);
         };
         simd_fmax, (c x, c y) {
-            simd_flt_binop!(fx, intrinsic, fmax(x, y) -> ret);
+            simd_flt_binop!(fx, fmax(x, y) -> ret);
         };
     }
 }
