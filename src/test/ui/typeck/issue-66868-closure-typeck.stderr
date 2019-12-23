@@ -1,0 +1,22 @@
+error[E0277]: `std::sync::RwLockWriteGuard<'_, issue_66868_closure_typeck::S>` cannot be sent between threads safely
+  --> $DIR/issue-66868-closure-typeck.rs:14:5
+   |
+LL | pub fn g<T>(task: T)
+   |        -
+LL | where
+LL |     T: Send,
+   |        ---- required by this bound in `g`
+...
+LL |     g(issue_66868_closure_typeck::f());
+   |     ^ `std::sync::RwLockWriteGuard<'_, issue_66868_closure_typeck::S>` cannot be sent between threads safely
+   |
+   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::sync::RwLockWriteGuard<'_, issue_66868_closure_typeck::S>`
+   = note: required because it appears within the type `for<'r, 's, 't0, 't1, 't2, 't3, 't4, 't5> {std::sync::RwLock<issue_66868_closure_typeck::S>, &'r std::sync::RwLock<issue_66868_closure_typeck::S>, std::sync::RwLock<issue_66868_closure_typeck::S>, std::result::Result<std::sync::RwLockWriteGuard<'s, issue_66868_closure_typeck::S>, std::sync::PoisonError<std::sync::RwLockWriteGuard<'t0, issue_66868_closure_typeck::S>>>, &'t1 mut std::sync::RwLockWriteGuard<'t2, issue_66868_closure_typeck::S>, std::sync::RwLockWriteGuard<'t3, issue_66868_closure_typeck::S>, issue_66868_closure_typeck::S, &'t4 mut issue_66868_closure_typeck::S, &'t5 mut issue_66868_closure_typeck::S, ()}`
+   = note: required because it appears within the type `[static generator@DefId(15:16 ~ issue_66868_closure_typeck[8787]::f[0]::{{closure}}[0]) for<'r, 's, 't0, 't1, 't2, 't3, 't4, 't5> {std::sync::RwLock<issue_66868_closure_typeck::S>, &'r std::sync::RwLock<issue_66868_closure_typeck::S>, std::sync::RwLock<issue_66868_closure_typeck::S>, std::result::Result<std::sync::RwLockWriteGuard<'s, issue_66868_closure_typeck::S>, std::sync::PoisonError<std::sync::RwLockWriteGuard<'t0, issue_66868_closure_typeck::S>>>, &'t1 mut std::sync::RwLockWriteGuard<'t2, issue_66868_closure_typeck::S>, std::sync::RwLockWriteGuard<'t3, issue_66868_closure_typeck::S>, issue_66868_closure_typeck::S, &'t4 mut issue_66868_closure_typeck::S, &'t5 mut issue_66868_closure_typeck::S, ()}]`
+   = note: required because it appears within the type `std::future::GenFuture<[static generator@DefId(15:16 ~ issue_66868_closure_typeck[8787]::f[0]::{{closure}}[0]) for<'r, 's, 't0, 't1, 't2, 't3, 't4, 't5> {std::sync::RwLock<issue_66868_closure_typeck::S>, &'r std::sync::RwLock<issue_66868_closure_typeck::S>, std::sync::RwLock<issue_66868_closure_typeck::S>, std::result::Result<std::sync::RwLockWriteGuard<'s, issue_66868_closure_typeck::S>, std::sync::PoisonError<std::sync::RwLockWriteGuard<'t0, issue_66868_closure_typeck::S>>>, &'t1 mut std::sync::RwLockWriteGuard<'t2, issue_66868_closure_typeck::S>, std::sync::RwLockWriteGuard<'t3, issue_66868_closure_typeck::S>, issue_66868_closure_typeck::S, &'t4 mut issue_66868_closure_typeck::S, &'t5 mut issue_66868_closure_typeck::S, ()}]>`
+   = note: required because it appears within the type `impl std::future::Future`
+   = note: required because it appears within the type `impl std::future::Future`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
