@@ -10,11 +10,9 @@ use std::rc::Rc;
 use rustc_hir::Mutability;
 use rustc::mir::RetagKind;
 use rustc::ty::{self, layout::Size};
+use rustc_mir::interpret::InterpError;
 
-use crate::{
-    AllocId, HelpersEvalContextExt, ImmTy, Immediate, InterpResult, MPlaceTy, MemoryKind,
-    MiriMemoryKind, PlaceTy, Pointer, RangeMap, TerminationInfo,
-};
+use crate::*;
 
 pub type PtrId = NonZeroU64;
 pub type CallId = NonZeroU64;
@@ -269,7 +267,12 @@ impl<'tcx> Stack {
     fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
         if let Tag::Tagged(id) = item.tag {
             if Some(id) == global.tracked_pointer_tag {
-                throw_machine_stop!(TerminationInfo::PoppedTrackedPointerTag(item.clone()));
+                register_err(
+                    InterpError::MachineStop(Box::new(TerminationInfo::PoppedTrackedPointerTag(
+                        item.clone(),
+                    )))
+                    .into(),
+                );
             }
         }
         if let Some(call) = item.protector {
@@ -629,6 +632,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let val = this.retag_reference(val, mutbl, protector)?;
             this.write_immediate(val, place)?;
         }
+
+        this.process_errors();
 
         Ok(())
     }

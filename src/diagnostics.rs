@@ -70,10 +70,14 @@ pub fn register_err(e: InterpErrorInfo<'static>) {
     ECX.with(|ecx| ecx.borrow_mut().push(e));
 }
 
-pub fn process_errors(mut f: impl FnMut(InterpErrorInfo<'static>)) {
-    ECX.with(|ecx| {
-        for e in ecx.borrow_mut().drain(..) {
-            f(e);
-        }
-    });
+impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    fn process_errors(&self) {
+        let this = self.eval_context_ref();
+        ECX.with(|ecx| {
+            for e in ecx.borrow_mut().drain(..) {
+                report_err(this, e);
+            }
+        });
+    }
 }
