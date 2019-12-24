@@ -1810,7 +1810,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     expr.span,
                     E0627,
-                    "yield statement outside of generator literal"
+                    "yield expression outside of generator literal"
                 )
                 .emit();
             }
