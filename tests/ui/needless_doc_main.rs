@@ -25,6 +25,15 @@ fn bad_doctest() {}
 ///     assert_eq!(42, ANSWER);
 /// }
 /// ```
+///
+/// Neither should this lint because of `extern crate`:
+/// ```
+/// #![feature(test)]
+/// extern crate test;
+/// fn main() {
+///     assert_eq(1u8, test::black_box(1));
+/// }
+/// ```
 fn no_false_positives() {}
 
 fn main() {
