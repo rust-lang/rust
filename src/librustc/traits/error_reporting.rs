@@ -2373,7 +2373,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let span = self.tcx.def_span(generator_did);
 
         // Do not ICE on closure typeck (#66868).
-        if let None = self.tcx.hir().as_local_hir_id(generator_did) {
+        if self.tcx.hir().as_local_hir_id(generator_did).is_none() {
             return false;
         }
 
