@@ -2,13 +2,16 @@
 //!
 //! Example checks are:
 //!
-//! * No lines over 100 characters.
-//! * No files with over 3000 lines.
+//! * No lines over 100 characters (in non-Rust files).
+//! * No files with over 3000 lines (in non-Rust files).
 //! * No tabs.
 //! * No trailing whitespace.
 //! * No CR characters.
 //! * No `TODO` or `XXX` directives.
 //! * No unexplained ` ```ignore ` or ` ```rust,ignore ` doc tests.
+//!
+//! Note that some of these rules are excluded from Rust files because we enforce rustfmt. It is
+//! preferable to be formatted rather than tidy-clean.
 //!
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
@@ -142,6 +145,15 @@ pub fn check(path: &Path, bad: &mut bool) {
             return;
         }
 
+        let under_rustfmt = filename.ends_with(".rs") &&
+            // This list should ideally be sourced from rustfmt.toml but we don't want to add a toml
+            // parser to tidy.
+            !file.ancestors().any(|a| {
+                a.ends_with("src/test") ||
+                    a.ends_with("src/libstd/sys/cloudabi") ||
+                    a.ends_with("src/doc/book")
+            });
+
         if filename.ends_with(".md")
             && file.parent().unwrap().file_name().unwrap().to_string_lossy() != "error_codes"
         {
@@ -181,7 +193,10 @@ pub fn check(path: &Path, bad: &mut bool) {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
-            if line.chars().count() > max_columns && !long_line_is_ok(max_columns, line) {
+            if !under_rustfmt
+                && line.chars().count() > max_columns
+                && !long_line_is_ok(max_columns, line)
+            {
                 suppressible_tidy_err!(
                     err,
                     skip_line_length,
