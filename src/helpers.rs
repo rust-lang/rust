@@ -445,6 +445,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         'tcx: 'a,
         'mir: 'a,
     {
+        #[cfg(target_os = "unix")]
+        fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
+            Ok(std::os::unix::ffi::OsStringExt::from_bytes(bytes))
+        }
+        #[cfg(not(target_os = "unix"))]
+        fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
+            let s = std::str::from_utf8(bytes)
+                .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
+            Ok(&OsStr::new(s))
+        }
+
         let this = self.eval_context_ref();
         let bytes = this.memory.read_c_str(scalar)?;
         bytes_to_os_str(bytes)
@@ -460,6 +471,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         scalar: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, bool> {
+        #[cfg(target_os = "unix")]
+        fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+            std::os::unix::ffi::OsStringExt::into_bytes(os_str)
+        }
+        #[cfg(not(target_os = "unix"))]
+        fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+            // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
+            // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
+            // valid.
+            os_str
+                .to_str()
+                .map(|s| s.as_bytes())
+                .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
+        }
+
         let bytes = os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
@@ -473,63 +499,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-#[cfg(target_os = "unix")]
-fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-    std::os::unix::ffi::OsStringExt::into_bytes(os_str)
-}
-
-#[cfg(target_os = "unix")]
-fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
-    Ok(std::os::unix::ffi::OsStringExt::from_bytes(bytes))
-}
-
-// On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
-// intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
-// valid.
-#[cfg(not(target_os = "unix"))]
-fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-    os_str
-        .to_str()
-        .map(|s| s.as_bytes())
-        .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
-}
-
-#[cfg(not(target_os = "unix"))]
-fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
-    let s = std::str::from_utf8(bytes)
-        .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
-    Ok(&OsStr::new(s))
-}
-
-// FIXME: change `ImmTy::from_int` so it returns an `InterpResult` instead and remove this
-// function.
 pub fn immty_from_int_checked<'tcx>(
     int: impl Into<i128>,
     layout: TyLayout<'tcx>,
 ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
     let int = int.into();
-    // If `int` does not fit in `size` bits, we error instead of letting
-    // `ImmTy::from_int` panic.
-    let size = layout.size;
-    let truncated = truncate(int as u128, size);
-    if sign_extend(truncated, size) as i128 != int {
-        throw_unsup_format!("Signed value {:#x} does not fit in {} bits", int, size.bits())
-    }
-    Ok(ImmTy::from_int(int, layout))
+    Ok(ImmTy::try_from_int(int, layout).ok_or_else(||
+        err_unsup_format!("Signed value {:#x} does not fit in {} bits", int, layout.size.bits())
+    )?)
 }
 
-// FIXME: change `ImmTy::from_uint` so it returns an `InterpResult` instead and remove this
-// function.
 pub fn immty_from_uint_checked<'tcx>(
     int: impl Into<u128>,
     layout: TyLayout<'tcx>,
 ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
     let int = int.into();
-    // If `int` does not fit in `size` bits, we error instead of letting
-    // `ImmTy::from_int` panic.
-    let size = layout.size;
-    if truncate(int, size) != int {
-        throw_unsup_format!("Unsigned value {:#x} does not fit in {} bits", int, size.bits())
-    }
-    Ok(ImmTy::from_uint(int, layout))
+    Ok(ImmTy::try_from_uint(int, layout).ok_or_else(||
+        err_unsup_format!("Signed value {:#x} does not fit in {} bits", int, layout.size.bits())
+    )?)
 }
