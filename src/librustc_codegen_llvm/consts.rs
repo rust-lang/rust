@@ -8,19 +8,17 @@ use crate::value::Value;
 use libc::c_uint;
 use log::debug;
 use rustc::hir::def_id::DefId;
-use rustc::hir::Node;
+use rustc::hir::{self, Node};
+use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::mir::interpret::{read_target_uint, Allocation, ConstValue, ErrorHandled, Pointer};
 use rustc::mir::mono::MonoItem;
+use rustc::ty::layout::{self, Align, LayoutOf, Size};
 use rustc::ty::{self, Instance, Ty};
 use rustc::{bug, span_bug};
 use rustc_codegen_ssa::traits::*;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::HasDataLayout;
-
-use rustc::ty::layout::{self, Align, LayoutOf, Size};
-
-use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs};
 
 use std::ffi::CStr;
 

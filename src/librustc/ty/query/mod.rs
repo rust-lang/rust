@@ -1,9 +1,10 @@
 use crate::dep_graph::{self, DepNode};
 use crate::hir::def::{DefKind, Export};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
-use crate::hir::{self, CodegenFnAttrs, ItemLocalId, TraitCandidate};
+use crate::hir::{self, ItemLocalId, TraitCandidate};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::cstore::{CrateSource, DepKind, NativeLibraryKind};
 use crate::middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLibrary};
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};

@@ -20,6 +20,7 @@ use crate::constrained_generic_params as cgp;
 use crate::lint;
 use crate::middle::resolve_lifetime as rl;
 use crate::middle::weak_lang_items;
+use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::mir::mono::Linkage;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::GenericArgKind;
@@ -44,7 +45,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::GenericParamKind;
 use rustc::hir::Node;
-use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
+use rustc::hir::{self, Unsafety};
 
 use errors::{Applicability, StashKey};
 

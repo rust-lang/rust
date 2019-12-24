@@ -98,7 +98,7 @@ use std::sync::Arc;
 
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::CodegenFnAttrFlags;
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
 use rustc::mir::mono::{InstantiationMode, MonoItem};

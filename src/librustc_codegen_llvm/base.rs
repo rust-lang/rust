@@ -14,32 +14,31 @@
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
 use super::{LlvmCodegenBackend, ModuleLlvm};
-use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 
 use crate::builder::Builder;
 use crate::common;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::metadata;
+use crate::value::Value;
+
 use rustc::dep_graph;
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::exported_symbols;
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::session::config::DebugInfo;
 use rustc::ty::TyCtxt;
-use rustc_codegen_ssa::mono_item::MonoItemExt;
-use rustc_data_structures::small_c_str::SmallCStr;
-
 use rustc_codegen_ssa::back::write::submit_codegened_module_to_llvm;
+use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
+use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
-
-use rustc::hir::CodegenFnAttrs;
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
+use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_span::symbol::Symbol;
+
 use std::ffi::CString;
 use std::time::Instant;
-
-use crate::value::Value;
 
 pub fn write_compressed_metadata<'tcx>(
     tcx: TyCtxt<'tcx>,

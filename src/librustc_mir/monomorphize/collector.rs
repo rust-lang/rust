@@ -176,9 +176,10 @@
 
 use crate::monomorphize;
 
+use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::{self, CodegenFnAttrFlags};
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};

@@ -9,8 +9,8 @@ use rustc::hir::{self, PatKind, TyKind};
 
 use rustc::hir::def::{CtorOf, DefKind, Res};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::CodegenFnAttrFlags;
 use rustc::lint;
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::privacy;
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::util::nodemap::FxHashSet;

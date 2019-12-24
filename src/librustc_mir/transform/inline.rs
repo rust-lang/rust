@@ -1,11 +1,11 @@
 //! Inlining pass for MIR functions
 
 use rustc::hir::def_id::DefId;
-use rustc::hir::CodegenFnAttrFlags;
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::visit::*;
 use rustc::mir::*;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};

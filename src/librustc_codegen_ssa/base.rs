@@ -27,6 +27,7 @@ use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind}
 
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::middle::lang_items::StartFnLangItem;
@@ -811,7 +812,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
 
         let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
         for id in &*defids {
-            let hir::CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
+            let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
             match optimize {
                 attr::OptimizeAttr::None => continue,
                 attr::OptimizeAttr::Size => continue,

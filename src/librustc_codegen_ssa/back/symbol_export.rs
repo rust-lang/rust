@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::Node;
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
 use rustc::session::config;
 use rustc::ty::query::Providers;
