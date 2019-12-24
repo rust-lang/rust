@@ -222,7 +222,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// Lower the bindings, guards and arm bodies of a `match` expression.
     ///
-    /// The decision tree should have already been created (by lower_match_tree).
+    /// The decision tree should have already been created
+    /// (by [Builder::lower_match_tree]).
     ///
     /// `outer_source_info` is the SourceInfo for the whole match.
     fn lower_match_arms(
