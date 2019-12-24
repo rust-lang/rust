@@ -209,6 +209,24 @@ fn main() {
 }
 ```
 
+## `auto_import`
+
+If the name is unresolved, provides all possible imports for it.
+
+```rust
+// BEFORE
+fn main() {
+    let map = HashMap┃::new();
+}
+
+// AFTER
+use std::collections::HashMap;
+
+fn main() {
+    let map = HashMap┃::new();
+}
+```
+
 ## `change_visibility`
 
 Adds or changes existing visibility specifier.
