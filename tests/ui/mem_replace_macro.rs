@@ -4,8 +4,6 @@
 #[macro_use]
 extern crate macro_rules;
 
-use std::mem;
-
 macro_rules! take {
     ($s:expr) => {
         std::mem::replace($s, Default::default())
