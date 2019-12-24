@@ -26,7 +26,7 @@ if_chain! {
     if let ExprKind::Path(ref path3) = inner.kind;
     if match_qpath(path3, &["iter"]);
     if arms1.len() == 2;
-    if let ExprKind::Assign(ref target, ref value) = arms1[0].body.kind;
+    if let ExprKind::Assign(ref target, ref value, ref _span) = arms1[0].body.kind;
     if let ExprKind::Path(ref path4) = target.kind;
     if match_qpath(path4, &["__next"]);
     if let ExprKind::Path(ref path5) = value.kind;

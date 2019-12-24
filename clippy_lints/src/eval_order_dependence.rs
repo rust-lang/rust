@@ -62,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Find a write to a local variable.
         match expr.kind {
-            ExprKind::Assign(ref lhs, _) | ExprKind::AssignOp(_, ref lhs, _) => {
+            ExprKind::Assign(ref lhs, ..) | ExprKind::AssignOp(_, ref lhs, _) => {
                 if let ExprKind::Path(ref qpath) = lhs.kind {
                     if let QPath::Resolved(_, ref path) = *qpath {
                         if path.segments.len() == 1 {
@@ -224,7 +224,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
         | ExprKind::Tup(_)
         | ExprKind::MethodCall(..)
         | ExprKind::Call(_, _)
-        | ExprKind::Assign(_, _)
+        | ExprKind::Assign(..)
         | ExprKind::Index(_, _)
         | ExprKind::Repeat(_, _)
         | ExprKind::Struct(_, _, _) => {
@@ -345,7 +345,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 /// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
-        if let ExprKind::Assign(ref lhs, _) = parent.kind {
+        if let ExprKind::Assign(ref lhs, ..) = parent.kind {
             return lhs.hir_id == expr.hir_id;
         }
     }

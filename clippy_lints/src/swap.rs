@@ -86,11 +86,11 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
 
             // foo() = bar();
             if let StmtKind::Semi(ref first) = w[1].kind;
-            if let ExprKind::Assign(ref lhs1, ref rhs1) = first.kind;
+            if let ExprKind::Assign(ref lhs1, ref rhs1, _) = first.kind;
 
             // bar() = t;
             if let StmtKind::Semi(ref second) = w[2].kind;
-            if let ExprKind::Assign(ref lhs2, ref rhs2) = second.kind;
+            if let ExprKind::Assign(ref lhs2, ref rhs2, _) = second.kind;
             if let ExprKind::Path(QPath::Resolved(None, ref rhs2)) = rhs2.kind;
             if rhs2.segments.len() == 1;
 
@@ -222,8 +222,8 @@ fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block) {
             if let StmtKind::Semi(ref first) = w[0].kind;
             if let StmtKind::Semi(ref second) = w[1].kind;
             if !differing_macro_contexts(first.span, second.span);
-            if let ExprKind::Assign(ref lhs0, ref rhs0) = first.kind;
-            if let ExprKind::Assign(ref lhs1, ref rhs1) = second.kind;
+            if let ExprKind::Assign(ref lhs0, ref rhs0, _) = first.kind;
+            if let ExprKind::Assign(ref lhs1, ref rhs1, _) = second.kind;
             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs0, rhs1);
             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, rhs0);
             then {

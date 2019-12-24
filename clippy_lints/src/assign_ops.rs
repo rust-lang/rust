@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                     }
                 }
             },
-            hir::ExprKind::Assign(assignee, e) => {
+            hir::ExprKind::Assign(assignee, e, _) => {
                 if let hir::ExprKind::Binary(op, l, r) = &e.kind {
                     #[allow(clippy::cognitive_complexity)]
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
