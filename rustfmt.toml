@@ -34,8 +34,6 @@ ignore = [
     "src/librustc_mir/build/expr/as_rvalue.rs",
     "src/librustc_mir/build/matches/mod.rs",
     "src/librustc_mir/build/mod.rs",
-    "src/librustc_mir/const_eval.rs",
-    "src/librustc_mir/interpret/place.rs",
     "src/librustc_mir/monomorphize/collector.rs",
     "src/librustc_passes/ast_validation.rs",
     "src/librustc_resolve/lib.rs",
