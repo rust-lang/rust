@@ -12,10 +12,14 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
-    for RETRY_COUNT in 1 2 3 4 5 6 7 8 9 10; do
-        choco install msys2 \
-            --params="/InstallDir:$(ciCheckoutPath)/msys2 /NoPath" -y --no-progress \
-            && mkdir -p "$(ciCheckoutPath)/msys2/home/${USERNAME}" \
-            && ciCommandAddPath "$(ciCheckoutPath)/msys2/usr/bin" && break
-    done
+    # Pre-followed the api/v2 URL to the CDN since the API can be a bit flakey
+    curl -sSL https://packages.chocolatey.org/msys2.20190524.0.0.20191030.nupkg > \
+        msys2.nupkg
+    curl -sSL https://packages.chocolatey.org/chocolatey-core.extension.1.3.5.1.nupkg > \
+        chocolatey-core.extension.nupkg
+    choco install -s . msys2 \
+        --params="/InstallDir:$(ciCheckoutPath)/msys2 /NoPath" -y --no-progress
+    rm msys2.nupkg chocolatey-core.extension.nupkg
+    mkdir -p "$(ciCheckoutPath)/msys2/home/${USERNAME}"
+    ciCommandAddPath "$(ciCheckoutPath)/msys2/usr/bin"
 fi
