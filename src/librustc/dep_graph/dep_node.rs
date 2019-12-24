@@ -396,12 +396,6 @@ impl DefPathHash {
     }
 }
 
-impl DefId {
-    pub fn to_dep_node(self, tcx: TyCtxt<'_>, kind: DepKind) -> DepNode {
-        DepNode::from_def_path_hash(kind, tcx.def_path_hash(self))
-    }
-}
-
 rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
