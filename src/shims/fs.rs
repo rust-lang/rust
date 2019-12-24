@@ -261,6 +261,55 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.try_unwrap_io_result(result)
     }
 
+    fn stat(&mut self,
+        _path_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        let buf = this.deref_operand(buf_op)?;
+
+        let dev_t_layout = this.libc_ty_layout("dev_t")?;
+        let mode_t_layout = this.libc_ty_layout("mode_t")?;
+        let nlink_t_layout = this.libc_ty_layout("nlink_t")?;
+        let ino_t_layout = this.libc_ty_layout("ino_t")?;
+        let uid_t_layout = this.libc_ty_layout("uid_t")?;
+        let gid_t_layout = this.libc_ty_layout("gid_t")?;
+        let time_t_layout = this.libc_ty_layout("time_t")?;
+        let long_layout = this.libc_ty_layout("c_long")?;
+        let off_t_layout = this.libc_ty_layout("off_t")?;
+        let blkcnt_t_layout = this.libc_ty_layout("blkcnt_t")?;
+        let blksize_t_layout = this.libc_ty_layout("blksize_t")?;
+        let uint32_t_layout = this.libc_ty_layout("uint32_t")?;
+
+        let imms = [
+            immty_from_uint_checked(0u128, dev_t_layout)?, // st_dev
+            immty_from_uint_checked(0u128, mode_t_layout)?, // st_mode
+            immty_from_uint_checked(0u128, nlink_t_layout)?, // st_nlink
+            immty_from_uint_checked(0u128, ino_t_layout)?, // st_ino
+            immty_from_uint_checked(0u128, uid_t_layout)?, // st_uid
+            immty_from_uint_checked(0u128, gid_t_layout)?, // st_gid
+            immty_from_uint_checked(0u128, dev_t_layout)?, // st_rdev
+            immty_from_uint_checked(0u128, time_t_layout)?, // st_atime
+            immty_from_uint_checked(0u128, long_layout)?, // st_atime_nsec
+            immty_from_uint_checked(0u128, time_t_layout)?, // st_mtime
+            immty_from_uint_checked(0u128, long_layout)?, // st_mtime_nsec
+            immty_from_uint_checked(0u128, time_t_layout)?, // st_ctime
+            immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
+            immty_from_uint_checked(0u128, time_t_layout)?, // st_birthtime
+            immty_from_uint_checked(0u128, long_layout)?, // st_birthtime_nsec
+            immty_from_uint_checked(0u128, off_t_layout)?, // st_size
+            immty_from_uint_checked(0u128, blkcnt_t_layout)?, // st_blocks
+            immty_from_uint_checked(0u128, blksize_t_layout)?, // st_blksize
+            immty_from_uint_checked(0u128, uint32_t_layout)?, // st_flags
+            immty_from_uint_checked(0u128, uint32_t_layout)?, // st_gen
+        ];
+
+        this.write_packed_immediates(&buf, &imms)?;
+
+        Ok(0)
+    }
+
     fn statx(
         &mut self,
         dirfd_op: OpTy<'tcx, Tag>,    // Should be an `int`
