@@ -450,7 +450,8 @@ impl<T> [T] {
         // and `rem` is the remaining part of `n`.
 
         // Using `Vec` to access `set_len()`.
-        let mut buf = Vec::with_capacity(self.len().checked_mul(n).expect("capacity overflow"));
+        let capacity = self.len().checked_mul(n).expect("capacity overflow");
+        let mut buf = Vec::with_capacity(capacity);
 
         // `2^expn` repetition is done by doubling `buf` `expn`-times.
         buf.extend(self);
@@ -476,7 +477,7 @@ impl<T> [T] {
 
         // `rem` (`= n - 2^expn`) repetition is done by copying
         // first `rem` repetitions from `buf` itself.
-        let rem_len = self.len() * n - buf.len(); // `self.len() * rem`
+        let rem_len = capacity - buf.len(); // `self.len() * rem`
         if rem_len > 0 {
             // `buf.extend(buf[0 .. rem_len])`:
             unsafe {
@@ -487,8 +488,7 @@ impl<T> [T] {
                     rem_len,
                 );
                 // `buf.len() + rem_len` equals to `buf.capacity()` (`= self.len() * n`).
-                let buf_cap = buf.capacity();
-                buf.set_len(buf_cap);
+                buf.set_len(capacity);
             }
         }
         buf
