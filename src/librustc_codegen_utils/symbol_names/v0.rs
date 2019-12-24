@@ -1,13 +1,13 @@
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Instance};
-use rustc::ty::print::{Printer, Print};
-use rustc::ty::subst::{GenericArg, Subst, GenericArgKind};
+use rustc::ty::print::{Print, Printer};
+use rustc::ty::subst::{GenericArg, GenericArgKind, Subst};
+use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{IntTy, UintTy, FloatTy};
+use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use std::fmt::Write;
 use std::ops::Range;
@@ -19,8 +19,7 @@ pub(super) fn mangle(
 ) -> String {
     let def_id = instance.def_id();
     // FIXME(eddyb) this should ideally not be needed.
-    let substs =
-        tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.substs);
+    let substs = tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.substs);
 
     let prefix = "_R";
     let mut cx = SymbolMangler {
@@ -36,12 +35,7 @@ pub(super) fn mangle(
         out: String::from(prefix),
     };
     cx = if instance.is_vtable_shim() {
-        cx.path_append_ns(
-            |cx| cx.print_def_path(def_id, substs),
-            'S',
-            0,
-            "",
-        ).unwrap()
+        cx.path_append_ns(|cx| cx.print_def_path(def_id, substs), 'S', 0, "").unwrap()
     } else {
         cx.print_def_path(def_id, substs).unwrap()
     };
@@ -183,9 +177,10 @@ impl SymbolMangler<'tcx> {
     fn in_binder<T>(
         mut self,
         value: &ty::Binder<T>,
-        print_value: impl FnOnce(Self, &T) -> Result<Self, !>
+        print_value: impl FnOnce(Self, &T) -> Result<Self, !>,
     ) -> Result<Self, !>
-        where T: TypeFoldable<'tcx>
+    where
+        T: TypeFoldable<'tcx>,
     {
         let regions = if value.has_late_bound_regions() {
             self.tcx.collect_referenced_late_bound_regions(value)
@@ -196,16 +191,20 @@ impl SymbolMangler<'tcx> {
         let mut lifetime_depths =
             self.binders.last().map(|b| b.lifetime_depths.end).map_or(0..0, |i| i..i);
 
-        let lifetimes = regions.into_iter().map(|br| {
-            match br {
-                ty::BrAnon(i) => {
-                    // FIXME(eddyb) for some reason, `anonymize_late_bound_regions` starts at `1`.
-                    assert_ne!(i, 0);
-                    i - 1
-                },
-                _ => bug!("symbol_names: non-anonymized region `{:?}` in `{:?}`", br, value),
-            }
-        }).max().map_or(0, |max| max + 1);
+        let lifetimes = regions
+            .into_iter()
+            .map(|br| {
+                match br {
+                    ty::BrAnon(i) => {
+                        // FIXME(eddyb) for some reason, `anonymize_late_bound_regions` starts at `1`.
+                        assert_ne!(i, 0);
+                        i - 1
+                    }
+                    _ => bug!("symbol_names: non-anonymized region `{:?}` in `{:?}`", br, value),
+                }
+            })
+            .max()
+            .map_or(0, |max| max + 1);
 
         self.push_opt_integer_62("G", lifetimes as u64);
         lifetime_depths.end += lifetimes;
@@ -263,8 +262,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         let key = self.tcx.def_key(impl_def_id);
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
 
-        let mut param_env = self.tcx.param_env(impl_def_id)
-            .with_reveal_all();
+        let mut param_env = self.tcx.param_env(impl_def_id).with_reveal_all();
         if !substs.is_empty() {
             param_env = param_env.subst(self.tcx, substs);
         }
@@ -272,8 +270,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         match &mut impl_trait_ref {
             Some(impl_trait_ref) => {
                 assert_eq!(impl_trait_ref.self_ty(), self_ty);
-                *impl_trait_ref =
-                    self.tcx.normalize_erasing_regions(param_env, *impl_trait_ref);
+                *impl_trait_ref = self.tcx.normalize_erasing_regions(param_env, *impl_trait_ref);
                 self_ty = impl_trait_ref.self_ty();
             }
             None => {
@@ -289,10 +286,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         )
     }
 
-    fn print_region(
-        mut self,
-        region: ty::Region<'_>,
-    ) -> Result<Self::Region, Self::Error> {
+    fn print_region(mut self, region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
         let i = match *region {
             // Erased lifetimes use the index 0, for a
             // shorter mangling of `L_`.
@@ -318,10 +312,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_type(
-        mut self,
-        ty: Ty<'tcx>,
-    ) -> Result<Self::Type, Self::Error> {
+    fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         // Basic types, never cached (single-character).
         let basic_type = match ty.kind {
             ty::Bool => "b",
@@ -345,8 +336,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Never => "z",
 
             // Placeholders (should be demangled as `_`).
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) |
-            ty::Infer(_) | ty::Error => "p",
+            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error => "p",
 
             _ => "",
         };
@@ -362,14 +352,15 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
         match ty.kind {
             // Basic types, handled above.
-            ty::Bool | ty::Char | ty::Str |
-            ty::Int(_) | ty::Uint(_) | ty::Float(_) |
-            ty::Never => unreachable!(),
+            ty::Bool | ty::Char | ty::Str | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never => {
+                unreachable!()
+            }
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
 
             // Placeholders, also handled as part of basic types.
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) |
-            ty::Infer(_) | ty::Error => unreachable!(),
+            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error => {
+                unreachable!()
+            }
 
             ty::Ref(r, ty, mutbl) => {
                 self.push(match mutbl {
@@ -409,13 +400,13 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             }
 
             // Mangle all nominal types as paths.
-            ty::Adt(&ty::AdtDef { did: def_id, .. }, substs) |
-            ty::FnDef(def_id, substs) |
-            ty::Opaque(def_id, substs) |
-            ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs }) |
-            ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
-            ty::Closure(def_id, substs) |
-            ty::Generator(def_id, substs, _) => {
+            ty::Adt(&ty::AdtDef { did: def_id, .. }, substs)
+            | ty::FnDef(def_id, substs)
+            | ty::Opaque(def_id, substs)
+            | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::Closure(def_id, substs)
+            | ty::Generator(def_id, substs, _) => {
                 self = self.print_def_path(def_id, substs)?;
             }
             ty::Foreign(def_id) => {
@@ -460,9 +451,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                 self = r.print(self)?;
             }
 
-            ty::GeneratorWitness(_) => {
-                bug!("symbol_names: unexpected `GeneratorWitness`")
-            }
+            ty::GeneratorWitness(_) => bug!("symbol_names: unexpected `GeneratorWitness`"),
         }
 
         // Only cache types that do not refer to an enclosing
@@ -502,10 +491,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_const(
-        mut self,
-        ct: &'tcx ty::Const<'tcx>,
-    ) -> Result<Self::Const, Self::Error> {
+    fn print_const(mut self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         if let Some(&i) = self.compress.as_ref().and_then(|c| c.consts.get(&ct)) {
             return self.print_backref(i);
         }
@@ -514,8 +500,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         match ct.ty.kind {
             ty::Uint(_) => {}
             _ => {
-                bug!("symbol_names: unsupported constant of type `{}` ({:?})",
-                    ct.ty, ct);
+                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty, ct);
             }
         }
         self = ct.ty.print(self)?;
@@ -539,10 +524,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn path_crate(
-        mut self,
-        cnum: CrateNum,
-    ) -> Result<Self::Path, Self::Error> {
+    fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
         self.push("C");
         let fingerprint = self.tcx.crate_disambiguator(cnum).to_fingerprint();
         self.push_disambiguator(fingerprint.to_smaller_hash());
@@ -612,7 +594,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             print_prefix,
             ns,
             disambiguated_data.disambiguator as u64,
-            name.as_ref().map_or("", |s| &s[..])
+            name.as_ref().map_or("", |s| &s[..]),
         )
     }
     fn path_generic_args(
@@ -621,17 +603,13 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         // Don't print any regions if they're all erased.
-        let print_regions = args.iter().any(|arg| {
-            match arg.unpack() {
-                GenericArgKind::Lifetime(r) => *r != ty::ReErased,
-                _ => false,
-            }
+        let print_regions = args.iter().any(|arg| match arg.unpack() {
+            GenericArgKind::Lifetime(r) => *r != ty::ReErased,
+            _ => false,
         });
-        let args = args.iter().cloned().filter(|arg| {
-            match arg.unpack() {
-                GenericArgKind::Lifetime(_) => print_regions,
-                _ => true,
-            }
+        let args = args.iter().cloned().filter(|arg| match arg.unpack() {
+            GenericArgKind::Lifetime(_) => print_regions,
+            _ => true,
         });
 
         if args.clone().next().is_none() {

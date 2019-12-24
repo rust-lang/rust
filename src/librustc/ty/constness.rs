@@ -1,41 +1,38 @@
-use crate::ty::query::Providers;
-use crate::hir::def_id::DefId;
 use crate::hir;
-use crate::ty::TyCtxt;
-use syntax_pos::symbol::Symbol;
-use rustc_target::spec::abi::Abi;
+use crate::hir::def_id::DefId;
 use crate::hir::map::blocks::FnLikeNode;
+use crate::ty::query::Providers;
+use crate::ty::TyCtxt;
+use rustc_target::spec::abi::Abi;
 use syntax::attr;
+use syntax_pos::symbol::Symbol;
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Whether the `def_id` counts as const fn in your current crate, considering all active
     /// feature gates
     pub fn is_const_fn(self, def_id: DefId) -> bool {
-        self.is_const_fn_raw(def_id) && match self.is_unstable_const_fn(def_id) {
-            Some(feature_name) => {
-                // has a `rustc_const_unstable` attribute, check whether the user enabled the
-                // corresponding feature gate.
-                self.features()
-                    .declared_lib_features
-                    .iter()
-                    .any(|&(sym, _)| sym == feature_name)
-            },
-            // functions without const stability are either stable user written
-            // const fn or the user is using feature gates and we thus don't
-            // care what they do
-            None => true,
-        }
+        self.is_const_fn_raw(def_id)
+            && match self.is_unstable_const_fn(def_id) {
+                Some(feature_name) => {
+                    // has a `rustc_const_unstable` attribute, check whether the user enabled the
+                    // corresponding feature gate.
+                    self.features()
+                        .declared_lib_features
+                        .iter()
+                        .any(|&(sym, _)| sym == feature_name)
+                }
+                // functions without const stability are either stable user written
+                // const fn or the user is using feature gates and we thus don't
+                // care what they do
+                None => true,
+            }
     }
 
     /// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
     pub fn is_unstable_const_fn(self, def_id: DefId) -> Option<Symbol> {
         if self.is_const_fn_raw(def_id) {
             let const_stab = self.lookup_const_stability(def_id)?;
-            if const_stab.level.is_unstable() {
-                Some(const_stab.feature)
-            } else {
-                None
-            }
+            if const_stab.level.is_unstable() { Some(const_stab.feature) } else { None }
         } else {
             None
         }
@@ -54,29 +51,31 @@ impl<'tcx> TyCtxt<'tcx> {
             match self.lookup_const_stability(def_id) {
                 // `rustc_const_unstable` functions don't need to conform.
                 Some(&attr::ConstStability { ref level, .. }) if level.is_unstable() => false,
-                None => if let Some(stab) = self.lookup_stability(def_id) {
-                    if stab.level.is_stable() {
-                        self.sess.span_err(
-                            self.def_span(def_id),
-                            "stable const functions must have either `rustc_const_stable` or \
+                None => {
+                    if let Some(stab) = self.lookup_stability(def_id) {
+                        if stab.level.is_stable() {
+                            self.sess.span_err(
+                                self.def_span(def_id),
+                                "stable const functions must have either `rustc_const_stable` or \
                             `rustc_const_unstable` attribute",
-                        );
-                        // While we errored above, because we don't know if we need to conform, we
-                        // err on the "safe" side and require min_const_fn.
-                        true
+                            );
+                            // While we errored above, because we don't know if we need to conform, we
+                            // err on the "safe" side and require min_const_fn.
+                            true
+                        } else {
+                            // Unstable functions need not conform to min_const_fn.
+                            false
+                        }
                     } else {
-                        // Unstable functions need not conform to min_const_fn.
-                        false
+                        // Internal functions are forced to conform to min_const_fn.
+                        // Annotate the internal function with a const stability attribute if
+                        // you need to use unstable features.
+                        // Note: this is an arbitrary choice that does not affect stability or const
+                        // safety or anything, it just changes whether we need to annotate some
+                        // internal functions with `rustc_const_stable` or with `rustc_const_unstable`
+                        true
                     }
-                } else {
-                    // Internal functions are forced to conform to min_const_fn.
-                    // Annotate the internal function with a const stability attribute if
-                    // you need to use unstable features.
-                    // Note: this is an arbitrary choice that does not affect stability or const
-                    // safety or anything, it just changes whether we need to annotate some
-                    // internal functions with `rustc_const_stable` or with `rustc_const_unstable`
-                    true
-                },
+                }
                 // Everything else needs to conform, because it would be callable from
                 // other `min_const_fn` functions.
                 _ => true,
@@ -88,23 +87,25 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-
 pub fn provide(providers: &mut Providers<'_>) {
     /// Const evaluability whitelist is here to check evaluability at the
     /// top level beforehand.
     fn is_const_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> Option<bool> {
         match tcx.fn_sig(def_id).abi() {
-            Abi::RustIntrinsic |
-            Abi::PlatformIntrinsic => Some(tcx.lookup_const_stability(def_id).is_some()),
-            _ => None
+            Abi::RustIntrinsic | Abi::PlatformIntrinsic => {
+                Some(tcx.lookup_const_stability(def_id).is_some())
+            }
+            _ => None,
         }
     }
 
     /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
     /// said intrinsic is on the whitelist for being const callable.
     fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        let hir_id = tcx.hir().as_local_hir_id(def_id)
-                              .expect("Non-local call to local provider is_const_fn");
+        let hir_id = tcx
+            .hir()
+            .as_local_hir_id(def_id)
+            .expect("Non-local call to local provider is_const_fn");
 
         let node = tcx.hir().get(hir_id);
 
@@ -120,27 +121,30 @@ pub fn provide(providers: &mut Providers<'_>) {
     }
 
     fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        tcx.is_const_fn(def_id) && match tcx.lookup_const_stability(def_id) {
-            Some(stab) => {
-                if cfg!(debug_assertions) && stab.promotable {
-                    let sig = tcx.fn_sig(def_id);
-                    assert_eq!(
-                        sig.unsafety(),
-                        hir::Unsafety::Normal,
-                        "don't mark const unsafe fns as promotable",
-                        // https://github.com/rust-lang/rust/pull/53851#issuecomment-418760682
-                    );
+        tcx.is_const_fn(def_id)
+            && match tcx.lookup_const_stability(def_id) {
+                Some(stab) => {
+                    if cfg!(debug_assertions) && stab.promotable {
+                        let sig = tcx.fn_sig(def_id);
+                        assert_eq!(
+                            sig.unsafety(),
+                            hir::Unsafety::Normal,
+                            "don't mark const unsafe fns as promotable",
+                            // https://github.com/rust-lang/rust/pull/53851#issuecomment-418760682
+                        );
+                    }
+                    stab.promotable
                 }
-                stab.promotable
-            },
-            None => false,
-        }
+                None => false,
+            }
     }
 
     fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        tcx.is_const_fn(def_id) &&
-            tcx.lookup_const_stability(def_id)
-                .map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)
+        tcx.is_const_fn(def_id)
+            && tcx
+                .lookup_const_stability(def_id)
+                .map(|stab| stab.allow_const_fn_ptr)
+                .unwrap_or(false)
     }
 
     *providers = Providers {

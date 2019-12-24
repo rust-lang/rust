@@ -10,7 +10,7 @@ pub(crate) unsafe fn rel_ptr_mut<T>(offset: u64) -> *mut T {
     (image_base() + offset) as *mut T
 }
 
-extern {
+extern "C" {
     static ENCLAVE_SIZE: usize;
 }
 
@@ -33,8 +33,7 @@ pub fn image_base() -> u64 {
 pub fn is_enclave_range(p: *const u8, len: usize) -> bool {
     let start = p as u64;
     let end = start + (len as u64);
-    start >= image_base() &&
-        end <= image_base() + (unsafe { ENCLAVE_SIZE } as u64) // unsafe ok: link-time constant
+    start >= image_base() && end <= image_base() + (unsafe { ENCLAVE_SIZE } as u64) // unsafe ok: link-time constant
 }
 
 /// Returns `true` if the specified memory range is in userspace.
@@ -44,6 +43,5 @@ pub fn is_enclave_range(p: *const u8, len: usize) -> bool {
 pub fn is_user_range(p: *const u8, len: usize) -> bool {
     let start = p as u64;
     let end = start + (len as u64);
-    end <= image_base() ||
-        start >= image_base() + (unsafe { ENCLAVE_SIZE } as u64) // unsafe ok: link-time constant
+    end <= image_base() || start >= image_base() + (unsafe { ENCLAVE_SIZE } as u64) // unsafe ok: link-time constant
 }

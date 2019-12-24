@@ -1,14 +1,14 @@
 use rustc_data_structures::sync::Lrc;
 use rustc_parse::lexer::StringReader;
-use syntax::token::{self, Token, TokenKind};
 use syntax::sess::ParseSess;
-use syntax::source_map::{SourceMap, FilePathMapping};
+use syntax::source_map::{FilePathMapping, SourceMap};
+use syntax::token::{self, Token, TokenKind};
 use syntax::util::comments::is_doc_comment;
 use syntax::with_default_globals;
 use syntax_pos::symbol::Symbol;
 use syntax_pos::{BytePos, Span};
 
-use errors::{Handler, emitter::EmitterWriter};
+use errors::{emitter::EmitterWriter, Handler};
 use std::io;
 use std::path::PathBuf;
 
@@ -22,17 +22,11 @@ fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
         None,
         false,
     );
-    ParseSess::with_span_handler(
-        Handler::with_emitter(true, None, Box::new(emitter)),
-        sm,
-    )
+    ParseSess::with_span_handler(Handler::with_emitter(true, None, Box::new(emitter)), sm)
 }
 
 // Creates a string reader for the given string.
-fn setup<'a>(sm: &SourceMap,
-                sess: &'a ParseSess,
-                teststr: String)
-                -> StringReader<'a> {
+fn setup<'a>(sm: &SourceMap, sess: &'a ParseSess, teststr: String) -> StringReader<'a> {
     let sf = sm.new_source_file(PathBuf::from(teststr.clone()).into(), teststr);
     StringReader::new(sess, sf, None)
 }
@@ -50,20 +44,14 @@ fn t1() {
         assert_eq!(string_reader.next_token(), token::Comment);
         assert_eq!(string_reader.next_token(), token::Whitespace);
         let tok1 = string_reader.next_token();
-        let tok2 = Token::new(
-            mk_ident("fn"),
-            Span::with_root_ctxt(BytePos(21), BytePos(23)),
-        );
+        let tok2 = Token::new(mk_ident("fn"), Span::with_root_ctxt(BytePos(21), BytePos(23)));
         assert_eq!(tok1.kind, tok2.kind);
         assert_eq!(tok1.span, tok2.span);
         assert_eq!(string_reader.next_token(), token::Whitespace);
         // Read another token.
         let tok3 = string_reader.next_token();
         assert_eq!(string_reader.pos.clone(), BytePos(28));
-        let tok4 = Token::new(
-            mk_ident("main"),
-            Span::with_root_ctxt(BytePos(24), BytePos(28)),
-        );
+        let tok4 = Token::new(mk_ident("main"), Span::with_root_ctxt(BytePos(24), BytePos(28)));
         assert_eq!(tok3.kind, tok4.kind);
         assert_eq!(tok3.span, tok4.span);
 
@@ -142,10 +130,7 @@ fn character_a() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(
-            setup(&sm, &sh, "'a'".to_string()).next_token(),
-            mk_lit(token::Char, "a", None),
-        );
+        assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token(), mk_lit(token::Char, "a", None),);
     })
 }
 
@@ -154,10 +139,7 @@ fn character_space() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(
-            setup(&sm, &sh, "' '".to_string()).next_token(),
-            mk_lit(token::Char, " ", None),
-        );
+        assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token(), mk_lit(token::Char, " ", None),);
     })
 }
 
@@ -213,7 +195,7 @@ fn literal_suffixes() {
                     setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
                     mk_lit(token::$tok_type, $tok_contents, None),
                 );
-            }}
+            }};
         }
 
         test!("'a'", Char, "a");

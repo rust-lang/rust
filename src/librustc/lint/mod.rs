@@ -23,26 +23,27 @@ pub use self::LintSource::*;
 
 use rustc_data_structures::sync;
 
+use crate::hir;
 use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
-use crate::hir;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::session::{Session, DiagnosticMessageId};
-use crate::ty::TyCtxt;
+use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::query::Providers;
+use crate::ty::TyCtxt;
 use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use syntax::ast;
-use syntax::source_map::{MultiSpan, ExpnKind, DesugaringKind};
+use syntax::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use syntax::symbol::Symbol;
 use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
 
-pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
-                        check_crate, check_ast_crate, late_lint_mod, CheckLintNameResult,
-                        BufferedEarlyLint,};
+pub use crate::lint::context::{
+    check_ast_crate, check_crate, late_lint_mod, BufferedEarlyLint, CheckLintNameResult,
+    EarlyContext, LateContext, LintContext, LintStore,
+};
 
-pub use rustc_session::lint::{Lint, LintId, Level, FutureIncompatibleInfo};
+pub use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintId};
 
 /// Declares a static `LintArray` and return it as an expression.
 #[macro_export]
@@ -351,8 +352,8 @@ macro_rules! declare_combined_early_lint_pass {
 
 /// A lint pass boxed up as a trait object.
 pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
-pub type LateLintPassObject = Box<dyn for<'a, 'tcx> LateLintPass<'a, 'tcx> + sync::Send
-                                                                           + sync::Sync + 'static>;
+pub type LateLintPassObject =
+    Box<dyn for<'a, 'tcx> LateLintPass<'a, 'tcx> + sync::Send + sync::Sync + 'static>;
 
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable)]
@@ -371,11 +372,11 @@ pub enum LintSource {
 pub type LevelSource = (Level, LintSource);
 
 pub mod builtin;
-pub mod internal;
 mod context;
+pub mod internal;
 mod levels;
 
-pub use self::levels::{LintLevelSets, LintLevelMap};
+pub use self::levels::{LintLevelMap, LintLevelSets};
 
 #[derive(Default)]
 pub struct LintBuffer {
@@ -383,18 +384,20 @@ pub struct LintBuffer {
 }
 
 impl LintBuffer {
-    pub fn add_lint(&mut self,
-                    lint: &'static Lint,
-                    id: ast::NodeId,
-                    sp: MultiSpan,
-                    msg: &str,
-                    diagnostic: BuiltinLintDiagnostics) {
+    pub fn add_lint(
+        &mut self,
+        lint: &'static Lint,
+        id: ast::NodeId,
+        sp: MultiSpan,
+        msg: &str,
+        diagnostic: BuiltinLintDiagnostics,
+    ) {
         let early_lint = BufferedEarlyLint {
             lint_id: LintId::of(lint),
             ast_id: id,
             span: sp,
             msg: msg.to_string(),
-            diagnostic
+            diagnostic,
         };
         let arr = self.map.entry(id).or_default();
         if !arr.contains(&early_lint) {
@@ -428,22 +431,20 @@ impl LintBuffer {
     }
 }
 
-pub fn struct_lint_level<'a>(sess: &'a Session,
-                             lint: &'static Lint,
-                             level: Level,
-                             src: LintSource,
-                             span: Option<MultiSpan>,
-                             msg: &str)
-    -> DiagnosticBuilder<'a>
-{
+pub fn struct_lint_level<'a>(
+    sess: &'a Session,
+    lint: &'static Lint,
+    level: Level,
+    src: LintSource,
+    span: Option<MultiSpan>,
+    msg: &str,
+) -> DiagnosticBuilder<'a> {
     let mut err = match (level, span) {
         (Level::Allow, _) => return sess.diagnostic().struct_dummy(),
         (Level::Warn, Some(span)) => sess.struct_span_warn(span, msg),
         (Level::Warn, None) => sess.struct_warn(msg),
-        (Level::Deny, Some(span)) |
-        (Level::Forbid, Some(span)) => sess.struct_span_err(span, msg),
-        (Level::Deny, None) |
-        (Level::Forbid, None) => sess.struct_err(msg),
+        (Level::Deny, Some(span)) | (Level::Forbid, Some(span)) => sess.struct_span_err(span, msg),
+        (Level::Deny, None) | (Level::Forbid, None) => sess.struct_err(msg),
     };
 
     // Check for future incompatibility lints and issue a stronger warning.
@@ -475,7 +476,8 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             sess.diag_note_once(
                 &mut err,
                 DiagnosticMessageId::from(lint),
-                &format!("`#[{}({})]` on by default", level.as_str(), name));
+                &format!("`#[{}({})]` on by default", level.as_str(), name),
+            );
         }
         LintSource::CommandLine(lint_flag_val) => {
             let flag = match level {
@@ -489,29 +491,43 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
                 sess.diag_note_once(
                     &mut err,
                     DiagnosticMessageId::from(lint),
-                    &format!("requested on the command line with `{} {}`",
-                             flag, hyphen_case_lint_name));
+                    &format!(
+                        "requested on the command line with `{} {}`",
+                        flag, hyphen_case_lint_name
+                    ),
+                );
             } else {
                 let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
                 sess.diag_note_once(
                     &mut err,
                     DiagnosticMessageId::from(lint),
-                    &format!("`{} {}` implied by `{} {}`",
-                             flag, hyphen_case_lint_name, flag,
-                             hyphen_case_flag_val));
+                    &format!(
+                        "`{} {}` implied by `{} {}`",
+                        flag, hyphen_case_lint_name, flag, hyphen_case_flag_val
+                    ),
+                );
             }
         }
         LintSource::Node(lint_attr_name, src, reason) => {
             if let Some(rationale) = reason {
                 err.note(&rationale.as_str());
             }
-            sess.diag_span_note_once(&mut err, DiagnosticMessageId::from(lint),
-                                     src, "lint level defined here");
+            sess.diag_span_note_once(
+                &mut err,
+                DiagnosticMessageId::from(lint),
+                src,
+                "lint level defined here",
+            );
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
-                sess.diag_note_once(&mut err, DiagnosticMessageId::from(lint),
-                                    &format!("`#[{}({})]` implied by `#[{}({})]`",
-                                             level_str, name, level_str, lint_attr_name));
+                sess.diag_note_once(
+                    &mut err,
+                    DiagnosticMessageId::from(lint),
+                    &format!(
+                        "`#[{}({})]` implied by `#[{}({})]`",
+                        level_str, name, level_str, lint_attr_name
+                    ),
+                );
             }
         }
     }
@@ -519,8 +535,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     err.code(DiagnosticId::Lint(name));
 
     if let Some(future_incompatible) = future_incompatible {
-        const STANDARD_MESSAGE: &str =
-            "this was previously accepted by the compiler but is being phased out; \
+        const STANDARD_MESSAGE: &str = "this was previously accepted by the compiler but is being phased out; \
              it will become a hard error";
 
         let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
@@ -536,13 +551,12 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
         } else {
             format!("{} in a future release!", STANDARD_MESSAGE)
         };
-        let citation = format!("for more information, see {}",
-                               future_incompatible.reference);
+        let citation = format!("for more information, see {}", future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
     }
 
-    return err
+    return err;
 }
 
 pub fn maybe_lint_level_root(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
@@ -563,7 +577,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     let push = builder.levels.push(&krate.attrs, &store);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     for macro_def in krate.exported_macros {
-       builder.levels.register_id(macro_def.hir_id);
+        builder.levels.register_id(macro_def.hir_id);
     }
     intravisit::walk_crate(&mut builder, krate);
     builder.levels.pop(push);
@@ -578,11 +592,9 @@ struct LintLevelMapBuilder<'a, 'tcx> {
 }
 
 impl LintLevelMapBuilder<'_, '_> {
-    fn with_lint_attrs<F>(&mut self,
-                          id: hir::HirId,
-                          attrs: &[ast::Attribute],
-                          f: F)
-        where F: FnOnce(&mut Self)
+    fn with_lint_attrs<F>(&mut self, id: hir::HirId, attrs: &[ast::Attribute], f: F)
+    where
+        F: FnOnce(&mut Self),
     {
         let push = self.levels.push(attrs, self.store);
         if push.changed {
@@ -628,10 +640,12 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         })
     }
 
-    fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant<'tcx>,
-                     g: &'tcx hir::Generics,
-                     item_id: hir::HirId) {
+    fn visit_variant(
+        &mut self,
+        v: &'tcx hir::Variant<'tcx>,
+        g: &'tcx hir::Generics,
+        item_id: hir::HirId,
+    ) {
         self.with_lint_attrs(v.id, &v.attrs, |builder| {
             intravisit::walk_variant(builder, v, g, item_id);
         })
