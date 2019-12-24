@@ -4,7 +4,7 @@ use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepConstructor, DepNode};
 use crate::hir::def::{DefKind, Export, Res};
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use crate::hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
 use crate::hir::{self, HirId, ItemKind, ItemLocalId, Node, TraitCandidate};
@@ -46,7 +46,7 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet};
+use crate::util::nodemap::{ItemLocalMap, ItemLocalSet};
 
 use arena::SyncDroplessArena;
 use errors::DiagnosticBuilder;

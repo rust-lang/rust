@@ -157,6 +157,8 @@ impl DefId {
 impl rustc_serialize::UseSpecializedEncodable for DefId {}
 impl rustc_serialize::UseSpecializedDecodable for DefId {}
 
+rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefId);
+
 /// A LocalDefId is equivalent to a DefId with `krate == LOCAL_CRATE`. Since
 /// we encode this information in the type, we can ensure at compile time that
 /// no DefIds from upstream crates get thrown into the mix. There are quite a

@@ -1,10 +1,9 @@
 //! Contains information about "passes", used to modify crate information during the documentation
 //! process.
 
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, DefIdSet};
 use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
-use rustc::util::nodemap::DefIdSet;
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use std::mem;
 use std::ops::Range;

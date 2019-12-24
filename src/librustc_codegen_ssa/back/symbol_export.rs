@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry::*;
 use std::sync::Arc;
 
 use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::Node;
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
@@ -11,7 +11,6 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::Instance;
 use rustc::ty::{SymbolName, TyCtxt};
-use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;

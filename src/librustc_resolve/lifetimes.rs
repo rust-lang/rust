@@ -7,7 +7,7 @@
 
 use errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
 use rustc::hir::{self, GenericParamKind, LifetimeParamKind};
@@ -16,7 +16,7 @@ use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
 use rustc::session::Session;
 use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
-use rustc::util::nodemap::{DefIdMap, HirIdMap, HirIdSet};
+use rustc::util::nodemap::{HirIdMap, HirIdSet};
 use rustc::{bug, span_bug};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::symbol::{kw, sym};

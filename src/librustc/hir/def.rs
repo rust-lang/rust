@@ -1,9 +1,8 @@
 use self::Namespace::*;
 
 use crate::hir;
-use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::hir::def_id::{DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ty;
-use crate::util::nodemap::DefIdMap;
 
 use rustc_macros::HashStable;
 use rustc_span::hygiene::MacroKind;

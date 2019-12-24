@@ -92,7 +92,7 @@ use crate::middle::lang_items;
 use crate::namespace::Namespace;
 use errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::def::{CtorOf, DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
@@ -145,7 +145,7 @@ use crate::session::config::EntryFnType;
 use crate::session::Session;
 use crate::util::captures::Captures;
 use crate::util::common::{indenter, ErrorReported};
-use crate::util::nodemap::{DefIdMap, DefIdSet, HirIdMap};
+use crate::util::nodemap::HirIdMap;
 use crate::TypeAndSubsts;
 
 use self::autoderef::Autoderef;

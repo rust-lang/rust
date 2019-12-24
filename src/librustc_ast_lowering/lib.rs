@@ -37,7 +37,7 @@
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
-use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{DefId, DefIdMap, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::map::{DefKey, DefPathData, Definitions};
 use rustc::hir::{self, ConstArg, GenericArg, ParamName};
 use rustc::lint;
@@ -47,7 +47,6 @@ use rustc::session::config::nightly_options;
 use rustc::session::Session;
 use rustc::util::captures::Captures;
 use rustc::util::common::FN_OUTPUT_NAME;
-use rustc::util::nodemap::DefIdMap;
 use rustc::{bug, span_bug};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
