@@ -134,11 +134,30 @@ crate fn placeholder_type_error(
     suggest: bool,
 ) {
     if !placeholder_types.is_empty() {
-        let mut sugg: Vec<_> = placeholder_types.iter().map(|sp| (*sp, "T".to_string())).collect();
+        let possible_names = ["T", "K", "L", "A", "B", "C"];
+        let used_names = generics.iter().filter_map(|p| match p.name {
+            hir::ParamName::Plain(ident) => Some(ident.name),
+            _ => None,
+        }).collect::<Vec<_>>();
+
+        let mut type_name = "ParamName";
+        for name in &possible_names {
+            if !used_names.contains(&Symbol::intern(name)) {
+                type_name = name;
+                break;
+            }
+        }
+        
+        let mut sugg: Vec<_> = placeholder_types.iter()
+            .map(|sp| (*sp, type_name.to_string()))
+            .collect();
         if generics.is_empty() {
-            sugg.push((ident_span.shrink_to_hi(), "<T>".to_string()));
+            sugg.push((ident_span.shrink_to_hi(), format!("<{}>", type_name)));
         } else {
-            sugg.push((generics.iter().last().unwrap().span.shrink_to_hi(), ", T".to_string()));
+            sugg.push((
+                generics.iter().last().unwrap().span.shrink_to_hi(),
+                format!(", {}", type_name),
+            ));
         }
         let mut err = struct_span_err!(
             tcx.sess,

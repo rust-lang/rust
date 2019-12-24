@@ -19,6 +19,12 @@ static TEST5: (_, _) = (1, 2);
 fn test6(_: _) { }
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
+fn test6_b<T>(_: _, _: T) { }
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
+fn test6_c<T, K, L, A, B>(_: _, _: (T, K, L, A, B)) { }
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
 fn test7(x: _) { let _x: usize = x; }
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
