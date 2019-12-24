@@ -22,7 +22,7 @@ fn dent<C:BoxCar>(c: C, color: C::Color) {
 
 fn dent_object<COLOR>(c: dyn BoxCar<Color=COLOR>) {
     //~^ ERROR ambiguous associated type
-    //~| ERROR the value of the associated types `Color` (from trait `Vehicle`), `Color` (from
+    //~| ERROR the value of the associated types
 }
 
 fn paint<C:BoxCar>(c: C, d: C::Color) {
@@ -30,8 +30,8 @@ fn paint<C:BoxCar>(c: C, d: C::Color) {
 }
 
 fn dent_object_2<COLOR>(c: dyn BoxCar) where <dyn BoxCar as Vehicle>::Color = COLOR {
-    //~^ ERROR the value of the associated types `Color` (from trait `Vehicle`), `Color` (from
-    //~| ERROR equality constraints are not yet supported in where clauses
+    //~^ ERROR the value of the associated types
+    //~| ERROR equality constraints are not yet supported in `where` clauses
 }
 
 fn dent_object_3<X, COLOR>(c: X)

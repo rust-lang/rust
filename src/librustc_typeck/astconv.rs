@@ -1686,6 +1686,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             },
             _ => {}
         }
+        names.sort();
+        trait_bound_spans.sort();
         let mut err = struct_span_err!(
             tcx.sess,
             trait_bound_spans,

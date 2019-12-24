@@ -9,8 +9,8 @@ LL | type Foo<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs>;
    |                     first non-auto trait
    |                     trait alias used in trait object type (first use)
 
-error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Sub`) must be specified
-  --> $DIR/missing-associated-types.rs:12:52
+error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Sub`) must be specified
+  --> $DIR/missing-associated-types.rs:12:21
    |
 LL |     type A;
    |     ------- `A` defined here
@@ -38,8 +38,8 @@ LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
    |                     first non-auto trait
    |                     trait alias used in trait object type (first use)
 
-error[E0191]: the value of the associated types `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Sub`), `A` (from trait `Z`), `B` (from trait `Z`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Add`) must be specified
-  --> $DIR/missing-associated-types.rs:15:43
+error[E0191]: the value of the associated types `A` (from trait `Z`), `B` (from trait `Z`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Sub`) must be specified
+  --> $DIR/missing-associated-types.rs:15:21
    |
 LL |     type A;
    |     ------- `A` defined here
@@ -74,8 +74,8 @@ LL | type Baz<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Y<Rhs>;
    |                     first non-auto trait
    |                     trait alias used in trait object type (first use)
 
-error[E0191]: the value of the associated types `Output` (from trait `std::ops::Sub`), `A` (from trait `Y`), `Output` (from trait `std::ops::Add`) must be specified
-  --> $DIR/missing-associated-types.rs:18:32
+error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Sub`) must be specified
+  --> $DIR/missing-associated-types.rs:18:21
    |
 LL |     type A;
    |     ------- `A` defined here
@@ -102,8 +102,8 @@ LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
    |                     first non-auto trait
    |                     trait alias used in trait object type (first use)
 
-error[E0191]: the value of the associated types `Output` (from trait `std::ops::Sub`), `Output` (from trait `std::ops::Add`) must be specified
-  --> $DIR/missing-associated-types.rs:21:32
+error[E0191]: the value of the associated types `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Sub`) must be specified
+  --> $DIR/missing-associated-types.rs:21:21
    |
 LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
    |                     ^^^^^^^^   ^^^^^^^^ associated type `Output` must be specified
@@ -115,7 +115,7 @@ help: specify the associated types
 LL | type Bat<Rhs> = dyn Add<Rhs, Output = Type> + Sub<Rhs, Output = Type> + Fine<Rhs>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0191]: the value of the associated types `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Div`) must be specified
+error[E0191]: the value of the associated types `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Mul`) must be specified
   --> $DIR/missing-associated-types.rs:24:21
    |
 LL | type Bal<Rhs> = dyn X<Rhs>;

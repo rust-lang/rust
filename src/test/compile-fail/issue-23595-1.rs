@@ -6,7 +6,7 @@ trait Hierarchy {
     type Value;
     type ChildKey;
     type Children = dyn Index<Self::ChildKey, Output=dyn Hierarchy>;
-    //~^ ERROR: the value of the associated types `Value` (from trait `Hierarchy`), `ChildKey`
+    //~^ ERROR: the value of the associated types
 
     fn data(&self) -> Option<(Self::Value, Self::Children)>;
 }
