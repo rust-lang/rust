@@ -291,27 +291,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "S_IFLNK"
         };
 
-        let mode = this.eval_libc(mode_name)?.to_u32()?;
+        let mode = this.eval_libc(mode_name)?.to_bits(Size::from_bits(16))? as u16;
 
         let size = metadata.len();
 
-        let (access_sec, access_nsec) = extract_sec_and_nsec(
-            metadata.accessed(),
-            &mut 0,
-            0,
-        )?;
-
-        let (created_sec, created_nsec) = extract_sec_and_nsec(
-            metadata.created(),
-            &mut 0,
-            0,
-        )?;
-
-        let (modified_sec, modified_nsec) = extract_sec_and_nsec(
-            metadata.modified(),
-            &mut 0,
-            0,
-        )?;
+        let (access_sec, access_nsec) = extract_sec_and_nsec(metadata.accessed(), &mut 0, 0)?;
+        let (created_sec, created_nsec) = extract_sec_and_nsec(metadata.created(), &mut 0, 0)?;
+        let (modified_sec, modified_nsec) = extract_sec_and_nsec(metadata.modified(), &mut 0, 0)?;
 
         let dev_t_layout = this.libc_ty_layout("dev_t")?;
         let mode_t_layout = this.libc_ty_layout("mode_t")?;
