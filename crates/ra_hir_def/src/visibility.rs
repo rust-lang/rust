@@ -1,3 +1,5 @@
+//! Defines hir-level representation of visibility (e.g. `pub` and `pub(crate)`).
+
 use std::sync::Arc;
 
 use either::Either;
