@@ -49,6 +49,28 @@ marks an item as stabilized. To do this, follow the instructions in
 
 Note that stable functions may use unstable things in their body.
 
+## rustc_const_unstable
+
+The `#[rustc_const_unstable(feature = "foo", issue = "1234", reason = "lorem ipsum")]`
+has the same interface as the `unstable` attribute. It is used to mark
+`const fn` as having their constness be unstable. This allows you to make a
+function stable without stabilizing its constness or even just marking an existing
+stable function as `const fn` without instantly stabilizing the `const fn`ness.
+
+Furthermore this attribute is needed to mark an intrinsic as `const fn`, because
+there's no way to add `const` to functions in `extern` blocks for now.
+
+## rustc_const_stable
+
+The `#[stable(feature = "foo", "since = "1.420.69")]` attribute explicitly marks
+a `const fn` as having its constness be `stable`. This attribute can make sense
+even on an `unstable` function, if that function is called from another
+`rustc_const_stable` function.
+
+Furthermore this attribute is needed to mark an intrinsic as callable from
+`rustc_const_stable` functions.
+
+
 ## allow_internal_unstable
 
 Macros, compiler desugarings and `const fn`s expose their bodies to the call
