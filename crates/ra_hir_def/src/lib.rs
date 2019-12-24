@@ -36,6 +36,8 @@ pub mod nameres;
 pub mod src;
 pub mod child_by_source;
 
+pub mod visibility;
+
 #[cfg(test)]
 mod test_db;
 #[cfg(test)]
@@ -321,6 +323,29 @@ impl_froms!(
     TypeAliasId,
     MacroDefId,
     ImplId
+);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum VisibilityDefId {
+    ModuleId(ModuleId),
+    StructFieldId(StructFieldId),
+    AdtId(AdtId),
+    FunctionId(FunctionId),
+    StaticId(StaticId),
+    ConstId(ConstId),
+    TraitId(TraitId),
+    TypeAliasId(TypeAliasId),
+}
+
+impl_froms!(
+    VisibilityDefId: ModuleId,
+    StructFieldId,
+    AdtId(StructId, EnumId, UnionId),
+    StaticId,
+    ConstId,
+    FunctionId,
+    TraitId,
+    TypeAliasId
 );
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

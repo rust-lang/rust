@@ -413,3 +413,32 @@ impl ast::TraitDef {
         self.syntax().children_with_tokens().any(|t| t.kind() == T![auto])
     }
 }
+
+pub enum VisibilityKind {
+    In(ast::Path),
+    PubCrate,
+    PubSuper,
+    Pub,
+}
+
+impl ast::Visibility {
+    pub fn kind(&self) -> VisibilityKind {
+        if let Some(path) = children(self).next() {
+            VisibilityKind::In(path)
+        } else if self.is_pub_crate() {
+            VisibilityKind::PubCrate
+        } else if self.is_pub_super() {
+            VisibilityKind::PubSuper
+        } else {
+            VisibilityKind::Pub
+        }
+    }
+
+    fn is_pub_crate(&self) -> bool {
+        self.syntax().children_with_tokens().any(|it| it.kind() == T![crate])
+    }
+
+    fn is_pub_super(&self) -> bool {
+        self.syntax().children_with_tokens().any(|it| it.kind() == T![super])
+    }
+}

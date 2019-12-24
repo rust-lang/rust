@@ -14,9 +14,10 @@ use crate::{
     generics::GenericParams,
     lang_item::{LangItemTarget, LangItems},
     nameres::{raw::RawItems, CrateDefMap},
+    visibility::Visibility,
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
     GenericDefId, ImplId, ImplLoc, ModuleId, StaticId, StaticLoc, StructId, StructLoc, TraitId,
-    TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
+    TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VisibilityDefId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -89,6 +90,9 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
 
     #[salsa::invoke(Attrs::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
+
+    #[salsa::invoke(Visibility::visibility_query)]
+    fn visibility(&self, def: VisibilityDefId) -> Visibility;
 
     #[salsa::invoke(LangItems::module_lang_items_query)]
     fn module_lang_items(&self, module: ModuleId) -> Option<Arc<LangItems>>;
