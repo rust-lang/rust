@@ -21,6 +21,7 @@ use crate::{
     nameres::{BuiltinShadowMode, CrateDefMap},
     path::{ModPath, PathKind},
     per_ns::PerNs,
+    visibility::{ResolvedVisibility, Visibility},
     AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
 };
 
@@ -62,6 +63,32 @@ impl ResolvePathResult {
 impl CrateDefMap {
     pub(super) fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs {
         self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it))
+    }
+
+    pub(crate) fn resolve_visibility(
+        &self,
+        db: &impl DefDatabase,
+        original_module: LocalModuleId,
+        visibility: &Visibility,
+    ) -> Option<ResolvedVisibility> {
+        match visibility {
+            Visibility::Module(path) => {
+                let (result, remaining) =
+                    self.resolve_path(db, original_module, &path, BuiltinShadowMode::Module);
+                if remaining.is_some() {
+                    return None;
+                }
+                let types = result.take_types()?;
+                match types {
+                    ModuleDefId::ModuleId(m) => Some(ResolvedVisibility::Module(m)),
+                    _ => {
+                        // error: visibility needs to refer to module
+                        None
+                    }
+                }
+            }
+            Visibility::Public => Some(ResolvedVisibility::Public),
+        }
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change

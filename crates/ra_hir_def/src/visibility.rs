@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use either::Either;
 
-use hir_expand::InFile;
+use hir_expand::{hygiene::Hygiene, InFile};
 use ra_syntax::ast::{self, VisibilityOwner};
 
 use crate::{
@@ -73,14 +73,20 @@ impl Visibility {
     }
 
     fn from_ast(db: &impl DefDatabase, node: InFile<Option<ast::Visibility>>) -> Visibility {
-        let file_id = node.file_id;
-        let node = match node.value {
+        Self::from_ast_with_hygiene(node.value, &Hygiene::new(db, node.file_id))
+    }
+
+    pub(crate) fn from_ast_with_hygiene(
+        node: Option<ast::Visibility>,
+        hygiene: &Hygiene,
+    ) -> Visibility {
+        let node = match node {
             None => return Visibility::private(),
             Some(node) => node,
         };
         match node.kind() {
             ast::VisibilityKind::In(path) => {
-                let path = ModPath::from_src(path, &hir_expand::hygiene::Hygiene::new(db, file_id));
+                let path = ModPath::from_src(path, hygiene);
                 let path = match path {
                     None => return Visibility::private(),
                     Some(path) => path,

@@ -238,15 +238,12 @@ impl Resolver {
         visibility: &Visibility,
     ) -> Option<ResolvedVisibility> {
         match visibility {
-            Visibility::Module(mod_path) => {
-                let resolved = self.resolve_module_path_in_items(db, &mod_path).take_types()?;
-                match resolved {
-                    ModuleDefId::ModuleId(m) => Some(ResolvedVisibility::Module(m)),
-                    _ => {
-                        // error: visibility needs to refer to module
-                        None
-                    }
-                }
+            Visibility::Module(_) => {
+                let (item_map, module) = match self.module() {
+                    Some(it) => it,
+                    None => return None,
+                };
+                item_map.resolve_visibility(db, module, visibility)
             }
             Visibility::Public => Some(ResolvedVisibility::Public),
         }
