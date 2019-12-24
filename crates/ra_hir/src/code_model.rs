@@ -644,6 +644,17 @@ impl_froms!(
     Const
 );
 
+impl GenericDef {
+    pub fn params(self, db: &impl HirDatabase) -> Vec<TypeParam> {
+        let generics: Arc<hir_def::generics::GenericParams> = db.generic_params(self.into());
+        generics
+            .types
+            .iter()
+            .map(|(local_id, _)| TypeParam { id: TypeParamId { parent: self.into(), local_id } })
+            .collect()
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Local {
     pub(crate) parent: DefWithBody,
