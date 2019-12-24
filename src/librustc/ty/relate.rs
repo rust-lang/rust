@@ -537,8 +537,8 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                         Ok(ConstValue::Scalar(a_val))
                     } else if let ty::FnPtr(_) = a.ty.kind {
                         let alloc_map = tcx.alloc_map.lock();
-                        let a_instance = alloc_map.unwrap_fn(a_val.to_ptr().unwrap().alloc_id);
-                        let b_instance = alloc_map.unwrap_fn(b_val.to_ptr().unwrap().alloc_id);
+                        let a_instance = alloc_map.unwrap_fn(a_val.assert_ptr().alloc_id);
+                        let b_instance = alloc_map.unwrap_fn(b_val.assert_ptr().alloc_id);
                         if a_instance == b_instance {
                             Ok(ConstValue::Scalar(a_val))
                         } else {
