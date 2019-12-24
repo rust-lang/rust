@@ -177,6 +177,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
@@ -199,7 +200,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // Some functions we support even if they are non-const -- but avoid testing
                 // that for const fn!  We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
-                return if ecx.hook_panic_fn(instance, args, ret)? {
+                return if ecx.hook_panic_fn(span, instance, args)? {
                     Ok(None)
                 } else {
                     throw_unsup_format!("calling non-const function `{}`", instance)
