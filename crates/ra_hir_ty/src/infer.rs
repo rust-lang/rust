@@ -37,8 +37,8 @@ use test_utils::tested_by;
 use super::{
     primitive::{FloatTy, IntTy},
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
-    TypeWalk, Uncertain,
+    ApplicationTy, GenericPredicate, InEnvironment, ProjectionTy, Substs, TraitEnvironment,
+    TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
 };
 use crate::{db::HirDatabase, infer::diagnostics::InferenceDiagnostic};
 
@@ -379,6 +379,25 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     ) -> Ty {
         match assoc_ty {
             Some(res_assoc_ty) => {
+                // FIXME:
+                // Check if inner_ty is is `impl Trait` and contained input TypeAlias id
+                // this is a workaround while Chalk assoc type projection doesn't always work yet,
+                // but once that is fixed I don't think we should keep this
+                // (we'll probably change how associated types are resolved anyway)
+                if let Ty::Opaque(ref predicates) = inner_ty {
+                    for p in predicates.iter() {
+                        if let GenericPredicate::Projection(projection) = p {
+                            if projection.projection_ty.associated_ty == res_assoc_ty {
+                                if let ty_app!(_, params) = &projection.ty {
+                                    if params.len() == 0 {
+                                        return projection.ty.clone();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 let ty = self.table.new_type_var();
                 let builder = Substs::build_for_def(self.db, res_assoc_ty)
                     .push(inner_ty)

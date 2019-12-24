@@ -221,6 +221,10 @@ impl ast::FnDef {
             .and_then(|it| it.into_token())
             .filter(|it| it.kind() == T![;])
     }
+
+    pub fn is_async(&self) -> bool {
+        self.syntax().children_with_tokens().any(|it| it.kind() == T![async])
+    }
 }
 
 impl ast::LetStmt {

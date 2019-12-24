@@ -130,6 +130,14 @@ impl Path {
         Path { type_anchor: None, mod_path: name_ref.as_name().into(), generic_args: vec![None] }
     }
 
+    /// Converts a known mod path to `Path`.
+    pub(crate) fn from_known_path(
+        path: ModPath,
+        generic_args: Vec<Option<Arc<GenericArgs>>>,
+    ) -> Path {
+        Path { type_anchor: None, mod_path: path, generic_args }
+    }
+
     pub fn kind(&self) -> &PathKind {
         &self.mod_path.kind
     }

@@ -38,6 +38,63 @@ mod future {
 }
 
 #[test]
+fn infer_async() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+
+async fn foo() -> u64 {
+    128
+}
+
+fn test() {
+    let r = foo();
+    let v = r.await;
+    v<|>;
+}
+
+//- /std.rs crate:std
+#[prelude_import] use future::*;
+mod future {
+    trait Future {
+        type Output;
+    }
+}
+
+"#,
+    );
+    assert_eq!("u64", type_at_pos(&db, pos));
+}
+
+#[test]
+fn infer_desugar_async() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+
+async fn foo() -> u64 {
+    128
+}
+
+fn test() {
+    let r = foo();
+    r<|>;
+}
+
+//- /std.rs crate:std
+#[prelude_import] use future::*;
+mod future {
+    trait Future {
+        type Output;
+    }
+}
+
+"#,
+    );
+    assert_eq!("impl Future<Output = u64>", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_try() {
     let (db, pos) = TestDB::with_position(
         r#"
