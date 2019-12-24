@@ -384,9 +384,6 @@ impl Step for Miri {
             );
             cargo.arg("--bin").arg("cargo-miri").arg("--").arg("miri").arg("setup");
 
-            // Tell `cargo miri` not to worry about the sysroot mismatch (we built with
-            // stage1 but run with stage2).
-            cargo.env("MIRI_SKIP_SYSROOT_CHECK", "1");
             // Tell `cargo miri setup` where to find the sources.
             cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
             // Debug things.
