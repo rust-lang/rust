@@ -44,7 +44,7 @@ macro_rules! arena_types {
             [few, decode] mir_keys: rustc::hir::def_id::DefIdSet,
             [decode] specialization_graph: rustc::traits::specialization_graph::Graph,
             [] region_scope_tree: rustc::middle::region::ScopeTree,
-            [] item_local_set: rustc::util::nodemap::ItemLocalSet,
+            [] item_local_set: rustc::hir::ItemLocalSet,
             [decode] mir_const_qualif: rustc_index::bit_set::BitSet<rustc::mir::Local>,
             [] trait_impls_of: rustc::ty::trait_def::TraitImpls,
             [] dropck_outlives:

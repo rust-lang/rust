@@ -93,6 +93,9 @@ impl fmt::Display for HirId {
     }
 }
 
+rustc_data_structures::define_id_collections!(HirIdMap, HirIdSet, HirId);
+rustc_data_structures::define_id_collections!(ItemLocalMap, ItemLocalSet, ItemLocalId);
+
 // Hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module.
 mod item_local_id_inner {
     use rustc_index::vec::Idx;

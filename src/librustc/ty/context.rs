@@ -7,7 +7,8 @@ use crate::hir::def::{DefKind, Export, Res};
 use crate::hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
-use crate::hir::{self, HirId, ItemKind, ItemLocalId, Node, TraitCandidate};
+use crate::hir::{self, HirId, Node, TraitCandidate};
+use crate::hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::infer::outlives::free_region_map::FreeRegionMap;
@@ -46,7 +47,6 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::{ItemLocalMap, ItemLocalSet};
 
 use arena::SyncDroplessArena;
 use errors::DiagnosticBuilder;

@@ -96,16 +96,13 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc::hir;
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
-use rustc::hir::Node;
-use rustc::hir::{Expr, HirId};
+use rustc::hir::{self, Expr, HirId, HirIdMap, HirIdSet, Node};
 use rustc::lint;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::{HirIdMap, HirIdSet};
 
 use errors::Applicability;
 use rustc_data_structures::fx::FxIndexMap;

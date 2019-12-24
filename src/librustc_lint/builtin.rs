@@ -23,15 +23,14 @@
 
 use std::fmt::Write;
 
-use hir::Node;
 use lint::{EarlyContext, EarlyLintPass, LateLintPass, LintPass};
 use lint::{LateContext, LintArray, LintContext};
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::DefId;
+use rustc::hir::{HirIdSet, Node};
+use rustc::lint;
 use rustc::lint::FutureIncompatibleInfo;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
-use rustc::{lint, util};
-use util::nodemap::HirIdSet;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Stability;
