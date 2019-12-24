@@ -50,15 +50,6 @@ macro_rules! hir_vec {
     );
 }
 
-macro_rules! arena_vec {
-    () => (
-        &[]
-    );
-    ($this:expr; $($x:expr),*) => (
-        $this.arena.alloc_from_iter(vec![$($x),*])
-    );
-}
-
 pub mod check_attr;
 pub mod def;
 pub mod def_id;

@@ -32,9 +32,6 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
-mod expr;
-mod item;
-
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
@@ -75,6 +72,18 @@ use syntax_pos::hygiene::ExpnId;
 use syntax_pos::Span;
 
 use rustc_error_codes::*;
+
+macro_rules! arena_vec {
+    () => (
+        &[]
+    );
+    ($this:expr; $($x:expr),*) => (
+        $this.arena.alloc_from_iter(vec![$($x),*])
+    );
+}
+
+mod expr;
+mod item;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
