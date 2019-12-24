@@ -625,7 +625,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     projection: &[],
                                 } = place.as_ref()
                                 {
-                                    let c = bx.tcx().const_eval_promoted(Instance::new(def_id, self.monomorphize(&substs)), promoted);
+                                    let c = bx.tcx().const_eval_promoted(
+                                        Instance::new(def_id, self.monomorphize(&substs)),
+                                        promoted,
+                                    );
                                     let (llval, ty) = self.simd_shuffle_indices(
                                         &bx,
                                         terminator.source_info.span,
