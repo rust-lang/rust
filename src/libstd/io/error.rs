@@ -402,9 +402,7 @@ impl Error {
     ///     }
     /// }
     ///
-    /// impl error::Error for MyError {
-    ///     fn description(&self) -> &str { &self.v }
-    /// }
+    /// impl error::Error for MyError {}
     ///
     /// impl Display for MyError {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
