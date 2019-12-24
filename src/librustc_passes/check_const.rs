@@ -27,13 +27,15 @@ use std::fmt;
 enum NonConstExpr {
     Loop(hir::LoopSource),
     Match(hir::MatchSource),
+    OrPattern,
 }
 
 impl NonConstExpr {
-    fn name(self) -> &'static str {
+    fn name(self) -> String {
         match self {
-            Self::Loop(src) => src.name(),
-            Self::Match(src) => src.name(),
+            Self::Loop(src) => format!("`{}`", src.name()),
+            Self::Match(src) => format!("`{}`", src.name()),
+            Self::OrPattern => format!("or-pattern"),
         }
     }
 
@@ -44,7 +46,8 @@ impl NonConstExpr {
         let gates: &[_] = match self {
             Self::Match(Normal)
             | Self::Match(IfDesugar { .. })
-            | Self::Match(IfLetDesugar { .. }) => &[sym::const_if_match],
+            | Self::Match(IfLetDesugar { .. })
+            | Self::OrPattern => &[sym::const_if_match],
 
             Self::Loop(Loop) => &[sym::const_loop],
 
@@ -144,7 +147,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
         let const_kind = self
             .const_kind
             .expect("`const_check_violated` may only be called inside a const context");
-        let msg = format!("`{}` is not allowed in a `{}`", expr.name(), const_kind);
+        let msg = format!("{} is not allowed in a `{}`", expr.name(), const_kind);
 
         let required_gates = required_gates.unwrap_or(&[]);
         let missing_gates: Vec<_> =
@@ -209,6 +212,15 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let kind = ConstKind::for_body(body, self.tcx.hir());
         self.recurse_into(kind, |this| hir::intravisit::walk_body(this, body));
+    }
+
+    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
+        if self.const_kind.is_some() {
+            if let hir::PatKind::Or { .. } = p.kind {
+                self.const_check_violated(NonConstExpr::OrPattern, p.span);
+            }
+        }
+        hir::intravisit::walk_pat(self, p)
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr) {

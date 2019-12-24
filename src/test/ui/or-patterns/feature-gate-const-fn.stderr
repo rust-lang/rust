@@ -1,0 +1,57 @@
+error[E0658]: or-pattern is not allowed in a `const fn`
+  --> $DIR/feature-gate-const-fn.rs:4:15
+   |
+LL | const fn foo((Ok(a) | Err(a)): Result<i32, i32>) {
+   |               ^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0658]: or-pattern is not allowed in a `const fn`
+  --> $DIR/feature-gate-const-fn.rs:7:9
+   |
+LL |     let Ok(y) | Err(y) = x;
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0658]: or-pattern is not allowed in a `const`
+  --> $DIR/feature-gate-const-fn.rs:13:9
+   |
+LL |     let Ok(y) | Err(y) = x;
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0658]: or-pattern is not allowed in a `static`
+  --> $DIR/feature-gate-const-fn.rs:19:9
+   |
+LL |     let Ok(y) | Err(y) = x;
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0658]: or-pattern is not allowed in a `static mut`
+  --> $DIR/feature-gate-const-fn.rs:25:9
+   |
+LL |     let Ok(y) | Err(y) = x;
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0658]: or-pattern is not allowed in a `const`
+  --> $DIR/feature-gate-const-fn.rs:32:13
+   |
+LL |         let Ok(y) | Err(y) = x;
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
