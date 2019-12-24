@@ -6,9 +6,7 @@ use hir_expand::{
     name::{name, AsName, Name},
     AstId, InFile,
 };
-use ra_syntax::ast::{
-    self, AstNode, AsyncOwner, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner,
-};
+use ra_syntax::ast::{self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner};
 
 use crate::{
     db::DefDatabase,

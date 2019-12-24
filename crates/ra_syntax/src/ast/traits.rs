@@ -8,7 +8,6 @@ use crate::{
     ast::{self, child_opt, children, AstChildren, AstNode, AstToken},
     match_ast,
     syntax_node::{SyntaxElementChildren, SyntaxNodeChildren},
-    SyntaxKind,
 };
 
 pub trait TypeAscriptionOwner: AstNode {
@@ -103,12 +102,6 @@ pub trait AttrsOwner: AstNode {
     }
     fn has_atom_attr(&self, atom: &str) -> bool {
         self.attrs().filter_map(|x| x.as_simple_atom()).any(|x| x == atom)
-    }
-}
-
-pub trait AsyncOwner: AstNode {
-    fn is_async(&self) -> bool {
-        self.syntax().children_with_tokens().any(|t| t.kind() == SyntaxKind::ASYNC_KW)
     }
 }
 
