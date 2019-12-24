@@ -84,7 +84,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
                 both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
             },
-            (&ExprKind::Assign(ref ll, ref lr), &ExprKind::Assign(ref rl, ref rr)) => {
+            (&ExprKind::Assign(ref ll, ref lr, _), &ExprKind::Assign(ref rl, ref rr, _)) => {
                 self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
             (&ExprKind::AssignOp(ref lo, ref ll, ref lr), &ExprKind::AssignOp(ref ro, ref rl, ref rr)) => {
@@ -412,7 +412,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_name(i.ident.name);
                 }
             },
-            ExprKind::Assign(ref l, ref r) => {
+            ExprKind::Assign(ref l, ref r, _) => {
                 self.hash_expr(l);
                 self.hash_expr(r);
             },

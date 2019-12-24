@@ -131,7 +131,7 @@ impl EarlyLintPass for Formatting {
 
 /// Implementation of the `SUSPICIOUS_ASSIGNMENT_FORMATTING` lint.
 fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
-    if let ExprKind::Assign(ref lhs, ref rhs) = expr.kind {
+    if let ExprKind::Assign(ref lhs, ref rhs, _) = expr.kind {
         if !differing_macro_contexts(lhs.span, rhs.span) && !lhs.span.from_expansion() {
             let eq_span = lhs.span.between(rhs.span);
             if let ExprKind::Unary(op, ref sub_rhs) = rhs.kind {

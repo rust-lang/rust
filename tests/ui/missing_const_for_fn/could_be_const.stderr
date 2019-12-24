@@ -50,12 +50,20 @@ LL | | }
    | |_^
 
 error: this could be a const_fn
-  --> $DIR/could_be_const.rs:65:9
+  --> $DIR/could_be_const.rs:44:1
+   |
+LL | / fn sub(x: u32) -> usize {
+LL | |     unsafe { transmute(&x) }
+LL | | }
+   | |_^
+
+error: this could be a const_fn
+  --> $DIR/could_be_const.rs:63:9
    |
 LL | /         pub fn b(self, a: &A) -> B {
 LL | |             B
 LL | |         }
    | |_________^
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 

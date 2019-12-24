@@ -395,7 +395,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
                 }
                 idx += 1;
             },
-            ExprKind::Assign(lhs, rhs) => {
+            ExprKind::Assign(lhs, rhs, _) => {
                 if let ExprKind::Lit(_) = rhs.kind {
                     if let ExprKind::Path(_, p) = &lhs.kind {
                         let mut all_simple = true;

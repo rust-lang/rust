@@ -169,7 +169,7 @@ fn check_assign<'a, 'tcx>(
         if block.expr.is_none();
         if let Some(expr) = block.stmts.iter().last();
         if let hir::StmtKind::Semi(ref expr) = expr.kind;
-        if let hir::ExprKind::Assign(ref var, ref value) = expr.kind;
+        if let hir::ExprKind::Assign(ref var, ref value, _) = expr.kind;
         if let hir::ExprKind::Path(ref qpath) = var.kind;
         if let Res::Local(local_id) = qpath_res(cx, qpath, var.hir_id);
         if decl == local_id;

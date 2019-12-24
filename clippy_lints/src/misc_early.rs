@@ -451,7 +451,7 @@ impl EarlyLintPass for MiscEarlyLints {
                 if let ExprKind::Closure(..) = t.kind;
                 if let PatKind::Ident(_, ident, _) = local.pat.kind;
                 if let StmtKind::Semi(ref second) = w[1].kind;
-                if let ExprKind::Assign(_, ref call) = second.kind;
+                if let ExprKind::Assign(_, ref call, _) = second.kind;
                 if let ExprKind::Call(ref closure, _) = call.kind;
                 if let ExprKind::Path(_, ref path) = closure.kind;
                 then {

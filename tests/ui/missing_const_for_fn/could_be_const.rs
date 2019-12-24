@@ -41,8 +41,6 @@ fn generic<T>(t: T) -> T {
     t
 }
 
-// FIXME: Depends on the `const_transmute` and `const_fn` feature gates.
-// In the future Clippy should be able to suggest this as const, too.
 fn sub(x: u32) -> usize {
     unsafe { transmute(&x) }
 }

@@ -96,7 +96,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
                 if !is_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
                     let parent = get_parent_expr(cx, e);
                     if let Some(p) = parent {
-                        if let ExprKind::Assign(ref target, _) = p.kind {
+                        if let ExprKind::Assign(ref target, _, _) = p.kind {
                             // avoid duplicate matches
                             if SpanlessEq::new(cx).eq_expr(target, left) {
                                 return;
@@ -111,7 +111,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
                     "you added something to a string. Consider using `String::push_str()` instead",
                 );
             }
-        } else if let ExprKind::Assign(ref target, ref src) = e.kind {
+        } else if let ExprKind::Assign(ref target, ref src, _) = e.kind {
             if is_string(cx, target) && is_add(cx, src, target) {
                 span_lint(
                     cx,

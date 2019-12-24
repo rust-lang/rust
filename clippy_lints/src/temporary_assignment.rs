@@ -42,7 +42,7 @@ declare_lint_pass!(TemporaryAssignment => [TEMPORARY_ASSIGNMENT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TemporaryAssignment {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprKind::Assign(target, _) = &expr.kind {
+        if let ExprKind::Assign(target, ..) = &expr.kind {
             let mut base = target;
             while let ExprKind::Field(f, _) | ExprKind::Index(f, _) = &base.kind {
                 base = f;
