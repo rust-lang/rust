@@ -1203,7 +1203,7 @@ impl Named for ImplItem<'_> {
 }
 
 pub fn map_crate<'hir>(
-    sess: &crate::session::Session,
+    sess: &rustc_session::Session,
     cstore: &CrateStoreDyn,
     forest: &'hir Forest<'hir>,
     definitions: Definitions,
