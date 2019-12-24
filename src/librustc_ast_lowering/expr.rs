@@ -82,11 +82,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 this.lower_expr_while_in_loop_scope(e.span, cond, body, opt_label)
             }),
             ExprKind::Loop(ref body, opt_label) => self.with_loop_scope(e.id, |this| {
-                hir::ExprKind::Loop(
-                    this.lower_block(body, false),
-                    this.lower_label(opt_label),
-                    hir::LoopSource::Loop,
-                )
+                hir::ExprKind::Loop(this.lower_block(body, false), opt_label, hir::LoopSource::Loop)
             }),
             ExprKind::TryBlock(ref body) => self.lower_expr_try_block(body),
             ExprKind::Match(ref expr, ref arms) => hir::ExprKind::Match(
@@ -123,10 +119,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_closure(capture_clause, movability, decl, body, fn_decl_span)
                 }
             }
-            ExprKind::Block(ref blk, opt_label) => hir::ExprKind::Block(
-                self.lower_block(blk, opt_label.is_some()),
-                self.lower_label(opt_label),
-            ),
+            ExprKind::Block(ref blk, opt_label) => {
+                hir::ExprKind::Block(self.lower_block(blk, opt_label.is_some()), opt_label)
+            }
             ExprKind::Assign(ref el, ref er, span) => {
                 hir::ExprKind::Assign(self.lower_expr(el), self.lower_expr(er), span)
             }
@@ -407,11 +402,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         // `[opt_ident]: loop { ... }`
-        hir::ExprKind::Loop(
-            self.block_expr(self.arena.alloc(match_expr)),
-            self.lower_label(opt_label),
-            source,
-        )
+        hir::ExprKind::Loop(self.block_expr(self.arena.alloc(match_expr)), opt_label, source)
     }
 
     /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_ok(<expr>) }`,
@@ -836,10 +827,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_label(&mut self, label: Option<Label>) -> Option<Label> {
-        label.map(|label| Label { ident: label.ident })
-    }
-
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         let target_id = match destination {
             Some((id, _)) => {
@@ -857,7 +844,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
                 .into(),
         };
-        hir::Destination { label: self.lower_label(destination.map(|(_, label)| label)), target_id }
+        hir::Destination { label: destination.map(|(_, label)| label), target_id }
     }
 
     fn lower_jump_destination(&mut self, id: NodeId, opt_label: Option<Label>) -> hir::Destination {
@@ -1100,8 +1087,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         // `[opt_ident]: loop { ... }`
-        let kind =
-            hir::ExprKind::Loop(loop_block, self.lower_label(opt_label), hir::LoopSource::ForLoop);
+        let kind = hir::ExprKind::Loop(loop_block, opt_label, hir::LoopSource::ForLoop);
         let loop_expr = self.arena.alloc(hir::Expr {
             hir_id: self.lower_node_id(e.id),
             kind,
