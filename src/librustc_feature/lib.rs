@@ -11,13 +11,13 @@
 //! symbol to the `accepted` or `removed` modules respectively.
 
 mod accepted;
-mod removed;
 mod active;
 mod builtin_attrs;
+mod removed;
 
 use std::fmt;
 use std::num::NonZeroU32;
-use syntax_pos::{Span, edition::Edition, symbol::Symbol};
+use syntax_pos::{edition::Edition, symbol::Symbol, Span};
 
 #[derive(Clone, Copy)]
 pub enum State {
@@ -43,7 +43,7 @@ pub struct Feature {
     pub state: State,
     pub name: Symbol,
     pub since: &'static str,
-    issue: Option<u32>,  // FIXME: once #58732 is done make this an Option<NonZeroU32>
+    issue: Option<u32>, // FIXME: once #58732 is done make this an Option<NonZeroU32>
     pub edition: Option<Edition>,
     description: &'static str,
 }
@@ -72,7 +72,7 @@ pub enum UnstableFeatures {
     /// during the build that feature-related lints are set to warn or above
     /// because the build turns on warnings-as-errors and uses lots of unstable
     /// features. As a result, this is always required for building Rust itself.
-    Cheat
+    Cheat,
 }
 
 impl UnstableFeatures {
@@ -84,7 +84,7 @@ impl UnstableFeatures {
         match (disable_unstable_features, bootstrap) {
             (_, true) => UnstableFeatures::Cheat,
             (true, _) => UnstableFeatures::Disallow,
-            (false, _) => UnstableFeatures::Allow
+            (false, _) => UnstableFeatures::Allow,
         }
     }
 
@@ -117,7 +117,7 @@ fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
 
 pub enum GateIssue {
     Language,
-    Library(Option<NonZeroU32>)
+    Library(Option<NonZeroU32>),
 }
 
 pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZeroU32> {
@@ -128,10 +128,9 @@ pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZeroU3
 }
 
 pub use accepted::ACCEPTED_FEATURES;
-pub use active::{ACTIVE_FEATURES, Features, INCOMPLETE_FEATURES};
-pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
+pub use active::{Features, ACTIVE_FEATURES, INCOMPLETE_FEATURES};
 pub use builtin_attrs::{
-    AttributeGate, AttributeTemplate, AttributeType, find_gated_cfg, GatedCfg,
-    BuiltinAttribute, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
-    deprecated_attributes, is_builtin_attr_name,
+    deprecated_attributes, find_gated_cfg, is_builtin_attr_name, AttributeGate, AttributeTemplate,
+    AttributeType, BuiltinAttribute, GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
 };
+pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};

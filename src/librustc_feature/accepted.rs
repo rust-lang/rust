@@ -1,6 +1,6 @@
 //! List of the accepted feature gates.
 
-use super::{State, Feature};
+use super::{Feature, State};
 use syntax_pos::symbol::sym;
 
 macro_rules! declare_features {
@@ -23,6 +23,7 @@ macro_rules! declare_features {
     }
 }
 
+#[rustfmt::skip]
 declare_features! (
     // -------------------------------------------------------------------------
     // feature-group-start: for testing purposes

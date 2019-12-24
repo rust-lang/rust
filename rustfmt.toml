@@ -10,10 +10,6 @@ ignore = [
     # (and generally rustfmt can move around comments in UI-testing incompatible ways)
     "src/test",
 
-    # tidy issues (line length, etc.)
-    # to be fixed shortly
-    "src/librustc_feature",
-
     # do not format submodules
     "src/doc/book",
     "src/doc/edition-guide",
