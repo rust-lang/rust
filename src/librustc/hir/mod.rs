@@ -12,7 +12,6 @@ use crate::hir::def::{DefKind, Res};
 use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use crate::mir::mono::Linkage;
 use crate::ty::query::Providers;
-use crate::ty::AdtKind;
 use crate::util::nodemap::{FxHashSet, NodeMap};
 
 use errors::FatalError;
@@ -2547,15 +2546,6 @@ impl ItemKind<'_> {
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
             ItemKind::Impl(..) => "impl",
-        }
-    }
-
-    pub fn adt_kind(&self) -> Option<AdtKind> {
-        match *self {
-            ItemKind::Struct(..) => Some(AdtKind::Struct),
-            ItemKind::Union(..) => Some(AdtKind::Union),
-            ItemKind::Enum(..) => Some(AdtKind::Enum),
-            _ => None,
         }
     }
 
