@@ -12,8 +12,8 @@ index 8b76080..9e65de2 100644
 --- a/src/libtest/lib.rs
 +++ b/src/libtest/lib.rs
 @@ -52,7 +52,7 @@ use std::fmt;
-     env,
-     io,
+ use std::{
+     env, io,
      io::prelude::Write,
 -    panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo},
 +    panic::{self, PanicInfo},
@@ -79,15 +79,12 @@ index 8b76080..9e65de2 100644
      let exec_time = start.map(|start| {
          let duration = start.elapsed();
          TestExecTime(duration)
-@@ -1688,10 +1676,10 @@ fn spawn_test_subprocess(desc: TestDesc, report_time: bool, monitor_ch: Sender<M
+@@ -1688,7 +1676,7 @@ fn spawn_test_subprocess(desc: TestDesc, report_time: bool, monitor_ch: Sender<M
      monitor_ch.send(message).unwrap();
  }
  
- fn run_test_in_spawned_subprocess(
-     desc: TestDesc,
--    testfn: Box<dyn FnOnce() + Send>,
-+    testfn: Box<impl FnOnce() + Send + 'static>,
- ) -> ! {
+-fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Send>) -> ! {
++fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<impl FnOnce() + Send + 'static>) -> ! {
      let builtin_panic_hook = panic::take_hook();
      let record_result = Arc::new(move |panic_info: Option<&'_ PanicInfo<'_>>| {
          let test_result = match panic_info {

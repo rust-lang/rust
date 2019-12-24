@@ -12,14 +12,11 @@ diff --git a/src/libstd/sys/unix/args.rs b/src/libstd/sys/unix/args.rs
 index 2ed1585..b4b021a 100644
 --- a/src/libstd/sys/unix/args.rs
 +++ b/src/libstd/sys/unix/args.rs
-@@ -83,10 +83,7 @@ mod imp {
+@@ -83,7 +83,7 @@ mod imp {
          // On Linux-GNU, we rely on `ARGV_INIT_ARRAY` below to initialize
          // `ARGC` and `ARGV`. But in Miri that does not actually happen so we
          // still initialize here.
--        #[cfg(any(
--            miri,
--            not(all(target_os = "linux", target_env = "gnu"))
--        ))]
+-        #[cfg(any(miri, not(all(target_os = "linux", target_env = "gnu"))))]
 +        // `#[link_section]` is not yet supported by cg_clif
          really_init(_argc, _argv);
      }
