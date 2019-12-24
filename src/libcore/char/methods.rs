@@ -434,36 +434,35 @@ impl char {
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         let code = self as u32;
-        // SAFETY: each arm checks the size of the slice and only uses `get_unchecked` unsafe ops
-        unsafe {
-            let len = if code < MAX_ONE_B && !dst.is_empty() {
-                *dst.get_unchecked_mut(0) = code as u8;
-                1
-            } else if code < MAX_TWO_B && dst.len() >= 2 {
-                *dst.get_unchecked_mut(0) = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-                *dst.get_unchecked_mut(1) = (code & 0x3F) as u8 | TAG_CONT;
-                2
-            } else if code < MAX_THREE_B && dst.len() >= 3 {
-                *dst.get_unchecked_mut(0) = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-                *dst.get_unchecked_mut(1) = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(2) = (code & 0x3F) as u8 | TAG_CONT;
-                3
-            } else if dst.len() >= 4 {
-                *dst.get_unchecked_mut(0) = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-                *dst.get_unchecked_mut(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(2) = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(3) = (code & 0x3F) as u8 | TAG_CONT;
-                4
-            } else {
-                panic!(
-                    "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
-                    from_u32_unchecked(code).len_utf8(),
-                    code,
-                    dst.len(),
-                )
-            };
-            from_utf8_unchecked_mut(dst.get_unchecked_mut(..len))
-        }
+        let len = self.len_utf8();
+        match (len, &mut dst[..]) {
+            (1, [a, ..]) => {
+                *a = code as u8;
+            }
+            (2, [a, b, ..]) => {
+                *a = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+                *b = (code & 0x3F) as u8 | TAG_CONT;
+            }
+            (3, [a, b, c, ..]) => {
+                *a = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+                *b = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+                *c = (code & 0x3F) as u8 | TAG_CONT;
+            }
+            (4, [a, b, c, d, ..]) => {
+                *a = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+                *b = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+                *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+                *d = (code & 0x3F) as u8 | TAG_CONT;
+            }
+            _ => panic!(
+                "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+                len,
+                code,
+                dst.len(),
+            ),
+        };
+        // SAFETY: We just wrote UTF-8 content in, so converting to str is fine.
+        unsafe { from_utf8_unchecked_mut(&mut dst[..len]) }
     }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
