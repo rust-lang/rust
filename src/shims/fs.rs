@@ -261,13 +261,57 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.try_unwrap_io_result(result)
     }
 
-    fn stat(&mut self,
-        _path_op: OpTy<'tcx, Tag>,
+    fn stat(
+        &mut self,
+        path_op: OpTy<'tcx, Tag>,
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        let path_scalar = this.read_scalar(path_op)?.not_undef()?;
+        let path = this.read_os_str_from_c_str(path_scalar)?;
+
         let buf = this.deref_operand(buf_op)?;
+
+        let metadata = match std::fs::metadata(path) {
+            Ok(metadata) => metadata,
+            Err(e) => {
+                this.set_last_error_from_io_error(e)?;
+                return Ok(-1);
+            }
+        };
+
+        let file_type = metadata.file_type();
+
+        let mode_name = if file_type.is_file() {
+            "S_IFREG"
+        } else if file_type.is_dir() {
+            "S_IFDIR"
+        } else {
+            "S_IFLNK"
+        };
+
+        let mode = this.eval_libc(mode_name)?.to_u32()?;
+
+        let size = metadata.len();
+
+        let (access_sec, access_nsec) = extract_sec_and_nsec(
+            metadata.accessed(),
+            &mut 0,
+            0,
+        )?;
+
+        let (created_sec, created_nsec) = extract_sec_and_nsec(
+            metadata.created(),
+            &mut 0,
+            0,
+        )?;
+
+        let (modified_sec, modified_nsec) = extract_sec_and_nsec(
+            metadata.modified(),
+            &mut 0,
+            0,
+        )?;
 
         let dev_t_layout = this.libc_ty_layout("dev_t")?;
         let mode_t_layout = this.libc_ty_layout("mode_t")?;
@@ -284,21 +328,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let imms = [
             immty_from_uint_checked(0u128, dev_t_layout)?, // st_dev
-            immty_from_uint_checked(0u128, mode_t_layout)?, // st_mode
+            immty_from_uint_checked(mode, mode_t_layout)?, // st_mode
             immty_from_uint_checked(0u128, nlink_t_layout)?, // st_nlink
             immty_from_uint_checked(0u128, ino_t_layout)?, // st_ino
             immty_from_uint_checked(0u128, uid_t_layout)?, // st_uid
             immty_from_uint_checked(0u128, gid_t_layout)?, // st_gid
             immty_from_uint_checked(0u128, dev_t_layout)?, // st_rdev
-            immty_from_uint_checked(0u128, time_t_layout)?, // st_atime
-            immty_from_uint_checked(0u128, long_layout)?, // st_atime_nsec
-            immty_from_uint_checked(0u128, time_t_layout)?, // st_mtime
-            immty_from_uint_checked(0u128, long_layout)?, // st_mtime_nsec
+            immty_from_uint_checked(access_sec, time_t_layout)?, // st_atime
+            immty_from_uint_checked(access_nsec, long_layout)?, // st_atime_nsec
+            immty_from_uint_checked(modified_sec, time_t_layout)?, // st_mtime
+            immty_from_uint_checked(modified_nsec, long_layout)?, // st_mtime_nsec
             immty_from_uint_checked(0u128, time_t_layout)?, // st_ctime
             immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
-            immty_from_uint_checked(0u128, time_t_layout)?, // st_birthtime
-            immty_from_uint_checked(0u128, long_layout)?, // st_birthtime_nsec
-            immty_from_uint_checked(0u128, off_t_layout)?, // st_size
+            immty_from_uint_checked(created_sec, time_t_layout)?, // st_birthtime
+            immty_from_uint_checked(created_nsec, long_layout)?, // st_birthtime_nsec
+            immty_from_uint_checked(size, off_t_layout)?, // st_size
             immty_from_uint_checked(0u128, blkcnt_t_layout)?, // st_blocks
             immty_from_uint_checked(0u128, blksize_t_layout)?, // st_blksize
             immty_from_uint_checked(0u128, uint32_t_layout)?, // st_flags
