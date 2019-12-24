@@ -102,8 +102,86 @@ pub struct ItemCtxt<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
+crate struct PlaceholderHirTyCollector(crate Vec<Span>);
+
+impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+        NestedVisitorMap::None
+    }
+    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
+        if let hir::TyKind::Infer = t.kind {
+            self.0.push(t.span);
+        }
+        hir::intravisit::walk_ty(self, t)
+    }
+}
+
+impl PlaceholderHirTyCollector {
+    pub fn new() -> PlaceholderHirTyCollector {
+        PlaceholderHirTyCollector(vec![])
+    }
+}
+
 struct CollectItemTypesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+}
+
+crate fn placeholder_type_error(
+    tcx: TyCtxt<'tcx>,
+    ident_span: Span,
+    generics: &[hir::GenericParam<'_>],
+    placeholder_types: Vec<Span>,
+    suggest: bool,
+) {
+    if !placeholder_types.is_empty() {
+        let mut sugg: Vec<_> = placeholder_types.iter().map(|sp| (*sp, "T".to_string())).collect();
+        if generics.is_empty() {
+            sugg.push((ident_span.shrink_to_hi(), "<T>".to_string()));
+        } else {
+            sugg.push((generics.iter().last().unwrap().span.shrink_to_hi(), ", T".to_string()));
+        }
+        let mut err = struct_span_err!(
+            tcx.sess,
+            placeholder_types.clone(),
+            E0121,
+            "the type placeholder `_` is not allowed within types on item signatures",
+        );
+        for span in &placeholder_types {
+            err.span_label(*span, "not allowed in type signatures");
+        }
+        if suggest {
+            err.multipart_suggestion(
+                "use type parameters instead",
+                sugg,
+                Applicability::HasPlaceholders,
+            );
+        }
+        err.emit();
+    }
+}
+
+fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
+    let (generics, suggest) = match &item.kind {
+        hir::ItemKind::Union(_, generics)
+        | hir::ItemKind::Enum(_, generics)
+        | hir::ItemKind::Struct(_, generics) => (&generics.params[..], true),
+        hir::ItemKind::Static(ty, ..) => {
+            if let hir::TyKind::Infer = ty.kind {
+                return; // We handle it elsewhere to attempt to suggest an appropriate type.
+            } else {
+                (&[][..], false)
+            }
+        }
+        hir::ItemKind::TyAlias(_, generics) => (&generics.params[..], false),
+        // hir::ItemKind::Fn(..) |
+        // hir::ItemKind::Const(..) => {} // We handle these elsewhere to suggest appropriate type.
+        _ => return,
+    };
+
+    let mut visitor = PlaceholderHirTyCollector::new();
+    visitor.visit_item(item);
+
+    placeholder_type_error(tcx, item.ident.span, generics, visitor.0, suggest);
 }
 
 impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
@@ -113,6 +191,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         convert_item(self.tcx, item.hir_id);
+        reject_placeholder_type_signatures_in_item(self.tcx, item);
         intravisit::walk_item(self, item);
     }
 
@@ -200,8 +279,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        bad_placeholder_type(self.tcx(), span).emit();
-
+        self.tcx().sess.delay_span_bug(span, "bad placeholder type, but no error was emitted");
         self.tcx().types.err
     }
 
@@ -1189,6 +1267,10 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 .and_then(|body_id| {
                     if let hir::TyKind::Infer = ty.kind {
                         Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
+                    } else if is_infer_ty(ty) {
+                        // Infering this would cause a cycle error.
+                        tcx.sess.delay_span_bug(ty.span, "`_` placeholder but no error emitted");
+                        Some(tcx.types.err)
                     } else {
                         None
                     }
@@ -1208,6 +1290,10 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             ImplItemKind::Const(ref ty, body_id) => {
                 if let hir::TyKind::Infer = ty.kind {
                     infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
+                } else if is_infer_ty(ty) {
+                    // Infering this would cause a cycle error.
+                    tcx.sess.delay_span_bug(ty.span, "`_` placeholder but no error emitted");
+                    tcx.types.err
                 } else {
                     icx.to_ty(ty)
                 }
@@ -1233,6 +1319,10 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 ItemKind::Static(ref ty, .., body_id) | ItemKind::Const(ref ty, body_id) => {
                     if let hir::TyKind::Infer = ty.kind {
                         infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
+                    } else if is_infer_ty(ty) {
+                        // Infering this would cause a cycle error.
+                        tcx.sess.delay_span_bug(ty.span, "`_` placeholder but no error emitted");
+                        tcx.types.err
                     } else {
                         icx.to_ty(ty)
                     }
@@ -1703,7 +1793,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 }
 
-fn is_infer_ty(ty: &hir::Ty<'_>) -> bool {
+crate fn is_infer_ty(ty: &hir::Ty<'_>) -> bool {
     match &ty.kind {
         hir::TyKind::Infer => true,
         hir::TyKind::Slice(ty) | hir::TyKind::Array(ty, _) => is_infer_ty(ty),

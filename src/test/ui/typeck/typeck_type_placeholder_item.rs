@@ -15,7 +15,6 @@ static TEST4: _ = 145;
 
 static TEST5: (_, _) = (1, 2);
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-//~^^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
 fn test6(_: _) { }
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
@@ -48,8 +47,6 @@ struct Test10 {
     a: _,
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
     b: (_, _),
-    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-    //~^^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }
 
 pub fn main() {
@@ -67,7 +64,6 @@ pub fn main() {
 
     static FN_TEST5: (_, _) = (1, 2);
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-    //~^^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
     fn fn_test6(_: _) { }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
@@ -100,8 +96,6 @@ pub fn main() {
         a: _,
         //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
         b: (_, _),
-        //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-        //~^^ ERROR the type placeholder `_` is not allowed within types on item signatures
     }
 
     fn fn_test11(_: _) -> (_, _) { panic!() }

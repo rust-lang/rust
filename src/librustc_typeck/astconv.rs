@@ -7,7 +7,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::print;
 use crate::hir::ptr::P;
 use crate::hir::{self, ExprKind, GenericArg, GenericArgs, HirVec};
-use crate::hir::intravisit::{NestedVisitorMap, Visitor};
+use crate::hir::intravisit::Visitor;
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
@@ -16,6 +16,7 @@ use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticId};
+use crate::collect::PlaceholderHirTyCollector;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
@@ -2747,12 +2748,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     pub fn ty_of_arg(&self, ty: &hir::Ty<'_>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
-        match ty.kind {
-            hir::TyKind::Infer if expected_ty.is_some() => {
-                self.record_ty(ty.hir_id, expected_ty.unwrap(), ty.span);
-                expected_ty.unwrap()
-            }
-            _ => self.ast_ty_to_ty(ty),
+        if crate::collect::is_infer_ty(ty) && expected_ty.is_some() {
+            self.record_ty(ty.hir_id, expected_ty.unwrap(), ty.span);
+            expected_ty.unwrap()
+        } else {
+            self.ast_ty_to_ty(ty)
         }
     }
 
@@ -2769,23 +2769,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         // We proactively collect all the infered type params to emit a single error per fn def.
-        struct PlaceholderHirTyCollector(Vec<Span>);
-        impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
-            fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
-                NestedVisitorMap::None
-            }
-            fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
-                if let hir::TyKind::Infer = t.kind {
-                    self.0.push(t.span);
-                }
-                hir::intravisit::walk_ty(self, t)
-            }
-        }
         let mut placeholder_types = vec![];
         let mut output_placeholder_types = vec![];
 
         let input_tys = decl.inputs.iter().map(|a| {
-            let mut visitor = PlaceholderHirTyCollector(vec![]);
+            let mut visitor = PlaceholderHirTyCollector::new();
             visitor.visit_ty(&a);
             if visitor.0.is_empty() || self.allow_ty_infer() {
                 self.ty_of_arg(a, None)
@@ -2796,7 +2784,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         });
         let output_ty = match decl.output {
             hir::Return(ref output) => {
-                let mut visitor = PlaceholderHirTyCollector(vec![]);
+                let mut visitor = PlaceholderHirTyCollector::new();
                 visitor.visit_ty(output);
                 let is_infer = if let hir::TyKind::Infer = output.kind {
                     true
@@ -2820,36 +2808,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         placeholder_types.extend(output_placeholder_types);
 
-        if !placeholder_types.is_empty() {
-            let mut sugg = placeholder_types.iter().cloned()
-                .map(|sp| (sp, "T".to_owned()))
-                .collect::<Vec<_>>();
-            if let Some(span) = ident_span {
-                if generic_params.is_empty() {
-                    sugg.push((span.shrink_to_hi(), "<T>".to_string()));
-                } else {
-                    sugg.push((
-                        generic_params.iter().last().unwrap().span.shrink_to_hi(),
-                        ", T".to_string(),
-                    ));
-                }
-            }
-            let mut err = struct_span_err!(
-                tcx.sess,
-                placeholder_types,
-                E0121,
-                "the type placeholder `_` is not allowed within types on item signatures",
-            );
-            if ident_span.is_some() {
-                err.multipart_suggestion(
-                    "use type parameters instead",
-                    sugg,
-                    Applicability::HasPlaceholders,
-                );
-            }
-            err.emit();
-        }
-
+        crate::collect::placeholder_type_error(
+            tcx,
+            ident_span.unwrap_or(DUMMY_SP),
+            generic_params,
+            placeholder_types,
+            ident_span.is_some(),
+        );
 
         // Find any late-bound regions declared in return type that do
         // not appear in the arguments. These are not well-formed.
