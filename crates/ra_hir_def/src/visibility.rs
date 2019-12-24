@@ -38,12 +38,19 @@ impl Visibility {
             }
             VisibilityDefId::StructFieldId(it) => {
                 let src = it.parent.child_source(db);
-                // TODO: enum variant fields should be public by default
+                let is_enum = match it.parent {
+                    crate::VariantId::EnumVariantId(_) => true,
+                    _ => false,
+                };
                 let vis_node = src.map(|m| match &m[it.local_id] {
                     Either::Left(tuple) => tuple.visibility(),
                     Either::Right(record) => record.visibility(),
                 });
-                Visibility::from_ast(db, vis_node)
+                if vis_node.value.is_none() && is_enum {
+                    Visibility::Public
+                } else {
+                    Visibility::from_ast(db, vis_node)
+                }
             }
             VisibilityDefId::AdtId(it) => match it {
                 AdtId::StructId(it) => visibility_from_loc(it.lookup(db), db),
