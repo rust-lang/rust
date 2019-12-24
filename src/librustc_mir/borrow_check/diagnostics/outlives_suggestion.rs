@@ -243,7 +243,9 @@ impl OutlivesSuggestionBuilder<'a> {
 
         // If there is only one constraint to suggest, then we already suggested it in the
         // intermediate suggestion above.
-        if self.constraints_to_add.len() == 1 {
+        if self.constraints_to_add.len() == 1
+            && self.constraints_to_add.values().next().unwrap().len() == 1
+        {
             debug!("Only 1 suggestion. Skipping.");
             return;
         }
