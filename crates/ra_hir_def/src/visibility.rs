@@ -9,7 +9,7 @@ use crate::{
     db::DefDatabase,
     path::{ModPath, PathKind},
     src::{HasChildSource, HasSource},
-    AdtId, Lookup, VisibilityDefId,
+    AdtId, Lookup, ModuleId, VisibilityDefId,
 };
 
 /// Visibility of an item, not yet resolved.
@@ -88,6 +88,44 @@ impl Visibility {
             }
             ast::VisibilityKind::Pub => Visibility::Public,
         }
+    }
+
+    pub fn resolve(
+        &self,
+        db: &impl DefDatabase,
+        resolver: &crate::resolver::Resolver,
+    ) -> ResolvedVisibility {
+        // we fall back to public visibility (i.e. fail open) if the path can't be resolved
+        resolver.resolve_visibility(db, self).unwrap_or(ResolvedVisibility::Public)
+    }
+}
+
+/// Visibility of an item, with the path resolved.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ResolvedVisibility {
+    /// Visibility is restricted to a certain module.
+    Module(ModuleId),
+    /// Visibility is unrestricted.
+    Public,
+}
+
+impl ResolvedVisibility {
+    pub fn visible_from(self, db: &impl DefDatabase, from_module: ModuleId) -> bool {
+        let to_module = match self {
+            ResolvedVisibility::Module(m) => m,
+            ResolvedVisibility::Public => return true,
+        };
+        // if they're not in the same crate, it can't be visible
+        if from_module.krate != to_module.krate {
+            return false;
+        }
+        // from_module needs to be a descendant of to_module
+        let def_map = db.crate_def_map(from_module.krate);
+        let mut ancestors = std::iter::successors(Some(from_module), |m| {
+            let parent_id = def_map[m.local_id].parent?;
+            Some(ModuleId { local_id: parent_id, ..*m })
+        });
+        ancestors.any(|m| m == to_module)
     }
 }
 

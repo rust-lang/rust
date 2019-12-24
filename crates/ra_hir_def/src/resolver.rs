@@ -19,6 +19,7 @@ use crate::{
     nameres::CrateDefMap,
     path::{ModPath, PathKind},
     per_ns::PerNs,
+    visibility::{ResolvedVisibility, Visibility},
     AdtId, AssocContainerId, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId,
     FunctionId, GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId,
     StaticId, StructId, TraitId, TypeAliasId, TypeParamId, VariantId,
@@ -229,6 +230,26 @@ impl Resolver {
             return None;
         }
         Some(res)
+    }
+
+    pub fn resolve_visibility(
+        &self,
+        db: &impl DefDatabase,
+        visibility: &Visibility,
+    ) -> Option<ResolvedVisibility> {
+        match visibility {
+            Visibility::Module(mod_path) => {
+                let resolved = self.resolve_module_path_in_items(db, &mod_path).take_types()?;
+                match resolved {
+                    ModuleDefId::ModuleId(m) => Some(ResolvedVisibility::Module(m)),
+                    _ => {
+                        // error: visibility needs to refer to module
+                        None
+                    }
+                }
+            }
+            Visibility::Public => Some(ResolvedVisibility::Public),
+        }
     }
 
     pub fn resolve_path_in_value_ns(
