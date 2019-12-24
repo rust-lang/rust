@@ -241,6 +241,7 @@ pub mod missing_doc;
 pub mod missing_inline;
 pub mod mul_add;
 pub mod multiple_crate_versions;
+pub mod mut_key;
 pub mod mut_mut;
 pub mod mut_reference;
 pub mod mutable_debug_assertion;
@@ -668,6 +669,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
         &mul_add::MANUAL_MUL_ADD,
         &multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
+        &mut_key::MUTABLE_KEY_TYPE,
         &mut_mut::MUT_MUT,
         &mut_reference::UNNECESSARY_MUT_PASSED,
         &mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL,
@@ -940,6 +942,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box trait_bounds::TraitBounds);
     store.register_late_pass(|| box comparison_chain::ComparisonChain);
     store.register_late_pass(|| box mul_add::MulAddCheck);
+    store.register_late_pass(|| box mut_key::MutableKeyType);
     store.register_early_pass(|| box reference::DerefAddrOf);
     store.register_early_pass(|| box reference::RefInDeref);
     store.register_early_pass(|| box double_parens::DoubleParens);
@@ -1224,6 +1227,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&misc_early::UNNEEDED_FIELD_PATTERN),
         LintId::of(&misc_early::UNNEEDED_WILDCARD_PATTERN),
         LintId::of(&misc_early::ZERO_PREFIXED_LITERAL),
+        LintId::of(&mut_key::MUTABLE_KEY_TYPE),
         LintId::of(&mut_reference::UNNECESSARY_MUT_PASSED),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
         LintId::of(&mutex_atomic::MUTEX_ATOMIC),
@@ -1533,6 +1537,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&misc::CMP_NAN),
         LintId::of(&misc::FLOAT_CMP),
         LintId::of(&misc::MODULO_ONE),
+        LintId::of(&mut_key::MUTABLE_KEY_TYPE),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
         LintId::of(&non_copy_const::BORROW_INTERIOR_MUTABLE_CONST),
         LintId::of(&non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
