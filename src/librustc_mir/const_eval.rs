@@ -45,9 +45,15 @@ fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
+    can_access_statics: bool,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
-    InterpCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), Default::default())
+    InterpCx::new(
+        tcx.at(span),
+        param_env,
+        CompileTimeInterpreter::new(),
+        MemoryExtra { can_access_statics },
+    )
 }
 
 fn op_to_const<'tcx>(
@@ -176,6 +182,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 #[derive(Clone, Debug)]
 pub enum ConstEvalError {
     NeedsRfc(String),
+    ConstAccessesStatic,
 }
 
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
@@ -195,6 +202,7 @@ impl fmt::Display for ConstEvalError {
                     msg
                 )
             }
+            ConstAccessesStatic => write!(f, "constant accesses static"),
         }
     }
 }
@@ -204,6 +212,7 @@ impl Error for ConstEvalError {
         use self::ConstEvalError::*;
         match *self {
             NeedsRfc(_) => "this feature needs an rfc before being allowed inside constants",
+            ConstAccessesStatic => "constant accesses static",
         }
     }
 
@@ -222,6 +231,12 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
 
     /// Extra state to detect loops.
     pub(super) loop_detector: snapshot::InfiniteLoopDetector<'mir, 'tcx>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct MemoryExtra {
+    /// Whether this machine may read from statics
+    can_access_statics: bool,
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
@@ -311,7 +326,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     type ExtraFnVal = !;
 
     type FrameExtra = ();
-    type MemoryExtra = ();
+    type MemoryExtra = MemoryExtra;
     type AllocExtra = ();
 
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
@@ -473,7 +488,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     #[inline(always)]
     fn init_allocation_extra<'b>(
-        _memory_extra: &(),
+        _memory_extra: &MemoryExtra,
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<!>>,
@@ -484,7 +499,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     #[inline(always)]
     fn tag_static_base_pointer(
-        _memory_extra: &(),
+        _memory_extra: &MemoryExtra,
         _id: AllocId,
     ) -> Self::PointerTag {
         ()
@@ -527,6 +542,17 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
+
+    fn before_access_static(
+        memory_extra: &MemoryExtra,
+        _allocation: &Allocation,
+    ) -> InterpResult<'tcx> {
+        if memory_extra.can_access_statics {
+            Ok(())
+        } else {
+            Err(ConstEvalError::ConstAccessesStatic.into())
+        }
+    }
 }
 
 /// Extracts a field of a (variant of a) const.
@@ -540,7 +566,7 @@ pub fn const_field<'tcx>(
     value: &'tcx ty::Const<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     // get the operand again
     let op = ecx.eval_const_to_op(value, None).unwrap();
     // downcast
@@ -560,7 +586,7 @@ pub fn const_caller_location<'tcx>(
     (file, line, col): (Symbol, u32, u32),
 ) -> &'tcx ty::Const<'tcx> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
-    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all());
+    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
 
     let loc_ty = tcx.caller_location_ty();
     let loc_place = ecx.alloc_caller_location(file, line, col);
@@ -581,7 +607,7 @@ pub fn const_variant_index<'tcx>(
     val: &'tcx ty::Const<'tcx>,
 ) -> VariantIdx {
     trace!("const_variant_index: {:?}", val);
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     let op = ecx.eval_const_to_op(val, None).unwrap();
     ecx.read_discriminant(op).unwrap().1
 }
@@ -610,7 +636,9 @@ fn validate_and_turn_into_const<'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
-    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env);
+    let def_id = cid.instance.def.def_id();
+    let is_static = tcx.is_static(def_id);
+    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
     let val = (|| {
         let mplace = ecx.raw_const_to_mplace(constant)?;
         let mut ref_tracking = RefTracking::new(mplace);
@@ -624,8 +652,7 @@ fn validate_and_turn_into_const<'tcx>(
         // Now that we validated, turn this into a proper constant.
         // Statics/promoteds are always `ByRef`, for the rest `op_to_const` decides
         // whether they become immediates.
-        let def_id = cid.instance.def.def_id();
-        if tcx.is_static(def_id) || cid.promoted.is_some() {
+        if is_static || cid.promoted.is_some() {
             let ptr = mplace.ptr.to_ptr()?;
             Ok(tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Value(ConstValue::ByRef {
@@ -732,12 +759,14 @@ pub fn const_eval_raw_provider<'tcx>(
         return Err(ErrorHandled::Reported);
     }
 
+    let is_static = tcx.is_static(def_id);
+
     let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = InterpCx::new(
         tcx.at(span),
         key.param_env,
         CompileTimeInterpreter::new(),
-        Default::default()
+        MemoryExtra { can_access_statics: is_static },
     );
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
@@ -751,7 +780,7 @@ pub fn const_eval_raw_provider<'tcx>(
     }).map_err(|error| {
         let err = error_to_const_error(&ecx, error);
         // errors in statics are always emitted as fatal errors
-        if tcx.is_static(def_id) {
+        if is_static {
             // Ensure that if the above error was either `TooGeneric` or `Reported`
             // an error must be reported.
             let v = err.report_as_error(ecx.tcx, "could not evaluate static initializer");

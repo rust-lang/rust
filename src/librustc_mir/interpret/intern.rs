@@ -20,7 +20,6 @@ pub trait CompileTimeMachine<'mir, 'tcx> = Machine<
     PointerTag = (),
     ExtraFnVal = !,
     FrameExtra = (),
-    MemoryExtra = (),
     AllocExtra = (),
     MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
 >;
@@ -320,12 +319,20 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // We can't call the `intern_shallow` method here, as its logic is tailored to safe
             // references and a `leftover_allocations` set (where we only have a todo-list here).
             // So we hand-roll the interning logic here again.
-            if base_intern_mode != InternMode::Static {
-                // If it's not a static, it *must* be immutable.
-                // We cannot have mutable memory inside a constant.
-                // FIXME: ideally we would assert that they already are immutable, to double-
-                // check our static checks.
-                alloc.mutability = Mutability::Not;
+            match base_intern_mode {
+                InternMode::Static => {}
+                InternMode::Const | InternMode::ConstBase => {
+                    // If it's not a static, it *must* be immutable.
+                    // We cannot have mutable memory inside a constant.
+                    // We use `delay_span_bug` here, because this can be reached in the presence
+                    // of fancy transmutes.
+                    if alloc.mutability == Mutability::Mut {
+                        // For better errors later, mark the allocation as immutable
+                        // (on top of the delayed ICE).
+                        alloc.mutability = Mutability::Not;
+                        ecx.tcx.sess.delay_span_bug(ecx.tcx.span, "mutable allocation in constant");
+                    }
+                }
             }
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
@@ -337,6 +344,8 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // dangling pointer
             throw_unsup!(ValidationFailure("encountered dangling pointer in final constant".into()))
+        } else if ecx.tcx.alloc_map.lock().get(alloc_id).is_none() {
+            span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }
     Ok(())
