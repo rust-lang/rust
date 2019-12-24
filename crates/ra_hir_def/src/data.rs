@@ -80,9 +80,7 @@ impl FunctionData {
 
 fn desugar_future_path(orig: TypeRef) -> Path {
     let path = path![std::future::Future];
-
     let mut generic_args: Vec<_> = std::iter::repeat(None).take(path.segments.len() - 1).collect();
-
     let mut last = GenericArgs::empty();
     last.bindings.push((name![Output], orig));
     generic_args.push(Some(Arc::new(last)));

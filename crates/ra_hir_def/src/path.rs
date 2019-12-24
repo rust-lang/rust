@@ -131,7 +131,10 @@ impl Path {
     }
 
     /// Converts a known mod path to `Path`.
-    pub(crate) fn from_known_path(path: ModPath, generic_args: Vec<Option<Arc<GenericArgs>>>) -> Path {
+    pub(crate) fn from_known_path(
+        path: ModPath,
+        generic_args: Vec<Option<Arc<GenericArgs>>>,
+    ) -> Path {
         Path { type_anchor: None, mod_path: path, generic_args }
     }
 
