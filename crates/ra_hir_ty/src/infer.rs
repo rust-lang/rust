@@ -387,10 +387,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 if let Ty::Opaque(ref predicates) = inner_ty {
                     for p in predicates.iter() {
                         if let GenericPredicate::Projection(projection) = p {
-                            if projection.projection_ty.associated_ty == res_assoc_ty
-                                && projection.ty != Ty::Unknown
-                            {
-                                return projection.ty.clone();
+                            if projection.projection_ty.associated_ty == res_assoc_ty {
+                                if let ty_app!(_, params) = &projection.ty {
+                                    if params.len() == 0 {
+                                        return projection.ty.clone();
+                                    }
+                                }
                             }
                         }
                     }
