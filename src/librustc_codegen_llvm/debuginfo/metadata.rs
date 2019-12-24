@@ -33,11 +33,11 @@ use rustc::ty::layout::{
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::Instance;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::util::nodemap::FxHashMap;
 use rustc::{bug, span_bug};
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::path_to_c_string;

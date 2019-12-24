@@ -15,7 +15,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::{sign_extend, ConstValue, Scalar};
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::{self, DefIdTree, Ty};
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;

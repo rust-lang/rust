@@ -5,7 +5,7 @@
 use rustc::hir::intravisit as hir_visit;
 use rustc::hir::{self, HirId};
 use rustc::util::common::to_readable_str;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::Span;
 use syntax::ast::{self, AttrId, NodeId};
 use syntax::visit as ast_visit;

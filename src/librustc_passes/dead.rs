@@ -13,9 +13,7 @@ use rustc::lint;
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::privacy;
 use rustc::ty::{self, DefIdTree, TyCtxt};
-use rustc::util::nodemap::FxHashSet;
-
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use rustc_span;
 use rustc_span::symbol::sym;

@@ -8,7 +8,7 @@ use rustc::session::config::ErrorOutputType;
 use rustc::session::DiagnosticOutput;
 use rustc::session::{self, config};
 use rustc::ty::{Ty, TyCtxt};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_driver::abort_on_err;
 use rustc_feature::UnstableFeatures;
 use rustc_interface::interface;

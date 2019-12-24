@@ -117,6 +117,7 @@ use rustc::ty::{
     self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
     ToPredicate, Ty, TyCtxt, UserType,
 };
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::Idx;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
@@ -144,7 +145,7 @@ use crate::session::config::EntryFnType;
 use crate::session::Session;
 use crate::util::captures::Captures;
 use crate::util::common::{indenter, ErrorReported};
-use crate::util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, HirIdMap};
+use crate::util::nodemap::{DefIdMap, DefIdSet, HirIdMap};
 use crate::TypeAndSubsts;
 
 use self::autoderef::Autoderef;

@@ -6,7 +6,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::{self, Node};
 use rustc::middle::privacy::AccessLevel;
 use rustc::ty::TyCtxt;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;

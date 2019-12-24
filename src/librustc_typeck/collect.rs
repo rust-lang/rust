@@ -30,7 +30,7 @@ use rustc::ty::util::IntTypeExt;
 use rustc::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
-use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi;
 
 use rustc_span::symbol::{kw, sym, Symbol};

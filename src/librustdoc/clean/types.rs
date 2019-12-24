@@ -14,7 +14,7 @@ use rustc::hir::{self, Mutability};
 use rustc::middle::lang_items;
 use rustc::middle::stability;
 use rustc::ty::layout::VariantIdx;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;

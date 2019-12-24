@@ -27,7 +27,7 @@ use rustc::ty::GenericParamDefKind;
 use rustc::ty::{
     self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
 };
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
 use std::cmp::max;

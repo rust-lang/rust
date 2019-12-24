@@ -3,8 +3,9 @@
 //! which are available for use externally when compiled as a library.
 
 use crate::hir::HirId;
-use crate::util::nodemap::{DefIdSet, FxHashMap};
+use crate::util::nodemap::DefIdSet;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_macros::HashStable;
 use std::fmt;
 use std::hash::Hash;

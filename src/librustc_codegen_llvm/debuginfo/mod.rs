@@ -24,9 +24,10 @@ use crate::value::Value;
 use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty};
-use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
+use rustc::util::nodemap::DefIdMap;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_index::vec::IndexVec;
 

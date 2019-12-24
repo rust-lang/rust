@@ -19,10 +19,9 @@ use rustc::lint::builtin::BuiltinLintDiagnostics;
 use rustc::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc::session::DiagnosticMessageId;
 use rustc::ty;
-use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
-
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::kw;
 use rustc_span::{MultiSpan, Span};

@@ -12,8 +12,8 @@ use crate::hir::*;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
 use crate::util::common::time;
-use crate::util::nodemap::FxHashMap;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;

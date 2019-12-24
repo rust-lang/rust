@@ -8,7 +8,7 @@ use rustc::middle::lang_items;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use errors::DiagnosticBuilder;
 use rustc_span::symbol::sym;

@@ -11,9 +11,10 @@ pub use self::UnsafeSource::*;
 use crate::hir::def::{DefKind, Res};
 use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use crate::ty::query::Providers;
-use crate::util::nodemap::{FxHashSet, NodeMap};
+use crate::util::nodemap::NodeMap;
 
 use errors::FatalError;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Decoder, Encodable, Encoder};

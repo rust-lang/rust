@@ -106,7 +106,8 @@ use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, InstanceDef, TyCtxt};
 use rustc::util::common::time;
-use rustc::util::nodemap::{DefIdSet, FxHashMap, FxHashSet};
+use rustc::util::nodemap::DefIdSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::symbol::Symbol;
 
 use crate::monomorphize::collector::InliningMap;

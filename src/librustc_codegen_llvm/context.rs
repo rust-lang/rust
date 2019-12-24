@@ -19,10 +19,10 @@ use rustc::ty::layout::{
     FnAbiExt, HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
 };
 use rustc::ty::{self, Instance, Ty, TyCtxt};
-use rustc::util::nodemap::FxHashMap;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_target::spec::{HasTargetSpec, Target};
 

@@ -18,7 +18,8 @@ use rustc::middle::privacy;
 use rustc::session::config;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::{FxHashSet, HirIdSet};
+use rustc::util::nodemap::HirIdSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
 

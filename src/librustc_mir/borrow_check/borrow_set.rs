@@ -7,7 +7,7 @@ use rustc::mir::traversal;
 use rustc::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc::mir::{self, Body, Local, Location, ReadOnlyBodyAndCache};
 use rustc::ty::{RegionVid, TyCtxt};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use std::fmt;

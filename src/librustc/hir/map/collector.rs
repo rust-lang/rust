@@ -8,7 +8,7 @@ use crate::ich::Fingerprint;
 use crate::middle::cstore::CrateStore;
 use crate::session::CrateDisambiguator;
 use crate::session::Session;
-use crate::util::nodemap::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;
 use rustc_span::source_map::SourceMap;

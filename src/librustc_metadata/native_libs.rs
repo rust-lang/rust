@@ -3,7 +3,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::middle::cstore::{self, NativeLibrary};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::spec::abi::Abi;

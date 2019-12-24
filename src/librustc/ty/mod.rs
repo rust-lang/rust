@@ -28,8 +28,9 @@ use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::walk::TypeWalker;
 use crate::util::captures::Captures;
-use crate::util::nodemap::{DefIdMap, FxHashMap, NodeMap, NodeSet};
+use crate::util::nodemap::{DefIdMap, NodeMap, NodeSet};
 use arena::SyncDroplessArena;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_macros::HashStable;
 

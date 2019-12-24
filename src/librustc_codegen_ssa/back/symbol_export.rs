@@ -11,8 +11,9 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::Instance;
 use rustc::ty::{SymbolName, TyCtxt};
-use rustc::util::nodemap::{DefIdMap, FxHashMap};
+use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use syntax::expand::allocator::ALLOCATOR_METHODS;
 

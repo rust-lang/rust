@@ -3,8 +3,8 @@ use fmt_macros::{Parser, Piece, Position};
 use crate::hir::def_id::DefId;
 use crate::ty::{self, GenericParamDefKind, TyCtxt};
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::FxHashMap;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use syntax::ast::{MetaItem, NestedMetaItem};

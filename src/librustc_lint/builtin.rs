@@ -33,7 +33,7 @@ use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
 use rustc::{lint, util};
 use util::nodemap::HirIdSet;
 
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Stability;
 use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, AttributeType};
 

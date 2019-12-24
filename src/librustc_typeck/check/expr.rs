@@ -15,7 +15,6 @@ use crate::check::FnCtxt;
 use crate::check::Needs;
 use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::FxHashMap;
 
 use errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir;
@@ -31,6 +30,7 @@ use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoB
 use rustc::ty::Ty;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{AdtKind, Visibility};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};

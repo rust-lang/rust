@@ -15,7 +15,7 @@ use crate::infer::SubregionOrigin;
 use crate::middle::free_region::RegionRelations;
 use crate::middle::region;
 use crate::ty;
-use crate::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
 use std::collections::btree_map::BTreeMap;

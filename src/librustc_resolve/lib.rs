@@ -20,6 +20,7 @@ pub use rustc::hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
+use errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def::{self, CtorKind, CtorOf, DefKind, ExportMap, NonMacroAttrKind, PartialRes};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -32,12 +33,12 @@ use rustc::session::Session;
 use rustc::span_bug;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, ResolverOutputs};
-use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
-
-use rustc_metadata::creader::{CStore, CrateLoader};
-
-use errors::{Applicability, DiagnosticBuilder};
+use rustc::util::nodemap::{DefIdMap, NodeMap, NodeSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::ptr_key::PtrKey;
+use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::SyntaxExtension;
+use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
@@ -51,10 +52,6 @@ use syntax::visit::{self, Visitor};
 use syntax::{struct_span_err, unwrap_or};
 
 use log::debug;
-
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::ptr_key::PtrKey;
-use rustc_data_structures::sync::Lrc;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::{cmp, fmt, iter, ptr};

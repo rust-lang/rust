@@ -59,7 +59,7 @@ use rustc::middle::cstore::{self, DepKind};
 use rustc::middle::dependency_format::{Dependencies, DependencyList, Linkage};
 use rustc::session::config;
 use rustc::ty::TyCtxt;
-use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 
 crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {

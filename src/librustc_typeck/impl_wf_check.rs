@@ -14,7 +14,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use rustc_span::Span;

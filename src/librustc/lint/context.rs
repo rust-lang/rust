@@ -27,9 +27,8 @@ use crate::middle::privacy::AccessLevels;
 use crate::session::Session;
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
-use crate::util::nodemap::FxHashMap;
-
 use errors::DiagnosticBuilder;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_span::{symbol::Symbol, MultiSpan, Span};
 use std::slice;

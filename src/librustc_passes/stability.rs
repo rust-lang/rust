@@ -11,7 +11,7 @@ use rustc::middle::stability::{DeprecationEntry, Index};
 use rustc::session::Session;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use syntax::ast::Attribute;

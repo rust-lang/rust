@@ -21,10 +21,10 @@ use crate::ty::GenericParamDefKind;
 use crate::ty::SubtypePredicate;
 use crate::ty::TypeckTables;
 use crate::ty::{self, AdtKind, DefIdTree, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
-use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use errors::{pluralize, Applicability, DiagnosticBuilder, Style};
 use rustc::hir::def_id::LOCAL_CRATE;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};

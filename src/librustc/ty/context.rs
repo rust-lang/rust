@@ -47,10 +47,10 @@ use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet, NodeMap};
-use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use arena::SyncDroplessArena;
 use errors::DiagnosticBuilder;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::stable_hasher::{
