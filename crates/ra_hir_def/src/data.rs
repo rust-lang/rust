@@ -6,12 +6,15 @@ use hir_expand::{
     name::{name, AsName, Name},
     AstId, InFile,
 };
-use ra_syntax::ast::{self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner};
+use ra_syntax::ast::{
+    self, AstNode, AsyncOwner, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner,
+};
 
 use crate::{
     db::DefDatabase,
+    path::{path, GenericArgs, Path},
     src::HasSource,
-    type_ref::{Mutability, TypeRef},
+    type_ref::{Mutability, TypeBound, TypeRef},
     AssocContainerId, AssocItemId, ConstId, ConstLoc, Expander, FunctionId, FunctionLoc, HasModule,
     ImplId, Intern, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
 };
@@ -62,9 +65,29 @@ impl FunctionData {
             TypeRef::unit()
         };
 
+        let ret_type = if src.value.is_async() {
+            let future_impl = desugar_future_path(ret_type);
+            let ty_bound = TypeBound::Path(future_impl);
+            TypeRef::ImplTrait(vec![ty_bound])
+        } else {
+            ret_type
+        };
+
         let sig = FunctionData { name, params, ret_type, has_self_param };
         Arc::new(sig)
     }
+}
+
+fn desugar_future_path(orig: TypeRef) -> Path {
+    let path = path![std::future::Future];
+
+    let mut generic_args: Vec<_> = std::iter::repeat(None).take(path.segments.len() - 1).collect();
+
+    let mut last = GenericArgs::empty();
+    last.bindings.push((name![Output], orig));
+    generic_args.push(Some(Arc::new(last)));
+
+    Path::from_known_path(path, generic_args)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

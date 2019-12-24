@@ -1129,6 +1129,7 @@ impl ast::NameOwner for FnDef {}
 impl ast::TypeParamsOwner for FnDef {}
 impl ast::AttrsOwner for FnDef {}
 impl ast::DocCommentsOwner for FnDef {}
+impl ast::AsyncOwner for FnDef {}
 impl FnDef {
     pub fn param_list(&self) -> Option<ParamList> {
         AstChildren::new(&self.syntax).next()

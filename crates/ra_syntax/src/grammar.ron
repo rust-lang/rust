@@ -275,7 +275,8 @@ Grammar(
                 "NameOwner",
                 "TypeParamsOwner",
                 "AttrsOwner",
-                "DocCommentsOwner"
+                "DocCommentsOwner",
+                "AsyncOwner"
             ],
             options: [ "ParamList", ["body", "BlockExpr"], "RetType" ],
         ),
