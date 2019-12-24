@@ -24,4 +24,5 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_error_codes = { path = "../librustc_error_codes" }
+rustc_session = { path = "../librustc_session" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

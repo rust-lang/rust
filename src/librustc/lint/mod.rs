@@ -25,10 +25,10 @@ use rustc_data_structures::sync;
 
 use crate::hir;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::TyCtxt;
-use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
+use rustc_session::node_id::NodeMap;
+use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use rustc_span::symbol::Symbol;

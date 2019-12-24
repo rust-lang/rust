@@ -46,7 +46,7 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet, NodeMap};
+use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet};
 
 use arena::SyncDroplessArena;
 use errors::DiagnosticBuilder;
@@ -59,6 +59,7 @@ use rustc_data_structures::stable_hasher::{
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;

@@ -28,11 +28,12 @@ use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::walk::TypeWalker;
 use crate::util::captures::Captures;
-use crate::util::nodemap::{DefIdMap, NodeMap, NodeSet};
+use crate::util::nodemap::DefIdMap;
 use arena::SyncDroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_macros::HashStable;
+use rustc_session::node_id::{NodeMap, NodeSet};
 
 use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
 use rustc_serialize::{self, Encodable, Encoder};

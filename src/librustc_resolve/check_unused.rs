@@ -27,10 +27,9 @@ use crate::imports::ImportDirectiveSubclass;
 use crate::Resolver;
 
 use errors::pluralize;
-
-use rustc::util::nodemap::NodeMap;
 use rustc::{lint, ty};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_session::node_id::NodeMap;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use syntax::ast;
 use syntax::visit::{self, Visitor};

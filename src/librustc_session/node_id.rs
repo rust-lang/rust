@@ -10,6 +10,8 @@ rustc_index::newtype_index! {
     }
 }
 
+rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeId);
+
 impl NodeId {
     pub fn placeholder_from_expn_id(expn_id: ExpnId) -> Self {
         NodeId::from_u32(expn_id.as_u32())
