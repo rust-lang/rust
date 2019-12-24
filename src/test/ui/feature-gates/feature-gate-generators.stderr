@@ -25,7 +25,7 @@ LL |     yield 0;
    = note: for more information, see https://github.com/rust-lang/rust/issues/43122
    = help: add `#![feature(generators)]` to the crate attributes to enable
 
-error[E0627]: yield statement outside of generator literal
+error[E0627]: yield expression outside of generator literal
   --> $DIR/feature-gate-generators.rs:2:5
    |
 LL |     yield true;
@@ -33,4 +33,5 @@ LL |     yield true;
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0658`.
+Some errors have detailed explanations: E0627, E0658.
+For more information about an error, try `rustc --explain E0627`.

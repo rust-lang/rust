@@ -1,0 +1,25 @@
+warning: skipping const checks
+  --> $DIR/mutable_const2.rs:15:38
+   |
+LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
+   |                                      ^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: mutable allocation in constant
+  --> $DIR/mutable_const2.rs:15:1
+   |
+LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', src/librustc_errors/lib.rs:349:17
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc VERSION running on TARGET
+
+note: compiler flags: FLAGS
+

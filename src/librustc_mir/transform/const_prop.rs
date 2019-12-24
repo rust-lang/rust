@@ -224,6 +224,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     fn before_access_static(
+        _memory_extra: &(),
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
     ) -> InterpResult<'tcx> {
         // if the static allocation is mutable or if it has relocations (it may be legal to mutate

@@ -346,6 +346,7 @@ E0622: include_str!("./error_codes/E0622.md"),
 E0623: include_str!("./error_codes/E0623.md"),
 E0624: include_str!("./error_codes/E0624.md"),
 E0626: include_str!("./error_codes/E0626.md"),
+E0627: include_str!("./error_codes/E0627.md"),
 E0631: include_str!("./error_codes/E0631.md"),
 E0633: include_str!("./error_codes/E0633.md"),
 E0635: include_str!("./error_codes/E0635.md"),
@@ -574,7 +575,6 @@ E0745: include_str!("./error_codes/E0745.md"),
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0625, // thread-local statics cannot be accessed at compile-time
-    E0627, // yield statement outside of generator literal
     E0628, // generators cannot have explicit parameters
     E0629, // missing 'feature' (rustc_const_unstable)
     // rustc_const_unstable attribute must be paired with stable/unstable

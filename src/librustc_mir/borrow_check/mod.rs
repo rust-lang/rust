@@ -1424,7 +1424,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// Reports an error if this is a borrow of local data.
-    /// This is called for all Yield statements on movable generators
+    /// This is called for all Yield expressions on movable generators
     fn check_for_local_borrow(&mut self, borrow: &BorrowData<'tcx>, yield_span: Span) {
         debug!("check_for_local_borrow({:?})", borrow);
 

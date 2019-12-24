@@ -1,0 +1,100 @@
+warning: skipping const checks
+  --> $DIR/const_refers_to_static.rs:11:18
+   |
+LL |     unsafe { &*(&FOO as *const _ as *const usize) }
+   |                  ^^^
+
+warning: skipping const checks
+  --> $DIR/const_refers_to_static.rs:17:5
+   |
+LL |     FOO.fetch_add(1, Ordering::Relaxed)
+   |     ^^^
+
+warning: skipping const checks
+  --> $DIR/const_refers_to_static.rs:17:5
+   |
+LL |     FOO.fetch_add(1, Ordering::Relaxed)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: skipping const checks
+  --> $DIR/const_refers_to_static.rs:24:17
+   |
+LL |     unsafe { *(&FOO as *const _ as *const usize) }
+   |                 ^^^
+
+warning: skipping const checks
+  --> $DIR/const_refers_to_static.rs:29:27
+   |
+LL | const BAD: u32 = unsafe { MUTABLE };
+   |                           ^^^^^^^
+
+warning: skipping const checks
+  --> $DIR/const_refers_to_static.rs:35:6
+   |
+LL |     &FOO
+   |      ^^^
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refers_to_static.rs:9:1
+   |
+LL | / const BOO: &usize = {
+LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
+LL | |     unsafe { &*(&FOO as *const _ as *const usize) }
+LL | |
+LL | | };
+   | |__^ constant accesses static
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+warning: any use of this value will cause an error
+  --> $DIR/const_refers_to_static.rs:17:5
+   |
+LL | / const FOO: usize = {
+LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
+LL | |     FOO.fetch_add(1, Ordering::Relaxed)
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `std::sync::atomic::AtomicUsize::fetch_add`
+LL | |
+LL | |
+LL | | };
+   | |__-
+   |
+note: lint level defined here
+  --> $DIR/const_refers_to_static.rs:2:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
+
+warning: any use of this value will cause an error
+  --> $DIR/const_refers_to_static.rs:24:14
+   |
+LL | / const BAR: usize = {
+LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
+LL | |     unsafe { *(&FOO as *const _ as *const usize) }
+   | |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
+LL | |
+LL | | };
+   | |__-
+
+warning: any use of this value will cause an error
+  --> $DIR/const_refers_to_static.rs:29:27
+   |
+LL | const BAD: u32 = unsafe { MUTABLE };
+   | --------------------------^^^^^^^---
+   |                           |
+   |                           constant accesses static
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refers_to_static.rs:33:1
+   |
+LL | / const BOO_OK: &usize = {
+LL | |     static FOO: usize = 0;
+LL | |     &FOO
+LL | |
+LL | | };
+   | |__^ constant accesses static
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

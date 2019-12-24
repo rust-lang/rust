@@ -91,10 +91,6 @@ pub trait Error: Debug + Display {
     /// }
     ///
     /// impl Error for SuperError {
-    ///     fn description(&self) -> &str {
-    ///         "I'm the superhero of errors"
-    ///     }
-    ///
     ///     fn cause(&self) -> Option<&dyn Error> {
     ///         Some(&self.side)
     ///     }
@@ -109,11 +105,7 @@ pub trait Error: Debug + Display {
     ///     }
     /// }
     ///
-    /// impl Error for SuperErrorSideKick {
-    ///     fn description(&self) -> &str {
-    ///         "I'm SuperError side kick"
-    ///     }
-    /// }
+    /// impl Error for SuperErrorSideKick {}
     ///
     /// fn get_super_error() -> Result<(), SuperError> {
     ///     Err(SuperError { side: SuperErrorSideKick })
@@ -159,10 +151,6 @@ pub trait Error: Debug + Display {
     /// }
     ///
     /// impl Error for SuperError {
-    ///     fn description(&self) -> &str {
-    ///         "I'm the superhero of errors"
-    ///     }
-    ///
     ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
     ///         Some(&self.side)
     ///     }
@@ -177,11 +165,7 @@ pub trait Error: Debug + Display {
     ///     }
     /// }
     ///
-    /// impl Error for SuperErrorSideKick {
-    ///     fn description(&self) -> &str {
-    ///         "I'm SuperError side kick"
-    ///     }
-    /// }
+    /// impl Error for SuperErrorSideKick {}
     ///
     /// fn get_super_error() -> Result<(), SuperError> {
     ///     Err(SuperError { side: SuperErrorSideKick })
@@ -261,11 +245,7 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     ///     }
     /// }
     ///
-    /// impl Error for AnError {
-    ///     fn description(&self) -> &str {
-    ///         "Description of an error"
-    ///     }
-    /// }
+    /// impl Error for AnError {}
     ///
     /// let an_error = AnError;
     /// assert!(0 == mem::size_of_val(&an_error));
@@ -300,11 +280,7 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
     ///     }
     /// }
     ///
-    /// impl Error for AnError {
-    ///     fn description(&self) -> &str {
-    ///         "Description of an error"
-    ///     }
-    /// }
+    /// impl Error for AnError {}
     ///
     /// unsafe impl Send for AnError {}
     ///
