@@ -5,6 +5,8 @@ mod returning;
 
 use rustc_target::spec::abi::Abi;
 
+use cranelift_codegen::ir::AbiParam;
+
 use self::pass_mode::*;
 use crate::prelude::*;
 

@@ -3,9 +3,9 @@ mod line_info;
 
 use crate::prelude::*;
 
-use cranelift::codegen::ir::{StackSlots, ValueLabel, ValueLoc};
-use cranelift::codegen::isa::RegUnit;
-use cranelift::codegen::ValueLocRange;
+use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
+use cranelift_codegen::isa::RegUnit;
+use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
     self, Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString, Location,
@@ -253,7 +253,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     pub fn define(
         &mut self,
         context: &Context,
-        isa: &dyn cranelift::codegen::isa::TargetIsa,
+        isa: &dyn cranelift_codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<(Span, mir::SourceScope)>,
         local_map: HashMap<mir::Local, CPlace<'tcx>>,
     ) {
@@ -312,7 +312,7 @@ fn place_location<'a, 'tcx>(
 
     match cplace.inner() {
         CPlaceInner::Var(local) => {
-            let value_label = cranelift::codegen::ir::ValueLabel::from_u32(local.as_u32());
+            let value_label = cranelift_codegen::ir::ValueLabel::from_u32(local.as_u32());
             if let Some(value_loc_ranges) = value_labels_ranges.get(&value_label) {
                 let loc_list = LocationList(
                     value_loc_ranges

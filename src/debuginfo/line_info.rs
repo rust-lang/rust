@@ -5,7 +5,7 @@ use crate::prelude::*;
 
 use syntax::source_map::FileName;
 
-use cranelift::codegen::binemit::CodeOffset;
+use cranelift_codegen::binemit::CodeOffset;
 
 use gimli::write::{
     Address, AttributeValue, FileId, LineProgram, LineString, LineStringTable, UnitEntryId,
@@ -104,7 +104,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     pub(crate) fn create_debug_lines(
         &mut self,
         context: &Context,
-        isa: &dyn cranelift::codegen::isa::TargetIsa,
+        isa: &dyn cranelift_codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<(Span, mir::SourceScope)>,
     ) -> CodeOffset {
         let tcx = self.debug_context.tcx;

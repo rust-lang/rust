@@ -25,7 +25,7 @@ use rustc::ty::query::Providers;
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
-use cranelift::codegen::settings;
+use cranelift_codegen::settings;
 
 use crate::constant::ConstantCx;
 use crate::prelude::*;
@@ -91,12 +91,15 @@ mod prelude {
     pub use rustc_codegen_ssa::traits::*;
     pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
 
-    pub use cranelift::codegen::ir::{
-        condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, SourceLoc, StackSlot,
-    };
-    pub use cranelift::codegen::isa::CallConv;
-    pub use cranelift::codegen::Context;
-    pub use cranelift::prelude::*;
+    pub use cranelift_codegen::Context;
+    pub use cranelift_codegen::ir::{AbiParam, Ebb, ExternalName, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value};
+    pub use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
+    pub use cranelift_codegen::ir::function::Function;
+    pub use cranelift_codegen::ir::immediates::{Ieee32, Ieee64};
+    pub use cranelift_codegen::ir::types;
+    pub use cranelift_codegen::isa::{self, CallConv};
+    pub use cranelift_codegen::settings::{self, Configurable};
+    pub use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
     pub use cranelift_module::{
         self, Backend, DataContext, DataId, FuncId, FuncOrDataId, Linkage, Module,
     };
@@ -283,7 +286,7 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
 
     let target_triple = crate::target_triple(sess);
     let flags = settings::Flags::new(flags_builder);
-    cranelift::codegen::isa::lookup(target_triple)
+    cranelift_codegen::isa::lookup(target_triple)
         .unwrap()
         .finish(flags)
 }

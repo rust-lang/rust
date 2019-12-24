@@ -1,7 +1,7 @@
 use rustc::ty::layout::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
-use cranelift::codegen::ir::{InstructionData, Opcode, ValueDef};
+use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 
 use crate::prelude::*;
 

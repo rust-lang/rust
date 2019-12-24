@@ -103,11 +103,11 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
 fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
     let flags = settings::Flags::new(settings::builder());
-    match ::cranelift::codegen::verify_function(&func, &flags) {
+    match ::cranelift_codegen::verify_function(&func, &flags) {
         Ok(_) => {}
         Err(err) => {
             tcx.sess.err(&format!("{:?}", err));
-            let pretty_error = ::cranelift::codegen::print_errors::pretty_verifier_error(
+            let pretty_error = ::cranelift_codegen::print_errors::pretty_verifier_error(
                 &func,
                 None,
                 Some(Box::new(writer)),
@@ -195,7 +195,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 targets,
             } => {
                 let discr = trans_operand(fx, discr).load_scalar(fx);
-                let mut switch = ::cranelift::frontend::Switch::new();
+                let mut switch = ::cranelift_frontend::Switch::new();
                 for (i, value) in values.iter().enumerate() {
                     let ebb = fx.get_ebb(targets[i]);
                     switch.set_entry(*value as u64, ebb);

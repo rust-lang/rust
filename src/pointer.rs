@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use cranelift::codegen::ir::immediates::Offset32;
+use cranelift_codegen::ir::immediates::Offset32;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Pointer {

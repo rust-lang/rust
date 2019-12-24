@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
-use cranelift::codegen::{
+use cranelift_codegen::{
     entity::SecondaryMap,
     ir::{self, entities::AnyEntity, function::DisplayFunctionAnnotations},
     write::{FuncWriter, PlainWriter},
@@ -221,7 +221,7 @@ pub fn write_clif_file<'tcx>(
     );
 
     let mut clif = String::new();
-    cranelift::codegen::write::decorate_function(
+    cranelift_codegen::write::decorate_function(
         &mut clif_comments,
         &mut clif,
         &func,
@@ -255,7 +255,7 @@ impl<'a, 'tcx, B: Backend + 'static> fmt::Debug for FunctionCx<'_, 'tcx, B> {
         writeln!(f, "{:?}", self.local_map)?;
 
         let mut clif = String::new();
-        ::cranelift::codegen::write::decorate_function(
+        ::cranelift_codegen::write::decorate_function(
             &mut &self.clif_comments,
             &mut clif,
             &self.bcx.func,

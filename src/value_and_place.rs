@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use cranelift::codegen::ir::immediates::Offset32;
+use cranelift_codegen::ir::immediates::Offset32;
 
 fn codegen_field<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
@@ -308,7 +308,7 @@ impl<'tcx> CPlace<'tcx> {
         match self.inner {
             CPlaceInner::Var(var) => {
                 let val = fx.bcx.use_var(mir_var(var));
-                fx.bcx.set_val_label(val, cranelift::codegen::ir::ValueLabel::from_u32(var.as_u32()));
+                fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::from_u32(var.as_u32()));
                 CValue::by_val(val, layout)
             }
             CPlaceInner::Addr(ptr, extra) => {
@@ -415,7 +415,7 @@ impl<'tcx> CPlace<'tcx> {
         let to_ptr = match self.inner {
             CPlaceInner::Var(var) => {
                 let data = from.load_scalar(fx);
-                fx.bcx.set_val_label(data, cranelift::codegen::ir::ValueLabel::from_u32(var.as_u32()));
+                fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::from_u32(var.as_u32()));
                 fx.bcx.def_var(mir_var(var), data);
                 return;
             }

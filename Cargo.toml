@@ -13,7 +13,8 @@ backend_object = ["object/write", "cranelift-object"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift = { git = "https://github.com/bytecodealliance/cranelift/", default-features = false, features = ["std"] }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/cranelift/", default-features = false, features = ["std"] }
+cranelift-frontend = { git = "https://github.com/bytecodealliance/cranelift/", default-features = false, features = ["std"] }
 cranelift-module = { git = "https://github.com/bytecodealliance/cranelift/" }
 cranelift-faerie = { git = "https://github.com/bytecodealliance/cranelift/" }
 cranelift-object = { git = "https://github.com/bytecodealliance/cranelift/", optional = true }
@@ -35,7 +36,8 @@ features = ["compression", "read", "std"] # We don't need WASM support
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/bytecodealliance/cranelift/"]
-#cranelift = { path = "../cranelift/cranelift-umbrella", default-features = false, features = ["std"] }
+#cranelift-codegen = { path = "../cranelift/cranelift-codegen", default-features = false, features = ["std"] }
+#cranelift-frontend = { path = "../cranelift/cranelift-frontend", default-features = false, features = ["std"] }
 #cranelift-module = { path = "../cranelift/cranelift-module" }
 #cranelift-simplejit = { path = "../cranelift/cranelift-simplejit" }
 #cranelift-faerie = { path = "../cranelift/cranelift-faerie" }
