@@ -1,5 +1,6 @@
 use crate::utils::{
-    in_macro, match_def_path, match_qpath, paths, snippet_with_applicability, span_help_and_lint, span_lint_and_sugg,
+    in_macro, match_def_path, match_qpath, paths, snippet, snippet_with_applicability, span_help_and_lint,
+    span_lint_and_sugg, span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
@@ -166,24 +167,28 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr, expr_span: Sp
 fn check_replace_with_default(cx: &LateContext<'_, '_>, src: &Expr, dest: &Expr, expr_span: Span) {
     if let ExprKind::Call(ref repl_func, _) = src.kind {
         if_chain! {
-            if !in_macro(expr_span) && !in_external_macro(cx.tcx.sess, expr_span);
+            if !in_external_macro(cx.tcx.sess, expr_span);
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
             if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
             if match_def_path(cx, repl_def_id, &paths::DEFAULT_TRAIT_METHOD);
             then {
-                let mut applicability = Applicability::MachineApplicable;
-
-                span_lint_and_sugg(
+                span_lint_and_then(
                     cx,
                     MEM_REPLACE_WITH_DEFAULT,
                     expr_span,
                     "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
-                    "consider using",
-                    format!(
-                        "std::mem::take({})",
-                        snippet_with_applicability(cx, dest.span, "", &mut applicability)
-                    ),
-                    applicability,
+                    |db| {
+                        if !in_macro(expr_span) {
+                            let suggestion = format!("std::mem::take({})", snippet(cx, dest.span, ""));
+
+                            db.span_suggestion(
+                                expr_span,
+                                "consider using",
+                                suggestion,
+                                Applicability::MachineApplicable
+                            );
+                        }
+                    }
                 );
             }
         }

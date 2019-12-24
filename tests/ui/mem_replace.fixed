@@ -8,7 +8,6 @@
 // except according to those terms.
 
 // run-rustfix
-// aux-build:macro_rules.rs
 #![allow(unused_imports)]
 #![warn(
     clippy::all,
@@ -17,16 +16,7 @@
     clippy::mem_replace_with_default
 )]
 
-#[macro_use]
-extern crate macro_rules;
-
 use std::mem;
-
-macro_rules! take {
-    ($s:expr) => {
-        std::mem::replace($s, Default::default())
-    };
-}
 
 fn replace_option_with_none() {
     let mut an_option = Some(1);
@@ -41,10 +31,6 @@ fn replace_with_default() {
     let s = &mut String::from("foo");
     let _ = std::mem::take(s);
     let _ = std::mem::take(s);
-
-    // dont lint within macros
-    take!(s);
-    take_external!(s);
 }
 
 fn main() {
