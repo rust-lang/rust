@@ -3869,6 +3869,7 @@ dependencies = [
 name = "rustdoc"
 version = "0.0.0"
 dependencies = [
+ "itertools 0.8.0",
  "minifier",
  "pulldown-cmark 0.5.3",
  "rustc-rayon",

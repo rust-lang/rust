@@ -435,6 +435,8 @@ impl Clean<Constant> for hir::ConstArg {
         Constant {
             type_: cx.tcx.type_of(cx.tcx.hir().body_owner_def_id(self.value.body)).clean(cx),
             expr: print_const_expr(cx, self.value.body),
+            value: None,
+            is_literal: is_literal_expr(cx, self.value.body.hir_id),
         }
     }
 }
@@ -1717,7 +1719,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
 impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> Constant {
-        Constant { type_: self.ty.clean(cx), expr: format!("{}", self) }
+        Constant {
+            type_: self.ty.clean(cx),
+            expr: format!("{}", self),
+            value: None,
+            is_literal: false,
+        }
     }
 }
 
@@ -2062,17 +2069,21 @@ impl Clean<Item> for doctree::Static<'_> {
 
 impl Clean<Item> for doctree::Constant<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
+        let def_id = cx.tcx.hir().local_def_id(self.id);
+
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.hir().local_def_id(self.id),
+            def_id,
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
             inner: ConstantItem(Constant {
                 type_: self.type_.clean(cx),
                 expr: print_const_expr(cx, self.expr),
+                value: print_evaluated_const(cx, def_id),
+                is_literal: is_literal_expr(cx, self.expr.hir_id),
             }),
         }
     }

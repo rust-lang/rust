@@ -450,7 +450,16 @@ pub fn print_inlined_const(cx: &DocContext<'_>, did: DefId) -> String {
 }
 
 fn build_const(cx: &DocContext<'_>, did: DefId) -> clean::Constant {
-    clean::Constant { type_: cx.tcx.type_of(did).clean(cx), expr: print_inlined_const(cx, did) }
+    clean::Constant {
+        type_: cx.tcx.type_of(did).clean(cx),
+        expr: print_inlined_const(cx, did),
+        value: clean::utils::print_evaluated_const(cx, did),
+        is_literal: cx
+            .tcx
+            .hir()
+            .as_local_hir_id(did)
+            .map_or(false, |hir_id| clean::utils::is_literal_expr(cx, hir_id)),
+    }
 }
 
 fn build_static(cx: &DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
