@@ -557,13 +557,15 @@ macro_rules! unreachable {
     });
 }
 
-/// Indicates unfinished code by panicking with a message of "not yet implemented".
+/// Indicates unimplemented code by panicking with a message of "not implemented".
 ///
 /// This allows the your code to type-check, which is useful if you are prototyping or
 /// implementing a trait that requires multiple methods which you don't plan of using all of.
 ///
-/// There is no difference between `unimplemented!` and `todo!` apart from the
-/// name.
+/// The difference between `unimplemented!` and [`todo!`](macro.todo.html) is that while `todo!`
+/// conveys an intent of implementing the functionality later and the message is "not yet
+/// implemented", `unimplemented!` makes no such claims. Its message is "not implemented".
+/// Also some IDEs will mark `todo!`s.
 ///
 /// # Panics
 ///
@@ -574,7 +576,7 @@ macro_rules! unreachable {
 ///
 /// # Examples
 ///
-/// Here's an example of some in-progress code. We have a trait `Foo`:
+/// Say we have a trait `Foo`:
 ///
 /// ```
 /// trait Foo {
@@ -584,13 +586,13 @@ macro_rules! unreachable {
 /// }
 /// ```
 ///
-/// We want to implement `Foo` for 'MyStruct', but so far we only know how to
-/// implement the `bar()` function. `baz()` and `qux()` will still need to be defined
+/// We want to implement `Foo` for 'MyStruct', but for some reason it only makes sense
+/// to implement the `bar()` function. `baz()` and `qux()` will still need to be defined
 /// in our implementation of `Foo`, but we can use `unimplemented!` in their definitions
 /// to allow our code to compile.
 ///
-/// In the meantime, we want to have our program stop running once these
-/// unimplemented functions are reached.
+/// We still want to have our program stop running if the unimplemented methods are
+/// reached.
 ///
 /// ```
 /// # trait Foo {
@@ -606,19 +608,18 @@ macro_rules! unreachable {
 ///     }
 ///
 ///     fn baz(&self) {
-///         // We aren't sure how to even start writing baz yet,
-///         // so we have no logic here at all.
-///         // This will display "thread 'main' panicked at 'not yet implemented'".
+///         // It makes no sense to `baz` a `MyStruct`, so we have no logic here
+///         // at all.
+///         // This will display "thread 'main' panicked at 'not implemented'".
 ///         unimplemented!();
 ///     }
 ///
 ///     fn qux(&self) -> Result<u64, ()> {
-///         let n = self.bar();
 ///         // We have some logic here,
-///         // so we can use unimplemented! to display what we have so far.
+///         // We can add a message to unimplemented! to display our omission.
 ///         // This will display:
-///         // "thread 'main' panicked at 'not yet implemented: we need to divide by 2'".
-///         unimplemented!("we need to divide by {}", n);
+///         // "thread 'main' panicked at 'not implemented: MyStruct isn't quxable'".
+///         unimplemented!("MyStruct isn't quxable");
 ///     }
 /// }
 ///
@@ -630,8 +631,8 @@ macro_rules! unreachable {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
-    () => (panic!("not yet implemented"));
-    ($($arg:tt)+) => (panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
+    () => (panic!("not implemented"));
+    ($($arg:tt)+) => (panic!("not implemented: {}", $crate::format_args!($($arg)+)));
 }
 
 /// Indicates unfinished code.
@@ -639,8 +640,12 @@ macro_rules! unimplemented {
 /// This can be useful if you are prototyping and are just looking to have your
 /// code typecheck.
 ///
-/// There is no difference between `unimplemented!` and `todo!` apart from the
-/// name.
+/// The difference between [`unimplemented!`] and `todo!` is that while `todo!` conveys
+/// an intent of implementing the functionality later and the message is "not yet
+/// implemented", `unimplemented!` makes no such claims. Its message is "not implemented".
+/// Also some IDEs will mark `todo!`s.
+///
+/// [`unimplemented!`]: macro.unimplemented.html
 ///
 /// # Panics
 ///
@@ -683,7 +688,7 @@ macro_rules! unimplemented {
 ///     let s = MyStruct;
 ///     s.bar();
 ///
-///     // we aren't even using baz() yet, so this is fine.
+///     // we aren't even using baz(), so this is fine.
 /// }
 /// ```
 #[macro_export]
