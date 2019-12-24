@@ -254,7 +254,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         &mut self,
         context: &Context,
         isa: &dyn cranelift_codegen::isa::TargetIsa,
-        source_info_set: &indexmap::IndexSet<(Span, mir::SourceScope)>,
+        source_info_set: &indexmap::IndexSet<SourceInfo>,
         local_map: HashMap<mir::Local, CPlace<'tcx>>,
     ) {
         let end = self.create_debug_lines(context, isa, source_info_set);

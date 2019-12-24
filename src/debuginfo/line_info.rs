@@ -105,7 +105,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         &mut self,
         context: &Context,
         isa: &dyn cranelift_codegen::isa::TargetIsa,
-        source_info_set: &indexmap::IndexSet<(Span, mir::SourceScope)>,
+        source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) -> CodeOffset {
         let tcx = self.debug_context.tcx;
 
@@ -147,7 +147,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 line_program.row().address_offset = offset as u64;
                 if !srcloc.is_default() {
                     let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
-                    create_row_for_span(line_program, source_info.0);
+                    create_row_for_span(line_program, source_info.span);
                 } else {
                     create_row_for_span(line_program, self.mir.span);
                 }
