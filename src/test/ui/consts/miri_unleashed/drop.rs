@@ -1,4 +1,5 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
+// ignore-x86 FIXME: missing sysroot spans (#53081)
 #![deny(const_err)]
 
 use std::mem::ManuallyDrop;
