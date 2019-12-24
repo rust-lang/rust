@@ -1,0 +1,28 @@
+error: wildcard pattern covers any other pattern as it will match anyway. Consider replacing with wildcard pattern only
+  --> $DIR/pats_with_wild_match_arm.rs:10:9
+   |
+LL |         "bar" | _ => {
+   |         ^^^^^^^^^ help: try this: `_`
+   |
+   = note: `-D clippy::pats-with-wild-match-arm` implied by `-D warnings`
+
+error: wildcard pattern covers any other pattern as it will match anyway. Consider replacing with wildcard pattern only
+  --> $DIR/pats_with_wild_match_arm.rs:18:9
+   |
+LL |         "bar" | "bar2" | _ => {
+   |         ^^^^^^^^^^^^^^^^^^ help: try this: `_`
+
+error: wildcard pattern covers any other pattern as it will match anyway. Consider replacing with wildcard pattern only
+  --> $DIR/pats_with_wild_match_arm.rs:26:9
+   |
+LL |         _ | "bar" | _ => {
+   |         ^^^^^^^^^^^^^ help: try this: `_`
+
+error: wildcard pattern covers any other pattern as it will match anyway. Consider replacing with wildcard pattern only
+  --> $DIR/pats_with_wild_match_arm.rs:34:9
+   |
+LL |         _ | "bar" => {
+   |         ^^^^^^^^^ help: try this: `_`
+
+error: aborting due to 4 previous errors
+

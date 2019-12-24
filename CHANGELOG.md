@@ -1241,6 +1241,7 @@ Released 2018-09-13
 [`panicking_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#panicking_unwrap
 [`partialeq_ne_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#partialeq_ne_impl
 [`path_buf_push_overwrite`]: https://rust-lang.github.io/rust-clippy/master/index.html#path_buf_push_overwrite
+[`pats_with_wild_match_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#pats_with_wild_match_arm
 [`possible_missing_comma`]: https://rust-lang.github.io/rust-clippy/master/index.html#possible_missing_comma
 [`precedence`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence
 [`print_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_literal

@@ -1,0 +1,38 @@
+// run-rustfix
+
+#![warn(clippy::pats_with_wild_match_arm)]
+
+fn main() {
+    match "foo" {
+        "a" => {
+            dbg!("matched a");
+        },
+        _ => {
+            dbg!("matched (bar or) wild");
+        },
+    };
+    match "foo" {
+        "a" => {
+            dbg!("matched a");
+        },
+        _ => {
+            dbg!("matched (bar or bar2 or) wild");
+        },
+    };
+    match "foo" {
+        "a" => {
+            dbg!("matched a");
+        },
+        _ => {
+            dbg!("matched (bar or) wild");
+        },
+    };
+    match "foo" {
+        "a" => {
+            dbg!("matched a");
+        },
+        _ => {
+            dbg!("matched (bar or) wild");
+        },
+    };
+}
