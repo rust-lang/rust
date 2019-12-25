@@ -1054,7 +1054,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
     vis.visit_id(id);
     match kind {
         PatKind::Wild | PatKind::Rest => {}
-        PatKind::Ident(_binding_mode, ident, sub) => {
+        PatKind::Binding(_binding_mode, ident, sub) => {
             vis.visit_ident(ident);
             visit_opt(sub, |sub| vis.visit_pat(sub));
         }

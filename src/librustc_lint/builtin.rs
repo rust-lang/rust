@@ -640,7 +640,7 @@ impl EarlyLintPass for AnonymousParameters {
             ast::AssocItemKind::Fn(ref sig, _) => {
                 for arg in sig.decl.inputs.iter() {
                     match arg.pat.kind {
-                        ast::PatKind::Ident(_, ident, None) => {
+                        ast::PatKind::Binding(_, ident, None) => {
                             if ident.name == kw::Invalid {
                                 let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
 

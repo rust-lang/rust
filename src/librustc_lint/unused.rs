@@ -383,7 +383,7 @@ impl UnusedParens {
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
                 // Avoid `mut x` and `mut x @ p` if we should:
-                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), ..) if avoid_mut => return,
+                PatKind::Binding(BindingMode::ByValue(Mutability::Mut), ..) if avoid_mut => return,
                 // Otherwise proceed with linting.
                 _ => {}
             }
@@ -526,7 +526,7 @@ impl EarlyLintPass for UnusedParens {
             // Do not lint on `(..)` as that will result in the other arms being useless.
             Paren(_)
             // The other cases do not contain sub-patterns.
-            | Wild | Rest | Lit(..) | Mac(..) | Range(..) | Ident(.., None) | Path(..) => return,
+            | Wild | Rest | Lit(..) | Mac(..) | Range(..) | Binding(.., None) | Path(..) => return,
             // These are list-like patterns; parens can always be removed.
             TupleStruct(_, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
                 self.check_unused_parens_pat(cx, p, false, false);
@@ -535,7 +535,7 @@ impl EarlyLintPass for UnusedParens {
                 self.check_unused_parens_pat(cx, &f.pat, false, false);
             },
             // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
-            Ident(.., Some(p)) | Box(p) => self.check_unused_parens_pat(cx, p, true, false),
+            Binding(.., Some(p)) | Box(p) => self.check_unused_parens_pat(cx, p, true, false),
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
             Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not),

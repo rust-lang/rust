@@ -403,13 +403,13 @@ impl<'a> Parser<'a> {
         let mut rhs = self.parse_pat(None)?;
         let sp = lhs.span.to(rhs.span);
 
-        if let PatKind::Ident(_, _, ref mut sub @ None) = rhs.kind {
+        if let PatKind::Binding(_, _, ref mut sub @ None) = rhs.kind {
             // The user inverted the order, so help them fix that.
             let mut applicability = Applicability::MachineApplicable;
             // FIXME(bindings_after_at): Remove this code when stabilizing the feature.
             lhs.walk(&mut |p| match p.kind {
                 // `check_match` is unhappy if the subpattern has a binding anywhere.
-                PatKind::Ident(..) => {
+                PatKind::Binding(..) => {
                     applicability = Applicability::MaybeIncorrect;
                     false // Short-circuit.
                 }
@@ -528,7 +528,7 @@ impl<'a> Parser<'a> {
         // Unwrap; If we don't have `mut $ident`, error.
         let pat = pat.into_inner();
         match &pat.kind {
-            PatKind::Ident(..) => {}
+            PatKind::Binding(..) => {}
             _ => self.ban_mut_general_pat(mut_span, &pat, changed_any_binding),
         }
 
@@ -561,7 +561,7 @@ impl<'a> Parser<'a> {
             }
 
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
-                if let PatKind::Ident(BindingMode::ByValue(ref mut m @ Mutability::Not), ..) =
+                if let PatKind::Binding(BindingMode::ByValue(ref mut m @ Mutability::Not), ..) =
                     pat.kind
                 {
                     *m = Mutability::Mut;
@@ -801,7 +801,7 @@ impl<'a> Parser<'a> {
             return Err(self.span_fatal(self.prev_span, "expected identifier, found enum pattern"));
         }
 
-        Ok(PatKind::Ident(binding_mode, ident, sub))
+        Ok(PatKind::Binding(binding_mode, ident, sub))
     }
 
     /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
@@ -997,7 +997,7 @@ impl<'a> Parser<'a> {
                 (false, false) => BindingMode::ByValue(Mutability::Not),
             };
 
-            let fieldpat = self.mk_pat_ident(boxed_span.to(hi), bind_type, fieldname);
+            let fieldpat = self.mk_pat_binding(boxed_span.to(hi), bind_type, fieldname);
             let subpat =
                 if is_box { self.mk_pat(lo.to(hi), PatKind::Box(fieldpat)) } else { fieldpat };
             (subpat, fieldname, true)
@@ -1014,8 +1014,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn mk_pat_ident(&self, span: Span, bm: BindingMode, ident: Ident) -> P<Pat> {
-        self.mk_pat(span, PatKind::Ident(bm, ident, None))
+    pub(super) fn mk_pat_binding(&self, span: Span, bm: BindingMode, ident: Ident) -> P<Pat> {
+        self.mk_pat(span, PatKind::Binding(bm, ident, None))
     }
 
     fn mk_pat(&self, span: Span, kind: PatKind) -> P<Pat> {

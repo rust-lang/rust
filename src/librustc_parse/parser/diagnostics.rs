@@ -24,7 +24,7 @@ const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify typ
 pub(super) fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
-        kind: PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None),
+        kind: PatKind::Binding(BindingMode::ByValue(Mutability::Not), ident, None),
         span: ident.span,
     });
     let ty = Ty { kind: TyKind::Err, span: ident.span, id: ast::DUMMY_NODE_ID };
@@ -1325,7 +1325,7 @@ impl<'a> Parser<'a> {
                 Applicability::HasPlaceholders,
             );
             return Some(ident);
-        } else if let PatKind::Ident(_, ident, _) = pat.kind {
+        } else if let PatKind::Binding(_, ident, _) = pat.kind {
             if require_name
                 && (is_trait_item
                     || self.token == token::Comma
@@ -1487,7 +1487,7 @@ impl<'a> Parser<'a> {
     pub(super) fn deduplicate_recovered_params_names(&self, fn_inputs: &mut Vec<Param>) {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
-            let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) =
+            let opt_ident = if let (PatKind::Binding(_, ident, _), TyKind::Err) =
                 (&input.pat.kind, &input.ty.kind)
             {
                 Some(*ident)

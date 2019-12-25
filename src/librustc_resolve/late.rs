@@ -1220,7 +1220,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
         pat.walk(&mut |pat| {
             match pat.kind {
-                PatKind::Ident(binding_mode, ident, ref sub_pat)
+                PatKind::Binding(binding_mode, ident, ref sub_pat)
                     if sub_pat.is_some() || self.is_base_res_local(pat.id) =>
                 {
                     binding_map.insert(ident, BindingInfo { span: ident.span, binding_mode });
@@ -1384,7 +1384,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         pat.walk(&mut |pat| {
             debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
             match pat.kind {
-                PatKind::Ident(bmode, ident, ref sub) => {
+                PatKind::Binding(bmode, ident, ref sub) => {
                     // First try to resolve the identifier as some existing entity,
                     // then fall back to a fresh binding.
                     let has_sub = sub.is_some();

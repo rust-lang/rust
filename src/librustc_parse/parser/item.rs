@@ -1936,7 +1936,7 @@ impl<'a> Parser<'a> {
                 Ok(ty) => {
                     let ident = Ident::new(kw::Invalid, self.prev_span);
                     let bm = BindingMode::ByValue(Mutability::Not);
-                    let pat = self.mk_pat_ident(ty.span, bm, ident);
+                    let pat = self.mk_pat_binding(ty.span, bm, ident);
                     (pat, ty)
                 }
                 // If this is a C-variadic argument and we hit an error, return the error.

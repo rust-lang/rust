@@ -2065,7 +2065,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         inputs
             .iter()
             .map(|param| match param.pat.kind {
-                PatKind::Ident(_, ident, _) => ident,
+                PatKind::Binding(_, ident, _) => ident,
                 _ => Ident::new(kw::Invalid, param.pat.span),
             })
             .collect()
@@ -2155,8 +2155,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             c_variadic,
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = match arg.pat.kind {
-                    PatKind::Ident(BindingMode::ByValue(mt), _, _)
-                    | PatKind::Ident(BindingMode::ByRef(mt), _, _) => mt == Mutability::Mut,
+                    PatKind::Binding(BindingMode::ByValue(mt), _, _)
+                    | PatKind::Binding(BindingMode::ByRef(mt), _, _) => mt == Mutability::Mut,
                     _ => false,
                 };
 
@@ -2622,7 +2622,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {
         let node = match p.kind {
             PatKind::Wild => hir::PatKind::Wild,
-            PatKind::Ident(ref binding_mode, ident, ref sub) => {
+            PatKind::Binding(ref binding_mode, ident, ref sub) => {
                 let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(&*s));
                 let node = self.lower_pat_ident(p, binding_mode, ident, lower_sub);
                 node
@@ -2755,7 +2755,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 // Found a sub-slice pattern `$binding_mode $ident @ ..`.
                 // Record, lower it to `$binding_mode $ident @ _`, and stop here.
-                PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
+                PatKind::Binding(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
                     prev_rest_span = Some(sub.span);
                     let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
                     let node = self.lower_pat_ident(pat, bm, ident, lower_sub);
@@ -2772,7 +2772,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // There was a previous subslice pattern; make sure we don't allow more.
             let rest_span = match pat.kind {
                 PatKind::Rest => Some(pat.span),
-                PatKind::Ident(.., Some(ref sub)) if sub.is_rest() => {
+                PatKind::Binding(.., Some(ref sub)) if sub.is_rest() => {
                     // The `HirValidator` is merciless; add a `_` pattern to avoid ICEs.
                     after.push(self.pat_wild_with_node_id_of(pat));
                     Some(sub.span)

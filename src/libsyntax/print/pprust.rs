@@ -2249,7 +2249,7 @@ impl<'a> State<'a> {
         is that it doesn't matter */
         match pat.kind {
             PatKind::Wild => self.s.word("_"),
-            PatKind::Ident(binding_mode, ident, ref sub) => {
+            PatKind::Binding(binding_mode, ident, ref sub) => {
                 match binding_mode {
                     ast::BindingMode::ByRef(mutbl) => {
                         self.word_nbsp("ref");
@@ -2658,7 +2658,7 @@ impl<'a> State<'a> {
                 if let Some(eself) = input.to_self() {
                     self.print_explicit_self(&eself);
                 } else {
-                    let invalid = if let PatKind::Ident(_, ident, _) = input.pat.kind {
+                    let invalid = if let PatKind::Binding(_, ident, _) = input.pat.kind {
                         ident.name == kw::Invalid
                     } else {
                         false

@@ -581,7 +581,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 for pat in &*pats {
                     let span = pat.span;
                     let inner_pat = match &pat.kind {
-                        PatKind::Ident(.., Some(pat)) => pat,
+                        PatKind::Binding(.., Some(pat)) => pat,
                         _ => pat,
                     };
                     if inner_pat.is_rest() {

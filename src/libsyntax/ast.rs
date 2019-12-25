@@ -499,8 +499,8 @@ impl Pat {
         let kind = match &self.kind {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
-            // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
-            PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None) => {
+            // An binding pattern with no binding mode would be valid as path to a type. E.g. `u32`.
+            PatKind::Binding(BindingMode::ByValue(Mutability::Not), ident, None) => {
                 TyKind::Path(None, Path::from_ident(*ident))
             }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
@@ -538,7 +538,7 @@ impl Pat {
 
         match &self.kind {
             // Walk into the pattern associated with `Ident` (if any).
-            PatKind::Ident(_, _, Some(p)) => p.walk(it),
+            PatKind::Binding(_, _, Some(p)) => p.walk(it),
 
             // Walk into each field of struct.
             PatKind::Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk(it)),
@@ -556,7 +556,7 @@ impl Pat {
             | PatKind::Rest
             | PatKind::Lit(_)
             | PatKind::Range(..)
-            | PatKind::Ident(..)
+            | PatKind::Binding(..)
             | PatKind::Path(..)
             | PatKind::Mac(_) => {}
         }
@@ -614,11 +614,11 @@ pub enum PatKind {
     /// Represents a wildcard pattern (`_`).
     Wild,
 
-    /// A `PatKind::Ident` may either be a new bound variable (`ref mut binding @ OPT_SUBPATTERN`),
+    /// A `PatKind::Binding` may either be a new bound variable (`ref mut binding @ OPT_SUBPAT`),
     /// or a unit struct/variant pattern, or a const pattern (in the last two cases the third
     /// field must be `None`). Disambiguation cannot be done with parser alone, so it happens
     /// during name resolution.
-    Ident(BindingMode, Ident, Option<P<Pat>>),
+    Binding(BindingMode, Ident, Option<P<Pat>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
@@ -2009,7 +2009,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Param {
     /// Attempts to cast parameter to `ExplicitSelf`.
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.kind {
+        if let PatKind::Binding(BindingMode::ByValue(mutbl), ident, _) = self.pat.kind {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
@@ -2028,7 +2028,7 @@ impl Param {
 
     /// Returns `true` if parameter is `self`.
     pub fn is_self(&self) -> bool {
-        if let PatKind::Ident(_, ident, _) = self.pat.kind {
+        if let PatKind::Binding(_, ident, _) = self.pat.kind {
             ident.name == kw::SelfLower
         } else {
             false
@@ -2043,7 +2043,7 @@ impl Param {
             attrs,
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
-                kind: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
+                kind: PatKind::Binding(BindingMode::ByValue(mutbl), eself_ident, None),
                 span,
             }),
             span,
