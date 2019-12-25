@@ -1,3 +1,6 @@
+//! cargo_check provides the functionality needed to run `cargo check` or
+//! another compatible command (f.x. clippy) in a background thread and provide
+//! LSP diagnostics based on the output of the command.
 use crate::world::Options;
 use cargo_metadata::{
     diagnostic::{
@@ -23,6 +26,9 @@ use std::{
     time::Instant,
 };
 
+/// CheckWatcher wraps the shared state and communication machinery used for
+/// running `cargo check` (or other compatible command) and providing
+/// diagnostics based on the output.
 #[derive(Debug)]
 pub struct CheckWatcher {
     pub task_recv: Receiver<CheckTask>,
@@ -55,6 +61,7 @@ impl CheckWatcher {
         CheckWatcher { task_recv, cmd_send, handle, shared }
     }
 
+    /// Schedule a re-start of the cargo check worker.
     pub fn update(&self) {
         self.cmd_send.send(CheckCommand::Update).unwrap();
     }
@@ -85,6 +92,8 @@ impl CheckWatcherSharedState {
         }
     }
 
+    /// Clear the cached diagnostics, and schedule updating diagnostics by the
+    /// server, to clear stale results.
     pub fn clear(&mut self, task_send: &Sender<CheckTask>) {
         let cleared_files: Vec<Url> = self.diagnostic_collection.keys().cloned().collect();
 
@@ -139,11 +148,15 @@ impl CheckWatcherSharedState {
 
 #[derive(Debug)]
 pub enum CheckTask {
+    /// Request a update of the given files diagnostics
     Update(Url),
+
+    /// Request check progress notification to client
     Status(WorkDoneProgress),
 }
 
 pub enum CheckCommand {
+    /// Request re-start of check thread
     Update,
 }
 
