@@ -181,7 +181,7 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
-use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use syntax::ast::{self, BinOpKind, Binding, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{GenericArg, GenericParamKind, VariantData};
 use syntax::attr;
 use syntax::ptr::P;
@@ -1606,7 +1606,7 @@ impl<'a> TraitDef<'a> {
                 } else {
                     ast::BindingMode::ByRef(mutbl)
                 };
-                cx.pat(path.span, PatKind::Binding(binding_mode, (*path).clone(), None))
+                cx.pat(path.span, PatKind::Binding(Binding(binding_mode, (*path).clone()), None))
             })
             .collect()
     }

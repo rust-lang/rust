@@ -902,7 +902,7 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
             PatKind::TupleStruct(ref path, ..) | PatKind::Path(_, ref path) => {
                 self.collected_paths.push((p.id, path));
             }
-            PatKind::Binding(bm, ident, _) => {
+            PatKind::Binding(ast::Binding(bm, ident), _) => {
                 debug!(
                     "PathCollector, visit ident in pat {}: {:?} {:?}",
                     ident, p.span, ident.span

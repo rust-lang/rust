@@ -84,6 +84,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_arm(&mut self, a: &'ast Arm) {
         walk_arm(self, a)
     }
+    fn visit_binding(&mut self, b: &'ast Binding) {
+        walk_binding(self, b)
+    }
     fn visit_pat(&mut self, p: &'ast Pat) {
         walk_pat(self, p)
     }
@@ -467,6 +470,10 @@ pub fn walk_assoc_ty_constraint<'a, V: Visitor<'a>>(
     }
 }
 
+pub fn walk_binding<'a, V: Visitor<'a>>(visitor: &mut V, Binding(_, ident): &'a Binding) {
+    visitor.visit_ident(*ident);
+}
+
 pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
     match pattern.kind {
         PatKind::TupleStruct(ref path, ref elems) => {
@@ -486,9 +493,9 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
         PatKind::Box(ref subpattern)
         | PatKind::Ref(ref subpattern, _)
         | PatKind::Paren(ref subpattern) => visitor.visit_pat(subpattern),
-        PatKind::Binding(_, ident, ref optional_subpattern) => {
-            visitor.visit_ident(ident);
-            walk_list!(visitor, visit_pat, optional_subpattern);
+        PatKind::Binding(ref binding, ref subpat) => {
+            visitor.visit_binding(binding);
+            walk_list!(visitor, visit_pat, subpat);
         }
         PatKind::Lit(ref expression) => visitor.visit_expr(expression),
         PatKind::Range(ref lower_bound, ref upper_bound, _) => {

@@ -485,6 +485,10 @@ pub struct Block {
     pub span: Span,
 }
 
+// `Pat` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Pat, 80);
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Pat {
     pub id: NodeId,
@@ -500,7 +504,7 @@ impl Pat {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
             // An binding pattern with no binding mode would be valid as path to a type. E.g. `u32`.
-            PatKind::Binding(BindingMode::ByValue(Mutability::Not), ident, None) => {
+            PatKind::Binding(Binding(BindingMode::ByValue(Mutability::Not), ident), None) => {
                 TyKind::Path(None, Path::from_ident(*ident))
             }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
@@ -537,8 +541,8 @@ impl Pat {
         }
 
         match &self.kind {
-            // Walk into the pattern associated with `Ident` (if any).
-            PatKind::Binding(_, _, Some(p)) => p.walk(it),
+            // Walk into the `sub` part of `binding @ sub`.
+            PatKind::Binding(_, Some(p)) => p.walk(it),
 
             // Walk into each field of struct.
             PatKind::Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk(it)),
@@ -595,6 +599,10 @@ pub enum BindingMode {
     ByValue(Mutability),
 }
 
+/// The `{ref mut?}? $ident` part of a binding pattern (`PatKind::Binding`).
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct Binding(pub BindingMode, pub Ident);
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum RangeEnd {
     Included(RangeSyntax),
@@ -618,7 +626,7 @@ pub enum PatKind {
     /// or a unit struct/variant pattern, or a const pattern (in the last two cases the third
     /// field must be `None`). Disambiguation cannot be done with parser alone, so it happens
     /// during name resolution.
-    Binding(BindingMode, Ident, Option<P<Pat>>),
+    Binding(Binding, Option<P<Pat>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
@@ -2009,7 +2017,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Param {
     /// Attempts to cast parameter to `ExplicitSelf`.
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Binding(BindingMode::ByValue(mutbl), ident, _) = self.pat.kind {
+        if let PatKind::Binding(Binding(BindingMode::ByValue(mutbl), ident), _) = self.pat.kind {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
@@ -2028,7 +2036,7 @@ impl Param {
 
     /// Returns `true` if parameter is `self`.
     pub fn is_self(&self) -> bool {
-        if let PatKind::Binding(_, ident, _) = self.pat.kind {
+        if let PatKind::Binding(Binding(_, ident), _) = self.pat.kind {
             ident.name == kw::SelfLower
         } else {
             false
@@ -2043,7 +2051,7 @@ impl Param {
             attrs,
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
-                kind: PatKind::Binding(BindingMode::ByValue(mutbl), eself_ident, None),
+                kind: PatKind::Binding(Binding(BindingMode::ByValue(mutbl), eself_ident), None),
                 span,
             }),
             span,

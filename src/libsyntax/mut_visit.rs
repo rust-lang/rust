@@ -134,6 +134,10 @@ pub trait MutVisitor: Sized {
         noop_visit_pat(p, self);
     }
 
+    fn visit_binding(&mut self, b: &mut Binding) {
+        noop_visit_binding(b, self)
+    }
+
     fn visit_anon_const(&mut self, c: &mut AnonConst) {
         noop_visit_anon_const(c, self);
     }
@@ -1049,13 +1053,17 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     smallvec![item]
 }
 
+pub fn noop_visit_binding<T: MutVisitor>(Binding(_, ident): &mut Binding, vis: &mut T) {
+    vis.visit_ident(ident);
+}
+
 pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
     let Pat { id, kind, span } = pat.deref_mut();
     vis.visit_id(id);
     match kind {
         PatKind::Wild | PatKind::Rest => {}
-        PatKind::Binding(_binding_mode, ident, sub) => {
-            vis.visit_ident(ident);
+        PatKind::Binding(binding, sub) => {
+            vis.visit_binding(binding);
             visit_opt(sub, |sub| vis.visit_pat(sub));
         }
         PatKind::Lit(e) => vis.visit_expr(e),

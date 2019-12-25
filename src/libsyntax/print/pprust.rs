@@ -2242,6 +2242,18 @@ impl<'a> State<'a> {
         }
     }
 
+    fn print_binding(&mut self, ast::Binding(binding_mode, ident): ast::Binding) {
+        match binding_mode {
+            ast::BindingMode::ByRef(mutbl) => {
+                self.word_nbsp("ref");
+                self.print_mutability(mutbl, false);
+            }
+            ast::BindingMode::ByValue(ast::Mutability::Not) => {}
+            ast::BindingMode::ByValue(ast::Mutability::Mut) => self.word_nbsp("mut"),
+        }
+        self.print_ident(ident);
+    }
+
     crate fn print_pat(&mut self, pat: &ast::Pat) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
@@ -2249,18 +2261,8 @@ impl<'a> State<'a> {
         is that it doesn't matter */
         match pat.kind {
             PatKind::Wild => self.s.word("_"),
-            PatKind::Binding(binding_mode, ident, ref sub) => {
-                match binding_mode {
-                    ast::BindingMode::ByRef(mutbl) => {
-                        self.word_nbsp("ref");
-                        self.print_mutability(mutbl, false);
-                    }
-                    ast::BindingMode::ByValue(ast::Mutability::Not) => {}
-                    ast::BindingMode::ByValue(ast::Mutability::Mut) => {
-                        self.word_nbsp("mut");
-                    }
-                }
-                self.print_ident(ident);
+            PatKind::Binding(binding, ref sub) => {
+                self.print_binding(binding);
                 if let Some(ref p) = *sub {
                     self.s.space();
                     self.s.word_space("@");
@@ -2658,10 +2660,9 @@ impl<'a> State<'a> {
                 if let Some(eself) = input.to_self() {
                     self.print_explicit_self(&eself);
                 } else {
-                    let invalid = if let PatKind::Binding(_, ident, _) = input.pat.kind {
-                        ident.name == kw::Invalid
-                    } else {
-                        false
+                    let invalid = match input.pat.kind {
+                        PatKind::Binding(ast::Binding(_, ident), _) => ident.name == kw::Invalid,
+                        _ => false,
                     };
                     if !invalid {
                         self.print_pat(&input.pat);
