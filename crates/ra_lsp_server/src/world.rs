@@ -24,6 +24,7 @@ use std::path::{Component, Prefix};
 
 use crate::{
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
+    cargo_check::{CheckWatcher, CheckWatcherSharedState},
     LspError, Result,
 };
 use std::str::FromStr;
@@ -52,6 +53,7 @@ pub struct WorldState {
     pub vfs: Arc<RwLock<Vfs>>,
     pub task_receiver: Receiver<VfsTask>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
+    pub check_watcher: CheckWatcher,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -61,6 +63,7 @@ pub struct WorldSnapshot {
     pub analysis: Analysis,
     pub vfs: Arc<RwLock<Vfs>>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
+    pub check_watcher: Arc<RwLock<CheckWatcherSharedState>>,
 }
 
 impl WorldState {
@@ -127,6 +130,9 @@ impl WorldState {
         }
         change.set_crate_graph(crate_graph);
 
+        // FIXME: Figure out the multi-workspace situation
+        let check_watcher = CheckWatcher::new(folder_roots.first().cloned().unwrap());
+
         let mut analysis_host = AnalysisHost::new(lru_capacity, feature_flags);
         analysis_host.apply_change(change);
         WorldState {
@@ -138,6 +144,7 @@ impl WorldState {
             vfs: Arc::new(RwLock::new(vfs)),
             task_receiver,
             latest_requests: Default::default(),
+            check_watcher,
         }
     }
 
@@ -199,6 +206,7 @@ impl WorldState {
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
             latest_requests: Arc::clone(&self.latest_requests),
+            check_watcher: self.check_watcher.shared.clone(),
         }
     }
 

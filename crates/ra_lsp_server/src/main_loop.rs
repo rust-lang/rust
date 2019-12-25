@@ -19,6 +19,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
 use crate::{
+    cargo_check::CheckTask,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
@@ -176,7 +177,8 @@ pub fn main_loop(
                     Ok(task) => Event::Vfs(task),
                     Err(RecvError) => Err("vfs died")?,
                 },
-                recv(libdata_receiver) -> data => Event::Lib(data.unwrap())
+                recv(libdata_receiver) -> data => Event::Lib(data.unwrap()),
+                recv(world_state.check_watcher.task_recv) -> task => Event::CheckWatcher(task.unwrap())
             };
             if let Event::Msg(Message::Request(req)) = &event {
                 if connection.handle_shutdown(&req)? {
@@ -222,6 +224,7 @@ enum Event {
     Task(Task),
     Vfs(VfsTask),
     Lib(LibraryData),
+    CheckWatcher(CheckTask),
 }
 
 impl fmt::Debug for Event {
@@ -259,6 +262,7 @@ impl fmt::Debug for Event {
             Event::Task(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
             Event::Lib(it) => fmt::Debug::fmt(it, f),
+            Event::CheckWatcher(it) => fmt::Debug::fmt(it, f),
         }
     }
 }
@@ -318,6 +322,20 @@ fn loop_turn(
             world_state.maybe_collect_garbage();
             loop_state.in_flight_libraries -= 1;
         }
+        Event::CheckWatcher(task) => match task {
+            CheckTask::Update(uri) => {
+                // We manually send a diagnostic update when the watcher asks
+                // us to, to avoid the issue of having to change the file to
+                // receive updated diagnostics.
+                let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
+                if let Some(file_id) = world_state.vfs.read().path2file(&path) {
+                    let params =
+                        handlers::publish_diagnostics(&world_state.snapshot(), FileId(file_id.0))?;
+                    let not = notification_new::<req::PublishDiagnostics>(params);
+                    task_sender.send(Task::Notify(not)).unwrap();
+                }
+            }
+        },
         Event::Msg(msg) => match msg {
             Message::Request(req) => on_request(
                 world_state,
@@ -513,6 +531,13 @@ fn on_notification(
             let text =
                 params.content_changes.pop().ok_or_else(|| "empty changes".to_string())?.text;
             state.vfs.write().change_file_overlay(path.as_path(), text);
+            return Ok(());
+        }
+        Err(not) => not,
+    };
+    let not = match notification_cast::<req::DidSaveTextDocument>(not) {
+        Ok(_params) => {
+            state.check_watcher.update();
             return Ok(());
         }
         Err(not) => not,

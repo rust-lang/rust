@@ -6,7 +6,7 @@ use lsp_types::{
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability,
     SelectionRangeProviderCapability, ServerCapabilities, SignatureHelpOptions,
     TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
-    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
+    TypeDefinitionProviderCapability, WorkDoneProgressOptions, SaveOptions
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -16,7 +16,7 @@ pub fn server_capabilities() -> ServerCapabilities {
             change: Some(TextDocumentSyncKind::Full),
             will_save: None,
             will_save_wait_until: None,
-            save: None,
+            save: Some(SaveOptions::default()),
         })),
         hover_provider: Some(true),
         completion_provider: Some(CompletionOptions {
