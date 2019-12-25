@@ -5,10 +5,10 @@ import * as commands from './commands';
 import { ExpandMacroContentProvider } from './commands/expand_macro';
 import { HintsUpdater } from './commands/inlay_hints';
 import { SyntaxTreeContentProvider } from './commands/syntaxTree';
+import { StatusDisplay } from './commands/watch_status';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
-import { StatusDisplay } from './commands/watch_status';
 
 export async function activate(context: vscode.ExtensionContext) {
     function disposeOnDeactivation(disposable: vscode.Disposable) {
@@ -84,7 +84,9 @@ export async function activate(context: vscode.ExtensionContext) {
         overrideCommand('type', commands.onEnter.handle);
     }
 
-    const watchStatus = new StatusDisplay(Server.config.cargoCheckOptions.command || 'check');
+    const watchStatus = new StatusDisplay(
+        Server.config.cargoCheckOptions.command || 'check',
+    );
     disposeOnDeactivation(watchStatus);
 
     // Notifications are events triggered by the language server
@@ -98,8 +100,8 @@ export async function activate(context: vscode.ExtensionContext) {
         ],
         [
             '$/progress',
-            (params) => watchStatus.handleProgressNotification(params),
-        ]
+            params => watchStatus.handleProgressNotification(params),
+        ],
     ];
     const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
     const expandMacroContentProvider = new ExpandMacroContentProvider();

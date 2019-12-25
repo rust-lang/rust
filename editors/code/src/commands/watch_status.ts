@@ -59,23 +59,22 @@ export class StatusDisplay implements vscode.Disposable {
 
     public handleProgressNotification(params: ProgressParams) {
         const { token, value } = params;
-        if (token !== "rustAnalyzer/cargoWatcher") {
+        if (token !== 'rustAnalyzer/cargoWatcher') {
             return;
         }
 
-        console.log("Got progress notification", token, value)
         switch (value.kind) {
-            case "begin":
+            case 'begin':
                 this.show();
                 break;
 
-            case "report":
+            case 'report':
                 if (value.message) {
                     this.packageName = value.message;
                 }
                 break;
 
-            case "end":
+            case 'end':
                 this.hide();
                 break;
         }
@@ -88,19 +87,19 @@ export class StatusDisplay implements vscode.Disposable {
 
 // FIXME: Replace this once vscode-languageclient is updated to LSP 3.15
 interface ProgressParams {
-    token: string
-    value: WorkDoneProgress
+    token: string;
+    value: WorkDoneProgress;
 }
 
 enum WorkDoneProgressKind {
-    Begin = "begin",
-    Report = "report",
-    End = "end"
+    Begin = 'begin',
+    Report = 'report',
+    End = 'end',
 }
 
 interface WorkDoneProgress {
-    kind: WorkDoneProgressKind,
-    message?: string
-    cancelable?: boolean
-    percentage?: string
+    kind: WorkDoneProgressKind;
+    message?: string;
+    cancelable?: boolean;
+    percentage?: string;
 }
