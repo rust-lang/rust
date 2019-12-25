@@ -849,6 +849,10 @@ pub struct Block {
     pub targeted_by_break: bool,
 }
 
+// `Pat` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Pat, 80);
+
 #[derive(RustcEncodable, RustcDecodable, HashStable)]
 pub struct Pat {
     #[stable_hasher(ignore)]
