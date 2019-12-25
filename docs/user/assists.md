@@ -98,26 +98,26 @@ Adds scaffold for overriding default impl members.
 
 ```rust
 // BEFORE
-trait T {
+trait Trait {
     Type X;
     fn foo(&self);
     fn bar(&self) {}
 }
 
-impl T for () {
+impl Trait for () {
     Type X = ();
     fn foo(&self) {}┃
 
 }
 
 // AFTER
-trait T {
+trait Trait {
     Type X;
     fn foo(&self);
     fn bar(&self) {}
 }
 
-impl T for () {
+impl Trait for () {
     Type X = ();
     fn foo(&self) {}
     fn bar(&self) {}
@@ -131,25 +131,25 @@ Adds scaffold for required impl members.
 
 ```rust
 // BEFORE
-trait T {
+trait Trait<T> {
     Type X;
-    fn foo(&self);
+    fn foo(&self) -> T;
     fn bar(&self) {}
 }
 
-impl T for () {┃
+impl Trait<u32> for () {┃
 
 }
 
 // AFTER
-trait T {
+trait Trait<T> {
     Type X;
-    fn foo(&self);
+    fn foo(&self) -> T;
     fn bar(&self) {}
 }
 
-impl T for () {
-    fn foo(&self) { unimplemented!() }
+impl Trait<u32> for () {
+    fn foo(&self) -> u32 { unimplemented!() }
 
 }
 ```

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use hir::{db::HirDatabase, HasSource};
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner},
@@ -17,26 +19,26 @@ enum AddMissingImplMembersMode {
 // Adds scaffold for required impl members.
 //
 // ```
-// trait T {
+// trait Trait<T> {
 //     Type X;
-//     fn foo(&self);
+//     fn foo(&self) -> T;
 //     fn bar(&self) {}
 // }
 //
-// impl T for () {<|>
+// impl Trait<u32> for () {<|>
 //
 // }
 // ```
 // ->
 // ```
-// trait T {
+// trait Trait<T> {
 //     Type X;
-//     fn foo(&self);
+//     fn foo(&self) -> T;
 //     fn bar(&self) {}
 // }
 //
-// impl T for () {
-//     fn foo(&self) { unimplemented!() }
+// impl Trait<u32> for () {
+//     fn foo(&self) -> u32 { unimplemented!() }
 //
 // }
 // ```
@@ -54,13 +56,13 @@ pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Opti
 // Adds scaffold for overriding default impl members.
 //
 // ```
-// trait T {
+// trait Trait {
 //     Type X;
 //     fn foo(&self);
 //     fn bar(&self) {}
 // }
 //
-// impl T for () {
+// impl Trait for () {
 //     Type X = ();
 //     fn foo(&self) {}<|>
 //
@@ -68,13 +70,13 @@ pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Opti
 // ```
 // ->
 // ```
-// trait T {
+// trait Trait {
 //     Type X;
 //     fn foo(&self);
 //     fn bar(&self) {}
 // }
 //
-// impl T for () {
+// impl Trait for () {
 //     Type X = ();
 //     fn foo(&self) {}
 //     fn bar(&self) {}
@@ -99,7 +101,7 @@ fn add_missing_impl_members_inner(
     let impl_node = ctx.find_node_at_offset::<ast::ImplBlock>()?;
     let impl_item_list = impl_node.item_list()?;
 
-    let trait_def = {
+    let (trait_, trait_def) = {
         let analyzer = ctx.source_analyzer(impl_node.syntax(), None);
 
         resolve_target_trait_def(ctx.db, &analyzer, &impl_node)?
@@ -132,10 +134,25 @@ fn add_missing_impl_members_inner(
         return None;
     }
 
+    let file_id = ctx.frange.file_id;
+    let db = ctx.db;
+
     ctx.add_assist(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
+        let substs = get_syntactic_substs(impl_node).unwrap_or_default();
+        let generic_def: hir::GenericDef = trait_.into();
+        let substs_by_param: HashMap<_, _> = generic_def
+            .params(db)
+            .into_iter()
+            // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
+            .skip(1)
+            .zip(substs.into_iter())
+            .collect();
         let items = missing_items
             .into_iter()
+            .map(|it| {
+                substitute_type_params(db, hir::InFile::new(file_id.into(), it), &substs_by_param)
+            })
             .map(|it| match it {
                 ast::ImplItem::FnDef(def) => ast::ImplItem::FnDef(add_body(def)),
                 _ => it,
@@ -160,13 +177,63 @@ fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
     }
 }
 
+// FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
+// trait ref, and then go from the types in the substs back to the syntax)
+// FIXME: This should be a general utility (not even just for assists)
+fn get_syntactic_substs(impl_block: ast::ImplBlock) -> Option<Vec<ast::TypeRef>> {
+    let target_trait = impl_block.target_trait()?;
+    let path_type = match target_trait {
+        ast::TypeRef::PathType(path) => path,
+        _ => return None,
+    };
+    let type_arg_list = path_type.path()?.segment()?.type_arg_list()?;
+    let mut result = Vec::new();
+    for type_arg in type_arg_list.type_args() {
+        let type_arg: ast::TypeArg = type_arg;
+        result.push(type_arg.type_ref()?);
+    }
+    Some(result)
+}
+
+// FIXME: This should be a general utility (not even just for assists)
+fn substitute_type_params<N: AstNode>(
+    db: &impl HirDatabase,
+    node: hir::InFile<N>,
+    substs: &HashMap<hir::TypeParam, ast::TypeRef>,
+) -> N {
+    let type_param_replacements = node
+        .value
+        .syntax()
+        .descendants()
+        .filter_map(ast::TypeRef::cast)
+        .filter_map(|n| {
+            let path = match &n {
+                ast::TypeRef::PathType(path_type) => path_type.path()?,
+                _ => return None,
+            };
+            let analyzer = hir::SourceAnalyzer::new(db, node.with_value(n.syntax()), None);
+            let resolution = analyzer.resolve_path(db, &path)?;
+            match resolution {
+                hir::PathResolution::TypeParam(tp) => Some((n, substs.get(&tp)?.clone())),
+                _ => None,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if type_param_replacements.is_empty() {
+        node.value
+    } else {
+        edit::replace_descendants(&node.value, type_param_replacements.into_iter())
+    }
+}
+
 /// Given an `ast::ImplBlock`, resolves the target trait (the one being
 /// implemented) to a `ast::TraitDef`.
 fn resolve_target_trait_def(
     db: &impl HirDatabase,
     analyzer: &hir::SourceAnalyzer,
     impl_block: &ast::ImplBlock,
-) -> Option<ast::TraitDef> {
+) -> Option<(hir::Trait, ast::TraitDef)> {
     let ast_path = impl_block
         .target_trait()
         .map(|it| it.syntax().clone())
@@ -174,7 +241,9 @@ fn resolve_target_trait_def(
         .path()?;
 
     match analyzer.resolve_path(db, &ast_path) {
-        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).value),
+        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => {
+            Some((def, def.source(db).value))
+        }
         _ => None,
     }
 }
@@ -276,6 +345,40 @@ trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
     <|>fn foo(&self) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn fill_in_type_params_1() {
+        check_assist(
+            add_missing_impl_members,
+            "
+trait Foo<T> { fn foo(&self, t: T) -> &T; }
+struct S;
+impl Foo<u32> for S { <|> }",
+            "
+trait Foo<T> { fn foo(&self, t: T) -> &T; }
+struct S;
+impl Foo<u32> for S {
+    <|>fn foo(&self, t: u32) -> &u32 { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn fill_in_type_params_2() {
+        check_assist(
+            add_missing_impl_members,
+            "
+trait Foo<T> { fn foo(&self, t: T) -> &T; }
+struct S;
+impl<U> Foo<U> for S { <|> }",
+            "
+trait Foo<T> { fn foo(&self, t: T) -> &T; }
+struct S;
+impl<U> Foo<U> for S {
+    <|>fn foo(&self, t: U) -> &U { unimplemented!() }
 }",
         );
     }

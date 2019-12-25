@@ -46,7 +46,7 @@ pub(crate) enum Assist {
 ///
 /// Note, however, that we don't actually use such two-phase logic at the
 /// moment, because the LSP API is pretty awkward in this place, and it's much
-/// easier to just compute the edit eagerly :-)#[derive(Debug, Clone)]
+/// easier to just compute the edit eagerly :-)
 #[derive(Debug)]
 pub(crate) struct AssistCtx<'a, DB> {
     pub(crate) db: &'a DB,
