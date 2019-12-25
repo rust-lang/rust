@@ -158,11 +158,15 @@ impl<'a> AstValidator<'a> {
     fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, bool)) {
         for Param { pat, .. } in &decl.inputs {
             match pat.kind {
-                PatKind::Binding(Binding(BindingMode::ByValue(Mutability::Not), _), None)
+                PatKind::Binding(
+                    Binding { mode: BindingMode::ByValue(Mutability::Not), .. },
+                    None,
+                )
                 | PatKind::Wild => {}
-                PatKind::Binding(Binding(BindingMode::ByValue(Mutability::Mut), _), None) => {
-                    report_err(pat.span, true)
-                }
+                PatKind::Binding(
+                    Binding { mode: BindingMode::ByValue(Mutability::Mut), .. },
+                    None,
+                ) => report_err(pat.span, true),
                 _ => report_err(pat.span, false),
             }
         }

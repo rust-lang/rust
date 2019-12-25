@@ -1053,7 +1053,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     smallvec![item]
 }
 
-pub fn noop_visit_binding<T: MutVisitor>(Binding(_, ident): &mut Binding, vis: &mut T) {
+pub fn noop_visit_binding<T: MutVisitor>(Binding { ident, mode: _ }: &mut Binding, vis: &mut T) {
     vis.visit_ident(ident);
 }
 

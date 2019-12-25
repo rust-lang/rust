@@ -561,7 +561,7 @@ impl<'a> Parser<'a> {
             }
 
             fn visit_binding(&mut self, binding: &mut Binding) {
-                if let BindingMode::ByValue(m @ Mutability::Not) = &mut binding.0 {
+                if let BindingMode::ByValue(m @ Mutability::Not) = &mut binding.mode {
                     *m = Mutability::Mut;
                     self.0 = true;
                 }
@@ -782,7 +782,7 @@ impl<'a> Parser<'a> {
     /// Parses `ident` or `ident @ pat`.
     /// Used by the copy foo and ref foo patterns to give a good
     /// error message when parsing mistakes like `ref foo(a, b)`.
-    fn parse_pat_ident(&mut self, binding_mode: BindingMode) -> PResult<'a, PatKind> {
+    fn parse_pat_ident(&mut self, mode: BindingMode) -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
         let sub = if self.eat(&token::At) {
             Some(self.parse_pat(Some("binding pattern"))?)
@@ -799,7 +799,7 @@ impl<'a> Parser<'a> {
             return Err(self.span_fatal(self.prev_span, "expected identifier, found enum pattern"));
         }
 
-        Ok(PatKind::Binding(Binding(binding_mode, ident), sub))
+        Ok(PatKind::Binding(Binding { mode, ident }, sub))
     }
 
     /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
@@ -1012,8 +1012,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn mk_pat_binding(&self, span: Span, bm: BindingMode, ident: Ident) -> P<Pat> {
-        self.mk_pat(span, PatKind::Binding(Binding(bm, ident), None))
+    pub(super) fn mk_pat_binding(&self, span: Span, mode: BindingMode, ident: Ident) -> P<Pat> {
+        self.mk_pat(span, PatKind::Binding(Binding { mode, ident }, None))
     }
 
     fn mk_pat(&self, span: Span, kind: PatKind) -> P<Pat> {

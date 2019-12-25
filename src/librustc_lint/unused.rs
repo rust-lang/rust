@@ -383,9 +383,10 @@ impl UnusedParens {
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
                 // Avoid `mut x` and `mut x @ p` if we should:
-                PatKind::Binding(Binding(BindingMode::ByValue(Mutability::Mut), _), _)
-                    if avoid_mut =>
-                {
+                PatKind::Binding(
+                    Binding { mode: BindingMode::ByValue(Mutability::Mut), .. },
+                    _,
+                ) if avoid_mut => {
                     return;
                 }
                 // Otherwise proceed with linting.

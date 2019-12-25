@@ -1601,12 +1601,12 @@ impl<'a> TraitDef<'a> {
         field_paths
             .iter()
             .map(|path| {
-                let binding_mode = if use_temporaries {
+                let mode = if use_temporaries {
                     ast::BindingMode::ByValue(ast::Mutability::Not)
                 } else {
                     ast::BindingMode::ByRef(mutbl)
                 };
-                cx.pat(path.span, PatKind::Binding(Binding(binding_mode, (*path).clone()), None))
+                cx.pat(path.span, PatKind::Binding(Binding { mode, ident: (*path).clone() }, None))
             })
             .collect()
     }

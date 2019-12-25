@@ -1,4 +1,4 @@
-use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
+use crate::ast::{self, Binding, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use crate::ast::{Attribute, GenericArg, MacArgs};
 use crate::ast::{GenericBound, SelfKind, TraitBoundModifier};
 use crate::attr;
@@ -2242,8 +2242,8 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_binding(&mut self, ast::Binding(binding_mode, ident): ast::Binding) {
-        match binding_mode {
+    fn print_binding(&mut self, Binding { mode, ident }: Binding) {
+        match mode {
             ast::BindingMode::ByRef(mutbl) => {
                 self.word_nbsp("ref");
                 self.print_mutability(mutbl, false);
@@ -2661,7 +2661,7 @@ impl<'a> State<'a> {
                     self.print_explicit_self(&eself);
                 } else {
                     let invalid = match input.pat.kind {
-                        PatKind::Binding(ast::Binding(_, ident), _) => ident.name == kw::Invalid,
+                        PatKind::Binding(Binding { ident, .. }, _) => ident.name == kw::Invalid,
                         _ => false,
                     };
                     if !invalid {

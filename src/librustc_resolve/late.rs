@@ -44,7 +44,7 @@ type BindingMap = IdentMap<BindingInfo>;
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
     span: Span,
-    binding_mode: BindingMode,
+    mode: BindingMode,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -1220,10 +1220,10 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
         pat.walk(&mut |pat| {
             match pat.kind {
-                PatKind::Binding(Binding(binding_mode, ident), ref sub_pat)
+                PatKind::Binding(Binding { mode, ident }, ref sub_pat)
                     if sub_pat.is_some() || self.is_base_res_local(pat.id) =>
                 {
-                    binding_map.insert(ident, BindingInfo { span: ident.span, binding_mode });
+                    binding_map.insert(ident, BindingInfo { span: ident.span, mode });
                 }
                 PatKind::Or(ref ps) => {
                     // Check the consistency of this or-pattern and
@@ -1283,7 +1283,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                         binding_error.target.insert(pat_outer.span);
                     }
                     Some(binding_outer) => {
-                        if binding_outer.binding_mode != binding_inner.binding_mode {
+                        if binding_outer.mode != binding_inner.mode {
                             // The binding modes in the outer and inner bindings differ.
                             inconsistent_vars
                                 .entry(name)
@@ -1384,12 +1384,12 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         pat.walk(&mut |pat| {
             debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
             match pat.kind {
-                PatKind::Binding(Binding(bmode, ident), ref sub) => {
+                PatKind::Binding(Binding { mode, ident }, ref sub) => {
                     // First try to resolve the identifier as some existing entity,
                     // then fall back to a fresh binding.
                     let has_sub = sub.is_some();
                     let res = self
-                        .try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
+                        .try_resolve_as_non_binding(pat_src, pat, mode, ident, has_sub)
                         .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                 }

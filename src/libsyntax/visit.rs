@@ -470,7 +470,7 @@ pub fn walk_assoc_ty_constraint<'a, V: Visitor<'a>>(
     }
 }
 
-pub fn walk_binding<'a, V: Visitor<'a>>(visitor: &mut V, Binding(_, ident): &'a Binding) {
+pub fn walk_binding<'a, V: Visitor<'a>>(visitor: &mut V, Binding { ident, mode: _ }: &'a Binding) {
     visitor.visit_ident(*ident);
 }
 

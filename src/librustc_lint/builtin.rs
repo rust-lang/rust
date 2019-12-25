@@ -638,41 +638,36 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        match it.kind {
-            ast::AssocItemKind::Fn(ref sig, _) => {
-                for arg in sig.decl.inputs.iter() {
-                    match arg.pat.kind {
-                        ast::PatKind::Binding(ast::Binding(_, ident), None) => {
-                            if ident.name == kw::Invalid {
-                                let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
+        if let ast::AssocItemKind::Fn(ref sig, _) = it.kind {
+            for arg in sig.decl.inputs.iter() {
+                if let ast::PatKind::Binding(
+                    ast::Binding { ident: ast::Ident { name: kw::Invalid, .. }, .. },
+                    None,
+                ) = arg.pat.kind
+                {
+                    let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
 
-                                let (ty_snip, appl) = if let Ok(snip) = ty_snip {
-                                    (snip, Applicability::MachineApplicable)
-                                } else {
-                                    ("<type>".to_owned(), Applicability::HasPlaceholders)
-                                };
+                    let (ty_snip, appl) = if let Ok(snip) = ty_snip {
+                        (snip, Applicability::MachineApplicable)
+                    } else {
+                        ("<type>".to_owned(), Applicability::HasPlaceholders)
+                    };
 
-                                cx.struct_span_lint(
-                                    ANONYMOUS_PARAMETERS,
-                                    arg.pat.span,
-                                    "anonymous parameters are deprecated and will be \
+                    cx.struct_span_lint(
+                        ANONYMOUS_PARAMETERS,
+                        arg.pat.span,
+                        "anonymous parameters are deprecated and will be \
                                      removed in the next edition.",
-                                )
-                                .span_suggestion(
-                                    arg.pat.span,
-                                    "Try naming the parameter or explicitly \
-                                    ignoring it",
-                                    format!("_: {}", ty_snip),
-                                    appl,
-                                )
-                                .emit();
-                            }
-                        }
-                        _ => (),
-                    }
+                    )
+                    .span_suggestion(
+                        arg.pat.span,
+                        "try naming the parameter or explicitly ignoring it",
+                        format!("_: {}", ty_snip),
+                        appl,
+                    )
+                    .emit();
                 }
             }
-            _ => (),
         }
     }
 }

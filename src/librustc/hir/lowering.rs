@@ -2065,7 +2065,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         inputs
             .iter()
             .map(|param| match param.pat.kind {
-                PatKind::Binding(Binding(_, ident), _) => ident,
+                PatKind::Binding(Binding { ident, mode: _ }, _) => ident,
                 _ => Ident::new(kw::Invalid, param.pat.span),
             })
             .collect()
@@ -2155,8 +2155,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             c_variadic,
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = match arg.pat.kind {
-                    PatKind::Binding(Binding(BindingMode::ByValue(mt), _), _)
-                    | PatKind::Binding(Binding(BindingMode::ByRef(mt), _), _) => {
+                    PatKind::Binding(Binding { mode: BindingMode::ByValue(mt), ident: _ }, _)
+                    | PatKind::Binding(Binding { mode: BindingMode::ByRef(mt), ident: _ }, _) => {
                         mt == Mutability::Mut
                     }
                     _ => false,
@@ -2793,10 +2793,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::PatKind::Slice(before.into(), slice, after.into())
     }
 
-    fn lower_binding(&mut self, Binding(bm, ident): Binding, canonical_id: NodeId) -> hir::Binding {
-        let bm = self.lower_binding_mode(&bm);
+    fn lower_binding(
+        &mut self,
+        Binding { mode, ident }: Binding,
+        canonical_id: NodeId,
+    ) -> hir::Binding {
+        let mode = self.lower_binding_mode(&mode);
         let id = self.lower_node_id(canonical_id);
-        hir::Binding(bm, id, ident)
+        hir::Binding(mode, id, ident)
     }
 
     fn lower_pat_binding(
@@ -2816,7 +2820,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::PatKind::Binding(binding, lower_sub(self))
             }
             Some(res) => {
-                let Binding(_, ident) = binding;
+                let Binding { ident, mode: _ } = binding;
                 let path = hir::Path {
                     span: ident.span,
                     res: self.lower_res(res),

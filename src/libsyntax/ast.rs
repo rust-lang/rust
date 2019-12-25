@@ -504,9 +504,10 @@ impl Pat {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
             // An binding pattern with no binding mode would be valid as path to a type. E.g. `u32`.
-            PatKind::Binding(Binding(BindingMode::ByValue(Mutability::Not), ident), None) => {
-                TyKind::Path(None, Path::from_ident(*ident))
-            }
+            PatKind::Binding(
+                Binding { mode: BindingMode::ByValue(Mutability::Not), ident },
+                None,
+            ) => TyKind::Path(None, Path::from_ident(*ident)),
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
             // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
@@ -601,7 +602,10 @@ pub enum BindingMode {
 
 /// The `{ref mut?}? $ident` part of a binding pattern (`PatKind::Binding`).
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Binding(pub BindingMode, pub Ident);
+pub struct Binding {
+    pub mode: BindingMode,
+    pub ident: Ident,
+}
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum RangeEnd {
@@ -2017,29 +2021,30 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Param {
     /// Attempts to cast parameter to `ExplicitSelf`.
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Binding(Binding(BindingMode::ByValue(mutbl), ident), _) = self.pat.kind {
-            if ident.name == kw::SelfLower {
-                return match self.ty.kind {
-                    TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Rptr(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
-                        Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
-                    }
-                    _ => Some(respan(
-                        self.pat.span.to(self.ty.span),
-                        SelfKind::Explicit(self.ty.clone(), mutbl),
-                    )),
-                };
-            }
+        if let PatKind::Binding(
+            Binding { mode: BindingMode::ByValue(mutbl), ident: Ident { name: kw::SelfLower, .. } },
+            _,
+        ) = self.pat.kind
+        {
+            return match self.ty.kind {
+                TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
+                TyKind::Rptr(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
+                    Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
+                }
+                _ => Some(respan(
+                    self.pat.span.to(self.ty.span),
+                    SelfKind::Explicit(self.ty.clone(), mutbl),
+                )),
+            };
         }
         None
     }
 
     /// Returns `true` if parameter is `self`.
     pub fn is_self(&self) -> bool {
-        if let PatKind::Binding(Binding(_, ident), _) = self.pat.kind {
-            ident.name == kw::SelfLower
-        } else {
-            false
+        match self.pat.kind {
+            PatKind::Binding(Binding { ident: Ident { name: kw::SelfLower, .. }, .. }, _) => true,
+            _ => false,
         }
     }
 
@@ -2047,17 +2052,10 @@ impl Param {
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span });
-        let param = |mutbl, ty| Param {
-            attrs,
-            pat: P(Pat {
-                id: DUMMY_NODE_ID,
-                kind: PatKind::Binding(Binding(BindingMode::ByValue(mutbl), eself_ident), None),
-                span,
-            }),
-            span,
-            ty,
-            id: DUMMY_NODE_ID,
-            is_placeholder: false,
+        let param = |mutbl, ty| {
+            let binding = Binding { mode: BindingMode::ByValue(mutbl), ident: eself_ident };
+            let pat = P(Pat { id: DUMMY_NODE_ID, kind: PatKind::Binding(binding, None), span });
+            Param { attrs, pat, span, ty, id: DUMMY_NODE_ID, is_placeholder: false }
         };
         match eself.node {
             SelfKind::Explicit(ty, mutbl) => param(mutbl, ty),

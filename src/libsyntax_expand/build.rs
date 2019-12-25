@@ -419,9 +419,9 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         ident: ast::Ident,
-        bm: ast::BindingMode,
+        mode: ast::BindingMode,
     ) -> P<ast::Pat> {
-        let pat = PatKind::Binding(Binding(bm, ident.with_span_pos(span)), None);
+        let pat = PatKind::Binding(Binding { mode, ident: ident.with_span_pos(span) }, None);
         self.pat(span, pat)
     }
     pub fn pat_path(&self, span: Span, path: ast::Path) -> P<ast::Pat> {
