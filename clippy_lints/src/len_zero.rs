@@ -15,10 +15,9 @@ declare_clippy_lint! {
     /// just to compare to zero, and suggests using `.is_empty()` where applicable.
     ///
     /// **Why is this bad?** Some structures can answer `.is_empty()` much faster
-    /// than calculating their length. Notably, for slices, getting the length
-    /// requires a subtraction whereas `.is_empty()` is just a comparison. So it is
-    /// good to get into the habit of using `.is_empty()`, and having it is cheap.
-    /// Besides, it makes the intent clearer than a manual comparison.
+    /// than calculating their length. So it is good to get into the habit of using
+    /// `.is_empty()`, and having it is cheap.
+    /// Besides, it makes the intent clearer than a manual comparison in some contexts.
     ///
     /// **Known problems:** None.
     ///
