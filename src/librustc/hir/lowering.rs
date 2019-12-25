@@ -2793,10 +2793,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::PatKind::Slice(before.into(), slice, after.into())
     }
 
+    fn lower_binding(&mut self, Binding(bm, ident): Binding, canonical_id: NodeId) -> hir::Binding {
+        let bm = self.lower_binding_mode(&bm);
+        let id = self.lower_node_id(canonical_id);
+        hir::Binding(bm, id, ident)
+    }
+
     fn lower_pat_binding(
         &mut self,
         p: &Pat,
-        Binding(binding_mode, ident): Binding,
+        binding: Binding,
         lower_sub: impl FnOnce(&mut Self) -> Option<P<hir::Pat>>,
     ) -> hir::PatKind {
         match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
@@ -2806,22 +2812,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Some(Res::Local(id)) => id,
                     _ => p.id,
                 };
-
-                hir::PatKind::Binding(
-                    self.lower_binding_mode(&binding_mode),
-                    self.lower_node_id(canonical_id),
-                    ident,
-                    lower_sub(self),
-                )
+                let binding = self.lower_binding(binding, canonical_id);
+                hir::PatKind::Binding(binding, lower_sub(self))
             }
-            Some(res) => hir::PatKind::Path(hir::QPath::Resolved(
-                None,
-                P(hir::Path {
+            Some(res) => {
+                let Binding(_, ident) = binding;
+                let path = hir::Path {
                     span: ident.span,
                     res: self.lower_res(res),
                     segments: hir_vec![hir::PathSegment::from_ident(ident)],
-                }),
-            )),
+                };
+                hir::PatKind::Path(hir::QPath::Resolved(None, P(path)))
+            }
         }
     }
 
@@ -3034,15 +3036,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bm: hir::BindingAnnotation,
     ) -> (P<hir::Pat>, hir::HirId) {
         let hir_id = self.next_id();
-
-        (
-            P(hir::Pat {
-                hir_id,
-                kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
-                span,
-            }),
-            hir_id,
-        )
+        let binding = hir::Binding(bm, hir_id, ident.with_span_pos(span));
+        let kind = hir::PatKind::Binding(binding, None);
+        (P(hir::Pat { hir_id, kind, span }), hir_id)
     }
 
     fn pat_wild(&mut self, span: Span) -> P<hir::Pat> {

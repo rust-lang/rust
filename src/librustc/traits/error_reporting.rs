@@ -1335,9 +1335,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // Get the local name of this closure. This can be inaccurate because
             // of the possibility of reassignment, but this should be good enough.
             match &kind {
-                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => {
-                    Some(format!("{}", name))
-                }
+                hir::PatKind::Binding(
+                    hir::Binding(hir::BindingAnnotation::Unannotated, _, name),
+                    None,
+                ) => Some(format!("{}", name)),
                 _ => {
                     err.note(&msg);
                     None
@@ -1418,7 +1419,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     .params
                     .iter()
                     .map(|arg| match &arg.pat.kind {
-                        hir::PatKind::Binding(_, _, ident, None)
+                        hir::PatKind::Binding(hir::Binding(_, _, ident), None)
                         // FIXME: provide a better suggestion when encountering `SelfLower`, it
                         // should suggest a method call.
                         if ident.name != kw::SelfLower => ident.to_string(),

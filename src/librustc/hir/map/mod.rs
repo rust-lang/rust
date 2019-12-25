@@ -943,7 +943,7 @@ impl<'hir> Map<'hir> {
             Node::Field(f) => f.ident.name,
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
-            Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
+            Node::Binding(&Pat { kind: PatKind::Binding(Binding(_, _, l), _), .. }) => l.name,
             Node::Ctor(..) => self.name(self.get_parent_item(id)),
             _ => return None,
         })

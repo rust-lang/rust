@@ -280,9 +280,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvar_hir_id = self.upvars[upvar_index.index()].var_hir_id;
                 if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find(upvar_hir_id) {
                     if let hir::PatKind::Binding(
-                        hir::BindingAnnotation::Unannotated,
-                        _,
-                        upvar_ident,
+                        hir::Binding(hir::BindingAnnotation::Unannotated, _, upvar_ident),
                         _,
                     ) = pat.kind
                     {

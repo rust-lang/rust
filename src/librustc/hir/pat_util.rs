@@ -1,6 +1,6 @@
 use crate::hir::def::{CtorOf, DefKind, Res};
 use crate::hir::def_id::DefId;
-use crate::hir::{self, HirId, PatKind};
+use crate::hir::{self, Binding, BindingAnnotation, PatKind};
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -78,10 +78,11 @@ impl hir::Pat {
 
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
-    pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident)) {
+    pub fn each_binding(&self, mut f: impl FnMut(&Binding, Span)) {
         self.walk_always(|p| {
-            if let PatKind::Binding(binding_mode, _, ident, _) = p.kind {
-                f(binding_mode, p.hir_id, p.span, ident);
+            if let PatKind::Binding(binding, _) = &p.kind {
+                // FIXME(Centril): compute and use span of binding.
+                f(binding, p.span);
             }
         });
     }
@@ -90,17 +91,15 @@ impl hir::Pat {
     /// `match foo() { Some(a) => (), None => () }`.
     ///
     /// When encountering an or-pattern `p_0 | ... | p_n` only `p_0` will be visited.
-    pub fn each_binding_or_first(
-        &self,
-        f: &mut impl FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident),
-    ) {
+    pub fn each_binding_or_first(&self, f: &mut impl FnMut(&Binding, Span)) {
         self.walk(|p| match &p.kind {
             PatKind::Or(ps) => {
                 ps[0].each_binding_or_first(f);
                 false
             }
-            PatKind::Binding(bm, _, ident, _) => {
-                f(*bm, p.hir_id, p.span, *ident);
+            PatKind::Binding(binding, _) => {
+                // FIXME(Centril): compute and use span of binding.
+                f(binding, p.span);
                 true
             }
             _ => true,
@@ -141,8 +140,8 @@ impl hir::Pat {
 
     pub fn simple_ident(&self) -> Option<ast::Ident> {
         match self.kind {
-            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None)
-            | PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, None) => Some(ident),
+            PatKind::Binding(Binding(BindingAnnotation::Unannotated, _, ident), None)
+            | PatKind::Binding(Binding(BindingAnnotation::Mutable, _, ident), None) => Some(ident),
             _ => None,
         }
     }
@@ -176,7 +175,7 @@ impl hir::Pat {
     // ref bindings are be implicit after #42640 (default match binding modes). See issue #44848.
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         let mut result = None;
-        self.each_binding(|annotation, _, _, _| match annotation {
+        self.each_binding(|hir::Binding(annotation, _, _), _| match annotation {
             hir::BindingAnnotation::Ref => match result {
                 None | Some(hir::Mutability::Not) => result = Some(hir::Mutability::Not),
                 _ => {}

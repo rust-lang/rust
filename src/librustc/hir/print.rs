@@ -1599,6 +1599,22 @@ impl<'a> State<'a> {
         }
     }
 
+    fn print_binding(&mut self, hir::Binding(binding_mode, _, ident): &hir::Binding) {
+        match binding_mode {
+            hir::BindingAnnotation::Ref => {
+                self.word_nbsp("ref");
+                self.print_mutability(hir::Mutability::Not, false);
+            }
+            hir::BindingAnnotation::RefMut => {
+                self.word_nbsp("ref");
+                self.print_mutability(hir::Mutability::Mut, false);
+            }
+            hir::BindingAnnotation::Unannotated => {}
+            hir::BindingAnnotation::Mutable => self.word_nbsp("mut"),
+        }
+        self.print_ident(*ident);
+    }
+
     pub fn print_pat(&mut self, pat: &hir::Pat) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
@@ -1606,22 +1622,8 @@ impl<'a> State<'a> {
         // is that it doesn't matter
         match pat.kind {
             PatKind::Wild => self.s.word("_"),
-            PatKind::Binding(binding_mode, _, ident, ref sub) => {
-                match binding_mode {
-                    hir::BindingAnnotation::Ref => {
-                        self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Not, false);
-                    }
-                    hir::BindingAnnotation::RefMut => {
-                        self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Mut, false);
-                    }
-                    hir::BindingAnnotation::Unannotated => {}
-                    hir::BindingAnnotation::Mutable => {
-                        self.word_nbsp("mut");
-                    }
-                }
-                self.print_ident(ident);
+            PatKind::Binding(ref binding, ref sub) => {
+                self.print_binding(binding);
                 if let Some(ref p) = *sub {
                     self.s.word("@");
                     self.print_pat(&p);

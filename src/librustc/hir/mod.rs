@@ -951,6 +951,14 @@ pub struct FieldPat {
     pub span: Span,
 }
 
+/// A fresh binding `{ref mut?}? $ident`.
+///
+/// The `HirId` is the canonical ID for the variable being bound,
+/// (e.g., in `Ok(x) | Err(x)`, both `x` use the same canonical ID),
+/// which is the pattern ID of the first `x`.
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
+pub struct Binding(pub BindingAnnotation, pub HirId, pub Ident);
+
 /// Explicit binding annotations given in the HIR for a binding. Note
 /// that this is not the final binding *mode* that we infer after type
 /// inference.
@@ -995,11 +1003,8 @@ pub enum PatKind {
     /// Represents a wildcard pattern (i.e., `_`).
     Wild,
 
-    /// A fresh binding `ref mut binding @ OPT_SUBPATTERN`.
-    /// The `HirId` is the canonical ID for the variable being bound,
-    /// (e.g., in `Ok(x) | Err(x)`, both `x` use the same canonical ID),
-    /// which is the pattern ID of the first `x`.
-    Binding(BindingAnnotation, HirId, Ident, Option<P<Pat>>),
+    /// A fresh binding pattern `binding {@ PAT}?`.
+    Binding(Binding, Option<P<Pat>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.

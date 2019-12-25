@@ -175,7 +175,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                     // (Issue #49588)
                     continue;
                 }
-                if let PatKind::Binding(binding_annot, _, ident, None) = fieldpat.pat.kind {
+                if let PatKind::Binding(hir::Binding(binding_annot, _, ident), None) =
+                    fieldpat.pat.kind
+                {
                     if cx.tcx.find_field_index(ident, &variant)
                         == Some(cx.tcx.field_index(fieldpat.hir_id, cx.tables))
                     {

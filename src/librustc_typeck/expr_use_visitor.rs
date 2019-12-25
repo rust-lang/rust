@@ -532,7 +532,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, ref mut delegate } = *self;
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
-            if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
+            if let PatKind::Binding(hir::Binding(_, canonical_id, _), _) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat,);
                 if let Some(bm) = mc.tables.extract_binding_mode(tcx.sess, pat.hir_id, pat.span) {
                     debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);

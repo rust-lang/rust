@@ -268,6 +268,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat(&mut self, p: &'v Pat) {
         walk_pat(self, p)
     }
+    fn visit_binding(&mut self, b: &'v Binding) {
+        walk_binding(self, b)
+    }
     fn visit_anon_const(&mut self, c: &'v AnonConst) {
         walk_anon_const(self, c)
     }
@@ -709,8 +712,8 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
         PatKind::Box(ref subpattern) | PatKind::Ref(ref subpattern, _) => {
             visitor.visit_pat(subpattern)
         }
-        PatKind::Binding(_, _hir_id, ident, ref optional_subpattern) => {
-            visitor.visit_ident(ident);
+        PatKind::Binding(ref binding, ref optional_subpattern) => {
+            visitor.visit_binding(binding);
             walk_list!(visitor, visit_pat, optional_subpattern);
         }
         PatKind::Lit(ref expression) => visitor.visit_expr(expression),
@@ -725,6 +728,10 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
             walk_list!(visitor, visit_pat, postpatterns);
         }
     }
+}
+
+pub fn walk_binding<'v, V: Visitor<'v>>(visitor: &mut V, Binding(_, _, ident): &'v Binding) {
+    visitor.visit_ident(*ident);
 }
 
 pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v ForeignItem<'v>) {

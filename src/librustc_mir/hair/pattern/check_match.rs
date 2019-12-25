@@ -270,7 +270,7 @@ fn const_not_var(err: &mut DiagnosticBuilder<'_>, tcx: TyCtxt<'_>, pat: &Pat, pa
 
 fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
     pat.walk_always(|p| {
-        if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
+        if let hir::PatKind::Binding(hir::Binding(_, _, ident), None) = p.kind {
             if let Some(ty::BindByValue(hir::Mutability::Not)) =
                 cx.tables.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
             {
@@ -581,7 +581,7 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
 
     // Find all by-ref spans.
     let mut by_ref_spans = Vec::new();
-    pat.each_binding(|_, hir_id, span, _| {
+    pat.each_binding(|&hir::Binding(_, hir_id, _), span| {
         if let Some(ty::BindByReference(_)) = tables.extract_binding_mode(sess, hir_id, span) {
             by_ref_spans.push(span);
         }
@@ -602,7 +602,7 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
         }
     };
     pat.walk_always(|p| {
-        if let hir::PatKind::Binding(.., sub) = &p.kind {
+        if let hir::PatKind::Binding(_, sub) = &p.kind {
             if let Some(ty::BindByValue(_)) = tables.extract_binding_mode(sess, p.hir_id, p.span) {
                 let pat_ty = tables.node_type(p.hir_id);
                 if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
@@ -649,7 +649,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
     pat.walk_always(|pat| {
         // Extract `sub` in `binding @ sub`.
         let (name, sub) = match &pat.kind {
-            hir::PatKind::Binding(.., name, Some(sub)) => (*name, sub),
+            hir::PatKind::Binding(hir::Binding(_, _, name), Some(sub)) => (*name, sub),
             _ => return,
         };
 
@@ -663,7 +663,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
         // Recurse into each binding in `sub` and find mutability conflicts.
         let mut conflicts_mut_mut = Vec::new();
         let mut conflicts_mut_ref = Vec::new();
-        sub.each_binding(|_, hir_id, span, _| {
+        sub.each_binding(|&hir::Binding(_, hir_id, _), span| {
             if let Some(mut_inner) = extract_binding_mut(hir_id, span) {
                 match (mut_outer, mut_inner) {
                     (Mutability::Not, Mutability::Not) => {}

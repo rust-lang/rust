@@ -77,9 +77,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(ty) => ty,
                 }
             }
-            PatKind::Binding(ba, var_id, _, sub) => {
-                let sub = sub.as_deref();
-                self.check_pat_ident(pat, *ba, *var_id, sub, expected, def_bm, discrim_span)
+            PatKind::Binding(binding, sub) => {
+                self.check_pat_binding(pat, binding, sub.as_deref(), expected, def_bm, discrim_span)
             }
             PatKind::TupleStruct(qpath, subpats, ddpos) => self.check_pat_tuple_struct(
                 pat,
@@ -420,11 +419,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    fn check_pat_ident(
+    fn check_pat_binding(
         &self,
         pat: &Pat,
-        ba: hir::BindingAnnotation,
-        var_id: HirId,
+        hir::Binding(ba, var_id, _): &'tcx hir::Binding,
         sub: Option<&'tcx Pat>,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
@@ -433,7 +431,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Determine the binding mode...
         let bm = match ba {
             hir::BindingAnnotation::Unannotated => def_bm,
-            _ => BindingMode::convert(ba),
+            _ => BindingMode::convert(*ba),
         };
         // ...and store it in a side table:
         self.inh.tables.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
@@ -462,8 +460,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If there are multiple arms, make sure they all agree on
         // what the type of the binding `x` ought to be.
-        if var_id != pat.hir_id {
-            let vt = self.local_ty(pat.span, var_id).decl_ty;
+        if *var_id != pat.hir_id {
+            let vt = self.local_ty(pat.span, *var_id).decl_ty;
             self.demand_eqtype_pat(pat.span, vt, local_ty, discrim_span);
         }
 
