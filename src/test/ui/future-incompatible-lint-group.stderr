@@ -2,7 +2,7 @@ error: anonymous parameters are deprecated and will be removed in the next editi
   --> $DIR/future-incompatible-lint-group.rs:4:10
    |
 LL |     fn f(u8) {}
-   |          ^^ help: Try naming the parameter or explicitly ignoring it: `_: u8`
+   |          ^^ help: try naming the parameter or explicitly ignoring it: `_: u8`
    |
 note: lint level defined here
   --> $DIR/future-incompatible-lint-group.rs:1:9
