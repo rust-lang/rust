@@ -122,11 +122,14 @@ impl<'tcx> CValue<'tcx> {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(ptr) => {
-                let scalar = match layout.abi {
-                    layout::Abi::Scalar(ref scalar) => scalar.clone(),
+                let clif_ty = match layout.abi {
+                    layout::Abi::Scalar(ref scalar) => scalar_to_clif_type(fx.tcx, scalar.clone()),
+                    layout::Abi::Vector { ref element, count } => {
+                        scalar_to_clif_type(fx.tcx, element.clone())
+                            .by(u16::try_from(count).unwrap()).unwrap()
+                    }
                     _ => unreachable!(),
                 };
-                let clif_ty = scalar_to_clif_type(fx.tcx, scalar);
                 ptr.load(fx, clif_ty, MemFlags::new())
             }
             CValueInner::ByVal(value) => value,
@@ -158,37 +161,32 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    /// Load a value with layout.abi of vector
-    pub fn load_vector<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
-        let layout = self.1;
-        match self.0 {
-            CValueInner::ByRef(ptr) => {
-                let clif_ty = match layout.abi {
-                    layout::Abi::Vector { ref element, count } => {
-                        scalar_to_clif_type(fx.tcx, element.clone()).by(u16::try_from(count).unwrap()).unwrap()
-                    }
-                    _ => unreachable!(),
-                };
-                ptr.load(fx, clif_ty, MemFlags::new())
-            }
-            CValueInner::ByVal(value) => value,
-            CValueInner::ByValPair(_, _) => bug!("Please use load_scalar_pair for ByValPair"),
-        }
-    }
-
     pub fn value_field<'a>(
         self,
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         field: mir::Field,
     ) -> CValue<'tcx> {
         let layout = self.1;
-        let ptr = match self.0 {
-            CValueInner::ByRef(ptr) => ptr,
+        match self.0 {
+            CValueInner::ByVal(val) => {
+                match layout.abi {
+                    layout::Abi::Vector { element: _, count } => {
+                        let count = u8::try_from(count).expect("SIMD type with more than 255 lanes???");
+                        let field = u8::try_from(field.index()).unwrap();
+                        assert!(field < count);
+                        let lane = fx.bcx.ins().extractlane(val, field);
+                        let field_layout = layout.field(&*fx, usize::from(field));
+                        CValue::by_val(lane, field_layout)
+                    }
+                    _ => unreachable!("value_field for ByVal with abi {:?}", layout.abi),
+                }
+            }
+            CValueInner::ByRef(ptr) => {
+                let (field_ptr, field_layout) = codegen_field(fx, ptr, None, layout, field);
+                CValue::by_ref(field_ptr, field_layout)
+            }
             _ => bug!("place_field for {:?}", self),
-        };
-
-        let (field_ptr, field_layout) = codegen_field(fx, ptr, None, layout, field);
-        CValue::by_ref(field_ptr, field_layout)
+        }
     }
 
     pub fn unsize_value<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
