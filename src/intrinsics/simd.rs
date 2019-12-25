@@ -21,22 +21,15 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_cast, (c a) {
-            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, a.layout());
-            let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
-            assert_eq!(lane_count, ret_lane_count);
+            simd_for_each_lane(fx, intrinsic, a, ret, |fx, lane_layout, ret_lane_layout, lane| {
+                let ret_lane_ty = fx.clif_type(ret_lane_layout.ty).unwrap();
 
-            let ret_lane_ty = fx.clif_type(ret_lane_layout.ty).unwrap();
+                let from_signed = type_sign(lane_layout.ty);
+                let to_signed = type_sign(ret_lane_layout.ty);
 
-            let from_signed = type_sign(lane_layout.ty);
-            let to_signed = type_sign(ret_lane_layout.ty);
-
-            for lane in 0..lane_count {
-                let lane = mir::Field::new(lane.try_into().unwrap());
-
-                let a_lane = a.value_field(fx, lane).load_scalar(fx);
-                let res = clif_int_or_float_cast(fx, a_lane, from_signed, ret_lane_ty, to_signed);
-                ret.place_field(fx, lane).write_cvalue(fx, CValue::by_val(res, ret_lane_layout));
-            }
+                let ret_lane = clif_int_or_float_cast(fx, lane, from_signed, ret_lane_ty, to_signed);
+                CValue::by_val(ret_lane, ret_lane_layout)
+            });
         };
 
         simd_eq, (c x, c y) {
@@ -134,38 +127,38 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_add, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, iadd|fadd(x, y) -> ret);
+            simd_int_flt_binop!(fx, iadd|fadd(x, y) -> ret);
         };
         simd_sub, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, isub|fsub(x, y) -> ret);
+            simd_int_flt_binop!(fx, isub|fsub(x, y) -> ret);
         };
         simd_mul, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, imul|fmul(x, y) -> ret);
+            simd_int_flt_binop!(fx, imul|fmul(x, y) -> ret);
         };
         simd_div, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, udiv|sdiv|fdiv(x, y) -> ret);
+            simd_int_flt_binop!(fx, udiv|sdiv|fdiv(x, y) -> ret);
         };
         simd_shl, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, ishl(x, y) -> ret);
+            simd_int_binop!(fx, ishl(x, y) -> ret);
         };
         simd_shr, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, ushr|sshr(x, y) -> ret);
+            simd_int_binop!(fx, ushr|sshr(x, y) -> ret);
         };
         simd_and, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, band(x, y) -> ret);
+            simd_int_binop!(fx, band(x, y) -> ret);
         };
         simd_or, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, bor(x, y) -> ret);
+            simd_int_binop!(fx, bor(x, y) -> ret);
         };
         simd_xor, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, bxor(x, y) -> ret);
+            simd_int_binop!(fx, bxor(x, y) -> ret);
         };
 
         simd_fmin, (c x, c y) {
-            simd_flt_binop!(fx, intrinsic, fmin(x, y) -> ret);
+            simd_flt_binop!(fx, fmin(x, y) -> ret);
         };
         simd_fmax, (c x, c y) {
-            simd_flt_binop!(fx, intrinsic, fmax(x, y) -> ret);
+            simd_flt_binop!(fx, fmax(x, y) -> ret);
         };
     }
 }
