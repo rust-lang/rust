@@ -1,6 +1,5 @@
 //! A copy of the `Qualif` trait in `qualify_consts.rs` that is suitable for the new validator.
 
-use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
 use syntax_pos::DUMMY_SP;
@@ -32,12 +31,6 @@ pub trait Qualif {
     /// Return the qualification that is (conservatively) correct for any value
     /// of the type.
     fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> bool;
-
-    fn in_static(cx: &ConstCx<'_, 'tcx>, def_id: DefId) -> bool {
-        // `mir_const_qualif` does return the qualifs in the final value of a `static`, so we could
-        // use value-based qualification here, but we shouldn't do this without a good reason.
-        Self::in_any_value_of_ty(cx, cx.tcx.type_of(def_id))
-    }
 
     fn in_projection_structurally(
         cx: &ConstCx<'_, 'tcx>,
@@ -101,8 +94,14 @@ pub trait Qualif {
             }
 
             Operand::Constant(ref constant) => {
-                if let Some(static_) = constant.check_static_ptr(cx.tcx) {
-                    Self::in_static(cx, static_)
+                if constant.check_static_ptr(cx.tcx).is_some() {
+                    // `mir_const_qualif` does return the qualifs in the final value of a `static`,
+                    // so we could use value-based qualification here, but we shouldn't do this
+                    // without a good reason.
+                    //
+                    // Note: this uses `constant.literal.ty` which is a reference or pointer to the
+                    // type of the actual `static` item.
+                    Self::in_any_value_of_ty(cx, constant.literal.ty)
                 } else if let ty::ConstKind::Unevaluated(def_id, _) = constant.literal.val {
                     // Don't peek inside trait associated constants.
                     if cx.tcx.trait_of_item(def_id).is_some() {
