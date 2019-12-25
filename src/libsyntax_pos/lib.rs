@@ -13,6 +13,7 @@
 #![feature(specialization)]
 #![feature(step_trait)]
 
+use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
@@ -41,7 +42,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -665,13 +666,13 @@ pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result
 
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        SPAN_DEBUG.with(|span_debug| span_debug.get()(*self, f))
+        (*SPAN_DEBUG)(*self, f)
     }
 }
 
 impl fmt::Debug for SpanData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        SPAN_DEBUG.with(|span_debug| span_debug.get()(Span::new(self.lo, self.hi, self.ctxt), f))
+        (*SPAN_DEBUG)(Span::new(self.lo, self.hi, self.ctxt), f)
     }
 }
 
@@ -1503,8 +1504,8 @@ pub struct FileLines {
     pub lines: Vec<LineInfo>,
 }
 
-thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
-                Cell::new(default_span_debug));
+pub static SPAN_DEBUG: AtomicRef<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
+    AtomicRef::new(&(default_span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
 
 #[derive(Debug)]
 pub struct MacroBacktrace {

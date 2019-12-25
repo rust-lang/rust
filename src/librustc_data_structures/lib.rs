@@ -89,10 +89,12 @@ pub mod thin_vec;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub use ena::unify;
+mod atomic_ref;
 pub mod fingerprint;
 pub mod profiling;
 pub mod vec_linked_list;
 pub mod work_queue;
+pub use atomic_ref::AtomicRef;
 
 pub struct OnDrop<F: Fn()>(pub F);
 
