@@ -1054,6 +1054,7 @@ dependencies = [
  "cargo_metadata 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "crossbeam-channel 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "insta 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jod-thread 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-server 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",

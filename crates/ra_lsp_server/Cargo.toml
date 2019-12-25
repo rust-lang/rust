@@ -30,6 +30,7 @@ env_logger = { version = "0.7.1", default-features = false, features = ["humanti
 cargo_metadata = "0.9.1"
 
 [dev-dependencies]
+insta = "0.12.0"
 tempfile = "3"
 test_utils = { path = "../test_utils" }
 
