@@ -545,7 +545,7 @@ fn map_rust_diagnostic_to_lsp(
         severity,
         code: code.map(NumberOrString::String),
         source: Some(source),
-        message: rd.message.clone(),
+        message,
         related_information: if !related_information.is_empty() {
             Some(related_information)
         } else {
