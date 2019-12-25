@@ -21,5 +21,7 @@ fn main() {
         0x7FFF_FFFF, // 0x7FFF_FFFF
         #[allow(overflowing_literals)]
         0xF0F0_F0F0, // 0xF0F0_F0F0
+        0x8005_usize,   // 0x8005_usize
+        0x7F0F_F00F_isize, // 0x7F0F_F00F_isize
     );
 }

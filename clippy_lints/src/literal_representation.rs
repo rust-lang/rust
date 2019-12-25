@@ -560,7 +560,7 @@ impl DecimalLiteralRepresentation {
             if val >= u128::from(self.threshold);
             then {
                 let hex = format!("{:#X}", val);
-                let num_lit = NumericLiteral::new(&hex, None, false);
+                let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
                 let _ = Self::do_lint(num_lit.integer).map_err(|warning_type| {
                     warning_type.display(num_lit.format(), cx, lit.span)
                 });
