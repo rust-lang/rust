@@ -35,9 +35,10 @@ pub struct Options {
     pub supports_location_link: bool,
     pub line_folding_only: bool,
     pub max_inlay_hint_length: Option<usize>,
-    pub cargo_check_enable: bool,
-    pub cargo_check_command: Option<String>,
-    pub cargo_check_args: Vec<String>,
+    pub cargo_watch_enable: bool,
+    pub cargo_watch_args: Vec<String>,
+    pub cargo_watch_command: String,
+    pub cargo_watch_all_targets: bool,
 }
 
 /// `WorldState` is the primary mutable state of the language server

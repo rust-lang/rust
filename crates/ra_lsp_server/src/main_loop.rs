@@ -127,9 +127,10 @@ pub fn main_loop(
                     .and_then(|it| it.line_folding_only)
                     .unwrap_or(false),
                 max_inlay_hint_length: config.max_inlay_hint_length,
-                cargo_check_enable: config.cargo_check_enable,
-                cargo_check_command: config.cargo_check_command,
-                cargo_check_args: config.cargo_check_args,
+                cargo_watch_enable: config.cargo_watch_enable,
+                cargo_watch_args: config.cargo_watch_args,
+                cargo_watch_command: config.cargo_watch_command,
+                cargo_watch_all_targets: config.cargo_watch_all_targets,
             }
         };
 

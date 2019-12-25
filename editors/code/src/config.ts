@@ -4,10 +4,11 @@ import { Server } from './server';
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
-export interface CargoCheckOptions {
-    enabled: boolean;
+export interface CargoWatchOptions {
+    enable: boolean;
     arguments: string[];
-    command: null | string;
+    command: string;
+    allTargets: boolean;
 }
 
 export interface CargoFeatures {
@@ -29,10 +30,11 @@ export class Config {
     public featureFlags = {};
     // for internal use
     public withSysroot: null | boolean = null;
-    public cargoCheckOptions: CargoCheckOptions = {
-        enabled: true,
+    public cargoWatchOptions: CargoWatchOptions = {
+        enable: true,
         arguments: [],
-        command: null,
+        command: '',
+        allTargets: true,
     };
     public cargoFeatures: CargoFeatures = {
         noDefaultFeatures: false,
@@ -91,24 +93,31 @@ export class Config {
                 RA_LSP_DEBUG || (config.get('raLspServerPath') as string);
         }
 
-        if (config.has('enableCargoCheck')) {
-            this.cargoCheckOptions.enabled = config.get<boolean>(
-                'enableCargoCheck',
+        if (config.has('cargo-watch.enable')) {
+            this.cargoWatchOptions.enable = config.get<boolean>(
+                'cargo-watch.enable',
                 true,
             );
         }
 
         if (config.has('cargo-watch.arguments')) {
-            this.cargoCheckOptions.arguments = config.get<string[]>(
+            this.cargoWatchOptions.arguments = config.get<string[]>(
                 'cargo-watch.arguments',
                 [],
             );
         }
 
         if (config.has('cargo-watch.command')) {
-            this.cargoCheckOptions.command = config.get<string>(
+            this.cargoWatchOptions.command = config.get<string>(
                 'cargo-watch.command',
                 '',
+            );
+        }
+
+        if (config.has('cargo-watch.allTargets')) {
+            this.cargoWatchOptions.allTargets = config.get<boolean>(
+                'cargo-watch.allTargets',
+                true,
             );
         }
 

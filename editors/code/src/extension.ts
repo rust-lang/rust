@@ -85,7 +85,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     const watchStatus = new StatusDisplay(
-        Server.config.cargoCheckOptions.command || 'check',
+        Server.config.cargoWatchOptions.command,
     );
     disposeOnDeactivation(watchStatus);
 
