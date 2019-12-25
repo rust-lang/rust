@@ -33,6 +33,7 @@ pub struct CheckWatcher {
 
 impl CheckWatcher {
     pub fn new(options: &Options, workspace_root: PathBuf) -> CheckWatcher {
+        let check_enabled = options.cargo_check_enable;
         let check_command = options.cargo_check_command.clone();
         let check_args = options.cargo_check_args.clone();
         let shared = Arc::new(RwLock::new(CheckWatcherSharedState::new()));
@@ -41,8 +42,13 @@ impl CheckWatcher {
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let shared_ = shared.clone();
         let handle = std::thread::spawn(move || {
-            let mut check =
-                CheckWatcherState::new(check_command, check_args, workspace_root, shared_);
+            let mut check = CheckWatcherState::new(
+                check_enabled,
+                check_command,
+                check_args,
+                workspace_root,
+                shared_,
+            );
             check.run(&task_send, &cmd_recv);
         });
 
@@ -55,6 +61,7 @@ impl CheckWatcher {
 }
 
 pub struct CheckWatcherState {
+    check_enabled: bool,
     check_command: Option<String>,
     check_args: Vec<String>,
     workspace_root: PathBuf,
@@ -142,13 +149,16 @@ pub enum CheckCommand {
 
 impl CheckWatcherState {
     pub fn new(
+        check_enabled: bool,
         check_command: Option<String>,
         check_args: Vec<String>,
         workspace_root: PathBuf,
         shared: Arc<RwLock<CheckWatcherSharedState>>,
     ) -> CheckWatcherState {
-        let watcher = WatchThread::new(check_command.as_ref(), &check_args, &workspace_root);
+        let watcher =
+            WatchThread::new(check_enabled, check_command.as_ref(), &check_args, &workspace_root);
         CheckWatcherState {
+            check_enabled,
             check_command,
             check_args,
             workspace_root,
@@ -182,6 +192,7 @@ impl CheckWatcherState {
 
                 self.watcher.cancel();
                 self.watcher = WatchThread::new(
+                    self.check_enabled,
                     self.check_command.as_ref(),
                     &self.check_args,
                     &self.workspace_root,
@@ -283,6 +294,7 @@ enum CheckEvent {
 
 impl WatchThread {
     fn new(
+        check_enabled: bool,
         check_command: Option<&String>,
         check_args: &[String],
         workspace_root: &PathBuf,
@@ -299,6 +311,10 @@ impl WatchThread {
         let (message_send, message_recv) = unbounded();
         let (cancel_send, cancel_recv) = unbounded();
         std::thread::spawn(move || {
+            if !check_enabled {
+                return;
+            }
+
             let mut command = Command::new("cargo")
                 .args(&args)
                 .stdout(Stdio::piped())
