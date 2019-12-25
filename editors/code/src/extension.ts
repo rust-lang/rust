@@ -2,13 +2,8 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
-import { CargoWatchProvider } from './commands/cargo_watch';
 import { ExpandMacroContentProvider } from './commands/expand_macro';
 import { HintsUpdater } from './commands/inlay_hints';
-import {
-    interactivelyStartCargoWatch,
-    startCargoWatch,
-} from './commands/runnables';
 import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import * as events from './events';
 import * as notifications from './notifications';
@@ -138,26 +133,6 @@ export async function activate(context: vscode.ExtensionContext) {
     const reloadCommand = () => reloadServer(startServer);
 
     vscode.commands.registerCommand('rust-analyzer.reload', reloadCommand);
-
-    // Executing `cargo watch` provides us with inline diagnostics on save
-    let provider: CargoWatchProvider | undefined;
-    interactivelyStartCargoWatch(context).then(p => {
-        provider = p;
-    });
-    registerCommand('rust-analyzer.startCargoWatch', () => {
-        if (provider) {
-            provider.start();
-        } else {
-            startCargoWatch(context).then(p => {
-                provider = p;
-            });
-        }
-    });
-    registerCommand('rust-analyzer.stopCargoWatch', () => {
-        if (provider) {
-            provider.stop();
-        }
-    });
 
     // Start the language server, finally!
     try {

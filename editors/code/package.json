@@ -18,7 +18,7 @@
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "package": "vsce package",
-        "compile": "rollup -c && shx cp src/utils/terminateProcess.sh bundle/terminateProcess.sh",
+        "compile": "rollup -c",
         "watch": "tsc -watch -p ./",
         "fix": "prettier **/*.{json,ts} --write && tslint --project . --fix",
         "lint": "tslint --project .",
@@ -132,16 +132,6 @@
             {
                 "command": "rust-analyzer.reload",
                 "title": "Restart server",
-                "category": "Rust Analyzer"
-            },
-            {
-                "command": "rust-analyzer.startCargoWatch",
-                "title": "Start Cargo Watch",
-                "category": "Rust Analyzer"
-            },
-            {
-                "command": "rust-analyzer.stopCargoWatch",
-                "title": "Stop Cargo Watch",
                 "category": "Rust Analyzer"
             }
         ],
