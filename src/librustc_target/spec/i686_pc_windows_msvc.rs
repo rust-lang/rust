@@ -11,7 +11,7 @@ pub fn target() -> TargetResult {
 
     // Ensure the linker will only produce an image if it can also produce a table of
     // the image's safe exception handlers.
-    // https://msdn.microsoft.com/en-us/library/9a89h429.aspx
+    // https://docs.microsoft.com/en-us/cpp/build/reference/safeseh-image-has-safe-exception-handlers
     base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push("/SAFESEH".to_string());
 
     Ok(Target {

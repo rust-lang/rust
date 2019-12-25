@@ -117,7 +117,7 @@ pub trait OpenOptionsExt {
     /// let file = OpenOptions::new().access_mode(0).open("foo.txt");
     /// ```
     ///
-    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
+    /// [`CreateFile`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn access_mode(&mut self, access: u32) -> &mut Self;
 
@@ -145,7 +145,7 @@ pub trait OpenOptionsExt {
     ///     .open("foo.txt");
     /// ```
     ///
-    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
+    /// [`CreateFile`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn share_mode(&mut self, val: u32) -> &mut Self;
 
@@ -174,8 +174,8 @@ pub trait OpenOptionsExt {
     ///     .open("foo.txt");
     /// ```
     ///
-    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
-    /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
+    /// [`CreateFile`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea
+    /// [`CreateFile2`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfile2
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn custom_flags(&mut self, flags: u32) -> &mut Self;
 
@@ -211,8 +211,8 @@ pub trait OpenOptionsExt {
     ///     .open("foo.txt");
     /// ```
     ///
-    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
-    /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
+    /// [`CreateFile`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea
+    /// [`CreateFile2`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfile2
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn attributes(&mut self, val: u32) -> &mut Self;
 
@@ -254,10 +254,10 @@ pub trait OpenOptionsExt {
     ///     .open(r"\\.\pipe\MyPipe");
     /// ```
     ///
-    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
-    /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
+    /// [`CreateFile`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea
+    /// [`CreateFile2`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfile2
     /// [Impersonation Levels]:
-    ///     https://msdn.microsoft.com/en-us/library/windows/desktop/aa379572.aspx
+    ///     https://docs.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-security_impersonation_level
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions;
 }
@@ -297,7 +297,7 @@ impl OpenOptionsExt for OpenOptions {
 ///
 /// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 /// [`BY_HANDLE_FILE_INFORMATION`]:
-///     https://msdn.microsoft.com/en-us/library/windows/desktop/aa363788.aspx
+///     https://docs.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Returns the value of the `dwFileAttributes` field of this metadata.
@@ -321,7 +321,7 @@ pub trait MetadataExt {
     /// ```
     ///
     /// [File Attribute Constants]:
-    ///     https://msdn.microsoft.com/en-us/library/windows/desktop/gg258117.aspx
+    ///     https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_attributes(&self) -> u32;
 
@@ -350,7 +350,7 @@ pub trait MetadataExt {
     /// }
     /// ```
     ///
-    /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
+    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn creation_time(&self) -> u64;
 
@@ -385,7 +385,7 @@ pub trait MetadataExt {
     /// }
     /// ```
     ///
-    /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
+    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_access_time(&self) -> u64;
 
@@ -418,7 +418,7 @@ pub trait MetadataExt {
     /// }
     /// ```
     ///
-    /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
+    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_write_time(&self) -> u64;
 

@@ -168,8 +168,8 @@ impl Command {
         // error code if we fail to spawn and automatically re-spawning the
         // linker with smaller arguments.
         //
-        // [1]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms682425(v=vs.85).aspx
-        // [2]: https://blogs.msdn.microsoft.com/oldnewthing/20031210-00/?p=41553
+        // [1]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessa
+        // [2]: https://devblogs.microsoft.com/oldnewthing/?p=41553
 
         let estimated_command_line_len = self.args.iter().map(|a| a.len()).sum::<usize>();
         estimated_command_line_len > 1024 * 6

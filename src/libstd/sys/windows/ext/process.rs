@@ -99,7 +99,7 @@ pub trait CommandExt {
     ///
     /// These will always be ORed with `CREATE_UNICODE_ENVIRONMENT`.
     ///
-    /// [1]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms684863(v=vs.85).aspx
+    /// [1]: https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
     #[stable(feature = "windows_process_extensions", since = "1.16.0")]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
 }

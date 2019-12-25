@@ -1841,7 +1841,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// or written to a file another application may read).
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
-/// [path]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247(v=vs.85).aspx#maxpath
+/// [path]: https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
 ///
 /// # Errors
 ///
