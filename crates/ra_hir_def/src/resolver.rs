@@ -466,10 +466,16 @@ impl Scope {
                     f(name.clone(), ScopeDef::PerNs(def));
                 });
                 m.crate_def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
-                    f(name.clone(), ScopeDef::PerNs(PerNs::macros(macro_)));
+                    f(
+                        name.clone(),
+                        ScopeDef::PerNs(PerNs::macros(macro_, ResolvedVisibility::Public)),
+                    );
                 });
                 m.crate_def_map.extern_prelude.iter().for_each(|(name, &def)| {
-                    f(name.clone(), ScopeDef::PerNs(PerNs::types(def.into())));
+                    f(
+                        name.clone(),
+                        ScopeDef::PerNs(PerNs::types(def.into(), ResolvedVisibility::Public)),
+                    );
                 });
                 if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);

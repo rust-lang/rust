@@ -24,6 +24,7 @@ use crate::{
     },
     path::{ModPath, PathKind},
     per_ns::PerNs,
+    visibility::ResolvedVisibility,
     AdtId, AstId, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
     LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
@@ -214,7 +215,10 @@ where
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
         if export {
-            self.update(self.def_map.root, &[(name, PerNs::macros(macro_))]);
+            self.update(
+                self.def_map.root,
+                &[(name, PerNs::macros(macro_, ResolvedVisibility::Public))],
+            );
         }
     }
 
@@ -351,6 +355,10 @@ where
         let import_id = directive.import_id;
         let import = &directive.import;
         let def = directive.status.namespaces();
+        let vis = self
+            .def_map
+            .resolve_visibility(self.db, module_id, &directive.import.visibility)
+            .unwrap_or(ResolvedVisibility::Public);
 
         if import.is_glob {
             log::debug!("glob import: {:?}", import);
@@ -365,8 +373,10 @@ where
                         let item_map = self.db.crate_def_map(m.krate);
                         let scope = &item_map[m.local_id].scope;
 
+                        // TODO: only use names we can see
+
                         // Module scoped macros is included
-                        let items = scope.collect_resolutions();
+                        let items = scope.collect_resolutions_with_vis(vis);
 
                         self.update(module_id, &items);
                     } else {
@@ -375,8 +385,10 @@ where
                         // additions
                         let scope = &self.def_map[m.local_id].scope;
 
+                        // TODO: only use names we can see
+
                         // Module scoped macros is included
-                        let items = scope.collect_resolutions();
+                        let items = scope.collect_resolutions_with_vis(vis);
 
                         self.update(module_id, &items);
                         // record the glob import in case we add further items
@@ -396,7 +408,7 @@ where
                         .map(|(local_id, variant_data)| {
                             let name = variant_data.name.clone();
                             let variant = EnumVariantId { parent: e, local_id };
-                            let res = PerNs::both(variant.into(), variant.into());
+                            let res = PerNs::both(variant.into(), variant.into(), vis);
                             (name, res)
                         })
                         .collect::<Vec<_>>();
@@ -422,7 +434,7 @@ where
                         }
                     }
 
-                    self.update(module_id, &[(name, def)]);
+                    self.update(module_id, &[(name, def.with_visibility(vis))]);
                 }
                 None => tested_by!(bogus_paths),
             }
@@ -701,8 +713,9 @@ where
         modules[self.module_id].children.insert(name.clone(), res);
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
         let def: ModuleDefId = module.into();
+        let vis = ResolvedVisibility::Public; // TODO handle module visibility
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        self.def_collector.update(self.module_id, &[(name, def.into())]);
+        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))]);
         res
     }
 
@@ -716,6 +729,7 @@ where
 
         let name = def.name.clone();
         let container = ContainerId::ModuleId(module);
+        let vis = &def.visibility;
         let def: ModuleDefId = match def.kind {
             raw::DefKind::Function(ast_id) => FunctionLoc {
                 container: container.into(),
@@ -761,7 +775,12 @@ where
             .into(),
         };
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        self.def_collector.update(self.module_id, &[(name, def.into())])
+        let vis = self
+            .def_collector
+            .def_map
+            .resolve_visibility(self.def_collector.db, self.module_id, vis)
+            .unwrap_or(ResolvedVisibility::Public);
+        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))])
     }
 
     fn collect_derives(&mut self, attrs: &Attrs, def: &raw::DefData) {
