@@ -32,6 +32,10 @@ pub struct ServerConfig {
 
     pub max_inlay_hint_length: Option<usize>,
 
+    pub cargo_check_enable: bool,
+    pub cargo_check_command: Option<String>,
+    pub cargo_check_args: Vec<String>,
+
     /// For internal usage to make integrated tests faster.
     #[serde(deserialize_with = "nullable_bool_true")]
     pub with_sysroot: bool,
@@ -51,6 +55,9 @@ impl Default for ServerConfig {
             use_client_watching: false,
             lru_capacity: None,
             max_inlay_hint_length: None,
+            cargo_check_enable: true,
+            cargo_check_command: None,
+            cargo_check_args: vec![],
             with_sysroot: true,
             feature_flags: FxHashMap::default(),
             cargo_features: Default::default(),

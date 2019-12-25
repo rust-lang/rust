@@ -4,16 +4,10 @@ import { Server } from './server';
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
-export type CargoWatchStartupOptions = 'ask' | 'enabled' | 'disabled';
-export type CargoWatchTraceOptions = 'off' | 'error' | 'verbose';
-
-export interface CargoWatchOptions {
-    enableOnStartup: CargoWatchStartupOptions;
-    arguments: string;
-    command: string;
-    trace: CargoWatchTraceOptions;
-    ignore: string[];
-    allTargets: boolean;
+export interface CargoCheckOptions {
+    enabled: boolean;
+    arguments: string[];
+    command: null | string;
 }
 
 export interface CargoFeatures {
@@ -35,13 +29,10 @@ export class Config {
     public featureFlags = {};
     // for internal use
     public withSysroot: null | boolean = null;
-    public cargoWatchOptions: CargoWatchOptions = {
-        enableOnStartup: 'ask',
-        trace: 'off',
-        arguments: '',
-        command: '',
-        ignore: [],
-        allTargets: true,
+    public cargoCheckOptions: CargoCheckOptions = {
+        enabled: true,
+        arguments: [],
+        command: null,
     };
     public cargoFeatures: CargoFeatures = {
         noDefaultFeatures: false,
@@ -100,44 +91,24 @@ export class Config {
                 RA_LSP_DEBUG || (config.get('raLspServerPath') as string);
         }
 
-        if (config.has('enableCargoWatchOnStartup')) {
-            this.cargoWatchOptions.enableOnStartup = config.get<
-                CargoWatchStartupOptions
-            >('enableCargoWatchOnStartup', 'ask');
-        }
-
-        if (config.has('trace.cargo-watch')) {
-            this.cargoWatchOptions.trace = config.get<CargoWatchTraceOptions>(
-                'trace.cargo-watch',
-                'off',
+        if (config.has('enableCargoCheck')) {
+            this.cargoCheckOptions.enabled = config.get<boolean>(
+                'enableCargoCheck',
+                true,
             );
         }
 
         if (config.has('cargo-watch.arguments')) {
-            this.cargoWatchOptions.arguments = config.get<string>(
+            this.cargoCheckOptions.arguments = config.get<string[]>(
                 'cargo-watch.arguments',
-                '',
-            );
-        }
-
-        if (config.has('cargo-watch.command')) {
-            this.cargoWatchOptions.command = config.get<string>(
-                'cargo-watch.command',
-                '',
-            );
-        }
-
-        if (config.has('cargo-watch.ignore')) {
-            this.cargoWatchOptions.ignore = config.get<string[]>(
-                'cargo-watch.ignore',
                 [],
             );
         }
 
-        if (config.has('cargo-watch.allTargets')) {
-            this.cargoWatchOptions.allTargets = config.get<boolean>(
-                'cargo-watch.allTargets',
-                true,
+        if (config.has('cargo-watch.command')) {
+            this.cargoCheckOptions.command = config.get<string>(
+                'cargo-watch.command',
+                '',
             );
         }
 

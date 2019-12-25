@@ -35,6 +35,9 @@ pub struct Options {
     pub supports_location_link: bool,
     pub line_folding_only: bool,
     pub max_inlay_hint_length: Option<usize>,
+    pub cargo_check_enable: bool,
+    pub cargo_check_command: Option<String>,
+    pub cargo_check_args: Vec<String>,
 }
 
 /// `WorldState` is the primary mutable state of the language server
@@ -131,7 +134,7 @@ impl WorldState {
         change.set_crate_graph(crate_graph);
 
         // FIXME: Figure out the multi-workspace situation
-        let check_watcher = CheckWatcher::new(folder_roots.first().cloned().unwrap());
+        let check_watcher = CheckWatcher::new(&options, folder_roots.first().cloned().unwrap());
 
         let mut analysis_host = AnalysisHost::new(lru_capacity, feature_flags);
         analysis_host.apply_change(change);

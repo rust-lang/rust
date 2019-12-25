@@ -1,3 +1,4 @@
+use crate::world::Options;
 use cargo_metadata::{
     diagnostic::{
         Applicability, Diagnostic as RustDiagnostic, DiagnosticLevel, DiagnosticSpan,
@@ -30,14 +31,17 @@ pub struct CheckWatcher {
 }
 
 impl CheckWatcher {
-    pub fn new(workspace_root: PathBuf) -> CheckWatcher {
+    pub fn new(options: &Options, workspace_root: PathBuf) -> CheckWatcher {
+        let check_command = options.cargo_check_command.clone();
+        let check_args = options.cargo_check_args.clone();
         let shared = Arc::new(RwLock::new(CheckWatcherSharedState::new()));
 
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let shared_ = shared.clone();
         let handle = std::thread::spawn(move || {
-            let mut check = CheckWatcherState::new(shared_, workspace_root);
+            let mut check =
+                CheckWatcherState::new(check_command, check_args, workspace_root, shared_);
             check.run(&task_send, &cmd_recv);
         });
 
@@ -50,6 +54,8 @@ impl CheckWatcher {
 }
 
 pub struct CheckWatcherState {
+    check_command: Option<String>,
+    check_args: Vec<String>,
     workspace_root: PathBuf,
     running: bool,
     watcher: WatchThread,
@@ -134,11 +140,21 @@ pub enum CheckCommand {
 
 impl CheckWatcherState {
     pub fn new(
-        shared: Arc<RwLock<CheckWatcherSharedState>>,
+        check_command: Option<String>,
+        check_args: Vec<String>,
         workspace_root: PathBuf,
+        shared: Arc<RwLock<CheckWatcherSharedState>>,
     ) -> CheckWatcherState {
-        let watcher = WatchThread::new(&workspace_root);
-        CheckWatcherState { workspace_root, running: false, watcher, last_update_req: None, shared }
+        let watcher = WatchThread::new(check_command.as_ref(), &check_args, &workspace_root);
+        CheckWatcherState {
+            check_command,
+            check_args,
+            workspace_root,
+            running: false,
+            watcher,
+            last_update_req: None,
+            shared,
+        }
     }
 
     pub fn run(&mut self, task_send: &Sender<CheckTask>, cmd_recv: &Receiver<CheckCommand>) {
@@ -163,7 +179,11 @@ impl CheckWatcherState {
                 self.shared.write().clear(task_send);
 
                 self.watcher.cancel();
-                self.watcher = WatchThread::new(&self.workspace_root);
+                self.watcher = WatchThread::new(
+                    self.check_command.as_ref(),
+                    &self.check_args,
+                    &self.workspace_root,
+                );
             }
         }
     }
@@ -229,13 +249,25 @@ struct WatchThread {
 }
 
 impl WatchThread {
-    fn new(workspace_root: &PathBuf) -> WatchThread {
-        let manifest_path = format!("{}/Cargo.toml", workspace_root.to_string_lossy());
+    fn new(
+        check_command: Option<&String>,
+        check_args: &[String],
+        workspace_root: &PathBuf,
+    ) -> WatchThread {
+        let check_command = check_command.cloned().unwrap_or("check".to_string());
+        let mut args: Vec<String> = vec![
+            check_command,
+            "--message-format=json".to_string(),
+            "--manifest-path".to_string(),
+            format!("{}/Cargo.toml", workspace_root.to_string_lossy()),
+        ];
+        args.extend(check_args.iter().cloned());
+
         let (message_send, message_recv) = unbounded();
         let (cancel_send, cancel_recv) = unbounded();
         std::thread::spawn(move || {
             let mut command = Command::new("cargo")
-                .args(&["check", "--message-format=json", "--manifest-path", &manifest_path])
+                .args(&args)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null())
                 .spawn()

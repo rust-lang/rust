@@ -188,20 +188,10 @@
                     "default": "ra_lsp_server",
                     "description": "Path to ra_lsp_server executable"
                 },
-                "rust-analyzer.enableCargoWatchOnStartup": {
-                    "type": "string",
-                    "default": "ask",
-                    "enum": [
-                        "ask",
-                        "enabled",
-                        "disabled"
-                    ],
-                    "enumDescriptions": [
-                        "Asks each time whether to run `cargo watch`",
-                        "`cargo watch` is always started",
-                        "Don't start `cargo watch`"
-                    ],
-                    "description": "Whether to run `cargo watch` on startup"
+                "rust-analyzer.enableCargoCheck": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Run `cargo check` for diagnostics on save"
                 },
                 "rust-analyzer.excludeGlobs": {
                     "type": "array",
@@ -213,25 +203,15 @@
                     "default": true,
                     "description": "client provided file watching instead of notify watching."
                 },
-                "rust-analyzer.cargo-watch.arguments": {
-                    "type": "string",
-                    "description": "`cargo-watch` arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",
-                    "default": ""
-                },
-                "rust-analyzer.cargo-watch.command": {
-                    "type": "string",
-                    "description": "`cargo-watch` command. (e.g: `clippy` will run as `cargo watch -x clippy` )",
-                    "default": "check"
-                },
-                "rust-analyzer.cargo-watch.ignore": {
+                "rust-analyzer.cargo-check.arguments": {
                     "type": "array",
-                    "description": "A list of patterns for cargo-watch to ignore (will be passed as `--ignore`)",
+                    "description": "`cargo-check` arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo check --features=\"shumway,pdf\"` )",
                     "default": []
                 },
-                "rust-analyzer.cargo-watch.allTargets": {
-                    "type": "boolean",
-                    "description": "Check all targets and tests (will be passed as `--all-targets`)",
-                    "default": true
+                "rust-analyzer.cargo-check.command": {
+                    "type": "string",
+                    "description": "`cargo-check` command. (e.g: `clippy` will run as `cargo clippy` )",
+                    "default": "check"
                 },
                 "rust-analyzer.trace.server": {
                     "type": "string",
