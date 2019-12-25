@@ -11,7 +11,7 @@ LL |
 LL |     }
    |     - `prefix` dropped here while still borrowed
    |
-help: you can add a constraint to the opaque type to make it last less than `'static` and match `'a`
+help: you can add a bound to the opaque type to make it last less than `'static` and match `'a`
    |
 LL |     fn started_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item=&'a str> + 'a {
    |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

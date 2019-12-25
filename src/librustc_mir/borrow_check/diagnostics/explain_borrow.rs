@@ -238,7 +238,7 @@ impl BorrowExplanation {
                     err.span_suggestion(
                         span,
                         &format!(
-                            "you can add a constraint to the {}to make it last less than \
+                            "you can add a bound to the {}to make it last less than \
                              `'static` and match `{}`",
                             category.description(),
                             region_name,
