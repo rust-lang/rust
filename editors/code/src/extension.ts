@@ -8,6 +8,7 @@ import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
+import { StatusDisplay } from './commands/watch_status';
 
 export async function activate(context: vscode.ExtensionContext) {
     function disposeOnDeactivation(disposable: vscode.Disposable) {
@@ -83,6 +84,9 @@ export async function activate(context: vscode.ExtensionContext) {
         overrideCommand('type', commands.onEnter.handle);
     }
 
+    const watchStatus = new StatusDisplay(Server.config.cargoCheckOptions.command || 'check');
+    disposeOnDeactivation(watchStatus);
+
     // Notifications are events triggered by the language server
     const allNotifications: Iterable<[
         string,
@@ -92,6 +96,10 @@ export async function activate(context: vscode.ExtensionContext) {
             'rust-analyzer/publishDecorations',
             notifications.publishDecorations.handle,
         ],
+        [
+            '$/progress',
+            (params) => watchStatus.handleProgressNotification(params),
+        ]
     ];
     const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
     const expandMacroContentProvider = new ExpandMacroContentProvider();

@@ -338,6 +338,14 @@ fn loop_turn(
                     task_sender.send(Task::Notify(not)).unwrap();
                 }
             }
+            CheckTask::Status(progress) => {
+                let params = req::ProgressParams {
+                    token: req::ProgressToken::String("rustAnalyzer/cargoWatcher".to_string()),
+                    value: req::ProgressParamsValue::WorkDone(progress),
+                };
+                let not = notification_new::<req::Progress>(params);
+                task_sender.send(Task::Notify(not)).unwrap();
+            }
         },
         Event::Msg(msg) => match msg {
             Message::Request(req) => on_request(

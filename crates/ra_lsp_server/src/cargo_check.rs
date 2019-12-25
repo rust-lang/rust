@@ -9,7 +9,8 @@ use cargo_metadata::{
 use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender, TryRecvError};
 use lsp_types::{
     Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag, Location,
-    NumberOrString, Position, Range, Url,
+    NumberOrString, Position, Range, Url, WorkDoneProgress, WorkDoneProgressBegin,
+    WorkDoneProgressEnd, WorkDoneProgressReport,
 };
 use parking_lot::RwLock;
 use std::{
@@ -132,6 +133,7 @@ impl CheckWatcherSharedState {
 #[derive(Debug)]
 pub enum CheckTask {
     Update(Url),
+    Status(WorkDoneProgress),
 }
 
 pub enum CheckCommand {
@@ -204,13 +206,38 @@ impl CheckWatcherState {
         }
     }
 
-    fn handle_message(&mut self, msg: cargo_metadata::Message, task_send: &Sender<CheckTask>) {
+    fn handle_message(&mut self, msg: CheckEvent, task_send: &Sender<CheckTask>) {
         match msg {
-            Message::CompilerArtifact(_msg) => {
-                // TODO: Status display
+            CheckEvent::Begin => {
+                task_send
+                    .send(CheckTask::Status(WorkDoneProgress::Begin(WorkDoneProgressBegin {
+                        title: "Running 'cargo check'".to_string(),
+                        cancellable: Some(false),
+                        message: None,
+                        percentage: None,
+                    })))
+                    .unwrap();
             }
 
-            Message::CompilerMessage(msg) => {
+            CheckEvent::End => {
+                task_send
+                    .send(CheckTask::Status(WorkDoneProgress::End(WorkDoneProgressEnd {
+                        message: None,
+                    })))
+                    .unwrap();
+            }
+
+            CheckEvent::Msg(Message::CompilerArtifact(msg)) => {
+                task_send
+                    .send(CheckTask::Status(WorkDoneProgress::Report(WorkDoneProgressReport {
+                        cancellable: Some(false),
+                        message: Some(msg.target.name),
+                        percentage: None,
+                    })))
+                    .unwrap();
+            }
+
+            CheckEvent::Msg(Message::CompilerMessage(msg)) => {
                 let map_result =
                     match map_rust_diagnostic_to_lsp(&msg.message, &self.workspace_root) {
                         Some(map_result) => map_result,
@@ -232,8 +259,8 @@ impl CheckWatcherState {
                 task_send.send(CheckTask::Update(location.uri)).unwrap();
             }
 
-            Message::BuildScriptExecuted(_msg) => {}
-            Message::Unknown => {}
+            CheckEvent::Msg(Message::BuildScriptExecuted(_msg)) => {}
+            CheckEvent::Msg(Message::Unknown) => {}
         }
     }
 }
@@ -244,8 +271,14 @@ impl CheckWatcherState {
 /// have to wrap sub-processes output handling in a thread and pass messages
 /// back over a channel.
 struct WatchThread {
-    message_recv: Receiver<cargo_metadata::Message>,
+    message_recv: Receiver<CheckEvent>,
     cancel_send: Sender<()>,
+}
+
+enum CheckEvent {
+    Begin,
+    Msg(cargo_metadata::Message),
+    End,
 }
 
 impl WatchThread {
@@ -273,6 +306,7 @@ impl WatchThread {
                 .spawn()
                 .expect("couldn't launch cargo");
 
+            message_send.send(CheckEvent::Begin).unwrap();
             for message in cargo_metadata::parse_messages(command.stdout.take().unwrap()) {
                 match cancel_recv.try_recv() {
                     Ok(()) | Err(TryRecvError::Disconnected) => {
@@ -281,8 +315,9 @@ impl WatchThread {
                     Err(TryRecvError::Empty) => (),
                 }
 
-                message_send.send(message.unwrap()).unwrap();
+                message_send.send(CheckEvent::Msg(message.unwrap())).unwrap();
             }
+            message_send.send(CheckEvent::End).unwrap();
         });
         WatchThread { message_recv, cancel_send }
     }
