@@ -46,25 +46,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope: Option<region::Scope>,
         expr: Expr<'tcx>,
     ) -> BlockAnd<Rvalue<'tcx>> {
-        debug!(
-            "expr_as_rvalue(block={:?}, scope={:?}, expr={:?})",
-            block, scope, expr
-        );
+        debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
 
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
 
         match expr.kind {
-            ExprKind::Scope {
-                region_scope,
-                lint_level,
-                value,
-            } => {
+            ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, source_info);
-                this.in_scope(region_scope, lint_level, |this| {
-                    this.as_rvalue(block, scope, value)
-                })
+                this.in_scope(region_scope, lint_level, |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, scope, value));
@@ -106,35 +97,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // The `Box<T>` temporary created here is not a part of the HIR,
                 // and therefore is not considered during generator OIBIT
                 // determination. See the comment about `box` at `yield_in_scope`.
-                let result = this
-                    .local_decls
-                    .push(LocalDecl::new_internal(expr.ty, expr_span));
+                let result = this.local_decls.push(LocalDecl::new_internal(expr.ty, expr_span));
                 this.cfg.push(
                     block,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::StorageLive(result),
-                    },
+                    Statement { source_info, kind: StatementKind::StorageLive(result) },
                 );
                 if let Some(scope) = scope {
                     // schedule a shallow free of that memory, lest we unwind:
-                    this.schedule_drop_storage_and_value(
-                        expr_span,
-                        scope,
-                        result,
-                    );
+                    this.schedule_drop_storage_and_value(expr_span, scope, result);
                 }
 
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
-                this.cfg
-                    .push_assign(block, source_info, &Place::from(result), box_);
+                this.cfg.push_assign(block, source_info, &Place::from(result), box_);
 
                 // initialize the box contents:
                 unpack!(
                     block = this.into(
                         &this.hir.tcx().mk_place_deref(Place::from(result)),
-                        block, value
+                        block,
+                        value
                     )
                 );
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))
@@ -193,12 +175,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure {
-                closure_id,
-                substs,
-                upvars,
-                movability,
-            } => {
+            ExprKind::Closure { closure_id, substs, upvars, movability } => {
                 // see (*) above
                 let operands: Vec<_> = upvars
                     .into_iter()
@@ -225,9 +202,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 match upvar.kind {
                                     ExprKind::Borrow {
                                         borrow_kind:
-                                            BorrowKind::Mut {
-                                                allow_two_phase_borrow: false,
-                                            },
+                                            BorrowKind::Mut { allow_two_phase_borrow: false },
                                         arg,
                                     } => unpack!(
                                         block = this.limit_capture_mutability(
@@ -238,7 +213,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 }
                             }
                         }
-                    }).collect();
+                    })
+                    .collect();
                 let result = match substs {
                     UpvarSubsts::Generator(substs) => {
                         // We implicitly set the discriminant to 0. See
@@ -261,11 +237,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Yield {
-                        value: value,
-                        resume: resume,
-                        drop: cleanup,
-                    },
+                    TerminatorKind::Yield { value: value, resume: resume, drop: cleanup },
                 );
                 resume.and(this.unit_rvalue())
             }
@@ -414,29 +386,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let this = self;
 
         let source_info = this.source_info(upvar_span);
-        let temp = this
-            .local_decls
-            .push(LocalDecl::new_temp(upvar_ty, upvar_span));
+        let temp = this.local_decls.push(LocalDecl::new_temp(upvar_ty, upvar_span));
 
-        this.cfg.push(
-            block,
-            Statement {
-                source_info,
-                kind: StatementKind::StorageLive(temp),
-            },
-        );
+        this.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
 
         let arg_place = unpack!(block = this.as_place(block, arg));
 
         let mutability = match arg_place.as_ref() {
-            PlaceRef {
-                base: &PlaceBase::Local(local),
-                projection: &[],
-            } => this.local_decls[local].mutability,
-            PlaceRef {
-                base: &PlaceBase::Local(local),
-                projection: &[ProjectionElem::Deref],
-            } => {
+            PlaceRef { base: &PlaceBase::Local(local), projection: &[] } => {
+                this.local_decls[local].mutability
+            }
+            PlaceRef { base: &PlaceBase::Local(local), projection: &[ProjectionElem::Deref] } => {
                 debug_assert!(
                     this.local_decls[local].is_ref_for_guard(),
                     "Unexpected capture place",
@@ -449,16 +409,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             | PlaceRef {
                 ref base,
-                projection: &[
-                    ref proj_base @ ..,
-                    ProjectionElem::Field(upvar_index, _),
-                    ProjectionElem::Deref
-                ],
+                projection:
+                    &[ref proj_base @ .., ProjectionElem::Field(upvar_index, _), ProjectionElem::Deref],
             } => {
-                let place = PlaceRef {
-                    base,
-                    projection: proj_base,
-                };
+                let place = PlaceRef { base, projection: proj_base };
 
                 // Not projected from the implicit `self` in a closure.
                 debug_assert!(
@@ -480,9 +434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let borrow_kind = match mutability {
             Mutability::Not => BorrowKind::Unique,
-            Mutability::Mut => BorrowKind::Mut {
-                allow_two_phase_borrow: false,
-            },
+            Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
         };
 
         this.cfg.push_assign(
@@ -496,11 +448,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // anything because no values with a destructor can be created in
         // a constant at this time, even if the type may need dropping.
         if let Some(temp_lifetime) = temp_lifetime {
-            this.schedule_drop_storage_and_value(
-                upvar_span,
-                temp_lifetime,
-                temp,
-            );
+            this.schedule_drop_storage_and_value(upvar_span, temp_lifetime, temp);
         }
 
         block.and(Operand::Move(Place::from(temp)))

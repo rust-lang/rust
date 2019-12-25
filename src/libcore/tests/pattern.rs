@@ -42,8 +42,6 @@ impl From<Option<(usize, usize)>> for Step {
     }
 }
 
-// ignore-tidy-linelength
-
 // FIXME(Manishearth) these tests focus on single-character searching  (CharSearcher)
 // and on next()/next_match(), not next_reject(). This is because
 // the memchr changes make next_match() for single chars complex, but next_reject()

@@ -1,56 +1,60 @@
-use self::RecursiveTypeDescription::*;
-use self::MemberDescriptionFactory::*;
 use self::EnumDiscriminantInfo::*;
+use self::MemberDescriptionFactory::*;
+use self::RecursiveTypeDescription::*;
 
-use super::utils::{debug_context, DIB, span_start,
-                   get_namespace_for_item, create_DIArray, is_node_local_to_unit};
 use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
+use super::utils::{
+    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, span_start, DIB,
+};
 use super::CrateDebugContext;
 
 use crate::abi;
 use crate::common::CodegenCx;
 use crate::llvm;
-use crate::llvm::debuginfo::{DIArray, DIType, DIFile, DIScope, DIDescriptor,
-                      DICompositeType, DILexicalBlock, DIFlags, DebugEmissionKind};
+use crate::llvm::debuginfo::{
+    DIArray, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType,
+    DebugEmissionKind,
+};
 use crate::llvm_util;
 use crate::value::Value;
 
-use rustc_codegen_ssa::traits::*;
-use rustc_index::vec::{Idx, IndexVec};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc::hir::CodegenFnAttrFlags;
+use log::debug;
 use rustc::hir::def::CtorKind;
-use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::CodegenFnAttrFlags;
 use rustc::ich::NodeIdHashingMode;
-use rustc::mir::{self, Field, GeneratorLayout};
 use rustc::mir::interpret::truncate;
-use rustc_data_structures::fingerprint::Fingerprint;
+use rustc::mir::{self, Field, GeneratorLayout};
+use rustc::session::config::{self, DebugInfo};
+use rustc::ty::layout::{
+    self, Align, Integer, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
+};
+use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::Instance;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, Integer, IntegerExt, LayoutOf,
-                        PrimitiveExt, Size, TyLayout, VariantIdx};
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::FxHashMap;
-use rustc_fs_util::path_to_c_string;
-use rustc_data_structures::small_c_str::SmallCStr;
+use rustc::{bug, span_bug};
+use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_fs_util::path_to_c_string;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::abi::HasDataLayout;
 use syntax::ast;
 use syntax::symbol::{Interner, Symbol};
-use syntax_pos::{self, Span, FileName};
-use rustc::{bug, span_bug};
-use log::debug;
+use syntax_pos::{self, FileName, Span};
 
-use libc::{c_uint, c_longlong};
+use libc::{c_longlong, c_uint};
 use std::collections::hash_map::Entry;
 use std::ffi::CString;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::iter;
-use std::ptr;
 use std::path::{Path, PathBuf};
+use std::ptr;
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -107,17 +111,13 @@ pub struct TypeMap<'ll, 'tcx> {
     /// A map from types to debuginfo metadata. This is an N:1 mapping.
     type_to_metadata: FxHashMap<Ty<'tcx>, &'ll DIType>,
     /// A map from types to `UniqueTypeId`. This is an N:1 mapping.
-    type_to_unique_id: FxHashMap<Ty<'tcx>, UniqueTypeId>
+    type_to_unique_id: FxHashMap<Ty<'tcx>, UniqueTypeId>,
 }
 
 impl TypeMap<'ll, 'tcx> {
     /// Adds a Ty to metadata mapping to the TypeMap. The method will fail if
     /// the mapping already exists.
-    fn register_type_with_metadata(
-        &mut self,
-        type_: Ty<'tcx>,
-        metadata: &'ll DIType,
-    ) {
+    fn register_type_with_metadata(&mut self, type_: Ty<'tcx>, metadata: &'ll DIType) {
         if self.type_to_metadata.insert(type_, metadata).is_some() {
             bug!("type metadata for `Ty` '{}' is already in the `TypeMap`!", type_);
         }
@@ -140,10 +140,7 @@ impl TypeMap<'ll, 'tcx> {
     ///
     /// This function is used to remove the temporary metadata
     /// mapping after we've computed the actual metadata.
-    fn remove_type(
-        &mut self,
-        type_: Ty<'tcx>,
-    ) {
+    fn remove_type(&mut self, type_: Ty<'tcx>) {
         if self.type_to_metadata.remove(type_).is_none() {
             bug!("type metadata `Ty` '{}' is not in the `TypeMap`!", type_);
         }
@@ -157,8 +154,10 @@ impl TypeMap<'ll, 'tcx> {
         metadata: &'ll DIType,
     ) {
         if self.unique_id_to_metadata.insert(unique_type_id, metadata).is_some() {
-            bug!("type metadata for unique ID '{}' is already in the `TypeMap`!",
-                 self.get_unique_type_id_as_string(unique_type_id));
+            bug!(
+                "type metadata for unique ID '{}' is already in the `TypeMap`!",
+                self.get_unique_type_id_as_string(unique_type_id)
+            );
         }
     }
 
@@ -180,8 +179,11 @@ impl TypeMap<'ll, 'tcx> {
     /// Gets the `UniqueTypeId` for the given type. If the `UniqueTypeId` for the given
     /// type has been requested before, this is just a table lookup. Otherwise, an
     /// ID will be generated and stored for later lookup.
-    fn get_unique_type_id_of_type<'a>(&mut self, cx: &CodegenCx<'a, 'tcx>,
-                                      type_: Ty<'tcx>) -> UniqueTypeId {
+    fn get_unique_type_id_of_type<'a>(
+        &mut self,
+        cx: &CodegenCx<'a, 'tcx>,
+        type_: Ty<'tcx>,
+    ) -> UniqueTypeId {
         // Let's see if we already have something in the cache.
         if let Some(unique_type_id) = self.type_to_unique_id.get(&type_).cloned() {
             return unique_type_id;
@@ -209,15 +211,15 @@ impl TypeMap<'ll, 'tcx> {
     /// Gets the `UniqueTypeId` for an enum variant. Enum variants are not really
     /// types of their own, so they need special handling. We still need a
     /// `UniqueTypeId` for them, since to debuginfo they *are* real types.
-    fn get_unique_type_id_of_enum_variant<'a>(&mut self,
-                                              cx: &CodegenCx<'a, 'tcx>,
-                                              enum_type: Ty<'tcx>,
-                                              variant_name: &str)
-                                              -> UniqueTypeId {
+    fn get_unique_type_id_of_enum_variant<'a>(
+        &mut self,
+        cx: &CodegenCx<'a, 'tcx>,
+        enum_type: Ty<'tcx>,
+        variant_name: &str,
+    ) -> UniqueTypeId {
         let enum_type_id = self.get_unique_type_id_of_type(cx, enum_type);
-        let enum_variant_type_id = format!("{}::{}",
-                                           self.get_unique_type_id_as_string(enum_type_id),
-                                           variant_name);
+        let enum_variant_type_id =
+            format!("{}::{}", self.get_unique_type_id_as_string(enum_type_id), variant_name);
         let interner_key = self.unique_id_interner.intern(&enum_variant_type_id);
         UniqueTypeId(interner_key)
     }
@@ -226,8 +228,8 @@ impl TypeMap<'ll, 'tcx> {
     /// Variant parts are not types and shouldn't really have their own ID,
     /// but it makes `set_members_of_composite_type()` simpler.
     fn get_unique_type_id_str_of_enum_variant_part(&mut self, enum_type_id: UniqueTypeId) -> &str {
-        let variant_part_type_id = format!("{}_variant_part",
-                                           self.get_unique_type_id_as_string(enum_type_id));
+        let variant_part_type_id =
+            format!("{}_variant_part", self.get_unique_type_id_as_string(enum_type_id));
         let interner_key = self.unique_id_interner.intern(&variant_part_type_id);
         self.unique_id_interner.get(interner_key)
     }
@@ -246,7 +248,7 @@ enum RecursiveTypeDescription<'ll, 'tcx> {
         member_holding_stub: &'ll DICompositeType,
         member_description_factory: MemberDescriptionFactory<'ll, 'tcx>,
     },
-    FinalMetadata(&'ll DICompositeType)
+    FinalMetadata(&'ll DICompositeType),
 }
 
 fn create_and_register_recursive_type_forward_declaration(
@@ -257,7 +259,6 @@ fn create_and_register_recursive_type_forward_declaration(
     member_holding_stub: &'ll DICompositeType,
     member_description_factory: MemberDescriptionFactory<'ll, 'tcx>,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
-
     // Insert the stub into the `TypeMap` in order to allow for recursive references.
     let mut type_map = debug_context(cx).type_map.borrow_mut();
     type_map.register_unique_id_with_metadata(unique_type_id, metadata_stub);
@@ -294,23 +295,27 @@ impl RecursiveTypeDescription<'ll, 'tcx> {
                 // function.
                 {
                     let type_map = debug_context(cx).type_map.borrow();
-                    if type_map.find_metadata_for_unique_id(unique_type_id).is_none() ||
-                       type_map.find_metadata_for_type(unfinished_type).is_none() {
-                        bug!("Forward declaration of potentially recursive type \
+                    if type_map.find_metadata_for_unique_id(unique_type_id).is_none()
+                        || type_map.find_metadata_for_type(unfinished_type).is_none()
+                    {
+                        bug!(
+                            "Forward declaration of potentially recursive type \
                               '{:?}' was not found in TypeMap!",
-                             unfinished_type);
+                            unfinished_type
+                        );
                     }
                 }
 
                 // ... then create the member descriptions ...
-                let member_descriptions =
-                    member_description_factory.create_member_descriptions(cx);
+                let member_descriptions = member_description_factory.create_member_descriptions(cx);
 
                 // ... and attach them to the stub to complete it.
-                set_members_of_composite_type(cx,
-                                              unfinished_type,
-                                              member_holding_stub,
-                                              member_descriptions);
+                set_members_of_composite_type(
+                    cx,
+                    unfinished_type,
+                    member_holding_stub,
+                    member_descriptions,
+                );
                 return MetadataCreationResult::new(metadata_stub, true);
             }
         }
@@ -320,14 +325,13 @@ impl RecursiveTypeDescription<'ll, 'tcx> {
 /// Returns from the enclosing function if the type metadata with the given
 /// unique ID can be found in the type map.
 macro_rules! return_if_metadata_created_in_meantime {
-    ($cx: expr, $unique_type_id: expr) => (
-        if let Some(metadata) = debug_context($cx).type_map
-            .borrow()
-            .find_metadata_for_unique_id($unique_type_id)
+    ($cx: expr, $unique_type_id: expr) => {
+        if let Some(metadata) =
+            debug_context($cx).type_map.borrow().find_metadata_for_unique_id($unique_type_id)
         {
             return MetadataCreationResult::new(metadata, true);
         }
-    )
+    };
 }
 
 fn fixed_vec_metadata(
@@ -345,12 +349,11 @@ fn fixed_vec_metadata(
 
     let upper_bound = match array_or_slice_type.kind {
         ty::Array(_, len) => len.eval_usize(cx.tcx, ty::ParamEnv::reveal_all()) as c_longlong,
-        _ => -1
+        _ => -1,
     };
 
-    let subrange = unsafe {
-        Some(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound))
-    };
+    let subrange =
+        unsafe { Some(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)) };
 
     let subscripts = create_DIArray(DIB(cx), &[subrange]);
     let metadata = unsafe {
@@ -359,7 +362,8 @@ fn fixed_vec_metadata(
             size.bits(),
             align.bits() as u32,
             element_type_metadata,
-            subscripts)
+            subscripts,
+        )
     };
 
     return MetadataCreationResult::new(metadata, false);
@@ -406,14 +410,16 @@ fn vec_slice_metadata(
 
     let file_metadata = unknown_file_metadata(cx);
 
-    let metadata = composite_type_metadata(cx,
-                                           slice_ptr_type,
-                                           &slice_type_name[..],
-                                           unique_type_id,
-                                           member_descriptions,
-                                           NO_SCOPE_METADATA,
-                                           file_metadata,
-                                           span);
+    let metadata = composite_type_metadata(
+        cx,
+        slice_ptr_type,
+        &slice_type_name[..],
+        unique_type_id,
+        member_descriptions,
+        NO_SCOPE_METADATA,
+        file_metadata,
+        span,
+    );
     MetadataCreationResult::new(metadata, false)
 }
 
@@ -423,23 +429,21 @@ fn subroutine_type_metadata(
     signature: ty::PolyFnSig<'tcx>,
     span: Span,
 ) -> MetadataCreationResult<'ll> {
-    let signature = cx.tcx.normalize_erasing_late_bound_regions(
-        ty::ParamEnv::reveal_all(),
-        &signature,
-    );
+    let signature =
+        cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &signature);
 
     let signature_metadata: Vec<_> = iter::once(
         // return type
         match signature.output().kind {
             ty::Tuple(ref tys) if tys.is_empty() => None,
-            _ => Some(type_metadata(cx, signature.output(), span))
-        }
-    ).chain(
+            _ => Some(type_metadata(cx, signature.output(), span)),
+        },
+    )
+    .chain(
         // regular arguments
-        signature.inputs().iter().map(|argument_type| {
-            Some(type_metadata(cx, argument_type, span))
-        })
-    ).collect();
+        signature.inputs().iter().map(|argument_type| Some(type_metadata(cx, argument_type, span))),
+    )
+    .collect();
 
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
 
@@ -448,9 +452,11 @@ fn subroutine_type_metadata(
             llvm::LLVMRustDIBuilderCreateSubroutineType(
                 DIB(cx),
                 unknown_file_metadata(cx),
-                create_DIArray(DIB(cx), &signature_metadata[..]))
+                create_DIArray(DIB(cx), &signature_metadata[..]),
+            )
         },
-        false);
+        false,
+    );
 }
 
 // FIXME(1563): This is all a bit of a hack because 'trait pointer' is an ill-
@@ -470,18 +476,20 @@ fn trait_pointer_metadata(
     // However, it does not describe the trait's methods.
 
     let containing_scope = match trait_type.kind {
-        ty::Dynamic(ref data, ..) =>
-            data.principal_def_id().map(|did| get_namespace_for_item(cx, did)),
+        ty::Dynamic(ref data, ..) => {
+            data.principal_def_id().map(|did| get_namespace_for_item(cx, did))
+        }
         _ => {
-            bug!("debuginfo: unexpected trait-object type in \
+            bug!(
+                "debuginfo: unexpected trait-object type in \
                   trait_pointer_metadata(): {:?}",
-                 trait_type);
+                trait_type
+            );
         }
     };
 
     let trait_object_type = trait_object_type.unwrap_or(trait_type);
-    let trait_type_name =
-        compute_debuginfo_type_name(cx.tcx, trait_object_type, false);
+    let trait_type_name = compute_debuginfo_type_name(cx.tcx, trait_object_type, false);
 
     let file_metadata = unknown_file_metadata(cx);
 
@@ -495,9 +503,11 @@ fn trait_pointer_metadata(
     let member_descriptions = vec![
         MemberDescription {
             name: "pointer".to_owned(),
-            type_metadata: type_metadata(cx,
+            type_metadata: type_metadata(
+                cx,
                 cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
-                syntax_pos::DUMMY_SP),
+                syntax_pos::DUMMY_SP,
+            ),
             offset: layout.fields.offset(0),
             size: data_ptr_field.size,
             align: data_ptr_field.align.abi,
@@ -515,21 +525,19 @@ fn trait_pointer_metadata(
         },
     ];
 
-    composite_type_metadata(cx,
-                            trait_object_type,
-                            &trait_type_name[..],
-                            unique_type_id,
-                            member_descriptions,
-                            containing_scope,
-                            file_metadata,
-                            syntax_pos::DUMMY_SP)
+    composite_type_metadata(
+        cx,
+        trait_object_type,
+        &trait_type_name[..],
+        unique_type_id,
+        member_descriptions,
+        containing_scope,
+        file_metadata,
+        syntax_pos::DUMMY_SP,
+    )
 }
 
-pub fn type_metadata(
-    cx: &CodegenCx<'ll, 'tcx>,
-    t: Ty<'tcx>,
-    usage_site_span: Span,
-) -> &'ll DIType {
+pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Span) -> &'ll DIType {
     // Get the unique type ID of this type.
     let unique_type_id = {
         let mut type_map = debug_context(cx).type_map.borrow_mut();
@@ -538,7 +546,7 @@ pub fn type_metadata(
         match type_map.find_metadata_for_type(t) {
             Some(metadata) => {
                 return metadata;
-            },
+            }
             None => {
                 // The Ty is not in the `TypeMap` but maybe we have already seen
                 // an equivalent type (e.g., only differing in region arguments).
@@ -552,7 +560,7 @@ pub fn type_metadata(
                         // return the cached metadata.
                         type_map.register_type_with_metadata(t, metadata);
                         return metadata;
-                    },
+                    }
                     None => {
                         // There really is no type metadata for this type, so
                         // proceed by creating it.
@@ -565,82 +573,54 @@ pub fn type_metadata(
 
     debug!("type_metadata: {:?}", t);
 
-    let ptr_metadata = |ty: Ty<'tcx>| {
-        match ty.kind {
-            ty::Slice(typ) => {
-                Ok(vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span))
-            }
-            ty::Str => {
-                Ok(vec_slice_metadata(cx, t, cx.tcx.types.u8, unique_type_id, usage_site_span))
-            }
-            ty::Dynamic(..) => {
-                Ok(MetadataCreationResult::new(
-                    trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
-                    false))
-            }
-            _ => {
-                let pointee_metadata = type_metadata(cx, ty, usage_site_span);
+    let ptr_metadata = |ty: Ty<'tcx>| match ty.kind {
+        ty::Slice(typ) => Ok(vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)),
+        ty::Str => Ok(vec_slice_metadata(cx, t, cx.tcx.types.u8, unique_type_id, usage_site_span)),
+        ty::Dynamic(..) => Ok(MetadataCreationResult::new(
+            trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
+            false,
+        )),
+        _ => {
+            let pointee_metadata = type_metadata(cx, ty, usage_site_span);
 
-                if let Some(metadata) = debug_context(cx).type_map
-                    .borrow()
-                    .find_metadata_for_unique_id(unique_type_id)
-                {
-                    return Err(metadata);
-                }
-
-                Ok(MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata),
-                   false))
+            if let Some(metadata) =
+                debug_context(cx).type_map.borrow().find_metadata_for_unique_id(unique_type_id)
+            {
+                return Err(metadata);
             }
+
+            Ok(MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata), false))
         }
     };
 
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match t.kind {
-        ty::Never    |
-        ty::Bool     |
-        ty::Char     |
-        ty::Int(_)   |
-        ty::Uint(_)  |
-        ty::Float(_) => {
+        ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
         ty::Tuple(ref elements) if elements.is_empty() => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::Array(typ, _) |
-        ty::Slice(typ) => {
+        ty::Array(typ, _) | ty::Slice(typ) => {
             fixed_vec_metadata(cx, unique_type_id, t, typ, usage_site_span)
         }
-        ty::Str => {
-            fixed_vec_metadata(cx, unique_type_id, t, cx.tcx.types.i8, usage_site_span)
-        }
+        ty::Str => fixed_vec_metadata(cx, unique_type_id, t, cx.tcx.types.i8, usage_site_span),
         ty::Dynamic(..) => {
-            MetadataCreationResult::new(
-                trait_pointer_metadata(cx, t, None, unique_type_id),
-                false)
+            MetadataCreationResult::new(trait_pointer_metadata(cx, t, None, unique_type_id), false)
         }
         ty::Foreign(..) => {
-            MetadataCreationResult::new(
-            foreign_type_metadata(cx, t, unique_type_id),
-            false)
+            MetadataCreationResult::new(foreign_type_metadata(cx, t, unique_type_id), false)
         }
-        ty::RawPtr(ty::TypeAndMut{ty, ..}) |
-        ty::Ref(_, ty, _) => {
-            match ptr_metadata(ty) {
-                Ok(res) => res,
-                Err(metadata) => return metadata,
-            }
-        }
-        ty::Adt(def, _) if def.is_box() => {
-            match ptr_metadata(t.boxed_ty()) {
-                Ok(res) => res,
-                Err(metadata) => return metadata,
-            }
-        }
+        ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => match ptr_metadata(ty) {
+            Ok(res) => res,
+            Err(metadata) => return metadata,
+        },
+        ty::Adt(def, _) if def.is_box() => match ptr_metadata(t.boxed_ty()) {
+            Ok(res) => res,
+            Err(metadata) => return metadata,
+        },
         ty::FnDef(..) | ty::FnPtr(_) => {
-
-            if let Some(metadata) = debug_context(cx).type_map
-               .borrow()
-               .find_metadata_for_unique_id(unique_type_id)
+            if let Some(metadata) =
+                debug_context(cx).type_map.borrow().find_metadata_for_unique_id(unique_type_id)
             {
                 return metadata;
             }
@@ -665,81 +645,63 @@ pub fn type_metadata(
                         SmallCStr::new("<recur_type>").as_ptr(),
                         size.bits(),
                         align.bits() as u32,
-                        DW_ATE_unsigned)
+                        DW_ATE_unsigned,
+                    )
                 }
             };
 
             let type_map = &debug_context(cx).type_map;
             type_map.borrow_mut().register_type_with_metadata(t, temp_type);
 
-            let fn_metadata = subroutine_type_metadata(cx,
-                                                       unique_type_id,
-                                                       t.fn_sig(cx.tcx),
-                                                       usage_site_span).metadata;
+            let fn_metadata =
+                subroutine_type_metadata(cx, unique_type_id, t.fn_sig(cx.tcx), usage_site_span)
+                    .metadata;
 
             type_map.borrow_mut().remove_type(t);
 
-
             // This is actually a function pointer, so wrap it in pointer DI.
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
-
         }
         ty::Closure(def_id, substs) => {
-            let upvar_tys : Vec<_> = substs.as_closure().upvar_tys(def_id, cx.tcx).collect();
+            let upvar_tys: Vec<_> = substs.as_closure().upvar_tys(def_id, cx.tcx).collect();
             let containing_scope = get_namespace_for_item(cx, def_id);
-            prepare_tuple_metadata(cx,
-                                   t,
-                                   &upvar_tys,
-                                   unique_type_id,
-                                   usage_site_span,
-                                   Some(containing_scope)).finalize(cx)
+            prepare_tuple_metadata(
+                cx,
+                t,
+                &upvar_tys,
+                unique_type_id,
+                usage_site_span,
+                Some(containing_scope),
+            )
+            .finalize(cx)
         }
-        ty::Generator(def_id, substs,  _) => {
-            let upvar_tys : Vec<_> = substs
-                .as_generator().prefix_tys(def_id, cx.tcx).map(|t| {
-                    cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t)
-                }).collect();
-            prepare_enum_metadata(cx,
-                                  t,
-                                  def_id,
-                                  unique_type_id,
-                                  usage_site_span,
-                                  upvar_tys).finalize(cx)
+        ty::Generator(def_id, substs, _) => {
+            let upvar_tys: Vec<_> = substs
+                .as_generator()
+                .prefix_tys(def_id, cx.tcx)
+                .map(|t| cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
+                .collect();
+            prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span, upvar_tys)
+                .finalize(cx)
         }
         ty::Adt(def, ..) => match def.adt_kind() {
             AdtKind::Struct => {
-                prepare_struct_metadata(cx,
-                                        t,
-                                        unique_type_id,
-                                        usage_site_span).finalize(cx)
+                prepare_struct_metadata(cx, t, unique_type_id, usage_site_span).finalize(cx)
             }
             AdtKind::Union => {
-                prepare_union_metadata(cx,
-                                       t,
-                                       unique_type_id,
-                                       usage_site_span).finalize(cx)
+                prepare_union_metadata(cx, t, unique_type_id, usage_site_span).finalize(cx)
             }
             AdtKind::Enum => {
-                prepare_enum_metadata(cx,
-                                      t,
-                                      def.did,
-                                      unique_type_id,
-                                      usage_site_span,
-                                      vec![]).finalize(cx)
+                prepare_enum_metadata(cx, t, def.did, unique_type_id, usage_site_span, vec![])
+                    .finalize(cx)
             }
         },
         ty::Tuple(ref elements) => {
             let tys: Vec<_> = elements.iter().map(|k| k.expect_ty()).collect();
-            prepare_tuple_metadata(cx,
-                                   t,
-                                   &tys,
-                                   unique_type_id,
-                                   usage_site_span,
-                                   NO_SCOPE_METADATA).finalize(cx)
+            prepare_tuple_metadata(cx, t, &tys, unique_type_id, usage_site_span, NO_SCOPE_METADATA)
+                .finalize(cx)
         }
-        _ => {
-            bug!("debuginfo: unexpected type in type_metadata: {:?}", t)
-        }
+        _ => bug!("debuginfo: unexpected type in type_metadata: {:?}", t),
     };
 
     {
@@ -750,26 +712,30 @@ pub fn type_metadata(
             let metadata_for_uid = match type_map.find_metadata_for_unique_id(unique_type_id) {
                 Some(metadata) => metadata,
                 None => {
-                    span_bug!(usage_site_span,
-                              "expected type metadata for unique \
+                    span_bug!(
+                        usage_site_span,
+                        "expected type metadata for unique \
                                type ID '{}' to already be in \
                                the `debuginfo::TypeMap` but it \
                                was not. (Ty = {})",
-                              type_map.get_unique_type_id_as_string(unique_type_id),
-                              t);
+                        type_map.get_unique_type_id_as_string(unique_type_id),
+                        t
+                    );
                 }
             };
 
             match type_map.find_metadata_for_type(t) {
                 Some(metadata) => {
                     if metadata != metadata_for_uid {
-                        span_bug!(usage_site_span,
-                                  "mismatch between `Ty` and \
+                        span_bug!(
+                            usage_site_span,
+                            "mismatch between `Ty` and \
                                    `UniqueTypeId` maps in \
                                    `debuginfo::TypeMap`. \
                                    UniqueTypeId={}, Ty={}",
-                                  type_map.get_unique_type_id_as_string(unique_type_id),
-                                  t);
+                            type_map.get_unique_type_id_as_string(unique_type_id),
+                            t
+                        );
                     }
                 }
                 None => {
@@ -785,12 +751,12 @@ pub fn type_metadata(
     metadata
 }
 
-pub fn file_metadata(cx: &CodegenCx<'ll, '_>,
-                     file_name: &FileName,
-                     defining_crate: CrateNum) -> &'ll DIFile {
-    debug!("file_metadata: file_name: {}, defining_crate: {}",
-           file_name,
-           defining_crate);
+pub fn file_metadata(
+    cx: &CodegenCx<'ll, '_>,
+    file_name: &FileName,
+    defining_crate: CrateNum,
+) -> &'ll DIFile {
+    debug!("file_metadata: file_name: {}, defining_crate: {}", file_name, defining_crate);
 
     let file_name = Some(file_name.to_string());
     let directory = if defining_crate == LOCAL_CRATE {
@@ -807,10 +773,11 @@ pub fn unknown_file_metadata(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
     file_metadata_raw(cx, None, None)
 }
 
-fn file_metadata_raw(cx: &CodegenCx<'ll, '_>,
-                     file_name: Option<String>,
-                     directory: Option<String>)
-                     -> &'ll DIFile {
+fn file_metadata_raw(
+    cx: &CodegenCx<'ll, '_>,
+    file_name: Option<String>,
+    directory: Option<String>,
+) -> &'ll DIFile {
     let key = (file_name, directory);
 
     match debug_context(cx).created_files.borrow_mut().entry(key) {
@@ -819,15 +786,16 @@ fn file_metadata_raw(cx: &CodegenCx<'ll, '_>,
             let (file_name, directory) = v.key();
             debug!("file_metadata: file_name: {:?}, directory: {:?}", file_name, directory);
 
-            let file_name = SmallCStr::new(
-                if let Some(file_name) = file_name { &file_name } else { "<unknown>" });
-            let directory = SmallCStr::new(
-                if let Some(directory) = directory { &directory } else { "" });
+            let file_name = SmallCStr::new(if let Some(file_name) = file_name {
+                &file_name
+            } else {
+                "<unknown>"
+            });
+            let directory =
+                SmallCStr::new(if let Some(directory) = directory { &directory } else { "" });
 
             let file_metadata = unsafe {
-                llvm::LLVMRustDIBuilderCreateFile(DIB(cx),
-                                                  file_name.as_ptr(),
-                                                  directory.as_ptr())
+                llvm::LLVMRustDIBuilderCreateFile(DIB(cx), file_name.as_ptr(), directory.as_ptr())
             };
 
             v.insert(file_metadata);
@@ -841,20 +809,13 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
 
     let (name, encoding) = match t.kind {
         ty::Never => ("!", DW_ATE_unsigned),
-        ty::Tuple(ref elements) if elements.is_empty() =>
-            ("()", DW_ATE_unsigned),
+        ty::Tuple(ref elements) if elements.is_empty() => ("()", DW_ATE_unsigned),
         ty::Bool => ("bool", DW_ATE_boolean),
         ty::Char => ("char", DW_ATE_unsigned_char),
-        ty::Int(int_ty) => {
-            (int_ty.name_str(), DW_ATE_signed)
-        },
-        ty::Uint(uint_ty) => {
-            (uint_ty.name_str(), DW_ATE_unsigned)
-        },
-        ty::Float(float_ty) => {
-            (float_ty.name_str(), DW_ATE_float)
-        },
-        _ => bug!("debuginfo::basic_type_metadata - `t` is invalid type")
+        ty::Int(int_ty) => (int_ty.name_str(), DW_ATE_signed),
+        ty::Uint(uint_ty) => (uint_ty.name_str(), DW_ATE_unsigned),
+        ty::Float(float_ty) => (float_ty.name_str(), DW_ATE_float),
+        _ => bug!("debuginfo::basic_type_metadata - `t` is invalid type"),
     };
 
     let (size, align) = cx.size_and_align_of(t);
@@ -865,7 +826,8 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
             name.as_ptr(),
             size.bits(),
             align.bits() as u32,
-            encoding)
+            encoding,
+        )
     };
 
     return ty_metadata;
@@ -896,7 +858,8 @@ fn pointer_type_metadata(
             pointee_type_metadata,
             pointer_size.bits(),
             pointer_align.bits() as u32,
-            name.as_ptr())
+            name.as_ptr(),
+        )
     }
 }
 
@@ -920,10 +883,8 @@ pub fn compile_unit_metadata(
     }
 
     debug!("compile_unit_metadata: {:?}", name_in_debuginfo);
-    let rustc_producer = format!(
-        "rustc version {}",
-        option_env!("CFG_VERSION").expect("CFG_VERSION"),
-    );
+    let rustc_producer =
+        format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"),);
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
     let producer = format!("clang LLVM ({})", rustc_producer);
 
@@ -954,7 +915,10 @@ pub fn compile_unit_metadata(
 
     unsafe {
         let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
-            debug_context.builder, name_in_debuginfo.as_ptr(), work_dir.as_ptr());
+            debug_context.builder,
+            name_in_debuginfo.as_ptr(),
+            work_dir.as_ptr(),
+        );
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
@@ -965,27 +929,36 @@ pub fn compile_unit_metadata(
             flags.as_ptr().cast(),
             0,
             split_name.as_ptr().cast(),
-            kind);
+            kind,
+        );
 
         if tcx.sess.opts.debugging_opts.profile {
-            let cu_desc_metadata = llvm::LLVMRustMetadataAsValue(debug_context.llcontext,
-                                                                 unit_metadata);
+            let cu_desc_metadata =
+                llvm::LLVMRustMetadataAsValue(debug_context.llcontext, unit_metadata);
 
             let gcov_cu_info = [
-                path_to_mdstring(debug_context.llcontext,
-                                 &tcx.output_filenames(LOCAL_CRATE).with_extension("gcno")),
-                path_to_mdstring(debug_context.llcontext,
-                                 &tcx.output_filenames(LOCAL_CRATE).with_extension("gcda")),
+                path_to_mdstring(
+                    debug_context.llcontext,
+                    &tcx.output_filenames(LOCAL_CRATE).with_extension("gcno"),
+                ),
+                path_to_mdstring(
+                    debug_context.llcontext,
+                    &tcx.output_filenames(LOCAL_CRATE).with_extension("gcda"),
+                ),
                 cu_desc_metadata,
             ];
-            let gcov_metadata = llvm::LLVMMDNodeInContext(debug_context.llcontext,
-                                                          gcov_cu_info.as_ptr(),
-                                                          gcov_cu_info.len() as c_uint);
+            let gcov_metadata = llvm::LLVMMDNodeInContext(
+                debug_context.llcontext,
+                gcov_cu_info.as_ptr(),
+                gcov_cu_info.len() as c_uint,
+            );
 
             let llvm_gcov_ident = const_cstr!("llvm.gcov");
-            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod,
-                                              llvm_gcov_ident.as_ptr(),
-                                              gcov_metadata);
+            llvm::LLVMAddNamedMetadataOperand(
+                debug_context.llmod,
+                llvm_gcov_ident.as_ptr(),
+                gcov_metadata,
+            );
         }
 
         // Insert `llvm.ident` metadata on the wasm32 targets since that will
@@ -1009,24 +982,23 @@ pub fn compile_unit_metadata(
     fn path_to_mdstring(llcx: &'ll llvm::Context, path: &Path) -> &'ll Value {
         let path_str = path_to_c_string(path);
         unsafe {
-            llvm::LLVMMDStringInContext(llcx,
-                                        path_str.as_ptr(),
-                                        path_str.as_bytes().len() as c_uint)
+            llvm::LLVMMDStringInContext(
+                llcx,
+                path_str.as_ptr(),
+                path_str.as_bytes().len() as c_uint,
+            )
         }
     }
 }
 
 struct MetadataCreationResult<'ll> {
     metadata: &'ll DIType,
-    already_stored_in_typemap: bool
+    already_stored_in_typemap: bool,
 }
 
 impl MetadataCreationResult<'ll> {
     fn new(metadata: &'ll DIType, already_stored_in_typemap: bool) -> Self {
-        MetadataCreationResult {
-            metadata,
-            already_stored_in_typemap,
-        }
+        MetadataCreationResult { metadata, already_stored_in_typemap }
     }
 }
 
@@ -1044,9 +1016,11 @@ struct MemberDescription<'ll> {
 }
 
 impl<'ll> MemberDescription<'ll> {
-    fn into_metadata(self,
-                     cx: &CodegenCx<'ll, '_>,
-                     composite_type_metadata: &'ll DIScope) -> &'ll DIType {
+    fn into_metadata(
+        self,
+        cx: &CodegenCx<'ll, '_>,
+        composite_type_metadata: &'ll DIScope,
+    ) -> &'ll DIType {
         let member_name = CString::new(self.name).unwrap();
         unsafe {
             llvm::LLVMRustDIBuilderCreateVariantMemberType(
@@ -1063,7 +1037,8 @@ impl<'ll> MemberDescription<'ll> {
                     Some(value) => Some(cx.const_u64(value)),
                 },
                 self.flags,
-                self.type_metadata)
+                self.type_metadata,
+            )
         }
     }
 }
@@ -1077,28 +1052,17 @@ enum MemberDescriptionFactory<'ll, 'tcx> {
     TupleMDF(TupleMemberDescriptionFactory<'tcx>),
     EnumMDF(EnumMemberDescriptionFactory<'ll, 'tcx>),
     UnionMDF(UnionMemberDescriptionFactory<'tcx>),
-    VariantMDF(VariantMemberDescriptionFactory<'ll, 'tcx>)
+    VariantMDF(VariantMemberDescriptionFactory<'ll, 'tcx>),
 }
 
 impl MemberDescriptionFactory<'ll, 'tcx> {
-    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                  -> Vec<MemberDescription<'ll>> {
+    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
         match *self {
-            StructMDF(ref this) => {
-                this.create_member_descriptions(cx)
-            }
-            TupleMDF(ref this) => {
-                this.create_member_descriptions(cx)
-            }
-            EnumMDF(ref this) => {
-                this.create_member_descriptions(cx)
-            }
-            UnionMDF(ref this) => {
-                this.create_member_descriptions(cx)
-            }
-            VariantMDF(ref this) => {
-                this.create_member_descriptions(cx)
-            }
+            StructMDF(ref this) => this.create_member_descriptions(cx),
+            TupleMDF(ref this) => this.create_member_descriptions(cx),
+            EnumMDF(ref this) => this.create_member_descriptions(cx),
+            UnionMDF(ref this) => this.create_member_descriptions(cx),
+            VariantMDF(ref this) => this.create_member_descriptions(cx),
         }
     }
 }
@@ -1115,29 +1079,32 @@ struct StructMemberDescriptionFactory<'tcx> {
 }
 
 impl<'tcx> StructMemberDescriptionFactory<'tcx> {
-    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                  -> Vec<MemberDescription<'ll>> {
+    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
         let layout = cx.layout_of(self.ty);
-        self.variant.fields.iter().enumerate().map(|(i, f)| {
-            let name = if self.variant.ctor_kind == CtorKind::Fn {
-                format!("__{}", i)
-            } else {
-                f.ident.to_string()
-            };
-            let field = layout.field(cx, i);
-            MemberDescription {
-                name,
-                type_metadata: type_metadata(cx, field.ty, self.span),
-                offset: layout.fields.offset(i),
-                size: field.size,
-                align: field.align.abi,
-                flags: DIFlags::FlagZero,
-                discriminant: None,
-            }
-        }).collect()
+        self.variant
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                let name = if self.variant.ctor_kind == CtorKind::Fn {
+                    format!("__{}", i)
+                } else {
+                    f.ident.to_string()
+                };
+                let field = layout.field(cx, i);
+                MemberDescription {
+                    name,
+                    type_metadata: type_metadata(cx, field.ty, self.span),
+                    offset: layout.fields.offset(i),
+                    size: field.size,
+                    align: field.align.abi,
+                    flags: DIFlags::FlagZero,
+                    discriminant: None,
+                }
+            })
+            .collect()
     }
 }
-
 
 fn prepare_struct_metadata(
     cx: &CodegenCx<'ll, 'tcx>,
@@ -1149,16 +1116,13 @@ fn prepare_struct_metadata(
 
     let (struct_def_id, variant) = match struct_type.kind {
         ty::Adt(def, _) => (def.did, def.non_enum_variant()),
-        _ => bug!("prepare_struct_metadata on a non-ADT")
+        _ => bug!("prepare_struct_metadata on a non-ADT"),
     };
 
     let containing_scope = get_namespace_for_item(cx, struct_def_id);
 
-    let struct_metadata_stub = create_struct_stub(cx,
-                                                  struct_type,
-                                                  &struct_name,
-                                                  unique_type_id,
-                                                  Some(containing_scope));
+    let struct_metadata_stub =
+        create_struct_stub(cx, struct_type, &struct_name, unique_type_id, Some(containing_scope));
 
     create_and_register_recursive_type_forward_declaration(
         cx,
@@ -1166,11 +1130,7 @@ fn prepare_struct_metadata(
         unique_type_id,
         struct_metadata_stub,
         struct_metadata_stub,
-        StructMDF(StructMemberDescriptionFactory {
-            ty: struct_type,
-            variant,
-            span,
-        })
+        StructMDF(StructMemberDescriptionFactory { ty: struct_type, variant, span }),
     )
 }
 
@@ -1186,21 +1146,24 @@ struct TupleMemberDescriptionFactory<'tcx> {
 }
 
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
-    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                  -> Vec<MemberDescription<'ll>> {
+    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
         let layout = cx.layout_of(self.ty);
-        self.component_types.iter().enumerate().map(|(i, &component_type)| {
-            let (size, align) = cx.size_and_align_of(component_type);
-            MemberDescription {
-                name: format!("__{}", i),
-                type_metadata: type_metadata(cx, component_type, self.span),
-                offset: layout.fields.offset(i),
-                size,
-                align,
-                flags: DIFlags::FlagZero,
-                discriminant: None,
-            }
-        }).collect()
+        self.component_types
+            .iter()
+            .enumerate()
+            .map(|(i, &component_type)| {
+                let (size, align) = cx.size_and_align_of(component_type);
+                MemberDescription {
+                    name: format!("__{}", i),
+                    type_metadata: type_metadata(cx, component_type, self.span),
+                    offset: layout.fields.offset(i),
+                    size,
+                    align,
+                    flags: DIFlags::FlagZero,
+                    discriminant: None,
+                }
+            })
+            .collect()
     }
 }
 
@@ -1214,11 +1177,8 @@ fn prepare_tuple_metadata(
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
     let tuple_name = compute_debuginfo_type_name(cx.tcx, tuple_type, false);
 
-    let struct_stub = create_struct_stub(cx,
-                                         tuple_type,
-                                         &tuple_name[..],
-                                         unique_type_id,
-                                         containing_scope);
+    let struct_stub =
+        create_struct_stub(cx, tuple_type, &tuple_name[..], unique_type_id, containing_scope);
 
     create_and_register_recursive_type_forward_declaration(
         cx,
@@ -1230,7 +1190,7 @@ fn prepare_tuple_metadata(
             ty: tuple_type,
             component_types: component_types.to_vec(),
             span,
-        })
+        }),
     )
 }
 
@@ -1245,20 +1205,24 @@ struct UnionMemberDescriptionFactory<'tcx> {
 }
 
 impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
-    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                  -> Vec<MemberDescription<'ll>> {
-        self.variant.fields.iter().enumerate().map(|(i, f)| {
-            let field = self.layout.field(cx, i);
-            MemberDescription {
-                name: f.ident.to_string(),
-                type_metadata: type_metadata(cx, field.ty, self.span),
-                offset: Size::ZERO,
-                size: field.size,
-                align: field.align.abi,
-                flags: DIFlags::FlagZero,
-                discriminant: None,
-            }
-        }).collect()
+    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
+        self.variant
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                let field = self.layout.field(cx, i);
+                MemberDescription {
+                    name: f.ident.to_string(),
+                    type_metadata: type_metadata(cx, field.ty, self.span),
+                    offset: Size::ZERO,
+                    size: field.size,
+                    align: field.align.abi,
+                    flags: DIFlags::FlagZero,
+                    discriminant: None,
+                }
+            })
+            .collect()
     }
 }
 
@@ -1272,16 +1236,13 @@ fn prepare_union_metadata(
 
     let (union_def_id, variant) = match union_type.kind {
         ty::Adt(def, _) => (def.did, def.non_enum_variant()),
-        _ => bug!("prepare_union_metadata on a non-ADT")
+        _ => bug!("prepare_union_metadata on a non-ADT"),
     };
 
     let containing_scope = get_namespace_for_item(cx, union_def_id);
 
-    let union_metadata_stub = create_union_stub(cx,
-                                                union_type,
-                                                &union_name,
-                                                unique_type_id,
-                                                containing_scope);
+    let union_metadata_stub =
+        create_union_stub(cx, union_type, &union_name, unique_type_id, containing_scope);
 
     create_and_register_recursive_type_forward_declaration(
         cx,
@@ -1289,11 +1250,7 @@ fn prepare_union_metadata(
         unique_type_id,
         union_metadata_stub,
         union_metadata_stub,
-        UnionMDF(UnionMemberDescriptionFactory {
-            layout: cx.layout_of(union_type),
-            variant,
-            span,
-        })
+        UnionMDF(UnionMemberDescriptionFactory { layout: cx.layout_of(union_type), variant, span }),
     )
 }
 
@@ -1327,8 +1284,7 @@ fn generator_layout_and_saved_local_names(
 ) -> (&'tcx GeneratorLayout<'tcx>, IndexVec<mir::GeneratorSavedLocal, Option<ast::Name>>) {
     let body = tcx.optimized_mir(def_id);
     let generator_layout = body.generator_layout.as_ref().unwrap();
-    let mut generator_saved_local_names =
-        IndexVec::from_elem(None, &generator_layout.field_tys);
+    let mut generator_saved_local_names = IndexVec::from_elem(None, &generator_layout.field_tys);
 
     let state_arg = mir::PlaceBase::Local(mir::Local::new(1));
     for var in &body.var_debug_info {
@@ -1372,8 +1328,7 @@ struct EnumMemberDescriptionFactory<'ll, 'tcx> {
 }
 
 impl EnumMemberDescriptionFactory<'ll, 'tcx> {
-    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                  -> Vec<MemberDescription<'ll>> {
+    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
         let generator_variant_info_data = match self.enum_type.kind {
             ty::Generator(def_id, ..) => {
                 Some(generator_layout_and_saved_local_names(cx.tcx, def_id))
@@ -1381,21 +1336,19 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
             _ => None,
         };
 
-        let variant_info_for = |index: VariantIdx| {
-            match self.enum_type.kind {
-                ty::Adt(adt, _) => VariantInfo::Adt(&adt.variants[index]),
-                ty::Generator(_, substs, _) => {
-                    let (generator_layout, generator_saved_local_names) =
-                        generator_variant_info_data.as_ref().unwrap();
-                    VariantInfo::Generator {
-                        substs,
-                        generator_layout: *generator_layout,
-                        generator_saved_local_names,
-                        variant_index: index,
-                    }
+        let variant_info_for = |index: VariantIdx| match self.enum_type.kind {
+            ty::Adt(adt, _) => VariantInfo::Adt(&adt.variants[index]),
+            ty::Generator(_, substs, _) => {
+                let (generator_layout, generator_saved_local_names) =
+                    generator_variant_info_data.as_ref().unwrap();
+                VariantInfo::Generator {
+                    substs,
+                    generator_layout: *generator_layout,
+                    generator_saved_local_names,
+                    variant_index: index,
                 }
-                _ => bug!(),
             }
+            _ => bug!(),
         };
 
         // This will always find the metadata in the type map.
@@ -1415,36 +1368,32 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 }
 
                 let variant_info = variant_info_for(index);
-                let (variant_type_metadata, member_description_factory) =
-                    describe_enum_variant(cx,
-                                          self.layout,
-                                          variant_info,
-                                          NoDiscriminant,
-                                          self_metadata,
-                                          self.span);
+                let (variant_type_metadata, member_description_factory) = describe_enum_variant(
+                    cx,
+                    self.layout,
+                    variant_info,
+                    NoDiscriminant,
+                    self_metadata,
+                    self.span,
+                );
 
-                let member_descriptions =
-                    member_description_factory.create_member_descriptions(cx);
+                let member_descriptions = member_description_factory.create_member_descriptions(cx);
 
-                set_members_of_composite_type(cx,
-                                              self.enum_type,
-                                              variant_type_metadata,
-                                              member_descriptions);
-                vec![
-                    MemberDescription {
-                        name: if fallback {
-                            String::new()
-                        } else {
-                            variant_info.variant_name()
-                        },
-                        type_metadata: variant_type_metadata,
-                        offset: Size::ZERO,
-                        size: self.layout.size,
-                        align: self.layout.align.abi,
-                        flags: DIFlags::FlagZero,
-                        discriminant: None,
-                    }
-                ]
+                set_members_of_composite_type(
+                    cx,
+                    self.enum_type,
+                    variant_type_metadata,
+                    member_descriptions,
+                );
+                vec![MemberDescription {
+                    name: if fallback { String::new() } else { variant_info.variant_name() },
+                    type_metadata: variant_type_metadata,
+                    offset: Size::ZERO,
+                    size: self.layout.size,
+                    align: self.layout.align.abi,
+                    flags: DIFlags::FlagZero,
+                    discriminant: None,
+                }]
             }
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
@@ -1455,54 +1404,58 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 let discriminant_info = if fallback {
                     RegularDiscriminant {
                         discr_field: Field::from(discr_index),
-                        discr_type_metadata: self.discriminant_type_metadata.unwrap()
+                        discr_type_metadata: self.discriminant_type_metadata.unwrap(),
                     }
                 } else {
                     // This doesn't matter in this case.
                     NoDiscriminant
                 };
-                variants.iter_enumerated().map(|(i, _)| {
-                    let variant = self.layout.for_variant(cx, i);
-                    let variant_info = variant_info_for(i);
-                    let (variant_type_metadata, member_desc_factory) =
-                        describe_enum_variant(cx,
-                                              variant,
-                                              variant_info,
-                                              discriminant_info,
-                                              self_metadata,
-                                              self.span);
+                variants
+                    .iter_enumerated()
+                    .map(|(i, _)| {
+                        let variant = self.layout.for_variant(cx, i);
+                        let variant_info = variant_info_for(i);
+                        let (variant_type_metadata, member_desc_factory) = describe_enum_variant(
+                            cx,
+                            variant,
+                            variant_info,
+                            discriminant_info,
+                            self_metadata,
+                            self.span,
+                        );
 
-                    let member_descriptions = member_desc_factory
-                        .create_member_descriptions(cx);
+                        let member_descriptions =
+                            member_desc_factory.create_member_descriptions(cx);
 
-                    set_members_of_composite_type(cx,
-                                                  self.enum_type,
-                                                  variant_type_metadata,
-                                                  member_descriptions);
+                        set_members_of_composite_type(
+                            cx,
+                            self.enum_type,
+                            variant_type_metadata,
+                            member_descriptions,
+                        );
 
-                    MemberDescription {
-                        name: if fallback {
-                            String::new()
-                        } else {
-                            variant_info.variant_name()
-                        },
-                        type_metadata: variant_type_metadata,
-                        offset: Size::ZERO,
-                        size: self.layout.size,
-                        align: self.layout.align.abi,
-                        flags: DIFlags::FlagZero,
-                        discriminant: Some(
-                            self.layout.ty.discriminant_for_variant(cx.tcx, i).unwrap().val as u64
-                        ),
-                    }
-                }).collect()
+                        MemberDescription {
+                            name: if fallback {
+                                String::new()
+                            } else {
+                                variant_info.variant_name()
+                            },
+                            type_metadata: variant_type_metadata,
+                            offset: Size::ZERO,
+                            size: self.layout.size,
+                            align: self.layout.align.abi,
+                            flags: DIFlags::FlagZero,
+                            discriminant: Some(
+                                self.layout.ty.discriminant_for_variant(cx.tcx, i).unwrap().val
+                                    as u64,
+                            ),
+                        }
+                    })
+                    .collect()
             }
             layout::Variants::Multiple {
-                discr_kind: layout::DiscriminantKind::Niche {
-                    ref niche_variants,
-                    niche_start,
-                    dataful_variant,
-                },
+                discr_kind:
+                    layout::DiscriminantKind::Niche { ref niche_variants, niche_start, dataful_variant },
                 ref discr,
                 ref variants,
                 discr_index,
@@ -1510,32 +1463,37 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 if fallback {
                     let variant = self.layout.for_variant(cx, dataful_variant);
                     // Create a description of the non-null variant.
-                    let (variant_type_metadata, member_description_factory) =
-                        describe_enum_variant(cx,
-                                              variant,
-                                              variant_info_for(dataful_variant),
-                                              OptimizedDiscriminant,
-                                              self.containing_scope,
-                                              self.span);
+                    let (variant_type_metadata, member_description_factory) = describe_enum_variant(
+                        cx,
+                        variant,
+                        variant_info_for(dataful_variant),
+                        OptimizedDiscriminant,
+                        self.containing_scope,
+                        self.span,
+                    );
 
                     let variant_member_descriptions =
                         member_description_factory.create_member_descriptions(cx);
 
-                    set_members_of_composite_type(cx,
-                                                  self.enum_type,
-                                                  variant_type_metadata,
-                                                  variant_member_descriptions);
+                    set_members_of_composite_type(
+                        cx,
+                        self.enum_type,
+                        variant_type_metadata,
+                        variant_member_descriptions,
+                    );
 
                     // Encode the information about the null variant in the union
                     // member's name.
                     let mut name = String::from("RUST$ENCODED$ENUM$");
                     // Right now it's not even going to work for `niche_start > 0`,
                     // and for multiple niche variants it only supports the first.
-                    fn compute_field_path<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                                                    name: &mut String,
-                                                    layout: TyLayout<'tcx>,
-                                                    offset: Size,
-                                                    size: Size) {
+                    fn compute_field_path<'a, 'tcx>(
+                        cx: &CodegenCx<'a, 'tcx>,
+                        name: &mut String,
+                        layout: TyLayout<'tcx>,
+                        offset: Size,
+                        size: Size,
+                    ) {
                         for i in 0..layout.fields.count() {
                             let field_offset = layout.fields.offset(i);
                             if field_offset > offset {
@@ -1549,70 +1507,78 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             }
                         }
                     }
-                    compute_field_path(cx, &mut name,
-                                       self.layout,
-                                       self.layout.fields.offset(discr_index),
-                                       self.layout.field(cx, discr_index).size);
+                    compute_field_path(
+                        cx,
+                        &mut name,
+                        self.layout,
+                        self.layout.fields.offset(discr_index),
+                        self.layout.field(cx, discr_index).size,
+                    );
                     variant_info_for(*niche_variants.start()).map_struct_name(|variant_name| {
                         name.push_str(variant_name);
                     });
 
                     // Create the (singleton) list of descriptions of union members.
-                    vec![
-                        MemberDescription {
-                            name,
-                            type_metadata: variant_type_metadata,
-                            offset: Size::ZERO,
-                            size: variant.size,
-                            align: variant.align.abi,
-                            flags: DIFlags::FlagZero,
-                            discriminant: None,
-                        }
-                    ]
+                    vec![MemberDescription {
+                        name,
+                        type_metadata: variant_type_metadata,
+                        offset: Size::ZERO,
+                        size: variant.size,
+                        align: variant.align.abi,
+                        flags: DIFlags::FlagZero,
+                        discriminant: None,
+                    }]
                 } else {
-                    variants.iter_enumerated().map(|(i, _)| {
-                        let variant = self.layout.for_variant(cx, i);
-                        let variant_info = variant_info_for(i);
-                        let (variant_type_metadata, member_desc_factory) =
-                            describe_enum_variant(cx,
-                                                  variant,
-                                                  variant_info,
-                                                  OptimizedDiscriminant,
-                                                  self_metadata,
-                                                  self.span);
+                    variants
+                        .iter_enumerated()
+                        .map(|(i, _)| {
+                            let variant = self.layout.for_variant(cx, i);
+                            let variant_info = variant_info_for(i);
+                            let (variant_type_metadata, member_desc_factory) =
+                                describe_enum_variant(
+                                    cx,
+                                    variant,
+                                    variant_info,
+                                    OptimizedDiscriminant,
+                                    self_metadata,
+                                    self.span,
+                                );
 
-                        let member_descriptions = member_desc_factory
-                            .create_member_descriptions(cx);
+                            let member_descriptions =
+                                member_desc_factory.create_member_descriptions(cx);
 
-                        set_members_of_composite_type(cx,
-                                                      self.enum_type,
-                                                      variant_type_metadata,
-                                                      member_descriptions);
+                            set_members_of_composite_type(
+                                cx,
+                                self.enum_type,
+                                variant_type_metadata,
+                                member_descriptions,
+                            );
 
-                        let niche_value = if i == dataful_variant {
-                            None
-                        } else {
-                            let value = (i.as_u32() as u128)
-                                .wrapping_sub(niche_variants.start().as_u32() as u128)
-                                .wrapping_add(niche_start);
-                            let value = truncate(value, discr.value.size(cx));
-                            // NOTE(eddyb) do *NOT* remove this assert, until
-                            // we pass the full 128-bit value to LLVM, otherwise
-                            // truncation will be silent and remain undetected.
-                            assert_eq!(value as u64 as u128, value);
-                            Some(value as u64)
-                        };
+                            let niche_value = if i == dataful_variant {
+                                None
+                            } else {
+                                let value = (i.as_u32() as u128)
+                                    .wrapping_sub(niche_variants.start().as_u32() as u128)
+                                    .wrapping_add(niche_start);
+                                let value = truncate(value, discr.value.size(cx));
+                                // NOTE(eddyb) do *NOT* remove this assert, until
+                                // we pass the full 128-bit value to LLVM, otherwise
+                                // truncation will be silent and remain undetected.
+                                assert_eq!(value as u64 as u128, value);
+                                Some(value as u64)
+                            };
 
-                        MemberDescription {
-                            name: variant_info.variant_name(),
-                            type_metadata: variant_type_metadata,
-                            offset: Size::ZERO,
-                            size: self.layout.size,
-                            align: self.layout.align.abi,
-                            flags: DIFlags::FlagZero,
-                            discriminant: niche_value,
-                        }
-                    }).collect()
+                            MemberDescription {
+                                name: variant_info.variant_name(),
+                                type_metadata: variant_type_metadata,
+                                offset: Size::ZERO,
+                                size: self.layout.size,
+                                align: self.layout.align.abi,
+                                flags: DIFlags::FlagZero,
+                                discriminant: niche_value,
+                            }
+                        })
+                        .collect()
                 }
             }
         }
@@ -1629,37 +1595,40 @@ struct VariantMemberDescriptionFactory<'ll, 'tcx> {
 }
 
 impl VariantMemberDescriptionFactory<'ll, 'tcx> {
-    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
-        self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
-            let (size, align) = cx.size_and_align_of(ty);
-            MemberDescription {
-                name: name.to_string(),
-                type_metadata: if use_enum_fallback(cx) {
-                    match self.discriminant_type_metadata {
-                        // Discriminant is always the first field of our variant
-                        // when using the enum fallback.
-                        Some(metadata) if i == 0 => metadata,
-                        _ => type_metadata(cx, ty, self.span)
-                    }
-                } else {
-                    type_metadata(cx, ty, self.span)
-                },
-                offset: self.offsets[i],
-                size,
-                align,
-                flags: DIFlags::FlagZero,
-                discriminant: None,
-            }
-        }).collect()
+    fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
+        self.args
+            .iter()
+            .enumerate()
+            .map(|(i, &(ref name, ty))| {
+                let (size, align) = cx.size_and_align_of(ty);
+                MemberDescription {
+                    name: name.to_string(),
+                    type_metadata: if use_enum_fallback(cx) {
+                        match self.discriminant_type_metadata {
+                            // Discriminant is always the first field of our variant
+                            // when using the enum fallback.
+                            Some(metadata) if i == 0 => metadata,
+                            _ => type_metadata(cx, ty, self.span),
+                        }
+                    } else {
+                        type_metadata(cx, ty, self.span)
+                    },
+                    offset: self.offsets[i],
+                    size,
+                    align,
+                    flags: DIFlags::FlagZero,
+                    discriminant: None,
+                }
+            })
+            .collect()
     }
 }
 
 #[derive(Copy, Clone)]
 enum EnumDiscriminantInfo<'ll> {
-    RegularDiscriminant{ discr_field: Field, discr_type_metadata: &'ll DIType },
+    RegularDiscriminant { discr_field: Field, discr_type_metadata: &'ll DIType },
     OptimizedDiscriminant,
-    NoDiscriminant
+    NoDiscriminant,
 }
 
 #[derive(Copy, Clone)]
@@ -1677,8 +1646,9 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
     fn map_struct_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         match self {
             VariantInfo::Adt(variant) => f(&variant.ident.as_str()),
-            VariantInfo::Generator { substs, variant_index, .. } =>
-                f(&substs.as_generator().variant_name(*variant_index)),
+            VariantInfo::Generator { substs, variant_index, .. } => {
+                f(&substs.as_generator().variant_name(*variant_index))
+            }
         }
     }
 
@@ -1697,16 +1667,18 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
 
     fn field_name(&self, i: usize) -> String {
         let field_name = match *self {
-            VariantInfo::Adt(variant) if variant.ctor_kind != CtorKind::Fn =>
-                Some(variant.fields[i].ident.name),
+            VariantInfo::Adt(variant) if variant.ctor_kind != CtorKind::Fn => {
+                Some(variant.fields[i].ident.name)
+            }
             VariantInfo::Generator {
                 generator_layout,
                 generator_saved_local_names,
                 variant_index,
                 ..
-            } => generator_saved_local_names[
-                generator_layout.variant_fields[variant_index][i.into()]
-            ],
+            } => {
+                generator_saved_local_names
+                    [generator_layout.variant_fields[variant_index][i.into()]]
+            }
             _ => None,
         };
         field_name.map(|name| name.to_string()).unwrap_or_else(|| format!("__{}", i))
@@ -1726,17 +1698,11 @@ fn describe_enum_variant(
     span: Span,
 ) -> (&'ll DICompositeType, MemberDescriptionFactory<'ll, 'tcx>) {
     let metadata_stub = variant.map_struct_name(|variant_name| {
-        let unique_type_id = debug_context(cx).type_map
-                                              .borrow_mut()
-                                              .get_unique_type_id_of_enum_variant(
-                                                  cx,
-                                                  layout.ty,
-                                                  &variant_name);
-        create_struct_stub(cx,
-                           layout.ty,
-                           &variant_name,
-                           unique_type_id,
-                           Some(containing_scope))
+        let unique_type_id = debug_context(cx)
+            .type_map
+            .borrow_mut()
+            .get_unique_type_id_of_enum_variant(cx, layout.ty, &variant_name);
+        create_struct_stub(cx, layout.ty, &variant_name, unique_type_id, Some(containing_scope))
     });
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
@@ -1747,44 +1713,43 @@ fn describe_enum_variant(
                 // We have the layout of an enum variant, we need the layout of the outer enum
                 let enum_layout = cx.layout_of(layout.ty);
                 let offset = enum_layout.fields.offset(discr_field.as_usize());
-                let args = (
-                    "RUST$ENUM$DISR".to_owned(),
-                    enum_layout.field(cx, discr_field.as_usize()).ty);
+                let args =
+                    ("RUST$ENUM$DISR".to_owned(), enum_layout.field(cx, discr_field.as_usize()).ty);
                 (Some(offset), Some(args))
             }
             _ => (None, None),
         };
         (
-            discr_offset.into_iter().chain((0..layout.fields.count()).map(|i| {
-                layout.fields.offset(i)
-            })).collect(),
-            discr_arg.into_iter().chain((0..layout.fields.count()).map(|i| {
-                (variant.field_name(i), layout.field(cx, i).ty)
-            })).collect()
+            discr_offset
+                .into_iter()
+                .chain((0..layout.fields.count()).map(|i| layout.fields.offset(i)))
+                .collect(),
+            discr_arg
+                .into_iter()
+                .chain(
+                    (0..layout.fields.count())
+                        .map(|i| (variant.field_name(i), layout.field(cx, i).ty)),
+                )
+                .collect(),
         )
     } else {
         (
-            (0..layout.fields.count()).map(|i| {
-                layout.fields.offset(i)
-            }).collect(),
-            (0..layout.fields.count()).map(|i| {
-                (variant.field_name(i), layout.field(cx, i).ty)
-            }).collect()
+            (0..layout.fields.count()).map(|i| layout.fields.offset(i)).collect(),
+            (0..layout.fields.count())
+                .map(|i| (variant.field_name(i), layout.field(cx, i).ty))
+                .collect(),
         )
     };
 
-    let member_description_factory =
-        VariantMDF(VariantMemberDescriptionFactory {
-            offsets,
-            args,
-            discriminant_type_metadata: match discriminant_info {
-                RegularDiscriminant { discr_type_metadata, .. } => {
-                    Some(discr_type_metadata)
-                }
-                _ => None
-            },
-            span,
-        });
+    let member_description_factory = VariantMDF(VariantMemberDescriptionFactory {
+        offsets,
+        args,
+        discriminant_type_metadata: match discriminant_info {
+            RegularDiscriminant { discr_type_metadata, .. } => Some(discr_type_metadata),
+            _ => None,
+        },
+        span,
+    });
 
     (metadata_stub, member_description_factory)
 }
@@ -1820,7 +1785,8 @@ fn prepare_enum_metadata(
                             DIB(cx),
                             name.as_ptr(),
                             // FIXME: what if enumeration has i128 discriminant?
-                            discr.val as u64))
+                            discr.val as u64,
+                        ))
                     }
                 })
                 .collect(),
@@ -1834,7 +1800,8 @@ fn prepare_enum_metadata(
                             DIB(cx),
                             name.as_ptr(),
                             // FIXME: what if enumeration has i128 discriminant?
-                            variant_index.as_usize() as u64))
+                            variant_index.as_usize() as u64,
+                        ))
                     }
                 })
                 .collect(),
@@ -1842,14 +1809,12 @@ fn prepare_enum_metadata(
         };
 
         let disr_type_key = (enum_def_id, discr);
-        let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
-                                                                 .borrow()
-                                                                 .get(&disr_type_key).cloned();
+        let cached_discriminant_type_metadata =
+            debug_context(cx).created_enum_disr_types.borrow().get(&disr_type_key).cloned();
         match cached_discriminant_type_metadata {
             Some(discriminant_type_metadata) => discriminant_type_metadata,
             None => {
-                let (discriminant_size, discriminant_align) =
-                    (discr.size(cx), discr.align(cx));
+                let (discriminant_size, discriminant_align) = (discr.size(cx), discr.align(cx));
                 let discriminant_base_type_metadata =
                     type_metadata(cx, discr.to_ty(cx.tcx), syntax_pos::DUMMY_SP);
 
@@ -1869,12 +1834,15 @@ fn prepare_enum_metadata(
                         discriminant_size.bits(),
                         discriminant_align.abi.bits() as u32,
                         create_DIArray(DIB(cx), &enumerators_metadata),
-                        discriminant_base_type_metadata, true)
+                        discriminant_base_type_metadata,
+                        true,
+                    )
                 };
 
-                debug_context(cx).created_enum_disr_types
-                                 .borrow_mut()
-                                 .insert(disr_type_key, discriminant_type_metadata);
+                debug_context(cx)
+                    .created_enum_disr_types
+                    .borrow_mut()
+                    .insert(disr_type_key, discriminant_type_metadata);
 
                 discriminant_type_metadata
             }
@@ -1884,23 +1852,26 @@ fn prepare_enum_metadata(
     let layout = cx.layout_of(enum_type);
 
     match (&layout.abi, &layout.variants) {
-        (&layout::Abi::Scalar(_), &layout::Variants::Multiple {
-            discr_kind: layout::DiscriminantKind::Tag,
-            ref discr,
-            ..
-        }) => return FinalMetadata(discriminant_type_metadata(discr.value)),
+        (
+            &layout::Abi::Scalar(_),
+            &layout::Variants::Multiple {
+                discr_kind: layout::DiscriminantKind::Tag,
+                ref discr,
+                ..
+            },
+        ) => return FinalMetadata(discriminant_type_metadata(discr.value)),
         _ => {}
     }
 
     let enum_name = SmallCStr::new(&enum_name);
     let unique_type_id_str = SmallCStr::new(
-        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id)
+        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id),
     );
 
     if use_enum_fallback(cx) {
         let discriminant_type_metadata = match layout.variants {
-            layout::Variants::Single { .. } |
-            layout::Variants::Multiple {
+            layout::Variants::Single { .. }
+            | layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Niche { .. },
                 ..
             } => None,
@@ -1908,9 +1879,7 @@ fn prepare_enum_metadata(
                 discr_kind: layout::DiscriminantKind::Tag,
                 ref discr,
                 ..
-            } => {
-                Some(discriminant_type_metadata(discr.value))
-            }
+            } => Some(discriminant_type_metadata(discr.value)),
         };
 
         let enum_metadata = unsafe {
@@ -1925,7 +1894,8 @@ fn prepare_enum_metadata(
                 DIFlags::FlagZero,
                 None,
                 0, // RuntimeLang
-                unique_type_id_str.as_ptr())
+                unique_type_id_str.as_ptr(),
+            )
         };
 
         return create_and_register_recursive_type_forward_declaration(
@@ -1968,7 +1938,8 @@ fn prepare_enum_metadata(
                 layout::F32 => Integer::I32,
                 layout::F64 => Integer::I64,
                 layout::Pointer => cx.data_layout().ptr_sized_integer(),
-            }.to_ty(cx.tcx, false);
+            }
+            .to_ty(cx.tcx, false);
 
             let discr_metadata = basic_type_metadata(cx, discr_type);
             unsafe {
@@ -1982,9 +1953,10 @@ fn prepare_enum_metadata(
                     align.abi.bits() as u32,
                     layout.fields.offset(discr_index).bits(),
                     DIFlags::FlagArtificial,
-                    discr_metadata))
+                    discr_metadata,
+                ))
             }
-        },
+        }
 
         layout::Variants::Multiple {
             discr_kind: layout::DiscriminantKind::Tag,
@@ -2007,9 +1979,10 @@ fn prepare_enum_metadata(
                     align.bits() as u32,
                     layout.fields.offset(discr_index).bits(),
                     DIFlags::FlagArtificial,
-                    discr_metadata))
+                    discr_metadata,
+                ))
             }
-        },
+        }
     };
 
     let mut outer_fields = match layout.variants {
@@ -2018,7 +1991,7 @@ fn prepare_enum_metadata(
             let tuple_mdf = TupleMemberDescriptionFactory {
                 ty: enum_type,
                 component_types: outer_field_tys,
-                span
+                span,
             };
             tuple_mdf
                 .create_member_descriptions(cx)
@@ -2029,9 +2002,10 @@ fn prepare_enum_metadata(
     };
 
     let variant_part_unique_type_id_str = SmallCStr::new(
-        debug_context(cx).type_map
+        debug_context(cx)
+            .type_map
             .borrow_mut()
-            .get_unique_type_id_str_of_enum_variant_part(unique_type_id)
+            .get_unique_type_id_str_of_enum_variant_part(unique_type_id),
     );
     let empty_array = create_DIArray(DIB(cx), &[]);
     let variant_part = unsafe {
@@ -2046,7 +2020,8 @@ fn prepare_enum_metadata(
             DIFlags::FlagZero,
             discriminator_metadata,
             empty_array,
-            variant_part_unique_type_id_str.as_ptr())
+            variant_part_unique_type_id_str.as_ptr(),
+        )
     };
     outer_fields.push(Some(variant_part));
 
@@ -2066,7 +2041,8 @@ fn prepare_enum_metadata(
             type_array,
             0,
             None,
-            unique_type_id_str.as_ptr())
+            unique_type_id_str.as_ptr(),
+        )
     };
 
     return create_and_register_recursive_type_forward_declaration(
@@ -2103,24 +2079,25 @@ fn composite_type_metadata(
     _definition_span: Span,
 ) -> &'ll DICompositeType {
     // Create the (empty) struct metadata node ...
-    let composite_type_metadata = create_struct_stub(cx,
-                                                     composite_type,
-                                                     composite_type_name,
-                                                     composite_type_unique_id,
-                                                     containing_scope);
+    let composite_type_metadata = create_struct_stub(
+        cx,
+        composite_type,
+        composite_type_name,
+        composite_type_unique_id,
+        containing_scope,
+    );
     // ... and immediately create and add the member descriptions.
-    set_members_of_composite_type(cx,
-                                  composite_type,
-                                  composite_type_metadata,
-                                  member_descriptions);
+    set_members_of_composite_type(cx, composite_type, composite_type_metadata, member_descriptions);
 
     composite_type_metadata
 }
 
-fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
-                                 composite_type: Ty<'tcx>,
-                                 composite_type_metadata: &'ll DICompositeType,
-                                 member_descriptions: Vec<MemberDescription<'ll>>) {
+fn set_members_of_composite_type(
+    cx: &CodegenCx<'ll, 'tcx>,
+    composite_type: Ty<'tcx>,
+    composite_type_metadata: &'ll DICompositeType,
+    member_descriptions: Vec<MemberDescription<'ll>>,
+) {
     // In some rare cases LLVM metadata uniquing would lead to an existing type
     // description being used instead of a new one created in
     // create_struct_stub. This would cause a hard to trace assertion in
@@ -2131,8 +2108,10 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
         if !composite_types_completed.insert(&composite_type_metadata) {
-            bug!("debuginfo::set_members_of_composite_type() - \
-                  Already completed forward declaration re-encountered.");
+            bug!(
+                "debuginfo::set_members_of_composite_type() - \
+                  Already completed forward declaration re-encountered."
+            );
         }
     }
 
@@ -2145,7 +2124,11 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
     unsafe {
         let type_array = create_DIArray(DIB(cx), &member_metadata[..]);
         llvm::LLVMRustDICompositeTypeReplaceArrays(
-            DIB(cx), composite_type_metadata, Some(type_array), type_params);
+            DIB(cx),
+            composite_type_metadata,
+            Some(type_array),
+            type_params,
+        );
     }
 }
 
@@ -2155,40 +2138,42 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
         if !substs.types().next().is_none() {
             let generics = cx.tcx.generics_of(def.did);
             let names = get_parameter_names(cx, generics);
-            let template_params: Vec<_> = substs.iter().zip(names).filter_map(|(kind, name)| {
-                if let GenericArgKind::Type(ty) = kind.unpack() {
-                    let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
-                    let actual_type_metadata =
-                        type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
-                    let name = SmallCStr::new(&name.as_str());
-                    Some(unsafe {
-
-                        Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
-                            DIB(cx),
-                            None,
-                            name.as_ptr(),
-                            actual_type_metadata,
-                            unknown_file_metadata(cx),
-                            0,
-                            0,
-                        ))
-                    })
-                } else {
-                    None
-                }
-            }).collect();
+            let template_params: Vec<_> = substs
+                .iter()
+                .zip(names)
+                .filter_map(|(kind, name)| {
+                    if let GenericArgKind::Type(ty) = kind.unpack() {
+                        let actual_type =
+                            cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+                        let actual_type_metadata =
+                            type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
+                        let name = SmallCStr::new(&name.as_str());
+                        Some(unsafe {
+                            Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                                DIB(cx),
+                                None,
+                                name.as_ptr(),
+                                actual_type_metadata,
+                                unknown_file_metadata(cx),
+                                0,
+                                0,
+                            ))
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
             return Some(create_DIArray(DIB(cx), &template_params[..]));
         }
     }
     return Some(create_DIArray(DIB(cx), &[]));
 
-    fn get_parameter_names(cx: &CodegenCx<'_, '_>,
-                           generics: &ty::Generics)
-                           -> Vec<Symbol> {
-        let mut names = generics.parent.map_or(vec![], |def_id| {
-            get_parameter_names(cx, cx.tcx.generics_of(def_id))
-        });
+    fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
+        let mut names = generics
+            .parent
+            .map_or(vec![], |def_id| get_parameter_names(cx, cx.tcx.generics_of(def_id)));
         names.extend(generics.params.iter().map(|param| param.name));
         names
     }
@@ -2208,7 +2193,7 @@ fn create_struct_stub(
 
     let name = SmallCStr::new(struct_type_name);
     let unique_type_id = SmallCStr::new(
-        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id)
+        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id),
     );
     let metadata_stub = unsafe {
         // `LLVMRustDIBuilderCreateStructType()` wants an empty array. A null
@@ -2229,7 +2214,8 @@ fn create_struct_stub(
             empty_array,
             0,
             None,
-            unique_type_id.as_ptr())
+            unique_type_id.as_ptr(),
+        )
     };
 
     metadata_stub
@@ -2246,7 +2232,7 @@ fn create_union_stub(
 
     let name = SmallCStr::new(union_type_name);
     let unique_type_id = SmallCStr::new(
-        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id)
+        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id),
     );
     let metadata_stub = unsafe {
         // `LLVMRustDIBuilderCreateUnionType()` wants an empty array. A null
@@ -2265,7 +2251,8 @@ fn create_union_stub(
             DIFlags::FlagZero,
             Some(empty_array),
             0, // RuntimeLang
-            unique_type_id.as_ptr())
+            unique_type_id.as_ptr(),
+        )
     };
 
     metadata_stub
@@ -2274,11 +2261,7 @@ fn create_union_stub(
 /// Creates debug information for the given global variable.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_global_var_metadata(
-    cx: &CodegenCx<'ll, '_>,
-    def_id: DefId,
-    global: &'ll Value,
-) {
+pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global: &'ll Value) {
     if cx.dbg_cx.is_none() {
         return;
     }
@@ -2317,20 +2300,20 @@ pub fn create_global_var_metadata(
     let global_align = cx.align_of(variable_type);
 
     unsafe {
-        llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
-                                                    Some(var_scope),
-                                                    var_name.as_ptr(),
-                                                    // If null, linkage_name field is omitted,
-                                                    // which is what we want for no_mangle statics
-                                                    linkage_name.as_ref()
-                                                     .map_or(ptr::null(), |name| name.as_ptr()),
-                                                    file_metadata,
-                                                    line_number,
-                                                    type_metadata,
-                                                    is_local_to_unit,
-                                                    global,
-                                                    None,
-                                                    global_align.bytes() as u32,
+        llvm::LLVMRustDIBuilderCreateStaticVariable(
+            DIB(cx),
+            Some(var_scope),
+            var_name.as_ptr(),
+            // If null, linkage_name field is omitted,
+            // which is what we want for no_mangle statics
+            linkage_name.as_ref().map_or(ptr::null(), |name| name.as_ptr()),
+            file_metadata,
+            line_number,
+            type_metadata,
+            is_local_to_unit,
+            global,
+            None,
+            global_align.bytes() as u32,
         );
     }
 }
@@ -2370,20 +2353,22 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
             empty_array,
             0,
             Some(type_metadata),
-            name.as_ptr()
+            name.as_ptr(),
         );
 
-        llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
-                                                    NO_SCOPE_METADATA,
-                                                    name.as_ptr(),
-                                                    ptr::null(),
-                                                    unknown_file_metadata(cx),
-                                                    UNKNOWN_LINE_NUMBER,
-                                                    vtable_type,
-                                                    true,
-                                                    vtable,
-                                                    None,
-                                                    0);
+        llvm::LLVMRustDIBuilderCreateStaticVariable(
+            DIB(cx),
+            NO_SCOPE_METADATA,
+            name.as_ptr(),
+            ptr::null(),
+            unknown_file_metadata(cx),
+            UNKNOWN_LINE_NUMBER,
+            vtable_type,
+            true,
+            vtable,
+            None,
+            0,
+        );
     }
 }
 
@@ -2395,10 +2380,5 @@ pub fn extend_scope_to_file(
     defining_crate: CrateNum,
 ) -> &'ll DILexicalBlock {
     let file_metadata = file_metadata(cx, &file.name, defining_crate);
-    unsafe {
-        llvm::LLVMRustDIBuilderCreateLexicalBlockFile(
-            DIB(cx),
-            scope_metadata,
-            file_metadata)
-    }
+    unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata) }
 }

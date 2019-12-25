@@ -1,20 +1,20 @@
 //! Built-in attributes and `cfg` flag gating.
 
-use AttributeType::*;
 use AttributeGate::*;
+use AttributeType::*;
 
 use crate::{Features, Stability};
 
-use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::symbol::{Symbol, sym};
 use lazy_static::lazy_static;
+use rustc_data_structures::fx::FxHashMap;
+use syntax_pos::symbol::{sym, Symbol};
 
 type GateFn = fn(&Features) -> bool;
 
 macro_rules! cfg_fn {
     ($field: ident) => {
-        (|features| { features.$field }) as GateFn
-    }
+        (|features| features.$field) as GateFn
+    };
 }
 
 pub type GatedCfg = (Symbol, Symbol, GateFn);
@@ -66,9 +66,10 @@ pub enum AttributeGate {
 impl std::fmt::Debug for AttributeGate {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            Self::Gated(ref stab, name, expl, _) =>
-                write!(fmt, "Gated({:?}, {}, {})", stab, name, expl),
-            Self::Ungated => write!(fmt, "Ungated")
+            Self::Gated(ref stab, name, expl, _) => {
+                write!(fmt, "Gated({:?}, {}, {})", stab, name, expl)
+            }
+            Self::Ungated => write!(fmt, "Ungated"),
         }
     }
 }
@@ -135,22 +136,31 @@ macro_rules! gated {
 macro_rules! rustc_attr {
     (TEST, $attr:ident, $typ:expr, $tpl:expr $(,)?) => {
         rustc_attr!(
-            $attr, $typ, $tpl,
-            concat!("the `#[", stringify!($attr), "]` attribute is just used for rustc unit tests \
+            $attr,
+            $typ,
+            $tpl,
+            concat!(
+                "the `#[",
+                stringify!($attr),
+                "]` attribute is just used for rustc unit tests \
                 and will never be stable",
             ),
         )
     };
     ($attr:ident, $typ:expr, $tpl:expr, $msg:expr $(,)?) => {
-        (sym::$attr, $typ, $tpl,
-         Gated(Stability::Unstable, sym::rustc_attrs, $msg, cfg_fn!(rustc_attrs)))
+        (
+            sym::$attr,
+            $typ,
+            $tpl,
+            Gated(Stability::Unstable, sym::rustc_attrs, $msg, cfg_fn!(rustc_attrs)),
+        )
     };
 }
 
 macro_rules! experimental {
     ($attr:ident) => {
         concat!("the `#[", stringify!($attr), "]` attribute is an experimental feature")
-    }
+    };
 }
 
 const IMPL_DETAIL: &str = "internal implementation detail";
@@ -159,6 +169,7 @@ const INTERNAL_UNSTABLE: &str = "this is an internal attribute that will never b
 pub type BuiltinAttribute = (Symbol, AttributeType, AttributeTemplate, AttributeGate);
 
 /// Attributes that have a special meaning to rustc or rustdoc.
+#[rustfmt::skip]
 pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Stable attributes:

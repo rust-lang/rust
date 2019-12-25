@@ -1,6 +1,6 @@
 //! List of the removed feature gates.
 
-use super::{State, Feature};
+use super::{Feature, State};
 use syntax_pos::symbol::sym;
 
 macro_rules! declare_features {
@@ -41,6 +41,7 @@ macro_rules! declare_features {
     };
 }
 
+#[rustfmt::skip]
 declare_features! (
     // -------------------------------------------------------------------------
     // feature-group-start: removed features
@@ -111,6 +112,7 @@ declare_features! (
     // -------------------------------------------------------------------------
 );
 
+#[rustfmt::skip]
 declare_features! (
     (stable_removed, no_stack_check, "1.0.0", None, None),
 );
