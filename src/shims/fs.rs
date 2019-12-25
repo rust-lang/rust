@@ -269,40 +269,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
-            throw_unsup_format!("The `stat` shim is only only available in the `macos` platform.")
+            throw_unsup_format!("The `stat` shim is only only available for `macos` targets.")
         }
 
         let path_scalar = this.read_scalar(path_op)?.not_undef()?;
-        let path = this.read_os_str_from_c_str(path_scalar)?;
+        let path: PathBuf = this.read_os_str_from_c_str(path_scalar)?.into();
 
         let buf = this.deref_operand(buf_op)?;
 
-        let metadata = match std::fs::metadata(path) {
-            Ok(metadata) => metadata,
-            Err(e) => {
-                this.set_last_error_from_io_error(e)?;
-                return Ok(-1);
-            }
-        };
-
-        let file_type = metadata.file_type();
-
-        let mode_name = if file_type.is_file() {
-            "S_IFREG"
-        } else if file_type.is_dir() {
-            "S_IFDIR"
-        } else {
-            "S_IFLNK"
+        let stats = match FileStatus::new(this, path, false)? {
+            Some(stats) => stats,
+            None => return Ok(-1),
         };
 
         // FIXME: use Scalar::to_u16
-        let mode = this.eval_libc(mode_name)?.to_bits(Size::from_bits(16))? as u16;
+        let mode: u16 = stats.mode.to_bits(Size::from_bits(16))? as u16;
 
-        let size = metadata.len();
-
-        let (access_sec, access_nsec) = extract_sec_and_nsec(metadata.accessed(), &mut 0, 0)?;
-        let (created_sec, created_nsec) = extract_sec_and_nsec(metadata.created(), &mut 0, 0)?;
-        let (modified_sec, modified_nsec) = extract_sec_and_nsec(metadata.modified(), &mut 0, 0)?;
+        let (access_sec, access_nsec) = stats.accessed.unwrap_or((0, 0));
+        let (created_sec, created_nsec) = stats.created.unwrap_or((0, 0));
+        let (modified_sec, modified_nsec) = stats.modified.unwrap_or((0, 0));
 
         let dev_t_layout = this.libc_ty_layout("dev_t")?;
         let mode_t_layout = this.libc_ty_layout("mode_t")?;
@@ -341,7 +326,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
             immty_from_uint_checked(created_sec, time_t_layout)?, // st_birthtime
             immty_from_uint_checked(created_nsec, long_layout)?, // st_birthtime_nsec
-            immty_from_uint_checked(size, off_t_layout)?, // st_size
+            immty_from_uint_checked(stats.size, off_t_layout)?, // st_size
             immty_from_uint_checked(0u128, blkcnt_t_layout)?, // st_blocks
             immty_from_uint_checked(0u128, blksize_t_layout)?, // st_blksize
             immty_from_uint_checked(0u128, uint32_t_layout)?, // st_flags
@@ -364,6 +349,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("statx")?;
+
+        if this.tcx.sess.target.target.target_os.to_lowercase() != "linux" {
+            throw_unsup_format!("The `statx` shim is only only available for `linux` targets.")
+        }
 
         let statxbuf_scalar = this.read_scalar(statxbuf_op)?.not_undef()?;
         let pathname_scalar = this.read_scalar(pathname_op)?.not_undef()?;
@@ -422,60 +411,43 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // If the `AT_SYMLINK_NOFOLLOW` flag is set, we query the file's metadata without following
         // symbolic links.
-        let metadata = if flags & this.eval_libc("AT_SYMLINK_NOFOLLOW")?.to_i32()? != 0 {
-            // FIXME: metadata for symlinks need testing.
-            std::fs::symlink_metadata(path)
-        } else {
-            std::fs::metadata(path)
-        };
+        let is_symlink = flags & this.eval_libc("AT_SYMLINK_NOFOLLOW")?.to_i32()? != 0;
 
-        let metadata = match metadata {
-            Ok(metadata) => metadata,
-            Err(e) => {
-                this.set_last_error_from_io_error(e)?;
-                return Ok(-1);
-            }
-        };
-
-        let file_type = metadata.file_type();
-
-        let mode_name = if file_type.is_file() {
-            "S_IFREG"
-        } else if file_type.is_dir() {
-            "S_IFDIR"
-        } else {
-            "S_IFLNK"
+        let stats = match FileStatus::new(this, path, is_symlink)? {
+            Some(stats) => stats,
+            None => return Ok(-1),
         };
 
         // The `mode` field specifies the type of the file and the permissions over the file for
         // the owner, its group and other users. Given that we can only provide the file type
         // without using platform specific methods, we only set the bits corresponding to the file
         // type. This should be an `__u16` but `libc` provides its values as `u32`.
-        let mode: u16 = this
-            .eval_libc(mode_name)?
+        let mode: u16 = stats
+            .mode
             .to_u32()?
             .try_into()
-            .unwrap_or_else(|_| bug!("libc contains bad value for `{}` constant", mode_name));
+            .unwrap_or_else(|_| bug!("libc contains bad value for constant"));
 
-        let size = metadata.len();
+        let (access_sec, access_nsec) = if let Some(tup) = stats.accessed {
+            tup
+        } else {
+            mask |= this.eval_libc("STATX_ATIME")?.to_u32()?;
+            (0, 0)
+        };
 
-        let (access_sec, access_nsec) = extract_sec_and_nsec(
-            metadata.accessed(),
-            &mut mask,
-            this.eval_libc("STATX_ATIME")?.to_u32()?,
-        )?;
+        let (created_sec, created_nsec) = if let Some(tup) = stats.created {
+            tup
+        } else {
+            mask |= this.eval_libc("STATX_BTIME")?.to_u32()?;
+            (0, 0)
+        };
 
-        let (created_sec, created_nsec) = extract_sec_and_nsec(
-            metadata.created(),
-            &mut mask,
-            this.eval_libc("STATX_BTIME")?.to_u32()?,
-        )?;
-
-        let (modified_sec, modified_nsec) = extract_sec_and_nsec(
-            metadata.modified(),
-            &mut mask,
-            this.eval_libc("STATX_MTIME")?.to_u32()?,
-        )?;
+        let (modified_sec, modified_nsec) = if let Some(tup) = stats.modified {
+            tup
+        } else {
+            mask |= this.eval_libc("STATX_MTIME")?.to_u32()?;
+            (0, 0)
+        };
 
         let __u32_layout = this.libc_ty_layout("__u32")?;
         let __u64_layout = this.libc_ty_layout("__u64")?;
@@ -483,7 +455,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Now we transform all this fields into `ImmTy`s and write them to `statxbuf`. We write a
         // zero for the unavailable fields.
-        // FIXME: Provide more fields using platform specific methods.
         let imms = [
             immty_from_uint_checked(mask, __u32_layout)?, // stx_mask
             immty_from_uint_checked(0u128, __u32_layout)?, // stx_blksize
@@ -494,7 +465,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_uint_checked(mode, __u16_layout)?, // stx_mode
             immty_from_uint_checked(0u128, __u16_layout)?, // statx padding
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_ino
-            immty_from_uint_checked(size, __u64_layout)?, // stx_size
+            immty_from_uint_checked(stats.size, __u64_layout)?, // stx_size
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_blocks
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_attributes
             immty_from_uint_checked(access_sec, __u64_layout)?, // stx_atime.tv_sec
@@ -532,19 +503,59 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-// Extracts the number of seconds and nanoseconds elapsed between `time` and the unix epoch, and
-// then sets the `mask` bits determined by `flag` when `time` is Ok. If `time` is an error, it
-// returns `(0, 0)` without setting any bits.
-fn extract_sec_and_nsec<'tcx>(
-    time: std::io::Result<SystemTime>,
-    mask: &mut u32,
-    flag: u32,
-) -> InterpResult<'tcx, (u64, u32)> {
-    if let Ok(time) = time {
+// Extracts the number of seconds and nanoseconds elapsed between `time` and the unix epoch when
+// `time` is Ok. If `time` is an error, it returns `None`.
+fn extract_sec_and_nsec<'tcx>(time: std::io::Result<SystemTime>) -> InterpResult<'tcx, Option<(u64, u32)>> {
+    time.ok().map(|time| {
         let duration = system_time_to_duration(&time)?;
-        *mask |= flag;
         Ok((duration.as_secs(), duration.subsec_nanos()))
-    } else {
-        Ok((0, 0))
+    }).transpose()
+}
+
+struct FileStatus {
+    mode: Scalar<Tag>,
+    size: u64,
+    created: Option<(u64, u32)>,
+    accessed: Option<(u64, u32)>,
+    modified: Option<(u64, u32)>,
+}
+
+impl FileStatus {
+    fn new<'tcx, 'mir>(ecx: &mut MiriEvalContext<'mir, 'tcx>, path: PathBuf, is_symlink: bool) -> InterpResult<'tcx, Option<FileStatus>> {
+        let metadata = if is_symlink {
+            // FIXME: metadata for symlinks need testing.
+            std::fs::symlink_metadata(path)
+        } else {
+            std::fs::metadata(path)
+        };
+
+        let metadata = match metadata {
+            Ok(metadata) => metadata,
+            Err(e) => {
+                ecx.set_last_error_from_io_error(e)?;
+                return Ok(None);
+            }
+        };
+
+        let file_type = metadata.file_type();
+
+        let mode_name = if file_type.is_file() {
+            "S_IFREG"
+        } else if file_type.is_dir() {
+            "S_IFDIR"
+        } else {
+            "S_IFLNK"
+        };
+
+        let mode = ecx.eval_libc(mode_name)?;
+
+        let size = metadata.len();
+
+        let created = extract_sec_and_nsec(metadata.created())?;
+        let accessed = extract_sec_and_nsec(metadata.accessed())?;
+        let modified = extract_sec_and_nsec(metadata.modified())?;
+
+        // FIXME: Provide more fields using platform specific methods.
+        Ok(Some(FileStatus { mode, size, created, accessed, modified }))
     }
 }
