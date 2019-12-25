@@ -1222,8 +1222,10 @@ fn resolve_local<'tcx>(
         // & expression, and its lifetime would be extended to the end of the block (due
         // to a different rule, not the below code).
         match pat.kind {
-            PatKind::Binding(hir::Binding(hir::BindingAnnotation::Ref, ..), _)
-            | PatKind::Binding(hir::Binding(hir::BindingAnnotation::RefMut, ..), _) => true,
+            PatKind::Binding(hir::Binding { annot: hir::BindingAnnotation::Ref, .. }, _)
+            | PatKind::Binding(hir::Binding { annot: hir::BindingAnnotation::RefMut, .. }, _) => {
+                true
+            }
 
             PatKind::Struct(_, ref field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.pat))
@@ -1242,8 +1244,11 @@ fn resolve_local<'tcx>(
             PatKind::Box(ref subpat) => is_binding_pat(&subpat),
 
             PatKind::Ref(_, _)
-            | PatKind::Binding(hir::Binding(hir::BindingAnnotation::Unannotated, ..), _)
-            | PatKind::Binding(hir::Binding(hir::BindingAnnotation::Mutable, ..), _)
+            | PatKind::Binding(
+                hir::Binding { annot: hir::BindingAnnotation::Unannotated, .. },
+                _,
+            )
+            | PatKind::Binding(hir::Binding { annot: hir::BindingAnnotation::Mutable, .. }, _)
             | PatKind::Wild
             | PatKind::Path(_)
             | PatKind::Lit(_)

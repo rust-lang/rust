@@ -140,8 +140,14 @@ impl hir::Pat {
 
     pub fn simple_ident(&self) -> Option<ast::Ident> {
         match self.kind {
-            PatKind::Binding(Binding(BindingAnnotation::Unannotated, _, ident), None)
-            | PatKind::Binding(Binding(BindingAnnotation::Mutable, _, ident), None) => Some(ident),
+            PatKind::Binding(
+                Binding { annot: BindingAnnotation::Unannotated, ident, hir_id: _ },
+                None,
+            )
+            | PatKind::Binding(
+                Binding { annot: BindingAnnotation::Mutable, ident, hir_id: _ },
+                None,
+            ) => Some(ident),
             _ => None,
         }
     }
@@ -175,7 +181,7 @@ impl hir::Pat {
     // ref bindings are be implicit after #42640 (default match binding modes). See issue #44848.
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         let mut result = None;
-        self.each_binding(|hir::Binding(annotation, _, _), _| match annotation {
+        self.each_binding(|hir::Binding { annot, ident: _, hir_id: _ }, _| match annot {
             hir::BindingAnnotation::Ref => match result {
                 None | Some(hir::Mutability::Not) => result = Some(hir::Mutability::Not),
                 _ => {}

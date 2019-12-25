@@ -422,16 +422,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_binding(
         &self,
         pat: &Pat,
-        hir::Binding(ba, var_id, _): &'tcx hir::Binding,
+        hir::Binding { annot, hir_id: var_id, ident: _ }: &'tcx hir::Binding,
         sub: Option<&'tcx Pat>,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         discrim_span: Option<Span>,
     ) -> Ty<'tcx> {
         // Determine the binding mode...
-        let bm = match ba {
+        let bm = match annot {
             hir::BindingAnnotation::Unannotated => def_bm,
-            _ => BindingMode::convert(*ba),
+            _ => BindingMode::convert(*annot),
         };
         // ...and store it in a side table:
         self.inh.tables.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);

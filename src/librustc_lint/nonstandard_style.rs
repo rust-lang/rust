@@ -345,7 +345,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'_, '_>, p: &hir::Pat) {
-        if let &PatKind::Binding(hir::Binding(_, _, ident), _) = &p.kind {
+        if let &PatKind::Binding(hir::Binding { annot: _, hir_id: _, ident }, _) = &p.kind {
             self.check_snake_case(cx, "variable", &ident);
         }
     }

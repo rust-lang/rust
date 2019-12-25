@@ -800,7 +800,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let mut mutability = Mutability::Not;
                     let mut name = kw::Invalid;
                     if let Some(Node::Binding(pat)) = tcx_hir.find(var_id) {
-                        if let hir::PatKind::Binding(hir::Binding(_, _, ident), _) = pat.kind {
+                        if let hir::PatKind::Binding(
+                            hir::Binding { annot: _, hir_id: _, ident },
+                            _,
+                        ) = pat.kind
+                        {
                             name = ident.name;
                             match hir_tables.extract_binding_mode(tcx.sess, pat.hir_id, pat.span) {
                                 Some(ty::BindByValue(hir::Mutability::Mut)) => {

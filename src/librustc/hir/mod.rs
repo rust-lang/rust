@@ -957,7 +957,13 @@ pub struct FieldPat {
 /// (e.g., in `Ok(x) | Err(x)`, both `x` use the same canonical ID),
 /// which is the pattern ID of the first `x`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Binding(pub BindingAnnotation, pub HirId, pub Ident);
+pub struct Binding {
+    /// The optional `ref mut?` annotation on this binding.
+    pub annot: BindingAnnotation,
+    pub hir_id: HirId,
+    /// The introduced binding name.
+    pub ident: Ident,
+}
 
 /// Explicit binding annotations given in the HIR for a binding. Note
 /// that this is not the final binding *mode* that we infer after type

@@ -2798,9 +2798,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Binding { mode, ident }: Binding,
         canonical_id: NodeId,
     ) -> hir::Binding {
-        let mode = self.lower_binding_mode(&mode);
-        let id = self.lower_node_id(canonical_id);
-        hir::Binding(mode, id, ident)
+        let annot = self.lower_binding_mode(&mode);
+        let hir_id = self.lower_node_id(canonical_id);
+        hir::Binding { annot, hir_id, ident }
     }
 
     fn lower_pat_binding(
@@ -3037,10 +3037,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         span: Span,
         ident: Ident,
-        bm: hir::BindingAnnotation,
+        annot: hir::BindingAnnotation,
     ) -> (P<hir::Pat>, hir::HirId) {
         let hir_id = self.next_id();
-        let binding = hir::Binding(bm, hir_id, ident.with_span_pos(span));
+        let binding = hir::Binding { annot, hir_id, ident: ident.with_span_pos(span) };
         let kind = hir::PatKind::Binding(binding, None);
         (P(hir::Pat { hir_id, kind, span }), hir_id)
     }

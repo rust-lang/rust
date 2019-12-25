@@ -1599,8 +1599,8 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_binding(&mut self, hir::Binding(binding_mode, _, ident): &hir::Binding) {
-        match binding_mode {
+    fn print_binding(&mut self, hir::Binding { annot, ident, hir_id: _ }: &hir::Binding) {
+        match annot {
             hir::BindingAnnotation::Ref => {
                 self.word_nbsp("ref");
                 self.print_mutability(hir::Mutability::Not, false);

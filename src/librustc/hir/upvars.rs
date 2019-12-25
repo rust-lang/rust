@@ -47,7 +47,7 @@ impl Visitor<'tcx> for LocalCollector {
     }
 
     fn visit_binding(&mut self, binding: &'tcx hir::Binding) {
-        self.locals.insert(binding.1);
+        self.locals.insert(binding.hir_id);
         intravisit::walk_binding(self, binding);
     }
 }

@@ -175,7 +175,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                     // (Issue #49588)
                     continue;
                 }
-                if let PatKind::Binding(hir::Binding(binding_annot, _, ident), None) =
+                if let PatKind::Binding(hir::Binding { annot, hir_id: _, ident }, None) =
                     fieldpat.pat.kind
                 {
                     if cx.tcx.find_field_index(ident, &variant)
@@ -186,7 +186,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                             fieldpat.span,
                             &format!("the `{}:` in this pattern is redundant", ident),
                         );
-                        let binding = match binding_annot {
+                        let binding = match annot {
                             hir::BindingAnnotation::Unannotated => None,
                             hir::BindingAnnotation::Mutable => Some("mut"),
                             hir::BindingAnnotation::Ref => Some("ref"),

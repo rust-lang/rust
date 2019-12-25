@@ -1336,9 +1336,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // of the possibility of reassignment, but this should be good enough.
             match &kind {
                 hir::PatKind::Binding(
-                    hir::Binding(hir::BindingAnnotation::Unannotated, _, name),
+                    hir::Binding { annot: hir::BindingAnnotation::Unannotated, ident, hir_id: _ },
                     None,
-                ) => Some(format!("{}", name)),
+                ) => Some(format!("{}", ident)),
                 _ => {
                     err.note(&msg);
                     None
@@ -1419,7 +1419,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     .params
                     .iter()
                     .map(|arg| match &arg.pat.kind {
-                        hir::PatKind::Binding(hir::Binding(_, _, ident), None)
+                        hir::PatKind::Binding(hir::Binding { ident, annot: _, hir_id: _ }, None)
                         // FIXME: provide a better suggestion when encountering `SelfLower`, it
                         // should suggest a method call.
                         if ident.name != kw::SelfLower => ident.to_string(),

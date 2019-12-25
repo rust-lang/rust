@@ -382,7 +382,7 @@ fn visit_fn<'tcx>(
             rustc::hir::PatKind::Struct(..) => true,
             _ => false,
         };
-        param.pat.each_binding(|&hir::Binding(_, hir_id, ident), _| {
+        param.pat.each_binding(|&hir::Binding { annot: _, hir_id, ident }, _| {
             debug!("adding parameters {:?}", hir_id);
             let var = if is_shorthand {
                 Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
@@ -437,7 +437,7 @@ fn add_from_pat(ir: &mut IrMaps<'_>, pat: &P<hir::Pat>) {
         }
     }
 
-    pat.each_binding(|&hir::Binding(_, hir_id, ident), _| {
+    pat.each_binding(|&hir::Binding { annot: _, hir_id, ident }, _| {
         ir.add_live_node_for_node(hir_id, VarDefNode(ident.span));
         ir.add_variable(Local(LocalInfo {
             id: hir_id,
@@ -718,7 +718,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // In an or-pattern, only consider the first pattern; any later patterns
         // must have the same bindings, and we also consider the first pattern
         // to be the "authoritative" set of ids.
-        pat.each_binding_or_first(&mut |&hir::Binding(_, hir_id, ident), pat_sp| {
+        pat.each_binding_or_first(&mut |&hir::Binding { annot: _, hir_id, ident }, pat_sp| {
             let ln = self.live_node(hir_id, pat_sp);
             let var = self.variable(hir_id, ident.span);
             self.init_from_succ(ln, succ);
@@ -1481,7 +1481,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         // patterns so the suggestions to prefix with underscores will apply to those too.
         let mut vars: FxIndexMap<String, (LiveNode, Variable, HirId, Vec<Span>)> = <_>::default();
 
-        pat.each_binding(|&hir::Binding(_, hir_id, ident), pat_sp| {
+        pat.each_binding(|&hir::Binding { annot: _, hir_id, ident }, pat_sp| {
             let ln = entry_ln.unwrap_or_else(|| self.live_node(hir_id, pat_sp));
             let var = self.variable(hir_id, ident.span);
             vars.entry(self.ir.variable_name(var))

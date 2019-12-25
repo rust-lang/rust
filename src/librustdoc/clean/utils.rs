@@ -417,7 +417,7 @@ pub fn name_from_pat(p: &hir::Pat) -> String {
 
     match p.kind {
         PatKind::Wild => "_".to_string(),
-        PatKind::Binding(hir::Binding(_, _, ident), _) => ident.to_string(),
+        PatKind::Binding(hir::Binding { annot: _, hir_id: _, ident }, _) => ident.to_string(),
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Struct(ref name, ref fields, etc) => format!(
             "{} {{ {}{} }}",

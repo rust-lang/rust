@@ -1175,7 +1175,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
-        if let PatKind::Binding(hir::Binding(_, _, ident), _) = p.kind {
+        if let PatKind::Binding(hir::Binding { annot: _, hir_id: _, ident }, _) = p.kind {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
             if !self.fcx.tcx.features().unsized_locals {
@@ -4659,11 +4659,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .params
                         .iter()
                         .map(|param| match &param.pat.kind {
-                            hir::PatKind::Binding(hir::Binding(_, _, ident), None)
-                                if ident.name != kw::SelfLower =>
-                            {
-                                ident.to_string()
-                            }
+                            hir::PatKind::Binding(
+                                hir::Binding { annot: _, hir_id: _, ident },
+                                None,
+                            ) if ident.name != kw::SelfLower => ident.to_string(),
                             _ => "_".to_string(),
                         })
                         .collect::<Vec<_>>()
@@ -4684,11 +4683,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .params
                         .iter()
                         .map(|param| match &param.pat.kind {
-                            hir::PatKind::Binding(hir::Binding(_, _, ident), None)
-                                if ident.name != kw::SelfLower =>
-                            {
-                                ident.to_string()
-                            }
+                            hir::PatKind::Binding(
+                                hir::Binding { annot: _, hir_id: _, ident },
+                                None,
+                            ) if ident.name != kw::SelfLower => ident.to_string(),
                             _ => "_".to_string(),
                         })
                         .collect::<Vec<_>>()

@@ -730,7 +730,10 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
     }
 }
 
-pub fn walk_binding<'v, V: Visitor<'v>>(visitor: &mut V, Binding(_, _, ident): &'v Binding) {
+pub fn walk_binding<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    Binding { ident, annot: _, hir_id: _ }: &'v Binding,
+) {
     visitor.visit_ident(*ident);
 }
 

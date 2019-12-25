@@ -1105,7 +1105,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // `let <pat> = __argN;` statement. In this case, we do not rename the parameter.
                 let (ident, is_simple_parameter) = match parameter.pat.kind {
                     hir::PatKind::Binding(
-                        hir::Binding(hir::BindingAnnotation::Unannotated, _, ident),
+                        hir::Binding { annot: hir::BindingAnnotation::Unannotated, ident, .. },
                         _,
                     ) => (ident, true),
                     _ => {

@@ -561,7 +561,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 PatKind::Leaf { subpatterns }
             }
 
-            hir::PatKind::Binding(hir::Binding(_, id, ident), ref sub) => {
+            hir::PatKind::Binding(hir::Binding { annot: _, hir_id: var, ident }, ref sub) => {
                 let bm =
                     *self.tables.pat_binding_modes().get(pat.hir_id).expect("missing binding mode");
                 let (mutability, mode) = match bm {
@@ -586,7 +586,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     }
                 };
 
-                let binding = Binding { mutability, mode, name: ident.name, var: id, ty: var_ty };
+                let binding = Binding { mutability, mode, name: ident.name, var, ty: var_ty };
                 PatKind::Binding { binding, subpattern: self.lower_opt_pattern(sub) }
             }
 
