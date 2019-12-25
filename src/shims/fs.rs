@@ -295,6 +295,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "S_IFLNK"
         };
 
+        // FIXME: use Scalar::to_u16
         let mode = this.eval_libc(mode_name)?.to_bits(Size::from_bits(16))? as u16;
 
         let size = metadata.len();
@@ -316,6 +317,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let blksize_t_layout = this.libc_ty_layout("blksize_t")?;
         let uint32_t_layout = this.libc_ty_layout("uint32_t")?;
 
+        // We need to add 32 bits of padding after `st_rdev` if we are in a 64-bit platform. To do
+        // this, we store `st_rdev` as a `c_long` instead of a `dev_t`.
+        let st_rdev_layout = if this.tcx.sess.target.ptr_width == 64 {
+            long_layout
+        } else {
+            dev_t_layout
+        };
+
         let imms = [
             immty_from_uint_checked(0u128, dev_t_layout)?, // st_dev
             immty_from_uint_checked(mode, mode_t_layout)?, // st_mode
@@ -323,8 +332,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_uint_checked(0u128, ino_t_layout)?, // st_ino
             immty_from_uint_checked(0u128, uid_t_layout)?, // st_uid
             immty_from_uint_checked(0u128, gid_t_layout)?, // st_gid
-            immty_from_uint_checked(0u128, dev_t_layout)?, // st_rdev
-            immty_from_uint_checked(0u128, dev_t_layout)?, // padding
+            immty_from_uint_checked(0u128, st_rdev_layout)?, // st_rdev
             immty_from_uint_checked(access_sec, time_t_layout)?, // st_atime
             immty_from_uint_checked(access_nsec, long_layout)?, // st_atime_nsec
             immty_from_uint_checked(modified_sec, time_t_layout)?, // st_mtime
