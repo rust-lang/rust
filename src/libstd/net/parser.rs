@@ -363,6 +363,7 @@ pub struct AddrParseError(());
 
 #[stable(feature = "addr_parse_error_error", since = "1.4.0")]
 impl fmt::Display for AddrParseError {
+    #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.write_str(self.description())
     }
@@ -370,6 +371,7 @@ impl fmt::Display for AddrParseError {
 
 #[stable(feature = "addr_parse_error_error", since = "1.4.0")]
 impl Error for AddrParseError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "invalid IP address syntax"
     }

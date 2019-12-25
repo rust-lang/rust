@@ -878,6 +878,7 @@ impl NulError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for NulError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "nul byte found in data"
     }
@@ -903,6 +904,7 @@ impl From<NulError> for io::Error {
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl Error for FromBytesWithNulError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         match self.kind {
             FromBytesWithNulErrorKind::InteriorNul(..) => {
@@ -915,6 +917,7 @@ impl Error for FromBytesWithNulError {
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl fmt::Display for FromBytesWithNulError {
+    #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.description())?;
         if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
@@ -943,6 +946,7 @@ impl IntoStringError {
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl Error for IntoStringError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "C string contained non-utf8 bytes"
     }
@@ -954,6 +958,7 @@ impl Error for IntoStringError {
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl fmt::Display for IntoStringError {
+    #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.description().fmt(f)
     }

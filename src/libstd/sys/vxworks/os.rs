@@ -173,6 +173,7 @@ impl fmt::Display for JoinPathsError {
 }
 
 impl StdError for JoinPathsError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "failed to join paths"
     }

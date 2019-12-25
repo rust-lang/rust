@@ -345,11 +345,7 @@ impl fmt::Display for DecoderError {
     }
 }
 
-impl std::error::Error for DecoderError {
-    fn description(&self) -> &str {
-        "decoder error"
-    }
-}
+impl std::error::Error for DecoderError {}
 
 impl fmt::Display for EncoderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -358,11 +354,7 @@ impl fmt::Display for EncoderError {
     }
 }
 
-impl std::error::Error for EncoderError {
-    fn description(&self) -> &str {
-        "encoder error"
-    }
-}
+impl std::error::Error for EncoderError {}
 
 impl From<fmt::Error> for EncoderError {
     /// Converts a [`fmt::Error`] into `EncoderError`

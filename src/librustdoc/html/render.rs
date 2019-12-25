@@ -98,11 +98,7 @@ pub struct Error {
     pub error: io::Error,
 }
 
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        self.error.description()
-    }
-}
+impl error::Error for Error {}
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

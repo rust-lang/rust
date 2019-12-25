@@ -286,7 +286,7 @@ fn main() {
     let (format, dst) = parse_args();
     let result = syntax::with_default_globals(move || main_with_result(format, &dst));
     if let Err(e) = result {
-        panic!("{}", e.description());
+        panic!("{}", e.to_string());
     }
 }
 
