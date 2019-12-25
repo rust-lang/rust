@@ -1,11 +1,11 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "rustc"
+name = "rustc_hir"
 version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "rustc"
+name = "rustc_hir"
 path = "lib.rs"
 doctest = false
 
@@ -23,15 +23,14 @@ rustc-rayon-core = "0.3.0"
 polonius-engine = "0.11.0"
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_feature = { path = "../librustc_feature" }
-rustc_hir = { path = "../librustc_hir" }
 rustc_target = { path = "../librustc_target" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_index = { path = "../librustc_index" }
+rustc_span = { path = "../librustc_span" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
-rustc_span = { path = "../librustc_span" }
 backtrace = "0.3.40"
 parking_lot = "0.9"
 byteorder = { version = "1.3" }

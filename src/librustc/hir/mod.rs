@@ -34,7 +34,7 @@ use syntax::util::parser::ExprPrecedence;
 
 pub mod check_attr;
 pub mod def;
-pub mod def_id;
+pub use rustc_hir::def_id;
 pub mod intravisit;
 pub mod itemlikevisit;
 pub mod map;
