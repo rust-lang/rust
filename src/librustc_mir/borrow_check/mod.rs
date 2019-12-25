@@ -195,19 +195,24 @@ fn do_mir_borrowck<'a, 'tcx>(
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
     // Compute non-lexical lifetimes.
-    let nll::NllOutput { regioncx, polonius_output, opt_closure_req, nll_errors } =
-        nll::compute_regions(
-            infcx,
-            def_id,
-            free_regions,
-            body,
-            &promoted,
-            location_table,
-            param_env,
-            &mut flow_inits,
-            &mdpe.move_data,
-            &borrow_set,
-        );
+    let nll::NllOutput {
+        regioncx,
+        opaque_type_values,
+        polonius_output,
+        opt_closure_req,
+        nll_errors,
+    } = nll::compute_regions(
+        infcx,
+        def_id,
+        free_regions,
+        body,
+        &promoted,
+        location_table,
+        param_env,
+        &mut flow_inits,
+        &mdpe.move_data,
+        &borrow_set,
+    );
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
@@ -389,6 +394,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
 
     let result = BorrowCheckResult {
+        concrete_opaque_types: opaque_type_values,
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
     };
