@@ -351,6 +351,9 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                 InternKind::Static(hir::Mutability::Mut) => {}
                 // Once we get heap allocations we need to revisit whether immutable statics can
                 // refer to mutable (e.g. via interior mutability) allocations.
+                // Note: this is never the base value of the static, we can only get here for
+                // pointers encountered inside the base allocation, and then only for ones not at
+                // reference type, as that is checked by the type based main interner.
                 InternKind::Static(hir::Mutability::Not) => {
                     alloc.mutability = Mutability::Not;
                 }
@@ -385,6 +388,17 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // dangling pointer
             throw_unsup!(ValidationFailure("encountered dangling pointer in final constant".into()))
         } else if let Some(_) = ecx.tcx.alloc_map.lock().get(alloc_id) {
+            // If we encounter an `AllocId` that points to a mutable `Allocation`,
+            // (directly or via relocations in its `Allocation`), we should panic,
+            // the static rules should prevent this.
+            // We may hit an `AllocId` that belongs to an already interned static,
+            // and are thus not interning any further.
+            // But since we are also checking things during interning,
+            // we should probably continue doing those checks no matter what we encounter.
+
+            // E.g. this should be unreachable for `InternKind::Promoted` except for allocations
+            // created for string and byte string literals.
+
             // FIXME: check if the allocation is ok as per the interning rules as if we interned
             // it right here.
         } else {
