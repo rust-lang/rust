@@ -1,4 +1,4 @@
-use crate::ty::{self, TyCtxt};
+use crate::ty;
 use rustc_index::vec::Idx;
 use std::fmt;
 use std::u32;
@@ -145,12 +145,8 @@ impl DefId {
         LocalDefId::from_def_id(self)
     }
 
-    pub fn describe_as_module(&self, tcx: TyCtxt<'_>) -> String {
-        if self.is_local() && self.index == CRATE_DEF_INDEX {
-            format!("top-level module")
-        } else {
-            format!("module `{}`", tcx.def_path_str(*self))
-        }
+    pub fn is_top_level_module(self) -> bool {
+        self.is_local() && self.index == CRATE_DEF_INDEX
     }
 }
 

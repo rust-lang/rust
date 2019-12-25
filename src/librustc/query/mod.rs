@@ -16,6 +16,14 @@ use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use std::borrow::Cow;
 
+fn describe_as_module(def_id: DefId, tcx: TyCtxt<'_>) -> String {
+    if def_id.is_top_level_module() {
+        format!("top-level module")
+    } else {
+        format!("module `{}`", tcx.def_path_str(def_id))
+    }
+}
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -332,50 +340,50 @@ rustc_queries! {
 
     Other {
         query lint_mod(key: DefId) -> () {
-            desc { |tcx| "linting {}", key.describe_as_module(tcx) }
+            desc { |tcx| "linting {}", describe_as_module(key, tcx) }
         }
 
         /// Checks the attributes in the module.
         query check_mod_attrs(key: DefId) -> () {
-            desc { |tcx| "checking attributes in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "checking attributes in {}", describe_as_module(key, tcx) }
         }
 
         query check_mod_unstable_api_usage(key: DefId) -> () {
-            desc { |tcx| "checking for unstable API usage in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
         }
 
         /// Checks the const bodies in the module for illegal operations (e.g. `if` or `loop`).
         query check_mod_const_bodies(key: DefId) -> () {
-            desc { |tcx| "checking consts in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "checking consts in {}", describe_as_module(key, tcx) }
         }
 
         /// Checks the loops in the module.
         query check_mod_loops(key: DefId) -> () {
-            desc { |tcx| "checking loops in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
         }
 
         query check_mod_item_types(key: DefId) -> () {
-            desc { |tcx| "checking item types in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "checking item types in {}", describe_as_module(key, tcx) }
         }
 
         query check_mod_privacy(key: DefId) -> () {
-            desc { |tcx| "checking privacy in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
         }
 
         query check_mod_intrinsics(key: DefId) -> () {
-            desc { |tcx| "checking intrinsics in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "checking intrinsics in {}", describe_as_module(key, tcx) }
         }
 
         query check_mod_liveness(key: DefId) -> () {
-            desc { |tcx| "checking liveness of variables in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "checking liveness of variables in {}", describe_as_module(key, tcx) }
         }
 
         query check_mod_impl_wf(key: DefId) -> () {
-            desc { |tcx| "checking that impls are well-formed in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
         }
 
         query collect_mod_item_types(key: DefId) -> () {
-            desc { |tcx| "collecting item types in {}", key.describe_as_module(tcx) }
+            desc { |tcx| "collecting item types in {}", describe_as_module(key, tcx) }
         }
 
         /// Caches `CoerceUnsized` kinds for impls on custom types.
