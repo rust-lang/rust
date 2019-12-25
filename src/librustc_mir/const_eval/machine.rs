@@ -80,11 +80,11 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub struct MemoryExtra {
     /// Whether this machine may read from statics
-    can_access_statics: bool,
+    pub(super) can_access_statics: bool,
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         CompileTimeInterpreter {
             loop_detector: Default::default(),
             steps_since_detector_enabled: -STEPS_UNTIL_DETECTOR_ENABLED,

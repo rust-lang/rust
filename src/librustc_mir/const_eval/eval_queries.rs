@@ -1,4 +1,4 @@
-use super::{error_to_const_error, CompileTimeEvalContext, CompileTimeInterpreter};
+use super::{error_to_const_error, CompileTimeEvalContext, CompileTimeInterpreter, MemoryExtra};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, ImmTy, Immediate, InterpCx,
