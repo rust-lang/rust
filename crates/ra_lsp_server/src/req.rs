@@ -9,10 +9,10 @@ pub use lsp_types::{
     CodeLensParams, CompletionParams, CompletionResponse, DidChangeConfigurationParams,
     DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
     DocumentOnTypeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse,
-    FileSystemWatcher, Hover, InitializeResult, MessageType, PublishDiagnosticsParams,
-    ReferenceParams, Registration, RegistrationParams, SelectionRange, SelectionRangeParams,
-    ShowMessageParams, SignatureHelp, TextDocumentEdit, TextDocumentPositionParams, TextEdit,
-    WorkspaceEdit, WorkspaceSymbolParams,
+    FileSystemWatcher, Hover, InitializeResult, MessageType, ProgressParams, ProgressParamsValue,
+    ProgressToken, PublishDiagnosticsParams, ReferenceParams, Registration, RegistrationParams,
+    SelectionRange, SelectionRangeParams, ShowMessageParams, SignatureHelp, TextDocumentEdit,
+    TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
 };
 
 pub enum AnalyzerStatus {}

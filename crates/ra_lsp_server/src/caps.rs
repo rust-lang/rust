@@ -3,10 +3,10 @@
 use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
     DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
-    ImplementationProviderCapability, RenameOptions, RenameProviderCapability,
+    ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
     SelectionRangeProviderCapability, ServerCapabilities, SignatureHelpOptions,
     TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
-    TypeDefinitionProviderCapability, WorkDoneProgressOptions, SaveOptions
+    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {

@@ -23,8 +23,8 @@ use relative_path::RelativePathBuf;
 use std::path::{Component, Prefix};
 
 use crate::{
-    main_loop::pending_requests::{CompletedRequest, LatestRequests},
     cargo_check::{CheckWatcher, CheckWatcherSharedState},
+    main_loop::pending_requests::{CompletedRequest, LatestRequests},
     LspError, Result,
 };
 use std::str::FromStr;
