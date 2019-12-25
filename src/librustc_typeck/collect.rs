@@ -1464,7 +1464,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 }
                 // Opaque types desugared from `impl Trait`.
                 ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(owner), .. }) => {
-                    tcx.typeck_tables_of(owner)
+                    tcx.mir_borrowck(owner)
                         .concrete_opaque_types
                         .get(&def_id)
                         .map(|opaque| opaque.concrete_type)
@@ -1687,7 +1687,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 }
 
 fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
-    use rustc_hir::{ImplItem, Item, TraitItem};
+    use rustc_hir::{Expr, ImplItem, Item, TraitItem};
 
     debug!("find_opaque_ty_constraints({:?})", def_id);
 
@@ -1713,7 +1713,17 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 );
                 return;
             }
-            let ty = self.tcx.typeck_tables_of(def_id).concrete_opaque_types.get(&self.def_id);
+            // Calling `mir_borrowck` can lead to cycle errors through
+            // const-checking, avoid calling it if we don't have to.
+            if !self.tcx.typeck_tables_of(def_id).concrete_opaque_types.contains_key(&self.def_id) {
+                debug!(
+                    "find_opaque_ty_constraints: no constraint for `{:?}` at `{:?}`",
+                    self.def_id, def_id,
+                );
+                return;
+            }
+            // Use borrowck to get the type with unerased regions.
+            let ty = self.tcx.mir_borrowck(def_id).concrete_opaque_types.get(&self.def_id);
             if let Some(ty::ResolvedOpaqueTy { concrete_type, substs }) = ty {
                 debug!(
                     "find_opaque_ty_constraints: found constraint for `{:?}` at `{:?}`: {:?}",
@@ -1855,6 +1865,13 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
             intravisit::NestedVisitorMap::All(&self.tcx.hir())
+        }
+        fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+            if let hir::ExprKind::Closure(..) = ex.kind {
+                let def_id = self.tcx.hir().local_def_id(ex.hir_id);
+                self.check(def_id);
+            }
+            intravisit::walk_expr(self, ex);
         }
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
