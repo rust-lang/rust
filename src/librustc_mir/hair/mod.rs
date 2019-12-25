@@ -21,7 +21,7 @@ pub mod cx;
 
 pub mod pattern;
 pub(crate) use self::pattern::PatTyProj;
-pub use self::pattern::{BindingMode, FieldPat, Pat, PatKind, PatRange};
+pub use self::pattern::{Binding, BindingMode, FieldPat, Pat, PatKind, PatRange};
 
 mod util;
 

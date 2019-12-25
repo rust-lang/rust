@@ -45,6 +45,35 @@ pub enum BindingMode {
 }
 
 #[derive(Clone, Debug)]
+pub struct Binding<'tcx> {
+    pub mutability: Mutability,
+    pub name: ast::Name,
+    pub mode: BindingMode,
+    pub var: hir::HirId,
+    pub ty: Ty<'tcx>,
+}
+
+impl<'tcx> fmt::Display for Binding<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let is_mut = match self.mode {
+            BindingMode::ByValue => self.mutability == Mutability::Mut,
+            BindingMode::ByRef(bk) => {
+                write!(f, "ref ")?;
+                match bk {
+                    BorrowKind::Mut { .. } => true,
+                    _ => false,
+                }
+            }
+        };
+        if is_mut {
+            write!(f, "mut ")?;
+        }
+        write!(f, "{}", self.name)?;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct FieldPat<'tcx> {
     pub field: Field,
     pub pattern: Pat<'tcx>,
@@ -126,11 +155,7 @@ pub enum PatKind<'tcx> {
 
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
-        mutability: Mutability,
-        name: ast::Name,
-        mode: BindingMode,
-        var: hir::HirId,
-        ty: Ty<'tcx>,
+        binding: Binding<'tcx>,
         subpattern: Option<Pat<'tcx>>,
     },
 
@@ -207,21 +232,8 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
         match *self.kind {
             PatKind::Wild => write!(f, "_"),
             PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{}: _", subpattern),
-            PatKind::Binding { mutability, name, mode, ref subpattern, .. } => {
-                let is_mut = match mode {
-                    BindingMode::ByValue => mutability == Mutability::Mut,
-                    BindingMode::ByRef(bk) => {
-                        write!(f, "ref ")?;
-                        match bk {
-                            BorrowKind::Mut { .. } => true,
-                            _ => false,
-                        }
-                    }
-                };
-                if is_mut {
-                    write!(f, "mut ")?;
-                }
-                write!(f, "{}", name)?;
+            PatKind::Binding { ref binding, ref subpattern } => {
+                write!(f, "{}", binding)?;
                 if let Some(ref subpattern) = *subpattern {
                     write!(f, " @ {}", subpattern)?;
                 }
@@ -574,14 +586,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     }
                 };
 
-                PatKind::Binding {
-                    mutability,
-                    mode,
-                    name: ident.name,
-                    var: id,
-                    ty: var_ty,
-                    subpattern: self.lower_opt_pattern(sub),
-                }
+                let binding = Binding { mutability, mode, name: ident.name, var: id, ty: var_ty };
+                PatKind::Binding { binding, subpattern: self.lower_opt_pattern(sub) }
             }
 
             hir::PatKind::TupleStruct(ref qpath, ref pats, ddpos) => {
@@ -934,15 +940,18 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                     user_ty_span,
                 },
             },
-            PatKind::Binding { mutability, name, mode, var, ty, ref subpattern } => {
-                PatKind::Binding {
+            PatKind::Binding {
+                binding: Binding { mutability, name, mode, var, ty },
+                ref subpattern,
+            } => {
+                let binding = Binding {
                     mutability: mutability.fold_with(folder),
                     name: name.fold_with(folder),
                     mode: mode.fold_with(folder),
                     var: var.fold_with(folder),
                     ty: ty.fold_with(folder),
-                    subpattern: subpattern.fold_with(folder),
-                }
+                };
+                PatKind::Binding { binding, subpattern: subpattern.fold_with(folder) }
             }
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 PatKind::Variant {

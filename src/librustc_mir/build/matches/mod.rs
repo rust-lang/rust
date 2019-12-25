@@ -289,7 +289,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         match *irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
-            PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
+            PatKind::Binding {
+                binding:
+                    hair::Binding { mode: BindingMode::ByValue, var, mutability: _, ty: _, name: _ },
+                subpattern: None,
+            } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
                 unpack!(block = self.into(&place, block, initializer));
@@ -315,10 +319,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Pat {
                         kind:
                             box PatKind::Binding {
-                                mode: BindingMode::ByValue,
-                                var,
+                                binding:
+                                    hair::Binding {
+                                        mode: BindingMode::ByValue,
+                                        var,
+                                        mutability: _,
+                                        name: _,
+                                        ty: _,
+                                    },
                                 subpattern: None,
-                                ..
                             },
                         ..
                     },
@@ -522,7 +531,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         debug!("visit_bindings: pattern={:?} pattern_user_ty={:?}", pattern, pattern_user_ty);
         match *pattern.kind {
-            PatKind::Binding { mutability, name, mode, var, ty, ref subpattern, .. } => {
+            PatKind::Binding {
+                binding: hair::Binding { mutability, name, mode, var, ty },
+                ref subpattern,
+            } => {
                 f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
                 if let Some(subpattern) = subpattern.as_ref() {
                     self.visit_bindings(subpattern, pattern_user_ty, f);

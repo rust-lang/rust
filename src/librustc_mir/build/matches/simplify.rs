@@ -80,7 +80,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatKind::Binding { name, mutability, mode, var, ty, ref subpattern } => {
+            PatKind::Binding {
+                binding: hair::Binding { name, mutability, mode, var, ty },
+                ref subpattern,
+            } => {
                 candidate.bindings.push(Binding {
                     name,
                     mutability,

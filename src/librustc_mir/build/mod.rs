@@ -1,7 +1,7 @@
 use crate::build;
 use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
-use crate::hair::{BindingMode, LintLevel, PatKind};
+use crate::hair::{Binding, BindingMode, LintLevel, PatKind};
 use crate::transform::MirSource;
 use crate::util as mir_util;
 use rustc::hir;
@@ -862,11 +862,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 match *pattern.kind {
                     // Don't introduce extra copies for simple bindings
                     PatKind::Binding {
-                        mutability,
-                        var,
-                        mode: BindingMode::ByValue,
+                        binding:
+                            Binding { mode: BindingMode::ByValue, mutability, var, ty: _, name: _ },
                         subpattern: None,
-                        ..
                     } => {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].source_info.scope = self.source_scope;
