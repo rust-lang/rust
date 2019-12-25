@@ -149,18 +149,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
             if ecx.tcx.is_const_fn_raw(def_id) {
-                // If this function is a `const fn` then as an optimization we can query this
-                // evaluation immediately.
-                //
-                // For the moment we only do this for functions which take no arguments
-                // (or all arguments are ZSTs) so that we don't memoize too much.
-                //
-                // Because `#[track_caller]` adds an implicit non-ZST argument, we also cannot
-                // perform this optimization on items tagged with it.
-                let no_implicit_args = !instance.def.requires_caller_location(ecx.tcx());
-                if args.iter().all(|a| a.layout.is_zst()) && no_implicit_args {
-                    let gid = GlobalId { instance, promoted: None };
-                    ecx.eval_const_fn_call(gid, ret)?;
+                // If this function is a `const fn` then under certain circumstances we
+                // can evaluate call via the query system, thus memoizing all future calls.
+                if ecx.try_eval_const_fn_call(instance, ret, args)? {
                     return Ok(None);
                 }
             } else {
@@ -324,5 +315,45 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         } else {
             Err(ConstEvalError::ConstAccessesStatic.into())
         }
+    }
+}
+
+impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
+    /// Evaluate a const function where all arguments (if any) are zero-sized types.
+    /// The evaluation is memoized thanks to the query system.
+    ///
+    /// Returns `true` if the call has been evaluated.
+    fn try_eval_const_fn_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        args: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, bool> {
+        trace!("try_eval_const_fn_call: {:?}", instance);
+        // Because `#[track_caller]` adds an implicit non-ZST argument, we also cannot
+        // perform this optimization on items tagged with it.
+        if instance.def.requires_caller_location(self.tcx()) {
+            return Ok(false);
+        }
+        // For the moment we only do this for functions which take no arguments
+        // (or all arguments are ZSTs) so that we don't memoize too much.
+        if args.iter().any(|a| !a.layout.is_zst()) {
+            return Ok(false);
+        }
+
+        let gid = GlobalId { instance, promoted: None };
+
+        let place = self.const_eval_raw(gid)?;
+        let dest = match ret {
+            Some((dest, _)) => dest,
+            // Don't memoize diverging function calls.
+            None => return Ok(false),
+        };
+
+        self.copy_op(place.into(), dest)?;
+
+        self.return_to_block(ret.map(|r| r.1))?;
+        self.dump_place(*dest);
+        return Ok(true);
     }
 }
