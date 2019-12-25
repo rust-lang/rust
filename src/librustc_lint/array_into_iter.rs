@@ -44,14 +44,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIntoIter {
             // argument.
             let receiver_arg = &args[0];
 
-            // Test if the original `self` type is an array type.
-            match cx.tables.expr_ty(receiver_arg).kind {
-                ty::Array(..) => {}
-                _ => return,
+            // Peel all `Box<_>` layers. We have to special case `Box` here as
+            // `Box` is the only thing that values can be moved out of via
+            // method call. `Box::new([1]).into_iter()` should trigger this
+            // lint.
+            let mut recv_ty = cx.tables.expr_ty(receiver_arg);
+            let mut num_box_derefs = 0;
+            while recv_ty.is_box() {
+                num_box_derefs += 1;
+                recv_ty = recv_ty.boxed_ty();
             }
 
-            // Make sure that the first adjustment is an autoref coercion.
-            match cx.tables.expr_adjustments(receiver_arg).get(0) {
+            // Make sure we found an array after peeling the boxes.
+            if !matches!(recv_ty.kind, ty::Array(..)) {
+                return;
+            }
+
+            // Make sure that there is an autoref coercion at the expected
+            // position. The first `num_box_derefs` adjustments are the derefs
+            // of the box.
+            match cx.tables.expr_adjustments(receiver_arg).get(num_box_derefs) {
                 Some(Adjustment { kind: Adjust::Borrow(_), .. }) => {}
                 _ => return,
             }
