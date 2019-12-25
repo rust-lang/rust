@@ -43,7 +43,7 @@ fn no_todo() {
             return;
         }
         let text = std::fs::read_to_string(e.path()).unwrap();
-        if text.contains("TODO") || text.contains("TOOD") {
+        if text.contains("TODO") || text.contains("TOOD") || text.contains("todo!") {
             panic!(
                 "\nTODO markers should not be committed to the master branch,\n\
                  use FIXME instead\n\
