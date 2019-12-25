@@ -6,9 +6,8 @@ use std::fmt;
 use std::hash::Hash;
 
 use rustc::mir;
-use rustc::mir::interpret::ScalarMaybeUndef;
-use rustc::ty::layout::{self, LayoutOf, VariantIdx};
-use rustc::ty::{self, subst::Subst, TyCtxt};
+use rustc::ty::layout::{self, VariantIdx};
+use rustc::ty::{self, TyCtxt};
 
 use syntax::{
     source_map::{Span, DUMMY_SP},
@@ -16,8 +15,7 @@ use syntax::{
 };
 
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, ImmTy, Immediate, InterpCx,
-    InterpResult, MPlaceTy, MemoryKind, OpTy, Scalar, StackPopCleanup,
+    intern_const_alloc_recursive, Allocation, ConstValue, ImmTy, Immediate, InterpCx, OpTy, Scalar,
 };
 
 mod error;
@@ -119,49 +117,6 @@ fn op_to_const<'tcx>(
         }
     };
     ecx.tcx.mk_const(ty::Const { val: ty::ConstKind::Value(val), ty: op.layout.ty })
-}
-
-// Returns a pointer to where the result lives
-fn eval_body_using_ecx<'mir, 'tcx>(
-    ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
-    cid: GlobalId<'tcx>,
-    body: &'mir mir::Body<'tcx>,
-) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
-    let tcx = ecx.tcx.tcx;
-    let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
-    assert!(!layout.is_unsized());
-    let ret = ecx.allocate(layout, MemoryKind::Stack);
-
-    let name = ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()));
-    let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
-    trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
-
-    // Assert all args (if any) are zero-sized types; `eval_body_using_ecx` doesn't
-    // make sense if the body is expecting nontrivial arguments.
-    // (The alternative would be to use `eval_fn_call` with an args slice.)
-    for arg in body.args_iter() {
-        let decl = body.local_decls.get(arg).expect("arg missing from local_decls");
-        let layout = ecx.layout_of(decl.ty.subst(tcx, cid.instance.substs))?;
-        assert!(layout.is_zst())
-    }
-
-    ecx.push_stack_frame(
-        cid.instance,
-        body.span,
-        body,
-        Some(ret.into()),
-        StackPopCleanup::None { cleanup: false },
-    )?;
-
-    // The main interpreter loop.
-    ecx.run()?;
-
-    // Intern the result
-    intern_const_alloc_recursive(ecx, tcx.static_mutability(cid.instance.def_id()), ret)?;
-
-    debug!("eval_body_using_ecx done: {:?}", *ret);
-    Ok(ret)
 }
 
 /// Extracts a field of a (variant of a) const.
