@@ -268,6 +268,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
+            throw_unsup_format!("The `stat` shim is only only available in the `macos` platform.")
+        }
+
         let path_scalar = this.read_scalar(path_op)?.not_undef()?;
         let path = this.read_os_str_from_c_str(path_scalar)?;
 
