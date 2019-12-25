@@ -51,7 +51,5 @@ fn main() {
     // Removing a non-existing file should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, remove_file(&path).unwrap_err().kind());
     // Reading the metadata of a non-existing file should fail with a "not found" error.
-    if cfg!(target_os = "linux") { // FIXME: Implement stat64 for macos.
-        assert_eq!(ErrorKind::NotFound, test_metadata(bytes, &path).unwrap_err().kind());
-    }
+    assert_eq!(ErrorKind::NotFound, test_metadata(bytes, &path).unwrap_err().kind());
 }
