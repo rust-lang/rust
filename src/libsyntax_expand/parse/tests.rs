@@ -166,20 +166,13 @@ fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
         spans: Vec<Span>,
     }
     impl<'a> visit::Visitor<'a> for PatIdentVisitor {
-        fn visit_pat(&mut self, p: &'a ast::Pat) {
-            match p.kind {
-                PatKind::Ident(_, ref ident, _) => {
-                    self.spans.push(ident.span.clone());
-                }
-                _ => {
-                    visit::walk_pat(self, p);
-                }
-            }
+        fn visit_binding(&mut self, ast::Binding(_, ast::Ident { span, .. }): &'a ast::Binding) {
+            self.spans.push(*span);
         }
     }
     let mut v = PatIdentVisitor { spans: Vec::new() };
     visit::walk_item(&mut v, &item);
-    return v.spans;
+    v.spans
 }
 
 #[test]

@@ -3,7 +3,7 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use syntax::ast::{self, AttrVec, Attribute, FieldPat, Mac, Pat, PatKind, RangeEnd, RangeSyntax};
 use syntax::ast::{Binding, BindingMode, Expr, ExprKind, Ident, Mutability, Path, QSelf};
-use syntax::mut_visit::{noop_visit_mac, noop_visit_pat, MutVisitor};
+use syntax::mut_visit::{noop_visit_binding, noop_visit_mac, MutVisitor};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::token;
@@ -560,16 +560,12 @@ impl<'a> Parser<'a> {
                 noop_visit_mac(mac, self);
             }
 
-            fn visit_pat(&mut self, pat: &mut P<Pat>) {
-                if let PatKind::Binding(
-                    Binding(BindingMode::ByValue(ref mut m @ Mutability::Not), _),
-                    _,
-                ) = pat.kind
-                {
+            fn visit_binding(&mut self, binding: &mut Binding) {
+                if let BindingMode::ByValue(m @ Mutability::Not) = &mut binding.0 {
                     *m = Mutability::Mut;
                     self.0 = true;
                 }
-                noop_visit_pat(pat, self);
+                noop_visit_binding(binding, self);
             }
         }
 

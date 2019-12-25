@@ -882,14 +882,15 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
 
 // An AST visitor for collecting paths (e.g., the names of structs) and formal
 // variables (idents) from patterns.
+#[derive(Default)]
 struct PathCollector<'l> {
     collected_paths: Vec<(NodeId, &'l ast::Path)>,
     collected_idents: Vec<(NodeId, ast::Ident, ast::Mutability)>,
 }
 
 impl<'l> PathCollector<'l> {
-    fn new() -> PathCollector<'l> {
-        PathCollector { collected_paths: vec![], collected_idents: vec![] }
+    fn new() -> Self {
+        Self::default()
     }
 }
 
