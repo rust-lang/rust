@@ -421,6 +421,12 @@ impl<'tcx, Tag> Scalar<Tag> {
         Ok(b as u8)
     }
 
+    pub fn to_u16(self) -> InterpResult<'static, u16> {
+        let sz = Size::from_bits(16);
+        let b = self.to_bits(sz)?;
+        Ok(b as u16)
+    }
+
     pub fn to_u32(self) -> InterpResult<'static, u32> {
         let sz = Size::from_bits(32);
         let b = self.to_bits(sz)?;
@@ -443,6 +449,13 @@ impl<'tcx, Tag> Scalar<Tag> {
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
         Ok(b as i8)
+    }
+
+    pub fn to_i16(self) -> InterpResult<'static, i16> {
+        let sz = Size::from_bits(16);
+        let b = self.to_bits(sz)?;
+        let b = sign_extend(b, sz) as i128;
+        Ok(b as i16)
     }
 
     pub fn to_i32(self) -> InterpResult<'static, i32> {
