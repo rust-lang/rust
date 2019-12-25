@@ -5,7 +5,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
-use crate::interpret::{intern_const_alloc_recursive, ConstValue, InterpCx};
+use crate::interpret::{intern_const_alloc_recursive, ConstValue, InternKind, InterpCx};
 
 mod error;
 mod eval_queries;
@@ -52,7 +52,7 @@ pub(crate) fn const_caller_location<'tcx>(
 
     let loc_ty = tcx.caller_location_ty();
     let loc_place = ecx.alloc_caller_location(file, line, col);
-    intern_const_alloc_recursive(&mut ecx, None, loc_place, false).unwrap();
+    intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place, false).unwrap();
     let loc_const = ty::Const {
         ty: loc_ty,
         val: ty::ConstKind::Value(ConstValue::Scalar(loc_place.ptr.into())),
