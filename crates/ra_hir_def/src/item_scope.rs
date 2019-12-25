@@ -149,16 +149,8 @@ impl ItemScope {
         changed
     }
 
-    #[cfg(test)]
-    pub(crate) fn collect_resolutions(&self) -> Vec<(Name, PerNs)> {
-        self.visible.iter().map(|(name, res)| (name.clone(), res.clone())).collect()
-    }
-
-    pub(crate) fn collect_resolutions_with_vis(
-        &self,
-        vis: ResolvedVisibility,
-    ) -> Vec<(Name, PerNs)> {
-        self.visible.iter().map(|(name, res)| (name.clone(), res.with_visibility(vis))).collect()
+    pub(crate) fn resolutions<'a>(&'a self) -> impl Iterator<Item = (Name, PerNs)> + 'a {
+        self.visible.iter().map(|(name, res)| (name.clone(), res.clone()))
     }
 
     pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroDefId> {

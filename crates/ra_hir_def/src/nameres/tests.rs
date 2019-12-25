@@ -12,8 +12,8 @@ use test_utils::covers;
 
 use crate::{db::DefDatabase, nameres::*, test_db::TestDB, LocalModuleId};
 
-fn def_map(fixtute: &str) -> String {
-    let dm = compute_crate_def_map(fixtute);
+fn def_map(fixture: &str) -> String {
+    let dm = compute_crate_def_map(fixture);
     render_crate_def_map(&dm)
 }
 
@@ -32,7 +32,7 @@ fn render_crate_def_map(map: &CrateDefMap) -> String {
         *buf += path;
         *buf += "\n";
 
-        let mut entries = map.modules[module].scope.collect_resolutions();
+        let mut entries: Vec<_> = map.modules[module].scope.resolutions().collect();
         entries.sort_by_key(|(name, _)| name.clone());
 
         for (name, def) in entries {

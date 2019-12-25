@@ -116,7 +116,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         let events = db.log_executed(|| {
             let crate_def_map = db.crate_def_map(krate);
             let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
-            assert_eq!(module_data.scope.collect_resolutions().len(), 1);
+            assert_eq!(module_data.scope.resolutions().collect::<Vec<_>>().len(), 1);
         });
         assert!(format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
     }
@@ -126,7 +126,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         let events = db.log_executed(|| {
             let crate_def_map = db.crate_def_map(krate);
             let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
-            assert_eq!(module_data.scope.collect_resolutions().len(), 1);
+            assert_eq!(module_data.scope.resolutions().collect::<Vec<_>>().len(), 1);
         });
         assert!(!format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
     }

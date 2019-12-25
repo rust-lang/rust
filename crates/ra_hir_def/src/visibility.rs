@@ -134,13 +134,25 @@ impl ResolvedVisibility {
         if from_module.krate != to_module.krate {
             return false;
         }
-        // from_module needs to be a descendant of to_module
         let def_map = db.crate_def_map(from_module.krate);
+        self.visible_from_def_map(&def_map, from_module.local_id)
+    }
+
+    pub(crate) fn visible_from_def_map(
+        self,
+        def_map: &crate::nameres::CrateDefMap,
+        from_module: crate::LocalModuleId,
+    ) -> bool {
+        let to_module = match self {
+            ResolvedVisibility::Module(m) => m,
+            ResolvedVisibility::Public => return true,
+        };
+        // from_module needs to be a descendant of to_module
         let mut ancestors = std::iter::successors(Some(from_module), |m| {
-            let parent_id = def_map[m.local_id].parent?;
-            Some(ModuleId { local_id: parent_id, ..*m })
+            let parent_id = def_map[*m].parent?;
+            Some(parent_id)
         });
-        ancestors.any(|m| m == to_module)
+        ancestors.any(|m| m == to_module.local_id)
     }
 }
 

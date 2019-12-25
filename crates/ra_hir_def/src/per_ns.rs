@@ -61,6 +61,14 @@ impl PerNs {
         self.macros.map(|it| it.0)
     }
 
+    pub fn filter_visibility(self, mut f: impl FnMut(ResolvedVisibility) -> bool) -> PerNs {
+        PerNs {
+            types: self.types.filter(|(_, v)| f(*v)),
+            values: self.values.filter(|(_, v)| f(*v)),
+            macros: self.macros.filter(|(_, v)| f(*v)),
+        }
+    }
+
     pub fn with_visibility(self, vis: ResolvedVisibility) -> PerNs {
         PerNs {
             types: self.types.map(|(it, _)| (it, vis)),
