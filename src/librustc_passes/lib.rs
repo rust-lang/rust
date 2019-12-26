@@ -28,6 +28,7 @@ mod intrinsicck;
 pub mod layout_test;
 mod liveness;
 pub mod loops;
+mod reachable;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_const::provide(providers);
@@ -35,4 +36,5 @@ pub fn provide(providers: &mut Providers<'_>) {
     loops::provide(providers);
     liveness::provide(providers);
     intrinsicck::provide(providers);
+    reachable::provide(providers);
 }

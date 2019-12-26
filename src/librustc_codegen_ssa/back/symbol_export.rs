@@ -65,7 +65,6 @@ fn reachable_non_generics_provider(
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
         .reachable_set(LOCAL_CRATE)
-        .0
         .iter()
         .filter_map(|&hir_id| {
             // We want to ignore some FFI functions that are not exposed from
@@ -313,7 +312,7 @@ fn upstream_monomorphizations_for_provider(
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
-        !tcx.reachable_set(LOCAL_CRATE).0.contains(&hir_id)
+        !tcx.reachable_set(LOCAL_CRATE).contains(&hir_id)
     } else {
         bug!("is_unreachable_local_definition called with non-local DefId: {:?}", def_id)
     }

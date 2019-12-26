@@ -105,7 +105,6 @@ pub mod middle {
     pub mod lang_items;
     pub mod lib_features;
     pub mod privacy;
-    pub mod reachable;
     pub mod recursion_limit;
     pub mod region;
     pub mod resolve_lifetime;
