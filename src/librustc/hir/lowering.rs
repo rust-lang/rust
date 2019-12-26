@@ -46,6 +46,7 @@ use crate::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
 use crate::middle::cstore::CrateStore;
 use crate::session::config::nightly_options;
 use crate::session::Session;
+use crate::util::captures::Captures;
 use crate::util::common::FN_OUTPUT_NAME;
 use crate::util::nodemap::{DefIdMap, NodeMap};
 use errors::Applicability;
@@ -897,7 +898,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             });
 
         let mut lowered_params: Vec<_> =
-            lowered_generics.params.into_iter().chain(in_band_defs.into_iter()).collect();
+            lowered_generics.params.into_iter().chain(in_band_defs).collect();
 
         // FIXME(const_generics): the compiler doesn't always cope with
         // unsorted generic parameters at the moment, so we make sure
@@ -2489,9 +2490,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         add_bounds: &NodeMap<Vec<GenericBound>>,
         mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::GenericParam<'hir> {
-        let mut bounds = self
+        let mut bounds: Vec<_> = self
             .with_anonymous_lifetime_mode(AnonymousLifetimeMode::ReportError, |this| {
-                this.lower_param_bounds_mut(&param.bounds, itctx.reborrow())
+                this.lower_param_bounds_mut(&param.bounds, itctx.reborrow()).collect()
             });
 
         let (name, kind) = match param.kind {
@@ -2609,12 +2610,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc_from_iter(self.lower_param_bounds_mut(bounds, itctx))
     }
 
-    fn lower_param_bounds_mut(
-        &mut self,
-        bounds: &[GenericBound],
-        mut itctx: ImplTraitContext<'_, 'hir>,
-    ) -> Vec<hir::GenericBound<'hir>> {
-        bounds.iter().map(|bound| self.lower_param_bound(bound, itctx.reborrow())).collect()
+    fn lower_param_bounds_mut<'s>(
+        &'s mut self,
+        bounds: &'s [GenericBound],
+        mut itctx: ImplTraitContext<'s, 'hir>,
+    ) -> impl Iterator<Item = hir::GenericBound<'hir>> + Captures<'s> + Captures<'a> {
+        bounds.iter().map(move |bound| self.lower_param_bound(bound, itctx.reborrow()))
     }
 
     fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> &'hir hir::Block<'hir> {
