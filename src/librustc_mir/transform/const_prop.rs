@@ -20,7 +20,7 @@ use rustc::ty::layout::{
     HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
 };
 use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
+use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use syntax::ast::Mutability;
@@ -418,6 +418,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<Const<'tcx>> {
+        // `eval_const_to_op` uses `Instance::resolve` which still has a bug (#66901) in the
+        // presence of trait items with a default body. So we just bail out if we aren't 100%
+        // monomorphic.
+        if c.literal.needs_subst() {
+            return None;
+        }
         self.ecx.tcx.span = c.span;
         match self.ecx.eval_const_to_op(c.literal, None) {
             Ok(op) => Some(op),
