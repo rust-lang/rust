@@ -239,6 +239,7 @@ pub mod misc_early;
 pub mod missing_const_for_fn;
 pub mod missing_doc;
 pub mod missing_inline;
+pub mod modulo_arithmetic;
 pub mod mul_add;
 pub mod multiple_crate_versions;
 pub mod mut_key;
@@ -667,6 +668,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &missing_const_for_fn::MISSING_CONST_FOR_FN,
         &missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
         &missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
+        &modulo_arithmetic::MODULO_ARITHMETIC,
         &mul_add::MANUAL_MUL_ADD,
         &multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
         &mut_key::MUTABLE_KEY_TYPE,
@@ -943,6 +945,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box comparison_chain::ComparisonChain);
     store.register_late_pass(|| box mul_add::MulAddCheck);
     store.register_late_pass(|| box mut_key::MutableKeyType);
+    store.register_late_pass(|| box modulo_arithmetic::ModuloArithmetic);
     store.register_early_pass(|| box reference::DerefAddrOf);
     store.register_early_pass(|| box reference::RefInDeref);
     store.register_early_pass(|| box double_parens::DoubleParens);
@@ -1003,6 +1006,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&misc::FLOAT_CMP_CONST),
         LintId::of(&missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
         LintId::of(&missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS),
+        LintId::of(&modulo_arithmetic::MODULO_ARITHMETIC),
         LintId::of(&panic_unimplemented::PANIC),
         LintId::of(&panic_unimplemented::TODO),
         LintId::of(&panic_unimplemented::UNIMPLEMENTED),
