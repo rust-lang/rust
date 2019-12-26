@@ -618,14 +618,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 if let mir::PlaceRef {
                                     base:
                                         &PlaceBase::Static(box Static {
-                                            kind: StaticKind::Promoted(promoted, _),
+                                            kind: StaticKind::Promoted(promoted, substs),
                                             ty,
-                                            def_id: _,
+                                            def_id,
                                         }),
                                     projection: &[],
                                 } = place.as_ref()
                                 {
-                                    let c = bx.tcx().const_eval_promoted(self.instance, promoted);
+                                    let c = bx.tcx().const_eval_promoted(
+                                        Instance::new(def_id, self.monomorphize(&substs)),
+                                        promoted,
+                                    );
                                     let (llval, ty) = self.simd_shuffle_indices(
                                         &bx,
                                         terminator.source_info.span,
