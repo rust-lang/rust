@@ -17,18 +17,11 @@
 #![feature(panic_runtime)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
+#![feature(raw)]
 
-// Rust's "try" function, but if we're aborting on panics we just call the
-// function as there's nothing else we need to do here.
 #[rustc_std_internal_symbol]
-pub unsafe extern "C" fn __rust_maybe_catch_panic(
-    f: fn(*mut u8),
-    data: *mut u8,
-    _data_ptr: *mut usize,
-    _vtable_ptr: *mut usize,
-) -> u32 {
-    f(data);
-    0
+pub unsafe extern "C" fn __rust_cleanup(_: *mut u8) -> core::raw::TraitObject {
+    unreachable!()
 }
 
 // "Leak" the payload and shim to the relevant abort on the platform in
