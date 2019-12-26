@@ -1,13 +1,16 @@
 error[E0382]: use of moved value: `t`
   --> $DIR/issue-67123.rs:2:13
    |
-LL | fn foo<T>(t: T) {
-   |        - help: consider restricting this bound: `T: Copy`
 LL |     || { t; t; };
    |          -  ^ value used here after move
    |          |
    |          value moved here
    |
+help: consider restricting this type parameter with `T: Copy`
+  --> $DIR/issue-67123.rs:1:8
+   |
+LL | fn foo<T>(t: T) {
+   |        ^
    = note: move occurs because `t` has type `T`, which does not implement the `Copy` trait
 
 error: aborting due to previous error

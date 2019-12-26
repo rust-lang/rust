@@ -27,6 +27,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
+use rustc_span::source_map::SourceMap;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 use syntax::ast;
@@ -1424,5 +1426,231 @@ impl ArgKind {
             ),
             _ => ArgKind::Arg("_".to_owned(), t.to_string()),
         }
+    }
+}
+
+/// Suggest restricting a type param with a new bound.
+pub fn suggest_constraining_type_param(
+    tcx: TyCtxt<'_>,
+    generics: &hir::Generics<'_>,
+    err: &mut DiagnosticBuilder<'_>,
+    param_name: &str,
+    constraint: &str,
+    source_map: &SourceMap,
+    span: Span,
+    def_id: Option<DefId>,
+) -> bool {
+    const MSG_RESTRICT_BOUND_FURTHER: &str = "consider further restricting this bound with";
+    const MSG_RESTRICT_TYPE: &str = "consider restricting this type parameter with";
+    const MSG_RESTRICT_TYPE_FURTHER: &str = "consider further restricting this type parameter with";
+
+    let param = generics.params.iter().filter(|p| p.name.ident().as_str() == param_name).next();
+
+    let param = if let Some(param) = param {
+        param
+    } else {
+        return false;
+    };
+
+    if def_id == tcx.lang_items().sized_trait() {
+        // Type parameters are already `Sized` by default.
+        err.span_label(param.span, &format!("this type parameter needs to be `{}`", constraint));
+        return true;
+    }
+
+    if param_name.starts_with("impl ") {
+        // If there's an `impl Trait` used in argument position, suggest
+        // restricting it:
+        //
+        //   fn foo(t: impl Foo) { ... }
+        //             --------
+        //             |
+        //             help: consider further restricting this bound with `+ Bar`
+        //
+        // Suggestion for tools in this case is:
+        //
+        //   fn foo(t: impl Foo) { ... }
+        //             --------
+        //             |
+        //             replace with: `impl Foo + Bar`
+
+        err.span_help(param.span, &format!("{} `+ {}`", MSG_RESTRICT_BOUND_FURTHER, constraint));
+
+        err.tool_only_span_suggestion(
+            param.span,
+            MSG_RESTRICT_BOUND_FURTHER,
+            format!("{} + {}", param_name, constraint),
+            Applicability::MachineApplicable,
+        );
+
+        return true;
+    }
+
+    if generics.where_clause.predicates.is_empty() {
+        if let Some(bounds_span) = param.bounds_span() {
+            // If user has provided some bounds, suggest restricting them:
+            //
+            //   fn foo<T: Foo>(t: T) { ... }
+            //             ---
+            //             |
+            //             help: consider further restricting this bound with `+ Bar`
+            //
+            // Suggestion for tools in this case is:
+            //
+            //   fn foo<T: Foo>(t: T) { ... }
+            //          --
+            //          |
+            //          replace with: `T: Bar +`
+
+            err.span_help(
+                bounds_span,
+                &format!("{} `+ {}`", MSG_RESTRICT_BOUND_FURTHER, constraint),
+            );
+
+            let span_hi = param.span.with_hi(span.hi());
+            let span_with_colon = source_map.span_through_char(span_hi, ':');
+
+            if span_hi != param.span && span_with_colon != span_hi {
+                err.tool_only_span_suggestion(
+                    span_with_colon,
+                    MSG_RESTRICT_BOUND_FURTHER,
+                    format!("{}: {} + ", param_name, constraint),
+                    Applicability::MachineApplicable,
+                );
+            }
+        } else {
+            // If user hasn't provided any bounds, suggest adding a new one:
+            //
+            //   fn foo<T>(t: T) { ... }
+            //          - help: consider restricting this type parameter with `T: Foo`
+
+            err.span_help(
+                param.span,
+                &format!("{} `{}: {}`", MSG_RESTRICT_TYPE, param_name, constraint),
+            );
+
+            err.tool_only_span_suggestion(
+                param.span,
+                MSG_RESTRICT_TYPE,
+                format!("{}: {}", param_name, constraint),
+                Applicability::MachineApplicable,
+            );
+        }
+
+        true
+    } else {
+        // This part is a bit tricky, because using the `where` clause user can
+        // provide zero, one or many bounds for the same type parameter, so we
+        // have following cases to consider:
+        //
+        // 1) When the type parameter has been provided zero bounds
+        //
+        //    Message:
+        //      fn foo<X, Y>(x: X, y: Y) where Y: Foo { ... }
+        //             - help: consider restricting this type parameter with `where X: Bar`
+        //
+        //    Suggestion:
+        //      fn foo<X, Y>(x: X, y: Y) where Y: Foo { ... }
+        //                                           - insert: `, X: Bar`
+        //
+        //
+        // 2) When the type parameter has been provided one bound
+        //
+        //    Message:
+        //      fn foo<T>(t: T) where T: Foo { ... }
+        //                            ^^^^^^
+        //                            |
+        //                            help: consider further restricting this bound with `+ Bar`
+        //
+        //    Suggestion:
+        //      fn foo<T>(t: T) where T: Foo { ... }
+        //                            ^^
+        //                            |
+        //                            replace with: `T: Bar +`
+        //
+        //
+        // 3) When the type parameter has been provided many bounds
+        //
+        //    Message:
+        //      fn foo<T>(t: T) where T: Foo, T: Bar {... }
+        //             - help: consider further restricting this type parameter with `where T: Zar`
+        //
+        //    Suggestion:
+        //      fn foo<T>(t: T) where T: Foo, T: Bar {... }
+        //                                          - insert: `, T: Zar`
+
+        let mut param_spans = Vec::new();
+
+        for predicate in generics.where_clause.predicates {
+            if let WherePredicate::BoundPredicate(WhereBoundPredicate {
+                span, bounded_ty, ..
+            }) = predicate
+            {
+                if let TyKind::Path(QPath::Resolved(_, path)) = &bounded_ty.kind {
+                    if let Some(segment) = path.segments.first() {
+                        if segment.ident.to_string() == param_name {
+                            param_spans.push(span);
+                        }
+                    }
+                }
+            }
+        }
+
+        let where_clause_span =
+            generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi();
+
+        match &param_spans[..] {
+            &[] => {
+                err.span_help(
+                    param.span,
+                    &format!("{} `where {}: {}`", MSG_RESTRICT_TYPE, param_name, constraint),
+                );
+
+                err.tool_only_span_suggestion(
+                    where_clause_span,
+                    MSG_RESTRICT_TYPE,
+                    format!(", {}: {}", param_name, constraint),
+                    Applicability::MachineApplicable,
+                );
+            }
+
+            &[&param_span] => {
+                err.span_help(
+                    param_span,
+                    &format!("{} `+ {}`", MSG_RESTRICT_BOUND_FURTHER, constraint),
+                );
+
+                let span_hi = param_span.with_hi(span.hi());
+                let span_with_colon = source_map.span_through_char(span_hi, ':');
+
+                if span_hi != param_span && span_with_colon != span_hi {
+                    err.tool_only_span_suggestion(
+                        span_with_colon,
+                        MSG_RESTRICT_BOUND_FURTHER,
+                        format!("{}: {} +", param_name, constraint),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+
+            _ => {
+                err.span_help(
+                    param.span,
+                    &format!(
+                        "{} `where {}: {}`",
+                        MSG_RESTRICT_TYPE_FURTHER, param_name, constraint,
+                    ),
+                );
+
+                err.tool_only_span_suggestion(
+                    where_clause_span,
+                    MSG_RESTRICT_BOUND_FURTHER,
+                    format!(", {}: {}", param_name, constraint),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+
+        true
     }
 }

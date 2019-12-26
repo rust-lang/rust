@@ -5,9 +5,13 @@ LL | trait MustBeCopy<T:Copy> {
    | ------------------------ required by `MustBeCopy`
 ...
 LL |     where T: MustBeCopy<U>
-   |              ^^^^^^^^^^^^^- help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
-   |              |
-   |              the trait `std::marker::Copy` is not implemented for `U`
+   |              ^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `U`
+   |
+help: consider restricting this type parameter with `where U: std::marker::Copy`
+  --> $DIR/wf-in-fn-where-clause.rs:9:10
+   |
+LL | fn bar<T,U>()
+   |          ^
 
 error: aborting due to previous error
 

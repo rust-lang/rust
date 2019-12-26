@@ -4,10 +4,10 @@ use super::{
 };
 
 use crate::infer::InferCtxt;
+use crate::traits::error_reporting::suggest_constraining_type_param;
 use crate::traits::object_safety::object_safety_violations;
 use crate::ty::TypeckTables;
 use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-
 use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style,
 };
@@ -16,7 +16,6 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
-use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
@@ -430,12 +429,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             .span_take_while(span, |c| c.is_whitespace() || *c == '&');
 
                         let remove_refs = refs_remaining + 1;
-                        let format_str =
-                            format!("consider removing {} leading `&`-references", remove_refs);
+
+                        let msg = if remove_refs == 1 {
+                            "consider removing the leading `&`-reference".to_string()
+                        } else {
+                            format!("consider removing {} leading `&`-references", remove_refs)
+                        };
 
                         err.span_suggestion_short(
                             sp,
-                            &format_str,
+                            &msg,
                             String::new(),
                             Applicability::MachineApplicable,
                         );
@@ -1650,85 +1653,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             suggested_limit, self.tcx.crate_name,
         ));
     }
-}
-
-/// Suggest restricting a type param with a new bound.
-pub fn suggest_constraining_type_param(
-    tcx: TyCtxt<'_>,
-    generics: &hir::Generics<'_>,
-    err: &mut DiagnosticBuilder<'_>,
-    param_name: &str,
-    constraint: &str,
-    source_map: &SourceMap,
-    span: Span,
-    def_id: Option<DefId>,
-) -> bool {
-    let restrict_msg = "consider further restricting this bound";
-    if let Some(param) =
-        generics.params.iter().filter(|p| p.name.ident().as_str() == param_name).next()
-    {
-        if def_id == tcx.lang_items().sized_trait() {
-            // Type parameters are already `Sized` by default.
-            err.span_label(
-                param.span,
-                &format!("this type parameter needs to be `{}`", constraint),
-            );
-        } else if param_name.starts_with("impl ") {
-            // `impl Trait` in argument:
-            // `fn foo(x: impl Trait) {}` → `fn foo(t: impl Trait + Trait2) {}`
-            err.span_suggestion(
-                param.span,
-                restrict_msg,
-                // `impl CurrentTrait + MissingTrait`
-                format!("{} + {}", param_name, constraint),
-                Applicability::MachineApplicable,
-            );
-        } else if generics.where_clause.predicates.is_empty() && param.bounds.is_empty() {
-            // If there are no bounds whatsoever, suggest adding a constraint
-            // to the type parameter:
-            // `fn foo<T>(t: T) {}` → `fn foo<T: Trait>(t: T) {}`
-            err.span_suggestion(
-                param.span,
-                "consider restricting this bound",
-                format!("{}: {}", param_name, constraint),
-                Applicability::MachineApplicable,
-            );
-        } else if !generics.where_clause.predicates.is_empty() {
-            // There is a `where` clause, so suggest expanding it:
-            // `fn foo<T>(t: T) where T: Debug {}` →
-            // `fn foo<T>(t: T) where T: Debug, T: Trait {}`
-            err.span_suggestion(
-                generics.where_clause.span().unwrap().shrink_to_hi(),
-                &format!("consider further restricting type parameter `{}`", param_name),
-                format!(", {}: {}", param_name, constraint),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            // If there is no `where` clause lean towards constraining to the
-            // type parameter:
-            // `fn foo<X: Bar, T>(t: T, x: X) {}` → `fn foo<T: Trait>(t: T) {}`
-            // `fn foo<T: Bar>(t: T) {}` → `fn foo<T: Bar + Trait>(t: T) {}`
-            let sp = param.span.with_hi(span.hi());
-            let span = source_map.span_through_char(sp, ':');
-            if sp != param.span && sp != span {
-                // Only suggest if we have high certainty that the span
-                // covers the colon in `foo<T: Trait>`.
-                err.span_suggestion(
-                    span,
-                    restrict_msg,
-                    format!("{}: {} + ", param_name, constraint),
-                    Applicability::MachineApplicable,
-                );
-            } else {
-                err.span_label(
-                    param.span,
-                    &format!("consider adding a `where {}: {}` bound", param_name, constraint),
-                );
-            }
-        }
-        return true;
-    }
-    false
 }
 
 /// Collect all the returned expressions within the input expression.

@@ -4,10 +4,14 @@ error[E0277]: the trait bound `A: std::marker::Copy` is not satisfied
 LL | struct IsCopy<T:Copy> {
    | --------------------- required by `IsCopy`
 ...
-LL | struct SomeStruct<A> {
-   |                   - help: consider restricting this bound: `A: std::marker::Copy`
 LL |     data: IsCopy<A>
    |     ^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `A`
+   |
+help: consider restricting this type parameter with `A: std::marker::Copy`
+  --> $DIR/wf-struct-field.rs:11:19
+   |
+LL | struct SomeStruct<A> {
+   |                   ^
 
 error: aborting due to previous error
 

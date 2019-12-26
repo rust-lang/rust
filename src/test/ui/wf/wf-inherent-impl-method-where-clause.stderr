@@ -4,10 +4,14 @@ error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
 LL | trait ExtraCopy<T:Copy> { }
    | ----------------------- required by `ExtraCopy`
 ...
-LL | impl<T,U> Foo<T,U> {
-   |        - help: consider restricting this bound: `U: std::marker::Copy`
 LL |     fn foo(self) where T: ExtraCopy<U>
    |                           ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `U`
+   |
+help: consider restricting this type parameter with `U: std::marker::Copy`
+  --> $DIR/wf-inherent-impl-method-where-clause.rs:11:8
+   |
+LL | impl<T,U> Foo<T,U> {
+   |        ^
 
 error: aborting due to previous error
 

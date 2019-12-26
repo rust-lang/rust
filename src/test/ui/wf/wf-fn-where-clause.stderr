@@ -5,9 +5,13 @@ LL | trait ExtraCopy<T:Copy> { }
    | ----------------------- required by `ExtraCopy`
 LL | 
 LL | fn foo<T,U>() where T: ExtraCopy<U>
-   |                        ^^^^^^^^^^^^- help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
-   |                        |
-   |                        the trait `std::marker::Copy` is not implemented for `U`
+   |                        ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `U`
+   |
+help: consider restricting this type parameter with `where U: std::marker::Copy`
+  --> $DIR/wf-fn-where-clause.rs:8:10
+   |
+LL | fn foo<T,U>() where T: ExtraCopy<U>
+   |          ^
 
 error[E0277]: the size for values of type `(dyn std::marker::Copy + 'static)` cannot be known at compilation time
   --> $DIR/wf-fn-where-clause.rs:12:16
