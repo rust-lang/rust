@@ -262,6 +262,9 @@ mod bool;
 mod tuple;
 mod unit;
 
+#[stable(feature = "core_primitive", since = "1.42.0")]
+pub mod primitive;
+
 // Pull in the `core_arch` crate directly into libcore. The contents of
 // `core_arch` are in a different repository: rust-lang/stdarch.
 //
