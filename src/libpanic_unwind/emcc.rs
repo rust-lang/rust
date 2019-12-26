@@ -52,22 +52,32 @@ pub fn payload() -> *mut u8 {
     ptr::null_mut()
 }
 
+struct Exception {
+    data: Option<Box<dyn Any + Send>>,
+}
+
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     assert!(!ptr.is_null());
-    let adjusted_ptr = __cxa_begin_catch(ptr as *mut libc::c_void);
-    let ex = ptr::read(adjusted_ptr as *mut _);
+    let adjusted_ptr = __cxa_begin_catch(ptr as *mut libc::c_void) as *mut Exception;
+    let ex = (*adjusted_ptr).data.take();
     __cxa_end_catch();
-    ex
+    ex.unwrap()
 }
 
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let sz = mem::size_of_val(&data);
-    let exception = __cxa_allocate_exception(sz);
+    let exception = __cxa_allocate_exception(sz) as *mut Exception;
     if exception.is_null() {
         return uw::_URC_FATAL_PHASE1_ERROR as u32;
     }
-    ptr::write(exception as *mut _, data);
-    __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, ptr::null_mut());
+    ptr::write(exception, Exception { data: Some(data) });
+    __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, exception_cleanup);
+
+    extern "C" fn exception_cleanup(ptr: *mut libc::c_void) {
+        unsafe {
+            ptr::drop_in_place(ptr as *mut Exception);
+        }
+    }
 }
 
 #[lang = "eh_personality"]
@@ -89,7 +99,7 @@ extern "C" {
     fn __cxa_throw(
         thrown_exception: *mut libc::c_void,
         tinfo: *const TypeInfo,
-        dest: *mut libc::c_void,
+        dest: extern "C" fn(*mut libc::c_void),
     ) -> !;
     fn __gxx_personality_v0(
         version: c_int,
