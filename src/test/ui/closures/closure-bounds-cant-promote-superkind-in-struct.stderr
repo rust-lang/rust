@@ -5,11 +5,14 @@ LL | struct X<F> where F: FnOnce() + 'static + Send {
    | ---------------------------------------------- required by `X`
 ...
 LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
-   |                      ^^^^                            - help: consider further restricting type parameter `F`: `, F: std::marker::Send`
-   |                      |
-   |                      `F` cannot be sent between threads safely
+   |                      ^^^^ `F` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `F`
+help: consider further restricting this bound with `+ std::marker::Send`
+  --> $DIR/closure-bounds-cant-promote-superkind-in-struct.rs:5:33
+   |
+LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -20,13 +20,17 @@ error[E0382]: use of moved value: `f`
   --> $DIR/borrowck-unboxed-closures.rs:12:5
    |
 LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
-   |      --                               - move occurs because `f` has type `F`, which does not implement the `Copy` trait
-   |      |
-   |      help: consider further restricting this bound: `F: Copy +`
+   |                                       - move occurs because `f` has type `F`, which does not implement the `Copy` trait
 LL |     f(1, 2);
    |     - value moved here
 LL |     f(1, 2);
    |     ^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/borrowck-unboxed-closures.rs:10:8
+   |
+LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

@@ -441,6 +441,16 @@ pub struct GenericParam<'hir> {
     pub kind: GenericParamKind<'hir>,
 }
 
+impl GenericParam<'hir> {
+    pub fn bounds_span(&self) -> Option<Span> {
+        self.bounds.iter().fold(None, |span, bound| {
+            let span = span.map(|s| s.to(bound.span())).unwrap_or_else(|| bound.span());
+
+            Some(span)
+        })
+    }
+}
+
 #[derive(Default)]
 pub struct GenericParamCount {
     pub lifetimes: usize,
@@ -513,7 +523,7 @@ pub enum SyntheticTyParamKind {
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct WhereClause<'hir> {
     pub predicates: &'hir [WherePredicate<'hir>],
-    // Only valid if predicates isn't empty.
+    // Only valid if predicates aren't empty.
     pub span: Span,
 }
 
