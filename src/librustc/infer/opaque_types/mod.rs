@@ -550,13 +550,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// # Parameters
     ///
     /// - `def_id`, the `impl Trait` type
-    /// - `opaque_defn`, the opaque definition created in `instantiate_opaque_types`
+    /// - `substs`, the substs  used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
     pub fn infer_opaque_definition_from_instantiation(
         &self,
         def_id: DefId,
-        opaque_defn: &OpaqueTypeDecl<'tcx>,
+        substs: SubstsRef<'tcx>,
         instantiated_ty: Ty<'tcx>,
         span: Span,
     ) -> Ty<'tcx> {
@@ -572,12 +572,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // `impl Trait` return type, resulting in the parameters
         // shifting.
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
-        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = opaque_defn
-            .substs
-            .iter()
-            .enumerate()
-            .map(|(index, subst)| (*subst, id_substs[index]))
-            .collect();
+        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
+            substs.iter().enumerate().map(|(index, subst)| (*subst, id_substs[index])).collect();
 
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
