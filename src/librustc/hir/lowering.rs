@@ -168,6 +168,7 @@ pub struct LoweringContext<'a, 'hir: 'a> {
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
+    allow_into_future: Option<Lrc<[Symbol]>>,
 }
 
 pub trait Resolver {
@@ -300,6 +301,7 @@ pub fn lower_crate<'a, 'hir>(
         in_scope_lifetimes: Vec::new(),
         allow_try_trait: Some([sym::try_trait][..].into()),
         allow_gen_future: Some([sym::gen_future][..].into()),
+        allow_into_future: Some([sym::into_future][..].into()),
     }
     .lower_crate(krate)
 }

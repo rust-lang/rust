@@ -269,6 +269,7 @@
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(int_error_matching)]
+#![feature(into_future)]
 #![feature(integer_atomics)]
 #![feature(lang_items)]
 #![feature(libc)]

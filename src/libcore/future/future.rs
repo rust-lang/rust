@@ -99,6 +99,21 @@ pub trait Future {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
 }
 
+/// Conversion into a `Future`.
+#[unstable(feature = "into_future", issue = "67644")]
+pub trait IntoFuture {
+    /// The output that the future will produce on completion.
+    #[unstable(feature = "into_future", issue = "67644")]
+    type Output;
+    /// Which kind of future are we turning this into?
+    #[unstable(feature = "into_future", issue = "67644")]
+    type Future: Future<Output = Self::Output>;
+
+    /// Creates a future from a value.
+    #[unstable(feature = "into_future", issue = "67644")]
+    fn into_future(self) -> Self::Future;
+}
+
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl<F: ?Sized + Future + Unpin> Future for &mut F {
     type Output = F::Output;
@@ -117,5 +132,15 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         Pin::get_mut(self).as_mut().poll(cx)
+    }
+}
+
+#[unstable(feature = "into_future", issue = "67644")]
+impl<F: Future> IntoFuture for F {
+    type Output = F::Output;
+    type Future = F;
+
+    fn into_future(self) -> Self::Future {
+        self
     }
 }
