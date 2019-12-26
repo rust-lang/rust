@@ -4,9 +4,9 @@
 
 use crate::hir::def::{CtorOf, DefKind, Res};
 use crate::hir::def_id::DefId;
+use crate::hir::print;
 use crate::hir::ptr::P;
-use crate::hir::HirVec;
-use crate::hir::{self, ExprKind, GenericArg, GenericArgs};
+use crate::hir::{self, ExprKind, GenericArg, GenericArgs, HirVec};
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
@@ -473,7 +473,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Option<Ty<'tcx>>,
         args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs>, bool),
         provided_kind: impl Fn(&GenericParamDef, &GenericArg) -> subst::GenericArg<'tcx>,
-        inferred_kind: impl Fn(
+        mut inferred_kind: impl FnMut(
             Option<&[subst::GenericArg<'tcx>]>,
             &GenericParamDef,
             bool,
@@ -674,6 +674,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             false
         };
 
+        let mut missing_type_params = vec![];
         let substs = Self::create_substs_for_generic_args(
             tcx,
             def_id,
@@ -709,19 +710,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // defaults. This will lead to an ICE if we are not
                             // careful!
                             if default_needs_object_self(param) {
-                                struct_span_err!(
-                                    tcx.sess,
-                                    span,
-                                    E0393,
-                                    "the type parameter `{}` must be explicitly specified",
-                                    param.name
-                                )
-                                .span_label(span, format!("missing reference to `{}`", param.name))
-                                .note(&format!(
-                                    "because of the default `Self` reference, type parameters \
-                                         must be specified on object types"
-                                ))
-                                .emit();
+                                missing_type_params.push(param.name.to_string());
                                 tcx.types.err.into()
                             } else {
                                 // This is a default type parameter.
@@ -758,6 +747,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }
             },
+        );
+
+        self.complain_about_missing_type_params(
+            missing_type_params,
+            def_id,
+            span,
+            generic_args.args.is_empty(),
         );
 
         // Convert associated-type bindings or constraints into a separate vector.
@@ -818,6 +814,79 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
     }
 
+    /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
+    /// the type parameter's name as a placeholder.
+    fn complain_about_missing_type_params(
+        &self,
+        missing_type_params: Vec<String>,
+        def_id: DefId,
+        span: Span,
+        empty_generic_args: bool,
+    ) {
+        if missing_type_params.is_empty() {
+            return;
+        }
+        let display =
+            missing_type_params.iter().map(|n| format!("`{}`", n)).collect::<Vec<_>>().join(", ");
+        let mut err = struct_span_err!(
+            self.tcx().sess,
+            span,
+            E0393,
+            "the type parameter{} {} must be explicitly specified",
+            pluralize!(missing_type_params.len()),
+            display,
+        );
+        err.span_label(
+            self.tcx().def_span(def_id),
+            &format!(
+                "type parameter{} {} must be specified for this",
+                pluralize!(missing_type_params.len()),
+                display,
+            ),
+        );
+        let mut suggested = false;
+        if let (Ok(snippet), true) = (
+            self.tcx().sess.source_map().span_to_snippet(span),
+            // Don't suggest setting the type params if there are some already: the order is
+            // tricky to get right and the user will already know what the syntax is.
+            empty_generic_args,
+        ) {
+            if snippet.ends_with('>') {
+                // The user wrote `Trait<'a, T>` or similar. To provide an accurate suggestion
+                // we would have to preserve the right order. For now, as clearly the user is
+                // aware of the syntax, we do nothing.
+            } else {
+                // The user wrote `Iterator`, so we don't have a type we can suggest, but at
+                // least we can clue them to the correct syntax `Iterator<Type>`.
+                err.span_suggestion(
+                    span,
+                    &format!(
+                        "set the type parameter{plural} to the desired type{plural}",
+                        plural = pluralize!(missing_type_params.len()),
+                    ),
+                    format!("{}<{}>", snippet, missing_type_params.join(", ")),
+                    Applicability::HasPlaceholders,
+                );
+                suggested = true;
+            }
+        }
+        if !suggested {
+            err.span_label(
+                span,
+                format!(
+                    "missing reference{} to {}",
+                    pluralize!(missing_type_params.len()),
+                    display,
+                ),
+            );
+        }
+        err.note(&format!(
+            "because of the default `Self` reference, type parameters must be \
+                            specified on object types"
+        ));
+        err.emit();
+    }
+
     /// Instantiates the path for the given trait reference, assuming that it's
     /// bound to a valid trait type. Returns the `DefId` of the defining trait.
     /// The type _cannot_ be a type other than a trait type.
@@ -854,8 +923,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
+        let path_span = if let [segment] = &trait_ref.path.segments[..] {
+            // FIXME: `trait_ref.path.span` can point to a full path with multiple
+            // segments, even though `trait_ref.path.segments` is of length `1`. Work
+            // around that bug here, even though it should be fixed elsewhere.
+            // This would otherwise cause an invalid suggestion. For an example, look at
+            // `src/test/ui/issues/issue-28344.rs`.
+            segment.ident.span
+        } else {
+            trait_ref.path.span
+        };
         let (substs, assoc_bindings, potential_assoc_types) = self.create_substs_for_ast_trait_ref(
-            trait_ref.path.span,
+            path_span,
             trait_def_id,
             self_ty,
             trait_ref.path.segments.last().unwrap(),
@@ -874,6 +953,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 bounds,
                 speculative,
                 &mut dup_bindings,
+                span,
             );
             // Okay to ignore `Err` because of `ErrorReported` (see above).
         }
@@ -932,6 +1012,65 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty::TraitRef::new(trait_def_id, substs)
     }
 
+    /// When the code is using the `Fn` traits directly, instead of the `Fn(A) -> B` syntax, emit
+    /// an error and attempt to build a reasonable structured suggestion.
+    fn complain_about_internal_fn_trait(
+        &self,
+        span: Span,
+        trait_def_id: DefId,
+        trait_segment: &'a hir::PathSegment,
+    ) {
+        let trait_def = self.tcx().trait_def(trait_def_id);
+
+        if !self.tcx().features().unboxed_closures
+            && trait_segment.generic_args().parenthesized != trait_def.paren_sugar
+        {
+            // For now, require that parenthetical notation be used only with `Fn()` etc.
+            let (msg, sugg) = if trait_def.paren_sugar {
+                (
+                    "the precise format of `Fn`-family traits' type parameters is subject to \
+                     change",
+                    Some(format!(
+                        "{}{} -> {}",
+                        trait_segment.ident,
+                        trait_segment
+                            .args
+                            .as_ref()
+                            .and_then(|args| args.args.get(0))
+                            .and_then(|arg| match arg {
+                                hir::GenericArg::Type(ty) => {
+                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                }
+                                _ => None,
+                            })
+                            .unwrap_or_else(|| "()".to_string()),
+                        trait_segment
+                            .generic_args()
+                            .bindings
+                            .iter()
+                            .filter_map(|b| match (b.ident.as_str() == "Output", &b.kind) {
+                                (true, hir::TypeBindingKind::Equality { ty }) => {
+                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                }
+                                _ => None,
+                            })
+                            .next()
+                            .unwrap_or_else(|| "()".to_string()),
+                    )),
+                )
+            } else {
+                ("parenthetical notation is only stable when used with `Fn`-family traits", None)
+            };
+            let sess = &self.tcx().sess.parse_sess;
+            let mut err = feature_err(sess, sym::unboxed_closures, span, msg);
+            if let Some(sugg) = sugg {
+                let msg = "use parenthetical notation instead";
+                err.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
+            }
+            err.emit();
+        }
+    }
+
     fn create_substs_for_ast_trait_ref<'a>(
         &self,
         span: Span,
@@ -941,20 +1080,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>) {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})", trait_segment);
 
-        let trait_def = self.tcx().trait_def(trait_def_id);
-
-        if !self.tcx().features().unboxed_closures
-            && trait_segment.generic_args().parenthesized != trait_def.paren_sugar
-        {
-            // For now, require that parenthetical notation be used only with `Fn()` etc.
-            let msg = if trait_def.paren_sugar {
-                "the precise format of `Fn`-family traits' type parameters is subject to change. \
-                 Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead"
-            } else {
-                "parenthetical notation is only stable when used with `Fn`-family traits"
-            };
-            feature_err(&self.tcx().sess.parse_sess, sym::unboxed_closures, span, msg).emit();
-        }
+        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment);
 
         self.create_substs_for_ast_path(
             span,
@@ -1118,6 +1244,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
         dup_bindings: &mut FxHashMap<DefId, Span>,
+        path_span: Span,
     ) -> Result<(), ErrorReported> {
         let tcx = self.tcx();
 
@@ -1180,7 +1307,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let candidate =
             if self.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
                 // Simple case: X is defined in the current trait.
-                Ok(trait_ref)
+                trait_ref
             } else {
                 // Otherwise, we have to walk through the supertraits to find
                 // those that do.
@@ -1188,9 +1315,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     || traits::supertraits(tcx, trait_ref),
                     &trait_ref.print_only_trait_path().to_string(),
                     binding.item_name,
-                    binding.span,
-                )
-            }?;
+                    path_span,
+                    match binding.kind {
+                        ConvertedBindingKind::Equality(ty) => Some(ty.to_string()),
+                        _ => None,
+                    },
+                )?
+            };
 
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(binding.item_name, candidate.def_id(), hir_ref_id);
@@ -1213,8 +1344,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         self.tcx().sess,
                         binding.span,
                         E0719,
-                        "the value of the associated type `{}` (from the trait `{}`) \
-                                      is already specified",
+                        "the value of the associated type `{}` (from trait `{}`) \
+                         is already specified",
                         binding.item_name,
                         tcx.def_path_str(assoc_ty.container.id())
                     )
@@ -1326,120 +1457,70 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         // Use a `BTreeSet` to keep output in a more consistent order.
-        let mut associated_types = BTreeSet::default();
+        let mut associated_types: FxHashMap<Span, BTreeSet<DefId>> = FxHashMap::default();
 
-        let regular_traits_refs = bounds
+        let regular_traits_refs_spans = bounds
             .trait_bounds
             .into_iter()
-            .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()))
-            .map(|(trait_ref, _)| trait_ref);
-        for trait_ref in traits::elaborate_trait_refs(tcx, regular_traits_refs) {
-            debug!("conv_object_ty_poly_trait_ref: observing object predicate `{:?}`", trait_ref);
-            match trait_ref {
-                ty::Predicate::Trait(pred) => {
-                    associated_types.extend(
-                        tcx.associated_items(pred.def_id())
-                            .filter(|item| item.kind == ty::AssocKind::Type)
-                            .map(|item| item.def_id),
-                    );
-                }
-                ty::Predicate::Projection(pred) => {
-                    // A `Self` within the original bound will be substituted with a
-                    // `trait_object_dummy_self`, so check for that.
-                    let references_self = pred.skip_binder().ty.walk().any(|t| t == dummy_self);
+            .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
-                    // If the projection output contains `Self`, force the user to
-                    // elaborate it explicitly to avoid a lot of complexity.
-                    //
-                    // The "classicaly useful" case is the following:
-                    // ```
-                    //     trait MyTrait: FnMut() -> <Self as MyTrait>::MyOutput {
-                    //         type MyOutput;
-                    //     }
-                    // ```
-                    //
-                    // Here, the user could theoretically write `dyn MyTrait<Output = X>`,
-                    // but actually supporting that would "expand" to an infinitely-long type
-                    // `fix $ τ → dyn MyTrait<MyOutput = X, Output = <τ as MyTrait>::MyOutput`.
-                    //
-                    // Instead, we force the user to write `dyn MyTrait<MyOutput = X, Output = X>`,
-                    // which is uglier but works. See the discussion in #56288 for alternatives.
-                    if !references_self {
-                        // Include projections defined on supertraits.
-                        bounds.projection_bounds.push((pred, DUMMY_SP))
+        for (base_trait_ref, span) in regular_traits_refs_spans {
+            for trait_ref in traits::elaborate_trait_ref(tcx, base_trait_ref) {
+                debug!(
+                    "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
+                    trait_ref
+                );
+                match trait_ref {
+                    ty::Predicate::Trait(pred) => {
+                        associated_types.entry(span).or_default().extend(
+                            tcx.associated_items(pred.def_id())
+                                .filter(|item| item.kind == ty::AssocKind::Type)
+                                .map(|item| item.def_id),
+                        );
                     }
+                    ty::Predicate::Projection(pred) => {
+                        // A `Self` within the original bound will be substituted with a
+                        // `trait_object_dummy_self`, so check for that.
+                        let references_self = pred.skip_binder().ty.walk().any(|t| t == dummy_self);
+
+                        // If the projection output contains `Self`, force the user to
+                        // elaborate it explicitly to avoid a lot of complexity.
+                        //
+                        // The "classicaly useful" case is the following:
+                        // ```
+                        //     trait MyTrait: FnMut() -> <Self as MyTrait>::MyOutput {
+                        //         type MyOutput;
+                        //     }
+                        // ```
+                        //
+                        // Here, the user could theoretically write `dyn MyTrait<Output = X>`,
+                        // but actually supporting that would "expand" to an infinitely-long type
+                        // `fix $ τ → dyn MyTrait<MyOutput = X, Output = <τ as MyTrait>::MyOutput`.
+                        //
+                        // Instead, we force the user to write
+                        // `dyn MyTrait<MyOutput = X, Output = X>`, which is uglier but works. See
+                        // the discussion in #56288 for alternatives.
+                        if !references_self {
+                            // Include projections defined on supertraits.
+                            bounds.projection_bounds.push((pred, span));
+                        }
+                    }
+                    _ => (),
                 }
-                _ => (),
             }
         }
 
         for (projection_bound, _) in &bounds.projection_bounds {
-            associated_types.remove(&projection_bound.projection_def_id());
+            for (_, def_ids) in &mut associated_types {
+                def_ids.remove(&projection_bound.projection_def_id());
+            }
         }
 
-        if !associated_types.is_empty() {
-            let names = associated_types
-                .iter()
-                .map(|item_def_id| {
-                    let assoc_item = tcx.associated_item(*item_def_id);
-                    let trait_def_id = assoc_item.container.id();
-                    format!(
-                        "`{}` (from the trait `{}`)",
-                        assoc_item.ident,
-                        tcx.def_path_str(trait_def_id),
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let mut err = struct_span_err!(
-                tcx.sess,
-                span,
-                E0191,
-                "the value of the associated type{} {} must be specified",
-                pluralize!(associated_types.len()),
-                names,
-            );
-            let (suggest, potential_assoc_types_spans) =
-                if potential_assoc_types.len() == associated_types.len() {
-                    // Only suggest when the amount of missing associated types equals the number of
-                    // extra type arguments present, as that gives us a relatively high confidence
-                    // that the user forgot to give the associtated type's name. The canonical
-                    // example would be trying to use `Iterator<isize>` instead of
-                    // `Iterator<Item = isize>`.
-                    (true, potential_assoc_types)
-                } else {
-                    (false, Vec::new())
-                };
-            let mut suggestions = Vec::new();
-            for (i, item_def_id) in associated_types.iter().enumerate() {
-                let assoc_item = tcx.associated_item(*item_def_id);
-                err.span_label(
-                    span,
-                    format!("associated type `{}` must be specified", assoc_item.ident),
-                );
-                if let Some(sp) = tcx.hir().span_if_local(*item_def_id) {
-                    err.span_label(sp, format!("`{}` defined here", assoc_item.ident));
-                }
-                if suggest {
-                    if let Ok(snippet) =
-                        tcx.sess.source_map().span_to_snippet(potential_assoc_types_spans[i])
-                    {
-                        suggestions.push((
-                            potential_assoc_types_spans[i],
-                            format!("{} = {}", assoc_item.ident, snippet),
-                        ));
-                    }
-                }
-            }
-            if !suggestions.is_empty() {
-                let msg = format!(
-                    "if you meant to specify the associated {}, write",
-                    if suggestions.len() == 1 { "type" } else { "types" }
-                );
-                err.multipart_suggestion(&msg, suggestions, Applicability::MaybeIncorrect);
-            }
-            err.emit();
-        }
+        self.complain_about_missing_associated_types(
+            associated_types,
+            potential_assoc_types,
+            trait_bounds,
+        );
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`.
@@ -1528,6 +1609,198 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty
     }
 
+    /// When there are any missing associated types, emit an E0191 error and attempt to supply a
+    /// reasonable suggestion on how to write it. For the case of multiple associated types in the
+    /// same trait bound have the same name (as they come from different super-traits), we instead
+    /// emit a generic note suggesting using a `where` clause to constraint instead.
+    fn complain_about_missing_associated_types(
+        &self,
+        associated_types: FxHashMap<Span, BTreeSet<DefId>>,
+        potential_assoc_types: Vec<Span>,
+        trait_bounds: &[hir::PolyTraitRef],
+    ) {
+        if !associated_types.values().any(|v| v.len() > 0) {
+            return;
+        }
+        let tcx = self.tcx();
+        // FIXME: Marked `mut` so that we can replace the spans further below with a more
+        // appropriate one, but this should be handled earlier in the span assignment.
+        let mut associated_types: FxHashMap<Span, Vec<_>> = associated_types
+            .into_iter()
+            .map(|(span, def_ids)| {
+                (span, def_ids.into_iter().map(|did| tcx.associated_item(did)).collect())
+            })
+            .collect();
+        let mut names = vec![];
+
+        // Account for things like `dyn Foo + 'a`, like in tests `issue-22434.rs` and
+        // `issue-22560.rs`.
+        let mut trait_bound_spans: Vec<Span> = vec![];
+        for (span, items) in &associated_types {
+            if !items.is_empty() {
+                trait_bound_spans.push(*span);
+            }
+            for assoc_item in items {
+                let trait_def_id = assoc_item.container.id();
+                names.push(format!(
+                    "`{}` (from trait `{}`)",
+                    assoc_item.ident,
+                    tcx.def_path_str(trait_def_id),
+                ));
+            }
+        }
+
+        match (&potential_assoc_types[..], &trait_bounds) {
+            ([], [bound]) => match &bound.trait_ref.path.segments[..] {
+                // FIXME: `trait_ref.path.span` can point to a full path with multiple
+                // segments, even though `trait_ref.path.segments` is of length `1`. Work
+                // around that bug here, even though it should be fixed elsewhere.
+                // This would otherwise cause an invalid suggestion. For an example, look at
+                // `src/test/ui/issues/issue-28344.rs` where instead of the following:
+                //
+                //   error[E0191]: the value of the associated type `Output`
+                //                 (from trait `std::ops::BitXor`) must be specified
+                //   --> $DIR/issue-28344.rs:4:17
+                //    |
+                // LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
+                //    |                 ^^^^^^ help: specify the associated type:
+                //    |                              `BitXor<Output = Type>`
+                //
+                // we would output:
+                //
+                //   error[E0191]: the value of the associated type `Output`
+                //                 (from trait `std::ops::BitXor`) must be specified
+                //   --> $DIR/issue-28344.rs:4:17
+                //    |
+                // LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
+                //    |                 ^^^^^^^^^^^^^ help: specify the associated type:
+                //    |                                     `BitXor::bitor<Output = Type>`
+                [segment] if segment.args.is_none() => {
+                    trait_bound_spans = vec![segment.ident.span];
+                    associated_types = associated_types
+                        .into_iter()
+                        .map(|(_, items)| (segment.ident.span, items))
+                        .collect();
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+        names.sort();
+        trait_bound_spans.sort();
+        let mut err = struct_span_err!(
+            tcx.sess,
+            trait_bound_spans,
+            E0191,
+            "the value of the associated type{} {} must be specified",
+            pluralize!(names.len()),
+            names.join(", "),
+        );
+        let mut suggestions = vec![];
+        let mut types_count = 0;
+        let mut where_constraints = vec![];
+        for (span, assoc_items) in &associated_types {
+            let mut names: FxHashMap<_, usize> = FxHashMap::default();
+            for item in assoc_items {
+                types_count += 1;
+                *names.entry(item.ident.name).or_insert(0) += 1;
+            }
+            let mut dupes = false;
+            for item in assoc_items {
+                let prefix = if names[&item.ident.name] > 1 {
+                    let trait_def_id = item.container.id();
+                    dupes = true;
+                    format!("{}::", tcx.def_path_str(trait_def_id))
+                } else {
+                    String::new()
+                };
+                if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
+                    err.span_label(sp, format!("`{}{}` defined here", prefix, item.ident));
+                }
+            }
+            if potential_assoc_types.len() == assoc_items.len() {
+                // Only suggest when the amount of missing associated types equals the number of
+                // extra type arguments present, as that gives us a relatively high confidence
+                // that the user forgot to give the associtated type's name. The canonical
+                // example would be trying to use `Iterator<isize>` instead of
+                // `Iterator<Item = isize>`.
+                for (potential, item) in potential_assoc_types.iter().zip(assoc_items.iter()) {
+                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*potential) {
+                        suggestions.push((*potential, format!("{} = {}", item.ident, snippet)));
+                    }
+                }
+            } else if let (Ok(snippet), false) =
+                (tcx.sess.source_map().span_to_snippet(*span), dupes)
+            {
+                let types: Vec<_> =
+                    assoc_items.iter().map(|item| format!("{} = Type", item.ident)).collect();
+                let code = if snippet.ends_with(">") {
+                    // The user wrote `Trait<'a>` or similar and we don't have a type we can
+                    // suggest, but at least we can clue them to the correct syntax
+                    // `Trait<'a, Item = Type>` while accounting for the `<'a>` in the
+                    // suggestion.
+                    format!("{}, {}>", &snippet[..snippet.len() - 1], types.join(", "))
+                } else {
+                    // The user wrote `Iterator`, so we don't have a type we can suggest, but at
+                    // least we can clue them to the correct syntax `Iterator<Item = Type>`.
+                    format!("{}<{}>", snippet, types.join(", "))
+                };
+                suggestions.push((*span, code));
+            } else if dupes {
+                where_constraints.push(*span);
+            }
+        }
+        let where_msg = "consider introducing a new type parameter, adding `where` constraints \
+                         using the fully-qualified path to the associated types";
+        if !where_constraints.is_empty() && suggestions.is_empty() {
+            // If there are duplicates associated type names and a single trait bound do not
+            // use structured suggestion, it means that there are multiple super-traits with
+            // the same associated type name.
+            err.help(where_msg);
+        }
+        if suggestions.len() != 1 {
+            // We don't need this label if there's an inline suggestion, show otherwise.
+            for (span, assoc_items) in &associated_types {
+                let mut names: FxHashMap<_, usize> = FxHashMap::default();
+                for item in assoc_items {
+                    types_count += 1;
+                    *names.entry(item.ident.name).or_insert(0) += 1;
+                }
+                let mut label = vec![];
+                for item in assoc_items {
+                    let postfix = if names[&item.ident.name] > 1 {
+                        let trait_def_id = item.container.id();
+                        format!(" (from trait `{}`)", tcx.def_path_str(trait_def_id))
+                    } else {
+                        String::new()
+                    };
+                    label.push(format!("`{}`{}", item.ident, postfix));
+                }
+                if !label.is_empty() {
+                    err.span_label(
+                        *span,
+                        format!(
+                            "associated type{} {} must be specified",
+                            pluralize!(label.len()),
+                            label.join(", "),
+                        ),
+                    );
+                }
+            }
+        }
+        if !suggestions.is_empty() {
+            err.multipart_suggestion(
+                &format!("specify the associated type{}", pluralize!(types_count)),
+                suggestions,
+                Applicability::HasPlaceholders,
+            );
+            if !where_constraints.is_empty() {
+                err.span_help(where_constraints, where_msg);
+            }
+        }
+        err.emit();
+    }
+
     fn report_ambiguous_associated_type(
         &self,
         span: Span,
@@ -1590,15 +1863,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             &param_name.as_str(),
             assoc_name,
             span,
+            None,
         )
     }
 
+    // Checks that `bounds` contains exactly one element and reports appropriate
+    // errors otherwise.
     fn one_bound_for_assoc_type<I>(
         &self,
         all_candidates: impl Fn() -> I,
         ty_param_name: &str,
         assoc_name: ast::Ident,
         span: Span,
+        is_equality: Option<String>,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -1625,16 +1902,29 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             debug!("one_bound_for_assoc_type: bound2 = {:?}", bound2);
 
             let bounds = iter::once(bound).chain(iter::once(bound2)).chain(matching_candidates);
-            let mut err = struct_span_err!(
-                self.tcx().sess,
-                span,
-                E0221,
-                "ambiguous associated type `{}` in bounds of `{}`",
-                assoc_name,
-                ty_param_name
-            );
+            let mut err = if is_equality.is_some() {
+                // More specific Error Index entry.
+                struct_span_err!(
+                    self.tcx().sess,
+                    span,
+                    E0222,
+                    "ambiguous associated type `{}` in bounds of `{}`",
+                    assoc_name,
+                    ty_param_name
+                )
+            } else {
+                struct_span_err!(
+                    self.tcx().sess,
+                    span,
+                    E0221,
+                    "ambiguous associated type `{}` in bounds of `{}`",
+                    assoc_name,
+                    ty_param_name
+                )
+            };
             err.span_label(span, format!("ambiguous associated type `{}`", assoc_name));
 
+            let mut where_bounds = vec![];
             for bound in bounds {
                 let bound_span = self
                     .tcx()
@@ -1645,28 +1935,56 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     })
                     .and_then(|item| self.tcx().hir().span_if_local(item.def_id));
 
-                if let Some(span) = bound_span {
+                if let Some(bound_span) = bound_span {
                     err.span_label(
-                        span,
+                        bound_span,
                         format!(
                             "ambiguous `{}` from `{}`",
                             assoc_name,
-                            bound.print_only_trait_path()
+                            bound.print_only_trait_path(),
                         ),
                     );
+                    if let Some(constraint) = &is_equality {
+                        where_bounds.push(format!(
+                            "        T: {trait}::{assoc} = {constraint}",
+                            trait=bound.print_only_trait_path(),
+                            assoc=assoc_name,
+                            constraint=constraint,
+                        ));
+                    } else {
+                        err.span_suggestion(
+                            span,
+                            "use fully qualified syntax to disambiguate",
+                            format!(
+                                "<{} as {}>::{}",
+                                ty_param_name,
+                                bound.print_only_trait_path(),
+                                assoc_name,
+                            ),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 } else {
-                    span_note!(
-                        &mut err,
-                        span,
+                    err.note(&format!(
                         "associated type `{}` could derive from `{}`",
                         ty_param_name,
-                        bound.print_only_trait_path()
-                    );
+                        bound.print_only_trait_path(),
+                    ));
                 }
             }
+            if !where_bounds.is_empty() {
+                err.help(&format!(
+                    "consider introducing a new type parameter `T` and adding `where` constraints:\
+                     \n    where\n        T: {},\n{}",
+                    ty_param_name,
+                    where_bounds.join(",\n"),
+                ));
+            }
             err.emit();
+            if !where_bounds.is_empty() {
+                return Err(ErrorReported);
+            }
         }
-
         return Ok(bound);
     }
 
@@ -1679,6 +1997,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
+        // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
+        // valid span, so we point at the whole path segment instead.
+        let span = if assoc_name.span != DUMMY_SP { assoc_name.span } else { span };
         let mut err = struct_span_err!(
             self.tcx().sess,
             span,
@@ -1696,11 +2017,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             )
             .collect();
 
-        if let Some(suggested_name) =
-            find_best_match_for_name(all_candidate_names.iter(), &assoc_name.as_str(), None)
-        {
+        if let (Some(suggested_name), true) = (
+            find_best_match_for_name(all_candidate_names.iter(), &assoc_name.as_str(), None),
+            assoc_name.span != DUMMY_SP,
+        ) {
             err.span_suggestion(
-                span,
+                assoc_name.span,
                 "there is an associated type with a similar name",
                 suggested_name.to_string(),
                 Applicability::MaybeIncorrect,
@@ -1771,6 +2093,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     "Self",
                     assoc_ident,
                     span,
+                    None,
                 )?
             }
             (&ty::Param(_), Res::SelfTy(Some(param_did), None))

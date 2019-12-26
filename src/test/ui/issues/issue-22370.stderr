@@ -1,8 +1,11 @@
 error[E0393]: the type parameter `T` must be explicitly specified
   --> $DIR/issue-22370.rs:3:14
    |
+LL | trait A<T=Self> {}
+   | ------------------ type parameter `T` must be specified for this
+LL | 
 LL | fn f(a: &dyn A) {}
-   |              ^ missing reference to `T`
+   |              ^ help: set the type parameter to the desired type: `A<T>`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 

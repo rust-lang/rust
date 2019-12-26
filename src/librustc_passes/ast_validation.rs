@@ -804,6 +804,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         predicate.span,
                         "equality constraints are not yet supported in `where` clauses",
                     )
+                    .span_label(predicate.span, "not supported")
                     .note(
                         "for more information, see https://github.com/rust-lang/rust/issues/20041",
                     )

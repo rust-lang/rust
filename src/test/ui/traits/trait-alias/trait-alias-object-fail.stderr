@@ -6,11 +6,11 @@ LL |     let _: &dyn EqAlias = &123;
    |
    = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
 
-error[E0191]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) must be specified
-  --> $DIR/trait-alias-object-fail.rs:9:13
+error[E0191]: the value of the associated type `Item` (from trait `std::iter::Iterator`) must be specified
+  --> $DIR/trait-alias-object-fail.rs:9:17
    |
 LL |     let _: &dyn IteratorAlias = &vec![123].into_iter();
-   |             ^^^^^^^^^^^^^^^^^ associated type `Item` must be specified
+   |                 ^^^^^^^^^^^^^ help: specify the associated type: `IteratorAlias<Item = Type>`
 
 error: aborting due to 2 previous errors
 
