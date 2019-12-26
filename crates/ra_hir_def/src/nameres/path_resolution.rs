@@ -21,7 +21,7 @@ use crate::{
     nameres::{BuiltinShadowMode, CrateDefMap},
     path::{ModPath, PathKind},
     per_ns::PerNs,
-    visibility::{RawVisibility, ResolvedVisibility},
+    visibility::{RawVisibility, Visibility},
     AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
 };
 
@@ -64,7 +64,7 @@ impl CrateDefMap {
     pub(super) fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs {
         self.extern_prelude
             .get(name)
-            .map_or(PerNs::none(), |&it| PerNs::types(it, ResolvedVisibility::Public))
+            .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public))
     }
 
     pub(crate) fn resolve_visibility(
@@ -72,7 +72,7 @@ impl CrateDefMap {
         db: &impl DefDatabase,
         original_module: LocalModuleId,
         visibility: &RawVisibility,
-    ) -> Option<ResolvedVisibility> {
+    ) -> Option<Visibility> {
         match visibility {
             RawVisibility::Module(path) => {
                 let (result, remaining) =
@@ -82,14 +82,14 @@ impl CrateDefMap {
                 }
                 let types = result.take_types()?;
                 match types {
-                    ModuleDefId::ModuleId(m) => Some(ResolvedVisibility::Module(m)),
+                    ModuleDefId::ModuleId(m) => Some(Visibility::Module(m)),
                     _ => {
                         // error: visibility needs to refer to module
                         None
                     }
                 }
             }
-            RawVisibility::Public => Some(ResolvedVisibility::Public),
+            RawVisibility::Public => Some(Visibility::Public),
         }
     }
 
@@ -119,18 +119,18 @@ impl CrateDefMap {
                     tested_by!(macro_dollar_crate_self);
                     PerNs::types(
                         ModuleId { krate: self.krate, local_id: self.root }.into(),
-                        ResolvedVisibility::Public,
+                        Visibility::Public,
                     )
                 } else {
                     let def_map = db.crate_def_map(krate);
                     let module = ModuleId { krate, local_id: def_map.root };
                     tested_by!(macro_dollar_crate_other);
-                    PerNs::types(module.into(), ResolvedVisibility::Public)
+                    PerNs::types(module.into(), Visibility::Public)
                 }
             }
             PathKind::Crate => PerNs::types(
                 ModuleId { krate: self.krate, local_id: self.root }.into(),
-                ResolvedVisibility::Public,
+                Visibility::Public,
             ),
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
@@ -161,7 +161,7 @@ impl CrateDefMap {
                 if let Some(local_id) = m {
                     PerNs::types(
                         ModuleId { krate: self.krate, local_id }.into(),
-                        ResolvedVisibility::Public,
+                        Visibility::Public,
                     )
                 } else {
                     log::debug!("super path in root module");
@@ -176,7 +176,7 @@ impl CrateDefMap {
                 };
                 if let Some(def) = self.extern_prelude.get(&segment) {
                     log::debug!("absolute path {:?} resolved to crate {:?}", path, def);
-                    PerNs::types(*def, ResolvedVisibility::Public)
+                    PerNs::types(*def, Visibility::Public)
                 } else {
                     return ResolvePathResult::empty(ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
                 }
@@ -225,7 +225,7 @@ impl CrateDefMap {
                     match enum_data.variant(&segment) {
                         Some(local_id) => {
                             let variant = EnumVariantId { parent: e, local_id };
-                            PerNs::both(variant.into(), variant.into(), ResolvedVisibility::Public)
+                            PerNs::both(variant.into(), variant.into(), Visibility::Public)
                         }
                         None => {
                             return ResolvePathResult::with(
@@ -274,12 +274,12 @@ impl CrateDefMap {
         let from_legacy_macro = self[module]
             .scope
             .get_legacy_macro(name)
-            .map_or_else(PerNs::none, |m| PerNs::macros(m, ResolvedVisibility::Public));
+            .map_or_else(PerNs::none, |m| PerNs::macros(m, Visibility::Public));
         let from_scope = self[module].scope.get(name, shadow);
         let from_extern_prelude = self
             .extern_prelude
             .get(name)
-            .map_or(PerNs::none(), |&it| PerNs::types(it, ResolvedVisibility::Public));
+            .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public));
         let from_prelude = self.resolve_in_prelude(db, name, shadow);
 
         from_legacy_macro.or(from_scope).or(from_extern_prelude).or(from_prelude)

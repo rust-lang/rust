@@ -24,7 +24,7 @@ use crate::{
     },
     path::{ModPath, PathKind},
     per_ns::PerNs,
-    visibility::ResolvedVisibility,
+    visibility::Visibility,
     AdtId, AstId, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
     LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
@@ -109,7 +109,7 @@ struct MacroDirective {
 struct DefCollector<'a, DB> {
     db: &'a DB,
     def_map: CrateDefMap,
-    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, ResolvedVisibility)>>,
+    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
     unexpanded_macros: Vec<MacroDirective>,
@@ -217,8 +217,8 @@ where
         if export {
             self.update(
                 self.def_map.root,
-                &[(name, PerNs::macros(macro_, ResolvedVisibility::Public))],
-                ResolvedVisibility::Public,
+                &[(name, PerNs::macros(macro_, Visibility::Public))],
+                Visibility::Public,
             );
         }
     }
@@ -358,7 +358,7 @@ where
         let vis = self
             .def_map
             .resolve_visibility(self.db, module_id, &directive.import.visibility)
-            .unwrap_or(ResolvedVisibility::Public);
+            .unwrap_or(Visibility::Public);
 
         if import.is_glob {
             log::debug!("glob import: {:?}", import);
@@ -461,12 +461,7 @@ where
         }
     }
 
-    fn update(
-        &mut self,
-        module_id: LocalModuleId,
-        resolutions: &[(Name, PerNs)],
-        vis: ResolvedVisibility,
-    ) {
+    fn update(&mut self, module_id: LocalModuleId, resolutions: &[(Name, PerNs)], vis: Visibility) {
         self.update_recursive(module_id, resolutions, vis, 0)
     }
 
@@ -476,7 +471,7 @@ where
         resolutions: &[(Name, PerNs)],
         // All resolutions are imported with this visibility; the visibilies in
         // the `PerNs` values are ignored and overwritten
-        vis: ResolvedVisibility,
+        vis: Visibility,
         depth: usize,
     ) {
         if depth > 100 {
@@ -749,7 +744,7 @@ where
             .def_collector
             .def_map
             .resolve_visibility(self.def_collector.db, self.module_id, visibility)
-            .unwrap_or(ResolvedVisibility::Public);
+            .unwrap_or(Visibility::Public);
         let modules = &mut self.def_collector.def_map.modules;
         let res = modules.alloc(ModuleData::default());
         modules[res].parent = Some(self.module_id);
@@ -825,7 +820,7 @@ where
             .def_collector
             .def_map
             .resolve_visibility(self.def_collector.db, self.module_id, vis)
-            .unwrap_or(ResolvedVisibility::Public);
+            .unwrap_or(Visibility::Public);
         self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))], vis)
     }
 

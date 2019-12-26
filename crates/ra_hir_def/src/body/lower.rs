@@ -543,7 +543,7 @@ where
             };
             self.body.item_scope.define_def(def);
             if let Some(name) = name {
-                let vis = crate::visibility::ResolvedVisibility::Public; // FIXME determine correctly
+                let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
                 self.body
                     .item_scope
                     .push_res(name.as_name(), crate::per_ns::PerNs::from_def(def, vis));

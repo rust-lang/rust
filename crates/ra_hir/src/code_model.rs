@@ -118,7 +118,7 @@ impl_froms!(
     BuiltinType
 );
 
-pub use hir_def::{attr::Attrs, visibility::ResolvedVisibility};
+pub use hir_def::{attr::Attrs, visibility::Visibility};
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
@@ -256,7 +256,7 @@ impl StructField {
 }
 
 impl HasVisibility for StructField {
-    fn visibility(&self, db: &impl HirDatabase) -> ResolvedVisibility {
+    fn visibility(&self, db: &impl HirDatabase) -> Visibility {
         let struct_field_id: hir_def::StructFieldId = (*self).into();
         let visibility = db.visibility(struct_field_id.into());
         let parent_id: hir_def::VariantId = self.parent.into();
@@ -1052,7 +1052,7 @@ impl<T: Into<AttrDef> + Copy> Docs for T {
 }
 
 pub trait HasVisibility {
-    fn visibility(&self, db: &impl HirDatabase) -> ResolvedVisibility;
+    fn visibility(&self, db: &impl HirDatabase) -> Visibility;
     fn visible_from(&self, db: &impl HirDatabase, module: Module) -> bool {
         let vis = self.visibility(db);
         vis.visible_from(db, module.id)

@@ -6,8 +6,8 @@ use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    per_ns::PerNs, visibility::ResolvedVisibility, AdtId, BuiltinType, ImplId, MacroDefId,
-    ModuleDefId, TraitId,
+    per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ImplId, MacroDefId, ModuleDefId,
+    TraitId,
 };
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -33,9 +33,7 @@ pub struct ItemScope {
 static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
     BuiltinType::ALL
         .iter()
-        .map(|(name, ty)| {
-            (name.clone(), PerNs::types(ty.clone().into(), ResolvedVisibility::Public))
-        })
+        .map(|(name, ty)| (name.clone(), PerNs::types(ty.clone().into(), Visibility::Public)))
         .collect()
 });
 
@@ -159,7 +157,7 @@ impl ItemScope {
 }
 
 impl PerNs {
-    pub(crate) fn from_def(def: ModuleDefId, v: ResolvedVisibility) -> PerNs {
+    pub(crate) fn from_def(def: ModuleDefId, v: Visibility) -> PerNs {
         match def {
             ModuleDefId::ModuleId(_) => PerNs::types(def, v),
             ModuleDefId::FunctionId(_) => PerNs::values(def, v),

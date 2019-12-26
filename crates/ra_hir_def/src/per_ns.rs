@@ -5,13 +5,13 @@
 
 use hir_expand::MacroDefId;
 
-use crate::{visibility::ResolvedVisibility, ModuleDefId};
+use crate::{visibility::Visibility, ModuleDefId};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PerNs {
-    pub types: Option<(ModuleDefId, ResolvedVisibility)>,
-    pub values: Option<(ModuleDefId, ResolvedVisibility)>,
-    pub macros: Option<(MacroDefId, ResolvedVisibility)>,
+    pub types: Option<(ModuleDefId, Visibility)>,
+    pub values: Option<(ModuleDefId, Visibility)>,
+    pub macros: Option<(MacroDefId, Visibility)>,
 }
 
 impl Default for PerNs {
@@ -25,19 +25,19 @@ impl PerNs {
         PerNs { types: None, values: None, macros: None }
     }
 
-    pub fn values(t: ModuleDefId, v: ResolvedVisibility) -> PerNs {
+    pub fn values(t: ModuleDefId, v: Visibility) -> PerNs {
         PerNs { types: None, values: Some((t, v)), macros: None }
     }
 
-    pub fn types(t: ModuleDefId, v: ResolvedVisibility) -> PerNs {
+    pub fn types(t: ModuleDefId, v: Visibility) -> PerNs {
         PerNs { types: Some((t, v)), values: None, macros: None }
     }
 
-    pub fn both(types: ModuleDefId, values: ModuleDefId, v: ResolvedVisibility) -> PerNs {
+    pub fn both(types: ModuleDefId, values: ModuleDefId, v: Visibility) -> PerNs {
         PerNs { types: Some((types, v)), values: Some((values, v)), macros: None }
     }
 
-    pub fn macros(macro_: MacroDefId, v: ResolvedVisibility) -> PerNs {
+    pub fn macros(macro_: MacroDefId, v: Visibility) -> PerNs {
         PerNs { types: None, values: None, macros: Some((macro_, v)) }
     }
 
@@ -49,7 +49,7 @@ impl PerNs {
         self.types.map(|it| it.0)
     }
 
-    pub fn take_types_vis(self) -> Option<(ModuleDefId, ResolvedVisibility)> {
+    pub fn take_types_vis(self) -> Option<(ModuleDefId, Visibility)> {
         self.types
     }
 
@@ -61,7 +61,7 @@ impl PerNs {
         self.macros.map(|it| it.0)
     }
 
-    pub fn filter_visibility(self, mut f: impl FnMut(ResolvedVisibility) -> bool) -> PerNs {
+    pub fn filter_visibility(self, mut f: impl FnMut(Visibility) -> bool) -> PerNs {
         PerNs {
             types: self.types.filter(|(_, v)| f(*v)),
             values: self.values.filter(|(_, v)| f(*v)),
@@ -69,7 +69,7 @@ impl PerNs {
         }
     }
 
-    pub fn with_visibility(self, vis: ResolvedVisibility) -> PerNs {
+    pub fn with_visibility(self, vis: Visibility) -> PerNs {
         PerNs {
             types: self.types.map(|(it, _)| (it, vis)),
             values: self.values.map(|(it, _)| (it, vis)),

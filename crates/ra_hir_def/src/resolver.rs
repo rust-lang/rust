@@ -19,7 +19,7 @@ use crate::{
     nameres::CrateDefMap,
     path::{ModPath, PathKind},
     per_ns::PerNs,
-    visibility::{RawVisibility, ResolvedVisibility},
+    visibility::{RawVisibility, Visibility},
     AdtId, AssocContainerId, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId,
     FunctionId, GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId,
     StaticId, StructId, TraitId, TypeAliasId, TypeParamId, VariantId,
@@ -236,7 +236,7 @@ impl Resolver {
         &self,
         db: &impl DefDatabase,
         visibility: &RawVisibility,
-    ) -> Option<ResolvedVisibility> {
+    ) -> Option<Visibility> {
         match visibility {
             RawVisibility::Module(_) => {
                 let (item_map, module) = match self.module() {
@@ -245,7 +245,7 @@ impl Resolver {
                 };
                 item_map.resolve_visibility(db, module, visibility)
             }
-            RawVisibility::Public => Some(ResolvedVisibility::Public),
+            RawVisibility::Public => Some(Visibility::Public),
         }
     }
 
@@ -466,16 +466,10 @@ impl Scope {
                     f(name.clone(), ScopeDef::PerNs(def));
                 });
                 m.crate_def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
-                    f(
-                        name.clone(),
-                        ScopeDef::PerNs(PerNs::macros(macro_, ResolvedVisibility::Public)),
-                    );
+                    f(name.clone(), ScopeDef::PerNs(PerNs::macros(macro_, Visibility::Public)));
                 });
                 m.crate_def_map.extern_prelude.iter().for_each(|(name, &def)| {
-                    f(
-                        name.clone(),
-                        ScopeDef::PerNs(PerNs::types(def.into(), ResolvedVisibility::Public)),
-                    );
+                    f(name.clone(), ScopeDef::PerNs(PerNs::types(def.into(), Visibility::Public)));
                 });
                 if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
