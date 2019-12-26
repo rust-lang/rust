@@ -570,6 +570,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             _ => {}
         }
 
+        // `eval_rvalue_into_place` uses `Instance::resolve` for constants which still has a bug
+        // (#66901) in the presence of trait items with a default body. So we just bail out if we
+        // aren't 100% monomorphic.
+        if rvalue.needs_subst() {
+            return None;
+        }
+
         self.use_ecx(source_info, |this| {
             trace!("calling eval_rvalue_into_place(rvalue = {:?}, place = {:?})", rvalue, place);
             this.ecx.eval_rvalue_into_place(rvalue, place)?;
