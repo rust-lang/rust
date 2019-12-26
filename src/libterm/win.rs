@@ -101,7 +101,7 @@ impl<T: Write + Send + 'static> WinConsole<T> {
 
         unsafe {
             // Magic -11 means stdout, from
-            // http://msdn.microsoft.com/en-us/library/windows/desktop/ms683231%28v=vs.85%29.aspx
+            // https://docs.microsoft.com/en-us/windows/console/getstdhandle
             //
             // You may be wondering, "but what about stderr?", and the answer
             // to that is that setting terminal attributes on the stdout

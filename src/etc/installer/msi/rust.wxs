@@ -85,7 +85,7 @@
         <Property Id="ARPPRODUCTICON" Value="rust.ico" />
         <Property Id="ARPURLINFOABOUT" Value="https://www.rust-lang.org/" />
         <Property Id="ARPCOMMENTS" Value="$(env.CFG_RELEASE_INFO)" />
-        <!-- This is a dual-mode package. http://msdn.microsoft.com/en-us/library/windows/desktop/dd408068.aspx -->
+        <!-- This is a dual-mode package. https://docs.microsoft.com/en-us/windows/win32/msi/single-package-authoring -->
         <Property Id="ALLUSERS" Value="2" Secure="yes" />
         <Property Id="MSIINSTALLPERUSER" Secure="yes" />
         <!-- The actual install location (initialized below) -->
