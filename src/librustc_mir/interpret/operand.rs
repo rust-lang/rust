@@ -578,7 +578,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                return Ok(OpTy::from(self.const_eval_raw(GlobalId { instance, promoted: None })?));
+                // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.
+                // The reason we use `const_eval_raw` everywhere else is to prevent cycles during
+                // validation, because validation automatically reads through any references, thus
+                // potentially requiring the current static to be evaluated again. This is not a
+                // problem here, because we are building an operand which means an actual read is
+                // happening.
+                // FIXME(oli-obk): eliminate all the `const_eval_raw` usages when we get rid of
+                // `StaticKind` once and for all.
+                return self.const_eval(GlobalId { instance, promoted: None });
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)

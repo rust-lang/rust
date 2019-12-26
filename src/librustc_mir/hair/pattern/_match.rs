@@ -252,6 +252,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use arena::TypedArena;
 
 use smallvec::{smallvec, SmallVec};
+use std::borrow::Cow;
 use std::cmp::{self, max, min, Ordering};
 use std::convert::TryInto;
 use std::fmt;
@@ -260,11 +261,12 @@ use std::ops::RangeInclusive;
 use std::u128;
 
 pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pat<'tcx>) -> Pat<'tcx> {
-    LiteralExpander { tcx: cx.tcx }.fold_pattern(&pat)
+    LiteralExpander { tcx: cx.tcx, param_env: cx.param_env }.fold_pattern(&pat)
 }
 
 struct LiteralExpander<'tcx> {
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl LiteralExpander<'tcx> {
@@ -284,9 +286,23 @@ impl LiteralExpander<'tcx> {
         debug!("fold_const_value_deref {:?} {:?} {:?}", val, rty, crty);
         match (val, &crty.kind, &rty.kind) {
             // the easy case, deref a reference
-            (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => {
-                let alloc = self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id);
-                ConstValue::ByRef { alloc, offset: p.offset }
+            (ConstValue::Scalar(p), x, y) if x == y => {
+                match p {
+                    Scalar::Ptr(p) => {
+                        let alloc = self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id);
+                        ConstValue::ByRef { alloc, offset: p.offset }
+                    }
+                    Scalar::Raw { .. } => {
+                        let layout = self.tcx.layout_of(self.param_env.and(rty)).unwrap();
+                        if layout.is_zst() {
+                            // Deref of a reference to a ZST is a nop.
+                            ConstValue::Scalar(Scalar::zst())
+                        } else {
+                            // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;`
+                            bug!("cannot deref {:#?}, {} -> {}", val, crty, rty);
+                        }
+                    }
+                }
             }
             // unsize array to slice if pattern is array but match value or other patterns are slice
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
@@ -2348,16 +2364,30 @@ fn specialize_one_pattern<'p, 'tcx>(
             // just integers. The only time they should be pointing to memory
             // is when they are subslices of nonzero slices.
             let (alloc, offset, n, ty) = match value.ty.kind {
-                ty::Array(t, n) => match value.val {
-                    ty::ConstKind::Value(ConstValue::ByRef { offset, alloc, .. }) => {
-                        (alloc, offset, n.eval_usize(cx.tcx, cx.param_env), t)
+                ty::Array(t, n) => {
+                    let n = n.eval_usize(cx.tcx, cx.param_env);
+                    // Shortcut for `n == 0` where no matter what `alloc` and `offset` we produce,
+                    // the result would be exactly what we early return here.
+                    if n == 0 {
+                        if ctor_wild_subpatterns.len() as u64 == 0 {
+                            return Some(PatStack::from_slice(&[]));
+                        } else {
+                            return None;
+                        }
                     }
-                    _ => span_bug!(pat.span, "array pattern is {:?}", value,),
-                },
+                    match value.val {
+                        ty::ConstKind::Value(ConstValue::ByRef { offset, alloc, .. }) => {
+                            (Cow::Borrowed(alloc), offset, n, t)
+                        }
+                        _ => span_bug!(pat.span, "array pattern is {:?}", value,),
+                    }
+                }
                 ty::Slice(t) => {
                     match value.val {
                         ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
-                            (data, Size::from_bytes(start as u64), (end - start) as u64, t)
+                            let offset = Size::from_bytes(start as u64);
+                            let n = (end - start) as u64;
+                            (Cow::Borrowed(data), offset, n, t)
                         }
                         ty::ConstKind::Value(ConstValue::ByRef { .. }) => {
                             // FIXME(oli-obk): implement `deref` for `ConstValue`
