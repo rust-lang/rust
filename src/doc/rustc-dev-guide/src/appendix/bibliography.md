@@ -45,7 +45,7 @@ Rust, as well as publications about Rust.
 
 * [GPU Programming in Rust: Implementing High Level Abstractions in a Systems
   Level
-  Language](https://www.cs.indiana.edu/~achauhan/Publications/Pubs/2013-hips-holk-rust.pdf).
+  Language](https://ieeexplore.ieee.org/document/6650903).
   Early GPU work by Eric Holk.
 * [Parallel closures: a new twist on an old
   idea](https://www.usenix.org/conference/hotpar12/parallel-closures-new-twist-old-idea)
