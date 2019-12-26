@@ -1,21 +1,96 @@
-error[E0391]: cycle detected when const-evaluating `hint_unreachable`
+error[E0080]: evaluation of constant value failed
   --> $DIR/uninhabited-const-issue-61744.rs:8:5
    |
+LL |     hint_unreachable()
+   |     ------------------
+   |     |
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+...
 LL |     fake_type()
    |     ^^^^^^^^^^^
-   |
-note: ...which requires const-evaluating `fake_type`...
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
-   |
-LL |     hint_unreachable()
-   |     ^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires const-evaluating `hint_unreachable`, completing the cycle
-note: cycle used when const-evaluating `fake_type`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
-   |
-LL |     hint_unreachable()
-   |     ^^^^^^^^^^^^^^^^^^
+   |     |
+   |     reached the configured maximum number of stack frames
+   |     inside call to `fake_type::<!>` at $DIR/uninhabited-const-issue-61744.rs:8:5
 
-error: aborting due to previous error
+error: any use of this value will cause an error
+  --> $DIR/uninhabited-const-issue-61744.rs:12:36
+   |
+LL |     const CONSTANT: i32 = unsafe { fake_type() };
+   |     -------------------------------^^^^^^^^^^^---
+   |                                    |
+   |                                    referenced constant has errors
+   |
+   = note: `#[deny(const_err)]` on by default
 
-For more information about this error, try `rustc --explain E0391`.
+error[E0080]: erroneous constant used
+  --> $DIR/uninhabited-const-issue-61744.rs:18:10
+   |
+LL |     dbg!(i32::CONSTANT);
+   |          ^^^^^^^^^^^^^ referenced constant has errors
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

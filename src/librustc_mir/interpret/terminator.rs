@@ -7,8 +7,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::source_map::Span;
 
 use super::{
-    FnVal, GlobalId, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
-    StackPopCleanup,
+    FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, StackPopCleanup,
 };
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -400,26 +399,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.eval_fn_call(drop_fn, span, caller_abi, &args, ret, unwind)
             }
         }
-    }
-
-    /// Evaluate a const function where all arguments (if any) are zero-sized types.
-    /// The evaluation is memoized thanks to the query system.
-    // FIXME: Consider moving this to `const_eval.rs`.
-    pub(crate) fn eval_const_fn_call(
-        &mut self,
-        gid: GlobalId<'tcx>,
-        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
-    ) -> InterpResult<'tcx> {
-        trace!("eval_const_fn_call: {:?}", gid);
-
-        let place = self.const_eval_raw(gid)?;
-        let dest = ret.ok_or_else(|| err_ub!(Unreachable))?.0;
-
-        self.copy_op(place.into(), dest)?;
-
-        self.return_to_block(ret.map(|r| r.1))?;
-        self.dump_place(*dest);
-        return Ok(());
     }
 
     fn drop_in_place(
