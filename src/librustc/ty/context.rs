@@ -1370,19 +1370,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.borrowck_mode().migrate()
     }
 
-    /// If `true`, make MIR codegen for `match` emit a temp that holds a
-    /// borrow of the input to the match expression.
-    pub fn generate_borrow_of_any_match_input(&self) -> bool {
-        self.emit_read_for_match()
-    }
-
-    /// If `true`, make MIR codegen for `match` emit FakeRead
-    /// statements (which simulate the maximal effect of executing the
-    /// patterns in a match arm).
-    pub fn emit_read_for_match(&self) -> bool {
-        !self.sess.opts.debugging_opts.nll_dont_emit_read_for_match
-    }
-
     /// What mode(s) of borrowck should we run? AST? MIR? both?
     /// (Also considers the `#![feature(nll)]` setting.)
     pub fn borrowck_mode(&self) -> BorrowckMode {

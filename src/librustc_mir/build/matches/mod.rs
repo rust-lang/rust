@@ -65,32 +65,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// We generate MIR in the following steps:
     ///
-    /// 1. Evaluate the scrutinee and add the fake read of it.
-    /// 2. Create the prebinding and otherwise blocks.
-    /// 3. Create the decision tree and record the places that we bind or test.
-    /// 4. Determine the fake borrows that are needed from the above places.
-    ///    Create the required temporaries for them.
-    /// 5. Create everything else: the guards and the arms.
-    ///
-    /// ## Fake Reads and borrows
-    ///
-    /// Match exhaustiveness checking is not able to handle the case where the
-    /// place being matched on is mutated in the guards. There is an AST check
-    /// that tries to stop this but it is buggy and overly restrictive. Instead
-    /// we add "fake borrows" to the guards that prevent any mutation of the
-    /// place being matched. There are a some subtleties:
-    ///
-    /// 1. Borrowing `*x` doesn't prevent assigning to `x`. If `x` is a shared
-    ///    refence, the borrow isn't even tracked. As such we have to add fake
-    ///    borrows of any prefixes of a place
-    /// 2. We don't want `match x { _ => (), }` to conflict with mutable
-    ///    borrows of `x`, so we only add fake borrows for places which are
-    ///    bound or tested by the match.
-    /// 3. We don't want the fake borrows to conflict with `ref mut` bindings,
-    ///    so we use a special BorrowKind for them.
-    /// 4. The fake borrows may be of places in inactive variants, so it would
-    ///    be UB to generate code for them. They therefore have to be removed
-    ///    by a MIR pass run after borrow checking.
+    /// 1. Evaluate the scrutinee and add the fake read of it ([Builder::lower_scrutinee]).
+    /// 2. Create the prebinding and otherwise blocks ([Builder::create_match_candidates]).
+    /// 3. Create the decision tree ([Builder::lower_match_tree]).
+    /// 4. Determine the fake borrows that are needed from the places that were
+    ///    matched against and create the required temporaries for them
+    ///    ([Builder::calculate_fake_borrows]).
+    /// 5. Create everything else: the guards and the arms ([Builder::lower_match_arms]).
     ///
     /// ## False edges
     ///
@@ -108,13 +89,37 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee: ExprRef<'tcx>,
         arms: Vec<Arm<'tcx>>,
     ) -> BlockAnd<()> {
-        let tcx = self.hir.tcx();
-
-        // Step 1. Evaluate the scrutinee and add the fake read of it.
-
         let scrutinee_span = scrutinee.span();
-        let scrutinee_place = unpack!(block = self.as_place(block, scrutinee));
+        let scrutinee_place =
+            unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
 
+        let mut arm_candidates = self.create_match_candidates(&scrutinee_place, &arms);
+
+        let match_has_guard = arms.iter().any(|arm| arm.guard.is_some());
+        let candidates =
+            arm_candidates.iter_mut().flat_map(|(_, candidates)| candidates).collect::<Vec<_>>();
+
+        let fake_borrow_temps =
+            self.lower_match_tree(block, scrutinee_span, match_has_guard, candidates);
+
+        self.lower_match_arms(
+            &destination,
+            scrutinee_place,
+            scrutinee_span,
+            arm_candidates,
+            self.source_info(span),
+            fake_borrow_temps,
+        )
+    }
+
+    /// Evaluate the scrutinee and add the fake read of it.
+    fn lower_scrutinee(
+        &mut self,
+        mut block: BasicBlock,
+        scrutinee: ExprRef<'tcx>,
+        scrutinee_span: Span,
+    ) -> BlockAnd<Place<'tcx>> {
+        let scrutinee_place = unpack!(block = self.as_place(block, scrutinee));
         // Matching on a `scrutinee_place` with an uninhabited type doesn't
         // generate any memory reads by itself, and so if the place "expression"
         // contains unsafe operations like raw pointer dereferences or union
@@ -130,37 +135,38 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // uninhabited value. If we get never patterns, those will check that
         // the place is initialized, and so this read would only be used to
         // check safety.
-
-        let source_info = self.source_info(scrutinee_span);
         let cause_matched_place = FakeReadCause::ForMatchedPlace;
+        let source_info = self.source_info(scrutinee_span);
         self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place.clone());
 
-        // Step 2. Create the otherwise and prebinding blocks.
+        block.and(scrutinee_place)
+    }
 
-        // create binding start block for link them by false edges
+    /// Create the initial `Candidate`s for a `match` expression.
+    fn create_match_candidates<'pat>(
+        &mut self,
+        scrutinee: &Place<'tcx>,
+        arms: &'pat [Arm<'tcx>],
+    ) -> Vec<(&'pat Arm<'tcx>, Vec<Candidate<'pat, 'tcx>>)> {
         let candidate_count = arms.iter().map(|c| c.top_pats_hack().len()).sum::<usize>();
         let pre_binding_blocks: Vec<_> =
             (0..candidate_count).map(|_| self.cfg.start_new_block()).collect();
-
-        let mut match_has_guard = false;
 
         let mut candidate_pre_binding_blocks = pre_binding_blocks.iter();
         let mut next_candidate_pre_binding_blocks = pre_binding_blocks.iter().skip(1);
 
         // Assemble a list of candidates: there is one candidate per pattern,
         // which means there may be more than one candidate *per arm*.
-        let mut arm_candidates: Vec<_> = arms
-            .iter()
+        arms.iter()
             .map(|arm| {
                 let arm_has_guard = arm.guard.is_some();
-                match_has_guard |= arm_has_guard;
                 let arm_candidates: Vec<_> = arm
                     .top_pats_hack()
                     .iter()
                     .zip(candidate_pre_binding_blocks.by_ref())
                     .map(|(pattern, pre_binding_block)| Candidate {
                         span: pattern.span,
-                        match_pairs: smallvec![MatchPair::new(scrutinee_place.clone(), pattern),],
+                        match_pairs: smallvec![MatchPair::new(scrutinee.clone(), pattern)],
                         bindings: vec![],
                         ascriptions: vec![],
                         otherwise_block: if arm_has_guard {
@@ -176,54 +182,66 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .collect();
                 (arm, arm_candidates)
             })
-            .collect();
+            .collect()
+    }
 
-        // Step 3. Create the decision tree and record the places that we bind or test.
-
+    /// Create the decision tree for the match expression, starting from `block`.
+    ///
+    /// Modifies `candidates` to store the bindings and type ascriptions for
+    /// that candidate.
+    ///
+    /// Returns the places that need fake borrows because we bind or test them.
+    fn lower_match_tree<'pat>(
+        &mut self,
+        block: BasicBlock,
+        scrutinee_span: Span,
+        match_has_guard: bool,
+        mut candidates: Vec<&mut Candidate<'pat, 'tcx>>,
+    ) -> Vec<(Place<'tcx>, Local)> {
         // The set of places that we are creating fake borrows of. If there are
         // no match guards then we don't need any fake borrows, so don't track
         // them.
-        let mut fake_borrows = if match_has_guard && tcx.generate_borrow_of_any_match_input() {
-            Some(FxHashSet::default())
-        } else {
-            None
-        };
+        let mut fake_borrows = if match_has_guard { Some(FxHashSet::default()) } else { None };
 
-        // These candidates are kept sorted such that the highest priority
-        // candidate comes first in the list. (i.e., same order as in source)
-        // As we gnerate the decision tree,
-        let candidates = &mut arm_candidates
-            .iter_mut()
-            .flat_map(|(_, candidates)| candidates)
-            .collect::<Vec<_>>();
-
-        let outer_source_info = self.source_info(span);
-
-        // this will generate code to test scrutinee_place and
+        // This will generate code to test scrutinee_place and
         // branch to the appropriate arm block
         self.match_candidates(
             scrutinee_span,
             &mut Some(block),
             None,
-            candidates,
+            &mut candidates,
             &mut fake_borrows,
         );
 
-        // Step 4. Determine the fake borrows that are needed from the above
-        // places. Create the required temporaries for them.
-
-        let fake_borrow_temps = if let Some(ref borrows) = fake_borrows {
+        if let Some(ref borrows) = fake_borrows {
             self.calculate_fake_borrows(borrows, scrutinee_span)
         } else {
             Vec::new()
-        };
+        }
+    }
 
-        // Step 5. Create everything else: the guards and the arms.
+    /// Lower the bindings, guards and arm bodies of a `match` expression.
+    ///
+    /// The decision tree should have already been created
+    /// (by [Builder::lower_match_tree]).
+    ///
+    /// `outer_source_info` is the SourceInfo for the whole match.
+    fn lower_match_arms(
+        &mut self,
+        destination: &Place<'tcx>,
+        scrutinee_place: Place<'tcx>,
+        scrutinee_span: Span,
+        arm_candidates: Vec<(&'_ Arm<'tcx>, Vec<Candidate<'_, 'tcx>>)>,
+        outer_source_info: SourceInfo,
+        fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
+    ) -> BlockAnd<()> {
         let match_scope = self.scopes.topmost();
 
         let arm_end_blocks: Vec<_> = arm_candidates
             .into_iter()
-            .map(|(arm, mut candidates)| {
+            .map(|(arm, candidates)| {
+                debug!("lowering arm {:?}\ncanidates = {:?}", arm, candidates);
+
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 self.in_scope(arm_scope, arm.lint_level, |this| {
@@ -236,29 +254,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((Some(&scrutinee_place), scrutinee_span)),
                     );
 
-                    let arm_block;
-                    if candidates.len() == 1 {
-                        arm_block = this.bind_and_guard_matched_candidate(
-                            candidates.pop().unwrap(),
-                            arm.guard.clone(),
-                            &fake_borrow_temps,
-                            scrutinee_span,
-                            match_scope,
-                        );
-                    } else {
-                        arm_block = this.cfg.start_new_block();
-                        for candidate in candidates {
-                            this.clear_top_scope(arm.scope);
-                            let binding_end = this.bind_and_guard_matched_candidate(
-                                candidate,
-                                arm.guard.clone(),
-                                &fake_borrow_temps,
-                                scrutinee_span,
-                                match_scope,
-                            );
-                            this.cfg.goto(binding_end, source_info, arm_block);
-                        }
-                    }
+                    let arm_block = this.bind_pattern(
+                        outer_source_info,
+                        candidates,
+                        arm.guard.as_ref().map(|g| (g, match_scope)),
+                        &fake_borrow_temps,
+                        scrutinee_span,
+                        arm.scope,
+                    );
 
                     if let Some(source_scope) = scope {
                         this.source_scope = source_scope;
@@ -279,6 +282,44 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.source_scope = outer_source_info.scope;
 
         end_block.unit()
+    }
+
+    /// Binds the variables and ascribes types for a given `match` arm.
+    ///
+    /// Also check if the guard matches, if it's provided.
+    fn bind_pattern(
+        &mut self,
+        outer_source_info: SourceInfo,
+        mut candidates: Vec<Candidate<'_, 'tcx>>,
+        guard: Option<(&Guard<'tcx>, region::Scope)>,
+        fake_borrow_temps: &Vec<(Place<'tcx>, Local)>,
+        scrutinee_span: Span,
+        arm_scope: region::Scope,
+    ) -> BasicBlock {
+        if candidates.len() == 1 {
+            // Avoid generating another `BasicBlock` when we only have one
+            // candidate.
+            self.bind_and_guard_matched_candidate(
+                candidates.pop().unwrap(),
+                guard,
+                fake_borrow_temps,
+                scrutinee_span,
+            )
+        } else {
+            let arm_block = self.cfg.start_new_block();
+            for candidate in candidates {
+                // Avoid scheduling drops multiple times.
+                self.clear_top_scope(arm_scope);
+                let binding_end = self.bind_and_guard_matched_candidate(
+                    candidate,
+                    guard,
+                    fake_borrow_temps,
+                    scrutinee_span,
+                );
+                self.cfg.goto(binding_end, outer_source_info, arm_block);
+            }
+            arm_block
+        }
     }
 
     pub(super) fn expr_into_pattern(
@@ -1157,13 +1198,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.perform_test(block, &match_place, &test, make_target_blocks);
     }
 
-    // Determine the fake borrows that are needed to ensure that the place
-    // will evaluate to the same thing until an arm has been chosen.
+    /// Determine the fake borrows that are needed from a set of places that
+    /// have to be stable across match guards.
+    ///
+    /// Returns a list of places that need a fake borrow and the temporary
+    /// that's used to store the fake borrow.
+    ///
+    /// Match exhaustiveness checking is not able to handle the case where the
+    /// place being matched on is mutated in the guards. We add "fake borrows"
+    /// to the guards that prevent any mutation of the place being matched.
+    /// There are a some subtleties:
+    ///
+    /// 1. Borrowing `*x` doesn't prevent assigning to `x`. If `x` is a shared
+    ///    reference, the borrow isn't even tracked. As such we have to add fake
+    ///    borrows of any prefixes of a place
+    /// 2. We don't want `match x { _ => (), }` to conflict with mutable
+    ///    borrows of `x`, so we only add fake borrows for places which are
+    ///    bound or tested by the match.
+    /// 3. We don't want the fake borrows to conflict with `ref mut` bindings,
+    ///    so we use a special BorrowKind for them.
+    /// 4. The fake borrows may be of places in inactive variants, so it would
+    ///    be UB to generate code for them. They therefore have to be removed
+    ///    by a MIR pass run after borrow checking.
     fn calculate_fake_borrows<'b>(
         &mut self,
         fake_borrows: &'b FxHashSet<Place<'tcx>>,
         temp_span: Span,
-    ) -> Vec<(PlaceRef<'b, 'tcx>, Local)> {
+    ) -> Vec<(Place<'tcx>, Local)> {
         let tcx = self.hir.tcx();
 
         debug!("add_fake_borrows fake_borrows = {:?}", fake_borrows);
@@ -1195,14 +1256,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         all_fake_borrows
             .into_iter()
-            .map(|matched_place| {
-                let fake_borrow_deref_ty = Place::ty_from(
-                    matched_place.base,
-                    matched_place.projection,
-                    &self.local_decls,
-                    tcx,
-                )
-                .ty;
+            .map(|matched_place_ref| {
+                let matched_place = Place {
+                    base: matched_place_ref.base.clone(),
+                    projection: tcx.intern_place_elems(matched_place_ref.projection),
+                };
+                let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
                 let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                 let fake_borrow_temp =
                     self.local_decls.push(LocalDecl::new_temp(fake_borrow_ty, temp_span));
@@ -1228,10 +1287,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_and_guard_matched_candidate<'pat>(
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
-        guard: Option<Guard<'tcx>>,
-        fake_borrows: &Vec<(PlaceRef<'_, 'tcx>, Local)>,
+        guard: Option<(&Guard<'tcx>, region::Scope)>,
+        fake_borrows: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
-        region_scope: region::Scope,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
 
@@ -1341,7 +1399,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //      the reference that we create for the arm.
         //    * So we eagerly create the reference for the arm and then take a
         //      reference to that.
-        if let Some(guard) = guard {
+        if let Some((guard, region_scope)) = guard {
             let tcx = self.hir.tcx();
 
             self.bind_matched_candidate_for_guard(block, &candidate.bindings);
@@ -1358,21 +1416,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let re_erased = tcx.lifetimes.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
             for (place, temp) in fake_borrows {
-                let borrow = Rvalue::Ref(
-                    re_erased,
-                    BorrowKind::Shallow,
-                    Place {
-                        base: place.base.clone(),
-                        projection: tcx.intern_place_elems(place.projection),
-                    },
-                );
+                let borrow = Rvalue::Ref(re_erased, BorrowKind::Shallow, place.clone());
                 self.cfg.push_assign(block, scrutinee_source_info, &Place::from(*temp), borrow);
             }
 
             // the block to branch to if the guard fails; if there is no
             // guard, this block is simply unreachable
             let guard = match guard {
-                Guard::If(e) => self.hir.mirror(e),
+                Guard::If(e) => self.hir.mirror(e.clone()),
             };
             let source_info = self.source_info(guard.span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard.span));

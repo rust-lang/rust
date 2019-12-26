@@ -616,7 +616,7 @@ where
         // RustCall pseudo-ABI untuples the last argument.
         spread_arg = Some(Local::new(arguments.len()));
     }
-    info!("fn_id {:?} has attrs {:?}", fn_def_id, tcx.get_attrs(fn_def_id));
+    debug!("fn_id {:?} has attrs {:?}", fn_def_id, tcx.get_attrs(fn_def_id));
 
     let mut body = builder.finish();
     body.spread_arg = spread_arg;
