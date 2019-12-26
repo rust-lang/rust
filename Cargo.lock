@@ -3333,6 +3333,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec 0.6.10",
+ "smallvec 1.0.0",
  "syn 0.15.35",
  "url 2.1.0",
  "winapi 0.3.8",
@@ -3696,6 +3697,7 @@ dependencies = [
  "smallvec 1.0.0",
  "syntax",
  "syntax_pos",
+ "unicode-normalization",
 ]
 
 [[package]]
@@ -4913,9 +4915,12 @@ dependencies = [
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.7"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a0180bc61fc5a987082bfa111f4cc95c4caff7f9799f3e46df09163a937aa25"
+checksum = "b561e267b2326bb4cebfc0ef9e68355c7abe6c6f522aeac2f5bf95d56c59bdcf"
+dependencies = [
+ "smallvec 1.0.0",
+]
 
 [[package]]
 name = "unicode-segmentation"
