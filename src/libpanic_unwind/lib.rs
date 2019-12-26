@@ -31,6 +31,7 @@
 #![feature(panic_runtime)]
 
 use alloc::boxed::Box;
+use core::any::Any;
 use core::panic::BoxMeUp;
 
 // If adding to this list, you should also look at libstd::panicking's identical
@@ -63,10 +64,10 @@ cfg_if::cfg_if! {
 mod dwarf;
 
 #[no_mangle]
-pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> core::raw::TraitObject {
+pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static) {
     let payload = payload as *mut imp::Payload;
     let payload = *(payload);
-    core::mem::transmute(imp::cleanup(payload))
+    Box::into_raw(imp::cleanup(payload))
 }
 
 // Entry point for raising an exception, just delegates to the platform-specific

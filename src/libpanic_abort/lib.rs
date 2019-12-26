@@ -17,10 +17,11 @@
 #![feature(panic_runtime)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
-#![feature(raw)]
+
+use core::any::Any;
 
 #[rustc_std_internal_symbol]
-pub unsafe extern "C" fn __rust_cleanup(_: *mut u8) -> core::raw::TraitObject {
+pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Send + 'static) {
     unreachable!()
 }
 
