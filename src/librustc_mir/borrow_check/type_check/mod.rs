@@ -1279,8 +1279,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                     .at(&ObligationCause::dummy(), param_env)
                                     .eq(opaque_decl.concrete_ty, renumbered_opaque_defn_ty)?,
                             );
-                            opaque_type_values
-                                .push((opaque_def_id, ty::ResolvedOpaqueTy { ..*opaque_defn_ty }));
+                            opaque_type_values.push((
+                                opaque_def_id,
+                                ty::ResolvedOpaqueTy {
+                                    concrete_type: renumbered_opaque_defn_ty,
+                                    substs: opaque_decl.substs,
+                                },
+                            ));
                         } else {
                             // We're using an opaque `impl Trait` type without
                             // 'revealing' it. For example, code like this:
