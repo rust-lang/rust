@@ -2,16 +2,13 @@
 
 use std::sync::Arc;
 
-use either::Either;
-
 use hir_expand::{hygiene::Hygiene, InFile};
-use ra_syntax::ast::{self, VisibilityOwner};
+use ra_syntax::ast;
 
 use crate::{
     db::DefDatabase,
     path::{ModPath, PathKind},
-    src::{HasChildSource, HasSource},
-    AdtId, Lookup, ModuleId, VisibilityDefId,
+    ModuleId,
 };
 
 /// Visibility of an item, not yet resolved.
@@ -28,51 +25,15 @@ pub enum RawVisibility {
 }
 
 impl RawVisibility {
-    pub(crate) fn visibility_query(db: &impl DefDatabase, def: VisibilityDefId) -> RawVisibility {
-        match def {
-            VisibilityDefId::ModuleId(module) => {
-                let def_map = db.crate_def_map(module.krate);
-                let src = match def_map[module.local_id].declaration_source(db) {
-                    Some(it) => it,
-                    None => return RawVisibility::private(),
-                };
-                RawVisibility::from_ast(db, src.map(|it| it.visibility()))
-            }
-            VisibilityDefId::StructFieldId(it) => {
-                let src = it.parent.child_source(db);
-                let is_enum = match it.parent {
-                    crate::VariantId::EnumVariantId(_) => true,
-                    _ => false,
-                };
-                let vis_node = src.map(|m| match &m[it.local_id] {
-                    Either::Left(tuple) => tuple.visibility(),
-                    Either::Right(record) => record.visibility(),
-                });
-                if vis_node.value.is_none() && is_enum {
-                    RawVisibility::Public
-                } else {
-                    RawVisibility::from_ast(db, vis_node)
-                }
-            }
-            VisibilityDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => visibility_from_loc(it.lookup(db), db),
-                AdtId::EnumId(it) => visibility_from_loc(it.lookup(db), db),
-                AdtId::UnionId(it) => visibility_from_loc(it.lookup(db), db),
-            },
-            VisibilityDefId::TraitId(it) => visibility_from_loc(it.lookup(db), db),
-            VisibilityDefId::ConstId(it) => visibility_from_loc(it.lookup(db), db),
-            VisibilityDefId::StaticId(it) => visibility_from_loc(it.lookup(db), db),
-            VisibilityDefId::FunctionId(it) => visibility_from_loc(it.lookup(db), db),
-            VisibilityDefId::TypeAliasId(it) => visibility_from_loc(it.lookup(db), db),
-        }
-    }
-
     fn private() -> RawVisibility {
         let path = ModPath { kind: PathKind::Super(0), segments: Vec::new() };
         RawVisibility::Module(Arc::new(path))
     }
 
-    fn from_ast(db: &impl DefDatabase, node: InFile<Option<ast::Visibility>>) -> RawVisibility {
+    pub(crate) fn from_ast(
+        db: &impl DefDatabase,
+        node: InFile<Option<ast::Visibility>>,
+    ) -> RawVisibility {
         Self::from_ast_with_hygiene(node.value, &Hygiene::new(db, node.file_id))
     }
 
@@ -154,13 +115,4 @@ impl Visibility {
         });
         ancestors.any(|m| m == to_module.local_id)
     }
-}
-
-fn visibility_from_loc<T>(node: T, db: &impl DefDatabase) -> RawVisibility
-where
-    T: HasSource,
-    T::Value: ast::VisibilityOwner,
-{
-    let src = node.source(db);
-    RawVisibility::from_ast(db, src.map(|n| n.visibility()))
 }

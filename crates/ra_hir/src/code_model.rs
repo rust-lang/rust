@@ -257,8 +257,8 @@ impl StructField {
 
 impl HasVisibility for StructField {
     fn visibility(&self, db: &impl HirDatabase) -> Visibility {
-        let struct_field_id: hir_def::StructFieldId = (*self).into();
-        let visibility = db.visibility(struct_field_id.into());
+        let variant_data = self.parent.variant_data(db);
+        let visibility = &variant_data.fields()[self.id].visibility;
         let parent_id: hir_def::VariantId = self.parent.into();
         visibility.resolve(db, &parent_id.resolver(db))
     }

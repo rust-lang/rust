@@ -9,11 +9,12 @@ use hir_expand::{
 };
 use ra_arena::{map::ArenaMap, Arena};
 use ra_prof::profile;
-use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
+use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 use crate::{
-    db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace, type_ref::TypeRef, EnumId,
-    LocalEnumVariantId, LocalStructFieldId, Lookup, StructId, UnionId, VariantId,
+    db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace, type_ref::TypeRef,
+    visibility::RawVisibility, EnumId, LocalEnumVariantId, LocalStructFieldId, Lookup, StructId,
+    UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -47,13 +48,14 @@ pub enum VariantData {
 pub struct StructFieldData {
     pub name: Name,
     pub type_ref: TypeRef,
+    pub visibility: RawVisibility,
 }
 
 impl StructData {
     pub(crate) fn struct_data_query(db: &impl DefDatabase, id: StructId) -> Arc<StructData> {
         let src = id.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
-        let variant_data = VariantData::new(src.value.kind());
+        let variant_data = VariantData::new(db, src.map(|s| s.kind()));
         let variant_data = Arc::new(variant_data);
         Arc::new(StructData { name, variant_data })
     }
@@ -61,10 +63,12 @@ impl StructData {
         let src = id.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(
-            src.value
-                .record_field_def_list()
-                .map(ast::StructKind::Record)
-                .unwrap_or(ast::StructKind::Unit),
+            db,
+            src.map(|s| {
+                s.record_field_def_list()
+                    .map(ast::StructKind::Record)
+                    .unwrap_or(ast::StructKind::Unit)
+            }),
         );
         let variant_data = Arc::new(variant_data);
         Arc::new(StructData { name, variant_data })
@@ -77,7 +81,7 @@ impl EnumData {
         let src = e.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let mut trace = Trace::new_for_arena();
-        lower_enum(&mut trace, &src.value);
+        lower_enum(db, &mut trace, &src);
         Arc::new(EnumData { name, variants: trace.into_arena() })
     }
 
@@ -93,30 +97,31 @@ impl HasChildSource for EnumId {
     fn child_source(&self, db: &impl DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let src = self.lookup(db).source(db);
         let mut trace = Trace::new_for_map();
-        lower_enum(&mut trace, &src.value);
+        lower_enum(db, &mut trace, &src);
         src.with_value(trace.into_map())
     }
 }
 
 fn lower_enum(
+    db: &impl DefDatabase,
     trace: &mut Trace<LocalEnumVariantId, EnumVariantData, ast::EnumVariant>,
-    ast: &ast::EnumDef,
+    ast: &InFile<ast::EnumDef>,
 ) {
-    for var in ast.variant_list().into_iter().flat_map(|it| it.variants()) {
+    for var in ast.value.variant_list().into_iter().flat_map(|it| it.variants()) {
         trace.alloc(
             || var.clone(),
             || EnumVariantData {
                 name: var.name().map_or_else(Name::missing, |it| it.as_name()),
-                variant_data: Arc::new(VariantData::new(var.kind())),
+                variant_data: Arc::new(VariantData::new(db, ast.with_value(var.kind()))),
             },
         );
     }
 }
 
 impl VariantData {
-    fn new(flavor: ast::StructKind) -> Self {
+    fn new(db: &impl DefDatabase, flavor: InFile<ast::StructKind>) -> Self {
         let mut trace = Trace::new_for_arena();
-        match lower_struct(&mut trace, &flavor) {
+        match lower_struct(db, &mut trace, &flavor) {
             StructKind::Tuple => VariantData::Tuple(trace.into_arena()),
             StructKind::Record => VariantData::Record(trace.into_arena()),
             StructKind::Unit => VariantData::Unit,
@@ -163,7 +168,7 @@ impl HasChildSource for VariantId {
             }),
         };
         let mut trace = Trace::new_for_map();
-        lower_struct(&mut trace, &src.value);
+        lower_struct(db, &mut trace, &src);
         src.with_value(trace.into_map())
     }
 }
@@ -175,14 +180,15 @@ enum StructKind {
 }
 
 fn lower_struct(
+    db: &impl DefDatabase,
     trace: &mut Trace<
         LocalStructFieldId,
         StructFieldData,
         Either<ast::TupleFieldDef, ast::RecordFieldDef>,
     >,
-    ast: &ast::StructKind,
+    ast: &InFile<ast::StructKind>,
 ) -> StructKind {
-    match ast {
+    match &ast.value {
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
                 trace.alloc(
@@ -190,6 +196,7 @@ fn lower_struct(
                     || StructFieldData {
                         name: Name::new_tuple_field(i),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
+                        visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );
             }
@@ -202,6 +209,7 @@ fn lower_struct(
                     || StructFieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         type_ref: TypeRef::from_ast_opt(fd.ascribed_type()),
+                        visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );
             }

@@ -325,29 +325,6 @@ impl_froms!(
     ImplId
 );
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum VisibilityDefId {
-    ModuleId(ModuleId),
-    StructFieldId(StructFieldId),
-    AdtId(AdtId),
-    FunctionId(FunctionId),
-    StaticId(StaticId),
-    ConstId(ConstId),
-    TraitId(TraitId),
-    TypeAliasId(TypeAliasId),
-}
-
-impl_froms!(
-    VisibilityDefId: ModuleId,
-    StructFieldId,
-    AdtId(StructId, EnumId, UnionId),
-    StaticId,
-    ConstId,
-    FunctionId,
-    TraitId,
-    TypeAliasId
-);
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VariantId {
     EnumVariantId(EnumVariantId),
