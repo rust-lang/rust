@@ -296,6 +296,13 @@ where
 }
 
 // See note at the top of this module to understand why these are used:
+//
+// These casts are safe as OsStr is internally a wrapper around [u8] on all
+// platforms.
+//
+// Note that currently this relies on the special knowledge that libstd has;
+// these types are single-element structs but are not marked repr(transparent)
+// or repr(C) which would make these casts allowable outside std.
 fn os_str_as_u8_slice(s: &OsStr) -> &[u8] {
     unsafe { &*(s as *const OsStr as *const [u8]) }
 }
