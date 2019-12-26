@@ -170,6 +170,26 @@ fn glob_across_crates() {
 }
 
 #[test]
+fn glob_privacy_across_crates() {
+    covers!(glob_across_crates);
+    let map = def_map(
+        "
+        //- /main.rs crate:main deps:test_crate
+        use test_crate::*;
+
+        //- /lib.rs crate:test_crate
+        pub struct Baz;
+        struct Foo;
+        ",
+    );
+    assert_snapshot!(map, @r###"
+   ⋮crate
+   ⋮Baz: t v
+    "###
+    );
+}
+
+#[test]
 fn glob_enum() {
     covers!(glob_enum);
     let map = def_map(

@@ -378,12 +378,7 @@ where
                             .resolutions()
                             // only keep visible names...
                             .map(|(n, res)| {
-                                (
-                                    n,
-                                    res.filter_visibility(|v| {
-                                        v.visible_from_def_map(&self.def_map, module_id)
-                                    }),
-                                )
+                                (n, res.filter_visibility(|v| v.visible_from_other_crate()))
                             })
                             .filter(|(_, res)| !res.is_none())
                             .collect::<Vec<_>>();

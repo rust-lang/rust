@@ -99,6 +99,13 @@ impl Visibility {
         self.visible_from_def_map(&def_map, from_module.local_id)
     }
 
+    pub(crate) fn visible_from_other_crate(self) -> bool {
+        match self {
+            Visibility::Module(_) => false,
+            Visibility::Public => true,
+        }
+    }
+
     pub(crate) fn visible_from_def_map(
         self,
         def_map: &crate::nameres::CrateDefMap,
