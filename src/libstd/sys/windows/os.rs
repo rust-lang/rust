@@ -34,7 +34,7 @@ pub fn error_string(mut errnum: i32) -> String {
 
         // NTSTATUS errors may be encoded as HRESULT, which may returned from
         // GetLastError. For more information about Windows error codes, see
-        // `[MS-ERREF]`: https://msdn.microsoft.com/en-us/library/cc231198.aspx
+        // `[MS-ERREF]`: https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/0642cb2f-2075-4469-918c-4441e69c548a
         if (errnum & c::FACILITY_NT_BIT as i32) != 0 {
             // format according to https://support.microsoft.com/en-us/help/259693
             const NTDLL_DLL: &[u16] = &[

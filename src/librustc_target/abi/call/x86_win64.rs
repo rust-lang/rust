@@ -1,7 +1,7 @@
 use crate::abi::call::{ArgAbi, FnAbi, Reg};
 use crate::abi::Abi;
 
-// Win64 ABI: http://msdn.microsoft.com/en-us/library/zthk2dkh.aspx
+// Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
 pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     let fixup = |a: &mut ArgAbi<'_, Ty>| {
