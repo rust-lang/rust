@@ -1,7 +1,5 @@
 //! Defines hir-level representation of visibility (e.g. `pub` and `pub(crate)`).
 
-use std::sync::Arc;
-
 use hir_expand::{hygiene::Hygiene, InFile};
 use ra_syntax::ast;
 
@@ -14,20 +12,17 @@ use crate::{
 /// Visibility of an item, not yet resolved.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RawVisibility {
-    // FIXME: We could avoid the allocation in many cases by special-casing
-    // pub(crate), pub(super) and private. Alternatively, `ModPath` could be
-    // made to contain an Arc<[Segment]> instead of a Vec?
     /// `pub(in module)`, `pub(crate)` or `pub(super)`. Also private, which is
     /// equivalent to `pub(self)`.
-    Module(Arc<ModPath>),
+    Module(ModPath),
     /// `pub`.
     Public,
 }
 
 impl RawVisibility {
-    fn private() -> RawVisibility {
+    const fn private() -> RawVisibility {
         let path = ModPath { kind: PathKind::Super(0), segments: Vec::new() };
-        RawVisibility::Module(Arc::new(path))
+        RawVisibility::Module(path)
     }
 
     pub(crate) fn from_ast(
@@ -52,15 +47,15 @@ impl RawVisibility {
                     None => return RawVisibility::private(),
                     Some(path) => path,
                 };
-                RawVisibility::Module(Arc::new(path))
+                RawVisibility::Module(path)
             }
             ast::VisibilityKind::PubCrate => {
                 let path = ModPath { kind: PathKind::Crate, segments: Vec::new() };
-                RawVisibility::Module(Arc::new(path))
+                RawVisibility::Module(path)
             }
             ast::VisibilityKind::PubSuper => {
                 let path = ModPath { kind: PathKind::Super(1), segments: Vec::new() };
-                RawVisibility::Module(Arc::new(path))
+                RawVisibility::Module(path)
             }
             ast::VisibilityKind::Pub => RawVisibility::Public,
         }
