@@ -67,7 +67,7 @@ cfg_if::cfg_if! {
 extern "C" {
     /// The payload ptr here is actually the same as the payload ptr for the try
     /// intrinsic (i.e., is really `*mut [u64; 2]` or `*mut *mut u8`).
-    fn __rust_panic_cleanup(payload: *mut u8) -> core::raw::TraitObject;
+    fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 
     /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
     /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
@@ -313,7 +313,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // non-cold function, though, as of the writing of this comment).
     #[cold]
     unsafe fn cleanup(mut payload: Payload) -> Box<dyn Any + Send + 'static> {
-        let obj = crate::mem::transmute(__rust_panic_cleanup(&mut payload as *mut _ as *mut u8));
+        let obj = Box::from_raw(__rust_panic_cleanup(&mut payload as *mut _ as *mut u8));
         update_panic_count(-1);
         obj
     }
