@@ -1890,7 +1890,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args = self
                 .elided_path_lifetimes(path_span, expected_lifetimes)
-                .into_iter()
                 .map(|lt| GenericArg::Lifetime(lt))
                 .chain(generic_args.args.into_iter())
                 .collect();
@@ -2460,16 +2459,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::Lifetime { hir_id: self.lower_node_id(id), span, name }
     }
 
-    fn lower_generic_params_mut(
-        &mut self,
-        params: &[GenericParam],
-        add_bounds: &NodeMap<Vec<GenericBound>>,
-        mut itctx: ImplTraitContext<'_, 'hir>,
-    ) -> Vec<hir::GenericParam<'hir>> {
+    fn lower_generic_params_mut<'s>(
+        &'s mut self,
+        params: &'s [GenericParam],
+        add_bounds: &'s NodeMap<Vec<GenericBound>>,
+        mut itctx: ImplTraitContext<'s, 'hir>,
+    ) -> impl Iterator<Item = hir::GenericParam<'hir>> + Captures<'a> + Captures<'s> {
         params
             .iter()
-            .map(|param| self.lower_generic_param(param, add_bounds, itctx.reborrow()))
-            .collect()
+            .map(move |param| self.lower_generic_param(param, add_bounds, itctx.reborrow()))
     }
 
     fn lower_generic_params(
@@ -3200,8 +3198,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `std::cell::Ref<T>`; note that implicit lifetimes in these
     /// sorts of cases are deprecated. This may therefore report a warning or an
     /// error, depending on the mode.
-    fn elided_path_lifetimes(&mut self, span: Span, count: usize) -> Vec<hir::Lifetime> {
-        (0..count).map(|_| self.elided_path_lifetime(span)).collect()
+    fn elided_path_lifetimes<'s>(
+        &'s mut self,
+        span: Span,
+        count: usize,
+    ) -> impl Iterator<Item = hir::Lifetime> + Captures<'a> + Captures<'s> + Captures<'hir> {
+        (0..count).map(move |_| self.elided_path_lifetime(span))
     }
 
     fn elided_path_lifetime(&mut self, span: Span) -> hir::Lifetime {

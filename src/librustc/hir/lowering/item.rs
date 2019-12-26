@@ -1345,7 +1345,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         GenericsCtor {
-            params: self.lower_generic_params_mut(&generics.params, &add_bounds, itctx),
+            params: self.lower_generic_params_mut(&generics.params, &add_bounds, itctx).collect(),
             where_clause: self.lower_where_clause(&generics.where_clause),
             span: generics.span,
         }
