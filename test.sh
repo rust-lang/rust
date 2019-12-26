@@ -4,10 +4,10 @@ set -e
 
 if [[ "$1" == "--release" ]]; then
     export CHANNEL='release'
-    cargo build --release $CG_CLIF_COMPILE_FLAGS
+    cargo rustc --release $CG_CLIF_COMPILE_FLAGS -- -Clink-args=-fuse-ld=lld
 else
     export CHANNEL='debug'
-    cargo build $CG_CLIF_COMPILE_FLAGS
+    cargo rustc $CG_CLIF_COMPILE_FLAGS -- -Clink-args=-fuse-ld=lld
 fi
 
 source config.sh
@@ -27,6 +27,8 @@ mkdir -p target/out/clif
 
 echo "[BUILD] mini_core"
 $RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib,dylib
+
+#exit 1
 
 echo "[BUILD] example"
 $RUSTC example/example.rs --crate-type lib
@@ -69,14 +71,15 @@ $RUSTC example/mod_bench.rs --crate-type bin
 
 pushd simple-raytracer
 echo "[BENCH COMPILE] ebobby/simple-raytracer"
-hyperfine --runs ${RUN_RUNS:-10} --warmup 1 --prepare "rm -r target/*/debug || true" \
-    "RUSTFLAGS='' cargo build --target $TARGET_TRIPLE" \
-    "../cargo.sh build"
+rm -r target/x86_64*/
+../cargo.sh build
 
 echo "[BENCH RUN] ebobby/simple-raytracer"
 cp ./target/*/debug/main ./raytracer_cg_clif
-hyperfine --runs ${RUN_RUNS:-10} ./raytracer_cg_llvm ./raytracer_cg_clif
+hyperfine --runs ${RUN_RUNS:-10} ./raytracer_*
 popd
+
+exit 1
 
 pushd build_sysroot/sysroot_src/src/libcore/tests
 rm -r ./target || true

@@ -47,6 +47,7 @@ mod linkage;
 mod main_shim;
 mod metadata;
 mod num;
+mod optimize;
 mod pointer;
 mod pretty_clif;
 mod target_features_whitelist;
