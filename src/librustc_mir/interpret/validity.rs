@@ -16,7 +16,7 @@ use rustc_span::symbol::{sym, Symbol};
 use std::hash::Hash;
 
 use super::{
-    CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, Scalar,
+    CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
     ValueVisitor,
 };
 
@@ -246,13 +246,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
 
     fn check_wide_ptr_meta(
         &mut self,
-        meta: Option<Scalar<M::PointerTag>>,
+        meta: MemPlaceMeta<M::PointerTag>,
         pointee: TyLayout<'tcx>,
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind {
             ty::Dynamic(..) => {
-                let vtable = meta.unwrap();
+                let vtable = meta.unwrap_unsized();
                 try_validation!(
                     self.ecx.memory.check_ptr_access(
                         vtable,
@@ -276,7 +276,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             }
             ty::Slice(..) | ty::Str => {
                 let _len = try_validation!(
-                    meta.unwrap().to_machine_usize(self.ecx),
+                    meta.unwrap_unsized().to_machine_usize(self.ecx),
                     "non-integer slice length in wide pointer",
                     self.path
                 );
@@ -572,8 +572,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         match op.layout.ty.kind {
             ty::Str => {
                 let mplace = op.assert_mem_place(self.ecx); // strings are never immediate
-                try_validation!(self.ecx.read_str(mplace),
-                    "uninitialized or non-UTF-8 data in str", self.path);
+                try_validation!(
+                    self.ecx.read_str(mplace),
+                    "uninitialized or non-UTF-8 data in str",
+                    self.path
+                );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
                 if {

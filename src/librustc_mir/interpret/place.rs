@@ -21,6 +21,45 @@ use super::{
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
+pub enum MemPlaceMeta<Tag = (), Id = AllocId> {
+    Unsized(Scalar<Tag, Id>),
+    /// `Sized` types or unsized `extern type`
+    None,
+    /// The address of this place may not be taken. This protects the `MemPlace` from coming from
+    /// a ZST Operand with a backing allocation and being converted to an integer address. This
+    /// should be impossible, because you can't take the address of an operand, but this is a second
+    /// protection layer ensuring that we don't mess up.
+    Poison,
+}
+
+impl<Tag, Id> MemPlaceMeta<Tag, Id> {
+    pub fn unwrap_unsized(self) -> Scalar<Tag, Id> {
+        match self {
+            Self::Unsized(s) => s,
+            Self::None | Self::Poison => {
+                bug!("expected wide pointer extra data (e.g. slice length or trait object vtable)")
+            }
+        }
+    }
+    fn is_unsized(self) -> bool {
+        match self {
+            Self::Unsized(_) => true,
+            Self::None | Self::Poison => false,
+        }
+    }
+}
+
+impl<Tag> MemPlaceMeta<Tag> {
+    pub fn erase_tag(self) -> MemPlaceMeta<()> {
+        match self {
+            Self::Unsized(s) => MemPlaceMeta::Unsized(s.erase_tag()),
+            Self::None => MemPlaceMeta::None,
+            Self::Poison => MemPlaceMeta::Poison,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
 pub struct MemPlace<Tag = (), Id = AllocId> {
     /// A place may have an integral pointer for ZSTs, and since it might
     /// be turned back into a reference before ever being dereferenced.
@@ -30,7 +69,7 @@ pub struct MemPlace<Tag = (), Id = AllocId> {
     /// Metadata for unsized places. Interpretation is up to the type.
     /// Must not be present for sized types, but can be missing for unsized types
     /// (e.g., `extern type`).
-    pub meta: Option<Scalar<Tag, Id>>,
+    pub meta: MemPlaceMeta<Tag, Id>,
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -88,16 +127,12 @@ impl<Tag> MemPlace<Tag> {
 
     #[inline]
     pub fn erase_tag(self) -> MemPlace {
-        MemPlace {
-            ptr: self.ptr.erase_tag(),
-            align: self.align,
-            meta: self.meta.map(Scalar::erase_tag),
-        }
+        MemPlace { ptr: self.ptr.erase_tag(), align: self.align, meta: self.meta.erase_tag() }
     }
 
     #[inline(always)]
     pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
-        MemPlace { ptr, align, meta: None }
+        MemPlace { ptr, align, meta: MemPlaceMeta::None }
     }
 
     /// Produces a Place that will error if attempted to be read from or written to
@@ -116,15 +151,19 @@ impl<Tag> MemPlace<Tag> {
     #[inline(always)]
     pub fn to_ref(self) -> Immediate<Tag> {
         match self.meta {
-            None => Immediate::Scalar(self.ptr.into()),
-            Some(meta) => Immediate::ScalarPair(self.ptr.into(), meta.into()),
+            MemPlaceMeta::None => Immediate::Scalar(self.ptr.into()),
+            MemPlaceMeta::Unsized(meta) => Immediate::ScalarPair(self.ptr.into(), meta.into()),
+            MemPlaceMeta::Poison => bug!(
+                "MPlaceTy::dangling may never be used to produce a \
+                place that will have the address of its pointee taken"
+            ),
         }
     }
 
     pub fn offset(
         self,
         offset: Size,
-        meta: Option<Scalar<Tag>>,
+        meta: MemPlaceMeta<Tag>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
         Ok(MemPlace {
@@ -158,7 +197,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     pub fn offset(
         self,
         offset: Size,
-        meta: Option<Scalar<Tag>>,
+        meta: MemPlaceMeta<Tag>,
         layout: TyLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
@@ -175,7 +214,9 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
         if self.layout.is_unsized() {
             // We need to consult `meta` metadata
             match self.layout.ty.kind {
-                ty::Slice(..) | ty::Str => return self.mplace.meta.unwrap().to_machine_usize(cx),
+                ty::Slice(..) | ty::Str => {
+                    return self.mplace.meta.unwrap_unsized().to_machine_usize(cx);
+                }
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {
@@ -191,7 +232,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     #[inline]
     pub(super) fn vtable(self) -> Scalar<Tag> {
         match self.layout.ty.kind {
-            ty::Dynamic(..) => self.mplace.meta.unwrap(),
+            ty::Dynamic(..) => self.mplace.meta.unwrap_unsized(),
             _ => bug!("vtable not supported on type {:?}", self.layout.ty),
         }
     }
@@ -276,8 +317,10 @@ where
             val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type").ty;
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = match *val {
-            Immediate::Scalar(ptr) => (ptr.not_undef()?, None),
-            Immediate::ScalarPair(ptr, meta) => (ptr.not_undef()?, Some(meta.not_undef()?)),
+            Immediate::Scalar(ptr) => (ptr.not_undef()?, MemPlaceMeta::None),
+            Immediate::ScalarPair(ptr, meta) => {
+                (ptr.not_undef()?, MemPlaceMeta::Unsized(meta.not_undef()?))
+            }
         };
 
         let mplace = MemPlace {
@@ -318,7 +361,7 @@ where
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
         let size = size.unwrap_or_else(|| {
             assert!(!place.layout.is_unsized());
-            assert!(place.meta.is_none());
+            assert!(!place.meta.is_unsized());
             place.layout.size
         });
         self.memory.check_ptr_access(place.ptr, size, place.align)
@@ -411,7 +454,7 @@ where
         } else {
             // base.meta could be present; we might be accessing a sized field of an unsized
             // struct.
-            (None, offset)
+            (MemPlaceMeta::None, offset)
         };
 
         // We do not look at `base.layout.align` nor `field_layout.align`, unlike
@@ -433,7 +476,7 @@ where
         };
         let layout = base.layout.field(self, 0)?;
         let dl = &self.tcx.data_layout;
-        Ok((0..len).map(move |i| base.offset(i * stride, None, layout, dl)))
+        Ok((0..len).map(move |i| base.offset(i * stride, MemPlaceMeta::None, layout, dl)))
     }
 
     fn mplace_subslice(
@@ -466,10 +509,10 @@ where
         let (meta, ty) = match base.layout.ty.kind {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
-            ty::Array(inner, _) => (None, self.tcx.mk_array(inner, inner_len)),
+            ty::Array(inner, _) => (MemPlaceMeta::None, self.tcx.mk_array(inner, inner_len)),
             ty::Slice(..) => {
                 let len = Scalar::from_uint(inner_len, self.pointer_size());
-                (Some(len), base.layout.ty)
+                (MemPlaceMeta::Unsized(len), base.layout.ty)
             }
             _ => bug!("cannot subslice non-array type: `{:?}`", base.layout.ty),
         };
@@ -483,7 +526,7 @@ where
         variant: VariantIdx,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
-        assert!(base.meta.is_none());
+        assert!(!base.meta.is_unsized());
         Ok(MPlaceTy { layout: base.layout.for_variant(self, variant), ..base })
     }
 
@@ -977,7 +1020,7 @@ where
     pub fn force_allocation_maybe_sized(
         &mut self,
         place: PlaceTy<'tcx, M::PointerTag>,
-        meta: Option<Scalar<M::PointerTag>>,
+        meta: MemPlaceMeta<M::PointerTag>,
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, Option<Size>)> {
         let (mplace, size) = match place.place {
             Place::Local { frame, local } => {
@@ -1022,7 +1065,7 @@ where
         &mut self,
         place: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        Ok(self.force_allocation_maybe_sized(place, None)?.0)
+        Ok(self.force_allocation_maybe_sized(place, MemPlaceMeta::None)?.0)
     }
 
     pub fn allocate(
@@ -1042,8 +1085,11 @@ where
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let ptr = self.memory.allocate_static_bytes(str.as_bytes(), kind);
         let meta = Scalar::from_uint(str.len() as u128, self.pointer_size());
-        let mplace =
-            MemPlace { ptr: ptr.into(), align: Align::from_bytes(1).unwrap(), meta: Some(meta) };
+        let mplace = MemPlace {
+            ptr: ptr.into(),
+            align: Align::from_bytes(1).unwrap(),
+            meta: MemPlaceMeta::Unsized(meta),
+        };
 
         let layout = self.layout_of(self.tcx.mk_static_str()).unwrap();
         MPlaceTy { mplace, layout }
@@ -1151,7 +1197,7 @@ where
             assert_eq!(align, layout.align.abi);
         }
 
-        let mplace = MPlaceTy { mplace: MemPlace { meta: None, ..*mplace }, layout };
+        let mplace = MPlaceTy { mplace: MemPlace { meta: MemPlaceMeta::None, ..*mplace }, layout };
         Ok((instance, mplace))
     }
 }
