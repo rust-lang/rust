@@ -16,7 +16,7 @@ use crate::{
 
 /// Visibility of an item, not yet resolved.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Visibility {
+pub enum RawVisibility {
     // FIXME: We could avoid the allocation in many cases by special-casing
     // pub(crate), pub(super) and private. Alternatively, `ModPath` could be
     // made to contain an Arc<[Segment]> instead of a Vec?
@@ -27,16 +27,16 @@ pub enum Visibility {
     Public,
 }
 
-impl Visibility {
-    pub(crate) fn visibility_query(db: &impl DefDatabase, def: VisibilityDefId) -> Visibility {
+impl RawVisibility {
+    pub(crate) fn visibility_query(db: &impl DefDatabase, def: VisibilityDefId) -> RawVisibility {
         match def {
             VisibilityDefId::ModuleId(module) => {
                 let def_map = db.crate_def_map(module.krate);
                 let src = match def_map[module.local_id].declaration_source(db) {
                     Some(it) => it,
-                    None => return Visibility::private(),
+                    None => return RawVisibility::private(),
                 };
-                Visibility::from_ast(db, src.map(|it| it.visibility()))
+                RawVisibility::from_ast(db, src.map(|it| it.visibility()))
             }
             VisibilityDefId::StructFieldId(it) => {
                 let src = it.parent.child_source(db);
@@ -49,9 +49,9 @@ impl Visibility {
                     Either::Right(record) => record.visibility(),
                 });
                 if vis_node.value.is_none() && is_enum {
-                    Visibility::Public
+                    RawVisibility::Public
                 } else {
-                    Visibility::from_ast(db, vis_node)
+                    RawVisibility::from_ast(db, vis_node)
                 }
             }
             VisibilityDefId::AdtId(it) => match it {
@@ -67,41 +67,41 @@ impl Visibility {
         }
     }
 
-    fn private() -> Visibility {
+    fn private() -> RawVisibility {
         let path = ModPath { kind: PathKind::Super(0), segments: Vec::new() };
-        Visibility::Module(Arc::new(path))
+        RawVisibility::Module(Arc::new(path))
     }
 
-    fn from_ast(db: &impl DefDatabase, node: InFile<Option<ast::Visibility>>) -> Visibility {
+    fn from_ast(db: &impl DefDatabase, node: InFile<Option<ast::Visibility>>) -> RawVisibility {
         Self::from_ast_with_hygiene(node.value, &Hygiene::new(db, node.file_id))
     }
 
     pub(crate) fn from_ast_with_hygiene(
         node: Option<ast::Visibility>,
         hygiene: &Hygiene,
-    ) -> Visibility {
+    ) -> RawVisibility {
         let node = match node {
-            None => return Visibility::private(),
+            None => return RawVisibility::private(),
             Some(node) => node,
         };
         match node.kind() {
             ast::VisibilityKind::In(path) => {
                 let path = ModPath::from_src(path, hygiene);
                 let path = match path {
-                    None => return Visibility::private(),
+                    None => return RawVisibility::private(),
                     Some(path) => path,
                 };
-                Visibility::Module(Arc::new(path))
+                RawVisibility::Module(Arc::new(path))
             }
             ast::VisibilityKind::PubCrate => {
                 let path = ModPath { kind: PathKind::Crate, segments: Vec::new() };
-                Visibility::Module(Arc::new(path))
+                RawVisibility::Module(Arc::new(path))
             }
             ast::VisibilityKind::PubSuper => {
                 let path = ModPath { kind: PathKind::Super(1), segments: Vec::new() };
-                Visibility::Module(Arc::new(path))
+                RawVisibility::Module(Arc::new(path))
             }
-            ast::VisibilityKind::Pub => Visibility::Public,
+            ast::VisibilityKind::Pub => RawVisibility::Public,
         }
     }
 
@@ -156,11 +156,11 @@ impl ResolvedVisibility {
     }
 }
 
-fn visibility_from_loc<T>(node: T, db: &impl DefDatabase) -> Visibility
+fn visibility_from_loc<T>(node: T, db: &impl DefDatabase) -> RawVisibility
 where
     T: HasSource,
     T::Value: ast::VisibilityOwner,
 {
     let src = node.source(db);
-    Visibility::from_ast(db, src.map(|n| n.visibility()))
+    RawVisibility::from_ast(db, src.map(|n| n.visibility()))
 }

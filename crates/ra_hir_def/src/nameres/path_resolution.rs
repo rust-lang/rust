@@ -21,7 +21,7 @@ use crate::{
     nameres::{BuiltinShadowMode, CrateDefMap},
     path::{ModPath, PathKind},
     per_ns::PerNs,
-    visibility::{ResolvedVisibility, Visibility},
+    visibility::{RawVisibility, ResolvedVisibility},
     AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
 };
 
@@ -71,10 +71,10 @@ impl CrateDefMap {
         &self,
         db: &impl DefDatabase,
         original_module: LocalModuleId,
-        visibility: &Visibility,
+        visibility: &RawVisibility,
     ) -> Option<ResolvedVisibility> {
         match visibility {
-            Visibility::Module(path) => {
+            RawVisibility::Module(path) => {
                 let (result, remaining) =
                     self.resolve_path(db, original_module, &path, BuiltinShadowMode::Module);
                 if remaining.is_some() {
@@ -89,7 +89,7 @@ impl CrateDefMap {
                     }
                 }
             }
-            Visibility::Public => Some(ResolvedVisibility::Public),
+            RawVisibility::Public => Some(ResolvedVisibility::Public),
         }
     }
 

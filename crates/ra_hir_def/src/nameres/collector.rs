@@ -743,7 +743,7 @@ where
         name: Name,
         declaration: AstId<ast::Module>,
         definition: Option<FileId>,
-        visibility: &crate::visibility::Visibility,
+        visibility: &crate::visibility::RawVisibility,
     ) -> LocalModuleId {
         let vis = self
             .def_collector
