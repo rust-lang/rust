@@ -411,9 +411,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // If the `AT_SYMLINK_NOFOLLOW` flag is set, we query the file's metadata without following
         // symbolic links.
-        let is_symlink = flags & this.eval_libc("AT_SYMLINK_NOFOLLOW")?.to_i32()? != 0;
+        let follow_symlink = flags & this.eval_libc("AT_SYMLINK_NOFOLLOW")?.to_i32()? == 0;
 
-        let status = match FileStatus::new(this, path, is_symlink)? {
+        let status = match FileStatus::new(this, path, follow_symlink)? {
             Some(status) => status,
             None => return Ok(-1),
         };
@@ -428,6 +428,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .try_into()
             .unwrap_or_else(|_| bug!("libc contains bad value for constant"));
 
+        // We need to set the corresponding bits of `mask` if the access, creation and modification
+        // times were available. Otherwise we let them be zero.
         let (access_sec, access_nsec) = status.accessed.map(|tup| {
             mask |= this.eval_libc("STATX_ATIME")?.to_u32()?;
             InterpResult::Ok(tup)
@@ -497,9 +499,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-// Extracts the number of seconds and nanoseconds elapsed between `time` and the unix epoch when
-// `time` is Ok. If `time` is an error, it returns `None`.
-fn extract_sec_and_nsec<'tcx>(time: std::io::Result<SystemTime>) -> InterpResult<'tcx, Option<(u64, u32)>> {
+/// Extracts the number of seconds and nanoseconds elapsed between `time` and the unix epoch when
+/// `time` is Ok. Returns `None` if `time` is an error. Fails if `time` happens before the unix
+/// epoch.
+fn extract_sec_and_nsec<'tcx>(
+    time: std::io::Result<SystemTime>
+) -> InterpResult<'tcx, Option<(u64, u32)>> {
     time.ok().map(|time| {
         let duration = system_time_to_duration(&time)?;
         Ok((duration.as_secs(), duration.subsec_nanos()))
@@ -518,9 +523,9 @@ impl FileStatus {
     fn new<'tcx, 'mir>(
         ecx: &mut MiriEvalContext<'mir, 'tcx>,
         path: PathBuf,
-        is_symlink: bool
+        follow_symlink: bool
     ) -> InterpResult<'tcx, Option<FileStatus>> {
-        let metadata = if is_symlink {
+        let metadata = if follow_symlink {
             // FIXME: metadata for symlinks need testing.
             std::fs::symlink_metadata(path)
         } else {
