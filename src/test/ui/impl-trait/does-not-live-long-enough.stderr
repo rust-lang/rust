@@ -1,0 +1,21 @@
+error[E0597]: `prefix` does not live long enough
+  --> $DIR/does-not-live-long-enough.rs:6:51
+   |
+LL |     fn started_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item=&'a str> {
+   |                     -- lifetime `'a` defined here     --------------------------- opaque type requires that `prefix` is borrowed for `'a`
+LL |         self.data.iter().filter(|s| s.starts_with(prefix)).map(|s| s.as_ref())
+   |                                 ---               ^^^^^^ borrowed value does not live long enough
+   |                                 |
+   |                                 value captured here
+LL |
+LL |     }
+   |     - `prefix` dropped here while still borrowed
+   |
+help: you can add a bound to the opaque type to make it last less than `'static` and match `'a`
+   |
+LL |     fn started_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item=&'a str> + 'a {
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.
