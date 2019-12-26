@@ -125,6 +125,7 @@ pub(super) fn op_to_const<'tcx>(
         }
         Scalar::Raw { data, .. } => {
             assert_eq!(data, mplace.layout.align.abi.bytes().into());
+            assert!(mplace.layout.is_zst());
             ConstValue::Scalar(Scalar::zst())
         }
     };
