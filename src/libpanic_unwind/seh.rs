@@ -41,7 +41,7 @@
 //!   are then recovered in the filter function to be written to the stack frame
 //!   of the `try` intrinsic.
 //!
-//! [win64]: http://msdn.microsoft.com/en-us/library/1eyas8tf.aspx
+//! [win64]: https://docs.microsoft.com/en-us/cpp/build/exception-handling-x64
 //! [llvm]: http://llvm.org/docs/ExceptionHandling.html#background-on-windows-exceptions
 
 #![allow(nonstandard_style)]

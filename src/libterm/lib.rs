@@ -27,7 +27,7 @@
 //! ```
 //!
 //! [ansi]: https://en.wikipedia.org/wiki/ANSI_escape_code
-//! [win]: http://msdn.microsoft.com/en-us/library/windows/desktop/ms682010%28v=vs.85%29.aspx
+//! [win]: https://docs.microsoft.com/en-us/windows/console/character-mode-applications
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
 #![doc(

@@ -262,7 +262,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 // terminating the process but without necessarily bypassing all exception
 // handlers.
 //
-// https://msdn.microsoft.com/en-us/library/dn774154.aspx
+// https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
 #[allow(unreachable_code)]
 pub unsafe fn abort_internal() -> ! {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
