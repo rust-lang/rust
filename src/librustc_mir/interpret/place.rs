@@ -131,13 +131,13 @@ impl<Tag> MemPlace<Tag> {
     }
 
     #[inline(always)]
-    pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
+    fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
         MemPlace { ptr, align, meta: MemPlaceMeta::None }
     }
 
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
-    pub fn null(cx: &impl HasDataLayout) -> Self {
+    fn null(cx: &impl HasDataLayout) -> Self {
         Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1).unwrap())
     }
 
@@ -263,18 +263,8 @@ impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
 impl<Tag: ::std::fmt::Debug> Place<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
-    pub fn null(cx: &impl HasDataLayout) -> Self {
+    fn null(cx: &impl HasDataLayout) -> Self {
         Place::Ptr(MemPlace::null(cx))
-    }
-
-    #[inline(always)]
-    pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
-        Place::Ptr(MemPlace::from_scalar_ptr(ptr, align))
-    }
-
-    #[inline(always)]
-    pub fn from_ptr(ptr: Pointer<Tag>, align: Align) -> Self {
-        Place::Ptr(MemPlace::from_ptr(ptr, align))
     }
 
     #[inline]

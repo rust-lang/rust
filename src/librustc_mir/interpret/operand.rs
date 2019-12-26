@@ -153,30 +153,6 @@ pub enum Operand<Tag = (), Id = AllocId> {
     Indirect(MemPlace<Tag, Id>),
 }
 
-impl<Tag> Operand<Tag> {
-    #[inline]
-    pub fn assert_mem_place(self) -> MemPlace<Tag>
-    where
-        Tag: ::std::fmt::Debug,
-    {
-        match self {
-            Operand::Indirect(mplace) => mplace,
-            _ => bug!("assert_mem_place: expected Operand::Indirect, got {:?}", self),
-        }
-    }
-
-    #[inline]
-    pub fn assert_immediate(self) -> Immediate<Tag>
-    where
-        Tag: ::std::fmt::Debug,
-    {
-        match self {
-            Operand::Immediate(imm) => imm,
-            _ => bug!("assert_immediate: expected Operand::Immediate, got {:?}", self),
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct OpTy<'tcx, Tag = ()> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
