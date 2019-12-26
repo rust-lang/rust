@@ -677,9 +677,13 @@ where
         let is_macro_use = attrs.by_key("macro_use").exists();
         match module {
             // inline module, just recurse
-            raw::ModuleData::Definition { name, items, ast_id } => {
-                let module_id =
-                    self.push_child_module(name.clone(), AstId::new(self.file_id, *ast_id), None);
+            raw::ModuleData::Definition { name, visibility, items, ast_id } => {
+                let module_id = self.push_child_module(
+                    name.clone(),
+                    AstId::new(self.file_id, *ast_id),
+                    None,
+                    &visibility,
+                );
 
                 ModCollector {
                     def_collector: &mut *self.def_collector,
@@ -694,7 +698,7 @@ where
                 }
             }
             // out of line module, resolve, parse and recurse
-            raw::ModuleData::Declaration { name, ast_id } => {
+            raw::ModuleData::Declaration { name, visibility, ast_id } => {
                 let ast_id = AstId::new(self.file_id, *ast_id);
                 match self.mod_dir.resolve_declaration(
                     self.def_collector.db,
@@ -703,7 +707,12 @@ where
                     path_attr,
                 ) {
                     Ok((file_id, mod_dir)) => {
-                        let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
+                        let module_id = self.push_child_module(
+                            name.clone(),
+                            ast_id,
+                            Some(file_id),
+                            &visibility,
+                        );
                         let raw_items = self.def_collector.db.raw_items(file_id.into());
                         ModCollector {
                             def_collector: &mut *self.def_collector,
@@ -734,7 +743,13 @@ where
         name: Name,
         declaration: AstId<ast::Module>,
         definition: Option<FileId>,
+        visibility: &crate::visibility::Visibility,
     ) -> LocalModuleId {
+        let vis = self
+            .def_collector
+            .def_map
+            .resolve_visibility(self.def_collector.db, self.module_id, visibility)
+            .unwrap_or(ResolvedVisibility::Public);
         let modules = &mut self.def_collector.def_map.modules;
         let res = modules.alloc(ModuleData::default());
         modules[res].parent = Some(self.module_id);
@@ -745,7 +760,6 @@ where
         modules[self.module_id].children.insert(name.clone(), res);
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
         let def: ModuleDefId = module.into();
-        let vis = ResolvedVisibility::Public; // TODO handle module visibility
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
         self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))], vis);
         res

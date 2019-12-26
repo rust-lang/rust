@@ -122,7 +122,7 @@ fn glob_privacy_2() {
         use foo::bar::*;
 
         //- /foo/mod.rs
-        pub mod bar;
+        mod bar;
         fn Foo() {};
         pub struct Foo {};
 
@@ -136,7 +136,6 @@ fn glob_privacy_2() {
     crate
     Foo: t
     PubCrateStruct: t v
-    bar: t
     foo: t
     
     crate::foo

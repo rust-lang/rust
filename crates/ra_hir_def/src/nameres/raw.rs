@@ -125,8 +125,17 @@ impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ModuleData {
-    Declaration { name: Name, ast_id: FileAstId<ast::Module> },
-    Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
+    Declaration {
+        name: Name,
+        visibility: Visibility,
+        ast_id: FileAstId<ast::Module>,
+    },
+    Definition {
+        name: Name,
+        visibility: Visibility,
+        ast_id: FileAstId<ast::Module>,
+        items: Vec<RawItem>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -283,10 +292,12 @@ impl RawItemsCollector {
             None => return,
         };
         let attrs = self.parse_attrs(&module);
+        let visibility = Visibility::from_ast_with_hygiene(module.visibility(), &self.hygiene);
 
         let ast_id = self.source_ast_id_map.ast_id(&module);
         if module.has_semi() {
-            let item = self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id });
+            let item =
+                self.raw_items.modules.alloc(ModuleData::Declaration { name, visibility, ast_id });
             self.push_item(current_module, attrs, RawItemKind::Module(item));
             return;
         }
@@ -294,6 +305,7 @@ impl RawItemsCollector {
         if let Some(item_list) = module.item_list() {
             let item = self.raw_items.modules.alloc(ModuleData::Definition {
                 name,
+                visibility,
                 ast_id,
                 items: Vec::new(),
             });
