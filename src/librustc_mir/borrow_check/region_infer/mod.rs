@@ -36,6 +36,7 @@ use crate::borrow_check::{
 
 mod dump_mir;
 mod graphviz;
+mod opaque_types;
 
 pub mod values;
 
