@@ -67,7 +67,6 @@ cfg_if::cfg_if! {
 extern "C" {
     /// The payload ptr here is actually the same as the payload ptr for the try
     /// intrinsic (i.e., is really `*mut [u64; 2]` or `*mut *mut u8`).
-    #[unwind(allowed)]
     fn __rust_panic_cleanup(payload: *mut u8) -> core::raw::TraitObject;
 
     /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
