@@ -697,7 +697,7 @@ extern "rust-intrinsic" {
 
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
     pub fn min_align_of<T>() -> usize;
-    #[rustc_const_unstable(feature = "const_pref_align_of", issue = "0")]
+    #[rustc_const_unstable(feature = "const_pref_align_of", issue = "none")]
     pub fn pref_align_of<T>() -> usize;
 
     /// The size of the referenced value in bytes.
@@ -708,13 +708,13 @@ extern "rust-intrinsic" {
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
-    #[rustc_const_unstable(feature = "const_type_name", issue = "0")]
+    #[rustc_const_unstable(feature = "const_type_name", issue = "none")]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
-    #[rustc_const_unstable(feature = "const_type_id", issue = "0")]
+    #[rustc_const_unstable(feature = "const_type_id", issue = "none")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
@@ -1222,7 +1222,7 @@ extern "rust-intrinsic" {
     /// let num_leading = unsafe { ctlz_nonzero(x) };
     /// assert_eq!(num_leading, 3);
     /// ```
-    #[rustc_const_unstable(feature = "constctlz", issue = "0")]
+    #[rustc_const_unstable(feature = "constctlz", issue = "none")]
     pub fn ctlz_nonzero<T>(x: T) -> T;
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
@@ -1267,7 +1267,7 @@ extern "rust-intrinsic" {
     /// let num_trailing = unsafe { cttz_nonzero(x) };
     /// assert_eq!(num_trailing, 3);
     /// ```
-    #[rustc_const_unstable(feature = "const_cttz", issue = "0")]
+    #[rustc_const_unstable(feature = "const_cttz", issue = "none")]
     pub fn cttz_nonzero<T>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
@@ -1396,7 +1396,7 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "0")]
+    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "none")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// Internal hook used by Miri to implement unwinding.
