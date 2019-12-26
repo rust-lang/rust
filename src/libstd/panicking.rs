@@ -307,6 +307,11 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
         Err(cleanup(payload.assume_init()))
     };
 
+    // We consider unwinding to be rare, so mark this function as cold. However,
+    // do not mark it no-inline -- that decision is best to leave to the
+    // optimizer (in most cases this function is not inlined even as a normal,
+    // non-cold function, though, as of the writing of this comment).
+    #[cold]
     unsafe fn cleanup(mut payload: Payload) -> Box<dyn Any + Send + 'static> {
         let obj = crate::mem::transmute(__rust_panic_cleanup(&mut payload as *mut _ as *mut u8));
         update_panic_count(-1);
