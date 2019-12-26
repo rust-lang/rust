@@ -12,9 +12,8 @@ use core::panic::{BoxMeUp, Location, PanicInfo};
 use crate::any::Any;
 use crate::fmt;
 use crate::intrinsics;
-use crate::mem::{self, ManuallyDrop};
+use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::process;
-use crate::raw;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace::{self, RustBacktrace};
@@ -29,6 +28,31 @@ use crate::io::set_panic;
 #[cfg(test)]
 use realstd::io::set_panic;
 
+// This must be kept in sync with the implementations in libpanic_unwind.
+//
+// This is *not* checked in anyway; the compiler does not allow us to use a
+// type/macro/anything from panic_unwind, since we're then linking in the
+// panic_unwind runtime even during -Cpanic=abort.
+//
+// Essentially this must be the type of `imp::Payload` in libpanic_unwind.
+cfg_if::cfg_if! {
+    if #[cfg(not(feature = "panic_unwind"))] {
+        type Payload = ();
+    } else if #[cfg(target_os = "emscripten")] {
+        type Payload = *mut u8;
+    } else if #[cfg(target_arch = "wasm32")] {
+        type Payload = *mut u8;
+    } else if #[cfg(target_os = "hermit")] {
+        type Payload = *mut u8;
+    } else if #[cfg(all(target_env = "msvc", target_arch = "aarch64"))] {
+        type Payload = *mut u8;
+    } else if #[cfg(target_env = "msvc")] {
+        type Payload = [u64; 2];
+    } else {
+        type Payload = *mut u8;
+    }
+}
+
 // Binary interface to the panic runtime that the standard library depends on.
 //
 // The standard library is tagged with `#![needs_panic_runtime]` (introduced in
@@ -41,12 +65,9 @@ use realstd::io::set_panic;
 // hook up these functions, but it is not this day!
 #[allow(improper_ctypes)]
 extern "C" {
-    fn __rust_maybe_catch_panic(
-        f: fn(*mut u8),
-        data: *mut u8,
-        data_ptr: *mut usize,
-        vtable_ptr: *mut usize,
-    ) -> u32;
+    /// The payload ptr here is actually the same as the payload ptr for the try
+    /// intrinsic (i.e., is really `*mut [u64; 2]` or `*mut *mut u8`).
+    fn __rust_panic_cleanup(payload: *mut u8) -> core::raw::TraitObject;
 
     /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
     /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
@@ -250,9 +271,9 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     }
 
     // We do some sketchy operations with ownership here for the sake of
-    // performance. We can only  pass pointers down to
-    // `__rust_maybe_catch_panic` (can't pass objects by value), so we do all
-    // the ownership tracking here manually using a union.
+    // performance. We can only pass pointers down to `do_call` (can't pass
+    // objects by value), so we do all the ownership tracking here manually
+    // using a union.
     //
     // We go through a transition where:
     //
@@ -263,7 +284,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // * If the closure successfully returns, we write the return value into the
     //   data's return slot. Note that `ptr::write` is used as it's overwriting
     //   uninitialized data.
-    // * Finally, when we come back out of the `__rust_maybe_catch_panic` we're
+    // * Finally, when we come back out of the `try` intrinsic we're
     //   in one of two states:
     //
     //      1. The closure didn't panic, in which case the return value was
@@ -274,26 +295,23 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     //
     // Once we stack all that together we should have the "most efficient'
     // method of calling a catch panic whilst juggling ownership.
-    let mut any_data = 0;
-    let mut any_vtable = 0;
     let mut data = Data { f: ManuallyDrop::new(f) };
 
-    let r = __rust_maybe_catch_panic(
-        do_call::<F, R>,
-        &mut data as *mut _ as *mut u8,
-        &mut any_data,
-        &mut any_vtable,
-    );
+    let mut payload: MaybeUninit<Payload> = MaybeUninit::uninit();
 
-    return if r == 0 {
+    let data_ptr = &mut data as *mut _ as *mut u8;
+    let payload_ptr = payload.as_mut_ptr() as *mut _;
+    return if intrinsics::r#try(do_call::<F, R>, data_ptr, payload_ptr) == 0 {
         Ok(ManuallyDrop::into_inner(data.r))
     } else {
-        update_panic_count(-1);
-        Err(mem::transmute(raw::TraitObject {
-            data: any_data as *mut _,
-            vtable: any_vtable as *mut _,
-        }))
+        Err(cleanup(payload.assume_init()))
     };
+
+    unsafe fn cleanup(mut payload: Payload) -> Box<dyn Any + Send + 'static> {
+        let obj = crate::mem::transmute(__rust_panic_cleanup(&mut payload as *mut _ as *mut u8));
+        update_panic_count(-1);
+        obj
+    }
 
     fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
         unsafe {

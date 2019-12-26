@@ -48,7 +48,6 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
-use core::ptr;
 
 use crate::dwarf::eh::{self, EHAction, EHContext};
 use libc::{c_int, uintptr_t};
@@ -83,9 +82,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     }
 }
 
-pub fn payload() -> *mut u8 {
-    ptr::null_mut()
-}
+pub type Payload = *mut u8;
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let exception = Box::from_raw(ptr as *mut Exception);

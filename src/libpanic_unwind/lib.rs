@@ -22,20 +22,20 @@
 #![feature(libc)]
 #![feature(nll)]
 #![feature(panic_unwind)]
-#![feature(raw)]
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(unwind_attributes)]
 #![feature(abi_thiscall)]
+#![feature(rustc_attrs)]
+#![feature(raw)]
 #![panic_runtime]
 #![feature(panic_runtime)]
 
 use alloc::boxed::Box;
-use core::intrinsics;
-use core::mem;
 use core::panic::BoxMeUp;
-use core::raw;
 
+// If adding to this list, you should also look at libstd::panicking's identical
+// list of Payload types and likely add to there as well.
 cfg_if::cfg_if! {
     if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
@@ -69,28 +69,11 @@ extern "C" {
 
 mod dwarf;
 
-// Entry point for catching an exception, implemented using the `try` intrinsic
-// in the compiler.
-//
-// The interaction between the `payload` function and the compiler is pretty
-// hairy and tightly coupled, for more information see the compiler's
-// implementation of this.
 #[no_mangle]
-pub unsafe extern "C" fn __rust_maybe_catch_panic(
-    f: fn(*mut u8),
-    data: *mut u8,
-    data_ptr: *mut usize,
-    vtable_ptr: *mut usize,
-) -> u32 {
-    let mut payload = imp::payload();
-    if intrinsics::r#try(f, data, &mut payload as *mut _ as *mut _) == 0 {
-        0
-    } else {
-        let obj = mem::transmute::<_, raw::TraitObject>(imp::cleanup(payload));
-        *data_ptr = obj.data as usize;
-        *vtable_ptr = obj.vtable as usize;
-        1
-    }
+pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> core::raw::TraitObject {
+    let payload = payload as *mut imp::Payload;
+    let payload = *(payload);
+    core::mem::transmute(imp::cleanup(payload))
 }
 
 // Entry point for raising an exception, just delegates to the platform-specific

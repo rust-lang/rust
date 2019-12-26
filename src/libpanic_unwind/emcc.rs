@@ -48,9 +48,7 @@ static EXCEPTION_TYPE_INFO: TypeInfo = TypeInfo {
     name: b"rust_panic\0".as_ptr(),
 };
 
-pub fn payload() -> *mut u8 {
-    ptr::null_mut()
-}
+pub type Payload = *mut u8;
 
 struct Exception {
     // This needs to be an Option because the object's lifetime follows C++
