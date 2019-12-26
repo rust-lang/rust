@@ -323,7 +323,7 @@ impl<'a> Parser<'a> {
 
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
         let sp = self.token.span;
-        let tok = self.this_token_descr();
+        let tok = super::token_descr(&self.token);
         let mut e = self.span_fatal(sp, &format!("expected `{{`, found {}", tok));
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
 
@@ -411,7 +411,7 @@ impl<'a> Parser<'a> {
                 continue;
             };
         }
-        Ok(P(ast::Block { stmts, id: DUMMY_NODE_ID, rules: s, span: lo.to(self.prev_span) }))
+        Ok(self.mk_block(stmts, s, lo.to(self.prev_span)))
     }
 
     /// Parses a statement, including the trailing semicolon.
@@ -463,7 +463,7 @@ impl<'a> Parser<'a> {
     fn warn_missing_semicolon(&self) {
         self.diagnostic()
             .struct_span_warn(self.token.span, {
-                &format!("expected `;`, found {}", self.this_token_descr())
+                &format!("expected `;`, found {}", super::token_descr(&self.token))
             })
             .note({
                 "this was erroneously allowed and will become a hard error in a future release"
@@ -471,7 +471,11 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
-    fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
+    pub(super) fn mk_block(&self, stmts: Vec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
+        P(Block { stmts, id: DUMMY_NODE_ID, rules, span })
+    }
+
+    pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
         Stmt { id: DUMMY_NODE_ID, kind, span }
     }
 }

@@ -4,7 +4,7 @@ error: expected `{`, found `foo`
 LL |         if $tgt.has_$field() {}
    |         --                -- help: try placing this code inside a block: `{ () }`
    |         |
-   |         this `if` statement has a condition, but no block
+   |         this `if` expression has a condition, but no block
 ...
 LL |     get_opt!(bar, foo);
    |                   ^^^ expected `{`

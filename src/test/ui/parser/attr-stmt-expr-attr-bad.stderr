@@ -149,7 +149,7 @@ LL | #[cfg(FALSE)] fn e() { let _ = if 0 #[attr] {}; }
    |                                --   ^       --- help: try placing this code inside a block: `{ {}; }`
    |                                |    |
    |                                |    expected `{`
-   |                                this `if` statement has a condition, but no block
+   |                                this `if` expression has a condition, but no block
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:43:38
@@ -202,7 +202,7 @@ LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 #[attr] {}; }
    |                                             --   ^       --- help: try placing this code inside a block: `{ {}; }`
    |                                             |    |
    |                                             |    expected `{`
-   |                                             this `if` statement has a condition, but no block
+   |                                             this `if` expression has a condition, but no block
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:56:51
@@ -225,7 +225,7 @@ LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 #[attr] {}; }
    |                                --           ^       --- help: try placing this code inside a block: `{ {}; }`
    |                                |            |
    |                                |            expected `{`
-   |                                this `if` statement has a condition, but no block
+   |                                this `if` expression has a condition, but no block
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:62:46
@@ -278,7 +278,7 @@ LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 #[attr] {}
    |                                                     --           ^       --- help: try placing this code inside a block: `{ {}; }`
    |                                                     |            |
    |                                                     |            expected `{`
-   |                                                     this `if` statement has a condition, but no block
+   |                                                     this `if` expression has a condition, but no block
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:75:67
@@ -380,11 +380,35 @@ error: expected one of `=>`, `if`, or `|`, found `#`
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] FOO => () } }
    |                                      ^ expected one of `=>`, `if`, or `|`
 
+error: unexpected token: `#`
+  --> $DIR/attr-stmt-expr-attr-bad.rs:104:34
+   |
+LL | #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
+   |                                  ^
+
+error: expected one of `.`, `;`, `?`, or an operator, found `#`
+  --> $DIR/attr-stmt-expr-attr-bad.rs:104:34
+   |
+LL | #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
+   |                                  ^ expected one of `.`, `;`, `?`, or an operator
+
+error: unexpected token: `#`
+  --> $DIR/attr-stmt-expr-attr-bad.rs:107:34
+   |
+LL | #[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
+   |                                  ^
+
+error: expected one of `.`, `;`, `?`, or an operator, found `#`
+  --> $DIR/attr-stmt-expr-attr-bad.rs:107:34
+   |
+LL | #[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
+   |                                  ^ expected one of `.`, `;`, `?`, or an operator
+
 error: expected statement after outer attribute
-  --> $DIR/attr-stmt-expr-attr-bad.rs:105:44
+  --> $DIR/attr-stmt-expr-attr-bad.rs:112:44
    |
 LL | #[cfg(FALSE)] fn e() { { fn foo() { #[attr]; } } }
    |                                            ^
 
-error: aborting due to 52 previous errors
+error: aborting due to 56 previous errors
 

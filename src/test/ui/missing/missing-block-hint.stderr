@@ -4,13 +4,13 @@ error: expected `{`, found `=>`
 LL |         if (foo) => {}
    |         --       ^^ expected `{`
    |         |
-   |         this `if` statement has a condition, but no block
+   |         this `if` expression has a condition, but no block
 
 error: expected `{`, found `bar`
   --> $DIR/missing-block-hint.rs:7:13
    |
 LL |         if (foo)
-   |         -- this `if` statement has a condition, but no block
+   |         -- this `if` expression has a condition, but no block
 LL |             bar;
    |             ^^^-
    |             |

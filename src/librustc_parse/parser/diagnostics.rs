@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
         let mut err = self.struct_span_err(
             self.token.span,
-            &format!("expected identifier, found {}", self.this_token_descr()),
+            &format!("expected identifier, found {}", super::token_descr(&self.token)),
         );
         let valid_follow = &[
             TokenKind::Eq,
@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
                 );
             }
         }
-        if let Some(token_descr) = self.token_descr() {
+        if let Some(token_descr) = super::token_descr_opt(&self.token) {
             err.span_label(self.token.span, format!("expected identifier, found {}", token_descr));
         } else {
             err.span_label(self.token.span, "expected identifier");
@@ -272,7 +272,7 @@ impl<'a> Parser<'a> {
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();
         let expect = tokens_to_string(&expected[..]);
-        let actual = self.this_token_descr();
+        let actual = super::token_descr(&self.token);
         let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
             let short_expect = if expected.len() > 6 {
                 format!("{} possible tokens", expected.len())
@@ -815,7 +815,7 @@ impl<'a> Parser<'a> {
         t: &TokenKind,
     ) -> PResult<'a, bool /* recovered */> {
         let token_str = pprust::token_kind_to_string(t);
-        let this_token_str = self.this_token_descr();
+        let this_token_str = super::token_descr(&self.token);
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
             // Point at the end of the macro call when reaching end of macro arguments.
             (token::Eof, Some(_)) => {
@@ -862,7 +862,7 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
         let sm = self.sess.source_map();
-        let msg = format!("expected `;`, found `{}`", self.this_token_descr());
+        let msg = format!("expected `;`, found `{}`", super::token_descr(&self.token));
         let appl = Applicability::MachineApplicable;
         if self.token.span == DUMMY_SP || self.prev_span == DUMMY_SP {
             // Likely inside a macro, can't provide meaninful suggestions.
@@ -1270,7 +1270,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn expected_semi_or_open_brace<T>(&mut self) -> PResult<'a, T> {
-        let token_str = self.this_token_descr();
+        let token_str = super::token_descr(&self.token);
         let mut err = self.fatal(&format!("expected `;` or `{{`, found {}", token_str));
         err.span_label(self.token.span, "expected `;` or `{`");
         Err(err)
@@ -1447,7 +1447,7 @@ impl<'a> Parser<'a> {
             }
             _ => (
                 self.token.span,
-                format!("expected expression, found {}", self.this_token_descr(),),
+                format!("expected expression, found {}", super::token_descr(&self.token),),
             ),
         };
         let mut err = self.struct_span_err(span, &msg);

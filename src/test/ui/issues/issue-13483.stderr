@@ -5,10 +5,29 @@ LL |     } else if {
    |              ^ expected if condition here
 
 error: missing condition for `if` expression
-  --> $DIR/issue-13483.rs:10:14
+  --> $DIR/issue-13483.rs:11:14
    |
 LL |     } else if {
    |              ^ expected if condition here
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/issue-13483.rs:3:15
+   |
+LL |       } else if {
+   |  _______________^
+LL | |
+LL | |     } else {
+   | |_____^ expected `bool`, found `()`
 
+error[E0308]: mismatched types
+  --> $DIR/issue-13483.rs:11:15
+   |
+LL |       } else if {
+   |  _______________^
+LL | |
+LL | |     }
+   | |_____^ expected `bool`, found `()`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
