@@ -670,14 +670,51 @@ fn construct_const<'a, 'tcx>(
     builder.finish()
 }
 
+/// Construct MIR for a item that has had errors in type checking.
+///
+/// This is required because we may still want to run MIR passes on an item
+/// with type errors, but normal MIR construction can't handle that in general.
 fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'tcx> {
-    let owner_id = hir.tcx().hir().body_owner(body_id);
-    let span = hir.tcx().hir().span(owner_id);
-    let ty = hir.tcx().types.err;
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, None);
+    let tcx = hir.tcx();
+    let owner_id = tcx.hir().body_owner(body_id);
+    let span = tcx.hir().span(owner_id);
+    let ty = tcx.types.err;
+    let num_params = match hir.body_owner_kind {
+        hir::BodyOwnerKind::Fn => tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len(),
+        hir::BodyOwnerKind::Closure => {
+            if tcx.hir().body(body_id).generator_kind().is_some() {
+                // Generators have an implicit `self` parameter *and* a possibly
+                // implicit resume parameter.
+                2
+            } else {
+                // The implicit self parameter adds another local in MIR.
+                1 + tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len()
+            }
+        }
+        hir::BodyOwnerKind::Const => 0,
+        hir::BodyOwnerKind::Static(_) => 0,
+    };
+    let mut builder = Builder::new(hir, span, num_params, Safety::Safe, ty, span, None);
     let source_info = builder.source_info(span);
+    // Some MIR passes will expect the number of parameters to match the
+    // function declaration.
+    for _ in 0..num_params {
+        builder.local_decls.push(LocalDecl {
+            mutability: Mutability::Mut,
+            ty,
+            user_ty: UserTypeProjections::none(),
+            source_info,
+            internal: false,
+            local_info: LocalInfo::Other,
+            is_block_tail: None,
+        });
+    }
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
-    builder.finish()
+    let mut body = builder.finish();
+    if tcx.hir().body(body_id).generator_kind.is_some() {
+        body.yield_ty = Some(ty);
+    }
+    body
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
