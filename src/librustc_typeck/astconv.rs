@@ -2,12 +2,13 @@
 //! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
 //! instance of `AstConv`.
 
+use crate::collect::PlaceholderHirTyCollector;
 use crate::hir::def::{CtorOf, DefKind, Res};
 use crate::hir::def_id::DefId;
+use crate::hir::intravisit::Visitor;
 use crate::hir::print;
 use crate::hir::ptr::P;
 use crate::hir::{self, ExprKind, GenericArg, GenericArgs, HirVec};
-use crate::hir::intravisit::Visitor;
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
@@ -16,7 +17,6 @@ use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticId};
-use crate::collect::PlaceholderHirTyCollector;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
@@ -2786,11 +2786,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::Return(ref output) => {
                 let mut visitor = PlaceholderHirTyCollector::new();
                 visitor.visit_ty(output);
-                let is_infer = if let hir::TyKind::Infer = output.kind {
-                    true
-                } else {
-                    false
-                };
+                let is_infer = if let hir::TyKind::Infer = output.kind { true } else { false };
                 if (is_infer || !visitor.0.is_empty()) && !self.allow_ty_infer() {
                     output_placeholder_types.extend(visitor.0);
                     tcx.types.err

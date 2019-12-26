@@ -135,10 +135,13 @@ crate fn placeholder_type_error(
 ) {
     if !placeholder_types.is_empty() {
         let possible_names = ["T", "K", "L", "A", "B", "C"];
-        let used_names = generics.iter().filter_map(|p| match p.name {
-            hir::ParamName::Plain(ident) => Some(ident.name),
-            _ => None,
-        }).collect::<Vec<_>>();
+        let used_names = generics
+            .iter()
+            .filter_map(|p| match p.name {
+                hir::ParamName::Plain(ident) => Some(ident.name),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
 
         let mut type_name = "ParamName";
         for name in &possible_names {
@@ -147,10 +150,9 @@ crate fn placeholder_type_error(
                 break;
             }
         }
-        
-        let mut sugg: Vec<_> = placeholder_types.iter()
-            .map(|sp| (*sp, type_name.to_string()))
-            .collect();
+
+        let mut sugg: Vec<_> =
+            placeholder_types.iter().map(|sp| (*sp, type_name.to_string())).collect();
         if generics.is_empty() {
             sugg.push((ident_span.shrink_to_hi(), format!("<{}>", type_name)));
         } else {
