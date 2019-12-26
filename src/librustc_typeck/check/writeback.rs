@@ -444,7 +444,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // figures out the concrete type with `U`, but the stored type is with `T`.
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
                 def_id,
-                opaque_defn,
+                opaque_defn.substs,
                 instantiated_ty,
                 span,
             );
