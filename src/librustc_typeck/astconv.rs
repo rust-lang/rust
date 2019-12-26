@@ -2748,11 +2748,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     pub fn ty_of_arg(&self, ty: &hir::Ty<'_>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
-        if crate::collect::is_infer_ty(ty) && expected_ty.is_some() {
-            self.record_ty(ty.hir_id, expected_ty.unwrap(), ty.span);
-            expected_ty.unwrap()
-        } else {
-            self.ast_ty_to_ty(ty)
+        match ty.kind {
+            hir::TyKind::Infer if expected_ty.is_some() => {
+                self.record_ty(ty.hir_id, expected_ty.unwrap(), ty.span);
+                expected_ty.unwrap()
+            }
+            _ => self.ast_ty_to_ty(ty),
         }
     }
 

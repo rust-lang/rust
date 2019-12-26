@@ -133,52 +133,50 @@ crate fn placeholder_type_error(
     placeholder_types: Vec<Span>,
     suggest: bool,
 ) {
-    if !placeholder_types.is_empty() {
-        let possible_names = ["T", "K", "L", "A", "B", "C"];
-        let used_names = generics
-            .iter()
-            .filter_map(|p| match p.name {
-                hir::ParamName::Plain(ident) => Some(ident.name),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-
-        let mut type_name = "ParamName";
-        for name in &possible_names {
-            if !used_names.contains(&Symbol::intern(name)) {
-                type_name = name;
-                break;
-            }
-        }
-
-        let mut sugg: Vec<_> =
-            placeholder_types.iter().map(|sp| (*sp, type_name.to_string())).collect();
-        if generics.is_empty() {
-            sugg.push((ident_span.shrink_to_hi(), format!("<{}>", type_name)));
-        } else {
-            sugg.push((
-                generics.iter().last().unwrap().span.shrink_to_hi(),
-                format!(", {}", type_name),
-            ));
-        }
-        let mut err = struct_span_err!(
-            tcx.sess,
-            placeholder_types.clone(),
-            E0121,
-            "the type placeholder `_` is not allowed within types on item signatures",
-        );
-        for span in &placeholder_types {
-            err.span_label(*span, "not allowed in type signatures");
-        }
-        if suggest {
-            err.multipart_suggestion(
-                "use type parameters instead",
-                sugg,
-                Applicability::HasPlaceholders,
-            );
-        }
-        err.emit();
+    if placeholder_types.is_empty() {
+        return;
     }
+    let possible_names = ["T", "K", "L", "A", "B", "C"];
+    let used_names = generics
+        .iter()
+        .filter_map(|p| match p.name {
+            hir::ParamName::Plain(ident) => Some(ident.name),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    let type_name = possible_names
+        .iter()
+        .find(|n| !used_names.contains(&Symbol::intern(n)))
+        .unwrap_or(&"ParamName");
+
+    let mut sugg: Vec<_> =
+        placeholder_types.iter().map(|sp| (*sp, type_name.to_string())).collect();
+    if generics.is_empty() {
+        sugg.push((ident_span.shrink_to_hi(), format!("<{}>", type_name)));
+    } else {
+        sugg.push((
+            generics.iter().last().unwrap().span.shrink_to_hi(),
+            format!(", {}", type_name),
+        ));
+    }
+    let mut err = struct_span_err!(
+        tcx.sess,
+        placeholder_types.clone(),
+        E0121,
+        "the type placeholder `_` is not allowed within types on item signatures",
+    );
+    for span in &placeholder_types {
+        err.span_label(*span, "not allowed in type signatures");
+    }
+    if suggest {
+        err.multipart_suggestion(
+            "use type parameters instead",
+            sugg,
+            Applicability::HasPlaceholders,
+        );
+    }
+    err.emit();
 }
 
 fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
