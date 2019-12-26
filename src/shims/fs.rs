@@ -269,7 +269,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
-            throw_unsup_format!("The `stat` shim is only only available for `macos` targets.")
+            throw_unsup_format!("The `stat` shim is only available for `macos` targets.")
         }
 
         let path_scalar = this.read_scalar(path_op)?.not_undef()?;
@@ -277,17 +277,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let buf = this.deref_operand(buf_op)?;
 
-        let status = match FileStatus::new(this, path, false)? {
-            Some(status) => status,
+        // `stat` always follows symlinks. `lstat` is used to get symlink metadata.
+        let metadata = match FileMetadata::new(this, path, true)? {
+            Some(metadata) => metadata,
             None => return Ok(-1),
         };
 
         // FIXME: use Scalar::to_u16
-        let mode: u16 = status.mode.to_bits(Size::from_bits(16))? as u16;
+        let mode: u16 = metadata.mode.to_bits(Size::from_bits(16))? as u16;
 
-        let (access_sec, access_nsec) = status.accessed.unwrap_or((0, 0));
-        let (created_sec, created_nsec) = status.created.unwrap_or((0, 0));
-        let (modified_sec, modified_nsec) = status.modified.unwrap_or((0, 0));
+        let (access_sec, access_nsec) = metadata.accessed.unwrap_or((0, 0));
+        let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
+        let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
 
         let dev_t_layout = this.libc_ty_layout("dev_t")?;
         let mode_t_layout = this.libc_ty_layout("mode_t")?;
@@ -302,7 +303,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let blksize_t_layout = this.libc_ty_layout("blksize_t")?;
         let uint32_t_layout = this.libc_ty_layout("uint32_t")?;
 
-        // We need to add 32 bits of padding after `st_rdev` if we are in a 64-bit platform.
+        // We need to add 32 bits of padding after `st_rdev` if we are on a 64-bit platform.
         let pad_layout = if this.tcx.sess.target.ptr_width == 64 {
             uint32_t_layout
         } else {
@@ -326,7 +327,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
             immty_from_uint_checked(created_sec, time_t_layout)?, // st_birthtime
             immty_from_uint_checked(created_nsec, long_layout)?, // st_birthtime_nsec
-            immty_from_uint_checked(status.size, off_t_layout)?, // st_size
+            immty_from_uint_checked(metadata.size, off_t_layout)?, // st_size
             immty_from_uint_checked(0u128, blkcnt_t_layout)?, // st_blocks
             immty_from_uint_checked(0u128, blksize_t_layout)?, // st_blksize
             immty_from_uint_checked(0u128, uint32_t_layout)?, // st_flags
@@ -351,7 +352,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("statx")?;
 
         if this.tcx.sess.target.target.target_os.to_lowercase() != "linux" {
-            throw_unsup_format!("The `statx` shim is only only available for `linux` targets.")
+            throw_unsup_format!("The `statx` shim is only available for `linux` targets.")
         }
 
         let statxbuf_scalar = this.read_scalar(statxbuf_op)?.not_undef()?;
@@ -413,8 +414,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // symbolic links.
         let follow_symlink = flags & this.eval_libc("AT_SYMLINK_NOFOLLOW")?.to_i32()? == 0;
 
-        let status = match FileStatus::new(this, path, follow_symlink)? {
-            Some(status) => status,
+        let metadata = match FileMetadata::new(this, path, follow_symlink)? {
+            Some(metadata) => metadata,
             None => return Ok(-1),
         };
 
@@ -422,7 +423,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // the owner, its group and other users. Given that we can only provide the file type
         // without using platform specific methods, we only set the bits corresponding to the file
         // type. This should be an `__u16` but `libc` provides its values as `u32`.
-        let mode: u16 = status
+        let mode: u16 = metadata
             .mode
             .to_u32()?
             .try_into()
@@ -430,17 +431,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // We need to set the corresponding bits of `mask` if the access, creation and modification
         // times were available. Otherwise we let them be zero.
-        let (access_sec, access_nsec) = status.accessed.map(|tup| {
+        let (access_sec, access_nsec) = metadata.accessed.map(|tup| {
             mask |= this.eval_libc("STATX_ATIME")?.to_u32()?;
             InterpResult::Ok(tup)
         }).unwrap_or(Ok((0, 0)))?;
 
-        let (created_sec, created_nsec) = status.created.map(|tup| {
+        let (created_sec, created_nsec) = metadata.created.map(|tup| {
             mask |= this.eval_libc("STATX_BTIME")?.to_u32()?;
             InterpResult::Ok(tup)
         }).unwrap_or(Ok((0, 0)))?;
 
-        let (modified_sec, modified_nsec) = status.modified.map(|tup| {
+        let (modified_sec, modified_nsec) = metadata.modified.map(|tup| {
             mask |= this.eval_libc("STATX_MTIME")?.to_u32()?;
             InterpResult::Ok(tup)
         }).unwrap_or(Ok((0, 0)))?;
@@ -461,7 +462,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_uint_checked(mode, __u16_layout)?, // stx_mode
             immty_from_uint_checked(0u128, __u16_layout)?, // statx padding
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_ino
-            immty_from_uint_checked(status.size, __u64_layout)?, // stx_size
+            immty_from_uint_checked(metadata.size, __u64_layout)?, // stx_size
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_blocks
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_attributes
             immty_from_uint_checked(access_sec, __u64_layout)?, // stx_atime.tv_sec
@@ -511,7 +512,9 @@ fn extract_sec_and_nsec<'tcx>(
     }).transpose()
 }
 
-struct FileStatus {
+/// Stores a file's metadata in order to avoid code duplication in the different metadata related
+/// shims.
+struct FileMetadata {
     mode: Scalar<Tag>,
     size: u64,
     created: Option<(u64, u32)>,
@@ -519,17 +522,17 @@ struct FileStatus {
     modified: Option<(u64, u32)>,
 }
 
-impl FileStatus {
+impl FileMetadata {
     fn new<'tcx, 'mir>(
         ecx: &mut MiriEvalContext<'mir, 'tcx>,
         path: PathBuf,
         follow_symlink: bool
-    ) -> InterpResult<'tcx, Option<FileStatus>> {
+    ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let metadata = if follow_symlink {
+            std::fs::metadata(path)
+        } else {
             // FIXME: metadata for symlinks need testing.
             std::fs::symlink_metadata(path)
-        } else {
-            std::fs::metadata(path)
         };
 
         let metadata = match metadata {
@@ -559,6 +562,6 @@ impl FileStatus {
         let modified = extract_sec_and_nsec(metadata.modified())?;
 
         // FIXME: Provide more fields using platform specific methods.
-        Ok(Some(FileStatus { mode, size, created, accessed, modified }))
+        Ok(Some(FileMetadata { mode, size, created, accessed, modified }))
     }
 }
