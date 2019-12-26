@@ -242,7 +242,7 @@ use crate::raw_vec::RawVec;
 /// ensures no unnecessary allocations or deallocations occur. Emptying a `Vec`
 /// and then filling it back up to the same [`len`] should incur no calls to
 /// the allocator. If you wish to free up unused memory, use
-/// [`shrink_to_fit`][`shrink_to_fit`].
+/// [`shrink_to_fit`].
 ///
 /// [`push`] and [`insert`] will never (re)allocate if the reported capacity is
 /// sufficient. [`push`] and [`insert`] *will* (re)allocate if
@@ -2461,7 +2461,7 @@ where
 
 /// An iterator that moves out of a vector.
 ///
-/// This `struct` is created by the `into_iter` method on [`Vec`][`Vec`] (provided
+/// This `struct` is created by the `into_iter` method on [`Vec`] (provided
 /// by the [`IntoIterator`] trait).
 ///
 /// [`Vec`]: struct.Vec.html
