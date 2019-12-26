@@ -277,17 +277,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let buf = this.deref_operand(buf_op)?;
 
-        let stats = match FileStatus::new(this, path, false)? {
-            Some(stats) => stats,
+        let status = match FileStatus::new(this, path, false)? {
+            Some(status) => status,
             None => return Ok(-1),
         };
 
         // FIXME: use Scalar::to_u16
-        let mode: u16 = stats.mode.to_bits(Size::from_bits(16))? as u16;
+        let mode: u16 = status.mode.to_bits(Size::from_bits(16))? as u16;
 
-        let (access_sec, access_nsec) = stats.accessed.unwrap_or((0, 0));
-        let (created_sec, created_nsec) = stats.created.unwrap_or((0, 0));
-        let (modified_sec, modified_nsec) = stats.modified.unwrap_or((0, 0));
+        let (access_sec, access_nsec) = status.accessed.unwrap_or((0, 0));
+        let (created_sec, created_nsec) = status.created.unwrap_or((0, 0));
+        let (modified_sec, modified_nsec) = status.modified.unwrap_or((0, 0));
 
         let dev_t_layout = this.libc_ty_layout("dev_t")?;
         let mode_t_layout = this.libc_ty_layout("mode_t")?;
@@ -326,7 +326,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
             immty_from_uint_checked(created_sec, time_t_layout)?, // st_birthtime
             immty_from_uint_checked(created_nsec, long_layout)?, // st_birthtime_nsec
-            immty_from_uint_checked(stats.size, off_t_layout)?, // st_size
+            immty_from_uint_checked(status.size, off_t_layout)?, // st_size
             immty_from_uint_checked(0u128, blkcnt_t_layout)?, // st_blocks
             immty_from_uint_checked(0u128, blksize_t_layout)?, // st_blksize
             immty_from_uint_checked(0u128, uint32_t_layout)?, // st_flags
@@ -413,8 +413,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // symbolic links.
         let is_symlink = flags & this.eval_libc("AT_SYMLINK_NOFOLLOW")?.to_i32()? != 0;
 
-        let stats = match FileStatus::new(this, path, is_symlink)? {
-            Some(stats) => stats,
+        let status = match FileStatus::new(this, path, is_symlink)? {
+            Some(status) => status,
             None => return Ok(-1),
         };
 
@@ -422,32 +422,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // the owner, its group and other users. Given that we can only provide the file type
         // without using platform specific methods, we only set the bits corresponding to the file
         // type. This should be an `__u16` but `libc` provides its values as `u32`.
-        let mode: u16 = stats
+        let mode: u16 = status
             .mode
             .to_u32()?
             .try_into()
             .unwrap_or_else(|_| bug!("libc contains bad value for constant"));
 
-        let (access_sec, access_nsec) = if let Some(tup) = stats.accessed {
-            tup
-        } else {
+        let (access_sec, access_nsec) = status.accessed.map(|tup| {
             mask |= this.eval_libc("STATX_ATIME")?.to_u32()?;
-            (0, 0)
-        };
+            InterpResult::Ok(tup)
+        }).unwrap_or(Ok((0, 0)))?;
 
-        let (created_sec, created_nsec) = if let Some(tup) = stats.created {
-            tup
-        } else {
+        let (created_sec, created_nsec) = status.created.map(|tup| {
             mask |= this.eval_libc("STATX_BTIME")?.to_u32()?;
-            (0, 0)
-        };
+            InterpResult::Ok(tup)
+        }).unwrap_or(Ok((0, 0)))?;
 
-        let (modified_sec, modified_nsec) = if let Some(tup) = stats.modified {
-            tup
-        } else {
+        let (modified_sec, modified_nsec) = status.modified.map(|tup| {
             mask |= this.eval_libc("STATX_MTIME")?.to_u32()?;
-            (0, 0)
-        };
+            InterpResult::Ok(tup)
+        }).unwrap_or(Ok((0, 0)))?;
 
         let __u32_layout = this.libc_ty_layout("__u32")?;
         let __u64_layout = this.libc_ty_layout("__u64")?;
@@ -465,7 +459,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_uint_checked(mode, __u16_layout)?, // stx_mode
             immty_from_uint_checked(0u128, __u16_layout)?, // statx padding
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_ino
-            immty_from_uint_checked(stats.size, __u64_layout)?, // stx_size
+            immty_from_uint_checked(status.size, __u64_layout)?, // stx_size
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_blocks
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_attributes
             immty_from_uint_checked(access_sec, __u64_layout)?, // stx_atime.tv_sec
@@ -521,7 +515,11 @@ struct FileStatus {
 }
 
 impl FileStatus {
-    fn new<'tcx, 'mir>(ecx: &mut MiriEvalContext<'mir, 'tcx>, path: PathBuf, is_symlink: bool) -> InterpResult<'tcx, Option<FileStatus>> {
+    fn new<'tcx, 'mir>(
+        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        path: PathBuf,
+        is_symlink: bool
+    ) -> InterpResult<'tcx, Option<FileStatus>> {
         let metadata = if is_symlink {
             // FIXME: metadata for symlinks need testing.
             std::fs::symlink_metadata(path)
