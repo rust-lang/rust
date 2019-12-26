@@ -366,7 +366,10 @@ impl<T> Cell<T> {
         if ptr::eq(self, other) {
             return;
         }
-        // SAFETY: not threadsafe, but it's OK since we know `Cell` isn't threadsafe
+        // SAFETY: This can be risky if called from separate threads, but `Cell`
+        // is `!Sync` so this won't happen. This also won't invalidate any
+        // pointers since `Cell` makes sure nothing else will be pointing into
+        // either of these `Cell`s.
         unsafe {
             ptr::swap(self.value.get(), other.value.get());
         }
@@ -386,7 +389,8 @@ impl<T> Cell<T> {
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn replace(&self, val: T) -> T {
-        // SAFETY: not threadsafe, but it's OK since we know `Cell` isn't threadsafe
+        // SAFETY: This can cause data races if called from a separate thread,
+        // but `Cell` is `!Sync` so this won't happen.
         mem::replace(unsafe { &mut *self.value.get() }, val)
     }
 
@@ -423,7 +427,8 @@ impl<T: Copy> Cell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> T {
-        // SAFETY: not threadsafe, but it's OK since we know `Cell` isn't threadsafe
+        // SAFETY: This can cause data races if called from a separate thread,
+        // but `Cell` is `!Sync` so this won't happen.
         unsafe { *self.value.get() }
     }
 
@@ -492,7 +497,9 @@ impl<T: ?Sized> Cell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        // SAFETY: not threadsafe, but it's OK since we know `Cell` isn't threadsafe
+        // SAFETY: This can cause data races if called from a separate thread,
+        // but `Cell` is `!Sync` so this won't happen, and `&mut` guarantees
+        // unique access.
         unsafe { &mut *self.value.get() }
     }
 
@@ -512,7 +519,7 @@ impl<T: ?Sized> Cell<T> {
     #[inline]
     #[stable(feature = "as_cell", since = "1.37.0")]
     pub fn from_mut(t: &mut T) -> &Cell<T> {
-        // SAFETY: `&mut` ensures unique access
+        // SAFETY: `&mut` ensures unique access.
         unsafe { &*(t as *mut T as *const Cell<T>) }
     }
 }
@@ -556,7 +563,7 @@ impl<T> Cell<[T]> {
     /// ```
     #[stable(feature = "as_cell", since = "1.37.0")]
     pub fn as_slice_of_cells(&self) -> &[Cell<T>] {
-        // SAFETY: `Cell<T>` has the same memory layout as `T`
+        // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T]> as *const [Cell<T>]) }
     }
 }
@@ -821,7 +828,7 @@ impl<T: ?Sized> RefCell<T> {
     pub fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
         match BorrowRef::new(&self.borrow) {
             // SAFETY: `BorrowRef` ensures that there is only immutable access
-            // to the value while borrowed
+            // to the value while borrowed.
             Some(b) => Ok(Ref { value: unsafe { &*self.value.get() }, borrow: b }),
             None => Err(BorrowError { _private: () }),
         }
@@ -897,7 +904,7 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
         match BorrowRefMut::new(&self.borrow) {
-            // SAFETY: `BorrowRef` guarantees unique access
+            // SAFETY: `BorrowRef` guarantees unique access.
             Some(b) => Ok(RefMut { value: unsafe { &mut *self.value.get() }, borrow: b }),
             None => Err(BorrowMutError { _private: () }),
         }
@@ -947,7 +954,7 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        // SAFETY: `&mut` guarantees unique access
+        // SAFETY: `&mut` guarantees unique access.
         unsafe { &mut *self.value.get() }
     }
 
