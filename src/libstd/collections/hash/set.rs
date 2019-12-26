@@ -1101,7 +1101,7 @@ pub struct Iter<'a, K: 'a> {
 
 /// An owning iterator over the items of a `HashSet`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`HashSet`][`HashSet`]
+/// This `struct` is created by the [`into_iter`] method on [`HashSet`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`HashSet`]: struct.HashSet.html

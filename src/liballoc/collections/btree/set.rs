@@ -83,7 +83,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 
 /// An owning iterator over the items of a `BTreeSet`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`BTreeSet`][`BTreeSet`]
+/// This `struct` is created by the [`into_iter`] method on [`BTreeSet`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html

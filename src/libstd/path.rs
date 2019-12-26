@@ -2,7 +2,7 @@
 
 //! Cross-platform path manipulation.
 //!
-//! This module provides two types, [`PathBuf`] and [`Path`][`Path`] (akin to [`String`]
+//! This module provides two types, [`PathBuf`] and [`Path`] (akin to [`String`]
 //! and [`str`]), for working with paths abstractly. These types are thin wrappers
 //! around [`OsString`] and [`OsStr`] respectively, meaning that they work directly
 //! on strings according to the local platform's path syntax.

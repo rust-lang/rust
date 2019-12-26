@@ -1370,7 +1370,7 @@ unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 /// The iterator yields one value if the result is [`Ok`], otherwise none.
 ///
 /// This struct is created by the [`into_iter`] method on
-/// [`Result`][`Result`] (provided by the [`IntoIterator`] trait).
+/// [`Result`] (provided by the [`IntoIterator`] trait).
 ///
 /// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Result`]: enum.Result.html
