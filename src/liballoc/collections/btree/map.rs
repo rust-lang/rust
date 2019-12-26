@@ -1968,7 +1968,7 @@ where
                 (i, false) => i,
             },
             (_, Unbounded) => 0,
-            (true, Included(_)) => min_node.keys().len(),
+            (true, Included(_)) => min_node.len(),
             (true, Excluded(_)) => 0,
         };
 
@@ -1987,9 +1987,9 @@ where
                 }
                 (i, false) => i,
             },
-            (_, Unbounded) => max_node.keys().len(),
+            (_, Unbounded) => max_node.len(),
             (true, Included(_)) => 0,
-            (true, Excluded(_)) => max_node.keys().len(),
+            (true, Excluded(_)) => max_node.len(),
         };
 
         if !diverged {
