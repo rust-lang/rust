@@ -367,7 +367,7 @@ labels to triage issues:
   to fix the issue.
 
 * The dark blue **final-comment-period** label marks bugs that are using the
-  RFC signoff functionality of [rfcbot][rfcbot] and are currently in the final
+  RFC signoff functionality of [rfcbot] and are currently in the final
   comment period.
 
 * Red, **I**-prefixed labels indicate the **importance** of the issue. The
@@ -385,7 +385,7 @@ labels to triage issues:
   label.
 
 * The gray **proposed-final-comment-period** label marks bugs that are using
-  the RFC signoff functionality of [rfcbot][rfcbot] and are currently awaiting
+  the RFC signoff functionality of [rfcbot] and are currently awaiting
   signoff of all team members in order to enter the final comment period.
 
 * Pink, **regression**-prefixed labels track regressions from stable to the

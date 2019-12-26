@@ -226,7 +226,7 @@ impl f64 {
     }
 
     /// Returns `true` if the number is neither zero, infinite,
-    /// [subnormal][subnormal], or `NaN`.
+    /// [subnormal], or `NaN`.
     ///
     /// ```
     /// use std::f64;
