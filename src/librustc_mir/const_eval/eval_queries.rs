@@ -117,12 +117,23 @@ pub(super) fn op_to_const<'tcx>(
         // structs containing such.
         op.try_as_mplace(ecx)
     };
+
+    let to_const_value = |mplace: MPlaceTy<'_>| match mplace.ptr {
+        Scalar::Ptr(ptr) => {
+            let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+            ConstValue::ByRef { alloc, offset: ptr.offset }
+        }
+        Scalar::Raw { data, .. } => {
+            assert_eq!(data, mplace.layout.align.abi.bytes().into());
+            ConstValue::Scalar(Scalar::zst())
+        }
+    };
     let val = match immediate {
-        Ok(mplace) => mplace.to_const_value(ecx.tcx.tcx),
+        Ok(mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
         Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
             ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
-            ScalarMaybeUndef::Undef => op.assert_mem_place(ecx).to_const_value(ecx.tcx.tcx),
+            ScalarMaybeUndef::Undef => to_const_value(op.assert_mem_place(ecx)),
         },
         Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
             let (data, start) = match a.not_undef().unwrap() {
