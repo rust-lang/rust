@@ -17,11 +17,11 @@ use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
+use rustc_data_structures::AtomicRef;
 use syntax_pos::source_map::SourceMap;
 use syntax_pos::{Loc, MultiSpan, Span};
 
 use std::borrow::Cow;
-use std::cell::Cell;
 use std::panic;
 use std::path::Path;
 use std::{error, fmt};
@@ -309,8 +309,8 @@ pub enum StashKey {
 
 fn default_track_diagnostic(_: &Diagnostic) {}
 
-thread_local!(pub static TRACK_DIAGNOSTICS: Cell<fn(&Diagnostic)> =
-                Cell::new(default_track_diagnostic));
+pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&Diagnostic)> =
+    AtomicRef::new(&(default_track_diagnostic as fn(&_)));
 
 #[derive(Copy, Clone, Default)]
 pub struct HandlerFlags {
@@ -730,9 +730,7 @@ impl HandlerInner {
             return;
         }
 
-        TRACK_DIAGNOSTICS.with(|track_diagnostics| {
-            track_diagnostics.get()(diagnostic);
-        });
+        (*TRACK_DIAGNOSTICS)(diagnostic);
 
         if let Some(ref code) = diagnostic.code {
             self.emitted_diagnostic_codes.insert(code.clone());
