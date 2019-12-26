@@ -35,7 +35,8 @@ macro_rules! arena_types {
                 rustc::mir::Promoted,
                 rustc::mir::BodyAndCache<$tcx>
             >,
-            [] tables: rustc::ty::TypeckTables<$tcx>,
+            [decode] tables: rustc::ty::TypeckTables<$tcx>,
+            [decode] borrowck_result: rustc::mir::BorrowCheckResult<$tcx>,
             [] const_allocs: rustc::mir::interpret::Allocation,
             [] vtable_method: Option<(
                 rustc_hir::def_id::DefId,

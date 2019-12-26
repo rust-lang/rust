@@ -2524,7 +2524,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
+        if let Some(ref closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements
+        {
             let closure_constraints = QueryRegionConstraints {
                 outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs),
 
