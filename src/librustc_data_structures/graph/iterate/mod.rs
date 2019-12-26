@@ -101,14 +101,14 @@ pub enum ControlFlow<T> {
 pub enum NodeStatus {
     /// This node has been examined by the depth-first search but is not yet `Settled`.
     ///
-    /// Also referred to as "gray" or "discovered" nodes in [CLR][].
+    /// Also referred to as "gray" or "discovered" nodes in [CLR].
     ///
     /// [CLR]: https://en.wikipedia.org/wiki/Introduction_to_Algorithms
     Visited,
 
     /// This node and all nodes reachable from it have been examined by the depth-first search.
     ///
-    /// Also referred to as "black" or "finished" nodes in [CLR][].
+    /// Also referred to as "black" or "finished" nodes in [CLR].
     ///
     /// [CLR]: https://en.wikipedia.org/wiki/Introduction_to_Algorithms
     Settled,
@@ -122,13 +122,13 @@ struct Event<N> {
 /// A depth-first search that also tracks when all successors of a node have been examined.
 ///
 /// This is based on the DFS described in [Introduction to Algorithms (1st ed.)][CLR], hereby
-/// referred to as **CLR**. However, we use the terminology in [`NodeStatus`][] above instead of
+/// referred to as **CLR**. However, we use the terminology in [`NodeStatus`] above instead of
 /// "discovered"/"finished" or "white"/"grey"/"black". Each node begins the search with no status,
 /// becomes `Visited` when it is first examined by the DFS and is `Settled` when all nodes
 /// reachable from it have been examined. This allows us to differentiate between "tree", "back"
 /// and "forward" edges (see [`TriColorVisitor::node_examined`]).
 ///
-/// Unlike the pseudocode in [CLR][], this implementation is iterative and does not use timestamps.
+/// Unlike the pseudocode in [CLR], this implementation is iterative and does not use timestamps.
 /// We accomplish this by storing `Event`s on the stack that result in a (possible) state change
 /// for each node. A `Visited` event signifies that we should examine this node if it has not yet
 /// been `Visited` or `Settled`. When a node is examined for the first time, we mark it as
@@ -246,7 +246,7 @@ where
     /// By checking the value of `prior_status`, this visitor can determine whether the edge
     /// leading to this node was a tree edge (`None`), forward edge (`Some(Settled)`) or back edge
     /// (`Some(Visited)`). For a full explanation of each edge type, see the "Depth-first Search"
-    /// chapter in [CLR][] or [wikipedia][].
+    /// chapter in [CLR] or [wikipedia].
     ///
     /// If you want to know *both* nodes linked by each edge, you'll need to modify
     /// `TriColorDepthFirstSearch` to store a `source` node for each `Visited` event.
