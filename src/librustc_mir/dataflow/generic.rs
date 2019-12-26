@@ -10,7 +10,7 @@
 //! interface, but make `Engine` and `ResultsCursor` the canonical way to perform and inspect a
 //! dataflow analysis. This requires porting the graphviz debugging logic to this module, deciding
 //! on a way to handle the `before` methods in `BitDenotation` and creating an adapter so that
-//! gen-kill problems can still be evaluated efficiently. See the discussion in [#64566][] for more
+//! gen-kill problems can still be evaluated efficiently. See the discussion in [#64566] for more
 //! information.
 //!
 //! [gk]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems

@@ -286,7 +286,7 @@ mod sync;
 
 mod cache_aligned;
 
-/// The receiving half of Rust's [`channel`][] (or [`sync_channel`]) type.
+/// The receiving half of Rust's [`channel`] (or [`sync_channel`]) type.
 /// This half can only be owned by one thread.
 ///
 /// Messages sent to the channel can be retrieved using [`recv`].
@@ -1108,7 +1108,7 @@ impl<T> Receiver<T> {
     ///
     /// This function will always block the current thread if there is no data
     /// available and it's possible for more data to be sent. Once a message is
-    /// sent to the corresponding [`Sender`][] (or [`SyncSender`]), then this
+    /// sent to the corresponding [`Sender`] (or [`SyncSender`]), then this
     /// receiver will wake up and return that message.
     ///
     /// If the corresponding [`Sender`] has disconnected, or it disconnects while
@@ -1194,7 +1194,7 @@ impl<T> Receiver<T> {
     ///
     /// This function will always block the current thread if there is no data
     /// available and it's possible for more data to be sent. Once a message is
-    /// sent to the corresponding [`Sender`][] (or [`SyncSender`]), then this
+    /// sent to the corresponding [`Sender`] (or [`SyncSender`]), then this
     /// receiver will wake up and return that message.
     ///
     /// If the corresponding [`Sender`] has disconnected, or it disconnects while
@@ -1295,7 +1295,7 @@ impl<T> Receiver<T> {
     ///
     /// This function will always block the current thread if there is no data
     /// available and it's possible for more data to be sent. Once a message is
-    /// sent to the corresponding [`Sender`][] (or [`SyncSender`]), then this
+    /// sent to the corresponding [`Sender`] (or [`SyncSender`]), then this
     /// receiver will wake up and return that message.
     ///
     /// If the corresponding [`Sender`] has disconnected, or it disconnects while
