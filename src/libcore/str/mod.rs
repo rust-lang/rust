@@ -659,7 +659,7 @@ impl<'a> Chars<'a> {
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     #[inline]
     pub fn as_str(&self) -> &'a str {
-        // SAFETY: Chars is only made from a str, which guarantees the iter is valid utf8
+        // SAFETY: `Chars` is only made from a str, which guarantees the iter is valid utf8
         unsafe { from_utf8_unchecked(self.iter.as_slice()) }
     }
 }
