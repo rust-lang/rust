@@ -110,7 +110,7 @@ pub struct HashSet<T, S = RandomState> {
     map: HashMap<T, (), S>,
 }
 
-impl<T: Hash + Eq> HashSet<T, RandomState> {
+impl<T> HashSet<T, RandomState> {
     /// Creates an empty `HashSet`.
     ///
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
@@ -261,13 +261,7 @@ impl<T, S> HashSet<T, S> {
     pub fn clear(&mut self) {
         self.map.clear()
     }
-}
 
-impl<T, S> HashSet<T, S>
-where
-    T: Eq + Hash,
-    S: BuildHasher,
-{
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
@@ -340,7 +334,13 @@ where
     pub fn hasher(&self) -> &S {
         self.map.hasher()
     }
+}
 
+impl<T, S> HashSet<T, S>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+{
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to avoid
     /// frequent reallocations.
@@ -928,8 +928,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> fmt::Debug for HashSet<T, S>
 where
-    T: Eq + Hash + fmt::Debug,
-    S: BuildHasher,
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
@@ -977,8 +976,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> Default for HashSet<T, S>
 where
-    T: Eq + Hash,
-    S: BuildHasher + Default,
+    S: Default,
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     #[inline]
