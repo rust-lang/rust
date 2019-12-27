@@ -10,36 +10,7 @@ pub(super) fn optimize_function(
     clif_comments: &mut crate::pretty_clif::CommentWriter,
     name: String, // FIXME remove
 ) {
-    // Turn load and store into stack_load and stack_store when possible.
-    let mut cursor = FuncCursor::new(func);
-    while let Some(_ebb) = cursor.next_ebb() {
-        while let Some(inst) = cursor.next_inst() {
-            match cursor.func.dfg[inst] {
-                InstructionData::Load { opcode: Opcode::Load, arg: addr, flags: _, offset } => {
-                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
-                        continue; // WORKAROUD: stack_load.i128 not yet implemented
-                    }
-                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
-                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
-                            let ty = cursor.func.dfg.ctrl_typevar(inst);
-                            cursor.func.dfg.replace(inst).stack_load(ty, stack_slot, combined_offset);
-                        }
-                    }
-                }
-                InstructionData::Store { opcode: Opcode::Store, args: [value, addr], flags: _, offset } => {
-                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
-                        continue; // WORKAROUND: stack_store.i128 not yet implemented
-                    }
-                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
-                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
-                            cursor.func.dfg.replace(inst).stack_store(value, stack_slot, combined_offset);
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
+    combine_stack_addr_with_load_store(func);
 
     // Record all stack_addr, stack_load and stack_store instructions. Also record all stack_addr
     // and stack_load insts whose result is used.
@@ -111,6 +82,20 @@ pub(super) fn optimize_function(
             stack_addr_insts[inst] = false;
         }
     }
+
+    for inst in used_stack_load_insts.keys().filter(|&inst| used_stack_load_insts[inst]) {
+        assert!(stack_load_insts[inst]);
+    }
+
+    // Replace all unused stack_load instructions with nop.
+    for inst in stack_load_insts.keys() {
+        if stack_load_insts[inst] && !used_stack_load_insts[inst] {
+            func.dfg.detach_results(inst);
+            func.dfg.replace(inst).nop();
+            stack_load_insts[inst] = false;
+        }
+    }
+
 
     //println!("stack_addr (after): [{}]", bool_secondary_map_to_string(&stack_addr_insts));
 
@@ -198,6 +183,39 @@ pub(super) fn optimize_function(
             for &user in users.iter() {
                 println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot);
                 func.dfg.replace(user).nop();
+            }
+        }
+    }
+}
+
+fn combine_stack_addr_with_load_store(func: &mut Function) {
+    // Turn load and store into stack_load and stack_store when possible.
+    let mut cursor = FuncCursor::new(func);
+    while let Some(_ebb) = cursor.next_ebb() {
+        while let Some(inst) = cursor.next_inst() {
+            match cursor.func.dfg[inst] {
+                InstructionData::Load { opcode: Opcode::Load, arg: addr, flags: _, offset } => {
+                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
+                        continue; // WORKAROUD: stack_load.i128 not yet implemented
+                    }
+                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
+                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
+                            let ty = cursor.func.dfg.ctrl_typevar(inst);
+                            cursor.func.dfg.replace(inst).stack_load(ty, stack_slot, combined_offset);
+                        }
+                    }
+                }
+                InstructionData::Store { opcode: Opcode::Store, args: [value, addr], flags: _, offset } => {
+                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
+                        continue; // WORKAROUND: stack_store.i128 not yet implemented
+                    }
+                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
+                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
+                            cursor.func.dfg.replace(inst).stack_store(value, stack_slot, combined_offset);
+                        }
+                    }
+                }
+                _ => {}
             }
         }
     }
