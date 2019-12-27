@@ -160,15 +160,7 @@ crate fn placeholder_type_error(
             format!(", {}", type_name),
         ));
     }
-    let mut err = struct_span_err!(
-        tcx.sess,
-        placeholder_types.clone(),
-        E0121,
-        "the type placeholder `_` is not allowed within types on item signatures",
-    );
-    for span in &placeholder_types {
-        err.span_label(*span, "not allowed in type signatures");
-    }
+    let mut err = bad_placeholder_type(tcx, placeholder_types);
     if suggest {
         err.multipart_suggestion(
             "use type parameters instead",
@@ -184,14 +176,8 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
         hir::ItemKind::Union(_, generics)
         | hir::ItemKind::Enum(_, generics)
         | hir::ItemKind::Struct(_, generics) => (&generics.params[..], true),
-        hir::ItemKind::Static(ty, ..) => {
-            if let hir::TyKind::Infer = ty.kind {
-                return; // We handle it elsewhere to attempt to suggest an appropriate type.
-            } else {
-                (&[][..], false)
-            }
-        }
         hir::ItemKind::TyAlias(_, generics) => (&generics.params[..], false),
+        // hir::ItemKind::Static(ty, ..) => {
         // hir::ItemKind::Fn(..) |
         // hir::ItemKind::Const(..) => {} // We handle these elsewhere to suggest appropriate type.
         _ => return,
@@ -255,15 +241,21 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Utility types and common code for the above passes.
 
-fn bad_placeholder_type(tcx: TyCtxt<'tcx>, span: Span) -> errors::DiagnosticBuilder<'tcx> {
-    let mut diag = struct_span_err!(
+fn bad_placeholder_type(
+    tcx: TyCtxt<'tcx>,
+    mut spans: Vec<Span>,
+) -> errors::DiagnosticBuilder<'tcx> {
+    spans.sort();
+    let mut err = struct_span_err!(
         tcx.sess,
-        span,
+        spans.clone(),
         E0121,
         "the type placeholder `_` is not allowed within types on item signatures",
     );
-    diag.span_label(span, "not allowed in type signatures");
-    diag
+    for span in spans {
+        err.span_label(span, "not allowed in type signatures");
+    }
+    err
 }
 
 impl ItemCtxt<'tcx> {
@@ -298,7 +290,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        self.tcx().sess.delay_span_bug(span, "bad placeholder type, but no error was emitted");
+        self.tcx().sess.delay_span_bug(span, "bad placeholder type");
         self.tcx().types.err
     }
 
@@ -308,7 +300,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
-        bad_placeholder_type(self.tcx(), span).emit();
+        bad_placeholder_type(self.tcx(), vec![span]).emit();
 
         self.tcx().consts.err
     }
@@ -1233,7 +1225,7 @@ fn infer_placeholder_type(
     span: Span,
     item_ident: Ident,
 ) -> Ty<'_> {
-    let ty = tcx.typeck_tables_of(def_id).node_type(body_id.hir_id);
+    let ty = tcx.diagnostic_only_typeck_tables_of(def_id).node_type(body_id.hir_id);
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
@@ -1253,7 +1245,7 @@ fn infer_placeholder_type(
             .emit();
         }
         None => {
-            let mut diag = bad_placeholder_type(tcx, span);
+            let mut diag = bad_placeholder_type(tcx, vec![span]);
             if ty != tcx.types.err {
                 diag.span_suggestion(
                     span,
@@ -1284,12 +1276,8 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             TraitItemKind::Const(ref ty, body_id) => body_id
                 .and_then(|body_id| {
-                    if let hir::TyKind::Infer = ty.kind {
+                    if is_infer_ty(ty) {
                         Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
-                    } else if is_infer_ty(ty) {
-                        // Infering this would cause a cycle error.
-                        tcx.sess.delay_span_bug(ty.span, "`_` placeholder but no error emitted");
-                        Some(tcx.types.err)
                     } else {
                         None
                     }
@@ -1307,12 +1295,8 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 tcx.mk_fn_def(def_id, substs)
             }
             ImplItemKind::Const(ref ty, body_id) => {
-                if let hir::TyKind::Infer = ty.kind {
+                if is_infer_ty(ty) {
                     infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
-                } else if is_infer_ty(ty) {
-                    // Infering this would cause a cycle error.
-                    tcx.sess.delay_span_bug(ty.span, "`_` placeholder but no error emitted");
-                    tcx.types.err
                 } else {
                     icx.to_ty(ty)
                 }
@@ -1336,12 +1320,8 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::Item(item) => {
             match item.kind {
                 ItemKind::Static(ref ty, .., body_id) | ItemKind::Const(ref ty, body_id) => {
-                    if let hir::TyKind::Infer = ty.kind {
+                    if is_infer_ty(ty) {
                         infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
-                    } else if is_infer_ty(ty) {
-                        // Infering this would cause a cycle error.
-                        tcx.sess.delay_span_bug(ty.span, "`_` placeholder but no error emitted");
-                        tcx.types.err
                     } else {
                         icx.to_ty(ty)
                     }
@@ -1818,7 +1798,7 @@ crate fn is_infer_ty(ty: &hir::Ty<'_>) -> bool {
         hir::TyKind::Slice(ty) | hir::TyKind::Array(ty, _) => is_infer_ty(ty),
         hir::TyKind::Tup(tys)
             if !tys.is_empty()
-                && tys.iter().all(|ty| match ty.kind {
+                && tys.iter().any(|ty| match ty.kind {
                     hir::TyKind::Infer => true,
                     _ => false,
                 }) =>
@@ -1858,12 +1838,14 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             match get_infer_ret_ty(&sig.decl.output) {
                 Some(ty) => {
                     let fn_sig = tcx.typeck_tables_of(def_id).liberated_fn_sigs()[hir_id];
-                    let mut diag = bad_placeholder_type(tcx, ty.span);
+                    let mut visitor = PlaceholderHirTyCollector::new();
+                    visitor.visit_ty(ty);
+                    let mut diag = bad_placeholder_type(tcx, visitor.0);
                     let ret_ty = fn_sig.output();
                     if ret_ty != tcx.types.err {
                         diag.span_suggestion(
                             ty.span,
-                            "replace this with the correct return type",
+                            "replace with the correct return type",
                             ret_ty.to_string(),
                             Applicability::MaybeIncorrect,
                         );

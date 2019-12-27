@@ -30,6 +30,7 @@ fn test7(x: _) { let _x: usize = x; }
 
 fn test8(_f: fn() -> _) { }
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
 
 struct Test9;
 
@@ -79,6 +80,7 @@ pub fn main() {
 
     fn fn_test8(_f: fn() -> _) { }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    //~| ERROR the type placeholder `_` is not allowed within types on item signatures
 
     struct FnTest9;
 

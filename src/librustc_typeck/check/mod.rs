@@ -756,6 +756,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         typeck_item_bodies,
         typeck_tables_of,
+        diagnostic_only_typeck_tables_of,
         has_typeck_tables,
         adt_destructor,
         used_trait_imports,
@@ -941,7 +942,26 @@ where
     val.fold_with(&mut FixupFolder { tcx })
 }
 
-fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
+fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &ty::TypeckTables<'tcx> {
+    let fallback = move || tcx.type_of(def_id);
+    typeck_tables_of_with_fallback(tcx, def_id, fallback)
+}
+
+/// Used only to get `TypeckTables` for type inference during error recovery.
+/// Currently only used for type inference of `static`s and `const`s to avoid type cycle errors.
+fn diagnostic_only_typeck_tables_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> &ty::TypeckTables<'tcx> {
+    let fallback = move || tcx.types.err;
+    typeck_tables_of_with_fallback(tcx, def_id, fallback)
+}
+
+fn typeck_tables_of_with_fallback<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    fallback: impl Fn() -> Ty<'tcx> + 'tcx,
+) -> &'tcx ty::TypeckTables<'tcx> {
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id);
@@ -990,7 +1010,7 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
                     hir::TyKind::Infer => Some(AstConv::ast_ty_to_ty(&fcx, ty)),
                     _ => None,
                 })
-                .unwrap_or_else(|| tcx.type_of(def_id));
+                .unwrap_or_else(fallback);
             let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 

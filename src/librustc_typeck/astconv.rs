@@ -2770,30 +2770,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         // We proactively collect all the infered type params to emit a single error per fn def.
-        let mut placeholder_types = vec![];
-        let mut output_placeholder_types = vec![];
-
-        let input_tys = decl.inputs.iter().map(|a| {
-            let mut visitor = PlaceholderHirTyCollector::new();
-            visitor.visit_ty(&a);
-            if visitor.0.is_empty() || self.allow_ty_infer() {
-                self.ty_of_arg(a, None)
-            } else {
-                placeholder_types.extend(visitor.0);
-                tcx.types.err
-            }
-        });
+        let mut visitor = PlaceholderHirTyCollector::new();
+        for ty in &decl.inputs {
+            visitor.visit_ty(ty);
+        }
+        let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
         let output_ty = match decl.output {
             hir::Return(ref output) => {
-                let mut visitor = PlaceholderHirTyCollector::new();
                 visitor.visit_ty(output);
-                let is_infer = if let hir::TyKind::Infer = output.kind { true } else { false };
-                if (is_infer || !visitor.0.is_empty()) && !self.allow_ty_infer() {
-                    output_placeholder_types.extend(visitor.0);
-                    tcx.types.err
-                } else {
-                    self.ast_ty_to_ty(output)
-                }
+                self.ast_ty_to_ty(output)
             }
             hir::DefaultReturn(..) => tcx.mk_unit(),
         };
@@ -2803,15 +2788,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let bare_fn_ty =
             ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi));
 
-        placeholder_types.extend(output_placeholder_types);
-
-        crate::collect::placeholder_type_error(
-            tcx,
-            ident_span.unwrap_or(DUMMY_SP),
-            generic_params,
-            placeholder_types,
-            ident_span.is_some(),
-        );
+        if !self.allow_ty_infer() {
+            crate::collect::placeholder_type_error(
+                tcx,
+                ident_span.unwrap_or(DUMMY_SP),
+                generic_params,
+                visitor.0,
+                ident_span.is_some(),
+            );
+        }
 
         // Find any late-bound regions declared in return type that do
         // not appear in the arguments. These are not well-formed.
