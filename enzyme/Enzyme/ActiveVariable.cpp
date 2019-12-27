@@ -224,11 +224,35 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
             }
         }
     }
+
     if (auto ci = dyn_cast<CastInst>(v)) {
-        if (ci->getSrcTy()->isPointerTy())
-            if (trackPointer(ci->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
-                if (fast_tracking) return true;
+        std::vector<int> idnext;
+        //only propagate type information if it is safe to do so (e.g. we either look at any memory inside of [thus not onlyFirst], or we don't have any indexing inside of [thus indices.size() == 0])
+        if (!onlyFirst || indices.size() == 0) {
+            if (ci->getSrcTy()->isPointerTy()) {
+                if (trackPointer(ci->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, {})) {
+                    if (fast_tracking) return true;
+                }
+            } else {
+                //If the parent has another cast to a pointer type, let us consider that cast as well
+                //  Specifically, given x is an integer (representing a pointer)
+                //    we know ci is (int*)x; if there is later a (float*)x; we can use the type information from (float*)x
+                for(User* use2 : ci->getOperand(0)->users()) {
+                    //only consider pointer results
+                    if (!use2->getType()->isPointerTy()) continue;
+
+                    //we don't need to (but can) revisit this cast
+                    if (use2 == ci) continue;
+
+                    if (auto ci2 = dyn_cast<CastInst>(use2)) {
+                        if (trackPointer(ci2, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, {})) {
+                            if (fast_tracking) return true;
+                        }
+                        
+                    }
+                }
             }
+        }
     } 
     if (auto gep = dyn_cast<GetElementPtrInst>(v)) {
         bool first = true;
@@ -252,9 +276,15 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
     if (!isa<Constant>(v)) {
         for(User* use: v->users()) {
             if (auto ci = dyn_cast<CastInst>(use)) {
-                if (ci->getDestTy()->isPointerTy()) {
-                    if (trackPointer(ci, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
-                        if (fast_tracking) return true;
+                std::vector<int> idnext;//TODO insert old onlyFirst & indices from above
+
+                //only propagate type information if it is safe to do so (e.g. we either look at any memory inside of [thus not onlyFirst], or we don't have any indexing inside of [thus indices.size() == 0])
+                if (!onlyFirst || indices.size() == 0) {
+                    if (ci->getDestTy()->isPointerTy()) {
+                        if (trackPointer(ci, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
+                            if (fast_tracking) return true;
+                        }
+                    } else {
                     }
                 }
             }
@@ -291,6 +321,28 @@ bool trackPointer(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, S
                     if (fast_tracking) return true;
                 }
             }
+
+            if (auto call = dyn_cast<CallInst>(use)) {
+                if (Function* ci = call->getCalledFunction()) {
+
+                    //If memcpy / memmove of pointer, we can propagate type information from src to dst and vice versa
+                    if (ci->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {
+                        if (call->getArgOperand(0) == v) {
+                            if (trackPointer(call->getArgOperand(1), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                                if (fast_tracking) return true;
+                            }
+                        }
+                        if (call->getArgOperand(1) == v) {
+                            if (trackPointer(call->getArgOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                                if (fast_tracking) return true;
+                            }
+                        }
+                    }
+
+                    //TODO we should handle calls interprocedurally, allowing better propagation of type information
+                }
+            }
+
             if (auto li = dyn_cast<LoadInst>(use)) {
                 bool unknownuse;
                 if (li->getType()->isIntOrIntVectorTy())
@@ -1677,6 +1729,7 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
                 constantvals.insert(val);
 				return true;
 			}
+
 			if (auto call = dyn_cast<CallInst>(a)) {
                 if (isFunctionArgumentConstant(call, val, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
                     if (printconst) {
@@ -1685,15 +1738,6 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
                     continue;
                 }
 			}
-            if (isa<AllocaInst>(a)) {
-               if (printconst) {
-			     llvm::errs() << "Value found constant allocainst use:" << *val << " user " << *a << "\n";
-               }
-               assert(val->getType()->isIntegerTy());
-               constantvals.insert(val);
-			   return true;
-               //continue;
-            }
             
 		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
     			if (printconst)
