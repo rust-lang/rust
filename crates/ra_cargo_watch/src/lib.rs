@@ -176,13 +176,7 @@ impl CheckWatcherState {
         shared: Arc<RwLock<CheckWatcherSharedState>>,
     ) -> CheckWatcherState {
         let watcher = WatchThread::new(&options, &workspace_root);
-        CheckWatcherState {
-            options,
-            workspace_root,
-            watcher,
-            last_update_req: None,
-            shared,
-        }
+        CheckWatcherState { options, workspace_root, watcher, last_update_req: None, shared }
     }
 
     pub fn run(&mut self, task_send: &Sender<CheckTask>, cmd_recv: &Receiver<CheckCommand>) {
