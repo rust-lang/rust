@@ -193,7 +193,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext<'_, '_>, local: &Local) {
+    fn check_local(&mut self, cx: &LateContext<'_, '_>, local: &Local<'_>) {
         if let Some(ref ty) = local.ty {
             check_ty(cx, ty, true);
         }
@@ -462,7 +462,7 @@ declare_clippy_lint! {
 declare_lint_pass!(LetUnitValue => [LET_UNIT_VALUE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Local(ref local) = stmt.kind {
             if is_unit(cx.tables.pat_ty(&local.pat)) {
                 if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
@@ -537,7 +537,7 @@ declare_clippy_lint! {
 declare_lint_pass!(UnitCmp => [UNIT_CMP]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) {
         if expr.span.from_expansion() {
             if let Some(callee) = expr.span.source_callee() {
                 if let ExpnKind::Macro(MacroKind::Bang, symbol) = callee.kind {
@@ -610,7 +610,7 @@ declare_clippy_lint! {
 declare_lint_pass!(UnitArg => [UNIT_ARG]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
@@ -633,7 +633,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
         }
 
         match expr.kind {
-            ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => {
+            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args) => {
                 for arg in args {
                     if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
                         if let ExprKind::Match(.., match_source) = &arg.kind {
@@ -659,7 +659,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
     }
 }
 
-fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
+fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
     use syntax_pos::hygiene::DesugaringKind;
     if let ExprKind::Call(ref callee, _) = expr.kind {
         callee.span.is_desugaring(DesugaringKind::QuestionMark)
@@ -675,7 +675,7 @@ fn is_unit(ty: Ty<'_>) -> bool {
     }
 }
 
-fn is_unit_literal(expr: &Expr) -> bool {
+fn is_unit_literal(expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Tup(ref slice) if slice.is_empty() => true,
         _ => false,
@@ -929,7 +929,7 @@ fn is_isize_or_usize(typ: Ty<'_>) -> bool {
     }
 }
 
-fn span_precision_loss_lint(cx: &LateContext<'_, '_>, expr: &Expr, cast_from: Ty<'_>, cast_to_f64: bool) {
+fn span_precision_loss_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to_f64: bool) {
     let mantissa_nbits = if cast_to_f64 { 52 } else { 23 };
     let arch_dependent = is_isize_or_usize(cast_from) && cast_to_f64;
     let arch_dependent_str = "on targets with 64-bit wide pointers ";
@@ -956,7 +956,7 @@ fn span_precision_loss_lint(cx: &LateContext<'_, '_>, expr: &Expr, cast_from: Ty
     );
 }
 
-fn should_strip_parens(op: &Expr, snip: &str) -> bool {
+fn should_strip_parens(op: &Expr<'_>, snip: &str) -> bool {
     if let ExprKind::Binary(_, _, _) = op.kind {
         if snip.starts_with('(') && snip.ends_with(')') {
             return true;
@@ -965,7 +965,7 @@ fn should_strip_parens(op: &Expr, snip: &str) -> bool {
     false
 }
 
-fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>, op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
     if in_constant(cx, expr.hir_id) {
         return;
@@ -1005,7 +1005,7 @@ enum ArchSuffix {
     None,
 }
 
-fn check_loss_of_sign(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+fn check_loss_of_sign(cx: &LateContext<'_, '_>, expr: &Expr<'_>, op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     if !cast_from.is_signed() || cast_to.is_signed() {
         return;
     }
@@ -1049,7 +1049,7 @@ fn check_loss_of_sign(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_fro
     );
 }
 
-fn check_truncation_and_wrapping(cx: &LateContext<'_, '_>, expr: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+fn check_truncation_and_wrapping(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     let arch_64_suffix = " on targets with 64-bit wide pointers";
     let arch_32_suffix = " on targets with 32-bit wide pointers";
     let cast_unsigned_to_signed = !cast_from.is_signed() && cast_to.is_signed();
@@ -1120,7 +1120,7 @@ fn check_truncation_and_wrapping(cx: &LateContext<'_, '_>, expr: &Expr, cast_fro
     }
 }
 
-fn check_lossless(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+fn check_lossless(cx: &LateContext<'_, '_>, expr: &Expr<'_>, op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     let cast_signed_to_unsigned = cast_from.is_signed() && !cast_to.is_signed();
     let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
     let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
@@ -1169,7 +1169,7 @@ fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
@@ -1223,8 +1223,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
 
 fn lint_numeric_casts<'tcx>(
     cx: &LateContext<'_, 'tcx>,
-    expr: &Expr,
-    cast_expr: &Expr,
+    expr: &Expr<'tcx>,
+    cast_expr: &Expr<'_>,
     cast_from: Ty<'tcx>,
     cast_to: Ty<'tcx>,
 ) {
@@ -1280,7 +1280,7 @@ fn lint_numeric_casts<'tcx>(
     }
 }
 
-fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
+fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
     if_chain! {
         if let ty::RawPtr(from_ptr_ty) = &cast_from.kind;
         if let ty::RawPtr(to_ptr_ty) = &cast_to.kind;
@@ -1310,8 +1310,8 @@ fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr, cast_f
 
 fn lint_fn_to_numeric_cast(
     cx: &LateContext<'_, '_>,
-    expr: &Expr,
-    cast_expr: &Expr,
+    expr: &Expr<'_>,
+    cast_expr: &Expr<'_>,
     cast_from: Ty<'_>,
     cast_to: Ty<'_>,
 ) {
@@ -1432,7 +1432,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local) {
+    fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>) {
         if let Some(ref ty) = local.ty {
             self.check_type(cx, ty);
         }
@@ -1548,7 +1548,7 @@ declare_clippy_lint! {
 declare_lint_pass!(CharLitAsU8 => [CHAR_LIT_AS_U8]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();
             if let ExprKind::Cast(e, _) = &expr.kind;
@@ -1619,7 +1619,7 @@ enum ExtremeType {
 
 struct ExtremeExpr<'a> {
     which: ExtremeType,
-    expr: &'a Expr,
+    expr: &'a Expr<'a>,
 }
 
 enum AbsurdComparisonResult {
@@ -1628,7 +1628,7 @@ enum AbsurdComparisonResult {
     InequalityImpossible,
 }
 
-fn is_cast_between_fixed_and_target<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
+fn is_cast_between_fixed_and_target<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
         let precast_ty = cx.tables.expr_ty(cast_exp);
         let cast_ty = cx.tables.expr_ty(expr);
@@ -1642,8 +1642,8 @@ fn is_cast_between_fixed_and_target<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: 
 fn detect_absurd_comparison<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     op: BinOpKind,
-    lhs: &'tcx Expr,
-    rhs: &'tcx Expr,
+    lhs: &'tcx Expr<'_>,
+    rhs: &'tcx Expr<'_>,
 ) -> Option<(ExtremeExpr<'tcx>, AbsurdComparisonResult)> {
     use crate::types::AbsurdComparisonResult::*;
     use crate::types::ExtremeType::*;
@@ -1691,7 +1691,7 @@ fn detect_absurd_comparison<'a, 'tcx>(
     })
 }
 
-fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<ExtremeExpr<'tcx>> {
+fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> Option<ExtremeExpr<'tcx>> {
     use crate::types::ExtremeType::*;
 
     let ty = cx.tables.expr_ty(expr);
@@ -1720,7 +1720,7 @@ fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         use crate::types::AbsurdComparisonResult::*;
         use crate::types::ExtremeType::*;
 
@@ -1828,7 +1828,7 @@ impl Ord for FullInt {
     }
 }
 
-fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
+fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'_>) -> Option<(FullInt, FullInt)> {
     use std::*;
 
     if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
@@ -1892,7 +1892,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> 
     }
 }
 
-fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<FullInt> {
+fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> Option<FullInt> {
     let val = constant(cx, cx.tables, expr)?.0;
     if let Constant::Int(const_int) = val {
         match cx.tables.expr_ty(expr).kind {
@@ -1905,7 +1905,7 @@ fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr)
     }
 }
 
-fn err_upcast_comparison(cx: &LateContext<'_, '_>, span: Span, expr: &Expr, always: bool) {
+fn err_upcast_comparison(cx: &LateContext<'_, '_>, span: Span, expr: &Expr<'_>, always: bool) {
     if let ExprKind::Cast(ref cast_val, _) = expr.kind {
         span_lint(
             cx,
@@ -1925,8 +1925,8 @@ fn upcast_comparison_bounds_err<'a, 'tcx>(
     span: Span,
     rel: comparisons::Rel,
     lhs_bounds: Option<(FullInt, FullInt)>,
-    lhs: &'tcx Expr,
-    rhs: &'tcx Expr,
+    lhs: &'tcx Expr<'_>,
+    rhs: &'tcx Expr<'_>,
     invert: bool,
 ) {
     use crate::utils::comparisons::*;
@@ -1979,7 +1979,7 @@ fn upcast_comparison_bounds_err<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.kind {
             let normalized = comparisons::normalize_comparison(cmp.node, lhs, rhs);
             let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
@@ -2298,7 +2298,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
         self.body = prev_body;
     }
 
-    fn visit_expr(&mut self, e: &'tcx Expr) {
+    fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(ref fun, ref args) = e.kind;
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.kind;
@@ -2383,7 +2383,7 @@ declare_clippy_lint! {
 declare_lint_pass!(RefToMut => [CAST_REF_TO_MUT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RefToMut {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Unary(UnOp::UnDeref, e) = &expr.kind;
             if let ExprKind::Cast(e, t) = &e.kind;

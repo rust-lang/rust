@@ -292,7 +292,7 @@ static COLLECTIONS: &[&[&str]] = &[
 ];
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(ref path_expr, ref args) = e.kind;
             if let ExprKind::Path(ref qpath) = path_expr.kind;

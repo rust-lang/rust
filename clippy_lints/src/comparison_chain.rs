@@ -54,7 +54,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ComparisonChain => [COMPARISON_CHAIN]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ComparisonChain {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }

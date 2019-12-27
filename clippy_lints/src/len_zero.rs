@@ -84,7 +84,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
@@ -207,7 +207,7 @@ fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item<'_>, impl_items: &[Imp
     }
 }
 
-fn check_cmp(cx: &LateContext<'_, '_>, span: Span, method: &Expr, lit: &Expr, op: &str, compare_to: u32) {
+fn check_cmp(cx: &LateContext<'_, '_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>, op: &str, compare_to: u32) {
     if let (&ExprKind::MethodCall(ref method_path, _, ref args), &ExprKind::Lit(ref lit)) = (&method.kind, &lit.kind) {
         // check if we are in an is_empty() method
         if let Some(name) = get_item_name(cx, method) {
@@ -224,7 +224,7 @@ fn check_len(
     cx: &LateContext<'_, '_>,
     span: Span,
     method_name: Name,
-    args: &[Expr],
+    args: &[Expr<'_>],
     lit: &LitKind,
     op: &str,
     compare_to: u32,
@@ -255,7 +255,7 @@ fn check_len(
 }
 
 /// Checks if this type has an `is_empty` method.
-fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
+fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_, '_>, item: &ty::AssocItem) -> bool {
         if let ty::AssocKind::Method = item.kind {

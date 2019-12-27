@@ -33,7 +33,7 @@ declare_clippy_lint! {
 declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         let lint_true = || {
             span_help_and_lint(
                 cx,
@@ -110,7 +110,7 @@ enum AssertKind {
 /// ```
 ///
 /// where `message` is any expression and `c` is a constant bool.
-fn match_assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<AssertKind> {
+fn match_assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> Option<AssertKind> {
     if_chain! {
         if let ExprKind::Match(ref expr, ref arms, _) = expr.kind;
         // matches { let _t = expr; _t }
@@ -124,7 +124,7 @@ fn match_assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx E
         if let LitKind::Bool(true) = lit.node;
         // arm 1 block
         if let ExprKind::Block(ref block, _) = arms[0].body.kind;
-        if block.stmts.len() == 0;
+        if block.stmts.is_empty();
         if let Some(block_expr) = &block.expr;
         if let ExprKind::Block(ref inner_block, _) = block_expr.kind;
         if let Some(begin_panic_call) = &inner_block.expr;

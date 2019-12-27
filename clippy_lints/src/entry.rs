@@ -53,7 +53,7 @@ declare_clippy_lint! {
 declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapPass {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let Some((ref check, ref then_block, ref else_block)) = higher::if_block(&expr) {
             if let ExprKind::Unary(UnOp::UnNot, ref check) = check.kind {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
@@ -100,8 +100,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapPass {
 
 fn check_cond<'a, 'tcx, 'b>(
     cx: &'a LateContext<'a, 'tcx>,
-    check: &'b Expr,
-) -> Option<(&'static str, &'b Expr, &'b Expr)> {
+    check: &'b Expr<'b>,
+) -> Option<(&'static str, &'b Expr<'b>, &'b Expr<'b>)> {
     if_chain! {
         if let ExprKind::MethodCall(ref path, _, ref params) = check.kind;
         if params.len() >= 2;
@@ -130,13 +130,13 @@ struct InsertVisitor<'a, 'tcx, 'b> {
     cx: &'a LateContext<'a, 'tcx>,
     span: Span,
     ty: &'static str,
-    map: &'b Expr,
-    key: &'b Expr,
+    map: &'b Expr<'b>,
+    key: &'b Expr<'b>,
     sole_expr: bool,
 }
 
 impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(ref path, _, ref params) = expr.kind;
             if params.len() == 3;

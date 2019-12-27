@@ -235,7 +235,7 @@ declare_lint_pass!(Matches => [
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
@@ -254,7 +254,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 }
 
 #[rustfmt::skip]
-fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
+fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
         if let PatKind::Or(..) = arms[0].pat.kind {
             // don't lint for or patterns for now, this makes
@@ -281,10 +281,10 @@ fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
 
 fn check_single_match_single_pattern(
     cx: &LateContext<'_, '_>,
-    ex: &Expr,
-    arms: &[Arm],
-    expr: &Expr,
-    els: Option<&Expr>,
+    ex: &Expr<'_>,
+    arms: &[Arm<'_>],
+    expr: &Expr<'_>,
+    els: Option<&Expr<'_>>,
 ) {
     if is_wild(&arms[1].pat) {
         report_single_match_single_pattern(cx, ex, arms, expr, els);
@@ -293,10 +293,10 @@ fn check_single_match_single_pattern(
 
 fn report_single_match_single_pattern(
     cx: &LateContext<'_, '_>,
-    ex: &Expr,
-    arms: &[Arm],
-    expr: &Expr,
-    els: Option<&Expr>,
+    ex: &Expr<'_>,
+    arms: &[Arm<'_>],
+    expr: &Expr<'_>,
+    els: Option<&Expr<'_>>,
 ) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let els_str = els.map_or(String::new(), |els| {
@@ -322,11 +322,11 @@ fn report_single_match_single_pattern(
 
 fn check_single_match_opt_like(
     cx: &LateContext<'_, '_>,
-    ex: &Expr,
-    arms: &[Arm],
-    expr: &Expr,
+    ex: &Expr<'_>,
+    arms: &[Arm<'_>],
+    expr: &Expr<'_>,
     ty: Ty<'_>,
-    els: Option<&Expr>,
+    els: Option<&Expr<'_>>,
 ) {
     // list of candidate `Enum`s we know will never get any more members
     let candidates = &[
@@ -359,7 +359,7 @@ fn check_single_match_opt_like(
     }
 }
 
-fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
+fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     // Type of expression is `bool`.
     if cx.tables.expr_ty(ex).kind == ty::Bool {
         span_lint_and_then(
@@ -419,7 +419,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Ex
     }
 }
 
-fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr, arms: &'tcx [Arm]) {
+fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
     if arms.len() >= 2 && cx.tables.expr_ty(ex).is_integral() {
         let ranges = all_ranges(cx, arms);
         let type_ranges = type_ranges(&ranges);
@@ -438,14 +438,14 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr, 
     }
 }
 
-fn is_wild(pat: &impl std::ops::Deref<Target = Pat>) -> bool {
+fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
     match pat.kind {
         PatKind::Wild => true,
         _ => false,
     }
 }
 
-fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
+fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
     if match_type(cx, ex_ty, &paths::RESULT) {
         for arm in arms {
@@ -472,7 +472,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
     }
 }
 
-fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
+fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ty = cx.tables.expr_ty(ex);
     if !ty.is_enum() {
         // If there isn't a nice closed set of possible values that can be conveniently enumerated,
@@ -565,7 +565,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
 }
 
 // If the block contains only a `panic!` macro (as expression or statement)
-fn is_panic_block(block: &Block) -> bool {
+fn is_panic_block(block: &Block<'_>) -> bool {
     match (&block.expr, block.stmts.len(), block.stmts.first()) {
         (&Some(ref exp), 0, _) => {
             is_expn_of(exp.span, "panic").is_some() && is_expn_of(exp.span, "unreachable").is_none()
@@ -577,7 +577,7 @@ fn is_panic_block(block: &Block) -> bool {
     }
 }
 
-fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
+fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if has_only_ref_pats(arms) {
         let mut suggs = Vec::new();
         let (title, msg) = if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = ex.kind {
@@ -612,7 +612,7 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr:
     }
 }
 
-fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
+fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
         let arm_ref: Option<BindingAnnotation> = if is_none_arm(&arms[0]) {
             is_ref_some_arm(&arms[1])
@@ -665,7 +665,7 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
 }
 
 /// Gets all arms that are unbounded `PatRange`s.
-fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm]) -> Vec<SpannedRange<Constant>> {
+fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm<'_>]) -> Vec<SpannedRange<Constant>> {
     arms.iter()
         .flat_map(|arm| {
             if let Arm {
@@ -730,7 +730,7 @@ fn type_ranges(ranges: &[SpannedRange<Constant>]) -> TypedRanges {
         .collect()
 }
 
-fn is_unit_expr(expr: &Expr) -> bool {
+fn is_unit_expr(expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Tup(ref v) if v.is_empty() => true,
         ExprKind::Block(ref b, _) if b.stmts.is_empty() && b.expr.is_none() => true,
@@ -739,7 +739,7 @@ fn is_unit_expr(expr: &Expr) -> bool {
 }
 
 // Checks if arm has the form `None => None`
-fn is_none_arm(arm: &Arm) -> bool {
+fn is_none_arm(arm: &Arm<'_>) -> bool {
     match arm.pat.kind {
         PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => true,
         _ => false,
@@ -747,7 +747,7 @@ fn is_none_arm(arm: &Arm) -> bool {
 }
 
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
-fn is_ref_some_arm(arm: &Arm) -> Option<BindingAnnotation> {
+fn is_ref_some_arm(arm: &Arm<'_>) -> Option<BindingAnnotation> {
     if_chain! {
         if let PatKind::TupleStruct(ref path, ref pats, _) = arm.pat.kind;
         if pats.len() == 1 && match_qpath(path, &paths::OPTION_SOME);
@@ -766,7 +766,7 @@ fn is_ref_some_arm(arm: &Arm) -> Option<BindingAnnotation> {
     None
 }
 
-fn has_only_ref_pats(arms: &[Arm]) -> bool {
+fn has_only_ref_pats(arms: &[Arm<'_>]) -> bool {
     let mapped = arms
         .iter()
         .map(|a| {

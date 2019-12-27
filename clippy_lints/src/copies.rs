@@ -153,7 +153,7 @@ declare_clippy_lint! {
 declare_lint_pass!(CopyAndPaste => [IFS_SAME_COND, SAME_FUNCTIONS_IN_IF_CONDITION, IF_SAME_THEN_ELSE, MATCH_SAME_ARMS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion() {
             // skip ifs directly in else, it will be checked in the parent if
             if let Some(expr) = get_parent_expr(cx, expr) {
@@ -174,8 +174,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
 }
 
 /// Implementation of `IF_SAME_THEN_ELSE`.
-fn lint_same_then_else(cx: &LateContext<'_, '_>, blocks: &[&Block]) {
-    let eq: &dyn Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
+fn lint_same_then_else(cx: &LateContext<'_, '_>, blocks: &[&Block<'_>]) {
+    let eq: &dyn Fn(&&Block<'_>, &&Block<'_>) -> bool =
+        &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
 
     if let Some((i, j)) = search_same_sequenced(blocks, eq) {
         span_note_and_lint(
@@ -190,14 +191,14 @@ fn lint_same_then_else(cx: &LateContext<'_, '_>, blocks: &[&Block]) {
 }
 
 /// Implementation of `IFS_SAME_COND`.
-fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr]) {
-    let hash: &dyn Fn(&&Expr) -> u64 = &|expr| -> u64 {
+fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
+    let hash: &dyn Fn(&&Expr<'_>) -> u64 = &|expr| -> u64 {
         let mut h = SpanlessHash::new(cx, cx.tables);
         h.hash_expr(expr);
         h.finish()
     };
 
-    let eq: &dyn Fn(&&Expr, &&Expr) -> bool =
+    let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool =
         &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
 
     for (i, j) in search_same(conds, hash, eq) {
@@ -213,14 +214,14 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr]) {
 }
 
 /// Implementation of `SAME_FUNCTIONS_IN_IF_CONDITION`.
-fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr]) {
-    let hash: &dyn Fn(&&Expr) -> u64 = &|expr| -> u64 {
+fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
+    let hash: &dyn Fn(&&Expr<'_>) -> u64 = &|expr| -> u64 {
         let mut h = SpanlessHash::new(cx, cx.tables);
         h.hash_expr(expr);
         h.finish()
     };
 
-    let eq: &dyn Fn(&&Expr, &&Expr) -> bool = &|&lhs, &rhs| -> bool {
+    let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool = &|&lhs, &rhs| -> bool {
         // Do not spawn warning if `IFS_SAME_COND` already produced it.
         if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) {
             return false;
@@ -241,7 +242,7 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr]) {
 }
 
 /// Implementation of `MATCH_SAME_ARMS`.
-fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
+fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>) {
     fn same_bindings<'tcx>(
         cx: &LateContext<'_, 'tcx>,
         lhs: &FxHashMap<Symbol, Ty<'tcx>>,
@@ -254,13 +255,13 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
     }
 
     if let ExprKind::Match(_, ref arms, MatchSource::Normal) = expr.kind {
-        let hash = |&(_, arm): &(usize, &Arm)| -> u64 {
+        let hash = |&(_, arm): &(usize, &Arm<'_>)| -> u64 {
             let mut h = SpanlessHash::new(cx, cx.tables);
             h.hash_expr(&arm.body);
             h.finish()
         };
 
-        let eq = |&(lindex, lhs): &(usize, &Arm), &(rindex, rhs): &(usize, &Arm)| -> bool {
+        let eq = |&(lindex, lhs): &(usize, &Arm<'_>), &(rindex, rhs): &(usize, &Arm<'_>)| -> bool {
             let min_index = usize::min(lindex, rindex);
             let max_index = usize::max(lindex, rindex);
 
@@ -272,7 +273,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
                 same_bindings(cx, &bindings(cx, &lhs.pat), &bindings(cx, &rhs.pat))
         };
 
-        let indexed_arms: Vec<(usize, &Arm)> = arms.iter().enumerate().collect();
+        let indexed_arms: Vec<(usize, &Arm<'_>)> = arms.iter().enumerate().collect();
         for (&(_, i), &(_, j)) in search_same(&indexed_arms, hash, eq) {
             span_lint_and_then(
                 cx,
@@ -313,11 +314,11 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
 }
 
 /// Returns the list of bindings in a pattern.
-fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<Symbol, Ty<'tcx>> {
-    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut FxHashMap<Symbol, Ty<'tcx>>) {
+fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat<'_>) -> FxHashMap<Symbol, Ty<'tcx>> {
+    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat<'_>, map: &mut FxHashMap<Symbol, Ty<'tcx>>) {
         match pat.kind {
             PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
-            PatKind::TupleStruct(_, ref pats, _) => {
+            PatKind::TupleStruct(_, pats, _) => {
                 for pat in pats {
                     bindings_impl(cx, pat, map);
                 }
@@ -330,17 +331,17 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<Symbol
                     bindings_impl(cx, as_pat, map);
                 }
             },
-            PatKind::Or(ref fields) | PatKind::Tuple(ref fields, _) => {
+            PatKind::Or(fields) | PatKind::Tuple(fields, _) => {
                 for pat in fields {
                     bindings_impl(cx, pat, map);
                 }
             },
-            PatKind::Struct(_, ref fields, _) => {
+            PatKind::Struct(_, fields, _) => {
                 for pat in fields {
                     bindings_impl(cx, &pat.pat, map);
                 }
             },
-            PatKind::Slice(ref lhs, ref mid, ref rhs) => {
+            PatKind::Slice(lhs, ref mid, rhs) => {
                 for pat in lhs {
                     bindings_impl(cx, pat, map);
                 }

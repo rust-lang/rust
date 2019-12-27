@@ -35,7 +35,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ReplaceConsts => [REPLACE_CONSTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             if let hir::ExprKind::Path(ref qp) = expr.kind;
             if let Res::Def(DefKind::Const, def_id) = cx.tables.qpath_res(qp, expr.hir_id);

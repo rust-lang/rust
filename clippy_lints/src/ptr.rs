@@ -130,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref op, ref l, ref r) = expr.kind {
             if (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne) && (is_null_path(l) || is_null_path(r)) {
                 span_lint(
@@ -293,7 +293,7 @@ fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {
     }
 }
 
-fn is_null_path(expr: &Expr) -> bool {
+fn is_null_path(expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(ref pathexp, ref args) = expr.kind {
         if args.is_empty() {
             if let ExprKind::Path(ref path) = pathexp.kind {

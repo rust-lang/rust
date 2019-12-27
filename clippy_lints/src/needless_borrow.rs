@@ -38,7 +38,7 @@ pub struct NeedlessBorrow {
 impl_lint_pass!(NeedlessBorrow => [NEEDLESS_BORROW]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() || self.derived_item.is_some() {
             return;
         }
@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
             }
         }
     }
-    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
+    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
         if pat.span.from_expansion() || self.derived_item.is_some() {
             return;
         }

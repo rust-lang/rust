@@ -178,7 +178,7 @@ pub fn lit_to_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
 pub fn constant<'c, 'cc>(
     lcx: &LateContext<'c, 'cc>,
     tables: &'c ty::TypeckTables<'cc>,
-    e: &Expr,
+    e: &Expr<'_>,
 ) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
         lcx,
@@ -193,7 +193,7 @@ pub fn constant<'c, 'cc>(
 pub fn constant_simple<'c, 'cc>(
     lcx: &LateContext<'c, 'cc>,
     tables: &'c ty::TypeckTables<'cc>,
-    e: &Expr,
+    e: &Expr<'_>,
 ) -> Option<Constant> {
     constant(lcx, tables, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
@@ -222,7 +222,7 @@ pub struct ConstEvalLateContext<'a, 'tcx> {
 
 impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// Simple constant folding: Insert an expression, get a constant or none.
-    pub fn expr(&mut self, e: &Expr) -> Option<Constant> {
+    pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant> {
         if let Some((ref cond, ref then, otherwise)) = higher::if_block(&e) {
             return self.ifthenelse(cond, then, otherwise);
         }
@@ -315,7 +315,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 
     /// Create `Some(Vec![..])` of all constants, unless there is any
     /// non-constant part.
-    fn multi(&mut self, vec: &[Expr]) -> Option<Vec<Constant>> {
+    fn multi(&mut self, vec: &[Expr<'_>]) -> Option<Vec<Constant>> {
         vec.iter().map(|elem| self.expr(elem)).collect::<Option<_>>()
     }
 
@@ -348,7 +348,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 
     /// A block can only yield a constant if it only has one constant expression.
-    fn block(&mut self, block: &Block) -> Option<Constant> {
+    fn block(&mut self, block: &Block<'_>) -> Option<Constant> {
         if block.stmts.is_empty() {
             block.expr.as_ref().and_then(|b| self.expr(b))
         } else {
@@ -356,7 +356,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         }
     }
 
-    fn ifthenelse(&mut self, cond: &Expr, then: &Expr, otherwise: Option<&Expr>) -> Option<Constant> {
+    fn ifthenelse(&mut self, cond: &Expr<'_>, then: &Expr<'_>, otherwise: Option<&Expr<'_>>) -> Option<Constant> {
         if let Some(Constant::Bool(b)) = self.expr(cond) {
             if b {
                 self.expr(&*then)
@@ -368,7 +368,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         }
     }
 
-    fn binop(&mut self, op: BinOp, left: &Expr, right: &Expr) -> Option<Constant> {
+    fn binop(&mut self, op: BinOp, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {

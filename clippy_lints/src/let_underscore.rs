@@ -33,7 +33,7 @@ declare_clippy_lint! {
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &Stmt<'_>) {
         if_chain! {
             if let StmtKind::Local(ref local) = stmt.kind;
             if let PatKind::Wild = local.pat.kind;

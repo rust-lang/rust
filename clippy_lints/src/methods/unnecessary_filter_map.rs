@@ -10,7 +10,7 @@ use if_chain::if_chain;
 
 use super::UNNECESSARY_FILTER_MAP;
 
-pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
+pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
     }
@@ -54,7 +54,7 @@ pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr
 fn check_expression<'a, 'tcx>(
     cx: &'a LateContext<'a, 'tcx>,
     arg_id: hir::HirId,
-    expr: &'tcx hir::Expr,
+    expr: &'tcx hir::Expr<'_>,
 ) -> (bool, bool) {
     match &expr.kind {
         hir::ExprKind::Call(ref func, ref args) => {
@@ -87,10 +87,10 @@ fn check_expression<'a, 'tcx>(
                 (false, false)
             }
         },
-        hir::ExprKind::Match(_, ref arms, _) => {
+        hir::ExprKind::Match(_, arms, _) => {
             let mut found_mapping = false;
             let mut found_filtering = false;
-            for arm in arms {
+            for arm in *arms {
                 let (m, f) = check_expression(cx, arg_id, &arm.body);
                 found_mapping |= m;
                 found_filtering |= f;
@@ -123,7 +123,7 @@ impl<'a, 'tcx> ReturnVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReturnVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if let hir::ExprKind::Ret(Some(expr)) = &expr.kind {
             let (found_mapping, found_filtering) = check_expression(self.cx, self.arg_id, expr);
             self.found_mapping |= found_mapping;

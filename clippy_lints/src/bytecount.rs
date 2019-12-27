@@ -36,7 +36,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ByteCount => [NAIVE_BYTECOUNT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(ref count, _, ref count_args) = expr.kind;
             if count.ident.name == sym!(count);
@@ -96,11 +96,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
     }
 }
 
-fn check_arg(name: Name, arg: Name, needle: &Expr) -> bool {
+fn check_arg(name: Name, arg: Name, needle: &Expr<'_>) -> bool {
     name == arg && !contains_name(name, needle)
 }
 
-fn get_path_name(expr: &Expr) -> Option<Name> {
+fn get_path_name(expr: &Expr<'_>) -> Option<Name> {
     match expr.kind {
         ExprKind::Box(ref e) | ExprKind::AddrOf(BorrowKind::Ref, _, ref e) | ExprKind::Unary(UnOp::UnDeref, ref e) => {
             get_path_name(e)

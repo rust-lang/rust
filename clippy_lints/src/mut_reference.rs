@@ -27,7 +27,7 @@ declare_clippy_lint! {
 declare_lint_pass!(UnnecessaryMutPassed => [UNNECESSARY_MUT_PASSED]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         match e.kind {
             ExprKind::Call(ref fn_expr, ref arguments) => {
                 if let ExprKind::Path(ref path) = fn_expr.kind {
@@ -50,7 +50,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
     }
 }
 
-fn check_arguments<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arguments: &[Expr], type_definition: Ty<'tcx>, name: &str) {
+fn check_arguments<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    arguments: &[Expr<'_>],
+    type_definition: Ty<'tcx>,
+    name: &str,
+) {
     match type_definition.kind {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();

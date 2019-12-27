@@ -141,7 +141,7 @@ struct CCHelper {
 }
 
 impl<'tcx> Visitor<'tcx> for CCHelper {
-    fn visit_expr(&mut self, e: &'tcx Expr) {
+    fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         walk_expr(self, e);
         match e.kind {
             ExprKind::Match(_, ref arms, _) => {

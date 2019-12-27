@@ -88,7 +88,7 @@ declare_lint_pass!(Ranges => [
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind {
             let name = path.ident.as_str();
             if name == "zip" && args.len() == 2 {
@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
 }
 
 // exclusive range plus one: `x..(y+1)`
-fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
+fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if_chain! {
         if let Some(higher::Range {
             start,
@@ -174,7 +174,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
 }
 
 // inclusive range minus one: `x..=(y-1)`
-fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
+fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if_chain! {
         if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(cx, expr);
         if let Some(y) = y_minus_one(cx, end);
@@ -199,7 +199,7 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
     }
 }
 
-fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr) -> Option<&'t Expr> {
+fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {
@@ -220,7 +220,7 @@ fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr) -> Option<&'t Expr> 
     }
 }
 
-fn y_minus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr) -> Option<&'t Expr> {
+fn y_minus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {

@@ -11,9 +11,9 @@ use super::OPTION_MAP_UNWRAP_OR;
 /// lint use of `map().unwrap_or()` for `Option`s
 pub(super) fn lint<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    expr: &hir::Expr,
-    map_args: &'tcx [hir::Expr],
-    unwrap_args: &'tcx [hir::Expr],
+    expr: &hir::Expr<'_>,
+    map_args: &'tcx [hir::Expr<'_>],
+    unwrap_args: &'tcx [hir::Expr<'_>],
 ) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {

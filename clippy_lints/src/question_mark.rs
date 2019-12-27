@@ -1,7 +1,6 @@
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
 use rustc::hir::def::{DefKind, Res};
-use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
@@ -47,7 +46,7 @@ impl QuestionMark {
     /// ```
     ///
     /// If it matches, it will suggest to use the question mark operator instead
-    fn check_is_none_and_early_return_none(cx: &LateContext<'_, '_>, expr: &Expr) {
+    fn check_is_none_and_early_return_none(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if_chain! {
             if let Some((if_expr, body, else_)) = higher::if_block(&expr);
             if let ExprKind::MethodCall(segment, _, args) = &if_expr.kind;
@@ -62,7 +61,7 @@ impl QuestionMark {
                 if let Some(else_) = else_ {
                     if_chain! {
                         if let ExprKind::Block(block, None) = &else_.kind;
-                        if block.stmts.len() == 0;
+                        if block.stmts.is_empty();
                         if let Some(block_expr) = &block.expr;
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(subject, block_expr);
                         then {
@@ -95,19 +94,19 @@ impl QuestionMark {
         }
     }
 
-    fn moves_by_default(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
+    fn moves_by_default(cx: &LateContext<'_, '_>, expression: &Expr<'_>) -> bool {
         let expr_ty = cx.tables.expr_ty(expression);
 
         !expr_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, expression.span)
     }
 
-    fn is_option(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
+    fn is_option(cx: &LateContext<'_, '_>, expression: &Expr<'_>) -> bool {
         let expr_ty = cx.tables.expr_ty(expression);
 
         match_type(cx, expr_ty, &OPTION)
     }
 
-    fn expression_returns_none(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
+    fn expression_returns_none(cx: &LateContext<'_, '_>, expression: &Expr<'_>) -> bool {
         match expression.kind {
             ExprKind::Block(ref block, _) => {
                 if let Some(return_expression) = Self::return_expression(block) {
@@ -130,14 +129,14 @@ impl QuestionMark {
         }
     }
 
-    fn return_expression(block: &Block) -> Option<&P<Expr>> {
+    fn return_expression<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
         // Check if last expression is a return statement. Then, return the expression
         if_chain! {
             if block.stmts.len() == 1;
             if let Some(expr) = block.stmts.iter().last();
             if let StmtKind::Semi(ref expr) = expr.kind;
-            if let ExprKind::Ret(ref ret_expr) = expr.kind;
-            if let &Some(ref ret_expr) = ret_expr;
+            if let ExprKind::Ret(ret_expr) = expr.kind;
+            if let Some(ret_expr) = ret_expr;
 
             then {
                 return Some(ret_expr);
@@ -146,7 +145,7 @@ impl QuestionMark {
 
         // Check for `return` without a semicolon.
         if_chain! {
-            if block.stmts.len() == 0;
+            if block.stmts.is_empty();
             if let Some(ExprKind::Ret(Some(ret_expr))) = block.expr.as_ref().map(|e| &e.kind);
             then {
                 return Some(ret_expr);
@@ -158,7 +157,7 @@ impl QuestionMark {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for QuestionMark {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         Self::check_is_none_and_early_return_none(cx, expr);
     }
 }

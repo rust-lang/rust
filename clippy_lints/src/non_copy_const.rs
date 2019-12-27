@@ -183,7 +183,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Path(qpath) = &expr.kind {
             // Only lint if we use the const item inside a function.
             if in_constant(cx, expr.hir_id) {

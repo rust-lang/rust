@@ -45,7 +45,7 @@ impl LateLintPass<'_, '_> for MainRecursion {
         });
     }
 
-    fn check_expr_post(&mut self, cx: &LateContext<'_, '_>, expr: &Expr) {
+    fn check_expr_post(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if self.has_no_std_attr {
             return;
         }

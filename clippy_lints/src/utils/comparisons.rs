@@ -19,7 +19,11 @@ pub enum Rel {
 
 /// Put the expression in the form  `lhs < rhs`, `lhs <= rhs`, `lhs == rhs` or
 /// `lhs != rhs`.
-pub fn normalize_comparison<'a>(op: BinOpKind, lhs: &'a Expr, rhs: &'a Expr) -> Option<(Rel, &'a Expr, &'a Expr)> {
+pub fn normalize_comparison<'a>(
+    op: BinOpKind,
+    lhs: &'a Expr<'a>,
+    rhs: &'a Expr<'a>,
+) -> Option<(Rel, &'a Expr<'a>, &'a Expr<'a>)> {
     match op {
         BinOpKind::Lt => Some((Rel::Lt, lhs, rhs)),
         BinOpKind::Le => Some((Rel::Le, lhs, rhs)),

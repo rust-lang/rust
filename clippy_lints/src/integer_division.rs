@@ -29,7 +29,7 @@ declare_clippy_lint! {
 declare_lint_pass!(IntegerDivision => [INTEGER_DIVISION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntegerDivision {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if is_integer_division(cx, expr) {
             span_help_and_lint(
                 cx,
@@ -42,7 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntegerDivision {
     }
 }
 
-fn is_integer_division<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) -> bool {
+fn is_integer_division<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) -> bool {
     if_chain! {
         if let hir::ExprKind::Binary(binop, left, right) = &expr.kind;
         if let hir::BinOpKind::Div = &binop.node;

@@ -29,7 +29,7 @@ declare_clippy_lint! {
 declare_lint_pass!(UselessVec => [USELESS_VEC]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_chain! {
             if let ty::Ref(_, ty, _) = cx.tables.expr_ty_adjusted(expr).kind;

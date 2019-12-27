@@ -483,7 +483,7 @@ fn has_mutable_arg(cx: &LateContext<'_, '_>, body: &hir::Body<'_>) -> bool {
     body.params.iter().any(|param| is_mutable_pat(cx, &param.pat, &mut tys))
 }
 
-fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, tys: &mut FxHashSet<DefId>) -> bool {
+fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<DefId>) -> bool {
     if let hir::PatKind::Wild = pat.kind {
         return false; // ignore `_` patterns
     }
@@ -518,7 +518,7 @@ fn is_mutable_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span,
     }
 }
 
-fn raw_ptr_arg(arg: &hir::Param, ty: &hir::Ty) -> Option<hir::HirId> {
+fn raw_ptr_arg(arg: &hir::Param<'_>, ty: &hir::Ty) -> Option<hir::HirId> {
     if let (&hir::PatKind::Binding(_, id, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.kind, &ty.kind) {
         Some(id)
     } else {
@@ -533,9 +533,9 @@ struct DerefVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
-            hir::ExprKind::Call(ref f, ref args) => {
+            hir::ExprKind::Call(ref f, args) => {
                 let ty = self.tables.expr_ty(f);
 
                 if type_is_unsafe_function(self.cx, ty) {
@@ -544,7 +544,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprKind::MethodCall(_, _, ref args) => {
+            hir::ExprKind::MethodCall(_, _, args) => {
                 let def_id = self.tables.type_dependent_def_id(expr.hir_id).unwrap();
                 let base_type = self.cx.tcx.type_of(def_id);
 
@@ -567,7 +567,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
-    fn check_arg(&self, ptr: &hir::Expr) {
+    fn check_arg(&self, ptr: &hir::Expr<'_>) {
         if let hir::ExprKind::Path(ref qpath) = ptr.kind {
             if let Res::Local(id) = qpath_res(self.cx, qpath, ptr.hir_id) {
                 if self.ptrs.contains(&id) {
@@ -589,14 +589,14 @@ struct StaticMutVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         use hir::ExprKind::*;
 
         if self.mutates_static {
             return;
         }
         match expr.kind {
-            Call(_, ref args) | MethodCall(_, _, ref args) => {
+            Call(_, args) | MethodCall(_, _, args) => {
                 let mut tys = FxHashSet::default();
                 for arg in args {
                     let def_id = arg.hir_id.owner_def_id();
@@ -627,7 +627,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
     }
 }
 
-fn is_mutated_static(cx: &LateContext<'_, '_>, e: &hir::Expr) -> bool {
+fn is_mutated_static(cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) -> bool {
     use hir::ExprKind::*;
 
     match e.kind {

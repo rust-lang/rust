@@ -61,13 +61,13 @@ declare_clippy_lint! {
 declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE, REDUNDANT_CLOSURE_FOR_METHOD_CALLS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 
         match expr.kind {
-            ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => {
+            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args) => {
                 for arg in args {
                     check_closure(cx, arg)
                 }
@@ -77,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
     }
 }
 
-fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
+fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if let ExprKind::Closure(_, ref decl, eid, _, _) = expr.kind {
         let body = cx.tcx.hir().body(eid);
         let ex = &body.value;
@@ -99,7 +99,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
 
             if !type_is_unsafe_function(cx, fn_ty);
 
-            if compare_inputs(&mut iter_input_pats(decl, body), &mut args.into_iter());
+            if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
 
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |db| {
@@ -127,7 +127,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             let method_def_id = cx.tables.type_dependent_def_id(ex.hir_id).unwrap();
             if !type_is_unsafe_function(cx, cx.tcx.type_of(method_def_id));
 
-            if compare_inputs(&mut iter_input_pats(decl, body), &mut args.into_iter());
+            if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
 
             if let Some(name) = get_ufcs_type_name(cx, method_def_id, &args[0]);
 
@@ -146,7 +146,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
 }
 
 /// Tries to determine the type for universal function call to be used instead of the closure
-fn get_ufcs_type_name(cx: &LateContext<'_, '_>, method_def_id: def_id::DefId, self_arg: &Expr) -> Option<String> {
+fn get_ufcs_type_name(cx: &LateContext<'_, '_>, method_def_id: def_id::DefId, self_arg: &Expr<'_>) -> Option<String> {
     let expected_type_of_self = &cx.tcx.fn_sig(method_def_id).inputs_and_output().skip_binder()[0];
     let actual_type_of_self = &cx.tables.node_type(self_arg.hir_id);
 
@@ -200,8 +200,8 @@ fn get_type_name(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> String {
 }
 
 fn compare_inputs(
-    closure_inputs: &mut dyn Iterator<Item = &Param>,
-    call_args: &mut dyn Iterator<Item = &Expr>,
+    closure_inputs: &mut dyn Iterator<Item = &Param<'_>>,
+    call_args: &mut dyn Iterator<Item = &Expr<'_>>,
 ) -> bool {
     for (closure_input, function_arg) in closure_inputs.zip(call_args) {
         if let PatKind::Binding(_, _, ident, _) = closure_input.pat.kind {

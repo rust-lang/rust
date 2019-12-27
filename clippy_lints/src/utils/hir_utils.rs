@@ -1,6 +1,5 @@
 use crate::consts::{constant_context, constant_simple};
 use crate::utils::differing_macro_contexts;
-use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::ich::StableHashingContextProvider;
 use rustc::lint::LateContext;
@@ -42,7 +41,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     /// Checks whether two statements are the same.
-    pub fn eq_stmt(&mut self, left: &Stmt, right: &Stmt) -> bool {
+    pub fn eq_stmt(&mut self, left: &Stmt<'_>, right: &Stmt<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
                 self.eq_pat(&l.pat, &r.pat)
@@ -57,13 +56,13 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     /// Checks whether two blocks are the same.
-    pub fn eq_block(&mut self, left: &Block, right: &Block) -> bool {
+    pub fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
         over(&left.stmts, &right.stmts, |l, r| self.eq_stmt(l, r))
             && both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
     }
 
     #[allow(clippy::similar_names)]
-    pub fn eq_expr(&mut self, left: &Expr, right: &Expr) -> bool {
+    pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
         if self.ignore_fn && differing_macro_contexts(left.span, right.span) {
             return false;
         }
@@ -102,7 +101,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                     && both(le, re, |l, r| self.eq_expr(l, r))
             },
             (&ExprKind::Box(ref l), &ExprKind::Box(ref r)) => self.eq_expr(l, r),
-            (&ExprKind::Call(ref l_fun, ref l_args), &ExprKind::Call(ref r_fun, ref r_args)) => {
+            (&ExprKind::Call(l_fun, l_args), &ExprKind::Call(r_fun, r_args)) => {
                 !self.ignore_fn && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Cast(ref lx, ref lt), &ExprKind::Cast(ref rx, ref rt))
@@ -128,7 +127,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                             && self.eq_pat(&l.pat, &r.pat)
                     })
             },
-            (&ExprKind::MethodCall(ref l_path, _, ref l_args), &ExprKind::MethodCall(ref r_path, _, ref r_args)) => {
+            (&ExprKind::MethodCall(l_path, _, l_args), &ExprKind::MethodCall(r_path, _, r_args)) => {
                 !self.ignore_fn && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Repeat(ref le, ref ll_id), &ExprKind::Repeat(ref re, ref rl_id)) => {
@@ -146,23 +145,23 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                     && both(lo, ro, |l, r| self.eq_expr(l, r))
                     && over(lf, rf, |l, r| self.eq_field(l, r))
             },
-            (&ExprKind::Tup(ref l_tup), &ExprKind::Tup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
+            (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
             (&ExprKind::Unary(l_op, ref le), &ExprKind::Unary(r_op, ref re)) => l_op == r_op && self.eq_expr(le, re),
-            (&ExprKind::Array(ref l), &ExprKind::Array(ref r)) => self.eq_exprs(l, r),
+            (&ExprKind::Array(l), &ExprKind::Array(r)) => self.eq_exprs(l, r),
             (&ExprKind::DropTemps(ref le), &ExprKind::DropTemps(ref re)) => self.eq_expr(le, re),
             _ => false,
         }
     }
 
-    fn eq_exprs(&mut self, left: &P<[Expr]>, right: &P<[Expr]>) -> bool {
+    fn eq_exprs(&mut self, left: &[Expr<'_>], right: &[Expr<'_>]) -> bool {
         over(left, right, |l, r| self.eq_expr(l, r))
     }
 
-    fn eq_field(&mut self, left: &Field, right: &Field) -> bool {
+    fn eq_field(&mut self, left: &Field<'_>, right: &Field<'_>) -> bool {
         left.ident.name == right.ident.name && self.eq_expr(&left.expr, &right.expr)
     }
 
-    fn eq_guard(&mut self, left: &Guard, right: &Guard) -> bool {
+    fn eq_guard(&mut self, left: &Guard<'_>, right: &Guard<'_>) -> bool {
         match (left, right) {
             (Guard::If(l), Guard::If(r)) => self.eq_expr(l, r),
         }
@@ -181,7 +180,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     /// Checks whether two patterns are the same.
-    pub fn eq_pat(&mut self, left: &Pat, right: &Pat) -> bool {
+    pub fn eq_pat(&mut self, left: &Pat<'_>, right: &Pat<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&PatKind::Box(ref l), &PatKind::Box(ref r)) => self.eq_pat(l, r),
             (&PatKind::TupleStruct(ref lp, ref la, ls), &PatKind::TupleStruct(ref rp, ref ra, rs)) => {
@@ -299,7 +298,11 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 }
 
-fn swap_binop<'a>(binop: BinOpKind, lhs: &'a Expr, rhs: &'a Expr) -> Option<(BinOpKind, &'a Expr, &'a Expr)> {
+fn swap_binop<'a>(
+    binop: BinOpKind,
+    lhs: &'a Expr<'a>,
+    rhs: &'a Expr<'a>,
+) -> Option<(BinOpKind, &'a Expr<'a>, &'a Expr<'a>)> {
     match binop {
         BinOpKind::Add
         | BinOpKind::Mul
@@ -365,8 +368,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         self.s.finish()
     }
 
-    pub fn hash_block(&mut self, b: &Block) {
-        for s in &b.stmts {
+    pub fn hash_block(&mut self, b: &Block<'_>) {
+        for s in b.stmts {
             self.hash_stmt(s);
         }
 
@@ -384,7 +387,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     #[allow(clippy::many_single_char_names, clippy::too_many_lines)]
-    pub fn hash_expr(&mut self, e: &Expr) {
+    pub fn hash_expr(&mut self, e: &Expr<'_>) {
         let simple_const = constant_simple(self.cx, self.tables, e);
 
         // const hashing may result in the same hash as some unrelated node, so add a sort of
@@ -442,7 +445,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Box(ref e) | ExprKind::DropTemps(ref e) | ExprKind::Yield(ref e, _) => {
                 self.hash_expr(e);
             },
-            ExprKind::Call(ref fun, ref args) => {
+            ExprKind::Call(ref fun, args) => {
                 self.hash_expr(fun);
                 self.hash_exprs(args);
             },
@@ -477,7 +480,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_name(i.ident.name);
                 }
             },
-            ExprKind::Match(ref e, ref arms, ref s) => {
+            ExprKind::Match(ref e, arms, ref s) => {
                 self.hash_expr(e);
 
                 for arm in arms {
@@ -490,7 +493,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
                 s.hash(&mut self.s);
             },
-            ExprKind::MethodCall(ref path, ref _tys, ref args) => {
+            ExprKind::MethodCall(ref path, ref _tys, args) => {
                 self.hash_name(path.ident.name);
                 self.hash_exprs(args);
             },
@@ -506,7 +509,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Path(ref qpath) => {
                 self.hash_qpath(qpath);
             },
-            ExprKind::Struct(ref path, ref fields, ref expr) => {
+            ExprKind::Struct(ref path, fields, ref expr) => {
                 self.hash_qpath(path);
 
                 for f in fields {
@@ -518,10 +521,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
-            ExprKind::Tup(ref tup) => {
+            ExprKind::Tup(tup) => {
                 self.hash_exprs(tup);
             },
-            ExprKind::Array(ref v) => {
+            ExprKind::Array(v) => {
                 self.hash_exprs(v);
             },
             ExprKind::Unary(lop, ref le) => {
@@ -531,7 +534,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_exprs(&mut self, e: &P<[Expr]>) {
+    pub fn hash_exprs(&mut self, e: &[Expr<'_>]) {
         for e in e {
             self.hash_expr(e);
         }
@@ -560,7 +563,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_stmt(&mut self, b: &Stmt) {
+    pub fn hash_stmt(&mut self, b: &Stmt<'_>) {
         std::mem::discriminant(&b.kind).hash(&mut self.s);
 
         match &b.kind {
@@ -576,7 +579,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_guard(&mut self, g: &Guard) {
+    pub fn hash_guard(&mut self, g: &Guard<'_>) {
         match g {
             Guard::If(ref expr) => {
                 self.hash_expr(expr);

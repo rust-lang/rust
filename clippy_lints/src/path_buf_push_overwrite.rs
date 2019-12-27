@@ -42,7 +42,7 @@ declare_clippy_lint! {
 declare_lint_pass!(PathBufPushOverwrite => [PATH_BUF_PUSH_OVERWRITE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathBufPushOverwrite {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
             if path.ident.name == sym!(push);

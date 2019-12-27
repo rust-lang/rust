@@ -57,7 +57,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     }
 
     impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
-        fn visit_expr(&mut self, expr: &'tcx Expr) {
+        fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
             // check for `begin_panic`
             if_chain! {
                 if let ExprKind::Call(ref func_expr, _) = expr.kind;

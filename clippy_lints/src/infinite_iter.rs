@@ -46,7 +46,7 @@ declare_clippy_lint! {
 declare_lint_pass!(InfiniteIter => [INFINITE_ITER, MAYBE_INFINITE_ITER]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InfiniteIter {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         let (lint, msg) = match complete_infinite_iter(cx, expr) {
             Infinite => (INFINITE_ITER, "infinite iteration detected"),
             MaybeInfinite => (MAYBE_INFINITE_ITER, "possible infinite iteration detected"),
@@ -141,7 +141,7 @@ const HEURISTICS: [(&str, usize, Heuristic, Finiteness); 19] = [
     ("scan", 3, First, MaybeInfinite),
 ];
 
-fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
+fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
         ExprKind::MethodCall(ref method, _, ref args) => {
             for &(name, len, heuristic, cap) in &HEURISTICS {
@@ -217,7 +217,7 @@ const INFINITE_COLLECTORS: [&[&str]; 8] = [
     &paths::VEC_DEQUE,
 ];
 
-fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
+fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
         ExprKind::MethodCall(ref method, _, ref args) => {
             for &(name, len) in &COMPLETING_METHODS {

@@ -30,7 +30,7 @@ declare_lint_pass!(TransmutingNull => [TRANSMUTING_NULL]);
 const LINT_MSG: &str = "transmuting a known null pointer into a reference.";
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
@@ -72,7 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
                     if let ExprKind::Call(ref func1, ref args1) = args[0].kind;
                     if let ExprKind::Path(ref path1) = func1.kind;
                     if match_qpath(path1, &paths::STD_PTR_NULL);
-                    if args1.len() == 0;
+                    if args1.is_empty();
                     then {
                         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
                     }

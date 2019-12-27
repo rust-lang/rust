@@ -91,14 +91,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
     // }
     //
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if !has_attr(cx.sess(), &expr.attrs) {
             return;
         }
         print_expr(cx, expr, 0);
     }
 
-    fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm) {
+    fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm<'_>) {
         if !has_attr(cx.sess(), &arm.attrs) {
             return;
         }
@@ -111,7 +111,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
         print_expr(cx, &arm.body, 1);
     }
 
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt<'_>) {
         if !has_attr(cx.sess(), stmt.kind.attrs()) {
             return;
         }
@@ -144,7 +144,7 @@ fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
 
 #[allow(clippy::similar_names)]
 #[allow(clippy::too_many_lines)]
-fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
+fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
     println!("{}ty: {}", ind, cx.tables.expr_ty(expr));
@@ -154,13 +154,13 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
             println!("{}Box", ind);
             print_expr(cx, e, indent + 1);
         },
-        hir::ExprKind::Array(ref v) => {
+        hir::ExprKind::Array(v) => {
             println!("{}Array", ind);
             for e in v {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprKind::Call(ref func, ref args) => {
+        hir::ExprKind::Call(ref func, args) => {
             println!("{}Call", ind);
             println!("{}function:", ind);
             print_expr(cx, func, indent + 1);
@@ -169,14 +169,14 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
                 print_expr(cx, arg, indent + 1);
             }
         },
-        hir::ExprKind::MethodCall(ref path, _, ref args) => {
+        hir::ExprKind::MethodCall(ref path, _, args) => {
             println!("{}MethodCall", ind);
             println!("{}method name: {}", ind, path.ident.name);
             for arg in args {
                 print_expr(cx, arg, indent + 1);
             }
         },
-        hir::ExprKind::Tup(ref v) => {
+        hir::ExprKind::Tup(v) => {
             println!("{}Tup", ind);
             for e in v {
                 print_expr(cx, e, indent + 1);
@@ -297,7 +297,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprKind::Struct(ref path, ref fields, ref base) => {
+        hir::ExprKind::Struct(ref path, fields, ref base) => {
             println!("{}Struct", ind);
             println!("{}path: {:?}", ind, path);
             for field in fields {
@@ -400,7 +400,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
 
 #[allow(clippy::similar_names)]
 #[allow(clippy::too_many_lines)]
-fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
+fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
     match pat.kind {
@@ -414,13 +414,13 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
                 print_pat(cx, inner, indent + 1);
             }
         },
-        hir::PatKind::Or(ref fields) => {
+        hir::PatKind::Or(fields) => {
             println!("{}Or", ind);
             for field in fields {
                 print_pat(cx, field, indent + 1);
             }
         },
-        hir::PatKind::Struct(ref path, ref fields, ignore) => {
+        hir::PatKind::Struct(ref path, fields, ignore) => {
             println!("{}Struct", ind);
             println!(
                 "{}name: {}",
@@ -437,7 +437,7 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
                 print_pat(cx, &field.pat, indent + 1);
             }
         },
-        hir::PatKind::TupleStruct(ref path, ref fields, opt_dots_position) => {
+        hir::PatKind::TupleStruct(ref path, fields, opt_dots_position) => {
             println!("{}TupleStruct", ind);
             println!(
                 "{}path: {}",
@@ -459,7 +459,7 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
             println!("{}Relative Path, {:?}", ind, ty);
             println!("{}seg: {:?}", ind, seg);
         },
-        hir::PatKind::Tuple(ref pats, opt_dots_position) => {
+        hir::PatKind::Tuple(pats, opt_dots_position) => {
             println!("{}Tuple", ind);
             if let Some(dot_position) = opt_dots_position {
                 println!("{}dot position: {}", ind, dot_position);
@@ -490,7 +490,7 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
                 hir::RangeEnd::Excluded => println!("{} end excluded", ind),
             }
         },
-        hir::PatKind::Slice(ref first_pats, ref range, ref last_pats) => {
+        hir::PatKind::Slice(first_pats, ref range, last_pats) => {
             println!("{}Slice [a, b, ..i, y, z]", ind);
             println!("[a, b]:");
             for pat in first_pats {
@@ -508,7 +508,7 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
     }
 }
 
-fn print_guard(cx: &LateContext<'_, '_>, guard: &hir::Guard, indent: usize) {
+fn print_guard(cx: &LateContext<'_, '_>, guard: &hir::Guard<'_>, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
     match guard {

@@ -7,7 +7,7 @@ use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 
 /// Checks for the `INEFFICIENT_TO_STRING` lint
-pub fn lint<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr, arg: &hir::Expr, arg_ty: Ty<'tcx>) {
+pub fn lint<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'tcx>) {
     if_chain! {
         if let Some(to_string_meth_did) = cx.tables.type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, to_string_meth_did, &paths::TO_STRING_METHOD);

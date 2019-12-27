@@ -38,18 +38,18 @@ pub fn binop(op: hir::BinOpKind) -> ast::BinOpKind {
 #[derive(Debug, Copy, Clone)]
 pub struct Range<'a> {
     /// The lower bound of the range, or `None` for ranges such as `..X`.
-    pub start: Option<&'a hir::Expr>,
+    pub start: Option<&'a hir::Expr<'a>>,
     /// The upper bound of the range, or `None` for ranges such as `X..`.
-    pub end: Option<&'a hir::Expr>,
+    pub end: Option<&'a hir::Expr<'a>>,
     /// Whether the interval is open or closed.
     pub limits: ast::RangeLimits,
 }
 
 /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
-pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> Option<Range<'b>> {
+pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr<'_>) -> Option<Range<'b>> {
     /// Finds the field named `name` in the field. Always return `Some` for
     /// convenience.
-    fn get_field<'c>(name: &str, fields: &'c [hir::Field]) -> Option<&'c hir::Expr> {
+    fn get_field<'c>(name: &str, fields: &'c [hir::Field<'_>]) -> Option<&'c hir::Expr<'c>> {
         let expr = &fields.iter().find(|field| field.ident.name.as_str() == name)?.expr;
 
         Some(expr)
@@ -150,7 +150,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
 }
 
 /// Checks if a `let` statement is from a `for` loop desugaring.
-pub fn is_from_for_desugar(local: &hir::Local) -> bool {
+pub fn is_from_for_desugar(local: &hir::Local<'_>) -> bool {
     // This will detect plain for-loops without an actual variable binding:
     //
     // ```
@@ -183,7 +183,9 @@ pub fn is_from_for_desugar(local: &hir::Local) -> bool {
 
 /// Recover the essential nodes of a desugared for loop:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`.
-pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)> {
+pub fn for_loop<'tcx>(
+    expr: &'tcx hir::Expr<'tcx>,
+) -> Option<(&hir::Pat<'_>, &'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if_chain! {
         if let hir::ExprKind::Match(ref iterexpr, ref arms, hir::MatchSource::ForLoopDesugar) = expr.kind;
         if let hir::ExprKind::Call(_, ref iterargs) = iterexpr.kind;
@@ -202,7 +204,7 @@ pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)>
 
 /// Recover the essential nodes of a desugared while loop:
 /// `while cond { body }` becomes `(cond, body)`.
-pub fn while_loop(expr: &hir::Expr) -> Option<(&hir::Expr, &hir::Expr)> {
+pub fn while_loop<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> Option<(&'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if_chain! {
         if let hir::ExprKind::Loop(block, _, hir::LoopSource::While) = &expr.kind;
         if let hir::Block { expr: Some(expr), .. } = &**block;
@@ -219,7 +221,13 @@ pub fn while_loop(expr: &hir::Expr) -> Option<(&hir::Expr, &hir::Expr)> {
 
 /// Recover the essential nodes of a desugared if block
 /// `if cond { then } else { els }` becomes `(cond, then, Some(els))`
-pub fn if_block(expr: &hir::Expr) -> Option<(&hir::Expr, &hir::Expr, Option<&hir::Expr>)> {
+pub fn if_block<'tcx>(
+    expr: &'tcx hir::Expr<'tcx>,
+) -> Option<(
+    &'tcx hir::Expr<'tcx>,
+    &'tcx hir::Expr<'tcx>,
+    Option<&'tcx hir::Expr<'tcx>>,
+)> {
     if let hir::ExprKind::Match(ref cond, ref arms, hir::MatchSource::IfDesugar { contains_else_clause }) = expr.kind {
         let cond = if let hir::ExprKind::DropTemps(ref cond) = cond.kind {
             cond
@@ -241,14 +249,14 @@ pub fn if_block(expr: &hir::Expr) -> Option<(&hir::Expr, &hir::Expr, Option<&hir
 /// Represent the pre-expansion arguments of a `vec!` invocation.
 pub enum VecArgs<'a> {
     /// `vec![elem; len]`
-    Repeat(&'a hir::Expr, &'a hir::Expr),
+    Repeat(&'a hir::Expr<'a>, &'a hir::Expr<'a>),
     /// `vec![a, b, c]`
-    Vec(&'a [hir::Expr]),
+    Vec(&'a [hir::Expr<'a>]),
 }
 
 /// Returns the arguments of the `vec!` macro if this expression was expanded
 /// from `vec!`.
-pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr) -> Option<VecArgs<'e>> {
+pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr<'_>) -> Option<VecArgs<'e>> {
     if_chain! {
         if let hir::ExprKind::Call(ref fun, ref args) = expr.kind;
         if let hir::ExprKind::Path(ref qpath) = fun.kind;

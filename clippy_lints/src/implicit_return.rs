@@ -62,8 +62,8 @@ fn lint(cx: &LateContext<'_, '_>, outer_span: Span, inner_span: Span, msg: &str)
     });
 }
 
-fn expr_match(cx: &LateContext<'_, '_>, expr: &Expr) {
-    match &expr.kind {
+fn expr_match(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+    match expr.kind {
         // loops could be using `break` instead of `return`
         ExprKind::Block(block, ..) | ExprKind::Loop(block, ..) => {
             if let Some(expr) = &block.expr {
@@ -92,7 +92,7 @@ fn expr_match(cx: &LateContext<'_, '_>, expr: &Expr) {
             let check_all_arms = match source {
                 MatchSource::IfLetDesugar {
                     contains_else_clause: has_else,
-                } => *has_else,
+                } => has_else,
                 _ => true,
             };
 

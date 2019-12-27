@@ -56,7 +56,7 @@ declare_clippy_lint! {
 declare_lint_pass!(LetIfSeq => [USELESS_LET_IF_SEQ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
-    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block<'_>) {
         let mut it = block.stmts.iter().peekable();
         while let Some(stmt) = it.next() {
             if_chain! {
@@ -143,7 +143,7 @@ struct UsedVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             if let hir::ExprKind::Path(ref qpath) = expr.kind;
             if let Res::Local(local_id) = qpath_res(self.cx, qpath, expr.hir_id);
@@ -163,8 +163,8 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
 fn check_assign<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     decl: hir::HirId,
-    block: &'tcx hir::Block,
-) -> Option<&'tcx hir::Expr> {
+    block: &'tcx hir::Block<'_>,
+) -> Option<&'tcx hir::Expr<'tcx>> {
     if_chain! {
         if block.expr.is_none();
         if let Some(expr) = block.stmts.iter().last();
@@ -195,7 +195,7 @@ fn check_assign<'a, 'tcx>(
     None
 }
 
-fn used_in_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, id: hir::HirId, expr: &'tcx hir::Expr) -> bool {
+fn used_in_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> bool {
     let mut v = UsedVisitor { cx, id, used: false };
     hir::intravisit::walk_expr(&mut v, expr);
     v.used

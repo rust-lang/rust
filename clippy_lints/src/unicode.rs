@@ -67,7 +67,7 @@ declare_clippy_lint! {
 declare_lint_pass!(Unicode => [ZERO_WIDTH_SPACE, NON_ASCII_LITERAL, UNICODE_NOT_NFC]);
 
 impl LateLintPass<'_, '_> for Unicode {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &'_ Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Lit(ref lit) = expr.kind {
             if let LitKind::Str(_, _) = lit.node {
                 check_str(cx, lit.span, expr.hir_id)

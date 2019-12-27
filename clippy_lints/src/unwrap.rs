@@ -72,7 +72,7 @@ struct UnwrapInfo<'tcx> {
     /// The variable that is checked
     ident: &'tcx Path,
     /// The check, like `x.is_ok()`
-    check: &'tcx Expr,
+    check: &'tcx Expr<'tcx>,
     /// Whether `is_some()` or `is_ok()` was called (as opposed to `is_err()` or `is_none()`).
     safe_to_unwrap: bool,
 }
@@ -81,7 +81,7 @@ struct UnwrapInfo<'tcx> {
 /// The `invert` argument tells us whether the condition is negated.
 fn collect_unwrap_info<'a, 'tcx>(
     cx: &'a LateContext<'a, 'tcx>,
-    expr: &'tcx Expr,
+    expr: &'tcx Expr<'_>,
     invert: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
     if let ExprKind::Binary(op, left, right) = &expr.kind {
@@ -119,7 +119,7 @@ fn collect_unwrap_info<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
-    fn visit_branch(&mut self, cond: &'tcx Expr, branch: &'tcx Expr, else_branch: bool) {
+    fn visit_branch(&mut self, cond: &'tcx Expr<'_>, branch: &'tcx Expr<'_>, else_branch: bool) {
         let prev_len = self.unwrappables.len();
         for unwrap_info in collect_unwrap_info(self.cx, cond, else_branch) {
             if is_potentially_mutated(unwrap_info.ident, cond, self.cx)
@@ -136,7 +136,7 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let Some((cond, then, els)) = if_block(&expr) {
             walk_expr(self, cond);
             self.visit_branch(cond, then, false);
