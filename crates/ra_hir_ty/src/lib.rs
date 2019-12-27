@@ -821,6 +821,8 @@ impl TypeWalk for Ty {
     }
 }
 
+const TYPE_HINT_TRUNCATION: &str = "…";
+
 impl HirDisplay for &Ty {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         HirDisplay::hir_fmt(*self, f)
@@ -830,7 +832,7 @@ impl HirDisplay for &Ty {
 impl HirDisplay for ApplicationTy {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         if f.should_truncate() {
-            return write!(f, "…");
+            return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
         match self.ctor {
@@ -908,9 +910,7 @@ impl HirDisplay for ApplicationTy {
                     write!(f, "<")?;
 
                     let mut non_default_parameters = Vec::with_capacity(self.parameters.len());
-                    let parameters_to_write = if f.should_display_default_types() {
-                        self.parameters.0.as_ref()
-                    } else {
+                    let parameters_to_write = if f.omit_verbose_types() {
                         match self
                             .ctor
                             .as_generic_def()
@@ -935,6 +935,8 @@ impl HirDisplay for ApplicationTy {
                                 &non_default_parameters
                             }
                         }
+                    } else {
+                        self.parameters.0.as_ref()
                     };
 
                     f.write_joined(parameters_to_write, ", ")?;
@@ -959,9 +961,16 @@ impl HirDisplay for ApplicationTy {
                 let sig = self.parameters[0]
                     .callable_sig(f.db)
                     .expect("first closure parameter should contain signature");
-                write!(f, "|")?;
-                f.write_joined(sig.params(), ", ")?;
-                write!(f, "| -> {}", sig.ret().display(f.db))?;
+                let return_type_hint = sig.ret().display(f.db);
+                if sig.params().is_empty() {
+                    write!(f, "|| -> {}", return_type_hint)?;
+                } else if f.omit_verbose_types() {
+                    write!(f, "|{}| -> {}", TYPE_HINT_TRUNCATION, return_type_hint)?;
+                } else {
+                    write!(f, "|")?;
+                    f.write_joined(sig.params(), ", ")?;
+                    write!(f, "| -> {}", return_type_hint)?;
+                };
             }
         }
         Ok(())
@@ -971,7 +980,7 @@ impl HirDisplay for ApplicationTy {
 impl HirDisplay for ProjectionTy {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         if f.should_truncate() {
-            return write!(f, "…");
+            return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
         let trait_name = f.db.trait_data(self.trait_(f.db)).name.clone();
@@ -989,7 +998,7 @@ impl HirDisplay for ProjectionTy {
 impl HirDisplay for Ty {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         if f.should_truncate() {
-            return write!(f, "…");
+            return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
         match self {
@@ -1074,7 +1083,7 @@ impl HirDisplay for Ty {
 impl TraitRef {
     fn hir_fmt_ext(&self, f: &mut HirFormatter<impl HirDatabase>, use_as: bool) -> fmt::Result {
         if f.should_truncate() {
-            return write!(f, "…");
+            return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
         self.substs[0].hir_fmt(f)?;
@@ -1108,7 +1117,7 @@ impl HirDisplay for &GenericPredicate {
 impl HirDisplay for GenericPredicate {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         if f.should_truncate() {
-            return write!(f, "…");
+            return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
         match self {
