@@ -241,6 +241,8 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
 // These are defined here because they produce a place.
 impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
+    /// Note: do not call `as_ref` on the resulting place. This function should only be used to
+    /// read from the resulting mplace, not to get its address back.
     pub fn try_as_mplace(
         self,
         cx: &impl HasDataLayout,
@@ -255,6 +257,8 @@ impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     }
 
     #[inline(always)]
+    /// Note: do not call `as_ref` on the resulting place. This function should only be used to
+    /// read from the resulting mplace, not to get its address back.
     pub fn assert_mem_place(self, cx: &impl HasDataLayout) -> MPlaceTy<'tcx, Tag> {
         self.try_as_mplace(cx).unwrap()
     }
