@@ -2751,10 +2751,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
     };
-    providers.get_lib_features = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        tcx.arena.alloc(middle::lib_features::collect(tcx))
-    };
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.arena.alloc(middle::lang_items::collect(tcx))
