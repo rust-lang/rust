@@ -1270,13 +1270,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut block = candidate.pre_binding_block.unwrap();
 
-        // If we are adding our own statements, then we need a fresh block.
-        let create_fresh_block = candidate.next_candidate_pre_binding_block.is_some()
-            || !candidate.bindings.is_empty()
-            || !candidate.ascriptions.is_empty()
-            || guard.is_some();
-
-        if create_fresh_block {
+        if candidate.next_candidate_pre_binding_block.is_some() {
             let fresh_block = self.cfg.start_new_block();
             self.false_edges(
                 block,
@@ -1285,10 +1279,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate_source_info,
             );
             block = fresh_block;
-            self.ascribe_types(block, &candidate.ascriptions);
-        } else {
-            return block;
         }
+
+        self.ascribe_types(block, &candidate.ascriptions);
 
         // rust-lang/rust#27282: The `autoref` business deserves some
         // explanation here.
