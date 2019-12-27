@@ -558,7 +558,7 @@ pub struct SendError<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 /// An error returned from the [`recv`] function on a [`Receiver`].
 ///
 /// The [`recv`] operation can only fail if the sending half of a
-/// [`channel`][`channel`] (or [`sync_channel`]) is disconnected, implying that no further
+/// [`channel`] (or [`sync_channel`]) is disconnected, implying that no further
 /// messages will ever be received.
 ///
 /// [`recv`]: struct.Receiver.html#method.recv
