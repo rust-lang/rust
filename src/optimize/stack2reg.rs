@@ -1,8 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::ops::Not;
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
-use cranelift_codegen::ir::{Opcode, InstructionData, ValueDef};
+use cranelift_codegen::ir::{InstructionData, Opcode, ProgramOrder, ValueDef};
 use cranelift_codegen::ir::immediates::Offset32;
 
 use crate::prelude::*;
@@ -87,7 +87,44 @@ pub(super) fn optimize_function(
         let is_loaded = users.stack_load.is_empty().not();
         let is_stored = users.stack_store.is_empty().not();
         match (is_loaded, is_stored) {
-            (true, true) => {} // FIXME perform store to load optimization
+            (true, true) => {
+                for load in users.stack_load.clone().drain() {
+                    let load_ebb = func.layout.inst_ebb(load).unwrap();
+                    let loaded_value = func.dfg.inst_results(load)[0];
+                    let loaded_type = func.dfg.value_type(loaded_value);
+
+                    let potential_stores = users.stack_store.iter().cloned().filter(|&store| {
+                        match spatial_overlap(func, load, store) {
+                            SpatialOverlap::No => false, // Can never be the source of the loaded value.
+                            SpatialOverlap::Partial | SpatialOverlap::Full => true,
+                        }
+                    }).filter(|&store| {
+                        if load_ebb == func.layout.inst_ebb(store).unwrap() {
+                            func.layout.cmp(store, load) == std::cmp::Ordering::Less
+                        } else {
+                            true // FIXME
+                        }
+                    }).collect::<Vec<Inst>>();
+                    for &store in &potential_stores {
+                        println!("Potential store -> load forwarding {} -> {} ({:?})", func.dfg.display_inst(store, None), func.dfg.display_inst(load, None), spatial_overlap(func, load, store));
+                    }
+                    match *potential_stores {
+                        [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
+                        [store] if spatial_overlap(func, load, store) == SpatialOverlap::Full => {
+                            let store_ebb = func.layout.inst_ebb(store).unwrap();
+                            let stored_value = func.dfg.inst_args(store)[0];
+                            let stored_type = func.dfg.value_type(stored_value);
+                            if stored_type == loaded_type && store_ebb == load_ebb {
+                                println!("Store to load forward {} -> {}", store, load);
+                                func.dfg.detach_results(load);
+                                func.dfg.replace(load).nop();
+                                func.dfg.change_to_alias(loaded_value, stored_value);
+                            }
+                        }
+                        _ => {} // FIXME implement this
+                    }
+                }
+            }
             (true, false) => println!("[{}] [BUG?] Reading uninitialized memory", name),
             (false, _) => {
                 // Never loaded; can safely remove all stores and the stack slot.
@@ -201,4 +238,54 @@ fn try_get_stack_slot_and_offset_for_addr(func: &Function, addr: Value) -> Optio
         }
     }
     None
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum SpatialOverlap {
+    No,
+    Partial,
+    Full,
+}
+
+fn spatial_overlap(func: &Function, src: Inst, dest: Inst) -> SpatialOverlap {
+    fn inst_info(func: &Function, inst: Inst) -> (StackSlot, Offset32, u32) {
+        match func.dfg[inst] {
+            InstructionData::StackLoad {
+                opcode: Opcode::StackAddr,
+                stack_slot,
+                offset,
+            }
+            | InstructionData::StackLoad {
+                opcode: Opcode::StackLoad,
+                stack_slot,
+                offset,
+            }
+            | InstructionData::StackStore {
+                opcode: Opcode::StackStore,
+                stack_slot,
+                offset,
+                arg: _,
+            } => (stack_slot, offset, func.dfg.ctrl_typevar(inst).bytes()),
+            _ => unreachable!("{:?}", func.dfg[inst]),
+        }
+    }
+
+    let (src_ss, src_offset, src_size) = inst_info(func, src);
+    let (dest_ss, dest_offset, dest_size) = inst_info(func, dest);
+
+    if src_ss != dest_ss {
+        return SpatialOverlap::No;
+    }
+
+    if src_offset == dest_offset && src_size == dest_size {
+        return SpatialOverlap::Full;
+    }
+
+    let src_end: i64 = src_offset.try_add_i64(i64::from(src_size)).unwrap().into();
+    let dest_end: i64 = dest_offset.try_add_i64(i64::from(dest_size)).unwrap().into();
+    if src_end <= dest_offset.into() || dest_end <= src_offset.into() {
+        return SpatialOverlap::No;
+    }
+
+    SpatialOverlap::Partial
 }
