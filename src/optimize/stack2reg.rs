@@ -31,10 +31,9 @@ pub(super) fn optimize_function(
 
     // Record all stack_addr, stack_load and stack_store instructions. Also record all stack_addr
     // and stack_load insts whose result is used.
+    let mut stack_addr_load_insts_users = BTreeMap::<Inst, HashSet<Inst>>::new();
     let mut stack_addr_insts = BTreeSet::new();
-    let mut stack_addr_insts_users = BTreeMap::<Inst, HashSet<Inst>>::new();
     let mut stack_load_insts = BTreeSet::new();
-    let mut stack_load_insts_users = BTreeMap::<Inst, HashSet<Inst>>::new();
     let mut stack_store_insts = BTreeSet::new();
 
     let mut cursor = FuncCursor::new(func);
@@ -69,11 +68,8 @@ pub(super) fn optimize_function(
             for &arg in cursor.func.dfg.inst_args(inst) {
                 if let ValueDef::Result(arg_origin, 0) = cursor.func.dfg.value_def(arg) {
                     match cursor.func.dfg[arg_origin].opcode() {
-                        Opcode::StackAddr => {
-                            stack_addr_insts_users.entry(arg_origin).or_insert_with(HashSet::new).insert(inst);
-                        }
-                        Opcode::StackLoad => {
-                            stack_load_insts_users.entry(arg_origin).or_insert_with(HashSet::new).insert(inst);
+                        Opcode::StackAddr | Opcode::StackLoad => {
+                            stack_addr_load_insts_users.entry(arg_origin).or_insert_with(HashSet::new).insert(inst);
                         }
                         _ => {}
                     }
@@ -83,37 +79,34 @@ pub(super) fn optimize_function(
     }
 
     println!(
-        "{}:\nstack_addr: {:?} ({:?} used)\nstack_load: {:?} ({:?} used)\nstack_store: {:?}",
+        "{}:\nstack_addr/stack_load users: {:?}\nstack_addr: {:?}\nstack_load: {:?}\nstack_store: {:?}",
         name,
+        stack_addr_load_insts_users,
         stack_addr_insts,
-        stack_addr_insts_users,
         stack_load_insts,
-        stack_load_insts_users,
         stack_store_insts,
     );
 
-    for inst in stack_addr_insts_users.keys() {
-        assert!(stack_addr_insts.contains(inst));
+    for inst in stack_addr_load_insts_users.keys() {
+        assert!(stack_addr_insts.contains(inst) || stack_load_insts.contains(inst));
     }
 
     // Replace all unused stack_addr instructions with nop.
     // FIXME remove clone
     for &inst in stack_addr_insts.clone().iter() {
-        if stack_addr_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
+        if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
+            println!("Removing unused stack_addr {}", inst);
             func.dfg.detach_results(inst);
             func.dfg.replace(inst).nop();
             stack_addr_insts.remove(&inst);
         }
     }
 
-    for inst in stack_load_insts_users.keys() {
-        assert!(stack_load_insts.contains(inst));
-    }
-
     // Replace all unused stack_load instructions with nop.
     // FIXME remove clone
     for &inst in stack_load_insts.clone().iter() {
-        if !stack_addr_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
+        if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
+            println!("Removing unused stack_load {}", inst);
             func.dfg.detach_results(inst);
             func.dfg.replace(inst).nop();
             stack_load_insts.remove(&inst);
