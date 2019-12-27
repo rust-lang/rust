@@ -6,7 +6,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{Subtype, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorReported;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -70,7 +70,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // Because this is confusing as hell the first time you see it, we give a short message
         // explaining the situation and proposing constraining the type param with a named lifetime
         // so that the `impl` will have one to tie them together.
-        struct AssocTypeFinder(FxHashSet<ty::ParamTy>);
+        struct AssocTypeFinder(FxIndexSet<ty::ParamTy>);
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for AssocTypeFinder {
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
                 debug!("assoc type finder ty {:?} {:?}", ty, ty.kind);
@@ -80,7 +80,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 ty.super_visit_with(self)
             }
         }
-        let mut visitor = AssocTypeFinder(FxHashSet::default());
+        let mut visitor = AssocTypeFinder(FxIndexSet::default());
         trait_fn_sig.output().visit_with(&mut visitor);
         if let Some(id) = tcx.hir().as_local_hir_id(trait_def_id) {
             let parent_id = tcx.hir().get_parent_item(id);
