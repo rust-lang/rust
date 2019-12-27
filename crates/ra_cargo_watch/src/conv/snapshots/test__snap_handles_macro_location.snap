@@ -1,5 +1,5 @@
 ---
-source: crates/ra_lsp_server/src/cargo_check.rs
+source: crates/ra_cargo_watch/src/conv/test.rs
 expression: diag
 ---
 MappedRustDiagnostic {

@@ -10,6 +10,7 @@ use std::{error::Error, fmt, panic, path::PathBuf, sync::Arc, time::Instant};
 use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{ClientCapabilities, NumberOrString};
+use ra_cargo_watch::{CheckOptions, CheckTask};
 use ra_ide::{Canceled, FeatureFlags, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
 use ra_vfs::{VfsTask, Watch};
@@ -19,7 +20,6 @@ use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
 use crate::{
-    cargo_check::CheckTask,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
@@ -127,10 +127,12 @@ pub fn main_loop(
                     .and_then(|it| it.line_folding_only)
                     .unwrap_or(false),
                 max_inlay_hint_length: config.max_inlay_hint_length,
-                cargo_watch_enable: config.cargo_watch_enable,
-                cargo_watch_args: config.cargo_watch_args,
-                cargo_watch_command: config.cargo_watch_command,
-                cargo_watch_all_targets: config.cargo_watch_all_targets,
+                cargo_watch: CheckOptions {
+                    enable: config.cargo_watch_enable,
+                    args: config.cargo_watch_args,
+                    command: config.cargo_watch_command,
+                    all_targets: config.cargo_watch_all_targets,
+                },
             }
         };
 

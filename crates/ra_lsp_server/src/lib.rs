@@ -22,7 +22,6 @@ macro_rules! print {
 }
 
 mod caps;
-mod cargo_check;
 mod cargo_target_spec;
 mod conv;
 mod main_loop;

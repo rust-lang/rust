@@ -1,0 +1,17 @@
+[package]
+edition = "2018"
+name = "ra_cargo_watch"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+
+[dependencies]
+crossbeam-channel = "0.4"
+lsp-types = { version = "0.67.0", features = ["proposed"] }
+log = "0.4.3"
+cargo_metadata = "0.9.1"
+jod-thread = "0.1.0"
+parking_lot = "0.10.0"
+
+[dev-dependencies]
+insta = "0.12.0"
+serde_json = "1.0"

@@ -12,6 +12,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use lsp_server::ErrorCode;
 use lsp_types::Url;
 use parking_lot::RwLock;
+use ra_cargo_watch::{CheckOptions, CheckWatcher, CheckWatcherSharedState};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
     SourceRootId,
@@ -23,7 +24,6 @@ use relative_path::RelativePathBuf;
 use std::path::{Component, Prefix};
 
 use crate::{
-    cargo_check::{CheckWatcher, CheckWatcherSharedState},
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     LspError, Result,
 };
@@ -35,10 +35,7 @@ pub struct Options {
     pub supports_location_link: bool,
     pub line_folding_only: bool,
     pub max_inlay_hint_length: Option<usize>,
-    pub cargo_watch_enable: bool,
-    pub cargo_watch_args: Vec<String>,
-    pub cargo_watch_command: String,
-    pub cargo_watch_all_targets: bool,
+    pub cargo_watch: CheckOptions,
 }
 
 /// `WorldState` is the primary mutable state of the language server
@@ -135,7 +132,8 @@ impl WorldState {
         change.set_crate_graph(crate_graph);
 
         // FIXME: Figure out the multi-workspace situation
-        let check_watcher = CheckWatcher::new(&options, folder_roots.first().cloned().unwrap());
+        let check_watcher =
+            CheckWatcher::new(&options.cargo_watch, folder_roots.first().cloned().unwrap());
 
         let mut analysis_host = AnalysisHost::new(lru_capacity, feature_flags);
         analysis_host.apply_change(change);
