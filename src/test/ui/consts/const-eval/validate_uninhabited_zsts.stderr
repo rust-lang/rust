@@ -1,0 +1,52 @@
+warning: any use of this value will cause an error
+  --> $DIR/validate_uninhabited_zsts.rs:5:14
+   |
+LL |     unsafe { std::mem::transmute(()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              entering unreachable code
+   |              inside call to `foo` at $DIR/validate_uninhabited_zsts.rs:14:26
+...
+LL | const FOO: [Empty; 3] = [foo(); 3];
+   | -----------------------------------
+   |
+note: lint level defined here
+  --> $DIR/validate_uninhabited_zsts.rs:13:8
+   |
+LL | #[warn(const_err)]
+   |        ^^^^^^^^^
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/validate_uninhabited_zsts.rs:17:1
+   |
+LL | const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+warning: the type `!` does not permit zero-initialization
+  --> $DIR/validate_uninhabited_zsts.rs:5:14
+   |
+LL |     unsafe { std::mem::transmute(()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              this code causes undefined behavior when executed
+   |              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: `#[warn(invalid_value)]` on by default
+   = note: The never type (`!`) has no valid value
+
+warning: the type `Empty` does not permit zero-initialization
+  --> $DIR/validate_uninhabited_zsts.rs:17:35
+   |
+LL | const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |                                   |
+   |                                   this code causes undefined behavior when executed
+   |                                   help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: 0-variant enums have no valid value
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

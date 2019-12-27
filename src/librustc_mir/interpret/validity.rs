@@ -580,10 +580,19 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             }
             ty::Array(tys, ..) | ty::Slice(tys)
                 if {
-                    // This optimization applies only for integer and floating point types
-                    // (i.e., types that can hold arbitrary bytes).
+                    // This optimization applies for types that can hold arbitrary bytes (such as
+                    // integer and floating point types) or for structs or tuples with no fields.
+                    // FIXME(wesleywiser) This logic could be extended further to arbitrary structs
+                    // or tuples made up of integer/floating point types or inhabited ZSTs with no
+                    // padding.
                     match tys.kind {
                         ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
+                        ty::Tuple(tys) if tys.len() == 0 => true,
+                        ty::Adt(adt_def, _)
+                            if adt_def.is_struct() && adt_def.all_fields().next().is_none() =>
+                        {
+                            true
+                        }
                         _ => false,
                     }
                 } =>
@@ -609,7 +618,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // Size is not 0, get a pointer.
                 let ptr = self.ecx.force_ptr(mplace.ptr)?;
 
-                // This is the optimization: we just check the entire range at once.
+                // Optimization: we just check the entire range at once.
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
                 // In run-time mode, we accept pointers in here.  This is actually more
