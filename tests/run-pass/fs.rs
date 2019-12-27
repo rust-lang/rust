@@ -5,7 +5,6 @@ use std::fs::{File, remove_file};
 use std::io::{Read, Write, ErrorKind, Result};
 use std::path::{PathBuf, Path};
 
-#[cfg(target_os = "linux")]
 fn test_metadata(bytes: &[u8], path: &Path) -> Result<()> {
     // Test that the file metadata is correct.
     let metadata = path.metadata()?;
@@ -13,12 +12,6 @@ fn test_metadata(bytes: &[u8], path: &Path) -> Result<()> {
     assert!(metadata.is_file());
     // The size of the file must be equal to the number of written bytes.
     assert_eq!(bytes.len() as u64, metadata.len());
-    Ok(())
-}
-
-// FIXME: Implement stat64 for macos.
-#[cfg(not(target_os = "linux"))]
-fn test_metadata(_bytes: &[u8], _path: &Path) -> Result<()> {
     Ok(())
 }
 
@@ -58,7 +51,5 @@ fn main() {
     // Removing a non-existing file should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, remove_file(&path).unwrap_err().kind());
     // Reading the metadata of a non-existing file should fail with a "not found" error.
-    if cfg!(target_os = "linux") { // FIXME: Implement stat64 for macos.
-        assert_eq!(ErrorKind::NotFound, test_metadata(bytes, &path).unwrap_err().kind());
-    }
+    assert_eq!(ErrorKind::NotFound, test_metadata(bytes, &path).unwrap_err().kind());
 }
