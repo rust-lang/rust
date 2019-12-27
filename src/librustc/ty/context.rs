@@ -1610,13 +1610,11 @@ pub mod tls {
 
     use crate::dep_graph::TaskDeps;
     use crate::ty::query;
-    use errors::{Diagnostic, TRACK_DIAGNOSTICS};
+    use errors::Diagnostic;
     use rustc_data_structures::sync::{self, Lock, Lrc};
     use rustc_data_structures::thin_vec::ThinVec;
     use rustc_data_structures::OnDrop;
-    use std::fmt;
     use std::mem;
-    use syntax_pos;
 
     #[cfg(not(parallel_compiler))]
     use std::cell::Cell;
@@ -1690,58 +1688,6 @@ pub mod tls {
     #[cfg(not(parallel_compiler))]
     fn get_tlv() -> usize {
         TLV.with(|tlv| tlv.get())
-    }
-
-    /// This is a callback from libsyntax as it cannot access the implicit state
-    /// in librustc otherwise.
-    fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_opt(|tcx| {
-            if let Some(tcx) = tcx {
-                write!(f, "{}", tcx.sess.source_map().span_to_string(span))
-            } else {
-                syntax_pos::default_span_debug(span, f)
-            }
-        })
-    }
-
-    /// This is a callback from libsyntax as it cannot access the implicit state
-    /// in librustc otherwise. It is used to when diagnostic messages are
-    /// emitted and stores them in the current query, if there is one.
-    fn track_diagnostic(diagnostic: &Diagnostic) {
-        with_context_opt(|icx| {
-            if let Some(icx) = icx {
-                if let Some(ref diagnostics) = icx.diagnostics {
-                    let mut diagnostics = diagnostics.lock();
-                    diagnostics.extend(Some(diagnostic.clone()));
-                }
-            }
-        })
-    }
-
-    /// Sets up the callbacks from libsyntax on the current thread.
-    pub fn with_thread_locals<F, R>(f: F) -> R
-    where
-        F: FnOnce() -> R,
-    {
-        syntax_pos::SPAN_DEBUG.with(|span_dbg| {
-            let original_span_debug = span_dbg.get();
-            span_dbg.set(span_debug);
-
-            let _on_drop = OnDrop(move || {
-                span_dbg.set(original_span_debug);
-            });
-
-            TRACK_DIAGNOSTICS.with(|current| {
-                let original = current.get();
-                current.set(track_diagnostic);
-
-                let _on_drop = OnDrop(move || {
-                    current.set(original);
-                });
-
-                f()
-            })
-        })
     }
 
     /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.

@@ -11,6 +11,7 @@
 #[cfg(unix)]
 extern crate libc;
 
+mod callbacks;
 pub mod interface;
 mod passes;
 mod proc_macro_decls;

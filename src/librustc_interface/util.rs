@@ -145,13 +145,15 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
         cfg = cfg.stack_size(size);
     }
 
+    crate::callbacks::setup_callbacks();
+
     scoped_thread(cfg, || {
         syntax::with_globals(edition, || {
             ty::tls::GCX_PTR.set(&Lock::new(0), || {
                 if let Some(stderr) = stderr {
                     io::set_panic(Some(box Sink(stderr.clone())));
                 }
-                ty::tls::with_thread_locals(|| f())
+                f()
             })
         })
     })
@@ -167,6 +169,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     use rayon::{ThreadBuilder, ThreadPool, ThreadPoolBuilder};
 
     let gcx_ptr = &Lock::new(0);
+    crate::callbacks::setup_callbacks();
 
     let mut config = ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
@@ -194,9 +197,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
                             if let Some(stderr) = stderr {
                                 io::set_panic(Some(box Sink(stderr.clone())));
                             }
-                            ty::tls::with_thread_locals(|| {
-                                ty::tls::GCX_PTR.set(gcx_ptr, || thread.run())
-                            })
+                            ty::tls::GCX_PTR.set(gcx_ptr, || thread.run())
                         })
                     })
                 };

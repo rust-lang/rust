@@ -435,13 +435,14 @@ pub unsafe fn handle_deadlock() {
     let syntax_pos_globals =
         syntax_pos::GLOBALS.with(|syntax_pos_globals| syntax_pos_globals as *const _);
     let syntax_pos_globals = &*syntax_pos_globals;
+    let syntax_globals = syntax::GLOBALS.with(|syntax_globals| syntax_globals as *const _);
+    let syntax_globals = &*syntax_globals;
     thread::spawn(move || {
         tls::GCX_PTR.set(gcx_ptr, || {
-            syntax_pos::GLOBALS.set(syntax_pos_globals, || {
-                syntax_pos::GLOBALS.set(syntax_pos_globals, || {
-                    tls::with_thread_locals(|| tls::with_global(|tcx| deadlock(tcx, &registry)))
-                })
-            })
+            syntax::GLOBALS.set(syntax_globals, || {
+                syntax_pos::GLOBALS
+                    .set(syntax_pos_globals, || tls::with_global(|tcx| deadlock(tcx, &registry)))
+            });
         })
     });
 }
