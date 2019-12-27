@@ -267,7 +267,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
             check_wild_err_arm(cx, ex, arms);
             check_wild_enum_match(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
-            check_pats_wild_match(cx, ex, arms, expr);
+            check_pats_wild_match(cx, arms);
         }
         if let ExprKind::Match(ref ex, ref arms, _) = expr.kind {
             check_match_ref_pats(cx, ex, arms, expr);
@@ -686,7 +686,7 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
     }
 }
 
-fn check_pats_wild_match(cx: &LateContext<'_, '_>, _ex: &Expr, arms: &[Arm], _expr: &Expr) {
+fn check_pats_wild_match(cx: &LateContext<'_, '_>, arms: &[Arm]) {
     for arm in arms {
         if let PatKind::Or(ref fields) = arm.pat.kind {
             // look for multiple fields where one at least matches Wild pattern
