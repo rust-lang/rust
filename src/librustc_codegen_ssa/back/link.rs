@@ -1044,7 +1044,7 @@ pub fn exec_linker(
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             if self.is_like_msvc {
                 // This is "documented" at
-                // https://msdn.microsoft.com/en-us/library/4xdcbak7.aspx
+                // https://docs.microsoft.com/en-us/cpp/build/reference/at-specify-a-linker-response-file
                 //
                 // Unfortunately there's not a great specification of the
                 // syntax I could find online (at least) but some local
