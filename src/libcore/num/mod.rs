@@ -1416,18 +1416,14 @@ $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[allow_internal_unstable(const_if_match)]
             #[inline]
             pub const fn wrapping_abs(self) -> Self {
-                // sign is -1 (all ones) for negative numbers, 0 otherwise.
-                let sign = self >> ($BITS - 1);
-                // For positive self, sign == 0 so the expression is simply
-                // (self ^ 0).wrapping_sub(0) == self == abs(self).
-                //
-                // For negative self, self ^ sign == self ^ all_ones.
-                // But all_ones ^ self == all_ones - self == -1 - self.
-                // So for negative numbers, (self ^ sign).wrapping_sub(sign) is
-                // (-1 - self).wrapping_sub(-1) == -self == abs(self).
-                (self ^ sign).wrapping_sub(sign)
+                 if self.is_negative() {
+                     self.wrapping_neg()
+                 } else {
+                     self
+                 }
             }
         }
 
