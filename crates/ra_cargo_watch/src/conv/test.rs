@@ -1,3 +1,5 @@
+//! This module contains the large and verbose snapshot tests for the
+//! conversions between `cargo check` json and LSP diagnostics.
 use crate::*;
 
 fn parse_diagnostic(val: &str) -> cargo_metadata::diagnostic::Diagnostic {
