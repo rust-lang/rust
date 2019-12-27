@@ -96,11 +96,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut arm_candidates = self.create_match_candidates(&scrutinee_place, &arms);
 
         let match_has_guard = arms.iter().any(|arm| arm.guard.is_some());
-        let candidates =
+        let mut candidates =
             arm_candidates.iter_mut().map(|(_, candidate)| candidate).collect::<Vec<_>>();
 
         let fake_borrow_temps =
-            self.lower_match_tree(block, scrutinee_span, match_has_guard, candidates);
+            self.lower_match_tree(block, scrutinee_span, match_has_guard, &mut candidates);
 
         self.lower_match_arms(
             &destination,
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         scrutinee_span: Span,
         match_has_guard: bool,
-        mut candidates: Vec<&mut Candidate<'pat, 'tcx>>,
+        candidates: &mut [&mut Candidate<'pat, 'tcx>],
     ) -> Vec<(Place<'tcx>, Local)> {
         // The set of places that we are creating fake borrows of. If there are
         // no match guards then we don't need any fake borrows, so don't track
@@ -192,13 +192,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // This will generate code to test scrutinee_place and
         // branch to the appropriate arm block
-        self.match_candidates(
-            scrutinee_span,
-            block,
-            &mut otherwise,
-            &mut candidates,
-            &mut fake_borrows,
-        );
+        self.match_candidates(scrutinee_span, block, &mut otherwise, candidates, &mut fake_borrows);
 
         if let Some(otherwise_block) = otherwise {
             let source_info = self.source_info(scrutinee_span);
@@ -207,7 +201,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
 
-        for candidate in candidates.into_iter() {
+        for candidate in candidates {
             candidate.visit_leaves(|leaf_candidate| {
                 if let Some(ref mut prev) = previous_candidate {
                     prev.next_candidate_pre_binding_block = leaf_candidate.pre_binding_block;
@@ -263,7 +257,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         arm.guard.as_ref().map(|g| (g, match_scope)),
                         &fake_borrow_temps,
                         scrutinee_span,
-                        arm.scope,
+                        Some(arm.scope),
                     );
 
                     if let Some(source_scope) = scope {
@@ -297,7 +291,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         guard: Option<(&Guard<'tcx>, region::Scope)>,
         fake_borrow_temps: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
-        arm_scope: region::Scope,
+        arm_scope: Option<region::Scope>,
     ) -> BasicBlock {
         if candidate.subcandidates.is_empty() {
             // Avoid generating another `BasicBlock` when we only have one
@@ -308,10 +302,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 guard,
                 fake_borrow_temps,
                 scrutinee_span,
+                true,
             )
         } else {
             let target_block = self.cfg.start_new_block();
-
+            let mut schedule_drops = true;
             // We keep a stack of all of the bindings and type asciptions
             // from the the parent candidates that we visit, that also need to
             // be bound for each candidate.
@@ -319,14 +314,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate,
                 &mut Vec::new(),
                 &mut |leaf_candidate, parent_bindings| {
-                    self.clear_top_scope(arm_scope);
+                    if let Some(arm_scope) = arm_scope {
+                        // Avoid scheduling drops multiple times by unscheduling drops.
+                        self.clear_top_scope(arm_scope);
+                    }
                     let binding_end = self.bind_and_guard_matched_candidate(
                         leaf_candidate,
                         parent_bindings,
                         guard,
                         &fake_borrow_temps,
                         scrutinee_span,
+                        schedule_drops,
                     );
+                    if arm_scope.is_none() {
+                        // If we aren't in a match, then our bindings may not be
+                        // the only thing in the top scope, so only schedule
+                        // them to drop for the first pattern instead.
+                        schedule_drops = false;
+                    }
                     self.cfg.goto(binding_end, outer_source_info, target_block);
                 },
                 |inner_candidate, parent_bindings| {
@@ -460,51 +465,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             subcandidates: vec![],
         };
 
-        // Simplify the candidate. Since the pattern is irrefutable, this should
-        // always convert all match-pairs into bindings.
-        self.simplify_candidate(&mut candidate);
-
-        if !candidate.match_pairs.is_empty() {
-            // ICE if no other errors have been emitted. This used to be a hard error that wouldn't
-            // be reached because `hair::pattern::check_match::check_match` wouldn't have let the
-            // compiler continue. In our tests this is only ever hit by
-            // `ui/consts/const-match-check.rs` with `--cfg eval1`, and that file already generates
-            // a different error before hand.
-            self.hir.tcx().sess.delay_span_bug(
-                candidate.match_pairs[0].pattern.span,
-                &format!(
-                    "match pairs {:?} remaining after simplifying irrefutable pattern",
-                    candidate.match_pairs,
-                ),
-            );
-        }
+        let fake_borrow_temps =
+            self.lower_match_tree(block, irrefutable_pat.span, false, &mut [&mut candidate]);
 
         // for matches and function arguments, the place that is being matched
         // can be set when creating the variables. But the place for
         // let PATTERN = ... might not even exist until we do the assignment.
         // so we set it here instead
         if set_match_place {
-            for binding in &candidate.bindings {
-                let local = self.var_local_id(binding.var_id, OutsideGuard);
+            let mut candidate_ref = &candidate;
+            while let Some(next) = {
+                for binding in &candidate_ref.bindings {
+                    let local = self.var_local_id(binding.var_id, OutsideGuard);
 
-                if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                    opt_match_place: Some((ref mut match_place, _)),
-                    ..
-                }))) = self.local_decls[local].local_info
-                {
-                    *match_place = Some(*initializer);
-                } else {
-                    bug!("Let binding to non-user variable.")
+                    if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                        VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
+                    ))) = self.local_decls[local].local_info
+                    {
+                        *match_place = Some(*initializer);
+                    } else {
+                        bug!("Let binding to non-user variable.")
+                    }
                 }
+                candidate_ref.subcandidates.get(0)
+            } {
+                candidate_ref = next;
             }
         }
 
-        self.ascribe_types(block, &candidate.ascriptions);
-
-        // now apply the bindings, which will also declare the variables
-        self.bind_matched_candidate_for_arm_body(block, &candidate.bindings);
-
-        block.unit()
+        self.bind_pattern(
+            self.source_info(irrefutable_pat.span),
+            candidate,
+            None,
+            &fake_borrow_temps,
+            irrefutable_pat.span,
+            None,
+        )
+        .unit()
     }
 
     /// Declares the bindings of the given patterns and returns the visibility
@@ -1486,6 +1483,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         guard: Option<(&Guard<'tcx>, region::Scope)>,
         fake_borrows: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
+        schedule_drops: bool,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
 
@@ -1692,7 +1690,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cause = FakeReadCause::ForGuardBinding;
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(local_id));
             }
-            self.bind_matched_candidate_for_arm_body(post_guard_block, by_value_bindings);
+            assert!(schedule_drops, "patterns with guards must schedule drops");
+            self.bind_matched_candidate_for_arm_body(post_guard_block, true, by_value_bindings);
 
             post_guard_block
         } else {
@@ -1701,6 +1700,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // that we have to inspect before we bind them.)
             self.bind_matched_candidate_for_arm_body(
                 block,
+                schedule_drops,
                 parent_bindings
                     .iter()
                     .flat_map(|(bindings, _)| bindings)
@@ -1793,6 +1793,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_matched_candidate_for_arm_body<'b>(
         &mut self,
         block: BasicBlock,
+        schedule_drops: bool,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
     ) where
         'tcx: 'b,
@@ -1805,7 +1806,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let source_info = self.source_info(binding.span);
             let local =
                 self.storage_live_binding(block, binding.var_id, binding.span, OutsideGuard);
-            self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
+            if schedule_drops {
+                self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
+            }
             let rvalue = match binding.binding_mode {
                 BindingMode::ByValue => {
                     Rvalue::Use(self.consume_by_copy_or_move(binding.source.clone()))
