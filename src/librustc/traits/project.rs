@@ -1028,6 +1028,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // In either case, we handle this by not adding a
                 // candidate for an impl if it contains a `default`
                 // type.
+                //
+                // NOTE: This should be kept in sync with the similar code in
+                // `rustc::ty::instance::resolve_associated_item()`.
                 let node_item =
                     assoc_ty_def(selcx, impl_data.impl_def_id, obligation.predicate.item_def_id);
 

@@ -346,6 +346,25 @@ fn resolve_associated_item<'tcx>(
         traits::VtableImpl(impl_data) => {
             let (def_id, substs) =
                 traits::find_associated_item(tcx, param_env, trait_item, rcvr_substs, &impl_data);
+
+            let resolved_item = tcx.associated_item(def_id);
+
+            // Since this is a trait item, we need to see if the item is either a trait default item
+            // or a specialization because we can't resolve those unless we can `Reveal::All`.
+            // NOTE: This should be kept in sync with the similar code in
+            // `rustc::traits::project::assemble_candidates_from_impls()`.
+            let eligible = if !resolved_item.defaultness.is_default() {
+                true
+            } else if param_env.reveal == traits::Reveal::All {
+                !trait_ref.needs_subst()
+            } else {
+                false
+            };
+
+            if !eligible {
+                return None;
+            }
+
             let substs = tcx.erase_regions(&substs);
             Some(ty::Instance::new(def_id, substs))
         }

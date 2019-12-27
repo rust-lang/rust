@@ -33,6 +33,7 @@ use crate::interpret::{
     ScalarMaybeUndef, StackPopCleanup,
 };
 use crate::rustc::ty::subst::Subst;
+use crate::rustc::ty::TypeFoldable;
 use crate::transform::{MirPass, MirSource};
 
 /// The maximum number of bytes that we'll allocate space for a return value.
@@ -293,12 +294,19 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'mir, 'tcx> {
         let def_id = source.def_id();
-        let param_env = tcx.param_env(def_id);
+        let substs = &InternalSubsts::identity_for_item(tcx, def_id);
+        let mut param_env = tcx.param_env(def_id);
+
+        // If we're evaluating inside a monomorphic function, then use `Reveal::All` because
+        // we want to see the same instances that codegen will see. This allows us to `resolve()`
+        // specializations.
+        if !substs.needs_subst() {
+            param_env = param_env.with_reveal_all();
+        }
+
         let span = tcx.def_span(def_id);
         let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine, ());
         let can_const_prop = CanConstProp::check(body);
-
-        let substs = &InternalSubsts::identity_for_item(tcx, def_id);
 
         let ret = ecx
             .layout_of(body.return_ty().subst(tcx, substs))

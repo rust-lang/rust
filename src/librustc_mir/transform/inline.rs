@@ -8,8 +8,8 @@ use rustc_index::vec::{Idx, IndexVec};
 
 use rustc::mir::visit::*;
 use rustc::mir::*;
-use rustc::ty::subst::{Subst, SubstsRef};
-use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
+use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
+use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 use crate::transform::{MirPass, MirSource};
@@ -66,7 +66,14 @@ impl Inliner<'tcx> {
 
         let mut callsites = VecDeque::new();
 
-        let param_env = self.tcx.param_env(self.source.def_id());
+        let mut param_env = self.tcx.param_env(self.source.def_id());
+
+        let substs = &InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
+
+        // For monomorphic functions, we can use `Reveal::All` to resolve specialized instances.
+        if !substs.needs_subst() {
+            param_env = param_env.with_reveal_all();
+        }
 
         // Only do inlining into fn bodies.
         let id = self.tcx.hir().as_local_hir_id(self.source.def_id()).unwrap();
