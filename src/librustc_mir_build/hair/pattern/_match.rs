@@ -291,30 +291,39 @@ impl<'tcx> LiteralExpander<'tcx> {
                     }
                     Scalar::Raw { .. } => {
                         let layout = self.tcx.layout_of(self.param_env.and(rty)).unwrap();
-                        if layout.is_zst() {
-                            // Deref of a reference to a ZST is a nop.
-                            ConstValue::Scalar(Scalar::zst())
-                        } else {
-                            // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;`
-                            bug!("cannot deref {:#?}, {} -> {}", val, crty, rty);
-                        }
+                        assert!(layout.is_zst());
+                        // Deref of a reference to a ZST is a nop.
+                        ConstValue::Scalar(Scalar::zst())
                     }
                 }
             }
-            // unsize array to slice if pattern is array but match value or other patterns are slice
-            (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
+            // Unsize array to slice if pattern is array
+            // but match value or other patterns are slice.
+            (ConstValue::Scalar(s), ty::Array(t, n), ty::Slice(u)) => {
                 assert_eq!(t, u);
-                ConstValue::Slice {
-                    data: self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
-                    start: p.offset.bytes().try_into().unwrap(),
-                    end: n.eval_usize(self.tcx, ty::ParamEnv::empty()).try_into().unwrap(),
+                let n = n.eval_usize(self.tcx, ty::ParamEnv::empty()).try_into().unwrap();
+                match s {
+                    Scalar::Ptr(p) => {
+                        let start = p.offset.bytes().try_into().unwrap();
+                        ConstValue::Slice {
+                            data: self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
+                            start,
+                            end: n,
+                        }
+                    }
+                    Scalar::Raw { .. } => {
+                        assert_eq!(n, 0);
+                        // FIXME(oli-obk): this is reachable for
+                        // `const FOO: &[u8] = transmute::<usize, &[u8; 0]>(1);`
+                        bug!("cannot deref {:#?}, {} -> {}", val, crty, rty);
+                    }
                 }
             }
-            // fat pointers stay the same
+            // Wide pointers stay the same.
             (ConstValue::Slice { .. }, _, _)
             | (_, ty::Slice(_), ty::Slice(_))
             | (_, ty::Str, ty::Str) => val,
-            // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;` being used
+            // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;`
             _ => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
         }
     }
