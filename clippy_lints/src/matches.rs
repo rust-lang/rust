@@ -239,7 +239,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub PATS_WITH_WILD_MATCH_ARM,
-    restriction,
+    complexity,
     "a wildcard pattern used with others patterns in same match arm"
 }
 
@@ -690,7 +690,7 @@ fn check_pats_wild_match(cx: &LateContext<'_, '_>, arms: &[Arm]) {
     for arm in arms {
         if let PatKind::Or(ref fields) = arm.pat.kind {
             // look for multiple fields where one at least matches Wild pattern
-            if fields.len() > 1 && fields.into_iter().any(|pat| is_wild(pat)) {
+            if fields.len() > 1 && fields.into_iter().any(is_wild) {
                 span_lint_and_sugg(
                     cx,
                     PATS_WITH_WILD_MATCH_ARM,
