@@ -25,7 +25,7 @@ use crate::sys_common::rwlock as sys;
 /// The type parameter `T` represents the data that this lock protects. It is
 /// required that `T` satisfies [`Send`] to be shared across threads and
 /// [`Sync`] to allow concurrent access through readers. The RAII guards
-/// returned from the locking methods implement [`Deref`][] (and [`DerefMut`]
+/// returned from the locking methods implement [`Deref`] (and [`DerefMut`]
 /// for the `write` methods) to allow access to the content of the lock.
 ///
 /// # Poisoning
