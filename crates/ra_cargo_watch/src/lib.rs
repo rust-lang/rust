@@ -36,7 +36,7 @@ pub struct CheckOptions {
 #[derive(Debug)]
 pub struct CheckWatcher {
     pub task_recv: Receiver<CheckTask>,
-    pub cmd_send: Sender<CheckCommand>,
+    pub cmd_send: Option<Sender<CheckCommand>>,
     pub shared: Arc<RwLock<CheckWatcherSharedState>>,
     handle: Option<JoinHandle<()>>,
 }
@@ -53,23 +53,24 @@ impl CheckWatcher {
             let mut check = CheckWatcherState::new(options, workspace_root, shared_);
             check.run(&task_send, &cmd_recv);
         });
-        CheckWatcher { task_recv, cmd_send, handle: Some(handle), shared }
+        CheckWatcher { task_recv, cmd_send: Some(cmd_send), handle: Some(handle), shared }
     }
 
     /// Schedule a re-start of the cargo check worker.
     pub fn update(&self) {
-        self.cmd_send.send(CheckCommand::Update).unwrap();
+        if let Some(cmd_send) = &self.cmd_send {
+            cmd_send.send(CheckCommand::Update).unwrap();
+        }
     }
 }
 
 impl std::ops::Drop for CheckWatcher {
     fn drop(&mut self) {
         if let Some(handle) = self.handle.take() {
-            // Replace our reciever with dummy one, so we can drop and close the
-            // one actually communicating with the thread
-            let recv = std::mem::replace(&mut self.task_recv, crossbeam_channel::never());
+            // Take the sender out of the option
+            let recv = self.cmd_send.take();
 
-            // Dropping the original reciever finishes the thread loop
+            // Dropping the sender finishes the thread loop
             drop(recv);
 
             // Join the thread, it should finish shortly. We don't really care
