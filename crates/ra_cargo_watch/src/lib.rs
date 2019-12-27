@@ -32,12 +32,13 @@ pub struct CheckOptions {
 /// CheckWatcher wraps the shared state and communication machinery used for
 /// running `cargo check` (or other compatible command) and providing
 /// diagnostics based on the output.
+/// The spawned thread is shut down when this struct is dropped.
 #[derive(Debug)]
 pub struct CheckWatcher {
     pub task_recv: Receiver<CheckTask>,
     pub cmd_send: Sender<CheckCommand>,
     pub shared: Arc<RwLock<CheckWatcherSharedState>>,
-    handle: JoinHandle<()>,
+    handle: Option<JoinHandle<()>>,
 }
 
 impl CheckWatcher {
@@ -52,8 +53,7 @@ impl CheckWatcher {
             let mut check = CheckWatcherState::new(options, workspace_root, shared_);
             check.run(&task_send, &cmd_recv);
         });
-
-        CheckWatcher { task_recv, cmd_send, handle, shared }
+        CheckWatcher { task_recv, cmd_send, handle: Some(handle), shared }
     }
 
     /// Schedule a re-start of the cargo check worker.
@@ -62,13 +62,21 @@ impl CheckWatcher {
     }
 }
 
-pub struct CheckWatcherState {
-    options: CheckOptions,
-    workspace_root: PathBuf,
-    running: bool,
-    watcher: WatchThread,
-    last_update_req: Option<Instant>,
-    shared: Arc<RwLock<CheckWatcherSharedState>>,
+impl std::ops::Drop for CheckWatcher {
+    fn drop(&mut self) {
+        if let Some(handle) = self.handle.take() {
+            // Replace our reciever with dummy one, so we can drop and close the
+            // one actually communicating with the thread
+            let recv = std::mem::replace(&mut self.task_recv, crossbeam_channel::never());
+
+            // Dropping the original reciever finishes the thread loop
+            drop(recv);
+
+            // Join the thread, it should finish shortly. We don't really care
+            // whether it panicked, so it is safe to ignore the result
+            let _ = handle.join();
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -153,6 +161,14 @@ pub enum CheckCommand {
     Update,
 }
 
+struct CheckWatcherState {
+    options: CheckOptions,
+    workspace_root: PathBuf,
+    watcher: WatchThread,
+    last_update_req: Option<Instant>,
+    shared: Arc<RwLock<CheckWatcherSharedState>>,
+}
+
 impl CheckWatcherState {
     pub fn new(
         options: CheckOptions,
@@ -163,7 +179,6 @@ impl CheckWatcherState {
         CheckWatcherState {
             options,
             workspace_root,
-            running: false,
             watcher,
             last_update_req: None,
             shared,
@@ -171,19 +186,21 @@ impl CheckWatcherState {
     }
 
     pub fn run(&mut self, task_send: &Sender<CheckTask>, cmd_recv: &Receiver<CheckCommand>) {
-        self.running = true;
-        while self.running {
+        loop {
             select! {
                 recv(&cmd_recv) -> cmd => match cmd {
                     Ok(cmd) => self.handle_command(cmd),
                     Err(RecvError) => {
                         // Command channel has closed, so shut down
-                        self.running = false;
+                        break;
                     },
                 },
                 recv(self.watcher.message_recv) -> msg => match msg {
                     Ok(msg) => self.handle_message(msg, task_send),
-                    Err(RecvError) => {},
+                    Err(RecvError) => {
+                        // Task channel has closed, so shut down
+                        break;
+                    },
                 }
             };
 
