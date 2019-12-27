@@ -845,7 +845,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let src_bytes =
             self.get_raw(src.alloc_id)?.get_bytes_with_undef_and_ptr(&tcx, src, size)?.as_ptr();
         let dest_bytes =
-            self.get_raw_mut(dest.alloc_id)?.get_bytes_mut(&tcx, dest, size * length)?.as_mut_ptr();
+            self.get_raw_mut(dest.alloc_id)?.get_bytes_mut(&tcx, dest, size * length)?;
+
+        // If `dest_bytes` is empty we just optimize to not run anything for zsts.
+        // See #67539
+        if dest_bytes.is_empty() {
+            return Ok(());
+        }
+
+        let dest_bytes = dest_bytes.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
