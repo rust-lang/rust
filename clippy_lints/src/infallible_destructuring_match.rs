@@ -44,7 +44,7 @@ declare_clippy_lint! {
 declare_lint_pass!(InfallibleDestructingMatch => [INFALLIBLE_DESTRUCTURING_MATCH]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InfallibleDestructingMatch {
-    fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local) {
+    fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>) {
         if_chain! {
             if let Some(ref expr) = local.init;
             if let ExprKind::Match(ref target, ref arms, MatchSource::Normal) = expr.kind;

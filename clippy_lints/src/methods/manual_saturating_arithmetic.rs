@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_target::abi::LayoutOf;
 use syntax::ast;
 
-pub fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[&[hir::Expr]], arith: &str) {
+pub fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>]], arith: &str) {
     let unwrap_arg = &args[0][1];
     let arith_lhs = &args[1][0];
     let arith_rhs = &args[1][1];
@@ -82,7 +82,7 @@ enum MinMax {
     Max,
 }
 
-fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr) -> Option<MinMax> {
+fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>) -> Option<MinMax> {
     // `T::max_value()` `T::min_value()` inherent methods
     if_chain! {
         if let hir::ExprKind::Call(func, args) = &expr.kind;
@@ -125,7 +125,7 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr) -> Option<M
         (0, if bits == 128 { !0 } else { (1 << bits) - 1 })
     };
 
-    let check_lit = |expr: &hir::Expr, check_min: bool| {
+    let check_lit = |expr: &hir::Expr<'_>, check_min: bool| {
         if let hir::ExprKind::Lit(lit) = &expr.kind {
             if let ast::LitKind::Int(value, _) = lit.node {
                 if value == maxval {
@@ -160,7 +160,7 @@ enum Sign {
     Neg,
 }
 
-fn lit_sign(expr: &hir::Expr) -> Option<Sign> {
+fn lit_sign(expr: &hir::Expr<'_>) -> Option<Sign> {
     if let hir::ExprKind::Unary(hir::UnNeg, inner) = &expr.kind {
         if let hir::ExprKind::Lit(..) = &inner.kind {
             return Some(Sign::Neg);

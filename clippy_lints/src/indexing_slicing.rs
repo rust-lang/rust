@@ -89,7 +89,7 @@ declare_clippy_lint! {
 declare_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Index(ref array, ref index) = &expr.kind {
             let ty = cx.tables.expr_ty(array);
             if let Some(range) = higher::range(cx, index) {

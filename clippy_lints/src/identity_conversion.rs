@@ -32,7 +32,7 @@ pub struct IdentityConversion {
 impl_lint_pass!(IdentityConversion => [IDENTITY_CONVERSION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
             return;
         }
@@ -114,7 +114,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
         }
     }
 
-    fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+    fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if Some(&e.hir_id) == self.try_desugar_arm.last() {
             self.try_desugar_arm.pop();
         }

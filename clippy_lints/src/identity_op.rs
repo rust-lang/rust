@@ -29,7 +29,7 @@ declare_clippy_lint! {
 declare_lint_pass!(IdentityOp => [IDENTITY_OP]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
             return;
         }
@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
 }
 
 #[allow(clippy::cast_possible_wrap)]
-fn check(cx: &LateContext<'_, '_>, e: &Expr, m: i8, span: Span, arg: Span) {
+fn check(cx: &LateContext<'_, '_>, e: &Expr<'_>, m: i8, span: Span, arg: Span) {
     if let Some(Constant::Int(v)) = constant_simple(cx, cx.tables, e) {
         let check = match cx.tables.expr_ty(e).kind {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),

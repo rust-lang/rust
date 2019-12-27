@@ -53,7 +53,7 @@ declare_clippy_lint! {
 declare_lint_pass!(SuspiciousImpl => [SUSPICIOUS_ARITHMETIC_IMPL, SUSPICIOUS_OP_ASSIGN_IMPL]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let hir::ExprKind::Binary(binop, _, _) = expr.kind {
             match binop.node {
                 hir::BinOpKind::Eq
@@ -148,7 +148,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
 
 fn check_binop(
     cx: &LateContext<'_, '_>,
-    expr: &hir::Expr,
+    expr: &hir::Expr<'_>,
     binop: hir::BinOpKind,
     traits: &[&'static str],
     expected_ops: &[hir::BinOpKind],
@@ -185,7 +185,7 @@ struct BinaryExprVisitor {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for BinaryExprVisitor {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Binary(..)
             | hir::ExprKind::Unary(hir::UnOp::UnNot, _)

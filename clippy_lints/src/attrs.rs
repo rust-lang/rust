@@ -380,7 +380,7 @@ fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem<'_>) -> bool {
     }
 }
 
-fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
+fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, block: &Block<'_>) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match &stmt.kind {
             StmtKind::Local(_) => true,
@@ -392,7 +392,7 @@ fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, bl
     }
 }
 
-fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
+fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr<'_>) -> bool {
     match &expr.kind {
         ExprKind::Block(block, _) => is_relevant_block(cx, tables, block),
         ExprKind::Ret(Some(e)) => is_relevant_expr(cx, tables, e),

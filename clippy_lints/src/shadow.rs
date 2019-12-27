@@ -110,9 +110,9 @@ fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: &'tc
     check_expr(cx, &body.value, &mut bindings);
 }
 
-fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, bindings: &mut Vec<(Name, Span)>) {
+fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>, bindings: &mut Vec<(Name, Span)>) {
     let len = bindings.len();
-    for stmt in &block.stmts {
+    for stmt in block.stmts {
         match stmt.kind {
             StmtKind::Local(ref local) => check_local(cx, local, bindings),
             StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => check_expr(cx, e, bindings),
@@ -125,7 +125,7 @@ fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, binding
     bindings.truncate(len);
 }
 
-fn check_local<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, local: &'tcx Local, bindings: &mut Vec<(Name, Span)>) {
+fn check_local<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx.sess(), local.span) {
         return;
     }
@@ -160,8 +160,8 @@ fn is_binding(cx: &LateContext<'_, '_>, pat_id: HirId) -> bool {
 
 fn check_pat<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    pat: &'tcx Pat,
-    init: Option<&'tcx Expr>,
+    pat: &'tcx Pat<'_>,
+    init: Option<&'tcx Expr<'_>>,
     span: Span,
     bindings: &mut Vec<(Name, Span)>,
 ) {
@@ -187,7 +187,7 @@ fn check_pat<'a, 'tcx>(
                 check_pat(cx, p, init, span, bindings);
             }
         },
-        PatKind::Struct(_, ref pfields, _) => {
+        PatKind::Struct(_, pfields, _) => {
             if let Some(init_struct) = init {
                 if let ExprKind::Struct(_, ref efields, _) = init_struct.kind {
                     for field in pfields {
@@ -208,7 +208,7 @@ fn check_pat<'a, 'tcx>(
                 }
             }
         },
-        PatKind::Tuple(ref inner, _) => {
+        PatKind::Tuple(inner, _) => {
             if let Some(init_tup) = init {
                 if let ExprKind::Tup(ref tup) = init_tup.kind {
                     for (i, p) in inner.iter().enumerate() {
@@ -247,7 +247,7 @@ fn lint_shadow<'a, 'tcx>(
     name: Name,
     span: Span,
     pattern_span: Span,
-    init: Option<&'tcx Expr>,
+    init: Option<&'tcx Expr<'_>>,
     prev_span: Span,
 ) {
     if let Some(expr) = init {
@@ -309,7 +309,7 @@ fn lint_shadow<'a, 'tcx>(
     }
 }
 
-fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: &mut Vec<(Name, Span)>) {
+fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx.sess(), expr.span) {
         return;
     }
@@ -321,12 +321,12 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
         ExprKind::Block(ref block, _) | ExprKind::Loop(ref block, _, _) => check_block(cx, block, bindings),
         // ExprKind::Call
         // ExprKind::MethodCall
-        ExprKind::Array(ref v) | ExprKind::Tup(ref v) => {
+        ExprKind::Array(v) | ExprKind::Tup(v) => {
             for e in v {
                 check_expr(cx, e, bindings)
             }
         },
-        ExprKind::Match(ref init, ref arms, _) => {
+        ExprKind::Match(ref init, arms, _) => {
             check_expr(cx, init, bindings);
             let len = bindings.len();
             for arm in arms {
@@ -365,7 +365,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
     }
 }
 
-fn is_self_shadow(name: Name, expr: &Expr) -> bool {
+fn is_self_shadow(name: Name, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Box(ref inner) | ExprKind::AddrOf(_, _, ref inner) => is_self_shadow(name, inner),
         ExprKind::Block(ref block, _) => {

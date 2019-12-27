@@ -109,7 +109,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Author {
         done();
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if !has_attr(cx.sess(), &expr.attrs) {
             return;
         }
@@ -118,7 +118,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Author {
         done();
     }
 
-    fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm) {
+    fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm<'_>) {
         if !has_attr(cx.sess(), &arm.attrs) {
             return;
         }
@@ -127,7 +127,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Author {
         done();
     }
 
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt<'_>) {
         if !has_attr(cx.sess(), stmt.kind.attrs()) {
             return;
         }
@@ -189,7 +189,7 @@ struct PrintVisitor {
 
 impl<'tcx> Visitor<'tcx> for PrintVisitor {
     #[allow(clippy::too_many_lines)]
-    fn visit_expr(&mut self, expr: &Expr) {
+    fn visit_expr(&mut self, expr: &Expr<'_>) {
         // handle if desugarings
         // TODO add more desugarings here
         if let Some((cond, then, opt_else)) = higher::if_block(&expr) {
@@ -508,7 +508,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         }
     }
 
-    fn visit_block(&mut self, block: &Block) {
+    fn visit_block(&mut self, block: &Block<'_>) {
         let trailing_pat = self.next("trailing_expr");
         println!("    if let Some({}) = &{}.expr;", trailing_pat, self.current);
         println!("    if {}.stmts.len() == {};", self.current, block.stmts.len());
@@ -520,7 +520,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
     }
 
     #[allow(clippy::too_many_lines)]
-    fn visit_pat(&mut self, pat: &Pat) {
+    fn visit_pat(&mut self, pat: &Pat<'_>) {
         print!("    if let PatKind::");
         let current = format!("{}.kind", self.current);
         match pat.kind {
@@ -646,7 +646,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         }
     }
 
-    fn visit_stmt(&mut self, s: &Stmt) {
+    fn visit_stmt(&mut self, s: &Stmt<'_>) {
         print!("    if let StmtKind::");
         let current = format!("{}.kind", self.current);
         match s.kind {

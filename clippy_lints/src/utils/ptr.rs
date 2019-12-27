@@ -52,7 +52,7 @@ struct PtrCloneVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.abort {
             return;
         }
@@ -80,6 +80,6 @@ impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
     }
 }
 
-fn get_binding_name(arg: &Param) -> Option<Name> {
+fn get_binding_name(arg: &Param<'_>) -> Option<Name> {
     get_pat_name(&arg.pat)
 }

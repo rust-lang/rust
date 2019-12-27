@@ -59,7 +59,7 @@ declare_lint_pass!(AssignOps => [ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
     #[allow(clippy::too_many_lines)]
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         match &expr.kind {
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
                 if let hir::ExprKind::Binary(binop, l, r) = &rhs.kind {
@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
             hir::ExprKind::Assign(assignee, e, _) => {
                 if let hir::ExprKind::Binary(op, l, r) = &e.kind {
                     #[allow(clippy::cognitive_complexity)]
-                    let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
+                    let lint = |assignee: &hir::Expr<'_>, rhs: &hir::Expr<'_>| {
                         let ty = cx.tables.expr_ty(assignee);
                         let rty = cx.tables.expr_ty(rhs);
                         macro_rules! ops {
@@ -190,11 +190,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
 
 fn lint_misrefactored_assign_op(
     cx: &LateContext<'_, '_>,
-    expr: &hir::Expr,
+    expr: &hir::Expr<'_>,
     op: hir::BinOp,
-    rhs: &hir::Expr,
-    assignee: &hir::Expr,
-    rhs_other: &hir::Expr,
+    rhs: &hir::Expr<'_>,
+    assignee: &hir::Expr<'_>,
+    rhs_other: &hir::Expr<'_>,
 ) {
     span_lint_and_then(
         cx,
@@ -240,13 +240,13 @@ fn is_commutative(op: hir::BinOpKind) -> bool {
 }
 
 struct ExprVisitor<'a, 'tcx> {
-    assignee: &'a hir::Expr,
+    assignee: &'a hir::Expr<'a>,
     counter: u8,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if SpanlessEq::new(self.cx).ignore_fn().eq_expr(self.assignee, expr) {
             self.counter += 1;
         }

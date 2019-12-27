@@ -71,7 +71,7 @@ declare_lint_pass!(MemReplace =>
     [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_WITH_UNINIT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Check that `expr` is a call to `mem::replace()`
             if let ExprKind::Call(ref func, ref func_args) = expr.kind;

@@ -1,6 +1,5 @@
 use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
 use rustc::declare_lint_pass;
-use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
@@ -46,8 +45,8 @@ declare_clippy_lint! {
 declare_lint_pass!(RedundantPatternMatching => [REDUNDANT_PATTERN_MATCHING]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPatternMatching {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprKind::Match(ref op, ref arms, ref match_source) = expr.kind {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+        if let ExprKind::Match(op, arms, ref match_source) = &expr.kind {
             match match_source {
                 MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
                 MatchSource::IfLetDesugar { contains_else_clause } => {
@@ -61,9 +60,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPatternMatching {
 
 fn find_sugg_for_if_let<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    expr: &'tcx Expr,
-    op: &P<Expr>,
-    arms: &HirVec<Arm>,
+    expr: &'tcx Expr<'_>,
+    op: &Expr<'_>,
+    arms: &[Arm<'_>],
     has_else: bool,
 ) {
     let good_method = match arms[0].pat.kind {
@@ -107,7 +106,7 @@ fn find_sugg_for_if_let<'a, 'tcx>(
     );
 }
 
-fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, op: &P<Expr>, arms: &HirVec<Arm>) {
+fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
     if arms.len() == 2 {
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
 
@@ -172,7 +171,7 @@ fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, o
 }
 
 fn find_good_method_for_match<'a>(
-    arms: &HirVec<Arm>,
+    arms: &[Arm<'_>],
     path_left: &QPath,
     path_right: &QPath,
     expected_left: &[&str],

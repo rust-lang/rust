@@ -44,12 +44,15 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MulAddCheck => [MANUAL_MUL_ADD]);
 
-fn is_float<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr) -> bool {
+fn is_float<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>) -> bool {
     cx.tables.expr_ty(expr).is_floating_point()
 }
 
 // Checks whether expression is multiplication of two floats
-fn is_float_mult_expr<'a, 'tcx, 'b>(cx: &LateContext<'a, 'tcx>, expr: &'b Expr) -> Option<(&'b Expr, &'b Expr)> {
+fn is_float_mult_expr<'a, 'tcx, 'b>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'b Expr<'b>,
+) -> Option<(&'b Expr<'b>, &'b Expr<'b>)> {
     if let ExprKind::Binary(op, lhs, rhs) = &expr.kind {
         if let BinOpKind::Mul = op.node {
             if is_float(cx, &lhs) && is_float(cx, &rhs) {
@@ -62,7 +65,7 @@ fn is_float_mult_expr<'a, 'tcx, 'b>(cx: &LateContext<'a, 'tcx>, expr: &'b Expr) 
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MulAddCheck {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(op, lhs, rhs) = &expr.kind {
             if let BinOpKind::Add = op.node {
                 //Converts mult_lhs * mult_rhs + rhs to mult_lhs.mult_add(mult_rhs, rhs)

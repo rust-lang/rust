@@ -56,7 +56,7 @@ declare_clippy_lint! {
 declare_lint_pass!(Mutex => [MUTEX_ATOMIC, MUTEX_INTEGER]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Mutex {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         let ty = cx.tables.expr_ty(expr);
         if let ty::Adt(_, subst) = ty.kind {
             if match_type(cx, ty, &paths::MUTEX) {

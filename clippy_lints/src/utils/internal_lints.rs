@@ -239,7 +239,7 @@ struct LintCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         walk_expr(self, expr);
     }
 
@@ -274,7 +274,7 @@ impl CompilerLintFunctions {
 impl_lint_pass!(CompilerLintFunctions => [COMPILER_LINT_FUNCTIONS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
             let fn_name = path.ident;
@@ -298,7 +298,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
 declare_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         let (method_names, arg_lists, spans) = method_calls(expr, 2);
         let method_names: Vec<SymbolStr> = method_names.iter().map(|s| s.as_str()).collect();
         let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();

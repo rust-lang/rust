@@ -40,7 +40,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ExcessivePrecision => [EXCESSIVE_PRECISION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             let ty = cx.tables.expr_ty(expr);
             if let ty::Float(fty) = ty.kind;

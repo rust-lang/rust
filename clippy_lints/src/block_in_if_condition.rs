@@ -46,12 +46,12 @@ declare_clippy_lint! {
 declare_lint_pass!(BlockInIfCondition => [BLOCK_IN_IF_CONDITION_EXPR, BLOCK_IN_IF_CONDITION_STMT]);
 
 struct ExVisitor<'a, 'tcx> {
-    found_block: Option<&'tcx Expr>,
+    found_block: Option<&'tcx Expr<'tcx>>,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Closure(_, _, eid, _, _) = expr.kind {
             let body = self.cx.tcx.hir().body(eid);
             let ex = &body.value;
@@ -72,7 +72,7 @@ const COMPLEX_BLOCK_MESSAGE: &str = "in an 'if' condition, avoid complex blocks 
                                      instead, move the block or closure higher and bind it with a 'let'";
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }

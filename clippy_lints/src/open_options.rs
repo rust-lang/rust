@@ -29,7 +29,7 @@ declare_clippy_lint! {
 declare_lint_pass!(OpenOptions => [NONSENSICAL_OPEN_OPTIONS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OpenOptions {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, ref arguments) = e.kind {
             let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
             if path.ident.name == sym!(open) && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
@@ -57,7 +57,7 @@ enum OpenOption {
     Append,
 }
 
-fn get_open_options(cx: &LateContext<'_, '_>, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
+fn get_open_options(cx: &LateContext<'_, '_>, argument: &Expr<'_>, options: &mut Vec<(OpenOption, Argument)>) {
     if let ExprKind::MethodCall(ref path, _, ref arguments) = argument.kind {
         let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
 

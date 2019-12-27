@@ -43,7 +43,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MapClone => [MAP_CLONE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
         if e.span.from_expansion() {
             return;
         }
@@ -98,7 +98,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
     }
 }
 
-fn ident_eq(name: Ident, path: &hir::Expr) -> bool {
+fn ident_eq(name: Ident, path: &hir::Expr<'_>) -> bool {
     if let hir::ExprKind::Path(hir::QPath::Resolved(None, ref path)) = path.kind {
         path.segments.len() == 1 && path.segments[0].ident == name
     } else {

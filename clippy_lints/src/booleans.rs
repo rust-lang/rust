@@ -75,12 +75,12 @@ struct NonminimalBoolVisitor<'a, 'tcx> {
 
 use quine_mc_cluskey::Bool;
 struct Hir2Qmm<'a, 'tcx, 'v> {
-    terminals: Vec<&'v Expr>,
+    terminals: Vec<&'v Expr<'v>>,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
 impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
-    fn extract(&mut self, op: BinOpKind, a: &[&'v Expr], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
+    fn extract(&mut self, op: BinOpKind, a: &[&'v Expr<'_>], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
         for a in a {
             if let ExprKind::Binary(binop, lhs, rhs) = &a.kind {
                 if binop.node == op {
@@ -93,7 +93,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         Ok(v)
     }
 
-    fn run(&mut self, e: &'v Expr) -> Result<Bool, String> {
+    fn run(&mut self, e: &'v Expr<'_>) -> Result<Bool, String> {
         fn negate(bin_op_kind: BinOpKind) -> Option<BinOpKind> {
             match bin_op_kind {
                 BinOpKind::Eq => Some(BinOpKind::Ne),
@@ -154,7 +154,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
 }
 
 struct SuggestContext<'a, 'tcx, 'v> {
-    terminals: &'v [&'v Expr],
+    terminals: &'v [&'v Expr<'v>],
     cx: &'a LateContext<'a, 'tcx>,
     output: String,
 }
@@ -222,7 +222,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
     }
 }
 
-fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<String> {
+fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<String> {
     match &expr.kind {
         ExprKind::Binary(binop, lhs, rhs) => {
             if !implements_ord(cx, lhs) {
@@ -266,7 +266,7 @@ fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<String> {
     }
 }
 
-fn suggest(cx: &LateContext<'_, '_>, suggestion: &Bool, terminals: &[&Expr]) -> String {
+fn suggest(cx: &LateContext<'_, '_>, suggestion: &Bool, terminals: &[&Expr<'_>]) -> String {
     let mut suggest_context = SuggestContext {
         terminals,
         cx,
@@ -332,7 +332,7 @@ fn terminal_stats(b: &Bool) -> Stats {
 }
 
 impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
-    fn bool_expr(&self, e: &'tcx Expr) {
+    fn bool_expr(&self, e: &'tcx Expr<'_>) {
         let mut h2q = Hir2Qmm {
             terminals: Vec::new(),
             cx: self.cx,
@@ -437,7 +437,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, e: &'tcx Expr) {
+    fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         if in_macro(e.span) {
             return;
         }
@@ -460,7 +460,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
     }
 }
 
-fn implements_ord<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &Expr) -> bool {
+fn implements_ord<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &Expr<'_>) -> bool {
     let ty = cx.tables.expr_ty(expr);
     get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]))
 }
@@ -470,7 +470,7 @@ struct NotSimplificationVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let ExprKind::Unary(UnNot, inner) = &expr.kind {
             if let Some(suggestion) = simplify_not(self.cx, inner) {
                 span_lint_and_sugg(

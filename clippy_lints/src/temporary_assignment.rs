@@ -24,7 +24,7 @@ declare_clippy_lint! {
     "assignments to temporaries"
 }
 
-fn is_temporary(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
+fn is_temporary(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     match &expr.kind {
         ExprKind::Struct(..) | ExprKind::Tup(..) => true,
         ExprKind::Path(qpath) => {
@@ -41,7 +41,7 @@ fn is_temporary(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 declare_lint_pass!(TemporaryAssignment => [TEMPORARY_ASSIGNMENT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TemporaryAssignment {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Assign(target, ..) = &expr.kind {
             let mut base = target;
             while let ExprKind::Field(f, _) | ExprKind::Index(f, _) = &base.kind {

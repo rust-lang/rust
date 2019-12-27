@@ -30,18 +30,18 @@ declare_clippy_lint! {
 declare_lint_pass!(ExplicitWrite => [EXPLICIT_WRITE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitWrite {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // match call to unwrap
             if let ExprKind::MethodCall(ref unwrap_fun, _, ref unwrap_args) = expr.kind;
             if unwrap_fun.ident.name == sym!(unwrap);
             // match call to write_fmt
-            if unwrap_args.len() > 0;
-            if let ExprKind::MethodCall(ref write_fun, _, ref write_args) =
+            if !unwrap_args.is_empty();
+            if let ExprKind::MethodCall(ref write_fun, _, write_args) =
                 unwrap_args[0].kind;
             if write_fun.ident.name == sym!(write_fmt);
             // match calls to std::io::stdout() / std::io::stderr ()
-            if write_args.len() > 0;
+            if !write_args.is_empty();
             if let Some(dest_name) = if match_function_call(cx, &write_args[0], &paths::STDOUT).is_some() {
                 Some("stdout")
             } else if match_function_call(cx, &write_args[0], &paths::STDERR).is_some() {
@@ -130,12 +130,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitWrite {
 }
 
 // Extract the output string from the given `write_args`.
-fn write_output_string(write_args: &HirVec<Expr>) -> Option<String> {
+fn write_output_string(write_args: &[Expr<'_>]) -> Option<String> {
     if_chain! {
         // Obtain the string that should be printed
         if write_args.len() > 1;
         if let ExprKind::Call(_, ref output_args) = write_args[1].kind;
-        if output_args.len() > 0;
+        if !output_args.is_empty();
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref output_string_expr) = output_args[0].kind;
         if let ExprKind::Array(ref string_exprs) = output_string_expr.kind;
         // we only want to provide an automatic suggestion for simple (non-format) strings

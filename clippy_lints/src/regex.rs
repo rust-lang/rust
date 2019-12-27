@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
         self.spans.clear();
     }
 
-    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>) {
         if_chain! {
             if self.last.is_none();
             if let Some(ref expr) = block.expr;
@@ -99,13 +99,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
         }
     }
 
-    fn check_block_post(&mut self, _: &LateContext<'a, 'tcx>, block: &'tcx Block) {
+    fn check_block_post(&mut self, _: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>) {
         if self.last.map_or(false, |id| block.hir_id == id) {
             self.last = None;
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(ref fun, ref args) = expr.kind;
             if let ExprKind::Path(ref qpath) = fun.kind;
@@ -138,7 +138,7 @@ fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u16) -> Span {
     Span::new(start, end, base.ctxt())
 }
 
-fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) -> Option<String> {
+fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
     constant(cx, cx.tables, e).and_then(|(c, _)| match c {
         Constant::Str(s) => Some(s),
         _ => None,
@@ -184,10 +184,10 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
     }
 }
 
-fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool) {
+fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     if_chain! {
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref expr) = expr.kind;
-        if let ExprKind::Array(ref exprs) = expr.kind;
+        if let ExprKind::Array(exprs) = expr.kind;
         then {
             for expr in exprs {
                 check_regex(cx, expr, utf8);
@@ -196,7 +196,7 @@ fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool)
     }
 }
 
-fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool) {
+fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     let mut parser = regex_syntax::ParserBuilder::new()
         .unicode(utf8)
         .allow_invalid_utf8(!utf8)

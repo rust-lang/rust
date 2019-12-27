@@ -37,7 +37,7 @@ impl BlacklistedName {
 impl_lint_pass!(BlacklistedName => [BLACKLISTED_NAME]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlacklistedName {
-    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
+    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
         if let PatKind::Binding(.., ident, _) = pat.kind {
             if self.blacklist.contains(&ident.name.to_string()) {
                 span_lint(
