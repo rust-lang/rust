@@ -841,6 +841,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         let tcx = self.tcx.tcx;
 
+        // The bits have to be saved locally before writing to dest in case src and dest overlap.
+        assert_eq!(size.bytes() as usize as u64, size.bytes());
+
         // This checks relocation edges on the src.
         let src_bytes =
             self.get_raw(src.alloc_id)?.get_bytes_with_undef_and_ptr(&tcx, src, size)?.as_ptr();
@@ -854,6 +857,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
 
         let dest_bytes = dest_bytes.as_mut_ptr();
+
+        // Prepare a copy of the undef mask.
+        let compressed = self.get_raw(src.alloc_id)?.compress_undef_range(src, size);
+
+        if compressed.all_bytes_undef() {
+            // Fast path: If all bytes are `undef` then there is nothing to copy. The target range
+            // is marked as undef but we otherwise omit changing the byte representation which may
+            // be arbitrary for undef bytes.
+            // This also avoids writing to the target bytes so that the backing allocation is never
+            // touched if the bytes stay undef for the whole interpreter execution. On contemporary
+            // operating system this can avoid physically allocating the page.
+            let dest_alloc = self.get_raw_mut(dest.alloc_id)?;
+            dest_alloc.mark_definedness(dest, size * length, false);
+            dest_alloc.mark_relocation_range(relocations);
+            return Ok(());
+        }
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
@@ -889,8 +908,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         }
 
-        // copy definedness to the destination
-        self.copy_undef_mask(src, dest, size, length)?;
+        // now fill in all the data
+        self.get_raw_mut(dest.alloc_id)?.mark_compressed_undef_range(
+            &compressed,
+            dest,
+            size,
+            length,
+        );
+
         // copy the relocations to the destination
         self.get_raw_mut(dest.alloc_id)?.mark_relocation_range(relocations);
 
@@ -898,29 +923,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 }
 
-/// Undefined bytes
+/// Machine pointer introspection.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
-    // FIXME: Add a fast version for the common, nonoverlapping case
-    fn copy_undef_mask(
-        &mut self,
-        src: Pointer<M::PointerTag>,
-        dest: Pointer<M::PointerTag>,
-        size: Size,
-        repeat: u64,
-    ) -> InterpResult<'tcx> {
-        // The bits have to be saved locally before writing to dest in case src and dest overlap.
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
-
-        let src_alloc = self.get_raw(src.alloc_id)?;
-        let compressed = src_alloc.compress_undef_range(src, size);
-
-        // now fill in all the data
-        let dest_allocation = self.get_raw_mut(dest.alloc_id)?;
-        dest_allocation.mark_compressed_undef_range(&compressed, dest, size, repeat);
-
-        Ok(())
-    }
-
     pub fn force_ptr(
         &self,
         scalar: Scalar<M::PointerTag>,

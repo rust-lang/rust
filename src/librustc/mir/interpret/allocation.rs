@@ -594,6 +594,14 @@ pub struct AllocationDefinedness {
     ranges: smallvec::SmallVec<[u64; 1]>,
 }
 
+impl AllocationDefinedness {
+    pub fn all_bytes_undef(&self) -> bool {
+        // The `ranges` are run-length encoded and of alternating definedness.
+        // So if `ranges.len() > 1` then the second block is a range of defined.
+        self.initial == false && self.ranges.len() == 1
+    }
+}
+
 /// Transferring the definedness mask to other allocations.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Creates a run-length encoding of the undef mask.
