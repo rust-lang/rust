@@ -1570,7 +1570,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     },
     Lint {
         name: "pats_with_wild_match_arm",
-        group: "restriction",
+        group: "complexity",
         desc: "a wildcard pattern used with others patterns in same match arm",
         deprecation: None,
         module: "matches",
