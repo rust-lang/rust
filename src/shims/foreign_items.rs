@@ -271,7 +271,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
             }
             "__rust_realloc" => {
-                let ptr = this.read_scalar(args[0])?.to_ptr()?;
                 let old_size = this.read_scalar(args[1])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[2])?.to_machine_usize(this)?;
                 let new_size = this.read_scalar(args[3])?.to_machine_usize(this)?;
@@ -281,6 +280,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !align.is_power_of_two() {
                     throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
+                let ptr = this.force_ptr(this.read_scalar(args[0])?.not_undef()?)?;
                 let align = Align::from_bytes(align).unwrap();
                 let new_ptr = this.memory.reallocate(
                     ptr,

@@ -575,7 +575,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             // Do it in memory
                             let mplace = this.force_allocation(dest)?;
                             mplace.meta.unwrap_none();
-                            let ptr = mplace.ptr.to_ptr()?;
+                            let ptr = mplace.ptr.assert_ptr();
                             // We know the return place is in-bounds
                             this.memory.get_raw_mut(ptr.alloc_id)?.mark_definedness(
                                 ptr,
