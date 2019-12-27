@@ -78,17 +78,25 @@ pub(super) fn optimize_function(
     println!("stack slot usage (after): {:?}", stack_slot_usage_map);
 
     for (stack_slot, users) in stack_slot_usage_map.iter_mut() {
-        if users.stack_addr.is_empty().not() || (users.stack_load.is_empty().not() && users.stack_store.is_empty().not()) {
+        if users.stack_addr.is_empty().not() {
+            // Stack addr leaked; there may be unknown loads and stores.
+            // FIXME use stacked borrows to optimize
             continue;
         }
 
-        if users.stack_load.is_empty().not() {
-            println!("[{}] [BUG?] Reading uninitialized memory", name);
-        } else {
-            // Stored value never read; just remove reads.
-            for user in users.stack_store.drain() {
-                println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot.0);
-                func.dfg.replace(user).nop();
+        let is_loaded = users.stack_load.is_empty().not();
+        let is_stored = users.stack_store.is_empty().not();
+        match (is_loaded, is_stored) {
+            (true, true) => {} // FIXME perform store to load optimization
+            (true, false) => println!("[{}] [BUG?] Reading uninitialized memory", name),
+            (false, _) => {
+                // Never loaded; can safely remove all stores and the stack slot.
+                for user in users.stack_store.drain() {
+                    println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot.0);
+                    func.dfg.replace(user).nop();
+                }
+
+                // FIXME make stack_slot zero sized.
             }
         }
     }
