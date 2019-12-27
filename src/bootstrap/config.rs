@@ -67,6 +67,7 @@ pub struct Config {
     pub backtrace_on_ice: bool,
 
     // llvm codegen options
+    pub llvm_skip_rebuild: bool,
     pub llvm_assertions: bool,
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
@@ -244,6 +245,7 @@ struct Install {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
+    skip_rebuild: Option<bool>,
     optimize: Option<bool>,
     thin_lto: Option<bool>,
     release_debuginfo: Option<bool>,
@@ -490,6 +492,7 @@ impl Config {
 
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
+        let mut llvm_skip_rebuild = None;
         let mut llvm_assertions = None;
         let mut debug = None;
         let mut debug_assertions = None;
@@ -511,6 +514,7 @@ impl Config {
             }
             set(&mut config.ninja, llvm.ninja);
             llvm_assertions = llvm.assertions;
+            llvm_skip_rebuild = llvm.skip_rebuild;
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_thin_lto, llvm.thin_lto);
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
@@ -616,6 +620,8 @@ impl Config {
 
         set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
         set(&mut config.initial_cargo, build.cargo.map(PathBuf::from));
+
+        config.llvm_skip_rebuild = llvm_skip_rebuild.unwrap_or(false);
 
         let default = false;
         config.llvm_assertions = llvm_assertions.unwrap_or(default);
