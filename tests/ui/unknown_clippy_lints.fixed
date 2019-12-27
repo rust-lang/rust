@@ -2,17 +2,17 @@
 
 #![warn(clippy::pedantic)]
 // Should suggest lowercase
-#![allow(clippy::All)]
-#![warn(clippy::CMP_NAN)]
+#![allow(clippy::all)]
+#![warn(clippy::cmp_nan)]
 
 // Should suggest similar clippy lint name
-#[warn(clippy::if_not_els)]
-#[warn(clippy::UNNecsaRy_cAst)]
-#[warn(clippy::useles_transute)]
+#[warn(clippy::if_not_else)]
+#[warn(clippy::unnecessary_cast)]
+#[warn(clippy::useless_transmute)]
 // Shouldn't suggest rustc lint name(`dead_code`)
-#[warn(clippy::dead_cod)]
+#[warn(clippy::drop_copy)]
 // Shouldn't suggest removed/deprecated clippy lint name(`unused_collect`)
-#[warn(clippy::unused_colle)]
+#[warn(clippy::unused_self)]
 // Shouldn't suggest renamed clippy lint name(`const_static_lifetime`)
-#[warn(clippy::const_static_lifetim)]
+#[warn(clippy::redundant_static_lifetimes)]
 fn main() {}
