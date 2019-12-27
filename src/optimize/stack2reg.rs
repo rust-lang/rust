@@ -1,11 +1,26 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
 use cranelift_codegen::ir::{Opcode, InstructionData, ValueDef};
 use cranelift_codegen::ir::immediates::Offset32;
-use cranelift_codegen::entity::SecondaryMap;
 
 use crate::prelude::*;
+
+/// Workaround for `StackSlot` not implementing `Ord`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+struct OrdStackSlot(StackSlot);
+
+impl PartialOrd for OrdStackSlot {
+    fn partial_cmp(&self, rhs: &Self) -> Option<std::cmp::Ordering> {
+        self.0.as_u32().partial_cmp(&rhs.0.as_u32())
+    }
+}
+
+impl Ord for OrdStackSlot {
+    fn cmp(&self, rhs: &Self) -> std::cmp::Ordering {
+        self.0.as_u32().cmp(&rhs.0.as_u32())
+    }
+}
 
 pub(super) fn optimize_function(
     func: &mut Function,
@@ -16,11 +31,11 @@ pub(super) fn optimize_function(
 
     // Record all stack_addr, stack_load and stack_store instructions. Also record all stack_addr
     // and stack_load insts whose result is used.
-    let mut stack_addr_insts = SecondaryMap::new();
-    let mut stack_addr_insts_users = SecondaryMap::<Inst, HashSet<Inst>>::new();
-    let mut stack_load_insts = SecondaryMap::new();
-    let mut stack_load_insts_users = SecondaryMap::<Inst, HashSet<Inst>>::new();
-    let mut stack_store_insts = SecondaryMap::new();
+    let mut stack_addr_insts = BTreeSet::new();
+    let mut stack_addr_insts_users = BTreeMap::<Inst, HashSet<Inst>>::new();
+    let mut stack_load_insts = BTreeSet::new();
+    let mut stack_load_insts_users = BTreeMap::<Inst, HashSet<Inst>>::new();
+    let mut stack_store_insts = BTreeSet::new();
 
     let mut cursor = FuncCursor::new(func);
     while let Some(_ebb) = cursor.next_ebb() {
@@ -31,14 +46,14 @@ pub(super) fn optimize_function(
                     stack_slot: _,
                     offset: _,
                 } => {
-                    stack_addr_insts[inst] = true;
+                    stack_addr_insts.insert(inst);
                 }
                 InstructionData::StackLoad {
                     opcode: Opcode::StackLoad,
                     stack_slot: _,
                     offset: _,
                 } => {
-                    stack_load_insts[inst] = true;
+                    stack_load_insts.insert(inst);
                 }
                 InstructionData::StackStore {
                     opcode: Opcode::StackStore,
@@ -46,7 +61,7 @@ pub(super) fn optimize_function(
                     stack_slot: _,
                     offset: _,
                 } => {
-                    stack_store_insts[inst] = true;
+                    stack_store_insts.insert(inst);
                 }
                 _ => {}
             }
@@ -55,10 +70,10 @@ pub(super) fn optimize_function(
                 if let ValueDef::Result(arg_origin, 0) = cursor.func.dfg.value_def(arg) {
                     match cursor.func.dfg[arg_origin].opcode() {
                         Opcode::StackAddr => {
-                            stack_addr_insts_users[arg_origin].insert(inst);
+                            stack_addr_insts_users.entry(arg_origin).or_insert_with(HashSet::new).insert(inst);
                         }
                         Opcode::StackLoad => {
-                            stack_load_insts_users[arg_origin].insert(inst);
+                            stack_load_insts_users.entry(arg_origin).or_insert_with(HashSet::new).insert(inst);
                         }
                         _ => {}
                     }
@@ -68,58 +83,60 @@ pub(super) fn optimize_function(
     }
 
     println!(
-        "{}:\nstack_addr: [{}] ({{{}}} used)\nstack_load: [{}] ([{{{}}}] used)\nstack_store: [{}]",
+        "{}:\nstack_addr: {:?} ({:?} used)\nstack_load: {:?} ({:?} used)\nstack_store: {:?}",
         name,
-        bool_secondary_map_to_string(&stack_addr_insts),
-        usage_secondary_map_to_string(&stack_addr_insts_users),
-        bool_secondary_map_to_string(&stack_load_insts),
-        usage_secondary_map_to_string(&stack_load_insts_users),
-        bool_secondary_map_to_string(&stack_store_insts),
+        stack_addr_insts,
+        stack_addr_insts_users,
+        stack_load_insts,
+        stack_load_insts_users,
+        stack_store_insts,
     );
 
-    for inst in stack_addr_insts_users.keys().filter(|&inst| !stack_addr_insts_users[inst].is_empty()) {
-        assert!(stack_addr_insts[inst]);
+    for inst in stack_addr_insts_users.keys() {
+        assert!(stack_addr_insts.contains(inst));
     }
 
     // Replace all unused stack_addr instructions with nop.
-    for inst in stack_addr_insts.keys() {
-        if stack_addr_insts[inst] && stack_addr_insts_users[inst].is_empty() {
+    // FIXME remove clone
+    for &inst in stack_addr_insts.clone().iter() {
+        if stack_addr_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
             func.dfg.detach_results(inst);
             func.dfg.replace(inst).nop();
-            stack_addr_insts[inst] = false;
+            stack_addr_insts.remove(&inst);
         }
     }
 
-    for inst in stack_load_insts_users.keys().filter(|&inst| !stack_load_insts_users[inst].is_empty()) {
-        assert!(stack_load_insts[inst]);
+    for inst in stack_load_insts_users.keys() {
+        assert!(stack_load_insts.contains(inst));
     }
 
     // Replace all unused stack_load instructions with nop.
-    for inst in stack_load_insts.keys() {
-        if stack_load_insts[inst] && !stack_addr_insts_users[inst].is_empty() {
+    // FIXME remove clone
+    for &inst in stack_load_insts.clone().iter() {
+        if !stack_addr_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
             func.dfg.detach_results(inst);
             func.dfg.replace(inst).nop();
-            stack_load_insts[inst] = false;
+            stack_load_insts.remove(&inst);
         }
     }
 
 
     //println!("stack_addr (after): [{}]", bool_secondary_map_to_string(&stack_addr_insts));
 
-    let mut stack_slot_usage_map: SecondaryMap<StackSlot, HashSet<Inst>> = SecondaryMap::new();
-    for inst in stack_load_insts.keys().filter(|&inst| stack_load_insts[inst]) {
+    let mut stack_slot_usage_map: BTreeMap<OrdStackSlot, HashSet<Inst>> = BTreeMap::new();
+    for &inst in stack_load_insts.iter() {
         match func.dfg[inst] {
             InstructionData::StackLoad {
                 opcode: Opcode::StackLoad,
                 stack_slot,
                 offset: _,
             } => {
-                stack_slot_usage_map[stack_slot].insert(inst);
+                stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(HashSet::new).insert(inst);
             }
             ref data => unreachable!("{:?}", data),
         }
     }
-    for inst in stack_store_insts.keys().filter(|&inst| stack_store_insts[inst]) {
+    for &inst in stack_store_insts.iter() {
         match func.dfg[inst] {
             InstructionData::StackStore {
                 opcode: Opcode::StackStore,
@@ -127,25 +144,25 @@ pub(super) fn optimize_function(
                 stack_slot,
                 offset: _,
             } => {
-                stack_slot_usage_map[stack_slot].insert(inst);
+                stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(HashSet::new).insert(inst);
             }
             ref data => unreachable!("{:?}", data),
         }
     }
-    for inst in stack_addr_insts.keys().filter(|&inst| stack_addr_insts[inst]) {
+    for &inst in stack_addr_insts.iter() {
         match func.dfg[inst] {
             InstructionData::StackLoad {
                 opcode: Opcode::StackAddr,
                 stack_slot,
                 offset: _,
             } => {
-                stack_slot_usage_map[stack_slot].insert(inst);
+                stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(HashSet::new).insert(inst);
             }
             ref data => unreachable!("{:?}", data),
         }
     }
 
-    println!("stack slot usage: {{{}}}", usage_secondary_map_to_string(&stack_slot_usage_map));
+    println!("stack slot usage: {:?}", stack_slot_usage_map);
 
     for (stack_slot, users) in stack_slot_usage_map.iter_mut() {
         let mut is_addr_leaked = false;
@@ -188,7 +205,7 @@ pub(super) fn optimize_function(
         } else {
             // Stored value never read; just remove reads.
             for &user in users.iter() {
-                println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot);
+                println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot.0);
                 func.dfg.replace(user).nop();
             }
         }
@@ -241,38 +258,4 @@ fn try_get_stack_slot_and_offset_for_addr(func: &Function, addr: Value) -> Optio
         }
     }
     None
-}
-
-fn bool_secondary_map_to_string<E>(map: &SecondaryMap<E, bool>) -> String
-    where E: cranelift_codegen::entity::EntityRef + std::fmt::Display,
-{
-    map
-        .keys()
-        .filter_map(|inst| {
-            // EntitySet::keys returns all possible entities until the last entity inserted.
-            if map[inst] {
-                Some(format!("{}", inst))
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(", ")
-}
-
-fn usage_secondary_map_to_string<E>(map: &SecondaryMap<E, HashSet<Inst>>) -> String
-    where E: cranelift_codegen::entity::EntityRef + std::fmt::Display,
-{
-    map
-        .keys()
-        .filter_map(|inst| {
-            // EntitySet::keys returns all possible entities until the last entity inserted.
-            if !map[inst].is_empty() {
-                Some(format!("{}: {:?}", inst, map[inst]))
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(", ")
 }
