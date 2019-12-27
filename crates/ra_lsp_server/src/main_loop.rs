@@ -184,7 +184,10 @@ pub fn main_loop(
                     Err(RecvError) => Err("vfs died")?,
                 },
                 recv(libdata_receiver) -> data => Event::Lib(data.unwrap()),
-                recv(world_state.check_watcher.task_recv) -> task => Event::CheckWatcher(task.unwrap())
+                recv(world_state.check_watcher.task_recv) -> task => match task {
+                    Ok(task) => Event::CheckWatcher(task),
+                    Err(RecvError) => Err("check watcher died")?,
+                }
             };
             if let Event::Msg(Message::Request(req)) = &event {
                 if connection.handle_shutdown(&req)? {

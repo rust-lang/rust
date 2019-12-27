@@ -193,8 +193,7 @@ impl CheckWatcherState {
                 recv(self.watcher.message_recv) -> msg => match msg {
                     Ok(msg) => self.handle_message(msg, task_send),
                     Err(RecvError) => {
-                        // Task channel has closed, so shut down
-                        break;
+                        // Watcher finished, do nothing.
                     },
                 }
             };
