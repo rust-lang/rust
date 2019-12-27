@@ -1709,8 +1709,13 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($Self
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[allow_internal_unstable(const_if_match)]
             pub const fn overflowing_neg(self) -> (Self, bool) {
-                ((!self).wrapping_add(1), self == Self::min_value())
+                if self == Self::min_value() {
+                    (Self::min_value(), true)
+                } else {
+                    (-self, false)
+                }
             }
         }
 
