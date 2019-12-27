@@ -81,7 +81,7 @@ pub enum Visibility {
 }
 
 impl Visibility {
-    pub fn visible_from(self, db: &impl DefDatabase, from_module: ModuleId) -> bool {
+    pub fn is_visible_from(self, db: &impl DefDatabase, from_module: ModuleId) -> bool {
         let to_module = match self {
             Visibility::Module(m) => m,
             Visibility::Public => return true,
@@ -91,17 +91,17 @@ impl Visibility {
             return false;
         }
         let def_map = db.crate_def_map(from_module.krate);
-        self.visible_from_def_map(&def_map, from_module.local_id)
+        self.is_visible_from_def_map(&def_map, from_module.local_id)
     }
 
-    pub(crate) fn visible_from_other_crate(self) -> bool {
+    pub(crate) fn is_visible_from_other_crate(self) -> bool {
         match self {
             Visibility::Module(_) => false,
             Visibility::Public => true,
         }
     }
 
-    pub(crate) fn visible_from_def_map(
+    pub(crate) fn is_visible_from_def_map(
         self,
         def_map: &crate::nameres::CrateDefMap,
         from_module: crate::LocalModuleId,

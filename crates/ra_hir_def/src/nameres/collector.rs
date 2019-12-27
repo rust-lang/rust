@@ -378,7 +378,7 @@ where
                             .resolutions()
                             // only keep visible names...
                             .map(|(n, res)| {
-                                (n, res.filter_visibility(|v| v.visible_from_other_crate()))
+                                (n, res.filter_visibility(|v| v.is_visible_from_other_crate()))
                             })
                             .filter(|(_, res)| !res.is_none())
                             .collect::<Vec<_>>();
@@ -398,7 +398,7 @@ where
                                 (
                                     n,
                                     res.filter_visibility(|v| {
-                                        v.visible_from_def_map(&self.def_map, module_id)
+                                        v.is_visible_from_def_map(&self.def_map, module_id)
                                     }),
                                 )
                             })
@@ -492,7 +492,7 @@ where
         for (glob_importing_module, glob_import_vis) in glob_imports {
             // we know all resolutions have the same visibility (`vis`), so we
             // just need to check that once
-            if !vis.visible_from_def_map(&self.def_map, glob_importing_module) {
+            if !vis.is_visible_from_def_map(&self.def_map, glob_importing_module) {
                 continue;
             }
             self.update_recursive(glob_importing_module, resolutions, glob_import_vis, depth + 1);

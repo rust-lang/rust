@@ -1053,8 +1053,8 @@ impl<T: Into<AttrDef> + Copy> Docs for T {
 
 pub trait HasVisibility {
     fn visibility(&self, db: &impl HirDatabase) -> Visibility;
-    fn visible_from(&self, db: &impl HirDatabase, module: Module) -> bool {
+    fn is_visible_from(&self, db: &impl HirDatabase, module: Module) -> bool {
         let vis = self.visibility(db);
-        vis.visible_from(db, module.id)
+        vis.is_visible_from(db, module.id)
     }
 }

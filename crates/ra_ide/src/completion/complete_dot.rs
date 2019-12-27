@@ -38,7 +38,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
-            if ctx.module.map_or(false, |m| !field.visible_from(ctx.db, m)) {
+            if ctx.module.map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
                 // Skip private field. FIXME: If the definition location of the
                 // field is editable, we should show the completion
                 continue;
