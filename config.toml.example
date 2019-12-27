@@ -132,6 +132,10 @@
 # specified, use this rustc binary instead as the stage0 snapshot compiler.
 #rustc = "/path/to/bin/rustc"
 
+# Instead of download the src/stage0.txt version of rustfmt specified,
+# use this rustfmt binary instead as the stage0 snapshot rustfmt.
+#rustfmt = "/path/to/bin/rustfmt"
+
 # Flag to specify whether any documentation is built. If false, rustdoc and
 # friends will still be compiled but they will not be used to generate any
 # documentation.
