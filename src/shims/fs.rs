@@ -152,16 +152,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
-            if handle.read_only {
-                return Ok(0);
+            // We sync the file if it was opened in a mode different than read-only.
+            if !handle.read_only {
+                // `File::sync_all` does the checks that are done when closing a file. We do this to
+                // to handle possible errors correctly.
+                let result = this.try_unwrap_io_result(handle.file.sync_all().map(|_| 0i32));
+                // Now we actually close the file.
+                drop(handle);
+                // And return the result.
+                result
+            } else {
+                // We drop the file, this closes it but ignores any errors produced when closing
+                // it. This is done because `File::sync_call` cannot be done over files like
+                // `/dev/urandom`. Check
+                // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439 for a deeper
+                // discussion.
+                drop(handle);
+                Ok(0)
             }
-            // `File::sync_all` does the checks that are done when closing a file. We do this to
-            // to handle possible errors correctly.
-            let result = this.try_unwrap_io_result(handle.file.sync_all().map(|_| 0i32));
-            // Now we actually close the file.
-            drop(handle);
-            // And return the result.
-            result
         } else {
             this.handle_not_found()
         }
