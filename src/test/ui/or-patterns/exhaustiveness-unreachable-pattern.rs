@@ -1,13 +1,8 @@
 #![feature(or_patterns)]
 #![deny(unreachable_patterns)]
 
-// We wrap patterns in a tuple because top-level or-patterns are special-cased for now.
+// We wrap patterns in a tuple because top-level or-patterns were special-cased.
 fn main() {
-    // Get the fatal error out of the way
-    match (0u8,) {
-        (0 | _,) => {} //~^ ERROR or-patterns are not fully implemented yet
-    }
-
     match (0u8,) {
         (1 | 2,) => {}
         (1,) => {} //~ ERROR unreachable pattern

@@ -1,9 +1,0 @@
-error[E0308]: mismatched types
-  --> $DIR/consistent-bindings.rs:43:9
-   |
-LL |     let () = 0;
-   |         ^^ expected integer, found `()`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0308`.
