@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
 use cranelift_codegen::ir::{Opcode, InstructionData, ValueDef};
 use cranelift_codegen::ir::immediates::Offset32;
@@ -15,9 +17,9 @@ pub(super) fn optimize_function(
     // Record all stack_addr, stack_load and stack_store instructions. Also record all stack_addr
     // and stack_load insts whose result is used.
     let mut stack_addr_insts = SecondaryMap::new();
-    let mut used_stack_addr_insts = SecondaryMap::new();
+    let mut stack_addr_insts_users = SecondaryMap::<Inst, HashSet<Inst>>::new();
     let mut stack_load_insts = SecondaryMap::new();
-    let mut used_stack_load_insts = SecondaryMap::new();
+    let mut stack_load_insts_users = SecondaryMap::<Inst, HashSet<Inst>>::new();
     let mut stack_store_insts = SecondaryMap::new();
 
     let mut cursor = FuncCursor::new(func);
@@ -52,8 +54,12 @@ pub(super) fn optimize_function(
             for &arg in cursor.func.dfg.inst_args(inst) {
                 if let ValueDef::Result(arg_origin, 0) = cursor.func.dfg.value_def(arg) {
                     match cursor.func.dfg[arg_origin].opcode() {
-                        Opcode::StackAddr => used_stack_addr_insts[arg_origin] = true,
-                        Opcode::StackLoad => used_stack_load_insts[arg_origin] = true,
+                        Opcode::StackAddr => {
+                            stack_addr_insts_users[arg_origin].insert(inst);
+                        }
+                        Opcode::StackLoad => {
+                            stack_load_insts_users[arg_origin].insert(inst);
+                        }
                         _ => {}
                     }
                 }
@@ -62,34 +68,35 @@ pub(super) fn optimize_function(
     }
 
     println!(
-        "stack_addr: [{}] ([{}] used)\nstack_load: [{}] ([{}] used)\nstack_store: [{}]",
+        "{}:\nstack_addr: [{}] ({{{}}} used)\nstack_load: [{}] ([{{{}}}] used)\nstack_store: [{}]",
+        name,
         bool_secondary_map_to_string(&stack_addr_insts),
-        bool_secondary_map_to_string(&used_stack_addr_insts),
+        usage_secondary_map_to_string(&stack_addr_insts_users),
         bool_secondary_map_to_string(&stack_load_insts),
-        bool_secondary_map_to_string(&used_stack_load_insts),
+        usage_secondary_map_to_string(&stack_load_insts_users),
         bool_secondary_map_to_string(&stack_store_insts),
     );
 
-    for inst in used_stack_addr_insts.keys().filter(|&inst| used_stack_addr_insts[inst]) {
+    for inst in stack_addr_insts_users.keys().filter(|&inst| !stack_addr_insts_users[inst].is_empty()) {
         assert!(stack_addr_insts[inst]);
     }
 
     // Replace all unused stack_addr instructions with nop.
     for inst in stack_addr_insts.keys() {
-        if stack_addr_insts[inst] && !used_stack_addr_insts[inst] {
+        if stack_addr_insts[inst] && stack_addr_insts_users[inst].is_empty() {
             func.dfg.detach_results(inst);
             func.dfg.replace(inst).nop();
             stack_addr_insts[inst] = false;
         }
     }
 
-    for inst in used_stack_load_insts.keys().filter(|&inst| used_stack_load_insts[inst]) {
+    for inst in stack_load_insts_users.keys().filter(|&inst| !stack_load_insts_users[inst].is_empty()) {
         assert!(stack_load_insts[inst]);
     }
 
     // Replace all unused stack_load instructions with nop.
     for inst in stack_load_insts.keys() {
-        if stack_load_insts[inst] && !used_stack_load_insts[inst] {
+        if stack_load_insts[inst] && !stack_addr_insts_users[inst].is_empty() {
             func.dfg.detach_results(inst);
             func.dfg.replace(inst).nop();
             stack_load_insts[inst] = false;
@@ -138,7 +145,7 @@ pub(super) fn optimize_function(
         }
     }
 
-    println!("{:?}\n", stack_slot_usage_map);
+    println!("stack slot usage: {{{}}}", usage_secondary_map_to_string(&stack_slot_usage_map));
 
     for (stack_slot, users) in stack_slot_usage_map.iter_mut() {
         let mut is_addr_leaked = false;
@@ -186,6 +193,8 @@ pub(super) fn optimize_function(
             }
         }
     }
+
+    println!();
 }
 
 fn combine_stack_addr_with_load_store(func: &mut Function) {
@@ -243,6 +252,23 @@ fn bool_secondary_map_to_string<E>(map: &SecondaryMap<E, bool>) -> String
             // EntitySet::keys returns all possible entities until the last entity inserted.
             if map[inst] {
                 Some(format!("{}", inst))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
+fn usage_secondary_map_to_string<E>(map: &SecondaryMap<E, HashSet<Inst>>) -> String
+    where E: cranelift_codegen::entity::EntityRef + std::fmt::Display,
+{
+    map
+        .keys()
+        .filter_map(|inst| {
+            // EntitySet::keys returns all possible entities until the last entity inserted.
+            if !map[inst].is_empty() {
+                Some(format!("{}: {:?}", inst, map[inst]))
             } else {
                 None
             }
