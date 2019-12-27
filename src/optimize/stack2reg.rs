@@ -10,14 +10,49 @@ pub(super) fn optimize_function(
     clif_comments: &mut crate::pretty_clif::CommentWriter,
     name: String, // FIXME remove
 ) {
+    // Turn load and store into stack_load and stack_store when possible.
+    let mut cursor = FuncCursor::new(func);
+    while let Some(_ebb) = cursor.next_ebb() {
+        while let Some(inst) = cursor.next_inst() {
+            match cursor.func.dfg[inst] {
+                InstructionData::Load { opcode: Opcode::Load, arg: addr, flags: _, offset } => {
+                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
+                        continue; // WORKAROUD: stack_load.i128 not yet implemented
+                    }
+                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
+                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
+                            let ty = cursor.func.dfg.ctrl_typevar(inst);
+                            cursor.func.dfg.replace(inst).stack_load(ty, stack_slot, combined_offset);
+                        }
+                    }
+                }
+                InstructionData::Store { opcode: Opcode::Store, args: [value, addr], flags: _, offset } => {
+                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
+                        continue; // WORKAROUND: stack_store.i128 not yet implemented
+                    }
+                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
+                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
+                            cursor.func.dfg.replace(inst).stack_store(value, stack_slot, combined_offset);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Record all stack_addr, stack_load and stack_store instructions. Also record all stack_addr
+    // and stack_load insts whose result is used.
     let mut stack_addr_insts = SecondaryMap::new();
-    let mut stack_load_store_insts = SecondaryMap::new();
+    let mut used_stack_addr_insts = SecondaryMap::new();
+    let mut stack_load_insts = SecondaryMap::new();
+    let mut used_stack_load_insts = SecondaryMap::new();
+    let mut stack_store_insts = SecondaryMap::new();
 
     let mut cursor = FuncCursor::new(func);
     while let Some(_ebb) = cursor.next_ebb() {
         while let Some(inst) = cursor.next_inst() {
             match cursor.func.dfg[inst] {
-                // Record all stack_addr, stack_load and stack_store instructions.
                 InstructionData::StackLoad {
                     opcode: Opcode::StackAddr,
                     stack_slot: _,
@@ -30,7 +65,7 @@ pub(super) fn optimize_function(
                     stack_slot: _,
                     offset: _,
                 } => {
-                    stack_load_store_insts[inst] = true;
+                    stack_load_insts[inst] = true;
                 }
                 InstructionData::StackStore {
                     opcode: Opcode::StackStore,
@@ -38,59 +73,31 @@ pub(super) fn optimize_function(
                     stack_slot: _,
                     offset: _,
                 } => {
-                    stack_load_store_insts[inst] = true;
-                }
-
-                // Turn load and store into stack_load and stack_store when possible.
-                InstructionData::Load { opcode: Opcode::Load, arg: addr, flags: _, offset } => {
-                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
-                        continue; // WORKAROUD: stack_load.i128 not yet implemented
-                    }
-                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
-                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
-                            let ty = cursor.func.dfg.ctrl_typevar(inst);
-                            cursor.func.dfg.replace(inst).stack_load(ty, stack_slot, combined_offset);
-                            stack_load_store_insts[inst] = true;
-                        }
-                    }
-                }
-                InstructionData::Store { opcode: Opcode::Store, args: [value, addr], flags: _, offset } => {
-                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
-                        continue; // WORKAROUND: stack_store.i128 not yet implemented
-                    }
-                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
-                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
-                            cursor.func.dfg.replace(inst).stack_store(value, stack_slot, combined_offset);
-                            stack_load_store_insts[inst] = true;
-                        }
-                    }
+                    stack_store_insts[inst] = true;
                 }
                 _ => {}
             }
-        }
-    }
 
-    let mut used_stack_addr_insts = SecondaryMap::new();
-
-    let mut cursor = FuncCursor::new(func);
-    while let Some(_ebb) = cursor.next_ebb() {
-        while let Some(inst) = cursor.next_inst() {
             for &arg in cursor.func.dfg.inst_args(inst) {
                 if let ValueDef::Result(arg_origin, 0) = cursor.func.dfg.value_def(arg) {
-                    if cursor.func.dfg[arg_origin].opcode() == Opcode::StackAddr {
-                        used_stack_addr_insts[arg_origin] = true;
+                    match cursor.func.dfg[arg_origin].opcode() {
+                        Opcode::StackAddr => used_stack_addr_insts[arg_origin] = true,
+                        Opcode::StackLoad => used_stack_load_insts[arg_origin] = true,
+                        _ => {}
                     }
                 }
             }
         }
     }
 
-    /*println!(
-        "stack_addr: [{}] ([{}] used)\nstack_load/stack_store: [{}]",
+    println!(
+        "stack_addr: [{}] ([{}] used)\nstack_load: [{}] ([{}] used)\nstack_store: [{}]",
         bool_secondary_map_to_string(&stack_addr_insts),
         bool_secondary_map_to_string(&used_stack_addr_insts),
-        bool_secondary_map_to_string(&stack_load_store_insts),
-    );*/
+        bool_secondary_map_to_string(&stack_load_insts),
+        bool_secondary_map_to_string(&used_stack_load_insts),
+        bool_secondary_map_to_string(&stack_store_insts),
+    );
 
     for inst in used_stack_addr_insts.keys().filter(|&inst| used_stack_addr_insts[inst]) {
         assert!(stack_addr_insts[inst]);
@@ -108,7 +115,7 @@ pub(super) fn optimize_function(
     //println!("stack_addr (after): [{}]", bool_secondary_map_to_string(&stack_addr_insts));
 
     let mut stack_slot_usage_map: SecondaryMap<StackSlot, HashSet<Inst>> = SecondaryMap::new();
-    for inst in stack_load_store_insts.keys().filter(|&inst| stack_load_store_insts[inst]) {
+    for inst in stack_load_insts.keys().filter(|&inst| stack_load_insts[inst]) {
         match func.dfg[inst] {
             InstructionData::StackLoad {
                 opcode: Opcode::StackLoad,
@@ -117,6 +124,11 @@ pub(super) fn optimize_function(
             } => {
                 stack_slot_usage_map[stack_slot].insert(inst);
             }
+            ref data => unreachable!("{:?}", data),
+        }
+    }
+    for inst in stack_store_insts.keys().filter(|&inst| stack_store_insts[inst]) {
+        match func.dfg[inst] {
             InstructionData::StackStore {
                 opcode: Opcode::StackStore,
                 arg: _,
@@ -141,7 +153,7 @@ pub(super) fn optimize_function(
         }
     }
 
-    //println!("{:?}\n", stack_slot_usage_map);
+    println!("{:?}\n", stack_slot_usage_map);
 
     for (stack_slot, users) in stack_slot_usage_map.iter_mut() {
         let mut is_addr_leaked = false;
