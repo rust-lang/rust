@@ -35,7 +35,7 @@ struct ClosureSignatures<'tcx> {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_closure(
         &self,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         _capture: hir::CaptureBy,
         decl: &'tcx hir::FnDecl,
         body_id: hir::BodyId,
@@ -57,7 +57,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_closure(
         &self,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         opt_kind: Option<ty::ClosureKind>,
         decl: &'tcx hir::FnDecl,
         body: &'tcx hir::Body<'tcx>,

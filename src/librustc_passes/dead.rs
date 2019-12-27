@@ -115,7 +115,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_field_access(&mut self, lhs: &hir::Expr, hir_id: hir::HirId) {
+    fn handle_field_access(&mut self, lhs: &hir::Expr<'_>, hir_id: hir::HirId) {
         match self.tables.expr_ty_adjusted(lhs).kind {
             ty::Adt(def, _) => {
                 let index = self.tcx.field_index(hir_id, self.tables);
@@ -126,7 +126,12 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, res: Res, pats: &[hir::FieldPat]) {
+    fn handle_field_pattern_match(
+        &mut self,
+        lhs: &hir::Pat<'_>,
+        res: Res,
+        pats: &[hir::FieldPat<'_>],
+    ) {
         let variant = match self.tables.node_type(lhs.hir_id).kind {
             ty::Adt(adt, _) => adt.variant_of_res(res),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern"),
@@ -197,7 +202,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
 
-    fn mark_as_used_if_union(&mut self, adt: &ty::AdtDef, fields: &hir::HirVec<hir::Field>) {
+    fn mark_as_used_if_union(&mut self, adt: &ty::AdtDef, fields: &[hir::Field<'_>]) {
         if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did.is_local() {
             for field in fields {
                 let index = self.tcx.field_index(field.hir_id, self.tables);
@@ -239,7 +244,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         intravisit::walk_struct_def(self, def);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             hir::ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let res = self.tables.qpath_res(qpath, expr.hir_id);
@@ -262,7 +267,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         // Inside the body, ignore constructions of variants
         // necessary for the pattern to match. Those construction sites
         // can't be reached unless the variant is constructed elsewhere.
@@ -272,7 +277,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         self.ignore_variant_stack.truncate(len);
     }
 
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         match pat.kind {
             PatKind::Struct(ref path, ref fields, _) => {
                 let res = self.tables.qpath_res(path, pat.hir_id);

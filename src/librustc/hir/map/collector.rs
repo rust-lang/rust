@@ -365,7 +365,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.currently_in_body = prev_in_body;
     }
 
-    fn visit_param(&mut self, param: &'hir Param) {
+    fn visit_param(&mut self, param: &'hir Param<'hir>) {
         let node = Node::Param(param);
         self.insert(param.pat.span, param.hir_id, node);
         self.with_parent(param.hir_id, |this| {
@@ -434,7 +434,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_pat(&mut self, pat: &'hir Pat) {
+    fn visit_pat(&mut self, pat: &'hir Pat<'hir>) {
         let node =
             if let PatKind::Binding(..) = pat.kind { Node::Binding(pat) } else { Node::Pat(pat) };
         self.insert(pat.span, pat.hir_id, node);
@@ -444,7 +444,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_arm(&mut self, arm: &'hir Arm) {
+    fn visit_arm(&mut self, arm: &'hir Arm<'hir>) {
         let node = Node::Arm(arm);
 
         self.insert(arm.span, arm.hir_id, node);
@@ -462,7 +462,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_expr(&mut self, expr: &'hir Expr) {
+    fn visit_expr(&mut self, expr: &'hir Expr<'hir>) {
         self.insert(expr.span, expr.hir_id, Node::Expr(expr));
 
         self.with_parent(expr.hir_id, |this| {
@@ -470,7 +470,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_stmt(&mut self, stmt: &'hir Stmt) {
+    fn visit_stmt(&mut self, stmt: &'hir Stmt<'hir>) {
         self.insert(stmt.span, stmt.hir_id, Node::Stmt(stmt));
 
         self.with_parent(stmt.hir_id, |this| {
@@ -513,14 +513,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         intravisit::walk_fn(self, fk, fd, b, s, id);
     }
 
-    fn visit_block(&mut self, block: &'hir Block) {
+    fn visit_block(&mut self, block: &'hir Block<'hir>) {
         self.insert(block.span, block.hir_id, Node::Block(block));
         self.with_parent(block.hir_id, |this| {
             intravisit::walk_block(this, block);
         });
     }
 
-    fn visit_local(&mut self, l: &'hir Local) {
+    fn visit_local(&mut self, l: &'hir Local<'hir>) {
         self.insert(l.span, l.hir_id, Node::Local(l));
         self.with_parent(l.hir_id, |this| intravisit::walk_local(this, l))
     }

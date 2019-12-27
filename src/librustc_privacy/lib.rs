@@ -883,7 +883,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         self.prev_level = orig_level;
     }
 
-    fn visit_block(&mut self, b: &'tcx hir::Block) {
+    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
         // Blocks can have public items, for example impls, but they always
         // start as completely private regardless of publicity of a function,
         // constant, type, field, etc., in which this block resides.
@@ -1080,9 +1080,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
         self.tables = orig_tables;
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
-            hir::ExprKind::Struct(ref qpath, ref fields, ref base) => {
+            hir::ExprKind::Struct(ref qpath, fields, ref base) => {
                 let res = self.tables.qpath_res(qpath, expr.hir_id);
                 let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_res(res);
@@ -1114,9 +1114,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         match pat.kind {
-            PatKind::Struct(ref qpath, ref fields, _) => {
+            PatKind::Struct(ref qpath, fields, _) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
                 let variant = adt.variant_of_res(res);
@@ -1245,7 +1245,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     }
 
     // Check types of expressions
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if self.check_expr_pat_type(expr.hir_id, expr.span) {
             // Do not check nested expressions if the error already happened.
             return;
@@ -1313,7 +1313,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     }
 
     // Check types of patterns.
-    fn visit_pat(&mut self, pattern: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, pattern: &'tcx hir::Pat<'tcx>) {
         if self.check_expr_pat_type(pattern.hir_id, pattern.span) {
             // Do not check nested patterns if the error already happened.
             return;
@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         intravisit::walk_pat(self, pattern);
     }
 
-    fn visit_local(&mut self, local: &'tcx hir::Local) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         if let Some(ref init) = local.init {
             if self.check_expr_pat_type(init.hir_id, init.span) {
                 // Do not report duplicate errors for `let x = y`.
@@ -1459,7 +1459,7 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a
     }
 
     // Don't want to recurse into `[, .. expr]`.
-    fn visit_expr(&mut self, _: &hir::Expr) {}
+    fn visit_expr(&mut self, _: &hir::Expr<'_>) {}
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
@@ -1708,8 +1708,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     // expression/block context can't possibly contain exported things.
     // (Making them no-ops stops us from traversing the whole AST without
     // having to be super careful about our `walk_...` calls above.)
-    fn visit_block(&mut self, _: &'tcx hir::Block) {}
-    fn visit_expr(&mut self, _: &'tcx hir::Expr) {}
+    fn visit_block(&mut self, _: &'tcx hir::Block<'tcx>) {}
+    fn visit_expr(&mut self, _: &'tcx hir::Expr<'tcx>) {}
 }
 
 ///////////////////////////////////////////////////////////////////////////////

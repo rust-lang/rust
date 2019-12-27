@@ -10,7 +10,6 @@ use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
 
 use crate::hir;
-use crate::hir::ptr::P;
 use crate::hir::{GenericArg, GenericParam, GenericParamKind};
 use crate::hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 
@@ -20,12 +19,12 @@ use std::vec;
 
 pub enum AnnNode<'a> {
     Name(&'a ast::Name),
-    Block(&'a hir::Block),
+    Block(&'a hir::Block<'a>),
     Item(&'a hir::Item<'a>),
     SubItem(hir::HirId),
-    Expr(&'a hir::Expr),
-    Pat(&'a hir::Pat),
-    Arm(&'a hir::Arm),
+    Expr(&'a hir::Expr<'a>),
+    Pat(&'a hir::Pat<'a>),
+    Arm(&'a hir::Arm<'a>),
 }
 
 pub enum Nested {
@@ -242,7 +241,7 @@ impl<'a> State<'a> {
         self.end();
     }
 
-    pub fn commasep_exprs(&mut self, b: Breaks, exprs: &[hir::Expr]) {
+    pub fn commasep_exprs(&mut self, b: Breaks, exprs: &[hir::Expr<'_>]) {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(&e), |e| e.span)
     }
 
@@ -902,7 +901,7 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::SubItem(ii.hir_id))
     }
 
-    pub fn print_local(&mut self, init: Option<&hir::Expr>, decl: impl Fn(&mut Self)) {
+    pub fn print_local(&mut self, init: Option<&hir::Expr<'_>>, decl: impl Fn(&mut Self)) {
         self.space_if_not_bol();
         self.ibox(INDENT_UNIT);
         self.word_nbsp("let");
@@ -919,7 +918,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    pub fn print_stmt(&mut self, st: &hir::Stmt) {
+    pub fn print_stmt(&mut self, st: &hir::Stmt<'_>) {
         self.maybe_print_comment(st.span.lo());
         match st.kind {
             hir::StmtKind::Local(ref loc) => {
@@ -942,21 +941,21 @@ impl<'a> State<'a> {
         self.maybe_print_trailing_comment(st.span, None)
     }
 
-    pub fn print_block(&mut self, blk: &hir::Block) {
+    pub fn print_block(&mut self, blk: &hir::Block<'_>) {
         self.print_block_with_attrs(blk, &[])
     }
 
-    pub fn print_block_unclosed(&mut self, blk: &hir::Block) {
+    pub fn print_block_unclosed(&mut self, blk: &hir::Block<'_>) {
         self.print_block_maybe_unclosed(blk, &[], false)
     }
 
-    pub fn print_block_with_attrs(&mut self, blk: &hir::Block, attrs: &[ast::Attribute]) {
+    pub fn print_block_with_attrs(&mut self, blk: &hir::Block<'_>, attrs: &[ast::Attribute]) {
         self.print_block_maybe_unclosed(blk, attrs, true)
     }
 
     pub fn print_block_maybe_unclosed(
         &mut self,
-        blk: &hir::Block,
+        blk: &hir::Block<'_>,
         attrs: &[ast::Attribute],
         close_box: bool,
     ) {
@@ -972,7 +971,7 @@ impl<'a> State<'a> {
 
         self.print_inner_attributes(attrs);
 
-        for st in &blk.stmts {
+        for st in blk.stmts {
             self.print_stmt(st);
         }
         if let Some(ref expr) = blk.expr {
@@ -988,13 +987,13 @@ impl<'a> State<'a> {
         self.ann.nested(self, Nested::Body(constant.body))
     }
 
-    fn print_call_post(&mut self, args: &[hir::Expr]) {
+    fn print_call_post(&mut self, args: &[hir::Expr<'_>]) {
         self.popen();
         self.commasep_exprs(Inconsistent, args);
         self.pclose()
     }
 
-    pub fn print_expr_maybe_paren(&mut self, expr: &hir::Expr, prec: i8) {
+    pub fn print_expr_maybe_paren(&mut self, expr: &hir::Expr<'_>, prec: i8) {
         let needs_par = expr.precedence().order() < prec;
         if needs_par {
             self.popen();
@@ -1007,7 +1006,7 @@ impl<'a> State<'a> {
 
     /// Print an expr using syntax that's acceptable in a condition position, such as the `cond` in
     /// `if cond { ... }`.
-    pub fn print_expr_as_cond(&mut self, expr: &hir::Expr) {
+    pub fn print_expr_as_cond(&mut self, expr: &hir::Expr<'_>) {
         let needs_par = match expr.kind {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
@@ -1025,7 +1024,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_expr_vec(&mut self, exprs: &[hir::Expr]) {
+    fn print_expr_vec(&mut self, exprs: &[hir::Expr<'_>]) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.commasep_exprs(Inconsistent, exprs);
@@ -1033,7 +1032,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_repeat(&mut self, element: &hir::Expr, count: &hir::AnonConst) {
+    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::AnonConst) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.print_expr(element);
@@ -1046,8 +1045,8 @@ impl<'a> State<'a> {
     fn print_expr_struct(
         &mut self,
         qpath: &hir::QPath,
-        fields: &[hir::Field],
-        wth: &Option<P<hir::Expr>>,
+        fields: &[hir::Field<'_>],
+        wth: &Option<&'hir hir::Expr<'_>>,
     ) {
         self.print_qpath(qpath, true);
         self.s.word("{");
@@ -1085,7 +1084,7 @@ impl<'a> State<'a> {
         self.s.word("}");
     }
 
-    fn print_expr_tup(&mut self, exprs: &[hir::Expr]) {
+    fn print_expr_tup(&mut self, exprs: &[hir::Expr<'_>]) {
         self.popen();
         self.commasep_exprs(Inconsistent, exprs);
         if exprs.len() == 1 {
@@ -1094,7 +1093,7 @@ impl<'a> State<'a> {
         self.pclose()
     }
 
-    fn print_expr_call(&mut self, func: &hir::Expr, args: &[hir::Expr]) {
+    fn print_expr_call(&mut self, func: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
         let prec = match func.kind {
             hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
             _ => parser::PREC_POSTFIX,
@@ -1104,7 +1103,7 @@ impl<'a> State<'a> {
         self.print_call_post(args)
     }
 
-    fn print_expr_method_call(&mut self, segment: &hir::PathSegment, args: &[hir::Expr]) {
+    fn print_expr_method_call(&mut self, segment: &hir::PathSegment, args: &[hir::Expr<'_>]) {
         let base_args = &args[1..];
         self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX);
         self.s.word(".");
@@ -1118,7 +1117,7 @@ impl<'a> State<'a> {
         self.print_call_post(base_args)
     }
 
-    fn print_expr_binary(&mut self, op: hir::BinOp, lhs: &hir::Expr, rhs: &hir::Expr) {
+    fn print_expr_binary(&mut self, op: hir::BinOp, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
         let assoc_op = bin_op_to_assoc_op(op.node);
         let prec = assoc_op.precedence() as i8;
         let fixity = assoc_op.fixity();
@@ -1144,7 +1143,7 @@ impl<'a> State<'a> {
         self.print_expr_maybe_paren(rhs, right_prec)
     }
 
-    fn print_expr_unary(&mut self, op: hir::UnOp, expr: &hir::Expr) {
+    fn print_expr_unary(&mut self, op: hir::UnOp, expr: &hir::Expr<'_>) {
         self.s.word(op.as_str());
         self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
@@ -1153,7 +1152,7 @@ impl<'a> State<'a> {
         &mut self,
         kind: hir::BorrowKind,
         mutability: hir::Mutability,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
     ) {
         self.s.word("&");
         match kind {
@@ -1171,7 +1170,7 @@ impl<'a> State<'a> {
         self.word(lit.node.to_lit_token().to_string())
     }
 
-    pub fn print_expr(&mut self, expr: &hir::Expr) {
+    pub fn print_expr(&mut self, expr: &hir::Expr<'_>) {
         self.maybe_print_comment(expr.span.lo());
         self.print_outer_attributes(&expr.attrs);
         self.ibox(INDENT_UNIT);
@@ -1187,8 +1186,8 @@ impl<'a> State<'a> {
             hir::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(&element, count);
             }
-            hir::ExprKind::Struct(ref qpath, ref fields, ref wth) => {
-                self.print_expr_struct(qpath, &fields[..], wth);
+            hir::ExprKind::Struct(ref qpath, fields, ref wth) => {
+                self.print_expr_struct(qpath, fields, wth);
             }
             hir::ExprKind::Tup(ref exprs) => {
                 self.print_expr_tup(exprs);
@@ -1251,7 +1250,7 @@ impl<'a> State<'a> {
                 self.s.space();
                 self.print_block(&blk);
             }
-            hir::ExprKind::Match(ref expr, ref arms, _) => {
+            hir::ExprKind::Match(ref expr, arms, _) => {
                 self.cbox(INDENT_UNIT);
                 self.ibox(INDENT_UNIT);
                 self.word_nbsp("match");
@@ -1418,7 +1417,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    pub fn print_local_decl(&mut self, loc: &hir::Local) {
+    pub fn print_local_decl(&mut self, loc: &hir::Local<'_>) {
         self.print_pat(&loc.pat);
         if let Some(ref ty) = loc.ty {
             self.word_space(":");
@@ -1434,7 +1433,7 @@ impl<'a> State<'a> {
         self.print_ident(ast::Ident::with_dummy_span(name))
     }
 
-    pub fn print_for_decl(&mut self, loc: &hir::Local, coll: &hir::Expr) {
+    pub fn print_for_decl(&mut self, loc: &hir::Local<'_>, coll: &hir::Expr<'_>) {
         self.print_local_decl(loc);
         self.s.space();
         self.word_space("in");
@@ -1599,7 +1598,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_pat(&mut self, pat: &hir::Pat) {
+    pub fn print_pat(&mut self, pat: &hir::Pat<'_>) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
         // Pat isn't normalized, but the beauty of it
@@ -1761,12 +1760,12 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Pat(pat))
     }
 
-    pub fn print_param(&mut self, arg: &hir::Param) {
+    pub fn print_param(&mut self, arg: &hir::Param<'_>) {
         self.print_outer_attributes(&arg.attrs);
         self.print_pat(&arg.pat);
     }
 
-    pub fn print_arm(&mut self, arm: &hir::Arm) {
+    pub fn print_arm(&mut self, arm: &hir::Arm<'_>) {
         // I have no idea why this check is necessary, but here it
         // is :(
         if arm.attrs.is_empty() {
@@ -2212,7 +2211,7 @@ impl<'a> State<'a> {
 /// isn't parsed as (if true {...} else {...} | x) | 5
 //
 // Duplicated from `parse::classify`, but adapted for the HIR.
-fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
+fn expr_requires_semi_to_be_stmt(e: &hir::Expr<'_>) -> bool {
     match e.kind {
         hir::ExprKind::Match(..) | hir::ExprKind::Block(..) | hir::ExprKind::Loop(..) => false,
         _ => true,
@@ -2222,7 +2221,7 @@ fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
 /// This statement requires a semicolon after it.
 /// note that in one case (stmt_semi), we've already
 /// seen the semicolon, and thus don't need another.
-fn stmt_ends_with_semi(stmt: &hir::StmtKind) -> bool {
+fn stmt_ends_with_semi(stmt: &hir::StmtKind<'_>) -> bool {
     match *stmt {
         hir::StmtKind::Local(_) => true,
         hir::StmtKind::Item(_) => false,
@@ -2261,7 +2260,7 @@ fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
 /// Expressions that syntactically contain an "exterior" struct literal, i.e., not surrounded by any
 /// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
 /// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
-fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
+fn contains_exterior_struct_lit(value: &hir::Expr<'_>) -> bool {
     match value.kind {
         hir::ExprKind::Struct(..) => true,
 

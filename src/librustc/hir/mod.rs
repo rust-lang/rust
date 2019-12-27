@@ -832,12 +832,12 @@ pub struct MacroDef<'hir> {
 /// `targeted_by_break` field will be `true`) and may be `unsafe` by means of
 /// the `rules` being anything but `DefaultBlock`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Block {
+pub struct Block<'hir> {
     /// Statements in a block.
-    pub stmts: HirVec<Stmt>,
+    pub stmts: &'hir [Stmt<'hir>],
     /// An expression at the end of the block
     /// without a semicolon, if any.
-    pub expr: Option<P<Expr>>,
+    pub expr: Option<&'hir Expr<'hir>>,
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
@@ -850,14 +850,14 @@ pub struct Block {
 }
 
 #[derive(RustcEncodable, RustcDecodable, HashStable)]
-pub struct Pat {
+pub struct Pat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
-    pub kind: PatKind,
+    pub kind: PatKind<'hir>,
     pub span: Span,
 }
 
-impl fmt::Debug for Pat {
+impl fmt::Debug for Pat<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -868,9 +868,9 @@ impl fmt::Debug for Pat {
     }
 }
 
-impl Pat {
+impl Pat<'_> {
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_short_(&self, it: &mut impl FnMut(&Pat) -> bool) -> bool {
+    fn walk_short_(&self, it: &mut impl FnMut(&Pat<'_>) -> bool) -> bool {
         if !it(self) {
             return false;
         }
@@ -893,12 +893,12 @@ impl Pat {
     /// Note that when visiting e.g. `Tuple(ps)`,
     /// if visiting `ps[0]` returns `false`,
     /// then `ps[1]` will not be visited.
-    pub fn walk_short(&self, mut it: impl FnMut(&Pat) -> bool) -> bool {
+    pub fn walk_short(&self, mut it: impl FnMut(&Pat<'_>) -> bool) -> bool {
         self.walk_short_(&mut it)
     }
 
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_(&self, it: &mut impl FnMut(&Pat) -> bool) {
+    fn walk_(&self, it: &mut impl FnMut(&Pat<'_>) -> bool) {
         if !it(self) {
             return;
         }
@@ -918,14 +918,14 @@ impl Pat {
     /// Walk the pattern in left-to-right order.
     ///
     /// If `it(pat)` returns `false`, the children are not visited.
-    pub fn walk(&self, mut it: impl FnMut(&Pat) -> bool) {
+    pub fn walk(&self, mut it: impl FnMut(&Pat<'_>) -> bool) {
         self.walk_(&mut it)
     }
 
     /// Walk the pattern in left-to-right order.
     ///
     /// If you always want to recurse, prefer this method over `walk`.
-    pub fn walk_always(&self, mut it: impl FnMut(&Pat)) {
+    pub fn walk_always(&self, mut it: impl FnMut(&Pat<'_>)) {
         self.walk(|p| {
             it(p);
             true
@@ -939,14 +939,14 @@ impl Pat {
 /// are treated the same as` x: x, y: ref y, z: ref mut z`,
 /// except `is_shorthand` is true.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct FieldPat {
+pub struct FieldPat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     /// The identifier for the field.
     #[stable_hasher(project(name))]
     pub ident: Ident,
     /// The pattern the field is destructured to.
-    pub pat: P<Pat>,
+    pub pat: &'hir Pat<'hir>,
     pub is_shorthand: bool,
     pub span: Span,
 }
@@ -991,7 +991,7 @@ impl fmt::Display for RangeEnd {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum PatKind {
+pub enum PatKind<'hir> {
     /// Represents a wildcard pattern (i.e., `_`).
     Wild,
 
@@ -999,20 +999,20 @@ pub enum PatKind {
     /// The `HirId` is the canonical ID for the variable being bound,
     /// (e.g., in `Ok(x) | Err(x)`, both `x` use the same canonical ID),
     /// which is the pattern ID of the first `x`.
-    Binding(BindingAnnotation, HirId, Ident, Option<P<Pat>>),
+    Binding(BindingAnnotation, HirId, Ident, Option<&'hir Pat<'hir>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(QPath, HirVec<FieldPat>, bool),
+    Struct(QPath, &'hir [FieldPat<'hir>], bool),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// `0 <= position <= subpats.len()`
-    TupleStruct(QPath, HirVec<P<Pat>>, Option<usize>),
+    TupleStruct(QPath, &'hir [&'hir Pat<'hir>], Option<usize>),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
-    Or(HirVec<P<Pat>>),
+    Or(&'hir [&'hir Pat<'hir>]),
 
     /// A path pattern for an unit struct/variant or a (maybe-associated) constant.
     Path(QPath),
@@ -1020,19 +1020,19 @@ pub enum PatKind {
     /// A tuple pattern (e.g., `(a, b)`).
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// `0 <= position <= subpats.len()`
-    Tuple(HirVec<P<Pat>>, Option<usize>),
+    Tuple(&'hir [&'hir Pat<'hir>], Option<usize>),
 
     /// A `box` pattern.
-    Box(P<Pat>),
+    Box(&'hir Pat<'hir>),
 
     /// A reference pattern (e.g., `&mut (a, b)`).
-    Ref(P<Pat>, Mutability),
+    Ref(&'hir Pat<'hir>, Mutability),
 
     /// A literal.
-    Lit(P<Expr>),
+    Lit(&'hir Expr<'hir>),
 
     /// A range pattern (e.g., `1..=2` or `1..2`).
-    Range(P<Expr>, P<Expr>, RangeEnd),
+    Range(&'hir Expr<'hir>, &'hir Expr<'hir>, RangeEnd),
 
     /// A slice pattern, `[before_0, ..., before_n, (slice, after_0, ..., after_n)?]`.
     ///
@@ -1043,7 +1043,7 @@ pub enum PatKind {
     /// ```
     /// PatKind::Slice([Binding(a), Binding(b)], Some(Wild), [Binding(c), Binding(d)])
     /// ```
-    Slice(HirVec<P<Pat>>, Option<P<Pat>>, HirVec<P<Pat>>),
+    Slice(&'hir [&'hir Pat<'hir>], Option<&'hir Pat<'hir>>, &'hir [&'hir Pat<'hir>]),
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -1210,13 +1210,13 @@ impl UnOp {
 
 /// A statement.
 #[derive(RustcEncodable, RustcDecodable, HashStable)]
-pub struct Stmt {
+pub struct Stmt<'hir> {
     pub hir_id: HirId,
-    pub kind: StmtKind,
+    pub kind: StmtKind<'hir>,
     pub span: Span,
 }
 
-impl fmt::Debug for Stmt {
+impl fmt::Debug for Stmt<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -1229,22 +1229,22 @@ impl fmt::Debug for Stmt {
 
 /// The contents of a statement.
 #[derive(RustcEncodable, RustcDecodable, HashStable)]
-pub enum StmtKind {
+pub enum StmtKind<'hir> {
     /// A local (`let`) binding.
-    Local(P<Local>),
+    Local(&'hir Local<'hir>),
 
     /// An item binding.
     Item(ItemId),
 
     /// An expression without a trailing semi-colon (must have unit type).
-    Expr(P<Expr>),
+    Expr(&'hir Expr<'hir>),
 
     /// An expression with a trailing semi-colon (may have any type).
-    Semi(P<Expr>),
+    Semi(&'hir Expr<'hir>),
 }
 
-impl StmtKind {
-    pub fn attrs(&self) -> &[Attribute] {
+impl StmtKind<'hir> {
+    pub fn attrs(&self) -> &'hir [Attribute] {
         match *self {
             StmtKind::Local(ref l) => &l.attrs,
             StmtKind::Item(_) => &[],
@@ -1255,12 +1255,12 @@ impl StmtKind {
 
 /// Represents a `let` statement (i.e., `let <pat>:<ty> = <expr>;`).
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Local {
-    pub pat: P<Pat>,
+pub struct Local<'hir> {
+    pub pat: &'hir Pat<'hir>,
     /// Type annotation, if any (otherwise the type will be inferred).
-    pub ty: Option<P<Ty>>,
+    pub ty: Option<&'hir Ty>,
     /// Initializer expression to set the value, if any.
-    pub init: Option<P<Expr>>,
+    pub init: Option<&'hir Expr<'hir>>,
     pub hir_id: HirId,
     pub span: Span,
     pub attrs: AttrVec,
@@ -1272,30 +1272,30 @@ pub struct Local {
 /// Represents a single arm of a `match` expression, e.g.
 /// `<pat> (if <guard>) => <body>`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Arm {
+pub struct Arm<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     /// If this pattern and the optional guard matches, then `body` is evaluated.
-    pub pat: P<Pat>,
+    pub pat: &'hir Pat<'hir>,
     /// Optional guard clause.
-    pub guard: Option<Guard>,
+    pub guard: Option<Guard<'hir>>,
     /// The expression the arm evaluates to if this arm matches.
-    pub body: P<Expr>,
+    pub body: &'hir Expr<'hir>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum Guard {
-    If(P<Expr>),
+pub enum Guard<'hir> {
+    If(&'hir Expr<'hir>),
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Field {
+pub struct Field<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
-    pub expr: P<Expr>,
+    pub expr: &'hir Expr<'hir>,
     pub span: Span,
     pub is_shorthand: bool,
 }
@@ -1342,8 +1342,8 @@ pub struct BodyId {
 /// map using `body_owner_def_id()`.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Body<'hir> {
-    pub params: &'hir [Param],
-    pub value: Expr,
+    pub params: &'hir [Param<'hir>],
+    pub value: Expr<'hir>,
     pub generator_kind: Option<GeneratorKind>,
 }
 
@@ -1443,18 +1443,18 @@ pub struct AnonConst {
 
 /// An expression.
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct Expr {
+pub struct Expr<'hir> {
     pub hir_id: HirId,
-    pub kind: ExprKind,
+    pub kind: ExprKind<'hir>,
     pub attrs: AttrVec,
     pub span: Span,
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Expr, 64);
+static_assert_size!(Expr<'static>, 64);
 
-impl Expr {
+impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
             ExprKind::Box(_) => ExprPrecedence::Box,
@@ -1563,7 +1563,7 @@ impl Expr {
     }
 }
 
-impl fmt::Debug for Expr {
+impl fmt::Debug for Expr<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -1579,7 +1579,7 @@ impl fmt::Debug for Expr {
 ///
 /// FIXME(#60607): This function is a hack. If and when we have `QPath::Lang(...)`,
 /// we can use that instead as simpler, more reliable mechanism, as opposed to using `SourceMap`.
-pub fn is_range_literal(sm: &SourceMap, expr: &Expr) -> bool {
+pub fn is_range_literal(sm: &SourceMap, expr: &Expr<'_>) -> bool {
     // Returns whether the given path represents a (desugared) range,
     // either in std or core, i.e. has either a `::std::ops::Range` or
     // `::core::ops::Range` prefix.
@@ -1637,18 +1637,18 @@ pub fn is_range_literal(sm: &SourceMap, expr: &Expr) -> bool {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum ExprKind {
+pub enum ExprKind<'hir> {
     /// A `box x` expression.
-    Box(P<Expr>),
+    Box(&'hir Expr<'hir>),
     /// An array (e.g., `[a, b, c, d]`).
-    Array(HirVec<Expr>),
+    Array(&'hir [Expr<'hir>]),
     /// A function call.
     ///
     /// The first field resolves to the function itself (usually an `ExprKind::Path`),
     /// and the second field is the list of arguments.
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
-    Call(P<Expr>, HirVec<Expr>),
+    Call(&'hir Expr<'hir>, &'hir [Expr<'hir>]),
     /// A method call (e.g., `x.foo::<'static, Bar, Baz>(a, b, c, d)`).
     ///
     /// The `PathSegment`/`Span` represent the method name and its generic arguments
@@ -1663,83 +1663,82 @@ pub enum ExprKind {
     /// the `hir_id` of the `MethodCall` node itself.
     ///
     /// [`type_dependent_def_id`]: ../ty/struct.TypeckTables.html#method.type_dependent_def_id
-    MethodCall(P<PathSegment>, Span, HirVec<Expr>),
+    MethodCall(&'hir PathSegment, Span, &'hir [Expr<'hir>]),
     /// A tuple (e.g., `(a, b, c, d)`).
-    Tup(HirVec<Expr>),
+    Tup(&'hir [Expr<'hir>]),
     /// A binary operation (e.g., `a + b`, `a * b`).
-    Binary(BinOp, P<Expr>, P<Expr>),
+    Binary(BinOp, &'hir Expr<'hir>, &'hir Expr<'hir>),
     /// A unary operation (e.g., `!x`, `*x`).
-    Unary(UnOp, P<Expr>),
+    Unary(UnOp, &'hir Expr<'hir>),
     /// A literal (e.g., `1`, `"foo"`).
     Lit(Lit),
     /// A cast (e.g., `foo as f64`).
-    Cast(P<Expr>, P<Ty>),
+    Cast(&'hir Expr<'hir>, &'hir Ty),
     /// A type reference (e.g., `Foo`).
-    Type(P<Expr>, P<Ty>),
+    Type(&'hir Expr<'hir>, &'hir Ty),
     /// Wraps the expression in a terminating scope.
     /// This makes it semantically equivalent to `{ let _t = expr; _t }`.
     ///
     /// This construct only exists to tweak the drop order in HIR lowering.
     /// An example of that is the desugaring of `for` loops.
-    DropTemps(P<Expr>),
+    DropTemps(&'hir Expr<'hir>),
     /// A conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// I.e., `'label: loop { <block> }`.
-    Loop(P<Block>, Option<Label>, LoopSource),
+    Loop(&'hir Block<'hir>, Option<Label>, LoopSource),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
-    Match(P<Expr>, HirVec<Arm>, MatchSource),
+    Match(&'hir Expr<'hir>, &'hir [Arm<'hir>], MatchSource),
     /// A closure (e.g., `move |a, b, c| {a + b + c}`).
     ///
     /// The `Span` is the argument block `|...|`.
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
     /// `Option<Movability>`.
-    Closure(CaptureBy, P<FnDecl>, BodyId, Span, Option<Movability>),
+    Closure(CaptureBy, &'hir FnDecl, BodyId, Span, Option<Movability>),
     /// A block (e.g., `'label: { ... }`).
-    Block(P<Block>, Option<Label>),
+    Block(&'hir Block<'hir>, Option<Label>),
 
     /// An assignment (e.g., `a = foo()`).
-    /// The `Span` argument is the span of the `=` token.
-    Assign(P<Expr>, P<Expr>, Span),
+    Assign(&'hir Expr<'hir>, &'hir Expr<'hir>, Span),
     /// An assignment with an operator.
     ///
     /// E.g., `a += 1`.
-    AssignOp(BinOp, P<Expr>, P<Expr>),
+    AssignOp(BinOp, &'hir Expr<'hir>, &'hir Expr<'hir>),
     /// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct or tuple field.
-    Field(P<Expr>, Ident),
+    Field(&'hir Expr<'hir>, Ident),
     /// An indexing operation (`foo[2]`).
-    Index(P<Expr>, P<Expr>),
+    Index(&'hir Expr<'hir>, &'hir Expr<'hir>),
 
     /// Path to a definition, possibly containing lifetime or type parameters.
     Path(QPath),
 
-    /// A referencing operation (i.e., `&a`, `&mut a`, `&raw const a`, or `&raw mut a`).
-    AddrOf(BorrowKind, Mutability, P<Expr>),
+    /// A referencing operation (i.e., `&a` or `&mut a`).
+    AddrOf(BorrowKind, Mutability, &'hir Expr<'hir>),
     /// A `break`, with an optional label to break.
-    Break(Destination, Option<P<Expr>>),
+    Break(Destination, Option<&'hir Expr<'hir>>),
     /// A `continue`, with an optional label.
     Continue(Destination),
     /// A `return`, with an optional value to be returned.
-    Ret(Option<P<Expr>>),
+    Ret(Option<&'hir Expr<'hir>>),
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
-    InlineAsm(P<InlineAsm>),
+    InlineAsm(&'hir InlineAsm<'hir>),
 
     /// A struct or struct-like variant literal expression.
     ///
     /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. base}`,
     /// where `base` is the `Option<Expr>`.
-    Struct(P<QPath>, HirVec<Field>, Option<P<Expr>>),
+    Struct(&'hir QPath, &'hir [Field<'hir>], Option<&'hir Expr<'hir>>),
 
     /// An array literal constructed from one repeated element.
     ///
     /// E.g., `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    Repeat(P<Expr>, AnonConst),
+    Repeat(&'hir Expr<'hir>, AnonConst),
 
     /// A suspension point for generators (i.e., `yield <expr>`).
-    Yield(P<Expr>, YieldSource),
+    Yield(&'hir Expr<'hir>, YieldSource),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err,
@@ -2159,18 +2158,18 @@ pub struct InlineAsmInner {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct InlineAsm {
+pub struct InlineAsm<'hir> {
     pub inner: InlineAsmInner,
-    pub outputs_exprs: HirVec<Expr>,
-    pub inputs_exprs: HirVec<Expr>,
+    pub outputs_exprs: &'hir [Expr<'hir>],
+    pub inputs_exprs: &'hir [Expr<'hir>],
 }
 
 /// Represents a parameter in a function header.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Param {
-    pub attrs: HirVec<Attribute>,
+pub struct Param<'hir> {
+    pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
-    pub pat: P<Pat>,
+    pub pat: &'hir Pat<'hir>,
     pub span: Span,
 }
 
@@ -2828,7 +2827,7 @@ impl CodegenFnAttrs {
 
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'hir> {
-    Param(&'hir Param),
+    Param(&'hir Param<'hir>),
     Item(&'hir Item<'hir>),
     ForeignItem(&'hir ForeignItem<'hir>),
     TraitItem(&'hir TraitItem<'hir>),
@@ -2836,16 +2835,16 @@ pub enum Node<'hir> {
     Variant(&'hir Variant<'hir>),
     Field(&'hir StructField<'hir>),
     AnonConst(&'hir AnonConst),
-    Expr(&'hir Expr),
-    Stmt(&'hir Stmt),
+    Expr(&'hir Expr<'hir>),
+    Stmt(&'hir Stmt<'hir>),
     PathSegment(&'hir PathSegment),
     Ty(&'hir Ty),
     TraitRef(&'hir TraitRef),
-    Binding(&'hir Pat),
-    Pat(&'hir Pat),
-    Arm(&'hir Arm),
-    Block(&'hir Block),
-    Local(&'hir Local),
+    Binding(&'hir Pat<'hir>),
+    Pat(&'hir Pat<'hir>),
+    Arm(&'hir Arm<'hir>),
+    Block(&'hir Block<'hir>),
+    Local(&'hir Local<'hir>),
     MacroDef(&'hir MacroDef<'hir>),
 
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants

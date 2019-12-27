@@ -32,9 +32,6 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
-mod expr;
-mod item;
-
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
@@ -75,6 +72,18 @@ use syntax_pos::hygiene::ExpnId;
 use syntax_pos::Span;
 
 use rustc_error_codes::*;
+
+macro_rules! arena_vec {
+    () => (
+        &[]
+    );
+    ($this:expr; $($x:expr),*) => (
+        $this.arena.alloc_from_iter(vec![$($x),*])
+    );
+}
+
+mod expr;
+mod item;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -921,7 +930,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn with_new_scopes<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext<'_, '_>) -> T,
+        F: FnOnce(&mut Self) -> T,
     {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
@@ -2022,7 +2031,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    fn lower_local(&mut self, l: &Local) -> (hir::Local, SmallVec<[NodeId; 1]>) {
+    fn lower_local(&mut self, l: &Local) -> (hir::Local<'hir>, SmallVec<[NodeId; 1]>) {
         let mut ids = SmallVec::<[NodeId; 1]>::new();
         if self.sess.features_untracked().impl_trait_in_bindings {
             if let Some(ref ty) = l.ty {
@@ -2031,21 +2040,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
         let parent_def_id = DefId::local(self.current_hir_id_owner.last().unwrap().0);
+        let ty = l.ty.as_ref().map(|t| {
+            self.lower_ty(
+                t,
+                if self.sess.features_untracked().impl_trait_in_bindings {
+                    ImplTraitContext::OpaqueTy(Some(parent_def_id))
+                } else {
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
+                },
+            )
+        });
+        let ty = ty.map(|ty| &*self.arena.alloc(ty.into_inner()));
+        let init = l.init.as_ref().map(|e| self.lower_expr(e));
         (
             hir::Local {
                 hir_id: self.lower_node_id(l.id),
-                ty: l.ty.as_ref().map(|t| {
-                    self.lower_ty(
-                        t,
-                        if self.sess.features_untracked().impl_trait_in_bindings {
-                            ImplTraitContext::OpaqueTy(Some(parent_def_id))
-                        } else {
-                            ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
-                        },
-                    )
-                }),
+                ty,
                 pat: self.lower_pat(&l.pat),
-                init: l.init.as_ref().map(|e| P(self.lower_expr(e))),
+                init,
                 span: l.span,
                 attrs: l.attrs.clone(),
                 source: hir::LocalSource::Normal,
@@ -2586,14 +2598,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds.iter().map(|bound| self.lower_param_bound(bound, itctx.reborrow())).collect()
     }
 
-    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> P<hir::Block> {
+    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> &'hir hir::Block<'hir> {
+        self.arena.alloc(self.lower_block_noalloc(b, targeted_by_break))
+    }
+
+    fn lower_block_noalloc(&mut self, b: &Block, targeted_by_break: bool) -> hir::Block<'hir> {
         let mut stmts = vec![];
-        let mut expr = None;
+        let mut expr: Option<&'hir _> = None;
 
         for (index, stmt) in b.stmts.iter().enumerate() {
             if index == b.stmts.len() - 1 {
                 if let StmtKind::Expr(ref e) = stmt.kind {
-                    expr = Some(P(self.lower_expr(e)));
+                    expr = Some(self.lower_expr(e));
                 } else {
                     stmts.extend(self.lower_stmt(stmt));
                 }
@@ -2602,24 +2618,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        P(hir::Block {
+        hir::Block {
             hir_id: self.lower_node_id(b.id),
-            stmts: stmts.into(),
+            stmts: self.arena.alloc_from_iter(stmts),
             expr,
             rules: self.lower_block_check_mode(&b.rules),
             span: b.span,
             targeted_by_break,
-        })
+        }
     }
 
     /// Lowers a block directly to an expression, presuming that it
     /// has no attributes and is not targeted by a `break`.
-    fn lower_block_expr(&mut self, b: &Block) -> hir::Expr {
+    fn lower_block_expr(&mut self, b: &Block) -> hir::Expr<'hir> {
         let block = self.lower_block(b, false);
         self.expr_block(block, AttrVec::new())
     }
 
-    fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {
+    fn lower_pat(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {
         let node = match p.kind {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
@@ -2627,7 +2643,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let node = self.lower_pat_ident(p, binding_mode, ident, lower_sub);
                 node
             }
-            PatKind::Lit(ref e) => hir::PatKind::Lit(P(self.lower_expr(e))),
+            PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
             PatKind::TupleStruct(ref path, ref pats) => {
                 let qpath = self.lower_qpath(
                     p.id,
@@ -2640,7 +2656,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::PatKind::TupleStruct(qpath, pats, ddpos)
             }
             PatKind::Or(ref pats) => {
-                hir::PatKind::Or(pats.iter().map(|x| self.lower_pat(x)).collect())
+                hir::PatKind::Or(self.arena.alloc_from_iter(pats.iter().map(|x| self.lower_pat(x))))
             }
             PatKind::Path(ref qself, ref path) => {
                 let qpath = self.lower_qpath(
@@ -2661,16 +2677,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::disallowed(),
                 );
 
-                let fs = fields
-                    .iter()
-                    .map(|f| hir::FieldPat {
-                        hir_id: self.next_id(),
-                        ident: f.ident,
-                        pat: self.lower_pat(&f.pat),
-                        is_shorthand: f.is_shorthand,
-                        span: f.span,
-                    })
-                    .collect();
+                let fs = self.arena.alloc_from_iter(fields.iter().map(|f| hir::FieldPat {
+                    hir_id: self.next_id(),
+                    ident: f.ident,
+                    pat: self.lower_pat(&f.pat),
+                    is_shorthand: f.is_shorthand,
+                    span: f.span,
+                }));
                 hir::PatKind::Struct(qpath, fs, etc)
             }
             PatKind::Tuple(ref pats) => {
@@ -2680,8 +2693,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
             PatKind::Ref(ref inner, mutbl) => hir::PatKind::Ref(self.lower_pat(inner), mutbl),
             PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => hir::PatKind::Range(
-                P(self.lower_expr(e1)),
-                P(self.lower_expr(e2)),
+                self.lower_expr(e1),
+                self.lower_expr(e2),
                 self.lower_range_end(end),
             ),
             PatKind::Slice(ref pats) => self.lower_pat_slice(pats),
@@ -2700,7 +2713,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         pats: &[AstP<Pat>],
         ctx: &str,
-    ) -> (HirVec<P<hir::Pat>>, Option<usize>) {
+    ) -> (&'hir [&'hir hir::Pat<'hir>], Option<usize>) {
         let mut elems = Vec::with_capacity(pats.len());
         let mut rest = None;
 
@@ -2728,7 +2741,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        (elems.into(), rest.map(|(ddpos, _)| ddpos))
+        (self.arena.alloc_from_iter(elems), rest.map(|(ddpos, _)| ddpos))
     }
 
     /// Lower a slice pattern of form `[pat_0, ..., pat_n]` into
@@ -2737,7 +2750,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// When encountering `($binding_mode $ident @)? ..` (`slice`),
     /// this is interpreted as a sub-slice pattern semantically.
     /// Patterns that follow, which are not like `slice` -- or an error occurs, are in `after`.
-    fn lower_pat_slice(&mut self, pats: &[AstP<Pat>]) -> hir::PatKind {
+    fn lower_pat_slice(&mut self, pats: &[AstP<Pat>]) -> hir::PatKind<'hir> {
         let mut before = Vec::new();
         let mut after = Vec::new();
         let mut slice = None;
@@ -2788,7 +2801,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        hir::PatKind::Slice(before.into(), slice, after.into())
+        hir::PatKind::Slice(
+            self.arena.alloc_from_iter(before),
+            slice,
+            self.arena.alloc_from_iter(after),
+        )
     }
 
     fn lower_pat_ident(
@@ -2796,8 +2813,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &Pat,
         binding_mode: &BindingMode,
         ident: Ident,
-        lower_sub: impl FnOnce(&mut Self) -> Option<P<hir::Pat>>,
-    ) -> hir::PatKind {
+        lower_sub: impl FnOnce(&mut Self) -> Option<&'hir hir::Pat<'hir>>,
+    ) -> hir::PatKind<'hir> {
         match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
             // `None` can occur in body-less function signatures
             res @ None | res @ Some(Res::Local(_)) => {
@@ -2824,13 +2841,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn pat_wild_with_node_id_of(&mut self, p: &Pat) -> P<hir::Pat> {
+    fn pat_wild_with_node_id_of(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {
         self.pat_with_node_id_of(p, hir::PatKind::Wild)
     }
 
     /// Construct a `Pat` with the `HirId` of `p.id` lowered.
-    fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind) -> P<hir::Pat> {
-        P(hir::Pat { hir_id: self.lower_node_id(p.id), kind, span: p.span })
+    fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
+        self.arena.alloc(hir::Pat { hir_id: self.lower_node_id(p.id), kind, span: p.span })
     }
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
@@ -2843,7 +2860,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Used to ban the `..` pattern in places it shouldn't be semantically.
-    fn ban_illegal_rest_pat(&self, sp: Span) -> hir::PatKind {
+    fn ban_illegal_rest_pat(&self, sp: Span) -> hir::PatKind<'hir> {
         self.diagnostic()
             .struct_span_err(sp, "`..` patterns are not allowed here")
             .note("only allowed in tuple, tuple struct, and slice patterns")
@@ -2869,11 +2886,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt; 1]> {
+    fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt<'hir>; 1]> {
         let kind = match s.kind {
             StmtKind::Local(ref l) => {
                 let (l, item_ids) = self.lower_local(l);
-                let mut ids: SmallVec<[hir::Stmt; 1]> = item_ids
+                let mut ids: SmallVec<[hir::Stmt<'hir>; 1]> = item_ids
                     .into_iter()
                     .map(|item_id| {
                         let item_id = hir::ItemId { id: self.lower_node_id(item_id) };
@@ -2883,7 +2900,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ids.push({
                     hir::Stmt {
                         hir_id: self.lower_node_id(s.id),
-                        kind: hir::StmtKind::Local(P(l)),
+                        kind: hir::StmtKind::Local(self.arena.alloc(l)),
                         span: s.span,
                     }
                 });
@@ -2905,8 +2922,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     })
                     .collect();
             }
-            StmtKind::Expr(ref e) => hir::StmtKind::Expr(P(self.lower_expr(e))),
-            StmtKind::Semi(ref e) => hir::StmtKind::Semi(P(self.lower_expr(e))),
+            StmtKind::Expr(ref e) => hir::StmtKind::Expr(self.lower_expr(e)),
+            StmtKind::Semi(ref e) => hir::StmtKind::Semi(self.lower_expr(e)),
             StmtKind::Mac(..) => panic!("shouldn't exist here"),
         };
         smallvec![hir::Stmt { hir_id: self.lower_node_id(s.id), kind, span: s.span }]
@@ -2944,74 +2961,75 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     // Helper methods for building HIR.
 
-    fn stmt(&mut self, span: Span, kind: hir::StmtKind) -> hir::Stmt {
+    fn stmt(&mut self, span: Span, kind: hir::StmtKind<'hir>) -> hir::Stmt<'hir> {
         hir::Stmt { span, kind, hir_id: self.next_id() }
     }
 
-    fn stmt_expr(&mut self, span: Span, expr: hir::Expr) -> hir::Stmt {
-        self.stmt(span, hir::StmtKind::Expr(P(expr)))
+    fn stmt_expr(&mut self, span: Span, expr: hir::Expr<'hir>) -> hir::Stmt<'hir> {
+        self.stmt(span, hir::StmtKind::Expr(self.arena.alloc(expr)))
     }
 
     fn stmt_let_pat(
         &mut self,
         attrs: AttrVec,
         span: Span,
-        init: Option<P<hir::Expr>>,
-        pat: P<hir::Pat>,
+        init: Option<&'hir hir::Expr<'hir>>,
+        pat: &'hir hir::Pat<'hir>,
         source: hir::LocalSource,
-    ) -> hir::Stmt {
+    ) -> hir::Stmt<'hir> {
         let local = hir::Local { attrs, hir_id: self.next_id(), init, pat, source, span, ty: None };
-        self.stmt(span, hir::StmtKind::Local(P(local)))
+        self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 
-    fn block_expr(&mut self, expr: P<hir::Expr>) -> hir::Block {
-        self.block_all(expr.span, hir::HirVec::new(), Some(expr))
+    fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> &'hir hir::Block<'hir> {
+        self.block_all(expr.span, &[], Some(expr))
     }
 
     fn block_all(
         &mut self,
         span: Span,
-        stmts: hir::HirVec<hir::Stmt>,
-        expr: Option<P<hir::Expr>>,
-    ) -> hir::Block {
-        hir::Block {
+        stmts: &'hir [hir::Stmt<'hir>],
+        expr: Option<&'hir hir::Expr<'hir>>,
+    ) -> &'hir hir::Block<'hir> {
+        let blk = hir::Block {
             stmts,
             expr,
             hir_id: self.next_id(),
             rules: hir::DefaultBlock,
             span,
             targeted_by_break: false,
-        }
+        };
+        self.arena.alloc(blk)
     }
 
     /// Constructs a `true` or `false` literal pattern.
-    fn pat_bool(&mut self, span: Span, val: bool) -> P<hir::Pat> {
+    fn pat_bool(&mut self, span: Span, val: bool) -> &'hir hir::Pat<'hir> {
         let expr = self.expr_bool(span, val);
-        self.pat(span, hir::PatKind::Lit(P(expr)))
+        self.pat(span, hir::PatKind::Lit(expr))
     }
 
-    fn pat_ok(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
-        self.pat_std_enum(span, &[sym::result, sym::Result, sym::Ok], hir_vec![pat])
+    fn pat_ok(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
+        self.pat_std_enum(span, &[sym::result, sym::Result, sym::Ok], arena_vec![self; pat])
     }
 
-    fn pat_err(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
-        self.pat_std_enum(span, &[sym::result, sym::Result, sym::Err], hir_vec![pat])
+    fn pat_err(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
+        self.pat_std_enum(span, &[sym::result, sym::Result, sym::Err], arena_vec![self; pat])
     }
 
-    fn pat_some(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
-        self.pat_std_enum(span, &[sym::option, sym::Option, sym::Some], hir_vec![pat])
+    fn pat_some(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
+        self.pat_std_enum(span, &[sym::option, sym::Option, sym::Some], arena_vec![self; pat])
     }
 
-    fn pat_none(&mut self, span: Span) -> P<hir::Pat> {
-        self.pat_std_enum(span, &[sym::option, sym::Option, sym::None], hir_vec![])
+    fn pat_none(&mut self, span: Span) -> &'hir hir::Pat<'hir> {
+        self.pat_std_enum(span, &[sym::option, sym::Option, sym::None], &[])
     }
 
     fn pat_std_enum(
         &mut self,
         span: Span,
         components: &[Symbol],
-        subpats: hir::HirVec<P<hir::Pat>>,
-    ) -> P<hir::Pat> {
+        subpats: &'hir [&'hir hir::Pat<'hir>],
+    ) -> &'hir hir::Pat<'hir> {
         let path = self.std_path(span, components, None, true);
         let qpath = hir::QPath::Resolved(None, P(path));
         let pt = if subpats.is_empty() {
@@ -3022,7 +3040,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.pat(span, pt)
     }
 
-    fn pat_ident(&mut self, span: Span, ident: Ident) -> (P<hir::Pat>, hir::HirId) {
+    fn pat_ident(&mut self, span: Span, ident: Ident) -> (&'hir hir::Pat<'hir>, hir::HirId) {
         self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::Unannotated)
     }
 
@@ -3031,11 +3049,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         ident: Ident,
         bm: hir::BindingAnnotation,
-    ) -> (P<hir::Pat>, hir::HirId) {
+    ) -> (&'hir hir::Pat<'hir>, hir::HirId) {
         let hir_id = self.next_id();
 
         (
-            P(hir::Pat {
+            self.arena.alloc(hir::Pat {
                 hir_id,
                 kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
@@ -3044,12 +3062,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         )
     }
 
-    fn pat_wild(&mut self, span: Span) -> P<hir::Pat> {
+    fn pat_wild(&mut self, span: Span) -> &'hir hir::Pat<'hir> {
         self.pat(span, hir::PatKind::Wild)
     }
 
-    fn pat(&mut self, span: Span, kind: hir::PatKind) -> P<hir::Pat> {
-        P(hir::Pat { hir_id: self.next_id(), kind, span })
+    fn pat(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
+        self.arena.alloc(hir::Pat { hir_id: self.next_id(), kind, span })
     }
 
     /// Given a suffix `["b", "c", "d"]`, returns path `::std::b::c::d` when

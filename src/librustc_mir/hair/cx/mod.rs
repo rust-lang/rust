@@ -151,7 +151,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         }
     }
 
-    pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pat<'tcx> {
+    pub fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Pat<'tcx> {
         let p = match self.tcx.hir().get(p.hir_id) {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node),

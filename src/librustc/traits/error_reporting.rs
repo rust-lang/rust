@@ -1331,19 +1331,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         msg: &str,
     ) -> Option<String> {
-        let get_name = |err: &mut DiagnosticBuilder<'_>, kind: &hir::PatKind| -> Option<String> {
-            // Get the local name of this closure. This can be inaccurate because
-            // of the possibility of reassignment, but this should be good enough.
-            match &kind {
-                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => {
-                    Some(format!("{}", name))
+        let get_name =
+            |err: &mut DiagnosticBuilder<'_>, kind: &hir::PatKind<'_>| -> Option<String> {
+                // Get the local name of this closure. This can be inaccurate because
+                // of the possibility of reassignment, but this should be good enough.
+                match &kind {
+                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => {
+                        Some(format!("{}", name))
+                    }
+                    _ => {
+                        err.note(&msg);
+                        None
+                    }
                 }
-                _ => {
-                    err.note(&msg);
-                    None
-                }
-            }
-        };
+            };
 
         let hir = self.tcx.hir();
         let hir_id = hir.as_local_hir_id(def_id)?;

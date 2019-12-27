@@ -17,11 +17,11 @@ struct FindLocalByTypeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     target_ty: Ty<'tcx>,
     hir_map: &'a hir::map::Map<'tcx>,
-    found_local_pattern: Option<&'tcx Pat>,
-    found_arg_pattern: Option<&'tcx Pat>,
+    found_local_pattern: Option<&'tcx Pat<'tcx>>,
+    found_arg_pattern: Option<&'tcx Pat<'tcx>>,
     found_ty: Option<Ty<'tcx>>,
-    found_closure: Option<&'tcx ExprKind>,
-    found_method_call: Option<&'tcx Expr>,
+    found_closure: Option<&'tcx ExprKind<'tcx>>,
+    found_method_call: Option<&'tcx Expr<'tcx>>,
 }
 
 impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
@@ -72,7 +72,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.hir_map)
     }
 
-    fn visit_local(&mut self, local: &'tcx Local) {
+    fn visit_local(&mut self, local: &'tcx Local<'tcx>) {
         if let (None, Some(ty)) = (self.found_local_pattern, self.node_matches_type(local.hir_id)) {
             self.found_local_pattern = Some(&*local.pat);
             self.found_ty = Some(ty);
@@ -91,7 +91,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
         intravisit::walk_body(self, body);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if self.node_matches_type(expr.hir_id).is_some() {
             match expr.kind {
                 ExprKind::Closure(..) => self.found_closure = Some(&expr.kind),
@@ -460,8 +460,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// needed, suggest annotating the call, otherwise point out the resulting type of the call.
     fn annotate_method_call(
         &self,
-        segment: &hir::ptr::P<hir::PathSegment>,
-        e: &Expr,
+        segment: &hir::PathSegment,
+        e: &Expr<'_>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
         if let (Ok(snippet), Some(tables), None) = (

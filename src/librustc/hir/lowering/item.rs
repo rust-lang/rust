@@ -797,8 +797,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
             AssocItemKind::TyAlias(ref bounds, ref default) => {
-                let ty = default.as_ref().map(|x| -> &'hir hir::Ty {
-                    self.arena.alloc(self.lower_ty(x, ImplTraitContext::disallowed()).into_inner())
+                let ty = default.as_ref().map(|x| {
+                    &*self
+                        .arena
+                        .alloc(self.lower_ty(x, ImplTraitContext::disallowed()).into_inner())
                 });
                 let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
                 let kind = hir::TraitItemKind::Type(
@@ -840,7 +842,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Construct `ExprKind::Err` for the given `span`.
-    fn expr_err(&mut self, span: Span) -> hir::Expr {
+    fn expr_err(&mut self, span: Span) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::Err, AttrVec::new())
     }
 
@@ -981,7 +983,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn record_body(&mut self, params: &'hir [hir::Param], value: hir::Expr) -> hir::BodyId {
+    fn record_body(
+        &mut self,
+        params: &'hir [hir::Param<'hir>],
+        value: hir::Expr<'hir>,
+    ) -> hir::BodyId {
         let body = hir::Body { generator_kind: self.generator_kind, params, value };
         let id = body.id();
         self.bodies.insert(id, body);
@@ -990,7 +996,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_body(
         &mut self,
-        f: impl FnOnce(&mut Self) -> (&'hir [hir::Param], hir::Expr),
+        f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
     ) -> hir::BodyId {
         let prev_gen_kind = self.generator_kind.take();
         let (parameters, result) = f(self);
@@ -999,9 +1005,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body_id
     }
 
-    fn lower_param(&mut self, param: &Param) -> hir::Param {
+    fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         hir::Param {
-            attrs: self.lower_attrs(&param.attrs),
+            attrs: self.lower_attrs_arena(&param.attrs),
             hir_id: self.lower_node_id(param.id),
             pat: self.lower_pat(&param.pat),
             span: param.span,
@@ -1011,7 +1017,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_fn_body(
         &mut self,
         decl: &FnDecl,
-        body: impl FnOnce(&mut LoweringContext<'_, '_>) -> hir::Expr,
+        body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::BodyId {
         self.lower_body(|this| {
             (
@@ -1030,7 +1036,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.lower_fn_body(decl, |this| this.lower_block_expr_opt(span, body))
     }
 
-    fn lower_block_expr_opt(&mut self, span: Span, block: Option<&Block>) -> hir::Expr {
+    fn lower_block_expr_opt(&mut self, span: Span, block: Option<&Block>) -> hir::Expr<'hir> {
         match block {
             Some(block) => self.lower_block_expr(block),
             None => self.expr_err(span),
@@ -1042,7 +1048,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (
                 &[],
                 match expr {
-                    Some(expr) => this.lower_expr(expr),
+                    Some(expr) => this.lower_expr_mut(expr),
                     None => this.expr_err(span),
                 },
             )
@@ -1062,8 +1068,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         self.lower_body(|this| {
-            let mut parameters: Vec<hir::Param> = Vec::new();
-            let mut statements: Vec<hir::Stmt> = Vec::new();
+            let mut parameters: Vec<hir::Param<'_>> = Vec::new();
+            let mut statements: Vec<hir::Stmt<'_>> = Vec::new();
 
             // Async function parameters are lowered into the closure body so that they are
             // captured and so that the drop order matches the equivalent non-async functions.
@@ -1141,7 +1147,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,
-                        Some(P(expr)),
+                        Some(this.arena.alloc(expr)),
                         parameter.pat,
                         hir::LocalSource::AsyncFn,
                     );
@@ -1171,7 +1177,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let move_stmt = this.stmt_let_pat(
                         AttrVec::new(),
                         desugared_span,
-                        Some(P(move_expr)),
+                        Some(this.arena.alloc(move_expr)),
                         move_pat,
                         hir::LocalSource::AsyncFn,
                     );
@@ -1182,7 +1188,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let pattern_stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,
-                        Some(P(pattern_expr)),
+                        Some(this.arena.alloc(pattern_expr)),
                         parameter.pat,
                         hir::LocalSource::AsyncFn,
                     );
@@ -1208,8 +1214,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Transform into `drop-temps { <user-body> }`, an expression:
                     let desugared_span =
                         this.mark_span_with_reason(DesugaringKind::Async, user_body.span, None);
-                    let user_body =
-                        this.expr_drop_temps(desugared_span, P(user_body), AttrVec::new());
+                    let user_body = this.expr_drop_temps(
+                        desugared_span,
+                        this.arena.alloc(user_body),
+                        AttrVec::new(),
+                    );
 
                     // As noted above, create the final block like
                     //
@@ -1220,9 +1229,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     //   drop-temps { <user-body> }
                     // }
                     // ```
-                    let body =
-                        this.block_all(desugared_span, statements.into(), Some(P(user_body)));
-                    this.expr_block(P(body), AttrVec::new())
+                    let body = this.block_all(
+                        desugared_span,
+                        this.arena.alloc_from_iter(statements),
+                        Some(user_body),
+                    );
+
+                    this.expr_block(body, AttrVec::new())
                 },
             );
 

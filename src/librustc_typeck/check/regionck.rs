@@ -269,7 +269,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     }
 
     /// Try to resolve the type for the given node.
-    pub fn resolve_expr_type_adjusted(&mut self, expr: &hir::Expr) -> Ty<'tcx> {
+    pub fn resolve_expr_type_adjusted(&mut self, expr: &hir::Expr<'_>) -> Ty<'tcx> {
         let ty = self.tables.borrow().expr_ty_adjusted(expr);
         self.resolve_type(ty)
     }
@@ -367,7 +367,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         );
     }
 
-    fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
+    fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat<'_>) {
         debug!("regionck::visit_pat(pat={:?})", pat);
         pat.each_binding(|_, hir_id, span, _| {
             // If we have a variable that contains region'd data, that
@@ -453,20 +453,20 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
     //visit_pat: visit_pat, // (..) see above
 
-    fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         // see above
         self.constrain_bindings_in_pat(&arm.pat);
         intravisit::walk_arm(self, arm);
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
         // see above
         self.constrain_bindings_in_pat(&l.pat);
         self.link_local(l);
         intravisit::walk_local(self, l);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         debug!("regionck::visit_expr(e={:?}, repeating_scope={:?})", expr, self.repeating_scope);
 
         // No matter what, the type of each expression must outlive the
@@ -580,7 +580,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
             hir::ExprKind::Unary(hir::UnDeref, ref base) => {
                 // For *a, the lifetime of a must enclose the deref
                 if is_method_call {
-                    self.constrain_call(expr, Some(base), None::<hir::Expr>.iter());
+                    self.constrain_call(expr, Some(base), None::<hir::Expr<'_>>.iter());
                 }
                 // For overloaded derefs, base_ty is the input to `Deref::deref`,
                 // but it's a reference type uing the same region as the output.
@@ -594,7 +594,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
             hir::ExprKind::Unary(_, ref lhs) if is_method_call => {
                 // As above.
-                self.constrain_call(expr, Some(&lhs), None::<hir::Expr>.iter());
+                self.constrain_call(expr, Some(&lhs), None::<hir::Expr<'_>>.iter());
 
                 intravisit::walk_expr(self, expr);
             }
@@ -670,7 +670,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
-    fn constrain_cast(&mut self, cast_expr: &hir::Expr, source_expr: &hir::Expr) {
+    fn constrain_cast(&mut self, cast_expr: &hir::Expr<'_>, source_expr: &hir::Expr<'_>) {
         debug!("constrain_cast(cast_expr={:?}, source_expr={:?})", cast_expr, source_expr);
 
         let source_ty = self.resolve_node_type(source_expr.hir_id);
@@ -679,7 +679,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.walk_cast(cast_expr, source_ty, target_ty);
     }
 
-    fn walk_cast(&mut self, cast_expr: &hir::Expr, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) {
+    fn walk_cast(&mut self, cast_expr: &hir::Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) {
         debug!("walk_cast(from_ty={:?}, to_ty={:?})", from_ty, to_ty);
         match (&from_ty.kind, &to_ty.kind) {
             /*From:*/
@@ -707,13 +707,13 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_fn_block(&mut self, expr: &'tcx hir::Expr, body_id: hir::BodyId) {
+    fn check_expr_fn_block(&mut self, expr: &'tcx hir::Expr<'tcx>, body_id: hir::BodyId) {
         let repeating_scope = self.set_repeating_scope(body_id.hir_id);
         intravisit::walk_expr(self, expr);
         self.set_repeating_scope(repeating_scope);
     }
 
-    fn constrain_callee(&mut self, callee_expr: &hir::Expr) {
+    fn constrain_callee(&mut self, callee_expr: &hir::Expr<'_>) {
         let callee_ty = self.resolve_node_type(callee_expr.hir_id);
         match callee_ty.kind {
             ty::FnDef(..) | ty::FnPtr(_) => {}
@@ -729,10 +729,10 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         }
     }
 
-    fn constrain_call<'b, I: Iterator<Item = &'b hir::Expr>>(
+    fn constrain_call<'b, I: Iterator<Item = &'b hir::Expr<'b>>>(
         &mut self,
-        call_expr: &hir::Expr,
-        receiver: Option<&hir::Expr>,
+        call_expr: &hir::Expr<'_>,
+        receiver: Option<&hir::Expr<'_>>,
         arg_exprs: I,
     ) {
         //! Invoked on every call site (i.e., normal calls, method calls,
@@ -786,7 +786,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     /// Invoked on any adjustments that occur. Checks that if this is a region pointer being
     /// dereferenced, the lifetime of the pointer includes the deref expr.
-    fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::Place<'tcx>> {
+    fn constrain_adjustments(&mut self, expr: &hir::Expr<'_>) -> mc::McResult<mc::Place<'tcx>> {
         debug!("constrain_adjustments(expr={:?})", expr);
 
         let mut cmt = self.with_mc(|mc| mc.cat_expr_unadjusted(expr))?;
@@ -880,7 +880,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     /// Invoked on any index expression that occurs. Checks that if this is a slice
     /// being indexed, the lifetime of the pointer includes the deref expr.
-    fn constrain_index(&mut self, index_expr: &hir::Expr, indexed_ty: Ty<'tcx>) {
+    fn constrain_index(&mut self, index_expr: &hir::Expr<'_>, indexed_ty: Ty<'tcx>) {
         debug!("constrain_index(index_expr=?, indexed_ty={}", self.ty_to_string(indexed_ty));
 
         let r_index_expr = ty::ReScope(region::Scope {
@@ -952,7 +952,12 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     /// Computes the guarantor for an expression `&base` and then ensures that the lifetime of the
     /// resulting pointer is linked to the lifetime of its guarantor (if any).
-    fn link_addr_of(&mut self, expr: &hir::Expr, mutability: hir::Mutability, base: &hir::Expr) {
+    fn link_addr_of(
+        &mut self,
+        expr: &hir::Expr<'_>,
+        mutability: hir::Mutability,
+        base: &hir::Expr<'_>,
+    ) {
         debug!("link_addr_of(expr={:?}, base={:?})", expr, base);
 
         let cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(base)));
@@ -965,7 +970,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// Computes the guarantors for any ref bindings in a `let` and
     /// then ensures that the lifetime of the resulting pointer is
     /// linked to the lifetime of the initialization expression.
-    fn link_local(&self, local: &hir::Local) {
+    fn link_local(&self, local: &hir::Local<'_>) {
         debug!("regionck::for_local()");
         let init_expr = match local.init {
             None => {
@@ -980,7 +985,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// Computes the guarantors for any ref bindings in a match and
     /// then ensures that the lifetime of the resulting pointer is
     /// linked to the lifetime of its guarantor (if any).
-    fn link_match(&self, discr: &hir::Expr, arms: &[hir::Arm]) {
+    fn link_match(&self, discr: &hir::Expr<'_>, arms: &[hir::Arm<'_>]) {
         debug!("regionck::for_match()");
         let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(discr)));
         debug!("discr_cmt={:?}", discr_cmt);
@@ -992,7 +997,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// Computes the guarantors for any ref bindings in a match and
     /// then ensures that the lifetime of the resulting pointer is
     /// linked to the lifetime of its guarantor (if any).
-    fn link_fn_params(&self, params: &[hir::Param]) {
+    fn link_fn_params(&self, params: &[hir::Param<'_>]) {
         for param in params {
             let param_ty = self.node_ty(param.hir_id);
             let param_cmt =
@@ -1004,7 +1009,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     /// Link lifetimes of any ref bindings in `root_pat` to the pointers found
     /// in the discriminant, if needed.
-    fn link_pattern(&self, discr_cmt: mc::Place<'tcx>, root_pat: &hir::Pat) {
+    fn link_pattern(&self, discr_cmt: mc::Place<'tcx>, root_pat: &hir::Pat<'_>) {
         debug!("link_pattern(discr_cmt={:?}, root_pat={:?})", discr_cmt, root_pat);
         ignore_err!(self.with_mc(|mc| {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, hir::Pat { kind, span, hir_id }| {
@@ -1024,7 +1029,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// autoref'd.
     fn link_autoref(
         &self,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         expr_cmt: &mc::Place<'tcx>,
         autoref: &adjustment::AutoBorrow<'tcx>,
     ) {

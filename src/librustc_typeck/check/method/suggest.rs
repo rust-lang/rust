@@ -72,7 +72,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: ast::Ident,
         source: SelfSource<'b>,
         error: MethodError<'tcx>,
-        args: Option<&'tcx [hir::Expr]>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> Option<DiagnosticBuilder<'_>> {
         let orig_span = span;
         let mut span = span;
@@ -954,7 +954,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 #[derive(Copy, Clone)]
 pub enum SelfSource<'a> {
     QPath(&'a hir::Ty),
-    MethodCall(&'a hir::Expr /* rcvr */),
+    MethodCall(&'a hir::Expr<'a> /* rcvr */),
 }
 
 #[derive(Copy, Clone)]
@@ -1131,7 +1131,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
 
 fn print_disambiguation_help(
     item_name: ast::Ident,
-    args: Option<&'tcx [hir::Expr]>,
+    args: Option<&'tcx [hir::Expr<'tcx>]>,
     err: &mut DiagnosticBuilder<'_>,
     trait_name: String,
     rcvr_ty: Ty<'_>,

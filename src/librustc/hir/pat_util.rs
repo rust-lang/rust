@@ -57,7 +57,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
     }
 }
 
-impl hir::Pat {
+impl hir::Pat<'_> {
     pub fn is_refutable(&self) -> bool {
         match self.kind {
             PatKind::Lit(_)
@@ -126,7 +126,7 @@ impl hir::Pat {
     }
 
     /// Checks if the pattern satisfies the given predicate on some sub-pattern.
-    fn satisfies(&self, pred: impl Fn(&Self) -> bool) -> bool {
+    fn satisfies(&self, pred: impl Fn(&hir::Pat<'_>) -> bool) -> bool {
         let mut satisfies = false;
         self.walk_short(|p| {
             if pred(p) {

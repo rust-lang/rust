@@ -117,7 +117,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Expr { hir_id: _, ref span, ref kind, ref attrs } = *self;

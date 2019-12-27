@@ -132,7 +132,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // as potentially overloaded. But then, during writeback, if
     // we observe that something like `a+b` is (known to be)
     // operating on scalars, we clear the overload.
-    fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr) {
+    fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnNeg, ref inner)
             | hir::ExprKind::Unary(hir::UnNot, ref inner) => {
@@ -181,7 +181,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // Here, correct cases where an indexing expression can be simplified
     // to use builtin indexing because the index type is known to be
     // usize-ish
-    fn fix_index_builtin_expr(&mut self, e: &hir::Expr) {
+    fn fix_index_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         if let hir::ExprKind::Index(ref base, ref index) = e.kind {
             let mut tables = self.fcx.tables.borrow_mut();
 
@@ -247,7 +247,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_expr(&mut self, e: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         self.fix_scalar_builtin_expr(e);
         self.fix_index_builtin_expr(e);
 
@@ -262,7 +262,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
                 self.visit_body(body);
             }
-            hir::ExprKind::Struct(_, ref fields, _) => {
+            hir::ExprKind::Struct(_, fields, _) => {
                 for field in fields {
                     self.visit_field_id(field.hir_id);
                 }
@@ -276,12 +276,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         intravisit::walk_expr(self, e);
     }
 
-    fn visit_block(&mut self, b: &'tcx hir::Block) {
+    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
         self.visit_node_id(b.span, b.hir_id);
         intravisit::walk_block(self, b);
     }
 
-    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         match p.kind {
             hir::PatKind::Binding(..) => {
                 let tables = self.fcx.tables.borrow();
@@ -289,7 +289,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
                     self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);
                 }
             }
-            hir::PatKind::Struct(_, ref fields, _) => {
+            hir::PatKind::Struct(_, fields, _) => {
                 for field in fields {
                     self.visit_field_id(field.hir_id);
                 }
@@ -303,7 +303,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         intravisit::walk_pat(self, p);
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
         intravisit::walk_local(self, l);
         let var_ty = self.fcx.local_ty(l.span, l.hir_id).decl_ty;
         let var_ty = self.resolve(&var_ty, &l.span);

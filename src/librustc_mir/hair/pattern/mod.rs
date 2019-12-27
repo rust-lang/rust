@@ -11,7 +11,6 @@ use crate::hair::util::UserAnnotatedTyHelpers;
 
 use rustc::hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
-use rustc::hir::ptr::P;
 use rustc::hir::{self, RangeEnd};
 use rustc::mir::interpret::{get_slice_bytes, sign_extend, ConstValue, ErrorHandled};
 use rustc::mir::UserTypeProjection;
@@ -356,7 +355,7 @@ impl<'a, 'tcx> Pat<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
         tables: &'a ty::TypeckTables<'tcx>,
-        pat: &'tcx hir::Pat,
+        pat: &'tcx hir::Pat<'tcx>,
     ) -> Self {
         let mut pcx = PatCtxt::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
@@ -390,7 +389,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         self
     }
 
-    pub fn lower_pattern(&mut self, pat: &'tcx hir::Pat) -> Pat<'tcx> {
+    pub fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
         //
@@ -426,7 +425,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
     fn lower_range_expr(
         &mut self,
-        expr: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr<'tcx>,
     ) -> (PatKind<'tcx>, Option<Ascription<'tcx>>) {
         match self.lower_lit(expr) {
             PatKind::AscribeUserType {
@@ -437,7 +436,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
     }
 
-    fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat) -> Pat<'tcx> {
+    fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
         let mut ty = self.tables.node_type(pat.hir_id);
 
         if let ty::Error = ty.kind {
@@ -616,7 +615,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
     fn lower_tuple_subpats(
         &mut self,
-        pats: &'tcx [P<hir::Pat>],
+        pats: &'tcx [&'tcx hir::Pat<'tcx>],
         expected_len: usize,
         gap_pos: Option<usize>,
     ) -> Vec<FieldPat<'tcx>> {
@@ -629,11 +628,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .collect()
     }
 
-    fn lower_patterns(&mut self, pats: &'tcx [P<hir::Pat>]) -> Vec<Pat<'tcx>> {
+    fn lower_patterns(&mut self, pats: &'tcx [&'tcx hir::Pat<'tcx>]) -> Vec<Pat<'tcx>> {
         pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
-    fn lower_opt_pattern(&mut self, pat: &'tcx Option<P<hir::Pat>>) -> Option<Pat<'tcx>> {
+    fn lower_opt_pattern(&mut self, pat: &'tcx Option<&'tcx hir::Pat<'tcx>>) -> Option<Pat<'tcx>> {
         pat.as_ref().map(|p| self.lower_pattern(p))
     }
 
@@ -641,9 +640,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &mut self,
         span: Span,
         ty: Ty<'tcx>,
-        prefix: &'tcx [P<hir::Pat>],
-        slice: &'tcx Option<P<hir::Pat>>,
-        suffix: &'tcx [P<hir::Pat>],
+        prefix: &'tcx [&'tcx hir::Pat<'tcx>],
+        slice: &'tcx Option<&'tcx hir::Pat<'tcx>>,
+        suffix: &'tcx [&'tcx hir::Pat<'tcx>],
     ) -> PatKind<'tcx> {
         let prefix = self.lower_patterns(prefix);
         let slice = self.lower_opt_pattern(slice);
@@ -795,7 +794,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// The special case for negation exists to allow things like `-128_i8`
     /// which would overflow if we tried to evaluate `128_i8` and then negate
     /// afterwards.
-    fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatKind<'tcx> {
+    fn lower_lit(&mut self, expr: &'tcx hir::Expr<'tcx>) -> PatKind<'tcx> {
         match expr.kind {
             hir::ExprKind::Lit(ref lit) => {
                 let ty = self.tables.expr_ty(expr);

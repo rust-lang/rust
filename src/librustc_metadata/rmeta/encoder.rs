@@ -1524,7 +1524,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
-    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);
         self.encode_info_for_expr(ex);
     }
@@ -1587,7 +1587,7 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_info_for_expr(&mut self, expr: &hir::Expr) {
+    fn encode_info_for_expr(&mut self, expr: &hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Closure(..) => {
                 let def_id = self.tcx.hir().local_def_id(expr.hir_id);

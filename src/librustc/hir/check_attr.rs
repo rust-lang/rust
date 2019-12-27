@@ -458,7 +458,7 @@ impl CheckAttrVisitor<'tcx> {
             .emit();
     }
 
-    fn check_stmt_attributes(&self, stmt: &hir::Stmt) {
+    fn check_stmt_attributes(&self, stmt: &hir::Stmt<'_>) {
         // When checking statements ignore expressions, they will be checked later
         if let hir::StmtKind::Local(ref l) = stmt.kind {
             for attr in l.attrs.iter() {
@@ -477,7 +477,7 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_expr_attributes(&self, expr: &hir::Expr) {
+    fn check_expr_attributes(&self, expr: &hir::Expr<'_>) {
         let target = match expr.kind {
             hir::ExprKind::Closure(..) => Target::Closure,
             _ => Target::Expression,
@@ -537,12 +537,12 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_impl_item(self, impl_item)
     }
 
-    fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {
+    fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
         self.check_stmt_attributes(stmt);
         intravisit::walk_stmt(self, stmt)
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         self.check_expr_attributes(expr);
         intravisit::walk_expr(self, expr)
     }

@@ -87,7 +87,7 @@ macro_rules! declare_lint_pass {
 macro_rules! late_lint_methods {
     ($macro:path, $args:tt, [$hir:tt]) => (
         $macro!($args, [$hir], [
-            fn check_param(a: &$hir hir::Param);
+            fn check_param(a: &$hir hir::Param<$hir>);
             fn check_body(a: &$hir hir::Body<$hir>);
             fn check_body_post(a: &$hir hir::Body<$hir>);
             fn check_name(a: Span, b: ast::Name);
@@ -99,14 +99,14 @@ macro_rules! late_lint_methods {
             fn check_foreign_item_post(a: &$hir hir::ForeignItem<$hir>);
             fn check_item(a: &$hir hir::Item<$hir>);
             fn check_item_post(a: &$hir hir::Item<$hir>);
-            fn check_local(a: &$hir hir::Local);
-            fn check_block(a: &$hir hir::Block);
-            fn check_block_post(a: &$hir hir::Block);
-            fn check_stmt(a: &$hir hir::Stmt);
-            fn check_arm(a: &$hir hir::Arm);
-            fn check_pat(a: &$hir hir::Pat);
-            fn check_expr(a: &$hir hir::Expr);
-            fn check_expr_post(a: &$hir hir::Expr);
+            fn check_local(a: &$hir hir::Local<$hir>);
+            fn check_block(a: &$hir hir::Block<$hir>);
+            fn check_block_post(a: &$hir hir::Block<$hir>);
+            fn check_stmt(a: &$hir hir::Stmt<$hir>);
+            fn check_arm(a: &$hir hir::Arm<$hir>);
+            fn check_pat(a: &$hir hir::Pat<$hir>);
+            fn check_expr(a: &$hir hir::Expr<$hir>);
+            fn check_expr_post(a: &$hir hir::Expr<$hir>);
             fn check_ty(a: &$hir hir::Ty);
             fn check_generic_param(a: &$hir hir::GenericParam);
             fn check_generics(a: &$hir hir::Generics);
@@ -610,7 +610,7 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_param(&mut self, param: &'tcx hir::Param) {
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
         self.with_lint_attrs(param.hir_id, &param.attrs, |builder| {
             intravisit::walk_param(builder, param);
         });
@@ -628,7 +628,7 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         })
     }
 
-    fn visit_expr(&mut self, e: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         self.with_lint_attrs(e.hir_id, &e.attrs, |builder| {
             intravisit::walk_expr(builder, e);
         })
@@ -651,13 +651,13 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         })
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
         self.with_lint_attrs(l.hir_id, &l.attrs, |builder| {
             intravisit::walk_local(builder, l);
         })
     }
 
-    fn visit_arm(&mut self, a: &'tcx hir::Arm) {
+    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
         self.with_lint_attrs(a.hir_id, &a.attrs, |builder| {
             intravisit::walk_arm(builder, a);
         })

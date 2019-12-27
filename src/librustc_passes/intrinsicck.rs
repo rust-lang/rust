@@ -142,7 +142,7 @@ impl Visitor<'tcx> for ExprVisitor<'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let res = if let hir::ExprKind::Path(ref qpath) = expr.kind {
             self.tables.qpath_res(qpath, expr.hir_id)
         } else {

@@ -29,8 +29,10 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get(id) {
-        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
-        | Node::Item(hir::Item {
+        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, decl, body_id, _, _), .. }) => {
+            (*body_id, decl.output.span())
+        }
+        Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(hir::FnSig { decl, .. }, _, body_id),
             ..
         })
@@ -529,7 +531,12 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, _abi: Abi) -> bool {
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ArgInfo<'tcx>(Ty<'tcx>, Option<Span>, Option<&'tcx hir::Param>, Option<ImplicitSelfKind>);
+struct ArgInfo<'tcx>(
+    Ty<'tcx>,
+    Option<Span>,
+    Option<&'tcx hir::Param<'tcx>>,
+    Option<ImplicitSelfKind>,
+);
 
 fn construct_fn<'a, 'tcx, A>(
     hir: Cx<'a, 'tcx>,
@@ -738,7 +745,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fn_def_id: DefId,
         arguments: &[ArgInfo<'tcx>],
         argument_scope: region::Scope,
-        ast_body: &'tcx hir::Expr,
+        ast_body: &'tcx hir::Expr<'tcx>,
     ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {

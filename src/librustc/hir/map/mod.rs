@@ -180,19 +180,19 @@ pub struct Map<'hir> {
     hir_to_node_id: FxHashMap<HirId, NodeId>,
 }
 
-struct ParentHirIterator<'map> {
+struct ParentHirIterator<'map, 'hir> {
     current_id: HirId,
-    map: &'map Map<'map>,
+    map: &'map Map<'hir>,
 }
 
-impl<'map> ParentHirIterator<'map> {
-    fn new(current_id: HirId, map: &'map Map<'map>) -> ParentHirIterator<'map> {
+impl<'map, 'hir> ParentHirIterator<'map, 'hir> {
+    fn new(current_id: HirId, map: &'map Map<'hir>) -> ParentHirIterator<'map, 'hir> {
         ParentHirIterator { current_id, map }
     }
 }
 
-impl<'map> Iterator for ParentHirIterator<'map> {
-    type Item = (HirId, Node<'map>);
+impl<'map, 'hir> Iterator for ParentHirIterator<'map, 'hir> {
+    type Item = (HirId, Node<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id == CRATE_HIR_ID {
@@ -782,7 +782,7 @@ impl<'hir> Map<'hir> {
     ///
     /// Used by error reporting when there's a type error in a match arm caused by the `match`
     /// expression needing to be unit.
-    pub fn get_match_if_cause(&self, hir_id: HirId) -> Option<&Expr> {
+    pub fn get_match_if_cause(&self, hir_id: HirId) -> Option<&'hir Expr<'hir>> {
         for (_, node) in ParentHirIterator::new(hir_id, &self) {
             match node {
                 Node::Item(_) | Node::ForeignItem(_) | Node::TraitItem(_) | Node::ImplItem(_) => {
@@ -925,7 +925,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_expr(&self, id: HirId) -> &'hir Expr {
+    pub fn expect_expr(&self, id: HirId) -> &'hir Expr<'hir> {
         match self.find(id) {
             // read recorded by find
             Some(Node::Expr(expr)) => expr,

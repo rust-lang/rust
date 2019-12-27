@@ -894,7 +894,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         self.context.tables = old_tables;
     }
 
-    fn visit_param(&mut self, param: &'tcx hir::Param) {
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
         self.with_lint_attrs(param.hir_id, &param.attrs, |cx| {
             lint_callback!(cx, check_param, param);
             hir_visit::walk_param(cx, param);
@@ -930,12 +930,12 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         })
     }
 
-    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         lint_callback!(self, check_pat, p);
         hir_visit::walk_pat(self, p);
     }
 
-    fn visit_expr(&mut self, e: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         self.with_lint_attrs(e.hir_id, &e.attrs, |cx| {
             lint_callback!(cx, check_expr, e);
             hir_visit::walk_expr(cx, e);
@@ -943,7 +943,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         })
     }
 
-    fn visit_stmt(&mut self, s: &'tcx hir::Stmt) {
+    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
         // statement attributes are actually just attributes on one of
         // - item
         // - local
@@ -1020,20 +1020,20 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         }
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
         self.with_lint_attrs(l.hir_id, &l.attrs, |cx| {
             lint_callback!(cx, check_local, l);
             hir_visit::walk_local(cx, l);
         })
     }
 
-    fn visit_block(&mut self, b: &'tcx hir::Block) {
+    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
         lint_callback!(self, check_block, b);
         hir_visit::walk_block(self, b);
         lint_callback!(self, check_block_post, b);
     }
 
-    fn visit_arm(&mut self, a: &'tcx hir::Arm) {
+    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
         lint_callback!(self, check_arm, a);
         hir_visit::walk_arm(self, a);
     }

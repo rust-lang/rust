@@ -86,7 +86,7 @@ impl<'k> StatCollector<'k> {
 }
 
 impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
-    fn visit_param(&mut self, param: &'v hir::Param) {
+    fn visit_param(&mut self, param: &'v hir::Param<'v>) {
         self.record("Param", Id::Node(param.hir_id), param);
         hir_visit::walk_param(self, param)
     }
@@ -130,32 +130,32 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_foreign_item(self, i)
     }
 
-    fn visit_local(&mut self, l: &'v hir::Local) {
+    fn visit_local(&mut self, l: &'v hir::Local<'v>) {
         self.record("Local", Id::Node(l.hir_id), l);
         hir_visit::walk_local(self, l)
     }
 
-    fn visit_block(&mut self, b: &'v hir::Block) {
+    fn visit_block(&mut self, b: &'v hir::Block<'v>) {
         self.record("Block", Id::Node(b.hir_id), b);
         hir_visit::walk_block(self, b)
     }
 
-    fn visit_stmt(&mut self, s: &'v hir::Stmt) {
+    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
         self.record("Stmt", Id::Node(s.hir_id), s);
         hir_visit::walk_stmt(self, s)
     }
 
-    fn visit_arm(&mut self, a: &'v hir::Arm) {
+    fn visit_arm(&mut self, a: &'v hir::Arm<'v>) {
         self.record("Arm", Id::Node(a.hir_id), a);
         hir_visit::walk_arm(self, a)
     }
 
-    fn visit_pat(&mut self, p: &'v hir::Pat) {
+    fn visit_pat(&mut self, p: &'v hir::Pat<'v>) {
         self.record("Pat", Id::Node(p.hir_id), p);
         hir_visit::walk_pat(self, p)
     }
 
-    fn visit_expr(&mut self, ex: &'v hir::Expr) {
+    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
         self.record("Expr", Id::Node(ex.hir_id), ex);
         hir_visit::walk_expr(self, ex)
     }

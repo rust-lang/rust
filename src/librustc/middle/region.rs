@@ -432,7 +432,7 @@ impl<'tcx> Visitor<'tcx> for ExprLocatorVisitor {
         NestedVisitorMap::None
     }
 
-    fn visit_pat(&mut self, pat: &'tcx Pat) {
+    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
         intravisit::walk_pat(self, pat);
 
         self.expr_and_pat_count += 1;
@@ -442,7 +442,7 @@ impl<'tcx> Visitor<'tcx> for ExprLocatorVisitor {
         }
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         debug!("ExprLocatorVisitor - pre-increment {} expr = {:?}", self.expr_and_pat_count, expr);
 
         intravisit::walk_expr(self, expr);
@@ -773,7 +773,7 @@ fn record_var_lifetime(
     }
 }
 
-fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx hir::Block) {
+fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx hir::Block<'tcx>) {
     debug!("resolve_block(blk.hir_id={:?})", blk.hir_id);
 
     let prev_cx = visitor.cx;
@@ -837,7 +837,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
     visitor.cx = prev_cx;
 }
 
-fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm) {
+fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
     let prev_cx = visitor.cx;
 
     visitor.enter_scope(Scope { id: arm.hir_id.local_id, data: ScopeData::Node });
@@ -854,7 +854,7 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
     visitor.cx = prev_cx;
 }
 
-fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir::Pat) {
+fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
     visitor.record_child_scope(Scope { id: pat.hir_id.local_id, data: ScopeData::Node });
 
     // If this is a binding then record the lifetime of that binding.
@@ -871,7 +871,7 @@ fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir
     debug!("resolve_pat - post-increment {} pat = {:?}", visitor.expr_and_pat_count, pat);
 }
 
-fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt) {
+fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
     let stmt_id = stmt.hir_id.local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
@@ -890,7 +890,7 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
     visitor.cx.parent = prev_parent;
 }
 
-fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx hir::Expr) {
+fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
     debug!("resolve_expr - pre-increment {} expr = {:?}", visitor.expr_and_pat_count, expr);
 
     let prev_cx = visitor.cx;
@@ -1107,8 +1107,8 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
 fn resolve_local<'tcx>(
     visitor: &mut RegionResolutionVisitor<'tcx>,
-    pat: Option<&'tcx hir::Pat>,
-    init: Option<&'tcx hir::Expr>,
+    pat: Option<&'tcx hir::Pat<'tcx>>,
+    init: Option<&'tcx hir::Expr<'tcx>>,
 ) {
     debug!("resolve_local(pat={:?}, init={:?})", pat, init);
 
@@ -1197,7 +1197,7 @@ fn resolve_local<'tcx>(
     ///        | ( ..., P&, ... )
     ///        | ... "|" P& "|" ...
     ///        | box P&
-    fn is_binding_pat(pat: &hir::Pat) -> bool {
+    fn is_binding_pat(pat: &hir::Pat<'_>) -> bool {
         // Note that the code below looks for *explicit* refs only, that is, it won't
         // know about *implicit* refs as introduced in #42640.
         //
@@ -1263,7 +1263,7 @@ fn resolve_local<'tcx>(
     ///        | ( E& )
     fn record_rvalue_scope_if_borrow_expr<'tcx>(
         visitor: &mut RegionResolutionVisitor<'tcx>,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         blk_id: Option<Scope>,
     ) {
         match expr.kind {
@@ -1271,12 +1271,12 @@ fn resolve_local<'tcx>(
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 record_rvalue_scope(visitor, &subexpr, blk_id);
             }
-            hir::ExprKind::Struct(_, ref fields, _) => {
+            hir::ExprKind::Struct(_, fields, _) => {
                 for field in fields {
                     record_rvalue_scope_if_borrow_expr(visitor, &field.expr, blk_id);
                 }
             }
-            hir::ExprKind::Array(ref subexprs) | hir::ExprKind::Tup(ref subexprs) => {
+            hir::ExprKind::Array(subexprs) | hir::ExprKind::Tup(subexprs) => {
                 for subexpr in subexprs {
                     record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 }
@@ -1310,7 +1310,7 @@ fn resolve_local<'tcx>(
     /// Note: ET is intended to match "rvalues or places based on rvalues".
     fn record_rvalue_scope<'tcx>(
         visitor: &mut RegionResolutionVisitor<'tcx>,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         blk_scope: Option<Scope>,
     ) {
         let mut expr = expr;
@@ -1372,7 +1372,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_block(&mut self, b: &'tcx Block) {
+    fn visit_block(&mut self, b: &'tcx Block<'tcx>) {
         resolve_block(self, b);
     }
 
@@ -1444,19 +1444,19 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         self.terminating_scopes = outer_ts;
     }
 
-    fn visit_arm(&mut self, a: &'tcx Arm) {
+    fn visit_arm(&mut self, a: &'tcx Arm<'tcx>) {
         resolve_arm(self, a);
     }
-    fn visit_pat(&mut self, p: &'tcx Pat) {
+    fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) {
         resolve_pat(self, p);
     }
-    fn visit_stmt(&mut self, s: &'tcx Stmt) {
+    fn visit_stmt(&mut self, s: &'tcx Stmt<'tcx>) {
         resolve_stmt(self, s);
     }
-    fn visit_expr(&mut self, ex: &'tcx Expr) {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         resolve_expr(self, ex);
     }
-    fn visit_local(&mut self, l: &'tcx Local) {
+    fn visit_local(&mut self, l: &'tcx Local<'tcx>) {
         resolve_local(self, Some(&l.pat), l.init.as_ref().map(|e| &**e));
     }
 }

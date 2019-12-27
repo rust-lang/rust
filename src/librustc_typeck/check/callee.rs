@@ -39,9 +39,9 @@ enum CallStep<'tcx> {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_call(
         &self,
-        call_expr: &'tcx hir::Expr,
-        callee_expr: &'tcx hir::Expr,
-        arg_exprs: &'tcx [hir::Expr],
+        call_expr: &'tcx hir::Expr<'tcx>,
+        callee_expr: &'tcx hir::Expr<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let original_callee_ty = self.check_expr(callee_expr);
@@ -81,9 +81,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn try_overloaded_call_step(
         &self,
-        call_expr: &'tcx hir::Expr,
-        callee_expr: &'tcx hir::Expr,
-        arg_exprs: &'tcx [hir::Expr],
+        call_expr: &'tcx hir::Expr<'tcx>,
+        callee_expr: &'tcx hir::Expr<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
         let adjusted_ty = autoderef.unambiguous_final_ty(self);
@@ -166,9 +166,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn try_overloaded_call_traits(
         &self,
-        call_expr: &hir::Expr,
+        call_expr: &hir::Expr<'_>,
         adjusted_ty: Ty<'tcx>,
-        opt_arg_exprs: Option<&'tcx [hir::Expr]>,
+        opt_arg_exprs: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> Option<(Option<Adjustment<'tcx>>, MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
         for &(opt_trait_def_id, method_name, borrow) in &[
@@ -230,7 +230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'a>,
         hir_id: hir::HirId,
-        callee_node: &hir::ExprKind,
+        callee_node: &hir::ExprKind<'_>,
         callee_span: Span,
     ) {
         let hir_id = self.tcx.hir().get_parent_node(hir_id);
@@ -253,9 +253,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn confirm_builtin_call(
         &self,
-        call_expr: &'tcx hir::Expr,
+        call_expr: &'tcx hir::Expr<'tcx>,
         callee_ty: Ty<'tcx>,
-        arg_exprs: &'tcx [hir::Expr],
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let (fn_sig, def_span) = match callee_ty.kind {
@@ -403,8 +403,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn confirm_deferred_closure_call(
         &self,
-        call_expr: &'tcx hir::Expr,
-        arg_exprs: &'tcx [hir::Expr],
+        call_expr: &'tcx hir::Expr<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
         fn_sig: ty::FnSig<'tcx>,
     ) -> Ty<'tcx> {
@@ -436,8 +436,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn confirm_overloaded_call(
         &self,
-        call_expr: &'tcx hir::Expr,
-        arg_exprs: &'tcx [hir::Expr],
+        call_expr: &'tcx hir::Expr<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
         method_callee: MethodCallee<'tcx>,
     ) -> Ty<'tcx> {
@@ -457,8 +457,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 #[derive(Debug)]
 pub struct DeferredCallResolution<'tcx> {
-    call_expr: &'tcx hir::Expr,
-    callee_expr: &'tcx hir::Expr,
+    call_expr: &'tcx hir::Expr<'tcx>,
+    callee_expr: &'tcx hir::Expr<'tcx>,
     adjusted_ty: Ty<'tcx>,
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,

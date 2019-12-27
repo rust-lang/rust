@@ -479,7 +479,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
         hir::intravisit::NestedVisitorMap::None
     }
 
-    fn visit_block(&mut self, block: &'tcx hir::Block) {
+    fn visit_block(&mut self, block: &'tcx hir::Block<'tcx>) {
         hir::intravisit::walk_block(self, block);
 
         if let hir::UnsafeBlock(hir::UserProvided) = block.rules {

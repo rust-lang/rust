@@ -95,7 +95,6 @@ use rustc::hir::def::{CtorOf, DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::ptr::P;
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -390,7 +389,7 @@ impl UnsafetyState {
         UnsafetyState { def, unsafety, unsafe_push_count: 0, from_fn: true }
     }
 
-    pub fn recurse(&mut self, blk: &hir::Block) -> UnsafetyState {
+    pub fn recurse(&mut self, blk: &hir::Block<'_>) -> UnsafetyState {
         match self.unsafety {
             // If this unsafe, then if the outer function was already marked as
             // unsafe we shouldn't attribute the unsafe'ness to the block. This
@@ -1136,7 +1135,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     }
 
     // Add explicitly-declared locals.
-    fn visit_local(&mut self, local: &'tcx hir::Local) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         let local_ty = match local.ty {
             Some(ref ty) => {
                 let o_ty = self.fcx.to_ty(&ty);
@@ -1174,7 +1173,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     }
 
     // Add pattern bindings.
-    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
@@ -2934,7 +2933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn apply_adjustments(&self, expr: &hir::Expr, adj: Vec<Adjustment<'tcx>>) {
+    pub fn apply_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
         debug!("apply_adjustments(expr={:?}, adj={:?})", expr, adj);
 
         if adj.is_empty() {
@@ -3181,7 +3180,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Registers obligations that all types appearing in `substs` are well-formed.
-    pub fn add_wf_bounds(&self, substs: SubstsRef<'tcx>, expr: &hir::Expr) {
+    pub fn add_wf_bounds(&self, substs: SubstsRef<'tcx>, expr: &hir::Expr<'_>) {
         for ty in substs.types() {
             if !ty.references_error() {
                 self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
@@ -3362,8 +3361,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn lookup_indexing(
         &self,
-        expr: &hir::Expr,
-        base_expr: &'tcx hir::Expr,
+        expr: &hir::Expr<'_>,
+        base_expr: &'tcx hir::Expr<'tcx>,
         base_ty: Ty<'tcx>,
         idx_ty: Ty<'tcx>,
         needs: Needs,
@@ -3388,8 +3387,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// is implemented by `lookup_indexing`.
     fn try_index_step(
         &self,
-        expr: &hir::Expr,
-        base_expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
+        base_expr: &hir::Expr<'_>,
         autoderef: &Autoderef<'a, 'tcx>,
         needs: Needs,
         index_ty: Ty<'tcx>,
@@ -3513,9 +3512,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_method_argument_types(
         &self,
         sp: Span,
-        expr: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr<'tcx>,
         method: Result<MethodCallee<'tcx>, ()>,
-        args_no_rcvr: &'tcx [hir::Expr],
+        args_no_rcvr: &'tcx [hir::Expr<'tcx>],
         tuple_arguments: TupleArgumentsFlag,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
@@ -3641,10 +3640,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_argument_types(
         &self,
         sp: Span,
-        expr: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr<'tcx>,
         fn_inputs: &[Ty<'tcx>],
         expected_arg_tys: &[Ty<'tcx>],
-        args: &'tcx [hir::Expr],
+        args: &'tcx [hir::Expr<'tcx>],
         c_variadic: bool,
         tuple_arguments: TupleArgumentsFlag,
         def_span: Option<Span>,
@@ -3897,7 +3896,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors: &mut Vec<traits::FulfillmentError<'_>>,
         final_arg_types: &[(usize, Ty<'tcx>, Ty<'tcx>)],
         call_sp: Span,
-        args: &'tcx [hir::Expr],
+        args: &'tcx [hir::Expr<'tcx>],
     ) {
         // We *do not* do this for desugared call spans to keep good diagnostics when involving
         // the `?` operator.
@@ -3951,7 +3950,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn point_at_type_arg_instead_of_call_if_possible(
         &self,
         errors: &mut Vec<traits::FulfillmentError<'_>>,
-        call_expr: &'tcx hir::Expr,
+        call_expr: &'tcx hir::Expr<'tcx>,
     ) {
         if let hir::ExprKind::Call(path, _) = &call_expr.kind {
             if let hir::ExprKind::Path(qpath) = &path.kind {
@@ -4248,8 +4247,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_decl_initializer(
         &self,
-        local: &'tcx hir::Local,
-        init: &'tcx hir::Expr,
+        local: &'tcx hir::Local<'tcx>,
+        init: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         // FIXME(tschottdorf): `contains_explicit_ref_binding()` must be removed
         // for #42640 (default match binding modes).
@@ -4275,7 +4274,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_decl_local(&self, local: &'tcx hir::Local) {
+    pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
         let t = self.local_ty(local.span, local.hir_id).decl_ty;
         self.write_ty(local.hir_id, t);
 
@@ -4289,7 +4288,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.overwrite_local_ty_if_err(local, t, pat_ty);
     }
 
-    fn overwrite_local_ty_if_err(&self, local: &'tcx hir::Local, decl_ty: Ty<'tcx>, ty: Ty<'tcx>) {
+    fn overwrite_local_ty_if_err(
+        &self,
+        local: &'tcx hir::Local<'tcx>,
+        decl_ty: Ty<'tcx>,
+        ty: Ty<'tcx>,
+    ) {
         if ty.references_error() {
             // Override the types everywhere with `types.err` to avoid knock down errors.
             self.write_ty(local.hir_id, ty);
@@ -4309,7 +4313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
-    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt) {
+    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
@@ -4347,7 +4351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.has_errors.set(self.has_errors.get() | old_has_errors);
     }
 
-    pub fn check_block_no_value(&self, blk: &'tcx hir::Block) {
+    pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
         let unit = self.tcx.mk_unit();
         let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
 
@@ -4365,7 +4369,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// if false { return 0i32; } else { 1u32 }
     /// //                               ^^^^ point at this instead of the whole `if` expression
     /// ```
-    fn get_expr_coercion_span(&self, expr: &hir::Expr) -> syntax_pos::Span {
+    fn get_expr_coercion_span(&self, expr: &hir::Expr<'_>) -> syntax_pos::Span {
         if let hir::ExprKind::Match(_, arms, _) = &expr.kind {
             let arm_spans: Vec<Span> = arms
                 .iter()
@@ -4396,7 +4400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_block_with_expected(
         &self,
-        blk: &'tcx hir::Block,
+        blk: &'tcx hir::Block<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let prev = {
@@ -4426,7 +4430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coerce = if blk.targeted_by_break {
             CoerceMany::new(coerce_to_ty)
         } else {
-            let tail_expr: &[P<hir::Expr>] = match tail_expr {
+            let tail_expr: &[&hir::Expr<'_>] = match tail_expr {
                 Some(e) => slice::from_ref(e),
                 None => &[],
             };
@@ -4437,7 +4441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ctxt = BreakableCtxt { coerce: Some(coerce), may_break: false };
 
         let (ctxt, ()) = self.with_breakable_ctxt(blk.hir_id, ctxt, || {
-            for s in &blk.stmts {
+            for s in blk.stmts {
                 self.check_stmt(s);
             }
 
@@ -4588,7 +4592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn suggest_mismatched_types_on_tail(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        expr: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         cause_span: Span,
@@ -4613,7 +4617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_fn_call(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
@@ -4756,7 +4760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn suggest_ref_or_into(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
@@ -4819,7 +4823,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_boxing_when_appropriate(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
@@ -4864,7 +4868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_missing_semicolon(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        expression: &'tcx hir::Expr,
+        expression: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         cause_span: Span,
     ) {
@@ -4970,7 +4974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_missing_await(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
@@ -5033,7 +5037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// with `expected_ty`. If so, it suggests removing the semicolon.
     fn consider_hint_about_removing_semicolon(
         &self,
-        blk: &'tcx hir::Block,
+        blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
@@ -5047,7 +5051,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn could_remove_semicolon(&self, blk: &'tcx hir::Block, expected_ty: Ty<'tcx>) -> Option<Span> {
+    fn could_remove_semicolon(
+        &self,
+        blk: &'tcx hir::Block<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> Option<Span> {
         // Be helpful when the user wrote `{... expr;}` and
         // taking the `;` off is enough to fix the error.
         let last_stmt = blk.stmts.last()?;
