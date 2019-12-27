@@ -276,7 +276,6 @@
 #![feature(linkage)]
 #![feature(log_syntax)]
 #![feature(manually_drop_take)]
-#![feature(matches_macro)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(needs_panic_runtime)]
