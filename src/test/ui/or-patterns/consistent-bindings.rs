@@ -3,7 +3,6 @@
 // edition:2018
 
 #![feature(or_patterns)]
-//~^ WARN the feature `or_patterns` is incomplete
 
 fn main() {
     // One level:

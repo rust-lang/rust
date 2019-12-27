@@ -1,7 +1,6 @@
 #![feature(box_patterns, stmt_expr_attributes)]
 
 #![feature(or_patterns)]
-//~^ WARN the feature `or_patterns` is incomplete
 
 #![allow(ellipsis_inclusive_range_patterns)]
 #![allow(unreachable_patterns)]

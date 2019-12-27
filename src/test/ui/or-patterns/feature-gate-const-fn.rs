@@ -1,5 +1,4 @@
 #![feature(or_patterns)]
-#![allow(incomplete_features)]
 
 const fn foo((Ok(a) | Err(a)): Result<i32, i32>) {
     //~^ ERROR or-pattern is not allowed in a `const fn`
