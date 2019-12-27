@@ -37,9 +37,7 @@ pub(super) fn optimize_function(
 ) {
     combine_stack_addr_with_load_store(func);
 
-    // Record all stack_addr, stack_load and stack_store instructions. Also record all stack_addr
-    // and stack_load insts whose result is used.
-    let mut stack_addr_load_insts_users = HashMap::<Inst, HashSet<Inst>>::new();
+    // Record all stack_addr, stack_load and stack_store instructions.
     let mut stack_slot_usage_map = BTreeMap::<OrdStackSlot, StackSlotUsage>::new();
 
     let mut cursor = FuncCursor::new(func);
@@ -70,56 +68,12 @@ pub(super) fn optimize_function(
                 }
                 _ => {}
             }
-
-            for &arg in cursor.func.dfg.inst_args(inst) {
-                if let ValueDef::Result(arg_origin, 0) = cursor.func.dfg.value_def(arg) {
-                    match cursor.func.dfg[arg_origin].opcode() {
-                        Opcode::StackAddr | Opcode::StackLoad => {
-                            stack_addr_load_insts_users.entry(arg_origin).or_insert_with(HashSet::new).insert(inst);
-                        }
-                        _ => {}
-                    }
-                }
-            }
         }
     }
 
-    println!(
-        "{}:\nstack_addr/stack_load users: {:?}\nstack slot usage: {:?}",
-        name,
-        stack_addr_load_insts_users,
-        stack_slot_usage_map,
-    );
+    println!("{}:\nstack slot usage: {:?}", name, stack_slot_usage_map);
 
-    for inst in stack_addr_load_insts_users.keys() {
-        let mut is_recorded_stack_addr_or_stack_load = false;
-        for stack_slot_users in stack_slot_usage_map.values() {
-            is_recorded_stack_addr_or_stack_load |= stack_slot_users.stack_addr.contains(inst) || stack_slot_users.stack_load.contains(inst);
-        }
-        assert!(is_recorded_stack_addr_or_stack_load);
-    }
-
-    // Replace all unused stack_addr and stack_load instructions with nop.
-    for stack_slot_users in stack_slot_usage_map.values_mut() {
-        // FIXME remove clone
-        for &inst in stack_slot_users.stack_addr.clone().iter() {
-            if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                println!("Removing unused stack_addr {}", inst);
-                func.dfg.detach_results(inst);
-                func.dfg.replace(inst).nop();
-                stack_slot_users.stack_addr.remove(&inst);
-            }
-        }
-
-        for &inst in stack_slot_users.stack_load.clone().iter() {
-            if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                println!("Removing unused stack_addr {}", inst);
-                func.dfg.detach_results(inst);
-                func.dfg.replace(inst).nop();
-                stack_slot_users.stack_load.remove(&inst);
-            }
-        }
-    }
+    remove_unused_stack_addr_and_stack_load(func, &mut stack_slot_usage_map);
 
     println!("stack slot usage (after): {:?}", stack_slot_usage_map);
 
@@ -170,6 +124,59 @@ fn combine_stack_addr_with_load_store(func: &mut Function) {
                     }
                 }
                 _ => {}
+            }
+        }
+    }
+}
+
+fn remove_unused_stack_addr_and_stack_load(func: &mut Function, stack_slot_usage_map: &mut BTreeMap<OrdStackSlot, StackSlotUsage>) {
+    // FIXME incrementally rebuild on each call?
+    let mut stack_addr_load_insts_users = HashMap::<Inst, HashSet<Inst>>::new();
+
+    let mut cursor = FuncCursor::new(func);
+    while let Some(_ebb) = cursor.next_ebb() {
+        while let Some(inst) = cursor.next_inst() {
+            for &arg in cursor.func.dfg.inst_args(inst) {
+                if let ValueDef::Result(arg_origin, 0) = cursor.func.dfg.value_def(arg) {
+                    match cursor.func.dfg[arg_origin].opcode() {
+                        Opcode::StackAddr | Opcode::StackLoad => {
+                            stack_addr_load_insts_users.entry(arg_origin).or_insert_with(HashSet::new).insert(inst);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+
+    println!("stack_addr/stack_load users: {:?}", stack_addr_load_insts_users);
+
+    for inst in stack_addr_load_insts_users.keys() {
+        let mut is_recorded_stack_addr_or_stack_load = false;
+        for stack_slot_users in stack_slot_usage_map.values() {
+            is_recorded_stack_addr_or_stack_load |= stack_slot_users.stack_addr.contains(inst) || stack_slot_users.stack_load.contains(inst);
+        }
+        assert!(is_recorded_stack_addr_or_stack_load);
+    }
+
+    // Replace all unused stack_addr and stack_load instructions with nop.
+    for stack_slot_users in stack_slot_usage_map.values_mut() {
+        // FIXME remove clone
+        for &inst in stack_slot_users.stack_addr.clone().iter() {
+            if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
+                println!("Removing unused stack_addr {}", inst);
+                func.dfg.detach_results(inst);
+                func.dfg.replace(inst).nop();
+                stack_slot_users.stack_addr.remove(&inst);
+            }
+        }
+
+        for &inst in stack_slot_users.stack_load.clone().iter() {
+            if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
+                println!("Removing unused stack_addr {}", inst);
+                func.dfg.detach_results(inst);
+                func.dfg.replace(inst).nop();
+                stack_slot_users.stack_load.remove(&inst);
             }
         }
     }
