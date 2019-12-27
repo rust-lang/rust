@@ -2037,7 +2037,11 @@ $EndFeature, "
             #[rustc_const_unstable(feature = "const_int_sign", issue = "53718")]
             #[inline]
             pub const fn signum(self) -> Self {
-                (self > 0) as Self - (self < 0) as Self
+                match self {
+                    n if n > 0 =>  1,
+                    0          =>  0,
+                    _          => -1,
+                }
             }
         }
 
