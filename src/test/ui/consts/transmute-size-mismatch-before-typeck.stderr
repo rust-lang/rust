@@ -1,0 +1,28 @@
+error: any use of this value will cause an error
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:14:29
+   |
+LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
+   | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                             |
+   |                             tried to transmute from usize to &[u8], but their sizes differed
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: could not evaluate constant pattern
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:10:9
+   |
+LL |         ZST => {}
+   |         ^^^
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:14:29
+   |
+LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
+   |                             ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `usize` (word size)
+   = note: target type: `&'static [u8]` (2 * word size)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

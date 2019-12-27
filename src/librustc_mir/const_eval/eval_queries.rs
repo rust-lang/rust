@@ -119,7 +119,7 @@ pub(super) fn op_to_const<'tcx>(
     };
     let val = match immediate {
         Ok(mplace) => {
-            let ptr = mplace.ptr.to_ptr().unwrap();
+            let ptr = mplace.ptr.assert_ptr();
             let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
             ConstValue::ByRef { alloc, offset: ptr.offset }
         }
@@ -133,7 +133,7 @@ pub(super) fn op_to_const<'tcx>(
                 // comes from a constant so it can happen have `Undef`, because the indirect
                 // memory that was read had undefined bytes.
                 let mplace = op.assert_mem_place();
-                let ptr = mplace.ptr.to_ptr().unwrap();
+                let ptr = mplace.ptr.assert_ptr();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                 ConstValue::ByRef { alloc, offset: ptr.offset }
             }
@@ -176,7 +176,7 @@ fn validate_and_turn_into_const<'tcx>(
         // Statics/promoteds are always `ByRef`, for the rest `op_to_const` decides
         // whether they become immediates.
         if is_static || cid.promoted.is_some() {
-            let ptr = mplace.ptr.to_ptr()?;
+            let ptr = mplace.ptr.assert_ptr();
             Ok(tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Value(ConstValue::ByRef {
                     alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),

@@ -923,12 +923,14 @@ where
             return self.copy_op(src, dest);
         }
         // We still require the sizes to match.
-        assert!(
-            src.layout.size == dest.layout.size,
-            "Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}",
-            src,
-            dest
-        );
+        if src.layout.size != dest.layout.size {
+            // FIXME: This should be an assert instead of an error, but if we transmute within an
+            // array length computation, `typeck` may not have yet been run and errored out. In fact
+            // most likey we *are* running `typeck` right now. Investigate whether we can bail out
+            // on `typeck_tables().has_errors` at all const eval entry points.
+            debug!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
+            throw_unsup!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));
+        }
         // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
         // to avoid that here.
         assert!(
@@ -974,31 +976,20 @@ where
         let (mplace, size) = match place.place {
             Place::Local { frame, local } => {
                 match self.stack[frame].locals[local].access_mut()? {
-                    Ok(local_val) => {
+                    Ok(&mut local_val) => {
                         // We need to make an allocation.
-                        // FIXME: Consider not doing anything for a ZST, and just returning
-                        // a fake pointer?  Are we even called for ZST?
-
-                        // We cannot hold on to the reference `local_val` while allocating,
-                        // but we can hold on to the value in there.
-                        let old_val =
-                            if let LocalValue::Live(Operand::Immediate(value)) = *local_val {
-                                Some(value)
-                            } else {
-                                None
-                            };
 
                         // We need the layout of the local.  We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
-                        // We also need to support unsized types, and hence cannot use `allocate`.
                         let local_layout = self.layout_of_local(&self.stack[frame], local, None)?;
+                        // We also need to support unsized types, and hence cannot use `allocate`.
                         let (size, align) = self
                             .size_and_align_of(meta, local_layout)?
                             .expect("Cannot allocate for non-dyn-sized type");
                         let ptr = self.memory.allocate(size, align, MemoryKind::Stack);
                         let mplace = MemPlace { ptr: ptr.into(), align, meta };
-                        if let Some(value) = old_val {
+                        if let LocalValue::Live(Operand::Immediate(value)) = local_val {
                             // Preserve old value.
                             // We don't have to validate as we can assume the local
                             // was already valid for its type.

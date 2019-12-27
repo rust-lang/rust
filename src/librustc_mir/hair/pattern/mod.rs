@@ -992,6 +992,12 @@ pub fn compare_const_vals<'tcx>(
         return fallback();
     }
 
+    // Early return for equal constants (so e.g. references to ZSTs can be compared, even if they
+    // are just integer addresses).
+    if a.val == b.val {
+        return from_bool(true);
+    }
+
     let a_bits = a.try_eval_bits(tcx, param_env, ty);
     let b_bits = b.try_eval_bits(tcx, param_env, ty);
 

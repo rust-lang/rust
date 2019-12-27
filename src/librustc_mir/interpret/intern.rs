@@ -187,14 +187,21 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
         if let ty::Ref(_, referenced_ty, mutability) = ty.kind {
             let value = self.ecx.read_immediate(mplace.into())?;
             let mplace = self.ecx.ref_to_mplace(value)?;
-            // Handle trait object vtables
+            // Handle trait object vtables.
             if let ty::Dynamic(..) =
                 self.ecx.tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind
             {
-                if let Ok(vtable) = mplace.meta.unwrap().to_ptr() {
-                    // explitly choose `Immutable` here, since vtables are immutable, even
-                    // if the reference of the fat pointer is mutable
+                // Validation has already errored on an invalid vtable pointer so we can safely not
+                // do anything if this is not a real pointer.
+                if let Scalar::Ptr(vtable) = mplace.meta.unwrap() {
+                    // Explicitly choose `Immutable` here, since vtables are immutable, even
+                    // if the reference of the fat pointer is mutable.
                     self.intern_shallow(vtable.alloc_id, Mutability::Not, None)?;
+                } else {
+                    self.ecx().tcx.sess.delay_span_bug(
+                        syntax_pos::DUMMY_SP,
+                        "vtables pointers cannot be integer pointers",
+                    );
                 }
             }
             // Check if we have encountered this pointer+layout combination before.
@@ -280,7 +287,9 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
         ecx,
         leftover_allocations,
         base_intern_mode,
-        ret.ptr.to_ptr()?.alloc_id,
+        // The outermost allocation must exist, because we allocated it with
+        // `Memory::allocate`.
+        ret.ptr.assert_ptr().alloc_id,
         base_mutability,
         Some(ret.layout.ty),
     )?;

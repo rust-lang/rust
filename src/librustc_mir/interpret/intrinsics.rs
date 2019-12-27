@@ -5,7 +5,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
     self,
-    interpret::{ConstValue, InterpResult, Scalar},
+    interpret::{ConstValue, GlobalId, InterpResult, Scalar},
     BinOp,
 };
 use rustc::ty;
@@ -118,9 +118,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::size_of
             | sym::type_id
             | sym::type_name => {
-                let val =
-                    self.tcx.const_eval_instance(self.param_env, instance, Some(self.tcx.span))?;
-                let val = self.eval_const_to_op(val, None)?;
+                let gid = GlobalId { instance, promoted: None };
+                let val = self.const_eval(gid)?;
                 self.copy_op(val, dest)?;
             }
 
