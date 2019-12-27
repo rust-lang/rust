@@ -252,8 +252,6 @@ macro_rules! debug_assert_ne {
 /// # Examples
 ///
 /// ```
-/// #![feature(matches_macro)]
-///
 /// let foo = 'f';
 /// assert!(matches!(foo, 'A'..='Z' | 'a'..='z'));
 ///
@@ -261,7 +259,7 @@ macro_rules! debug_assert_ne {
 /// assert!(matches!(bar, Some(x) if x > 2));
 /// ```
 #[macro_export]
-#[unstable(feature = "matches_macro", issue = "65721")]
+#[stable(feature = "matches_macro", since = "1.42.0")]
 macro_rules! matches {
     ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )?) => {
         match $expression {
