@@ -70,11 +70,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatKind::Or { .. } => self
-                .hir
-                .tcx()
-                .sess
-                .span_fatal(match_pair.pattern.span, "or-patterns are not fully implemented yet"),
+            PatKind::Or { .. } => bug!("or-patterns should have already been handled"),
 
             PatKind::AscribeUserType { .. }
             | PatKind::Array { .. }
