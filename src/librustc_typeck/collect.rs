@@ -177,9 +177,7 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
         | hir::ItemKind::Enum(_, generics)
         | hir::ItemKind::Struct(_, generics) => (&generics.params[..], true),
         hir::ItemKind::TyAlias(_, generics) => (&generics.params[..], false),
-        // hir::ItemKind::Static(ty, ..) => {
-        // hir::ItemKind::Fn(..) |
-        // hir::ItemKind::Const(..) => {} // We handle these elsewhere to suggest appropriate type.
+        // `static`, `fn` and `const` are handled elsewhere to suggest appropriate type.
         _ => return,
     };
 
@@ -1276,7 +1274,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             TraitItemKind::Const(ref ty, body_id) => body_id
                 .and_then(|body_id| {
-                    if is_infer_ty(ty) {
+                    if is_suggestable_infer_ty(ty) {
                         Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
                     } else {
                         None
@@ -1295,7 +1293,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 tcx.mk_fn_def(def_id, substs)
             }
             ImplItemKind::Const(ref ty, body_id) => {
-                if is_infer_ty(ty) {
+                if is_suggestable_infer_ty(ty) {
                     infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                 } else {
                     icx.to_ty(ty)
@@ -1320,7 +1318,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::Item(item) => {
             match item.kind {
                 ItemKind::Static(ref ty, .., body_id) | ItemKind::Const(ref ty, body_id) => {
-                    if is_infer_ty(ty) {
+                    if is_suggestable_infer_ty(ty) {
                         infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                     } else {
                         icx.to_ty(ty)
@@ -1792,10 +1790,12 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 }
 
-crate fn is_infer_ty(ty: &hir::Ty<'_>) -> bool {
+/// Whether `ty` is a type with `_` placeholders that can be infered. Used in diagnostics only to
+/// use inference to provide suggestions for the appropriate type if possible.
+fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
     match &ty.kind {
         hir::TyKind::Infer => true,
-        hir::TyKind::Slice(ty) | hir::TyKind::Array(ty, _) => is_infer_ty(ty),
+        hir::TyKind::Slice(ty) | hir::TyKind::Array(ty, _) => is_suggestable_infer_ty(ty),
         hir::TyKind::Tup(tys)
             if !tys.is_empty()
                 && tys.iter().any(|ty| match ty.kind {
@@ -1811,7 +1811,7 @@ crate fn is_infer_ty(ty: &hir::Ty<'_>) -> bool {
 
 pub fn get_infer_ret_ty(output: &'hir hir::FunctionRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
     if let hir::FunctionRetTy::Return(ref ty) = output {
-        if is_infer_ty(ty) {
+        if is_suggestable_infer_ty(ty) {
             return Some(&**ty);
         }
     }

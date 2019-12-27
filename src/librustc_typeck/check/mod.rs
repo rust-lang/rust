@@ -953,7 +953,12 @@ fn diagnostic_only_typeck_tables_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> &ty::TypeckTables<'tcx> {
-    let fallback = move || tcx.types.err;
+    assert!(def_id.is_local());
+    let fallback = move || {
+        let span = tcx.hir().span(tcx.hir().as_local_hir_id(def_id).unwrap());
+        tcx.sess.delay_span_bug(span, "diagnostic only typeck table used");
+        tcx.types.err
+    };
     typeck_tables_of_with_fallback(tcx, def_id, fallback)
 }
 
