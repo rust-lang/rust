@@ -2,7 +2,7 @@
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
 use cargo_metadata::Message;
-use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
+use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
 use lsp_types::{
     Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressEnd,
     WorkDoneProgressReport,
@@ -193,7 +193,9 @@ impl CheckWatcherState {
                 recv(self.watcher.message_recv) -> msg => match msg {
                     Ok(msg) => self.handle_message(msg, task_send),
                     Err(RecvError) => {
-                        // Watcher finished, do nothing.
+                        // Watcher finished, replace it with a never channel to
+                        // avoid busy-waiting.
+                        std::mem::replace(&mut self.watcher.message_recv, never());
                     },
                 }
             };
@@ -370,7 +372,7 @@ impl std::ops::Drop for WatchThread {
         if let Some(handle) = self.handle.take() {
             // Replace our reciever with dummy one, so we can drop and close the
             // one actually communicating with the thread
-            let recv = std::mem::replace(&mut self.message_recv, crossbeam_channel::never());
+            let recv = std::mem::replace(&mut self.message_recv, never());
 
             // Dropping the original reciever initiates thread sub-process shutdown
             drop(recv);
