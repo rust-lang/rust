@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Error: std::hash::Hash` is not satisfied
-  --> $DIR/derives-span-Hash-tuple-struct.rs:9:5
+  --> $DIR/derives-span-Hash-tuple-struct.rs:12:5
    |
 LL |     Error
    |     ^^^^^ the trait `std::hash::Hash` is not implemented for `Error`

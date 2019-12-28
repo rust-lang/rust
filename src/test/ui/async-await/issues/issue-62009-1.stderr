@@ -1,5 +1,5 @@
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:7:5
+  --> $DIR/issue-62009-1.rs:10:5
    |
 LL | fn main() {
    |    ---- this is not `async`
@@ -7,7 +7,7 @@ LL |     async { let (); }.await;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:9:5
+  --> $DIR/issue-62009-1.rs:12:5
    |
 LL |   fn main() {
    |      ---- this is not `async`
@@ -19,7 +19,7 @@ LL | |     }.await;
    | |___________^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:13:5
+  --> $DIR/issue-62009-1.rs:16:5
    |
 LL | fn main() {
    |    ---- this is not `async`
@@ -27,11 +27,11 @@ LL | fn main() {
 LL |     (|_| 2333).await;
    |     ^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
-error[E0277]: the trait bound `[closure@$DIR/issue-62009-1.rs:13:5: 13:15]: std::future::Future` is not satisfied
-  --> $DIR/issue-62009-1.rs:13:5
+error[E0277]: the trait bound `[closure@$DIR/issue-62009-1.rs:16:5: 16:15]: std::future::Future` is not satisfied
+  --> $DIR/issue-62009-1.rs:16:5
    |
 LL |     (|_| 2333).await;
-   |     ^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:13:5: 13:15]`
+   |     ^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:16:5: 16:15]`
    |
    = note: required by `std::future::IntoFuture::into_future`
 
