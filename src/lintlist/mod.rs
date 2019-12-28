@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 341] = [
+pub const ALL_LINTS: [Lint; 342] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1182,6 +1182,13 @@ pub const ALL_LINTS: [Lint; 341] = [
         desc: "type names prefixed/postfixed with their containing module\'s name",
         deprecation: None,
         module: "enum_variants",
+    },
+    Lint {
+        name: "modulo_arithmetic",
+        group: "restriction",
+        desc: "any modulo arithmetic statement",
+        deprecation: None,
+        module: "modulo_arithmetic",
     },
     Lint {
         name: "modulo_one",
