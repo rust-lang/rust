@@ -546,38 +546,42 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
         place_layout: TyLayout<'tcx>,
     ) -> Option<()> {
-        if ty.is_integral() && op.ty(&self.local_decls, self.tcx).is_integral() {
-            let value = self.use_ecx(source_info, |this| {
-                this.ecx.read_immediate(this.ecx.eval_operand(op, None)?)
-            })?;
+        if !ty.is_integral() || !op.ty(&self.local_decls, self.tcx).is_integral() {
+            return Some(());
+        }
 
-            // Do not try to read bits for ZSTs
-            if !value.layout.is_zst() {
-                let value_size = value.layout.size;
-                let value_bits = value.to_scalar().and_then(|r| r.to_bits(value_size));
-                if let Ok(value_bits) = value_bits {
-                    let truncated = truncate(value_bits, place_layout.size);
-                    if truncated != value_bits {
-                        let scope = source_info.scope;
-                        let lint_root = match &self.source_scopes[scope].local_data {
-                            ClearCrossCrate::Set(data) => data.lint_root,
-                            ClearCrossCrate::Clear => return None,
-                        };
-                        self.tcx.lint_hir(
-                            ::rustc::lint::builtin::CONST_ERR,
-                            lint_root,
-                            source_info.span,
-                            &format!(
-                                "truncating cast: the value {} requires {} bits but \
-                                              the target type is only {} bits",
-                                value_bits,
-                                value_size.bits(),
-                                place_layout.size.bits()
-                            ),
-                        );
-                        return None;
-                    }
-                }
+        let value = self.use_ecx(source_info, |this| {
+            this.ecx.read_immediate(this.ecx.eval_operand(op, None)?)
+        })?;
+
+        // Do not try to read bits for ZSTs
+        if value.layout.is_zst() {
+            return Some(());
+        }
+
+        let value_size = value.layout.size;
+        let value_bits = value.to_scalar().and_then(|r| r.to_bits(value_size));
+        if let Ok(value_bits) = value_bits {
+            let truncated = truncate(value_bits, place_layout.size);
+            if truncated != value_bits {
+                let scope = source_info.scope;
+                let lint_root = match &self.source_scopes[scope].local_data {
+                    ClearCrossCrate::Set(data) => data.lint_root,
+                    ClearCrossCrate::Clear => return None,
+                };
+                self.tcx.lint_hir(
+                    ::rustc::lint::builtin::CONST_ERR,
+                    lint_root,
+                    source_info.span,
+                    &format!(
+                        "truncating cast: the value {} requires {} bits but the target type is \
+                                          only {} bits",
+                        value_bits,
+                        value_size.bits(),
+                        place_layout.size.bits()
+                    ),
+                );
+                return None;
             }
         }
 
