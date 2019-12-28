@@ -4,16 +4,17 @@ use crate::parse_in;
 
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
-use syntax::ast::{
-    self, AttrKind, Attribute, Ident, MacArgs, MacDelimiter, MetaItem, MetaItemKind,
-};
-use syntax::attr::mk_name_value_item_str;
+use syntax::ast::{self, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
 use syntax::early_buffered_lints::ILL_FORMED_ATTRIBUTE_INPUT;
 use syntax::sess::ParseSess;
 use syntax::tokenstream::DelimSpan;
 use syntax_pos::{sym, Symbol};
 
 pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
+    if attr.is_doc_comment() {
+        return;
+    }
+
     let attr_info =
         attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).map(|a| **a);
 
@@ -33,26 +34,22 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
 }
 
 pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
-    Ok(match attr.kind {
-        AttrKind::Normal(ref item) => MetaItem {
-            span: attr.span,
-            path: item.path.clone(),
-            kind: match &attr.get_normal_item().args {
-                MacArgs::Empty => MetaItemKind::Word,
-                MacArgs::Eq(_, t) => {
-                    let v = parse_in(sess, t.clone(), "name value", |p| p.parse_unsuffixed_lit())?;
-                    MetaItemKind::NameValue(v)
-                }
-                MacArgs::Delimited(dspan, delim, t) => {
-                    check_meta_bad_delim(sess, *dspan, *delim, "wrong meta list delimiters");
-                    let nmis = parse_in(sess, t.clone(), "meta list", |p| p.parse_meta_seq_top())?;
-                    MetaItemKind::List(nmis)
-                }
-            },
+    let item = attr.get_normal_item();
+    Ok(MetaItem {
+        span: attr.span,
+        path: item.path.clone(),
+        kind: match &item.args {
+            MacArgs::Empty => MetaItemKind::Word,
+            MacArgs::Eq(_, t) => {
+                let v = parse_in(sess, t.clone(), "name value", |p| p.parse_unsuffixed_lit())?;
+                MetaItemKind::NameValue(v)
+            }
+            MacArgs::Delimited(dspan, delim, t) => {
+                check_meta_bad_delim(sess, *dspan, *delim, "wrong meta list delimiters");
+                let nmis = parse_in(sess, t.clone(), "meta list", |p| p.parse_meta_seq_top())?;
+                MetaItemKind::List(nmis)
+            }
         },
-        AttrKind::DocComment(comment) => {
-            mk_name_value_item_str(Ident::new(sym::doc, attr.span), comment, attr.span)
-        }
     })
 }
 

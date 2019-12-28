@@ -314,6 +314,10 @@ pub struct MissingDoc {
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
 fn has_doc(attr: &ast::Attribute) -> bool {
+    if attr.is_doc_comment() {
+        return true;
+    }
+
     if !attr.check_name(sym::doc) {
         return false;
     }
@@ -768,7 +772,7 @@ impl UnusedDocComment {
 
             let span = sugared_span.take().unwrap_or_else(|| attr.span);
 
-            if attr.check_name(sym::doc) {
+            if attr.is_doc_comment() || attr.check_name(sym::doc) {
                 let mut err = cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, "unused doc comment");
 
                 err.span_label(

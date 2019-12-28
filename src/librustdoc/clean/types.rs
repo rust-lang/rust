@@ -17,10 +17,10 @@ use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, AttrKind, AttrStyle, Attribute, Ident};
+use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
 use syntax::source_map::DUMMY_SP;
-use syntax::util::comments;
+use syntax::util::comments::strip_doc_comment_decoration;
 use syntax_pos::hygiene::MacroKind;
 use syntax_pos::symbol::{sym, Symbol};
 use syntax_pos::{self, FileName};
@@ -502,58 +502,33 @@ impl Attributes {
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
-        /// If `attr` is a doc comment, strips the leading and (if present)
-        /// trailing comments symbols, e.g. `///`, `/**`, and `*/`. Otherwise,
-        /// returns `attr` unchanged.
-        pub fn with_doc_comment_markers_stripped<T>(
-            attr: &Attribute,
-            f: impl FnOnce(&Attribute) -> T,
-        ) -> T {
-            match attr.kind {
-                AttrKind::Normal(_) => f(attr),
-                AttrKind::DocComment(comment) => {
-                    let comment =
-                        Symbol::intern(&comments::strip_doc_comment_decoration(&comment.as_str()));
-                    f(&Attribute {
-                        kind: AttrKind::DocComment(comment),
-                        id: attr.id,
-                        style: attr.style,
-                        span: attr.span,
-                    })
-                }
-            }
-        }
-
         let other_attrs = attrs
             .iter()
             .filter_map(|attr| {
-                with_doc_comment_markers_stripped(attr, |attr| {
+                if let Some(value) = attr.doc_str() {
+                    let (value, mk_fragment): (_, fn(_, _, _) -> _) = if attr.is_doc_comment() {
+                        (strip_doc_comment_decoration(&value.as_str()), DocFragment::SugaredDoc)
+                    } else {
+                        (value.to_string(), DocFragment::RawDoc)
+                    };
+
+                    let line = doc_line;
+                    doc_line += value.lines().count();
+                    doc_strings.push(mk_fragment(line, attr.span, value));
+
+                    if sp.is_none() {
+                        sp = Some(attr.span);
+                    }
+                    None
+                } else {
                     if attr.check_name(sym::doc) {
                         if let Some(mi) = attr.meta() {
-                            if let Some(value) = mi.value_str() {
-                                // Extracted #[doc = "..."]
-                                let value = value.to_string();
-                                let line = doc_line;
-                                doc_line += value.lines().count();
-
-                                if attr.is_doc_comment() {
-                                    doc_strings
-                                        .push(DocFragment::SugaredDoc(line, attr.span, value));
-                                } else {
-                                    doc_strings.push(DocFragment::RawDoc(line, attr.span, value));
-                                }
-
-                                if sp.is_none() {
-                                    sp = Some(attr.span);
-                                }
-                                return None;
-                            } else if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
+                            if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
                                 // Extracted #[doc(cfg(...))]
                                 match Cfg::parse(cfg_mi) {
                                     Ok(new_cfg) => cfg &= new_cfg,
                                     Err(e) => diagnostic.span_err(e.span, e.msg),
                                 }
-                                return None;
                             } else if let Some((filename, contents)) =
                                 Attributes::extract_include(&mi)
                             {
@@ -566,7 +541,7 @@ impl Attributes {
                         }
                     }
                     Some(attr.clone())
-                })
+                }
             })
             .collect();
 
@@ -589,7 +564,7 @@ impl Attributes {
 
         let inner_docs = attrs
             .iter()
-            .filter(|a| a.check_name(sym::doc))
+            .filter(|a| a.doc_str().is_some())
             .next()
             .map_or(true, |a| a.style == AttrStyle::Inner);
 

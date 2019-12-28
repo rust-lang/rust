@@ -16,7 +16,7 @@ use syntax_pos::{symbol::sym, symbol::Symbol, Span};
 use rustc_error_codes::*;
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
-    attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
+    attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
 }
 
 enum AttrError {
