@@ -814,32 +814,37 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r {
-            // ignore bound regions that appear in the type (e.g., this
-            // would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
-            ty::ReLateBound(..) |
+            // Ignore bound regions that appear in the type, they don't need to
+            // be remapped (e.g., this would ignore `'r` in a type like
+            // `for<'r> fn(&'r u32)`.
+            ty::ReLateBound(..)
+
+            // If regions have been erased, don't try to unerase them.
+            | ty::ReErased
 
             // ignore `'static`, as that can appear anywhere
-            ty::ReStatic => return r,
+            | ty::ReStatic => return r,
 
-            _ => { }
+            _ => {}
         }
 
         let generics = self.tcx().generics_of(self.opaque_type_def_id);
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
+            None if self.map_missing_regions_to_empty || self.tainted_by_errors => {
+                self.tcx.lifetimes.re_empty
+            }
             None if generics.parent.is_some() => {
-                if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
-                    if let Some(hidden_ty) = self.hidden_ty.take() {
-                        unexpected_hidden_region_diagnostic(
-                            self.tcx,
-                            None,
-                            self.opaque_type_def_id,
-                            hidden_ty,
-                            r,
-                        )
-                        .emit();
-                    }
+                if let Some(hidden_ty) = self.hidden_ty.take() {
+                    unexpected_hidden_region_diagnostic(
+                        self.tcx,
+                        None,
+                        self.opaque_type_def_id,
+                        hidden_ty,
+                        r,
+                    )
+                    .emit();
                 }
                 self.tcx.lifetimes.re_root_empty
             }
