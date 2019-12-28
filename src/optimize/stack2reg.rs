@@ -127,7 +127,7 @@ pub(super) fn optimize_function(
                 }
             }).collect::<Vec<Inst>>();
             for &store in &potential_stores {
-                println!("Potential store -> load forwarding {} -> {} ({:?})", ctx.func.dfg.display_inst(store, None), ctx.func.dfg.display_inst(load, None), spatial_overlap(func, load, store));
+                println!("Potential store -> load forwarding {} -> {} ({:?})", ctx.func.dfg.display_inst(store, None), ctx.func.dfg.display_inst(load, None), spatial_overlap(ctx.func, load, store));
             }
             match *potential_stores {
                 [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
