@@ -283,8 +283,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             None => return Ok(-1),
         };
 
-        // FIXME: use Scalar::to_u16
-        let mode: u16 = metadata.mode.to_bits(Size::from_bits(16))? as u16;
+        let mode: u16 = metadata.mode.to_u16()?;
 
         let (access_sec, access_nsec) = metadata.accessed.unwrap_or((0, 0));
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
