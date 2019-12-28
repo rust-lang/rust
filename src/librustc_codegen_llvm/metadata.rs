@@ -97,7 +97,7 @@ pub fn metadata_section_name(target: &Target) -> &'static str {
     // > Executable images do not use a string table and do not support
     // > section names longer than 8 characters
     //
-    // https://msdn.microsoft.com/en-us/library/windows/hardware/gg463119.aspx
+    // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
     //
     // As a result, we choose a slightly shorter name! As to why
     // `.note.rustc` works on MinGW, that's another good question...
