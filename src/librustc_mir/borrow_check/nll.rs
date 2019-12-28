@@ -282,6 +282,11 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     let (closure_region_requirements, nll_errors) =
         regioncx.solve(infcx, &body, def_id, polonius_output.clone());
 
+    if !nll_errors.is_empty() {
+        // Suppress unhelpful extra errors in `infer_opaque_types`.
+        infcx.set_tainted_by_errors();
+    }
+
     let remapped_opaque_tys = regioncx.infer_opaque_types(&infcx, opaque_type_values, body.span);
 
     NllOutput {
