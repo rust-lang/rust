@@ -20,7 +20,7 @@ in isolation with `./x.py test src/tools/tidy`.
 
 ### Copyright notice
 
-In the past, files begin with a copyright and license notice. Please **omit**
+In the past, files began with a copyright and license notice. Please **omit**
 this notice for new files licensed under the standard terms (dual
 MIT/Apache-2.0).
 

@@ -39,7 +39,7 @@ There are a few benefits to using LLVM:
   and maintenance burden.
 - We benefit from the large suite of advanced optimizations that the LLVM
   project has been collecting.
-- We automatically can compile Rust to any of the platforms for which LLVM has
+- We can automatically compile Rust to any of the platforms for which LLVM has
   support. For example, as soon as LLVM added support for wasm, voila! rustc,
   clang, and a bunch of other languages were able to compile to wasm! (Well,
   there was some extra stuff to be done, but we were 90% there anyway).

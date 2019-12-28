@@ -34,7 +34,7 @@ warnings, errors, fatal errors, suggestions, etc.
 [parsesses]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/sess/struct.ParseSess.html
 [session]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html
 
-In general, there are two class of such methods: ones that emit an error
+In general, there are two classes of such methods: ones that emit an error
 directly and ones that allow finer control over what to emit. For example,
 [`span_err`][spanerr] emits the given error message at the given `Span`, but
 [`struct_span_err`][strspanerr] instead returns a
