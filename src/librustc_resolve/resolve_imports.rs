@@ -528,31 +528,7 @@ impl<'a> Resolver<'a> {
                         resolution.shadowed_glob = Some(glob_binding);
                     }
                     (false, false) => {
-                        if let (&NameBindingKind::Res(_, true), &NameBindingKind::Res(_, true)) =
-                            (&old_binding.kind, &binding.kind)
-                        {
-                            this.session
-                                .struct_span_err(
-                                    binding.span,
-                                    &format!(
-                                        "a macro named `{}` has already been exported",
-                                        key.ident
-                                    ),
-                                )
-                                .span_label(
-                                    binding.span,
-                                    format!("`{}` already exported", key.ident),
-                                )
-                                .span_note(
-                                    old_binding.span,
-                                    "previous macro export is now shadowed",
-                                )
-                                .emit();
-
-                            resolution.binding = Some(binding);
-                        } else {
-                            return Err(old_binding);
-                        }
+                        return Err(old_binding);
                     }
                 }
             } else {
