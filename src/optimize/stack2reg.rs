@@ -31,56 +31,72 @@ struct StackSlotUsage {
     stack_store: HashSet<Inst>,
 }
 
+struct OptimizeContext<'a> {
+    ctx: &'a mut Context,
+    stack_slot_usage_map: BTreeMap<OrdStackSlot, StackSlotUsage>,
+}
+
+impl<'a> OptimizeContext<'a> {
+    fn for_context(ctx: &'a mut Context) -> Self {
+        ctx.flowgraph(); // Compute cfg and domtree.
+
+        // Record all stack_addr, stack_load and stack_store instructions.
+        let mut stack_slot_usage_map = BTreeMap::<OrdStackSlot, StackSlotUsage>::new();
+
+        let mut cursor = FuncCursor::new(&mut ctx.func);
+        while let Some(_ebb) = cursor.next_ebb() {
+            while let Some(inst) = cursor.next_inst() {
+                match cursor.func.dfg[inst] {
+                    InstructionData::StackLoad {
+                        opcode: Opcode::StackAddr,
+                        stack_slot,
+                        offset: _,
+                    } => {
+                        stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(StackSlotUsage::default).stack_addr.insert(inst);
+                    }
+                    InstructionData::StackLoad {
+                        opcode: Opcode::StackLoad,
+                        stack_slot,
+                        offset: _,
+                    } => {
+                        stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(StackSlotUsage::default).stack_load.insert(inst);
+                    }
+                    InstructionData::StackStore {
+                        opcode: Opcode::StackStore,
+                        arg: _,
+                        stack_slot,
+                        offset: _,
+                    } => {
+                        stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(StackSlotUsage::default).stack_store.insert(inst);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        OptimizeContext {
+            ctx,
+            stack_slot_usage_map,
+        }
+    }
+}
+
 pub(super) fn optimize_function(
     ctx: &mut Context,
     clif_comments: &mut crate::pretty_clif::CommentWriter,
     name: String, // FIXME remove
 ) {
-    ctx.flowgraph(); // Compute cfg and domtree.
-
     combine_stack_addr_with_load_store(&mut ctx.func);
 
-    // Record all stack_addr, stack_load and stack_store instructions.
-    let mut stack_slot_usage_map = BTreeMap::<OrdStackSlot, StackSlotUsage>::new();
-
-    let mut cursor = FuncCursor::new(&mut ctx.func);
-    while let Some(_ebb) = cursor.next_ebb() {
-        while let Some(inst) = cursor.next_inst() {
-            match cursor.func.dfg[inst] {
-                InstructionData::StackLoad {
-                    opcode: Opcode::StackAddr,
-                    stack_slot,
-                    offset: _,
-                } => {
-                    stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(StackSlotUsage::default).stack_addr.insert(inst);
-                }
-                InstructionData::StackLoad {
-                    opcode: Opcode::StackLoad,
-                    stack_slot,
-                    offset: _,
-                } => {
-                    stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(StackSlotUsage::default).stack_load.insert(inst);
-                }
-                InstructionData::StackStore {
-                    opcode: Opcode::StackStore,
-                    arg: _,
-                    stack_slot,
-                    offset: _,
-                } => {
-                    stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(StackSlotUsage::default).stack_store.insert(inst);
-                }
-                _ => {}
-            }
-        }
-    }
+    let mut opt_ctx = OptimizeContext::for_context(ctx);
 
     // FIXME Repeat following instructions until fixpoint.
 
-    remove_unused_stack_addr_and_stack_load(&mut ctx.func, &mut stack_slot_usage_map);
+    remove_unused_stack_addr_and_stack_load(&mut opt_ctx.ctx.func, &mut opt_ctx.stack_slot_usage_map);
 
-    println!("stack slot usage: {:?}", stack_slot_usage_map);
+    println!("stack slot usage: {:?}", opt_ctx.stack_slot_usage_map);
 
-    for (stack_slot, users) in stack_slot_usage_map.iter_mut() {
+    for (stack_slot, users) in opt_ctx.stack_slot_usage_map.iter_mut() {
         if users.stack_addr.is_empty().not() {
             // Stack addr leaked; there may be unknown loads and stores.
             // FIXME use stacked borrows to optimize
@@ -88,17 +104,18 @@ pub(super) fn optimize_function(
         }
 
         for load in users.stack_load.clone().drain() {
-            let load_ebb = ctx.func.layout.inst_ebb(load).unwrap();
-            let loaded_value = ctx.func.dfg.inst_results(load)[0];
-            let loaded_type = ctx.func.dfg.value_type(loaded_value);
+            let load_ebb = opt_ctx.ctx.func.layout.inst_ebb(load).unwrap();
+            let loaded_value = opt_ctx.ctx.func.dfg.inst_results(load)[0];
+            let loaded_type = opt_ctx.ctx.func.dfg.value_type(loaded_value);
 
+            let ctx = &*opt_ctx.ctx;
             let potential_stores = users.stack_store.iter().cloned().filter(|&store| {
                 match spatial_overlap(&ctx.func, load, store) {
                     SpatialOverlap::No => false, // Can never be the source of the loaded value.
                     SpatialOverlap::Partial | SpatialOverlap::Full => true,
                 }
             }).filter(|&store| {
-                match temporal_order(&*ctx, load, store) {
+                match temporal_order(ctx, load, store) {
                     TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
                     TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
                 }
@@ -107,25 +124,25 @@ pub(super) fn optimize_function(
             for &store in &potential_stores {
                 println!(
                     "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
-                    ctx.func.dfg.display_inst(store, None),
-                    ctx.func.dfg.display_inst(load, None),
-                    spatial_overlap(&ctx.func, store, load),
-                    temporal_order(&*ctx, store, load),
+                    opt_ctx.ctx.func.dfg.display_inst(store, None),
+                    opt_ctx.ctx.func.dfg.display_inst(load, None),
+                    spatial_overlap(&opt_ctx.ctx.func, store, load),
+                    temporal_order(&*opt_ctx.ctx, store, load),
                 );
             }
 
             match *potential_stores {
                 [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
-                [store] if spatial_overlap(&ctx.func, store, load) == SpatialOverlap::Full && temporal_order(&ctx, store, load) == TemporalOrder::DefinitivelyBefore => {
+                [store] if spatial_overlap(&opt_ctx.ctx.func, store, load) == SpatialOverlap::Full && temporal_order(&opt_ctx.ctx, store, load) == TemporalOrder::DefinitivelyBefore => {
                     // Only one store could have been the origin of the value.
-                    let store_ebb = ctx.func.layout.inst_ebb(store).unwrap();
-                    let stored_value = ctx.func.dfg.inst_args(store)[0];
-                    let stored_type = ctx.func.dfg.value_type(stored_value);
+                    let store_ebb = opt_ctx.ctx.func.layout.inst_ebb(store).unwrap();
+                    let stored_value = opt_ctx.ctx.func.dfg.inst_args(store)[0];
+                    let stored_type = opt_ctx.ctx.func.dfg.value_type(stored_value);
                     if stored_type == loaded_type && store_ebb == load_ebb {
                         println!("Store to load forward {} -> {}", store, load);
-                        ctx.func.dfg.detach_results(load);
-                        ctx.func.dfg.replace(load).nop();
-                        ctx.func.dfg.change_to_alias(loaded_value, stored_value);
+                        opt_ctx.ctx.func.dfg.detach_results(load);
+                        opt_ctx.ctx.func.dfg.replace(load).nop();
+                        opt_ctx.ctx.func.dfg.change_to_alias(loaded_value, stored_value);
                         users.stack_load.remove(&load);
                     }
                 }
@@ -134,13 +151,14 @@ pub(super) fn optimize_function(
         }
 
         for store in users.stack_store.clone().drain() {
+            let ctx = &*opt_ctx.ctx;
             let potential_loads = users.stack_load.iter().cloned().filter(|&load| {
                 match spatial_overlap(&ctx.func, store, load) {
                     SpatialOverlap::No => false, // Can never be the source of the loaded value.
                     SpatialOverlap::Partial | SpatialOverlap::Full => true,
                 }
             }).filter(|&load| {
-                match temporal_order(&*ctx, store, load) {
+                match temporal_order(ctx, store, load) {
                     TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
                     TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
                 }
@@ -149,18 +167,18 @@ pub(super) fn optimize_function(
             for &load in &potential_loads {
                 println!(
                     "Potential load from store {} <- {} ({:?}, {:?})",
-                    ctx.func.dfg.display_inst(load, None),
-                    ctx.func.dfg.display_inst(store, None),
+                    opt_ctx.ctx.func.dfg.display_inst(load, None),
+                    opt_ctx.ctx.func.dfg.display_inst(store, None),
                     spatial_overlap(&ctx.func, store, load),
-                    temporal_order(&*ctx, store, load),
+                    temporal_order(&*opt_ctx.ctx, store, load),
                 );
             }
 
             if potential_loads.is_empty() {
                 // Never loaded; can safely remove all stores and the stack slot.
                 // FIXME also remove stores when there is always a next store before a load.
-                println!("[{}] Remove dead stack store {} of {}", name, ctx.func.dfg.display_inst(store, None), stack_slot.0);
-                ctx.func.dfg.replace(store).nop();
+                println!("[{}] Remove dead stack store {} of {}", name, opt_ctx.ctx.func.dfg.display_inst(store, None), stack_slot.0);
+                opt_ctx.ctx.func.dfg.replace(store).nop();
                 users.stack_store.remove(&store);
             }
         }
