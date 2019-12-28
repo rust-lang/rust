@@ -6,7 +6,7 @@
 //!
 //! There are several functions and structs in this module that have a
 //! counterpart ending in `os`. Those ending in `os` will return an [`OsString`]
-//! and those without will be returning a [`String`].
+//! and those without will return a [`String`].
 //!
 //! [`OsString`]: ../../std/ffi/struct.OsString.html
 //! [`String`]: ../string/struct.String.html
