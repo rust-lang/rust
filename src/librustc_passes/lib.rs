@@ -32,6 +32,7 @@ mod reachable;
 mod region;
 pub mod stability;
 mod upvars;
+mod weak_lang_items;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_attr::provide(providers);
