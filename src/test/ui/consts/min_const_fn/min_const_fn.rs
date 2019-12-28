@@ -123,12 +123,9 @@ impl<T: Sync + Sized> Foo<T> {
 }
 
 struct AlanTuring<T>(T);
-const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> { AlanTuring(0) }
-//~^ ERROR `impl Trait` in const fn is unstable
 const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
 //~^ ERROR trait bounds other than `Sized`
 const fn no_apit(_x: impl std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
-const fn no_rpit() -> impl std::fmt::Debug {} //~ ERROR `impl Trait` in const fn is unstable
 const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
 const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
 //~^ ERROR trait bounds other than `Sized`

@@ -6,5 +6,13 @@ LL | fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Trait<'a, 'b> {
    |
    = help: add #![feature(member_constraints)] to the crate attributes to enable
 
-error: aborting due to previous error
+error: ambiguous lifetime bound in `impl Trait`
+  --> $DIR/feature-gate-member-constraints.rs:4:43
+   |
+LL | fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Trait<'a, 'b> {
+   |                                           ^^^^^^^^^^^^^^^^^^ the elided lifetimes here do not outlive one another
+   |
+   = help: add #![feature(member_constraints)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 

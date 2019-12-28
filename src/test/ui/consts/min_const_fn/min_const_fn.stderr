@@ -214,17 +214,8 @@ LL | impl<T: Sync + Sized> Foo<T> {
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn.rs:126:24
-   |
-LL | const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> { AlanTuring(0) }
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
-
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:128:34
+  --> $DIR/min_const_fn.rs:126:34
    |
 LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^
@@ -233,7 +224,7 @@ LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:130:22
+  --> $DIR/min_const_fn.rs:128:22
    |
 LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                      ^^^^^^^^^^^^^^^^^^^^
@@ -241,17 +232,8 @@ LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn.rs:131:23
-   |
-LL | const fn no_rpit() -> impl std::fmt::Debug {}
-   |                       ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
-
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:132:23
+  --> $DIR/min_const_fn.rs:129:23
    |
 LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    |                       ^^
@@ -260,7 +242,7 @@ LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:133:32
+  --> $DIR/min_const_fn.rs:130:32
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -269,7 +251,7 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:138:41
+  --> $DIR/min_const_fn.rs:135:41
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -278,7 +260,7 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/min_const_fn.rs:141:21
+  --> $DIR/min_const_fn.rs:138:21
    |
 LL | const fn no_fn_ptrs(_x: fn()) {}
    |                     ^^
@@ -287,7 +269,7 @@ LL | const fn no_fn_ptrs(_x: fn()) {}
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/min_const_fn.rs:143:27
+  --> $DIR/min_const_fn.rs:140:27
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                           ^^^^
@@ -295,7 +277,7 @@ LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error: aborting due to 34 previous errors
+error: aborting due to 32 previous errors
 
 Some errors have detailed explanations: E0493, E0723.
 For more information about an error, try `rustc --explain E0493`.
