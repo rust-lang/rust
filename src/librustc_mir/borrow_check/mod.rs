@@ -136,6 +136,9 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_tables_of(def_id);
+    if tables.tainted_by_errors {
+        infcx.set_tainted_by_errors();
+    }
     let upvars: Vec<_> = tables
         .upvar_list
         .get(&def_id)
