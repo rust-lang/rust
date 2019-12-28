@@ -33,8 +33,8 @@ use rustc::ty::subst::GenericArgKind;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt, WithConstness};
-use rustc::ty::{ReprOptions, ToPredicate};
+use rustc::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
@@ -1463,9 +1463,22 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     find_opaque_ty_constraints(tcx, def_id)
                 }
                 // Opaque types desugared from `impl Trait`.
-                ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(owner), .. }) => {
-                    tcx.mir_borrowck(owner)
-                        .concrete_opaque_types
+                ItemKind::OpaqueTy(hir::OpaqueTy {
+                    impl_trait_fn: Some(owner), origin, ..
+                }) => {
+                    let concrete_types = match origin {
+                        hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => {
+                            &tcx.mir_borrowck(owner).concrete_opaque_types
+                        }
+                        hir::OpaqueTyOrigin::Misc => {
+                            // We shouldn't leak borrowck results through impl Trait in bindings.
+                            &tcx.typeck_tables_of(owner).concrete_opaque_types
+                        }
+                        hir::OpaqueTyOrigin::TypeAlias => {
+                            span_bug!(item.span, "Type alias impl trait shouldn't have an owner")
+                        }
+                    };
+                    let concrete_ty = concrete_types
                         .get(&def_id)
                         .map(|opaque| opaque.concrete_type)
                         .unwrap_or_else(|| {
@@ -1480,7 +1493,16 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 ),
                             );
                             tcx.types.err
-                        })
+                        });
+                    debug!("concrete_ty = {:?}", concrete_ty);
+                    if concrete_ty.has_erased_regions() {
+                        // FIXME(impl_trait_in_bindings) Handle this case.
+                        tcx.sess.span_fatal(
+                            item.span,
+                            "lifetimes in impl Trait types in bindings are not currently supported",
+                        );
+                    }
+                    concrete_ty
                 }
                 ItemKind::Trait(..)
                 | ItemKind::TraitAlias(..)
