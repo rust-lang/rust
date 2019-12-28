@@ -116,9 +116,10 @@ pub(super) fn optimize_function(
                     temporal_order(&*ctx, store, load),
                 );
             }
+
             match *potential_stores {
                 [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
-                [store] if spatial_overlap(&ctx.func, load, store) == SpatialOverlap::Full && temporal_order(&ctx, load, store) == TemporalOrder::DefinitivelyBefore => {
+                [store] if spatial_overlap(&ctx.func, store, load) == SpatialOverlap::Full && temporal_order(&ctx, store, load) == TemporalOrder::DefinitivelyBefore => {
                     let store_ebb = ctx.func.layout.inst_ebb(store).unwrap();
                     let stored_value = ctx.func.dfg.inst_args(store)[0];
                     let stored_type = ctx.func.dfg.value_type(stored_value);
