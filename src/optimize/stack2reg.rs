@@ -76,11 +76,9 @@ pub(super) fn optimize_function(
 
     // FIXME Repeat following instructions until fixpoint.
 
-    println!("{}:\nstack slot usage: {:?}", name, stack_slot_usage_map);
-
     remove_unused_stack_addr_and_stack_load(&mut ctx.func, &mut stack_slot_usage_map);
 
-    println!("stack slot usage (after): {:?}", stack_slot_usage_map);
+    println!("stack slot usage: {:?}", stack_slot_usage_map);
 
     for (stack_slot, users) in stack_slot_usage_map.iter_mut() {
         if users.stack_addr.is_empty().not() {
@@ -95,8 +93,6 @@ pub(super) fn optimize_function(
             let loaded_type = ctx.func.dfg.value_type(loaded_value);
 
             let potential_stores = users.stack_store.iter().cloned().filter(|&store| {
-                // Check if the store modified some memory accessed by the load.
-
                 match spatial_overlap(&ctx.func, load, store) {
                     SpatialOverlap::No => false, // Can never be the source of the loaded value.
                     SpatialOverlap::Partial | SpatialOverlap::Full => true,
@@ -107,6 +103,7 @@ pub(super) fn optimize_function(
                     TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
                 }
             }).collect::<Vec<Inst>>();
+
             for &store in &potential_stores {
                 println!(
                     "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
@@ -120,6 +117,7 @@ pub(super) fn optimize_function(
             match *potential_stores {
                 [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
                 [store] if spatial_overlap(&ctx.func, store, load) == SpatialOverlap::Full && temporal_order(&ctx, store, load) == TemporalOrder::DefinitivelyBefore => {
+                    // Only one store could have been the origin of the value.
                     let store_ebb = ctx.func.layout.inst_ebb(store).unwrap();
                     let stored_value = ctx.func.dfg.inst_args(store)[0];
                     let stored_type = ctx.func.dfg.value_type(stored_value);
@@ -135,12 +133,35 @@ pub(super) fn optimize_function(
             }
         }
 
-        if users.stack_load.is_empty() {
-            // Never loaded; can safely remove all stores and the stack slot.
-            // FIXME also remove stores when there is always a next store before a load.
-            for user in users.stack_store.drain() {
-                println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot.0);
-                ctx.func.dfg.replace(user).nop();
+        for store in users.stack_store.clone().drain() {
+            let potential_loads = users.stack_load.iter().cloned().filter(|&load| {
+                match spatial_overlap(&ctx.func, store, load) {
+                    SpatialOverlap::No => false, // Can never be the source of the loaded value.
+                    SpatialOverlap::Partial | SpatialOverlap::Full => true,
+                }
+            }).filter(|&load| {
+                match temporal_order(&*ctx, store, load) {
+                    TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
+                    TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
+                }
+            }).collect::<Vec<Inst>>();
+
+            for &load in &potential_loads {
+                println!(
+                    "Potential load from store {} <- {} ({:?}, {:?})",
+                    ctx.func.dfg.display_inst(load, None),
+                    ctx.func.dfg.display_inst(store, None),
+                    spatial_overlap(&ctx.func, store, load),
+                    temporal_order(&*ctx, store, load),
+                );
+            }
+
+            if potential_loads.is_empty() {
+                // Never loaded; can safely remove all stores and the stack slot.
+                // FIXME also remove stores when there is always a next store before a load.
+                println!("[{}] Remove dead stack store {} of {}", name, ctx.func.dfg.display_inst(store, None), stack_slot.0);
+                ctx.func.dfg.replace(store).nop();
+                users.stack_store.remove(&store);
             }
         }
 
@@ -205,8 +226,6 @@ fn remove_unused_stack_addr_and_stack_load(func: &mut Function, stack_slot_usage
         }
     }
 
-    println!("stack_addr/stack_load users: {:?}", stack_addr_load_insts_users);
-
     for inst in stack_addr_load_insts_users.keys() {
         let mut is_recorded_stack_addr_or_stack_load = false;
         for stack_slot_users in stack_slot_usage_map.values() {
@@ -220,7 +239,6 @@ fn remove_unused_stack_addr_and_stack_load(func: &mut Function, stack_slot_usage
         // FIXME remove clone
         for &inst in stack_slot_users.stack_addr.clone().iter() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                println!("Removing unused stack_addr {}", inst);
                 func.dfg.detach_results(inst);
                 func.dfg.replace(inst).nop();
                 stack_slot_users.stack_addr.remove(&inst);
@@ -229,7 +247,6 @@ fn remove_unused_stack_addr_and_stack_load(func: &mut Function, stack_slot_usage
 
         for &inst in stack_slot_users.stack_load.clone().iter() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                println!("Removing unused stack_addr {}", inst);
                 func.dfg.detach_results(inst);
                 func.dfg.replace(inst).nop();
                 stack_slot_users.stack_load.remove(&inst);
