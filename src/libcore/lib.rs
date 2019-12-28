@@ -76,6 +76,7 @@
 #![feature(const_fn_union)]
 #![feature(const_generics)]
 #![feature(const_ptr_offset_from)]
+#![feature(const_result)]
 #![feature(const_type_name)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
