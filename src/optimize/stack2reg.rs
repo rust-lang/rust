@@ -84,57 +84,54 @@ pub(super) fn optimize_function(
             continue;
         }
 
-        let is_loaded = users.stack_load.is_empty().not();
-        let is_stored = users.stack_store.is_empty().not();
-        match (is_loaded, is_stored) {
-            (true, true) => {
-                for load in users.stack_load.clone().drain() {
-                    let load_ebb = func.layout.inst_ebb(load).unwrap();
-                    let loaded_value = func.dfg.inst_results(load)[0];
-                    let loaded_type = func.dfg.value_type(loaded_value);
+        for load in users.stack_load.clone().drain() {
+            let load_ebb = func.layout.inst_ebb(load).unwrap();
+            let loaded_value = func.dfg.inst_results(load)[0];
+            let loaded_type = func.dfg.value_type(loaded_value);
 
-                    let potential_stores = users.stack_store.iter().cloned().filter(|&store| {
-                        match spatial_overlap(func, load, store) {
-                            SpatialOverlap::No => false, // Can never be the source of the loaded value.
-                            SpatialOverlap::Partial | SpatialOverlap::Full => true,
-                        }
-                    }).filter(|&store| {
-                        if load_ebb == func.layout.inst_ebb(store).unwrap() {
-                            func.layout.cmp(store, load) == std::cmp::Ordering::Less
-                        } else {
-                            true // FIXME
-                        }
-                    }).collect::<Vec<Inst>>();
-                    for &store in &potential_stores {
-                        println!("Potential store -> load forwarding {} -> {} ({:?})", func.dfg.display_inst(store, None), func.dfg.display_inst(load, None), spatial_overlap(func, load, store));
-                    }
-                    match *potential_stores {
-                        [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
-                        [store] if spatial_overlap(func, load, store) == SpatialOverlap::Full => {
-                            let store_ebb = func.layout.inst_ebb(store).unwrap();
-                            let stored_value = func.dfg.inst_args(store)[0];
-                            let stored_type = func.dfg.value_type(stored_value);
-                            if stored_type == loaded_type && store_ebb == load_ebb {
-                                println!("Store to load forward {} -> {}", store, load);
-                                func.dfg.detach_results(load);
-                                func.dfg.replace(load).nop();
-                                func.dfg.change_to_alias(loaded_value, stored_value);
-                            }
-                        }
-                        _ => {} // FIXME implement this
+            let potential_stores = users.stack_store.iter().cloned().filter(|&store| {
+                match spatial_overlap(func, load, store) {
+                    SpatialOverlap::No => false, // Can never be the source of the loaded value.
+                    SpatialOverlap::Partial | SpatialOverlap::Full => true,
+                }
+            }).filter(|&store| {
+                if load_ebb == func.layout.inst_ebb(store).unwrap() {
+                    func.layout.cmp(store, load) == std::cmp::Ordering::Less
+                } else {
+                    true // FIXME
+                }
+            }).collect::<Vec<Inst>>();
+            for &store in &potential_stores {
+                println!("Potential store -> load forwarding {} -> {} ({:?})", func.dfg.display_inst(store, None), func.dfg.display_inst(load, None), spatial_overlap(func, load, store));
+            }
+            match *potential_stores {
+                [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
+                [store] if spatial_overlap(func, load, store) == SpatialOverlap::Full => {
+                    let store_ebb = func.layout.inst_ebb(store).unwrap();
+                    let stored_value = func.dfg.inst_args(store)[0];
+                    let stored_type = func.dfg.value_type(stored_value);
+                    if stored_type == loaded_type && store_ebb == load_ebb {
+                        println!("Store to load forward {} -> {}", store, load);
+                        func.dfg.detach_results(load);
+                        func.dfg.replace(load).nop();
+                        func.dfg.change_to_alias(loaded_value, stored_value);
+                        users.stack_load.remove(&load);
                     }
                 }
+                _ => {} // FIXME implement this
             }
-            (true, false) => println!("[{}] [BUG?] Reading uninitialized memory", name),
-            (false, _) => {
-                // Never loaded; can safely remove all stores and the stack slot.
-                for user in users.stack_store.drain() {
-                    println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot.0);
-                    func.dfg.replace(user).nop();
-                }
+        }
 
-                // FIXME make stack_slot zero sized.
+        if users.stack_load.is_empty() {
+            // Never loaded; can safely remove all stores and the stack slot.
+            for user in users.stack_store.drain() {
+                println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot.0);
+                func.dfg.replace(user).nop();
             }
+        }
+
+        if users.stack_store.is_empty() && users.stack_load.is_empty() {
+            // FIXME make stack_slot zero sized.
         }
     }
 
