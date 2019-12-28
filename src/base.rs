@@ -54,8 +54,15 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         source_info_set: indexmap::IndexSet::new(),
     };
 
-    crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
-    codegen_fn_content(&mut fx);
+    if fx.mir.args_iter().any(|arg| fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty)).abi.is_uninhabited()) {
+        let entry_block = fx.bcx.create_ebb();
+        fx.bcx.append_ebb_params_for_function_params(entry_block);
+        fx.bcx.switch_to_block(entry_block);
+        crate::trap::trap_unreachable(&mut fx, "function has uninhabited argument");
+    } else {
+        crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
+        codegen_fn_content(&mut fx);
+    }
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let instance = fx.instance;
