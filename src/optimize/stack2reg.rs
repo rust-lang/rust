@@ -92,7 +92,7 @@ pub(super) fn optimize_function(
 
     // FIXME Repeat following instructions until fixpoint.
 
-    remove_unused_stack_addr_and_stack_load(&mut opt_ctx.ctx.func, &mut opt_ctx.stack_slot_usage_map);
+    remove_unused_stack_addr_and_stack_load(&mut opt_ctx);
 
     println!("stack slot usage: {:?}", opt_ctx.stack_slot_usage_map);
 
@@ -224,11 +224,11 @@ fn combine_stack_addr_with_load_store(func: &mut Function) {
     }
 }
 
-fn remove_unused_stack_addr_and_stack_load(func: &mut Function, stack_slot_usage_map: &mut BTreeMap<OrdStackSlot, StackSlotUsage>) {
+fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext) {
     // FIXME incrementally rebuild on each call?
     let mut stack_addr_load_insts_users = HashMap::<Inst, HashSet<Inst>>::new();
 
-    let mut cursor = FuncCursor::new(func);
+    let mut cursor = FuncCursor::new(&mut opt_ctx.ctx.func);
     while let Some(_ebb) = cursor.next_ebb() {
         while let Some(inst) = cursor.next_inst() {
             for &arg in cursor.func.dfg.inst_args(inst) {
@@ -246,27 +246,27 @@ fn remove_unused_stack_addr_and_stack_load(func: &mut Function, stack_slot_usage
 
     for inst in stack_addr_load_insts_users.keys() {
         let mut is_recorded_stack_addr_or_stack_load = false;
-        for stack_slot_users in stack_slot_usage_map.values() {
+        for stack_slot_users in opt_ctx.stack_slot_usage_map.values() {
             is_recorded_stack_addr_or_stack_load |= stack_slot_users.stack_addr.contains(inst) || stack_slot_users.stack_load.contains(inst);
         }
         assert!(is_recorded_stack_addr_or_stack_load);
     }
 
     // Replace all unused stack_addr and stack_load instructions with nop.
-    for stack_slot_users in stack_slot_usage_map.values_mut() {
+    for stack_slot_users in opt_ctx.stack_slot_usage_map.values_mut() {
         // FIXME remove clone
         for &inst in stack_slot_users.stack_addr.clone().iter() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                func.dfg.detach_results(inst);
-                func.dfg.replace(inst).nop();
+                opt_ctx.ctx.func.dfg.detach_results(inst);
+                opt_ctx.ctx.func.dfg.replace(inst).nop();
                 stack_slot_users.stack_addr.remove(&inst);
             }
         }
 
         for &inst in stack_slot_users.stack_load.clone().iter() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                func.dfg.detach_results(inst);
-                func.dfg.replace(inst).nop();
+                opt_ctx.ctx.func.dfg.detach_results(inst);
+                opt_ctx.ctx.func.dfg.replace(inst).nop();
                 stack_slot_users.stack_load.remove(&inst);
             }
         }
