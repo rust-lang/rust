@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::ops::Not;
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
+use cranelift_codegen::entity::EntitySet;
 use cranelift_codegen::ir::{InstructionData, Opcode, ProgramOrder, ValueDef};
 use cranelift_codegen::ir::immediates::Offset32;
 
@@ -31,16 +32,18 @@ struct StackSlotUsage {
 }
 
 pub(super) fn optimize_function(
-    func: &mut Function,
+    ctx: &mut Context,
     clif_comments: &mut crate::pretty_clif::CommentWriter,
     name: String, // FIXME remove
 ) {
-    combine_stack_addr_with_load_store(func);
+    ctx.flowgraph(); // Compute cfg and domtree.
+
+    combine_stack_addr_with_load_store(&mut ctx.func);
 
     // Record all stack_addr, stack_load and stack_store instructions.
     let mut stack_slot_usage_map = BTreeMap::<OrdStackSlot, StackSlotUsage>::new();
 
-    let mut cursor = FuncCursor::new(func);
+    let mut cursor = FuncCursor::new(&mut ctx.func);
     while let Some(_ebb) = cursor.next_ebb() {
         while let Some(inst) = cursor.next_inst() {
             match cursor.func.dfg[inst] {
@@ -73,7 +76,7 @@ pub(super) fn optimize_function(
 
     println!("{}:\nstack slot usage: {:?}", name, stack_slot_usage_map);
 
-    remove_unused_stack_addr_and_stack_load(func, &mut stack_slot_usage_map);
+    remove_unused_stack_addr_and_stack_load(&mut ctx.func, &mut stack_slot_usage_map);
 
     println!("stack slot usage (after): {:?}", stack_slot_usage_map);
 
@@ -85,36 +88,58 @@ pub(super) fn optimize_function(
         }
 
         for load in users.stack_load.clone().drain() {
-            let load_ebb = func.layout.inst_ebb(load).unwrap();
-            let loaded_value = func.dfg.inst_results(load)[0];
-            let loaded_type = func.dfg.value_type(loaded_value);
+            let load_ebb = ctx.func.layout.inst_ebb(load).unwrap();
+            let loaded_value = ctx.func.dfg.inst_results(load)[0];
+            let loaded_type = ctx.func.dfg.value_type(loaded_value);
 
             let potential_stores = users.stack_store.iter().cloned().filter(|&store| {
-                match spatial_overlap(func, load, store) {
+                // Check if the store modified some memory accessed by the load.
+
+                match spatial_overlap(&ctx.func, load, store) {
                     SpatialOverlap::No => false, // Can never be the source of the loaded value.
                     SpatialOverlap::Partial | SpatialOverlap::Full => true,
                 }
             }).filter(|&store| {
-                if load_ebb == func.layout.inst_ebb(store).unwrap() {
-                    func.layout.cmp(store, load) == std::cmp::Ordering::Less
+                // Check if the store may have happened before the load.
+
+                let store_ebb = ctx.func.layout.inst_ebb(store).unwrap();
+                if load_ebb == store_ebb {
+                    ctx.func.layout.cmp(store, load) == std::cmp::Ordering::Less
                 } else {
-                    true // FIXME
+                    // FIXME O(stack_load count * ebb count)
+                    // FIXME reuse memory allocations
+                    let mut visited = EntitySet::new();
+                    let mut todo = EntitySet::new();
+                    todo.insert(load_ebb);
+                    while let Some(ebb) = todo.pop() {
+                        if visited.contains(ebb) {
+                            continue;
+                        }
+                        visited.insert(ebb);
+                        if ebb == store_ebb {
+                            return true;
+                        }
+                        for bb in ctx.cfg.pred_iter(ebb) {
+                            todo.insert(bb.ebb);
+                        }
+                    }
+                    false
                 }
             }).collect::<Vec<Inst>>();
             for &store in &potential_stores {
-                println!("Potential store -> load forwarding {} -> {} ({:?})", func.dfg.display_inst(store, None), func.dfg.display_inst(load, None), spatial_overlap(func, load, store));
+                println!("Potential store -> load forwarding {} -> {} ({:?})", ctx.func.dfg.display_inst(store, None), ctx.func.dfg.display_inst(load, None), spatial_overlap(func, load, store));
             }
             match *potential_stores {
                 [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
-                [store] if spatial_overlap(func, load, store) == SpatialOverlap::Full => {
-                    let store_ebb = func.layout.inst_ebb(store).unwrap();
-                    let stored_value = func.dfg.inst_args(store)[0];
-                    let stored_type = func.dfg.value_type(stored_value);
+                [store] if spatial_overlap(&ctx.func, load, store) == SpatialOverlap::Full => {
+                    let store_ebb = ctx.func.layout.inst_ebb(store).unwrap();
+                    let stored_value = ctx.func.dfg.inst_args(store)[0];
+                    let stored_type = ctx.func.dfg.value_type(stored_value);
                     if stored_type == loaded_type && store_ebb == load_ebb {
                         println!("Store to load forward {} -> {}", store, load);
-                        func.dfg.detach_results(load);
-                        func.dfg.replace(load).nop();
-                        func.dfg.change_to_alias(loaded_value, stored_value);
+                        ctx.func.dfg.detach_results(load);
+                        ctx.func.dfg.replace(load).nop();
+                        ctx.func.dfg.change_to_alias(loaded_value, stored_value);
                         users.stack_load.remove(&load);
                     }
                 }
@@ -126,7 +151,7 @@ pub(super) fn optimize_function(
             // Never loaded; can safely remove all stores and the stack slot.
             for user in users.stack_store.drain() {
                 println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot.0);
-                func.dfg.replace(user).nop();
+                ctx.func.dfg.replace(user).nop();
             }
         }
 

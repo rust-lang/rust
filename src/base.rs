@@ -76,11 +76,13 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    crate::optimize::optimize_function(cx.tcx, instance, &mut func, &mut clif_comments);
-
-    // Define function
     let context = &mut cx.caches.context;
     context.func = func;
+
+    // Perform rust specific optimizations
+    crate::optimize::optimize_function(cx.tcx, instance, context, &mut clif_comments);
+
+    // Define function
     cx.module.define_function(func_id, context).unwrap();
 
     // Write optimized function to file for debugging
