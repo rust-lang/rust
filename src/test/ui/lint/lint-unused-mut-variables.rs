@@ -2,17 +2,17 @@
 
 // Exercise the unused_mut attribute in some positive and negative cases
 
-#![deny(unused_mut)]
+#![warn(unused_mut)]
 #![feature(async_closure, raw_ref_op)]
 
 async fn baz_async(
     mut a: i32,
-    //~^ ERROR: variable does not need to be mutable
+    //~^ WARN: variable does not need to be mutable
     #[allow(unused_mut)] mut b: i32,
 ) {}
 fn baz(
     mut a: i32,
-    //~^ ERROR: variable does not need to be mutable
+    //~^ WARN: variable does not need to be mutable
     #[allow(unused_mut)] mut b: i32,
     #[allow(unused_mut)] (mut c, d): (i32, i32)
 ) {}
@@ -21,13 +21,13 @@ struct RefStruct {}
 impl RefStruct {
     async fn baz_async(
         mut a: i32,
-        //~^ ERROR: variable does not need to be mutable
+        //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
     ) {}
     fn baz(
         &self,
         mut a: i32,
-        //~^ ERROR: variable does not need to be mutable
+        //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
         #[allow(unused_mut)] (mut c, d): (i32, i32)
     ) {}
@@ -37,7 +37,7 @@ trait RefTrait {
     fn baz(
         &self,
         mut a: i32,
-        //~^ ERROR: variable does not need to be mutable
+        //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
         #[allow(unused_mut)] (mut c, d): (i32, i32)
     ) {}
@@ -46,7 +46,7 @@ impl RefTrait for () {
     fn baz(
         &self,
         mut a: i32,
-        //~^ ERROR: variable does not need to be mutable
+        //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
         #[allow(unused_mut)] (mut c, d): (i32, i32)
     ) {}
@@ -55,32 +55,32 @@ impl RefTrait for () {
 fn main() {
     let _ = async move |
         mut a: i32,
-        //~^ ERROR: variable does not need to be mutable
+        //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
     | {};
     let _ = |
         mut a: i32,
-        //~^ ERROR: variable does not need to be mutable
+        //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
         #[allow(unused_mut)] (mut c, d): (i32, i32)
     | {};
 
     // negative cases
-    let mut a = 3; //~ ERROR: variable does not need to be mutable
+    let mut a = 3; //~ WARN: variable does not need to be mutable
 
-    let mut a = 2; //~ ERROR: variable does not need to be mutable
+    let mut a = 2; //~ WARN: variable does not need to be mutable
 
-    let mut b = 3; //~ ERROR: variable does not need to be mutable
+    let mut b = 3; //~ WARN: variable does not need to be mutable
 
-    let mut a = vec![3]; //~ ERROR: variable does not need to be mutable
+    let mut a = vec![3]; //~ WARN: variable does not need to be mutable
 
-    let (mut a, b) = (1, 2); //~ ERROR: variable does not need to be mutable
+    let (mut a, b) = (1, 2); //~ WARN: variable does not need to be mutable
 
-    let mut a; //~ ERROR: variable does not need to be mutable
+    let mut a; //~ WARN: variable does not need to be mutable
 
     a = 3;
 
-    let mut b; //~ ERROR: variable does not need to be mutable
+    let mut b; //~ WARN: variable does not need to be mutable
 
     if true {
         b = 3;
@@ -89,11 +89,11 @@ fn main() {
     }
 
     match 30 {
-        mut x => {} //~ ERROR: variable does not need to be mutable
+        mut x => {} //~ WARN: variable does not need to be mutable
 
     }
     match (30, 2) {
-      (mut x, 1) | //~ ERROR: variable does not need to be mutable
+      (mut x, 1) | //~ WARN: variable does not need to be mutable
 
       (mut x, 2) |
       (mut x, 3) => {
@@ -101,20 +101,20 @@ fn main() {
       _ => {}
     }
 
-    let x = |mut y: isize| 10; //~ ERROR: variable does not need to be mutable
+    let x = |mut y: isize| 10; //~ WARN: variable does not need to be mutable
 
-    fn what(mut foo: isize) {} //~ ERROR: variable does not need to be mutable
+    fn what(mut foo: isize) {} //~ WARN: variable does not need to be mutable
 
 
-    let mut a = &mut 5; //~ ERROR: variable does not need to be mutable
+    let mut a = &mut 5; //~ WARN: variable does not need to be mutable
 
     *a = 4;
 
     let mut a = 5;
-    let mut b = (&mut a,); //~ ERROR: variable does not need to be mutable
+    let mut b = (&mut a,); //~ WARN: variable does not need to be mutable
     *b.0 = 4;
 
-    let mut x = &mut 1; //~ ERROR: variable does not need to be mutable
+    let mut x = &mut 1; //~ WARN: variable does not need to be mutable
 
     let mut f = || {
       *x += 1;
@@ -122,11 +122,11 @@ fn main() {
     f();
 
     fn mut_ref_arg(mut arg : &mut [u8]) -> &mut [u8] {
-        &mut arg[..] //~^ ERROR: variable does not need to be mutable
+        &mut arg[..] //~^ WARN: variable does not need to be mutable
 
     }
 
-    let mut v : &mut Vec<()> = &mut vec![]; //~ ERROR: variable does not need to be mutable
+    let mut v : &mut Vec<()> = &mut vec![]; //~ WARN: variable does not need to be mutable
 
     v.push(());
 
@@ -181,7 +181,7 @@ fn main() {
     let mut raw_address_of_mut = 1; // OK
     let mut_ptr = &raw mut raw_address_of_mut;
 
-    let mut raw_address_of_const = 1; //~ ERROR: variable does not need to be mutable
+    let mut raw_address_of_const = 1; //~ WARN: variable does not need to be mutable
     let const_ptr = &raw const raw_address_of_const;
 }
 
