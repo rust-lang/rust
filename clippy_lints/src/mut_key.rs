@@ -103,7 +103,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, ty: Ty<'tcx>) {
             .iter()
             .any(|path| match_def_path(cx, def.did, &**path))
         {
-            let key_type = concrete_type(Some(substs.type_at(0)));
+            let key_type = concrete_type(substs.type_at(0));
             if let Some(key_type) = key_type {
                 if !key_type.is_freeze(cx.tcx, cx.param_env, span) {
                     span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");
@@ -113,13 +113,10 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, ty: Ty<'tcx>) {
     }
 }
 
-fn concrete_type(ty: Option<Ty<'_>>) -> Option<Ty<'_>> {
-    if let Some(ty) = ty {
-        match ty.kind {
-            RawPtr(TypeAndMut { ty: inner_ty, .. }) | Ref(_, inner_ty, _) => return concrete_type(Some(inner_ty)),
-            Dynamic(..) | Opaque(..) | Param(..) => return None,
-            _ => return Some(ty),
-        }
+fn concrete_type(ty: Ty<'_>) -> Option<Ty<'_>> {
+    match ty.kind {
+        RawPtr(TypeAndMut { ty: inner_ty, .. }) | Ref(_, inner_ty, _) => concrete_type(inner_ty),
+        Dynamic(..) | Opaque(..) | Param(..) => None,
+        _ => Some(ty),
     }
-    None
 }
