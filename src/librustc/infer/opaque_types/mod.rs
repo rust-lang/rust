@@ -502,6 +502,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // Otherwise, generate the label we'll use in the error message.
             hir::OpaqueTyOrigin::TypeAlias => "impl Trait",
             hir::OpaqueTyOrigin::FnReturn => "impl Trait",
+            hir::OpaqueTyOrigin::Misc => "impl Trait",
         };
         let msg = format!("ambiguous lifetime bound in `{}`", context_name);
         let mut err = self.tcx.sess.struct_span_err(span, &msg);
