@@ -74,6 +74,8 @@ pub(super) fn optimize_function(
         }
     }
 
+    // FIXME Repeat following instructions until fixpoint.
+
     println!("{}:\nstack slot usage: {:?}", name, stack_slot_usage_map);
 
     remove_unused_stack_addr_and_stack_load(&mut ctx.func, &mut stack_slot_usage_map);
@@ -100,38 +102,23 @@ pub(super) fn optimize_function(
                     SpatialOverlap::Partial | SpatialOverlap::Full => true,
                 }
             }).filter(|&store| {
-                // Check if the store may have happened before the load.
-
-                let store_ebb = ctx.func.layout.inst_ebb(store).unwrap();
-                if load_ebb == store_ebb {
-                    ctx.func.layout.cmp(store, load) == std::cmp::Ordering::Less
-                } else {
-                    // FIXME O(stack_load count * ebb count)
-                    // FIXME reuse memory allocations
-                    let mut visited = EntitySet::new();
-                    let mut todo = EntitySet::new();
-                    todo.insert(load_ebb);
-                    while let Some(ebb) = todo.pop() {
-                        if visited.contains(ebb) {
-                            continue;
-                        }
-                        visited.insert(ebb);
-                        if ebb == store_ebb {
-                            return true;
-                        }
-                        for bb in ctx.cfg.pred_iter(ebb) {
-                            todo.insert(bb.ebb);
-                        }
-                    }
-                    false
+                match temporal_order(&*ctx, load, store) {
+                    TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
+                    TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
                 }
             }).collect::<Vec<Inst>>();
             for &store in &potential_stores {
-                println!("Potential store -> load forwarding {} -> {} ({:?})", ctx.func.dfg.display_inst(store, None), ctx.func.dfg.display_inst(load, None), spatial_overlap(ctx.func, load, store));
+                println!(
+                    "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
+                    ctx.func.dfg.display_inst(store, None),
+                    ctx.func.dfg.display_inst(load, None),
+                    spatial_overlap(&ctx.func, store, load),
+                    temporal_order(&*ctx, store, load),
+                );
             }
             match *potential_stores {
                 [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
-                [store] if spatial_overlap(&ctx.func, load, store) == SpatialOverlap::Full => {
+                [store] if spatial_overlap(&ctx.func, load, store) == SpatialOverlap::Full && temporal_order(&ctx, load, store) == TemporalOrder::DefinitivelyBefore => {
                     let store_ebb = ctx.func.layout.inst_ebb(store).unwrap();
                     let stored_value = ctx.func.dfg.inst_args(store)[0];
                     let stored_type = ctx.func.dfg.value_type(stored_value);
@@ -149,6 +136,7 @@ pub(super) fn optimize_function(
 
         if users.stack_load.is_empty() {
             // Never loaded; can safely remove all stores and the stack slot.
+            // FIXME also remove stores when there is always a next store before a load.
             for user in users.stack_store.drain() {
                 println!("[{}] Remove dead stack store {} of {}", name, user, stack_slot.0);
                 ctx.func.dfg.replace(user).nop();
@@ -292,6 +280,8 @@ fn spatial_overlap(func: &Function, src: Inst, dest: Inst) -> SpatialOverlap {
         }
     }
 
+    debug_assert_ne!(src, dest);
+
     let (src_ss, src_offset, src_size) = inst_info(func, src);
     let (dest_ss, dest_offset, dest_size) = inst_info(func, dest);
 
@@ -310,4 +300,52 @@ fn spatial_overlap(func: &Function, src: Inst, dest: Inst) -> SpatialOverlap {
     }
 
     SpatialOverlap::Partial
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum TemporalOrder {
+    /// `src` will never be executed before `dest`.
+    NeverBefore,
+
+    /// `src` may be executed before `dest`.
+    MaybeBefore,
+
+    /// `src` will always be executed before `dest`.
+    /// There may still be other instructions in between.
+    DefinitivelyBefore,
+}
+
+fn temporal_order(ctx: &Context, src: Inst, dest: Inst) -> TemporalOrder {
+    debug_assert_ne!(src, dest);
+
+    let src_ebb = ctx.func.layout.inst_ebb(src).unwrap();
+    let dest_ebb = ctx.func.layout.inst_ebb(dest).unwrap();
+    if src_ebb == dest_ebb {
+        use std::cmp::Ordering::*;
+        match ctx.func.layout.cmp(src, dest) {
+            Less => TemporalOrder::DefinitivelyBefore,
+            Equal => unreachable!(),
+            Greater => TemporalOrder::MaybeBefore, // FIXME use dominator to check for loops
+        }
+    } else {
+        // FIXME O(stack_load count * ebb count)
+        // FIXME reuse memory allocations
+        // FIXME return DefinitivelyBefore is src dominates dest
+        let mut visited = EntitySet::new();
+        let mut todo = EntitySet::new();
+        todo.insert(dest_ebb);
+        while let Some(ebb) = todo.pop() {
+            if visited.contains(ebb) {
+                continue;
+            }
+            visited.insert(ebb);
+            if ebb == src_ebb {
+                return TemporalOrder::MaybeBefore;
+            }
+            for bb in ctx.cfg.pred_iter(ebb) {
+                todo.insert(bb.ebb);
+            }
+        }
+        TemporalOrder::NeverBefore
+    }
 }
