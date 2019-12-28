@@ -800,7 +800,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // If there is a static predicate, then the only sensible suggestion is to replace
                 // fr with `'static`.
                 if has_static_predicate {
-                    diag.help(&format!("consider replacing `{}` with `{}`", fr_name, static_str,));
+                    diag.help(&format!("consider replacing `{}` with `{}`", fr_name, static_str));
                 } else {
                     // Otherwise, we should suggest adding a constraint on the return type.
                     let span = infcx.tcx.def_span(*did);
@@ -810,7 +810,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         } else {
                             "'_".to_string()
                         };
-
+                        let suggestion = if snippet.ends_with(";") {
+                            // `type X = impl Trait;`
+                            format!("{} + {};", &snippet[..snippet.len() - 1], suggestable_fr_name)
+                        } else {
+                            format!("{} + {}", snippet, suggestable_fr_name)
+                        };
                         diag.span_suggestion(
                             span,
                             &format!(
@@ -818,7 +823,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                                  `{}`, add `{}` as a bound",
                                 fr_name, suggestable_fr_name,
                             ),
-                            format!("{} + {}", snippet, suggestable_fr_name),
+                            suggestion,
                             Applicability::MachineApplicable,
                         );
                     }
