@@ -162,7 +162,7 @@ fn trans_const_place<'tcx>(
         ecx.copy_op(op, ptr.into())?;
         let alloc = ecx
             .memory
-            .get_raw(ptr.to_ref().to_scalar()?.to_ptr()?.alloc_id)?;
+            .get_raw(ptr.to_ref().to_scalar()?.assert_ptr().alloc_id)?;
         Ok(fx.tcx.intern_const_alloc(alloc.clone()))
     };
     let alloc = result().expect("unable to convert ConstKind to Allocation");
