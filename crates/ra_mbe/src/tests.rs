@@ -1491,3 +1491,49 @@ fn debug_dump_ignore_spaces(node: &ra_syntax::SyntaxNode) -> String {
 
     buf
 }
+
+#[test]
+fn test_issue_2520() {
+    let macro_fixture = parse_macro(
+        r#"
+        macro_rules! my_macro {
+            {
+                ( $(
+                    $( [] $sname:ident : $stype:ty  )?
+                    $( [$expr:expr] $nname:ident : $ntype:ty  )?
+                ),* )
+            } => {
+                Test {
+                    $(
+                        $( $sname, )?
+                    )*
+                }
+            };
+        }
+    "#,
+    );
+
+    macro_fixture.assert_expand_items(
+        r#"my_macro ! {
+            ([] p1 : u32 , [|_| S0K0] s : S0K0 , [] k0 : i32)
+        }"#,
+        "Test {p1 , k0 ,}",
+    );
+}
+
+#[test]
+fn test_repeat_bad_var() {
+    parse_macro(
+        r#"
+        macro_rules! foo {
+            ($( $b:ident )+) => {
+                $( $c )+
+            };
+            ($( $b:ident )+) => {
+                $( $b )+
+            }
+        }
+    "#,
+    )
+    .assert_expand_items("foo!(b0 b1);", "b0 b1");
+}
