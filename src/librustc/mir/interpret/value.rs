@@ -416,22 +416,30 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
+    #[inline]
+    fn to_unsigned_with_bit_width(self, bits: u64) -> InterpResult<'static, u128> {
+        let sz = Size::from_bits(bits);
+        self.to_bits(sz)
+    }
+
+    /// Converts the scalar to produce an `u8`. Fails if the scalar is a pointer.
     pub fn to_u8(self) -> InterpResult<'static, u8> {
-        let sz = Size::from_bits(8);
-        let b = self.to_bits(sz)?;
-        Ok(b as u8)
+        self.to_unsigned_with_bit_width(8).map(|v| v as u8)
     }
 
+    /// Converts the scalar to produce an `u16`. Fails if the scalar is a pointer.
+    pub fn to_u16(self) -> InterpResult<'static, u16> {
+        self.to_unsigned_with_bit_width(16).map(|v| v as u16)
+    }
+
+    /// Converts the scalar to produce an `u32`. Fails if the scalar is a pointer.
     pub fn to_u32(self) -> InterpResult<'static, u32> {
-        let sz = Size::from_bits(32);
-        let b = self.to_bits(sz)?;
-        Ok(b as u32)
+        self.to_unsigned_with_bit_width(32).map(|v| v as u32)
     }
 
+    /// Converts the scalar to produce an `u64`. Fails if the scalar is a pointer.
     pub fn to_u64(self) -> InterpResult<'static, u64> {
-        let sz = Size::from_bits(64);
-        let b = self.to_bits(sz)?;
-        Ok(b as u64)
+        self.to_unsigned_with_bit_width(64).map(|v| v as u64)
     }
 
     pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
@@ -439,25 +447,31 @@ impl<'tcx, Tag> Scalar<Tag> {
         Ok(b as u64)
     }
 
+    #[inline]
+    fn to_signed_with_bit_width(self, bits: u64) -> InterpResult<'static, i128> {
+        let sz = Size::from_bits(bits);
+        let b = self.to_bits(sz)?;
+        Ok(sign_extend(b, sz) as i128)
+    }
+
+    /// Converts the scalar to produce an `i8`. Fails if the scalar is a pointer.
     pub fn to_i8(self) -> InterpResult<'static, i8> {
-        let sz = Size::from_bits(8);
-        let b = self.to_bits(sz)?;
-        let b = sign_extend(b, sz) as i128;
-        Ok(b as i8)
+        self.to_signed_with_bit_width(8).map(|v| v as i8)
     }
 
+    /// Converts the scalar to produce an `i16`. Fails if the scalar is a pointer.
+    pub fn to_i16(self) -> InterpResult<'static, i16> {
+        self.to_signed_with_bit_width(16).map(|v| v as i16)
+    }
+
+    /// Converts the scalar to produce an `i32`. Fails if the scalar is a pointer.
     pub fn to_i32(self) -> InterpResult<'static, i32> {
-        let sz = Size::from_bits(32);
-        let b = self.to_bits(sz)?;
-        let b = sign_extend(b, sz) as i128;
-        Ok(b as i32)
+        self.to_signed_with_bit_width(32).map(|v| v as i32)
     }
 
+    /// Converts the scalar to produce an `i64`. Fails if the scalar is a pointer.
     pub fn to_i64(self) -> InterpResult<'static, i64> {
-        let sz = Size::from_bits(64);
-        let b = self.to_bits(sz)?;
-        let b = sign_extend(b, sz) as i128;
-        Ok(b as i64)
+        self.to_signed_with_bit_width(64).map(|v| v as i64)
     }
 
     pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {

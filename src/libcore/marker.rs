@@ -142,7 +142,7 @@ pub trait Unsize<T: ?Sized> {
 /// In either of the two scenarios above, we reject usage of such a constant in
 /// a pattern match.
 ///
-/// See also the [structural match RFC][RFC1445], and [issue 63438][] which
+/// See also the [structural match RFC][RFC1445], and [issue 63438] which
 /// motivated migrating from attribute-based design to this trait.
 ///
 /// [RFC1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md

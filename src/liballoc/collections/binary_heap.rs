@@ -1094,7 +1094,7 @@ impl<T> FusedIterator for Iter<'_, T> {}
 
 /// An owning iterator over the elements of a `BinaryHeap`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`BinaryHeap`][`BinaryHeap`]
+/// This `struct` is created by the [`into_iter`] method on [`BinaryHeap`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.BinaryHeap.html#method.into_iter

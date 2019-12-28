@@ -2,12 +2,12 @@
 ///
 /// Instances of `Fn` can be called repeatedly without mutating state.
 ///
-/// *This trait (`Fn`) is not to be confused with [function pointers][]
+/// *This trait (`Fn`) is not to be confused with [function pointers]
 /// (`fn`).*
 ///
 /// `Fn` is implemented automatically by closures which only take immutable
 /// references to captured variables or don't capture anything at all, as well
-/// as (safe) [function pointers][] (with some caveats, see their documentation
+/// as (safe) [function pointers] (with some caveats, see their documentation
 /// for more details). Additionally, for any type `F` that implements `Fn`, `&F`
 /// implements `Fn`, too.
 ///
@@ -78,7 +78,7 @@ pub trait Fn<Args>: FnMut<Args> {
 ///
 /// `FnMut` is implemented automatically by closures which take mutable
 /// references to captured variables, as well as all types that implement
-/// [`Fn`], e.g., (safe) [function pointers][] (since `FnMut` is a supertrait of
+/// [`Fn`], e.g., (safe) [function pointers] (since `FnMut` is a supertrait of
 /// [`Fn`]). Additionally, for any type `F` that implements `FnMut`, `&mut F`
 /// implements `FnMut`, too.
 ///
@@ -162,7 +162,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 ///
 /// `FnOnce` is implemented automatically by closure that might consume captured
 /// variables, as well as all types that implement [`FnMut`], e.g., (safe)
-/// [function pointers][] (since `FnOnce` is a supertrait of [`FnMut`]).
+/// [function pointers] (since `FnOnce` is a supertrait of [`FnMut`]).
 ///
 /// Since both [`Fn`] and [`FnMut`] are subtraits of `FnOnce`, any instance of
 /// [`Fn`] or [`FnMut`] can be used where a `FnOnce` is expected.

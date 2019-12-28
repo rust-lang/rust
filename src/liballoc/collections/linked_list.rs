@@ -105,7 +105,7 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 
 /// An owning iterator over the elements of a `LinkedList`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`LinkedList`][`LinkedList`]
+/// This `struct` is created by the [`into_iter`] method on [`LinkedList`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.LinkedList.html#method.into_iter
