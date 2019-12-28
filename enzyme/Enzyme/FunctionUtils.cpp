@@ -188,9 +188,29 @@ PHINode* canonicalizeIVs(fake::SCEVExpander &e, Type *Ty, Loop *L, DominatorTree
 
 Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI) {
  static std::map<Function*,Function*> cache;
- static std::map<Function*, BasicAAResult*> cache_AA;
+ //static std::map<Function*, BasicAAResult*> cache_AA;
  if (cache.find(F) != cache.end()) {
-   AA.addAAResult(*(cache_AA[F]));
+
+   Function* NewF = cache[F];
+   AssumptionCache* AC = new AssumptionCache(*NewF);
+ DominatorTree* DTL = new DominatorTree(*NewF);
+ LoopInfo* LI = new LoopInfo(*DTL);
+ #if LLVM_VERSION_MAJOR > 6
+ PhiValues* PV = new PhiValues(*NewF);
+ #endif
+ auto baa = new BasicAAResult(NewF->getParent()->getDataLayout(),
+#if LLVM_VERSION_MAJOR > 6
+                        *NewF,
+#endif
+                        TLI,
+                        *AC,
+                        DTL/*&AM.getResult<DominatorTreeAnalysis>(*NewF)*/,
+                        LI
+#if LLVM_VERSION_MAJOR > 6
+                        ,PV
+#endif
+                        );
+   AA.addAAResult(*baa);//(cache_AA[F]));
    return cache[F];
  }
  Function *NewF = Function::Create(F->getFunctionType(), F->getLinkage(), "preprocess_" + F->getName(), F->getParent());
@@ -323,7 +343,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
                         ,PV
 #endif
                         );
- cache_AA[F] = baa;
+ //cache_AA[F] = baa;
  //llvm::errs() << " basicAA(f=" << F->getName() << ")=" << baa << "\n";
  AA.addAAResult(*baa);
  //for(auto &a : AA.AAs) {

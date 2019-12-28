@@ -597,7 +597,9 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
   }
   assert(!todiff->empty());
   std::map<AugmentedStruct, unsigned> returnMapping;
-  GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, global_AA, TLI, constant_args, /*returnUsed*/returnUsed, /*differentialReturn*/differentialReturn, returnMapping);
+  AAResults AA(TLI);
+  //AA.addAAResult(global_AA);
+  GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, /*returnUsed*/returnUsed, /*differentialReturn*/differentialReturn, returnMapping);
 
   gutils->forceContexts();
   gutils->forceActiveDetection();
@@ -615,9 +617,9 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
     }
   }
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map =
-      compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, global_AA, gutils, _uncacheable_argsPP);
+      compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_argsPP);
 
-  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, global_AA, TLI, _uncacheable_argsPP);
+  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
   for (auto &iter : can_modref_map_mutable) {
       if (iter.second) {
         //iter.first->getParent()->getParent()->dump();
@@ -968,7 +970,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
 
 
               if (called) {
-                const AugmentedReturn& augmentation = CreateAugmentedPrimal(called, global_AA, subconstant_args, TLI, /*differentialReturn*/subdifferentialreturn, /*return is used*/subretused, uncacheable_args_map.find(gutils->getOriginal(op))->second, false);
+                const AugmentedReturn& augmentation = CreateAugmentedPrimal(called, AA, subconstant_args, TLI, /*differentialReturn*/subdifferentialreturn, /*return is used*/subretused, uncacheable_args_map.find(gutils->getOriginal(op))->second, false);
                 cachedfunctions.find(tup)->second.subaugmentations.insert_or_assign(cast<CallInst>(gutils->getOriginal(op)), &augmentation);
                 newcalled = augmentation.fn;
 
@@ -2479,7 +2481,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   auto M = todiff->getParent();
 
   auto& Context = M->getContext();
-  DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, global_AA, TLI, constant_args, returnValue ? ( dretPtr ? ReturnType::ArgsWithTwoReturns: ReturnType::ArgsWithReturn ) : ReturnType::Args, differentialReturn, additionalArg);
+  AAResults AA(TLI);
+  //AA.addAAResult(global_AA);
+  DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, returnValue ? ( dretPtr ? ReturnType::ArgsWithTwoReturns: ReturnType::ArgsWithReturn ) : ReturnType::Args, differentialReturn, additionalArg);
   cachedfunctions[tup] = gutils->newFunc;
   
   gutils->forceContexts();
@@ -2505,9 +2509,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   }
 
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map = (augmenteddata) ? augmenteddata->uncacheable_args_map :
-      compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, global_AA, gutils, _uncacheable_argsPP);
+      compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_argsPP);
 
-  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, global_AA, TLI, _uncacheable_argsPP);
+  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
     
     for (auto &iter : can_modref_map_mutable) {
       if (iter.second) {
@@ -3076,7 +3080,7 @@ realcall:
           }
       }
       assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
-      handleGradientCallInst(I, E, Builder2, op, gutils, TLI, global_AA, topLevel, replacedReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, returnUsed, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
+      handleGradientCallInst(I, E, Builder2, op, gutils, TLI, AA, topLevel, replacedReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, returnUsed, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;
