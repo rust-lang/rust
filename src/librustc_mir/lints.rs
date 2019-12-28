@@ -83,16 +83,18 @@ fn check_fn_for_unconditional_recursion(
                     let func_ty = func.ty(body, tcx);
 
                     if let ty::FnDef(fn_def_id, substs) = func_ty.kind {
-                        let (call_fn_id, call_substs) = if let Some(instance) =
-                            Instance::resolve(tcx, param_env, fn_def_id, substs)
-                        {
-                            (instance.def_id(), instance.substs)
-                        } else {
-                            (fn_def_id, substs)
-                        };
+                        let is_self_call = tcx.infer_ctxt().enter(|ref infcx| {
+                            let (call_fn_id, call_substs) = if let Some(instance) =
+                                Instance::resolve(infcx, param_env, fn_def_id, substs)
+                            {
+                                (instance.def_id(), instance.substs)
+                            } else {
+                                (fn_def_id, substs)
+                            };
 
-                        let is_self_call = call_fn_id == def_id
-                            && &call_substs[..caller_substs.len()] == caller_substs;
+                            call_fn_id == def_id
+                                && &call_substs[..caller_substs.len()] == caller_substs
+                        });
 
                         if is_self_call {
                             self_call_locations.push(terminator.source_info);

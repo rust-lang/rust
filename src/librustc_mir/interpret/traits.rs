@@ -78,7 +78,7 @@ impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M>
             if let Some((def_id, substs)) = *method {
                 // resolve for vtable: insert shims where needed
                 let instance =
-                    ty::Instance::resolve_for_vtable(*tcx, self.param_env, def_id, substs)
+                    ty::Instance::resolve_for_vtable(self.infcx, self.param_env, def_id, substs)
                         .ok_or_else(|| err_inval!(TooGeneric))?;
                 let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                 // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.

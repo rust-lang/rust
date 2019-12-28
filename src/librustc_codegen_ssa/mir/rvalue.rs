@@ -188,17 +188,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 if bx.cx().tcx().has_attr(def_id, sym::rustc_args_required_const) {
                                     bug!("reifying a fn ptr that requires const arguments");
                                 }
-                                OperandValue::Immediate(
-                                    bx.get_fn_addr(
-                                        ty::Instance::resolve_for_fn_ptr(
-                                            bx.tcx(),
-                                            ty::ParamEnv::reveal_all(),
-                                            def_id,
-                                            substs,
-                                        )
-                                        .unwrap(),
-                                    ),
-                                )
+                                OperandValue::Immediate(bx.get_fn_addr(
+                                    ty::Instance::resolve_for_fn_ptr_mono(bx.tcx(), def_id, substs),
+                                ))
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }

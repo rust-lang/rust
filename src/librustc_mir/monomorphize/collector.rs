@@ -697,9 +697,12 @@ fn visit_fn_use<'tcx>(
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     if let ty::FnDef(def_id, substs) = ty.kind {
-        let resolver =
-            if is_direct_call { ty::Instance::resolve } else { ty::Instance::resolve_for_fn_ptr };
-        let instance = resolver(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
+        let resolver = if is_direct_call {
+            ty::Instance::resolve_mono
+        } else {
+            ty::Instance::resolve_for_fn_ptr_mono
+        };
+        let instance = resolver(tcx, def_id, substs);
         visit_instance_use(tcx, instance, is_direct_call, output);
     }
 }
@@ -941,15 +944,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                 .iter()
                 .cloned()
                 .filter_map(|method| method)
-                .map(|(def_id, substs)| {
-                    ty::Instance::resolve_for_vtable(
-                        tcx,
-                        ty::ParamEnv::reveal_all(),
-                        def_id,
-                        substs,
-                    )
-                    .unwrap()
-                })
+                .map(|(def_id, substs)| ty::Instance::resolve_for_vtable_mono(tcx, def_id, substs))
                 .filter(|&instance| should_monomorphize_locally(tcx, &instance))
                 .map(|instance| create_fn_mono_item(instance));
             output.extend(methods);
@@ -1106,13 +1101,11 @@ impl RootCollector<'_, 'v> {
         // listing.
         let main_ret_ty = self.tcx.erase_regions(&main_ret_ty.no_bound_vars().unwrap());
 
-        let start_instance = Instance::resolve(
+        let start_instance = Instance::resolve_mono(
             self.tcx,
-            ty::ParamEnv::reveal_all(),
             start_def_id,
             self.tcx.intern_substs(&[main_ret_ty.into()]),
-        )
-        .unwrap();
+        );
 
         self.output.push(create_fn_mono_item(start_instance));
     }
@@ -1167,8 +1160,7 @@ fn create_mono_items_for_default_impls<'tcx>(
                                 trait_ref.substs[param.index as usize]
                             }
                         });
-                    let instance =
-                        ty::Instance::resolve(tcx, param_env, method.def_id, substs).unwrap();
+                    let instance = ty::Instance::resolve_mono(tcx, method.def_id, substs);
 
                     let mono_item = create_fn_mono_item(instance);
                     if mono_item.is_instantiable(tcx) && should_monomorphize_locally(tcx, &instance)

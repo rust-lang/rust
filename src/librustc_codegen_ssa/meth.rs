@@ -87,15 +87,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
 
     let methods = methods.cloned().map(|opt_mth| {
         opt_mth.map_or(nullptr, |(def_id, substs)| {
-            cx.get_fn_addr(
-                ty::Instance::resolve_for_vtable(
-                    cx.tcx(),
-                    ty::ParamEnv::reveal_all(),
-                    def_id,
-                    substs,
-                )
-                .unwrap(),
-            )
+            cx.get_fn_addr(ty::Instance::resolve_for_vtable_mono(cx.tcx(), def_id, substs))
         })
     });
 

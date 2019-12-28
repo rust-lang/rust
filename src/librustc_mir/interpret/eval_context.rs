@@ -376,7 +376,7 @@ impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M>
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("param_env: {:#?}", self.param_env);
         trace!("substs: {:#?}", substs);
-        ty::Instance::resolve(*self.tcx, self.param_env, def_id, substs)
+        ty::Instance::resolve(self.infcx, self.param_env, def_id, substs)
             .ok_or_else(|| err_inval!(TooGeneric).into())
     }
 

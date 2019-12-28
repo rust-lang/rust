@@ -449,13 +449,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let callee = self.codegen_operand(&mut bx, func);
 
         let (instance, mut llfn) = match callee.layout.ty.kind {
-            ty::FnDef(def_id, substs) => (
-                Some(
-                    ty::Instance::resolve(bx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs)
-                        .unwrap(),
-                ),
-                None,
-            ),
+            ty::FnDef(def_id, substs) => {
+                (Some(ty::Instance::resolve_mono(bx.tcx(), def_id, substs)), None)
+            }
             ty::FnPtr(_) => (None, Some(callee.immediate())),
             _ => bug!("{} is not callable", callee.layout.ty),
         };

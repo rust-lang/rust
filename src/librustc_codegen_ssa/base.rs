@@ -459,15 +459,11 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = cx.tcx().require_lang_item(StartFnLangItem, None);
-            let start_fn = cx.get_fn_addr(
-                ty::Instance::resolve(
-                    cx.tcx(),
-                    ty::ParamEnv::reveal_all(),
-                    start_def_id,
-                    cx.tcx().intern_substs(&[main_ret_ty.into()]),
-                )
-                .unwrap(),
-            );
+            let start_fn = cx.get_fn_addr(ty::Instance::resolve_mono(
+                cx.tcx(),
+                start_def_id,
+                cx.tcx().intern_substs(&[main_ret_ty.into()]),
+            ));
             (
                 start_fn,
                 vec![bx.pointercast(rust_main, cx.type_ptr_to(cx.type_i8p())), arg_argc, arg_argv],

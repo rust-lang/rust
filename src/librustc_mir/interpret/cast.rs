@@ -46,7 +46,7 @@ impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M>
                         }
 
                         let instance = ty::Instance::resolve_for_fn_ptr(
-                            *self.tcx,
+                            self.infcx,
                             self.param_env,
                             def_id,
                             substs,

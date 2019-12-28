@@ -1,8 +1,9 @@
+use crate::infer::InferCtxt;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::middle::lang_items::DropInPlaceFnLangItem;
 use crate::traits;
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt, TypeFoldable};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
@@ -206,17 +207,18 @@ impl<'tcx> Instance<'tcx> {
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
     /// `Some`.
-    pub fn resolve(
-        tcx: TyCtxt<'tcx>,
+    pub fn resolve<'infcx>(
+        infcx: &'infcx InferCtxt<'infcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
+        let tcx = infcx.tcx;
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
             debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
             let item = tcx.associated_item(def_id);
-            resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
+            resolve_associated_item(infcx, &item, param_env, trait_def_id, substs)
         } else {
             let ty = tcx.type_of(def_id);
             let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, &ty);
@@ -253,16 +255,26 @@ impl<'tcx> Instance<'tcx> {
         result
     }
 
-    pub fn resolve_for_fn_ptr(
+    pub fn resolve_mono(
         tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Instance<'tcx> {
+        tcx.infer_ctxt().enter(|ref infcx| {
+            Instance::resolve(infcx, ParamEnv::reveal_all(), def_id, substs).unwrap()
+        })
+    }
+
+    pub fn resolve_for_fn_ptr<'infcx>(
+        infcx: &'infcx InferCtxt<'infcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        Instance::resolve(tcx, param_env, def_id, substs).map(|mut resolved| {
+        Instance::resolve(infcx, param_env, def_id, substs).map(|mut resolved| {
             match resolved.def {
-                InstanceDef::Item(def_id) if resolved.def.requires_caller_location(tcx) => {
+                InstanceDef::Item(def_id) if resolved.def.requires_caller_location(infcx.tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
                     resolved.def = InstanceDef::ReifyShim(def_id);
                 }
@@ -277,13 +289,24 @@ impl<'tcx> Instance<'tcx> {
         })
     }
 
-    pub fn resolve_for_vtable(
+    pub fn resolve_for_fn_ptr_mono(
         tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Instance<'tcx> {
+        tcx.infer_ctxt().enter(|ref infcx| {
+            Instance::resolve_for_fn_ptr(infcx, ParamEnv::reveal_all(), def_id, substs).unwrap()
+        })
+    }
+
+    pub fn resolve_for_vtable<'infcx>(
+        infcx: &'infcx InferCtxt<'infcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
+        let tcx = infcx.tcx;
         let fn_sig = tcx.fn_sig(def_id);
         let is_vtable_shim = fn_sig.inputs().skip_binder().len() > 0
             && fn_sig.input(0).skip_binder().is_param(0)
@@ -292,8 +315,18 @@ impl<'tcx> Instance<'tcx> {
             debug!(" => associated item with unsizeable self: Self");
             Some(Instance { def: InstanceDef::VtableShim(def_id), substs })
         } else {
-            Instance::resolve(tcx, param_env, def_id, substs)
+            Instance::resolve(infcx, param_env, def_id, substs)
         }
+    }
+
+    pub fn resolve_for_vtable_mono(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Instance<'tcx> {
+        tcx.infer_ctxt().enter(|ref infcx| {
+            Instance::resolve_for_vtable(infcx, ParamEnv::reveal_all(), def_id, substs).unwrap()
+        })
     }
 
     pub fn resolve_closure(
@@ -313,7 +346,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(DropInPlaceFnLangItem, None);
         let substs = tcx.intern_substs(&[ty.into()]);
-        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap()
+        Instance::resolve_mono(tcx, def_id, substs)
     }
 
     pub fn fn_once_adapter_instance(
@@ -346,13 +379,14 @@ impl<'tcx> Instance<'tcx> {
     }
 }
 
-fn resolve_associated_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn resolve_associated_item<'infcx, 'tcx>(
+    infcx: &'infcx InferCtxt<'infcx, 'tcx>,
     trait_item: &ty::AssocItem,
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,
     rcvr_substs: SubstsRef<'tcx>,
 ) -> Option<Instance<'tcx>> {
+    let tcx = infcx.tcx;
     let def_id = trait_item.def_id;
     debug!(
         "resolve_associated_item(trait_item={:?}, \
