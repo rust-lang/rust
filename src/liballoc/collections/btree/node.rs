@@ -493,7 +493,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 
     /// Returns a raw ptr to avoid asserting exclusive access to the entire node.
     fn as_leaf_mut(&mut self) -> *mut LeafNode<K, V> {
-        // We are mutable, so we cannot be the root, so accessing this as a leaf is okay.
+        // We are mutable, so we cannot be the shared root, so accessing this as a leaf is okay.
         self.node.as_ptr()
     }
 
@@ -514,33 +514,37 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
         // but we want to avoid that run-time check.
         // Instead, we create a slice pointing into the node whenever possible.
         // We can sometimes do this even for the shared root, as the slice will be
-        // empty.  We cannot *always* do this because if the type is too highly
-        // aligned, the offset of `keys` in a "full node" might be outside the bounds
-        // of the header!  So we do an alignment check first, that will be
-        // evaluated at compile-time, and only do any run-time check in the rare case
-        // that the alignment is very big.
-        if mem::align_of::<K>() > mem::align_of::<LeafNode<(), ()>>() && self.is_shared_root() {
+        // empty and `NodeHeader` contains an empty `keys_start` array.
+        // We cannot *always* do this because:
+        // - `keys_start` is not correctly typed because we want `NodeHeader`'s size to
+        //   not depend on the alignment of `K` (needed because `as_header` should be safe).
+        //   For this reason, `NodeHeader` has this `K2` parameter (that's usually `()`
+        //   and hence just adds a size-0-align-1 field, not affecting layout).
+        //   If the correctly typed header is more highly aligned than the allocated header,
+        //   we cannot transmute safely.
+        // - Even if we can transmute, the offset of a correctly typed `keys_start` might
+        //   be different and outside the bounds of the allocated header!
+        // So we do an alignment check and a size check first, that will be evaluated
+        // at compile-time, and only do any run-time check in the rare case that
+        // the compile-time checks signal danger.
+        if (mem::align_of::<NodeHeader<K, V, K>>() > mem::align_of::<NodeHeader<K, V>>()
+            || mem::size_of::<NodeHeader<K, V, K>>() != mem::size_of::<NodeHeader<K, V>>())
+            && self.is_shared_root()
+        {
             &[]
         } else {
-            // Thanks to the alignment check above, we know that `keys` will be
+            // If we are a `LeafNode<K, V>`, we can always transmute to
+            // `NodeHeader<K, V, K>` and `keys_start` always has the same offset
+            // as the actual `keys`.
+            // Thanks to the checks above, we know that we can transmute to
+            // `NodeHeader<K, V, K>` and that `keys_start` will be
             // in-bounds of some allocation even if this is the shared root!
             // (We might be one-past-the-end, but that is allowed by LLVM.)
-            // Getting the pointer is tricky though.  `NodeHeader` does not have a `keys`
-            // field because we want its size to not depend on the alignment of `K`
-            // (needed because `as_header` should be safe).  We cannot call `as_leaf`
-            // because we might be the shared root.
-            // For this reason, `NodeHeader` has this `K2` parameter (that's usually `()`
-            // and hence just adds a size-0-align-1 field, not affecting layout).
-            // We know that we can transmute `NodeHeader<K, V, ()>` to `NodeHeader<K, V, K>`
-            // because we did the alignment check above, and hence `NodeHeader<K, V, K>`
-            // is not bigger than `NodeHeader<K, V, ()>`!  Then we can use `NodeHeader<K, V, K>`
+            // Thus we can use `NodeHeader<K, V, K>`
             // to compute the pointer where the keys start.
             // This entire hack will become unnecessary once
             // <https://github.com/rust-lang/rfcs/pull/2582> lands, then we can just take a raw
             // pointer to the `keys` field of `*const InternalNode<K, V>`.
-
-            // This is a non-debug-assert because it can be completely compile-time evaluated.
-            assert!(mem::size_of::<NodeHeader<K, V>>() == mem::size_of::<NodeHeader<K, V, K>>());
             let header = self.as_header() as *const _ as *const NodeHeader<K, V, K>;
             let keys = unsafe { &(*header).keys_start as *const _ as *const K };
             unsafe { slice::from_raw_parts(keys, self.len()) }
@@ -549,7 +553,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
 
     fn into_val_slice(self) -> &'a [V] {
         debug_assert!(!self.is_shared_root());
-        // We cannot be the root, so `as_leaf` is okay
+        // We cannot be the shared root, so `as_leaf` is okay
         unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len()) }
     }
 
@@ -567,9 +571,11 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     }
 
     fn into_key_slice_mut(mut self) -> &'a mut [K] {
-        // Same as for `into_key_slice` above, we try to avoid a run-time check
-        // (the alignment comparison will usually be performed at compile-time).
-        if mem::align_of::<K>() > mem::align_of::<LeafNode<(), ()>>() && self.is_shared_root() {
+        // Same as for `into_key_slice` above, we try to avoid a run-time check.
+        if (mem::align_of::<NodeHeader<K, V, K>>() > mem::align_of::<NodeHeader<K, V>>()
+            || mem::size_of::<NodeHeader<K, V, K>>() != mem::size_of::<NodeHeader<K, V>>())
+            && self.is_shared_root()
+        {
             &mut []
         } else {
             unsafe {

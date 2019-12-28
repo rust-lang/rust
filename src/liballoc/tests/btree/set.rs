@@ -303,6 +303,15 @@ fn test_is_subset() {
 }
 
 #[test]
+fn test_clear() {
+    let mut x = BTreeSet::new();
+    x.insert(1);
+
+    x.clear();
+    assert!(x.is_empty());
+}
+
+#[test]
 fn test_zip() {
     let mut x = BTreeSet::new();
     x.insert(5);

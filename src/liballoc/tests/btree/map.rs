@@ -1,5 +1,7 @@
 use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
+use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::rc::Rc;
@@ -57,36 +59,65 @@ fn test_basic_large() {
 #[test]
 fn test_basic_small() {
     let mut map = BTreeMap::new();
+    // Empty, shared root:
     assert_eq!(map.remove(&1), None);
     assert_eq!(map.len(), 0);
+    assert_eq!(map.get(&1), None);
+    assert_eq!(map.get_mut(&1), None);
     assert_eq!(map.first_key_value(), None);
     assert_eq!(map.last_key_value(), None);
-    assert_eq!(map.get(&1), None);
+    assert_eq!(map.keys().count(), 0);
+    assert_eq!(map.values().count(), 0);
     assert_eq!(map.insert(1, 1), None);
+
+    // 1 key-value pair:
     assert_eq!(map.len(), 1);
     assert_eq!(map.get(&1), Some(&1));
+    assert_eq!(map.get_mut(&1), Some(&mut 1));
     assert_eq!(map.first_key_value(), Some((&1, &1)));
     assert_eq!(map.last_key_value(), Some((&1, &1)));
+    assert_eq!(map.keys().collect::<Vec<_>>(), vec![&1]);
+    assert_eq!(map.values().collect::<Vec<_>>(), vec![&1]);
     assert_eq!(map.insert(1, 2), Some(1));
     assert_eq!(map.len(), 1);
     assert_eq!(map.get(&1), Some(&2));
+    assert_eq!(map.get_mut(&1), Some(&mut 2));
     assert_eq!(map.first_key_value(), Some((&1, &2)));
     assert_eq!(map.last_key_value(), Some((&1, &2)));
+    assert_eq!(map.keys().collect::<Vec<_>>(), vec![&1]);
+    assert_eq!(map.values().collect::<Vec<_>>(), vec![&2]);
     assert_eq!(map.insert(2, 4), None);
+
+    // 2 key-value pairs:
     assert_eq!(map.len(), 2);
     assert_eq!(map.get(&2), Some(&4));
+    assert_eq!(map.get_mut(&2), Some(&mut 4));
     assert_eq!(map.first_key_value(), Some((&1, &2)));
     assert_eq!(map.last_key_value(), Some((&2, &4)));
+    assert_eq!(map.keys().collect::<Vec<_>>(), vec![&1, &2]);
+    assert_eq!(map.values().collect::<Vec<_>>(), vec![&2, &4]);
     assert_eq!(map.remove(&1), Some(2));
+
+    // 1 key-value pair:
     assert_eq!(map.len(), 1);
     assert_eq!(map.get(&1), None);
+    assert_eq!(map.get_mut(&1), None);
     assert_eq!(map.get(&2), Some(&4));
+    assert_eq!(map.get_mut(&2), Some(&mut 4));
     assert_eq!(map.first_key_value(), Some((&2, &4)));
     assert_eq!(map.last_key_value(), Some((&2, &4)));
+    assert_eq!(map.keys().collect::<Vec<_>>(), vec![&2]);
+    assert_eq!(map.values().collect::<Vec<_>>(), vec![&4]);
     assert_eq!(map.remove(&2), Some(4));
+
+    // Empty but private root:
     assert_eq!(map.len(), 0);
+    assert_eq!(map.get(&1), None);
+    assert_eq!(map.get_mut(&1), None);
     assert_eq!(map.first_key_value(), None);
     assert_eq!(map.last_key_value(), None);
+    assert_eq!(map.keys().count(), 0);
+    assert_eq!(map.values().count(), 0);
     assert_eq!(map.remove(&1), None);
 }
 
@@ -140,6 +171,87 @@ fn test_iter_rev() {
     test(size, map.iter().rev().map(|(&k, &v)| (k, v)));
     test(size, map.iter_mut().rev().map(|(&k, &mut v)| (k, v)));
     test(size, map.into_iter().rev());
+}
+
+/// Specifically tests iter_mut's ability to mutate the value of pairs in-line
+fn do_test_iter_mut_mutation<T>(size: usize)
+where
+    T: Copy + Debug + Ord + TryFrom<usize>,
+    <T as std::convert::TryFrom<usize>>::Error: std::fmt::Debug,
+{
+    let zero = T::try_from(0).unwrap();
+    let mut map: BTreeMap<T, T> = (0..size).map(|i| (T::try_from(i).unwrap(), zero)).collect();
+
+    // Forward and backward iteration sees enough pairs (also tested elsewhere)
+    assert_eq!(map.iter_mut().count(), size);
+    assert_eq!(map.iter_mut().rev().count(), size);
+
+    // Iterate forwards, trying to mutate to unique values
+    for (i, (k, v)) in map.iter_mut().enumerate() {
+        assert_eq!(*k, T::try_from(i).unwrap());
+        assert_eq!(*v, zero);
+        *v = T::try_from(i + 1).unwrap();
+    }
+
+    // Iterate backwards, checking that mutations succeeded and trying to mutate again
+    for (i, (k, v)) in map.iter_mut().rev().enumerate() {
+        assert_eq!(*k, T::try_from(size - i - 1).unwrap());
+        assert_eq!(*v, T::try_from(size - i).unwrap());
+        *v = T::try_from(2 * size - i).unwrap();
+    }
+
+    // Check that backward mutations succeeded
+    for (i, (k, v)) in map.iter_mut().enumerate() {
+        assert_eq!(*k, T::try_from(i).unwrap());
+        assert_eq!(*v, T::try_from(size + i + 1).unwrap());
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(align(32))]
+struct Align32(usize);
+
+impl TryFrom<usize> for Align32 {
+    type Error = ();
+
+    fn try_from(s: usize) -> Result<Align32, ()> {
+        Ok(Align32(s))
+    }
+}
+
+#[test]
+fn test_iter_mut_mutation() {
+    // Check many alignments because various fields precede array in NodeHeader.
+    // Check with size 0 which should not iterate at all.
+    // Check with size 1 for a tree with one kind of node (root = leaf).
+    // Check with size 12 for a tree with two kinds of nodes (root and leaves).
+    // Check with size 144 for a tree with all kinds of nodes (root, internals and leaves).
+    do_test_iter_mut_mutation::<u8>(0);
+    do_test_iter_mut_mutation::<u8>(1);
+    do_test_iter_mut_mutation::<u8>(12);
+    do_test_iter_mut_mutation::<u8>(127); // not enough unique values to test 144
+    do_test_iter_mut_mutation::<u16>(1);
+    do_test_iter_mut_mutation::<u16>(12);
+    do_test_iter_mut_mutation::<u16>(144);
+    do_test_iter_mut_mutation::<u32>(1);
+    do_test_iter_mut_mutation::<u32>(12);
+    do_test_iter_mut_mutation::<u32>(144);
+    do_test_iter_mut_mutation::<u64>(1);
+    do_test_iter_mut_mutation::<u64>(12);
+    do_test_iter_mut_mutation::<u64>(144);
+    do_test_iter_mut_mutation::<u128>(1);
+    do_test_iter_mut_mutation::<u128>(12);
+    do_test_iter_mut_mutation::<u128>(144);
+    do_test_iter_mut_mutation::<Align32>(1);
+    do_test_iter_mut_mutation::<Align32>(12);
+    do_test_iter_mut_mutation::<Align32>(144);
+}
+
+#[test]
+fn test_into_key_slice_with_shared_root_past_bounds() {
+    let mut map: BTreeMap<Align32, ()> = BTreeMap::new();
+    assert_eq!(map.get(&Align32(1)), None);
+    assert_eq!(map.get_mut(&Align32(1)), None);
 }
 
 #[test]
