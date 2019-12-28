@@ -37,7 +37,7 @@ struct OperandInfo {
     is_integral: bool,
 }
 
-fn analyze_operand(operand: &Expr, cx: &LateContext<'_, '_>, expr: &Expr) -> Option<OperandInfo> {
+fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<OperandInfo> {
     match constant(cx, cx.tables, operand) {
         Some((Constant::Int(v), _)) => match cx.tables.expr_ty(expr).kind {
             ty::Int(ity) => {
@@ -82,7 +82,7 @@ fn might_have_negative_value(t: &ty::TyS<'_>) -> bool {
 
 fn check_const_operands<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    expr: &'tcx Expr,
+    expr: &'tcx Expr<'_>,
     lhs_operand: &OperandInfo,
     rhs_operand: &OperandInfo,
 ) {
@@ -106,7 +106,7 @@ fn check_const_operands<'a, 'tcx>(
     }
 }
 
-fn check_non_const_operands<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, operand: &Expr) {
+fn check_non_const_operands<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, operand: &Expr<'_>) {
     let operand_type = cx.tables.expr_ty(operand);
     if might_have_negative_value(operand_type) {
         span_lint_and_then(
@@ -125,7 +125,7 @@ fn check_non_const_operands<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Ex
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ModuloArithmetic {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             ExprKind::Binary(op, lhs, rhs) | ExprKind::AssignOp(op, lhs, rhs) => {
                 if let BinOpKind::Rem = op.node {
