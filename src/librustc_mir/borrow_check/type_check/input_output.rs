@@ -120,6 +120,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.mir_def_id,
             Locations::All(output_span),
             ConstraintCategory::BoringNoLocation,
+            true,
         ) {
             span_mirbug!(
                 self,
@@ -143,6 +144,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.mir_def_id,
                 Locations::All(output_span),
                 ConstraintCategory::BoringNoLocation,
+                false,
             ) {
                 span_mirbug!(
                     self,
