@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
     }
 
     fn check_crate_post(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx Crate<'_>) {
-        if let Some(item) = krate.items.values().nth(0) {
+        if let Some(item) = krate.items.values().next() {
             // Retrieve all inherent implementations from the crate, grouped by type
             for impls in cx
                 .tcx
@@ -71,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
             {
                 // Filter out implementations that have generic params (type or lifetime)
                 let mut impl_spans = impls.iter().filter_map(|impl_def| self.impls.get(impl_def));
-                if let Some(initial_span) = impl_spans.nth(0) {
+                if let Some(initial_span) = impl_spans.next() {
                     impl_spans.for_each(|additional_span| {
                         span_lint_and_then(
                             cx,
