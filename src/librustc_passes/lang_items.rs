@@ -7,8 +7,9 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
+use crate::weak_lang_items;
+
 use rustc::middle::cstore::ExternCrate;
-use rustc::middle::weak_lang_items;
 use rustc::ty::TyCtxt;
 
 use rustc_errors::struct_span_err;
