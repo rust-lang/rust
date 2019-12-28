@@ -201,8 +201,8 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   ret { double } %6
 
 ; CHECK: invertwhile:                                      ; preds = %exit, %incinvertwhile
-; CHECK-NEXT:   %"mul'de.0" = phi double [ 0.000000e+00, %exit ], [ %9, %incinvertwhile ]
 ; CHECK-NEXT:   %"add'de.0" = phi double [ %differeturn, %exit ], [ %11, %incinvertwhile ]
+; CHECK-NEXT:   %"mul'de.0" = phi double [ 0.000000e+00, %exit ], [ %9, %incinvertwhile ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %exit ], [ %12, %incinvertwhile ]
 ; CHECK-NEXT:   %7 = getelementptr double, double* %_realloccast, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %8 = load double, double* %7, align 8, !invariant.group !8

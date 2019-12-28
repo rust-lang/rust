@@ -5,7 +5,7 @@ define dso_local void @memcpy_float(double* nocapture %dst, double* nocapture re
 entry:
   %0 = bitcast double* %dst to i8*
   %1 = bitcast double* %src to i8*
-  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %0, i8* %1, i64 %num, i1 false)
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 %1, i64 %num, i1 false)
   ret void
 }
 
@@ -26,7 +26,7 @@ define dso_local void @submemcpy_float(double* nocapture %dst, double* nocapture
 entry:
   %0 = bitcast double* %dst to i8*
   %1 = bitcast double* %src to i8*
-  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %0, i8* %1, i64 %num, i1 false)
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 %1, i64 %num, i1 false)
   ret void
 }
 
@@ -66,7 +66,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   br i1 %0, label %for.end, label %for.body
 
 ; CHECK: for.body:                                        
-; CHECK-NEXT:   %idx = phi i64 [ 0, %entry ], [ %idx.next, %for.body ]
+; CHECK-NEXT:   %idx = phi i64 [ 0, %entry ], [ %idx.next, %for.body ] 
 ; CHECK-NEXT:   %dst.i = getelementptr double, double* %dst, i64 %idx
 ; CHECK-NEXT:   %dst.i.l = load double, double* %dst.i, align 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %dst.i, align 1

@@ -37,6 +37,9 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 
+#include "llvm/Analysis/GlobalsModRef.h"
+#include "llvm/Analysis/BasicAliasAnalysis.h"
+
 #include "Utils.h"
 #include "GradientUtils.h"
 #include "FunctionUtils.h"
@@ -307,6 +310,7 @@ std::map<CallInst*, const std::map<Argument*, bool> > compute_uncacheable_args_f
           continue;
         }
 
+        /*
         // We do not need uncacheable args for memory allocation functions. So skip such callsites. 
         Function* called = op->getCalledFunction();
         if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -320,7 +324,7 @@ std::map<CallInst*, const std::map<Argument*, bool> > compute_uncacheable_args_f
         }
         if (isCertainMallocOrFree(called)) {
           continue;
-        }
+        }*/
 
         // For all other calls, we compute the uncacheable args for this callsite.
         uncacheable_args_map.insert(std::pair<CallInst*, const std::map<Argument*, bool>>(op, compute_uncacheable_args_for_one_callsite(op,
@@ -592,9 +596,8 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
     llvm::errs() << *todiff << "\n";
   }
   assert(!todiff->empty());
-  AAResults AA(TLI);
   std::map<AugmentedStruct, unsigned> returnMapping;
-  GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, /*returnUsed*/returnUsed, /*differentialReturn*/differentialReturn, returnMapping);
+  GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, global_AA, TLI, constant_args, /*returnUsed*/returnUsed, /*differentialReturn*/differentialReturn, returnMapping);
 
   gutils->forceContexts();
   gutils->forceActiveDetection();
@@ -612,9 +615,9 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
     }
   }
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map =
-      compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_argsPP);
+      compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, global_AA, gutils, _uncacheable_argsPP);
 
-  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
+  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, global_AA, TLI, _uncacheable_argsPP);
   for (auto &iter : can_modref_map_mutable) {
       if (iter.second) {
         //iter.first->getParent()->getParent()->dump();
@@ -1530,7 +1533,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
     }
 }
 
-void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, AAResults & global_AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
+void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
   Function *called = op->getCalledFunction();
 
   if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -1782,6 +1785,8 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       }
 
       while(iter != OBB->rend() && &*iter != origop) {
+        llvm::errs() << " forwardback considering: " << *iter << " origop: " << *origop << "\n";
+
         if (auto call = dyn_cast<CallInst>(&*iter)) {
           if (isCertainMallocOrFree(call->getCalledFunction())) {
             iter++;
@@ -1801,14 +1806,13 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
           continue;
         }
 
-                  //TODO usesInst has created a bug here
-                  // if it is used by the reverse pass before this call creates it
-                  // and thus it loads an undef from cache
+        //TODO usesInst has created a bug here
+        // if it is used by the reverse pass before this call creates it
+        // and thus it loads an undef from cache
         bool usesInst = usetree.find(&*iter) != usetree.end();
 
-                  //TODO remove this upon start of more accurate)
-                  //if (usesInst) break;
-
+        //TODO remove this upon start of more accurate)
+        //if (usesInst) break;
         if (!usesInst && (!iter->mayReadOrWriteMemory() || isa<BinaryOperator>(&*iter))) {
           iter++;
           continue;
@@ -1817,6 +1821,22 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         ModRefInfo mri = ModRefInfo::NoModRef;
         if (iter->mayReadOrWriteMemory()) {
           mri = AA.getModRefInfo(&*iter, origop);
+          /*
+          llvm::errs() << "  **** &AA" << &AA << "\n";
+          for(auto& a : AA.AAs) {
+            llvm::errs() << " subAA: " << a->getName() << " PTR:" << a.get() << "\n";
+          }
+          
+          llvm::errs() << " iter: " << *iter << " origop: " << *origop << " mri: ";
+          if (mri == ModRefInfo::NoModRef) llvm::errs() << "nomodref";
+          if (mri == ModRefInfo::ModRef) llvm::errs() << "modref";
+          if (mri == ModRefInfo::Mod) llvm::errs() << "mod";
+          if (mri == ModRefInfo::Ref) llvm::errs() << "ref";
+          if (mri == ModRefInfo::MustModRef) llvm::errs() << "mustmodref";
+          if (mri == ModRefInfo::MustMod) llvm::errs() << "mustmod";
+          if (mri == ModRefInfo::MustRef) llvm::errs() << "mustref";
+          llvm::errs() << "\n";
+          */
         }
 
         if (mri == ModRefInfo::NoModRef && !usesInst) {
@@ -1824,7 +1844,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
           continue;
         }
 
-                  //load that follows the original
+        //load that follows the original
         if (auto li = dyn_cast<LoadInst>(&*iter)) {
           bool modref = false;
           for(Instruction* it = li; it != nullptr; it = it->getNextNode()) {
@@ -2003,7 +2023,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
           
     } else {
         if (topLevel) 
-            subdata = &CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args, false);
+            subdata = &CreateAugmentedPrimal(cast<Function>(called), AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args, false);
         if (!subdata) {
             llvm::errs() << *gutils->oldFunc << "\n";
             llvm::errs() << *gutils->newFunc << "\n";
@@ -2174,7 +2194,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntOrIntVectorTy()) && replaceFunction;
   //llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   if (called) {
-    newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, global_AA, /*returnValue*/augmentedsubretused, /*subdiffereturn*/subdiffereturn, /*subdretptr*/subdretptr, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args, subdata);//, LI, DT);
+    newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, AA, /*returnValue*/augmentedsubretused, /*subdiffereturn*/subdiffereturn, /*subdretptr*/subdretptr, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args, subdata);//, LI, DT);
   } else {
 
     assert(!replaceFunction);
@@ -2459,8 +2479,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   auto M = todiff->getParent();
 
   auto& Context = M->getContext();
-  AAResults AA(TLI);
-  DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, returnValue ? ( dretPtr ? ReturnType::ArgsWithTwoReturns: ReturnType::ArgsWithReturn ) : ReturnType::Args, differentialReturn, additionalArg);
+  DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, global_AA, TLI, constant_args, returnValue ? ( dretPtr ? ReturnType::ArgsWithTwoReturns: ReturnType::ArgsWithReturn ) : ReturnType::Args, differentialReturn, additionalArg);
   cachedfunctions[tup] = gutils->newFunc;
   
   gutils->forceContexts();
@@ -2486,9 +2505,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   }
 
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map = (augmenteddata) ? augmenteddata->uncacheable_args_map :
-      compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_argsPP);
+      compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, global_AA, gutils, _uncacheable_argsPP);
 
-  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
+  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, global_AA, TLI, _uncacheable_argsPP);
     
     for (auto &iter : can_modref_map_mutable) {
       if (iter.second) {
@@ -3047,7 +3066,17 @@ realcall:
             }
         }
       }
-      handleGradientCallInst(I, E, Builder2, op, gutils, TLI, global_AA, global_AA, topLevel, replacedReturns, dretAlloca, uncacheable_args_map.find(gutils->getOriginal(op))->second, getIndex, returnUsed, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
+      auto orig = gutils->getOriginal(op);
+
+      if (uncacheable_args_map.find(orig) == uncacheable_args_map.end()) {
+          llvm::errs() << "op: " << *op << "(" << op->getParent()->getParent()->getName() << ") " << " orig:" << *orig << "(" << orig->getParent()->getParent()->getName() << ")\n"; 
+          llvm::errs() << "uncacheable_args_map:\n";
+          for(auto a : uncacheable_args_map) {
+            llvm::errs() << " + " << *a.first << "(" << a.first->getParent()->getParent()->getName() << ")\n";
+          }
+      }
+      assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
+      handleGradientCallInst(I, E, Builder2, op, gutils, TLI, global_AA, topLevel, replacedReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, returnUsed, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;

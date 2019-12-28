@@ -70,17 +70,17 @@ declare double @__enzyme_autodiff(i8*, double)
 
 ; CHECK: invertwhile:                                      ; preds = %exit, %incinvertwhile
 ; CHECK-NEXT:   %"t'de.0" = phi double [ 0.000000e+00, %exit ], [ %9, %incinvertwhile ]
-; CHECK-NEXT:   %"mul2'de.0" = phi double [ %differeturn, %exit ], [ %m0diffe, %incinvertwhile ]
+; CHECK-NEXT:   %"mul2'de.0" = phi double [ %differeturn, %exit ], [ %[[m0diffe:.+]], %incinvertwhile ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %exit ], [ %11, %incinvertwhile ]
 ; CHECK-NEXT:   %7 = getelementptr double, double* %_realloccast, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %8 = load double, double* %7, align 8, !invariant.group !0
-; CHECK-NEXT:   %m1diffet = fmul fast double %"mul2'de.0", %8
-; CHECK-NEXT:   %9 = fadd fast double %"t'de.0", %m1diffet
+; CHECK-NEXT:   %[[m1diffet:.+]] = fmul fast double %"mul2'de.0", %8
+; CHECK-NEXT:   %9 = fadd fast double %"t'de.0", %[[m1diffet]]
 ; CHECK-NEXT:   %10 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   br i1 %10, label %invertentry, label %incinvertwhile
 
 ; CHECK: incinvertwhile:                                   ; preds = %invertwhile
-; CHECK-NEXT:   %m0diffe = fmul fast double %"mul2'de.0", %t
+; CHECK-NEXT:   %[[m0diffe]] = fmul fast double %"mul2'de.0", %t
 ; CHECK-NEXT:   %11 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertwhile
 ; CHECK-NEXT: }

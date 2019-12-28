@@ -762,6 +762,10 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         assert(loopContexts[L].header && "loop must have header");
 
         loopContexts[L].preheader = L->getLoopPreheader();
+        if (!L->getLoopPreheader()) {
+            llvm::errs() << "fn: " << *L->getHeader()->getParent() << "\n";
+            llvm::errs() << "L: " << *L << "\n";
+        }
         assert(loopContexts[L].preheader && "loop must have preheader");
         
         loopContexts[L].latchMerge = nullptr;

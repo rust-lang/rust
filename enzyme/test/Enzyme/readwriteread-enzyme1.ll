@@ -122,7 +122,7 @@ attributes #8 = { noreturn nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal {{(dso_local )?}}{ double } @differeadwriteread_helper(double* nocapture %x, double* %"x'", double %differeturn) local_unnamed_addr #2 {
+; CHECK: define internal {{(dso_local )?}}{ double } @differeadwriteread_helper(double* nocapture %x, double* %"x'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augf:.+]] = call { { double }, double } @augmented_f_read(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[tapef:.+]] = extractvalue { { double }, double } %[[augf]], 0

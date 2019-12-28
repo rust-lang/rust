@@ -55,7 +55,7 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   br label %loop1
 
 ; CHECK: loop1:                                            ; preds = %cleanup, %entry
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %cleanup ], [ 0, %entry ]
+; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %cleanup ]
 ; CHECK-NEXT:   %a17 = phi i64 [ 4, %entry ], [ %.pre, %cleanup ]
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
 ; CHECK-NEXT:   %X1 = getelementptr inbounds double, double* %x, i64 %iv

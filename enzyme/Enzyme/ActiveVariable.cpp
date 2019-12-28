@@ -1335,7 +1335,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		nonconstant2.insert(inst);
 		for (const auto &a:inst->users()) {
 		  if (isa<LoadInst>(a)) {
-		      if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
+		      if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1351,14 +1351,14 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		for (const auto &a:inst->users()) {
 		  if(auto store = dyn_cast<StoreInst>(a)) {
 
-			if (inst == store->getPointerOperand() && !isconstantValueM(store->getValueOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
+			if (inst == store->getPointerOperand() && !isconstantValueM(store->getValueOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
 				  llvm::errs() << "memory(" << (int)directions << ")  erase 1: " << *inst << "\n";
 				return false;
 			}
-			if (inst == store->getValueOperand() && !isconstantValueM(store->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
+			if (inst == store->getValueOperand() && !isconstantValueM(store->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1377,7 +1377,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
               */
               continue;
           } else if (auto ci = dyn_cast<CallInst>(a)) {
-			if (!isconstantM(ci, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
+			if (!isconstantM(ci, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1385,7 +1385,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 				return false;
 			}
           } else {
-			if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
+			if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1480,7 +1480,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
             retvals2.insert(retvals.begin(), retvals.end());
             constants2.insert(inst);
 
-            if (isconstantValueM(si->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
+            if (isconstantValueM(si->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, UP)) {
                 constants.insert(inst);
                 constants.insert(constants2.begin(), constants2.end());
                 constants.insert(constants_tmp.begin(), constants_tmp.end());
@@ -1489,7 +1489,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                 // Note: not adding nonconstant here since if had full updown might not have been nonconstant
 
                 if (printconst)
-                  llvm::errs() << "constant(" << (int)directions << ") store:" << *inst << "\n";
+                  llvm::errs() << "constant(" << (int)directions << ") up-store:" << *inst << "\n";
                 return true;
 
             }

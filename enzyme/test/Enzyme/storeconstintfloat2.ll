@@ -1,14 +1,23 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
 
+define double @caller(double %inp) {
+entry:
+  %call = call double @__enzyme_autodiff(i8* bitcast (double (double)* @_Z6foobard to i8*), double %inp)
+  ret double %call
+}
+
 declare double @__enzyme_autodiff(i8*, double)
 
 declare noalias i8* @malloc(i64)
 
+; Function Attrs: nounwind uwtable
 define dso_local double @_Z6foobard(double %t) {
 entry:
-  %malloccall = tail call i8* @malloc(i64 8)
+  %malloccall = tail call i8* @malloc(i64 8) #4
   %x = bitcast i8* %malloccall to double*
   %0 = bitcast i8* %malloccall to i64*
+  ; this is storing double 1.0, but represented as an integer
+  ;   such an occurance can happen as a consequence of an optimization
   store i64 4607182418800017408, i64* %0, align 8
   %div = fmul fast double %t, 1.000000e-02
   %x.promoted = load double, double* %x, align 8
@@ -31,12 +40,6 @@ while.body.i.i.i:                                 ; preds = %while.body.i.i.i, %
 loopexit:                                         ; preds = %while.body.i.i.i
   store double %add10.i.i.i, double* %x, align 8
   ret double %add10.i.i.i
-}
-
-define double @caller(double %inp) {
-entry:
-  %call = call double @__enzyme_autodiff(i8* bitcast (double (double)* @_Z6foobard to i8*), double %inp)
-  ret double %call
 }
 
 ; CHECK: define internal { double } @diffe_Z6foobard(double %t, double %differeturn) {
@@ -112,3 +115,5 @@ entry:
 ; CHECK-NEXT:   %18 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertwhile.body.i.i.i
 ; CHECK-NEXT: }
+
+attributes #4 = { nounwind }

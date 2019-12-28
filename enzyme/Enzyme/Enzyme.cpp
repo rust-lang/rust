@@ -36,7 +36,9 @@
 
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/BasicAliasAnalysis.h"
 
+#include "llvm/Transforms/Utils.h"
 
 #include "ActiveVariable.h"
 #include "EnzymeLogic.h"
@@ -221,10 +223,10 @@ reset:
 
 namespace {
 
-class Enzyme : public FunctionPass {
+class Enzyme : public ModulePass {
 public:
   static char ID;
-  Enzyme() : FunctionPass(ID) {
+  Enzyme() : ModulePass(ID) {
     //initializeLowerAutodiffIntrinsicPass(*PassRegistry::getPassRegistry());
   }
 
@@ -232,16 +234,24 @@ public:
     AU.addRequired<TargetLibraryInfoWrapperPass>();
     AU.addRequired<AAResultsWrapperPass>();
     AU.addRequired<GlobalsAAWrapperPass>();
+    AU.addRequired<BasicAAWrapperPass>();
     //AU.addRequiredID(LCSSAID);
 
-    AU.addRequired<LoopInfoWrapperPass>();
-    AU.addRequired<DominatorTreeWrapperPass>();
-    AU.addRequired<ScalarEvolutionWrapperPass>();
+    //LoopInfo is required to ensure that all loops have preheaders
+    //AU.addRequired<LoopInfoWrapperPass>();
+    
+    //AU.addRequiredID(llvm::LoopSimplifyID);//<LoopSimplifyWrapperPass>();
   }
 
-  bool runOnFunction(Function &F) override {
+  bool runOnModule(Module &M) override {
     auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-    auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
+    //auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
+    auto &G_AA = getAnalysis<GlobalsAAWrapperPass>().getResult();
+
+    //llvm::errs() << "G_AA: " << &G_AA << "\n";
+    //AAResults AA(TLI);
+    //AA.addAAResult(B_AA);
+    //AA.addAAResult(G_AA);
 
     /*
     auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -249,7 +259,20 @@ public:
     auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     */
 
-    return lowerEnzymeCalls(F, TLI, AA);
+    bool changed = false;
+    for(Function& F: M) {
+        if (F.empty()) continue;
+        
+        AAResults AA(TLI);
+        //auto &B_AA = getAnalysis<BasicAAWrapperPass>().getResult();
+        //AA.addAAResult(B_AA);
+        AA.addAAResult(G_AA);
+
+        //auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
+        //auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+        changed |= lowerEnzymeCalls(F, TLI, AA);
+    }
+    return changed;
   }
 };
 
@@ -259,7 +282,7 @@ char Enzyme::ID = 0;
 
 static RegisterPass<Enzyme> X("enzyme", "Enzyme Pass");
 
-FunctionPass *createEnzymePass() {
+ModulePass *createEnzymePass() {
   return new Enzyme();
 }
 

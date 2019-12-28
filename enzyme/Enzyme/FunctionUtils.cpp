@@ -208,21 +208,10 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
                    nullptr);
  NewF->setAttributes(F->getAttributes());
 
- {
-    FunctionAnalysisManager AM;
-    AM.registerPass([] { return LoopAnalysis(); });
-    AM.registerPass([] { return DominatorTreeAnalysis(); });
-    AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-    AM.registerPass([] { return AssumptionAnalysis(); });
-#if LLVM_VERSION_MAJOR >= 8
-    AM.registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
-    LoopSimplifyPass().run(*NewF, AM);
- }
-
  if (enzyme_preopt) {
+   llvm::errs() << "running pre optimizations: \n";
 
-  if(autodiff_inline) {
+   if(autodiff_inline) {
       //llvm::errs() << "running inlining process\n";
       forceRecursiveInlining(NewF, F);
 
@@ -253,48 +242,11 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 
         SROA().run(*NewF, AM);
       }
- }
+   }
+   
+   llvm::errs() << "running pre optimizations round 2: \n";
 
- bool repeat = false;
- do {
-     repeat = false;
- for(auto& BB: *NewF) {
- for(Instruction &I : BB) {
-    if (auto bc = dyn_cast<BitCastInst>(&I)) {
-        if (auto bc2 = dyn_cast<BitCastInst>(bc->getOperand(0))) {
-            if (bc2->getNumUses() == 1) {
-                IRBuilder<> b(bc2);
-                auto c = b.CreateBitCast(bc2->getOperand(0), I.getType());
-                bc->replaceAllUsesWith(c);
-                bc->eraseFromParent();
-                bc2->eraseFromParent();
-                repeat = true;
-                break;
-            }
-        } else if (auto pt = dyn_cast<PointerType>(bc->getOperand(0)->getType())) {
-          if (auto st = dyn_cast<StructType>(pt->getElementType())) {
-
-          if (auto pt2 = dyn_cast<PointerType>(bc->getType())) {
-            if (st->getNumElements() && st->getElementType(0) == pt2->getElementType()) {
-                IRBuilder<> b(bc);
-                auto c = b.CreateGEP(bc->getOperand(0), {
-                        ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
-                        ConstantInt::get(Type::getInt32Ty(I.getContext()), 0),
-                        });
-                bc->replaceAllUsesWith(c);
-                bc->eraseFromParent();
-                repeat = true;
-                break;
-            }}
-          }
-        }
-    }
- }
- if (repeat) break;
- }
- } while(repeat);
-
- {
+   {
      FunctionAnalysisManager AM;
      AM.registerPass([] { return AAManager(); });
      AM.registerPass([] { return ScalarEvolutionAnalysis(); });
@@ -313,7 +265,6 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
      AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
      AM.registerPass([] { return LazyValueAnalysis(); });
-     InstCombinePass().run(*NewF, AM);
 #if LLVM_VERSION_MAJOR > 6
      InstSimplifyPass().run(*NewF, AM);
 #endif
@@ -327,106 +278,30 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
      CorrelatedValuePropagationPass().run(*NewF, AM);
 
      DCEPass().run(*NewF, AM);
- }
-
- do {
-     repeat = false;
- for(Instruction &I : NewF->getEntryBlock()) {
-    if (auto ci = dyn_cast<ICmpInst>(&I)) {
-        for(Instruction &J : *ci->getParent()) {
-            if (&J == &I) break;
-            if (auto ci2 = dyn_cast<ICmpInst>(&J)) {
-                if (  (ci->getPredicate() == ci2->getInversePredicate()) &&
-                        (
-                         ( ci->getOperand(0) == ci2->getOperand(0) && ci->getOperand(1) == ci2->getOperand(1) )
-                         ||
-                         ( (ci->isEquality() || ci2->isEquality()) && ci->getOperand(0) == ci2->getOperand(1) && ci->getOperand(1) == ci2->getOperand(0) )
-                            ) ) {
-                    IRBuilder<> b(ci);
-                    Value* tonot = ci2;
-                    for(User* a : ci2->users()) {
-                        if (auto ii = dyn_cast<IntrinsicInst>(a)) {
-                            if (ii->getIntrinsicID() == Intrinsic::assume) {
-                                tonot = ConstantInt::getTrue(ii->getContext());
-                                break;
-                            }
-                        }
-                    }
-                    auto c = b.CreateNot(tonot);
-
-                    ci->replaceAllUsesWith(c);
-                    ci->eraseFromParent();
-                    repeat = true;
-                    break;
-                }
-            }
-        }
-        if (repeat) break;
-    }
- }
- } while(repeat);
-
-
- {
-     FunctionAnalysisManager AM;
-     AM.registerPass([] { return AAManager(); });
-     AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-     AM.registerPass([] { return AssumptionAnalysis(); });
-     AM.registerPass([] { return TargetLibraryAnalysis(); });
-     AM.registerPass([] { return TargetIRAnalysis(); });
-     AM.registerPass([] { return MemorySSAAnalysis(); });
-     AM.registerPass([] { return DominatorTreeAnalysis(); });
-     AM.registerPass([] { return MemoryDependenceAnalysis(); });
-     AM.registerPass([] { return LoopAnalysis(); });
-     AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-#if LLVM_VERSION_MAJOR > 6
-     AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
-#if LLVM_VERSION_MAJOR >= 8
- AM.registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
-     AM.registerPass([] { return LazyValueAnalysis(); });
-
      DSEPass().run(*NewF, AM);
+     SimplifyCFGOptions scfgo(/*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false, /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true, /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
+     SimplifyCFGPass(scfgo).run(*NewF, AM);
+   }
+
+
  }
 
+ //Run LoopSimplifyPass to ensure preheaders exist on all loops
+   
  {
     FunctionAnalysisManager AM;
-     AM.registerPass([] { return AAManager(); });
-     AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-     AM.registerPass([] { return AssumptionAnalysis(); });
-     AM.registerPass([] { return TargetLibraryAnalysis(); });
-     AM.registerPass([] { return TargetIRAnalysis(); });
-     AM.registerPass([] { return MemorySSAAnalysis(); });
-     AM.registerPass([] { return DominatorTreeAnalysis(); });
-     AM.registerPass([] { return MemoryDependenceAnalysis(); });
-     AM.registerPass([] { return LoopAnalysis(); });
-     AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-#if LLVM_VERSION_MAJOR > 6
-     AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
-#if LLVM_VERSION_MAJOR >= 8
- AM.registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
-     AM.registerPass([] { return LazyValueAnalysis(); });
-    //LoopAnalysisManager LAM;
-     //AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
-     //LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
-
- SimplifyCFGOptions scfgo(/*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false, /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true, /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
- SimplifyCFGPass(scfgo).run(*NewF, AM);
- LoopSimplifyPass().run(*NewF, AM);
-
- //if (autodiff_inline) {
- //    createFunctionToLoopPassAdaptor(LoopIdiomRecognizePass()).run(*NewF, AM);
- //}
- DSEPass().run(*NewF, AM);
- LoopSimplifyPass().run(*NewF, AM);
-
- }
+    AM.registerPass([] { return LoopAnalysis(); });
+    AM.registerPass([] { return DominatorTreeAnalysis(); });
+    AM.registerPass([] { return ScalarEvolutionAnalysis(); });
+    AM.registerPass([] { return AssumptionAnalysis(); });
+    #if LLVM_VERSION_MAJOR >= 8
+    AM.registerPass([] { return PassInstrumentationAnalysis(); });
+    #endif
+    LoopSimplifyPass().run(*NewF, AM);
  }
 
  {
+   //llvm::errs() << "alias analysis run\n";
  //Alias analysis is necessary to ensure can query whether we can move a forward pass function
  //BasicAA ba;
  //auto baa = new BasicAAResult(ba.run(*NewF, AM));
@@ -449,7 +324,11 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 #endif
                         );
  cache_AA[F] = baa;
+ //llvm::errs() << " basicAA(f=" << F->getName() << ")=" << baa << "\n";
  AA.addAAResult(*baa);
+ //for(auto &a : AA.AAs) {
+ //   llvm::errs() << "&AA: " << &AA << " added baa &a: " << a.get() << "\n";
+ //}
  //ScopedNoAliasAA sa;
  //auto saa = new ScopedNoAliasAAResult(sa.run(*NewF, AM));
  //AA.addAAResult(*saa);
