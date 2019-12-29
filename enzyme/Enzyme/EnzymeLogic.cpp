@@ -393,8 +393,9 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
                 continue;
             }
             if (auto si = dyn_cast<StoreInst>(zu)) {
-                if (si->getPointerOperand() == inst)
+                if (si->getPointerOperand() == inst) {
                     continue;
+                }
             }
             if (isa<CallInst>(zu)) {
                 //llvm::errs() << " had to use in reverse since call use " << *zu << " of " << *inst << "\n";
@@ -1604,8 +1605,19 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
             inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
             inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), constval ? "const" : "active")}));
         } else {
-            inst->replaceAllUsesWith(ConstantPointerNull::get(cast<PointerType>(op->getType())));
-            gutils->erase(inst);
+            //Note that here we cannot simply replace with null as users who try to find the shadow pointer will use the shadow of null rather than the true shadow of this
+            IRBuilder<> BuilderZ(op);
+            auto pn = BuilderZ.CreatePHI(op->getType(), 1, (op->getName()+"_replacement").str());
+            
+            pn->setMetadata("enzyme_activity_value", op->getMetadata("enzyme_activity_value"));
+            pn->setMetadata("enzyme_activity_inst", op->getMetadata("enzyme_activity_inst"));
+            gutils->originalInstructions.insert(pn);
+            
+            gutils->fictiousPHIs.push_back(pn);
+
+            gutils->replaceAWithB(op, pn);
+            
+            gutils->erase(op);
             inst = nullptr;
             op = nullptr;
         }
@@ -1787,7 +1799,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       }
 
       while(iter != OBB->rend() && &*iter != origop) {
-        llvm::errs() << " forwardback considering: " << *iter << " origop: " << *origop << "\n";
+        //llvm::errs() << " forwardback considering: " << *iter << " origop: " << *origop << "\n";
 
         if (auto call = dyn_cast<CallInst>(&*iter)) {
           if (isCertainMallocOrFree(call->getCalledFunction())) {

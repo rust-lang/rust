@@ -229,7 +229,6 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  NewF->setAttributes(F->getAttributes());
 
  if (enzyme_preopt) {
-   llvm::errs() << "running pre optimizations: \n";
 
    if(autodiff_inline) {
       //llvm::errs() << "running inlining process\n";
@@ -264,8 +263,6 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
       }
    }
    
-   llvm::errs() << "running pre optimizations round 2: \n";
-
    {
      FunctionAnalysisManager AM;
      AM.registerPass([] { return AAManager(); });

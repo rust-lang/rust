@@ -38,8 +38,6 @@
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 
-#include "llvm/Transforms/Utils.h"
-
 #include "ActiveVariable.h"
 #include "EnzymeLogic.h"
 #include "GradientUtils.h"

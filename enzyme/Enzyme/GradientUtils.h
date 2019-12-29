@@ -94,6 +94,7 @@ public:
   std::map<AllocaInst*, std::set<CallInst*>> scopeFrees;
   std::map<AllocaInst*, std::vector<CallInst*>> scopeAllocs;
   std::map<AllocaInst*, std::vector<Value*>> scopeStores;
+  SmallVector<PHINode*, 4> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
 
   const std::map<Instruction*, bool>* can_modref_map;  
@@ -160,6 +161,10 @@ public:
     if (scopeMap.find(A) != scopeMap.end()) {
         scopeMap[B] = scopeMap[A];
         scopeMap.erase(A);
+    }
+    if (invertedPointers.find(A) != invertedPointers.end()) {
+        invertedPointers[B] = invertedPointers[A];
+        invertedPointers.erase(A);
     }
     A->replaceAllUsesWith(B);
   }
@@ -788,6 +793,12 @@ public:
 
   SmallPtrSet<Instruction*,4> replaceableCalls;
   void eraseStructuralStoresAndCalls() {
+
+      for(auto pp : fictiousPHIs) {
+        pp->replaceAllUsesWith(ConstantPointerNull::get(cast<PointerType>(pp->getType())));
+        erase(pp);
+      }
+      fictiousPHIs.clear();
 
       for(BasicBlock* BB: this->originalBlocks) {
         auto term = BB->getTerminator();
