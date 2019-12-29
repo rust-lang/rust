@@ -500,9 +500,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             hir::OpaqueTyOrigin::AsyncFn => return false,
 
             // Otherwise, generate the label we'll use in the error message.
-            hir::OpaqueTyOrigin::TypeAlias => "impl Trait",
-            hir::OpaqueTyOrigin::FnReturn => "impl Trait",
-            hir::OpaqueTyOrigin::Misc => "impl Trait",
+            hir::OpaqueTyOrigin::TypeAlias
+            | hir::OpaqueTyOrigin::FnReturn
+            | hir::OpaqueTyOrigin::Misc => "impl Trait",
         };
         let msg = format!("ambiguous lifetime bound in `{}`", context_name);
         let mut err = self.tcx.sess.struct_span_err(span, &msg);
@@ -814,18 +814,29 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r {
-            // Ignore bound regions that appear in the type, they don't need to
-            // be remapped (e.g., this would ignore `'r` in a type like
-            // `for<'r> fn(&'r u32)`.
-            ty::ReLateBound(..)
+            // Ignore bound regions and `'static` regions that appear in the
+            // type, we only need to remap regions that reference lifetimes
+            // from the function declaraion.
+            // This would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
+            ty::ReLateBound(..) | ty::ReStatic => return r,
 
-            // If regions have been erased, don't try to unerase them.
-            | ty::ReErased
+            // If regions have been erased (by writeback), don't try to unerase
+            // them.
+            ty::ReErased => return r,
 
-            // ignore `'static`, as that can appear anywhere
-            | ty::ReStatic => return r,
+            // The regions that we expect from borrow checking.
+            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
 
-            _ => {}
+            ty::ReEmpty(_)
+            | ty::RePlaceholder(_)
+            | ty::ReVar(_)
+            | ty::ReScope(_)
+            | ty::ReClosureBound(_) => {
+                // All of the regions in the type should either have been
+                // erased by writeback, or mapped back to named regions by
+                // borrow checking.
+                bug!("unexpected region kind in opaque type: {:?}", r);
+            }
         }
 
         let generics = self.tcx().generics_of(self.opaque_type_def_id);
@@ -833,7 +844,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None if self.map_missing_regions_to_empty || self.tainted_by_errors => {
-                self.tcx.lifetimes.re_empty
+                self.tcx.lifetimes.re_root_empty
             }
             None if generics.parent.is_some() => {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
@@ -862,7 +873,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().mk_region(ty::ReStatic)
+                self.tcx().lifetimes.re_static
             }
         }
     }

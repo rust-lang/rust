@@ -131,6 +131,9 @@ fn enforce_impl_params_are_constrained(
                     }
                 }
                 ty::AssocKind::OpaqueTy => {
+                    // We don't know which lifetimes appear in the actual
+                    // opaque type, so use all of the lifetimes that appear
+                    // in the type's predicates.
                     let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
                     cgp::parameters_for(&predicates, true)
                 }

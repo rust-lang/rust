@@ -1134,14 +1134,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // the resulting inferend values are stored with the
                 // def-id of the base function.
                 let parent_def_id = self.tcx().closure_base_def_id(self.mir_def_id);
-                return self.eq_opaque_type_and_type(
-                    sub,
-                    sup,
-                    parent_def_id,
-                    locations,
-                    category,
-                    false,
-                );
+                return self.eq_opaque_type_and_type(sub, sup, parent_def_id, locations, category);
             } else {
                 return Err(terr);
             }
@@ -1207,7 +1200,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         anon_owner_def_id: DefId,
         locations: Locations,
         category: ConstraintCategory,
-        is_function_return: bool,
     ) -> Fallible<()> {
         debug!(
             "eq_opaque_type_and_type( \
@@ -1285,13 +1277,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             opaque_decl.concrete_ty, resolved_ty, renumbered_opaque_defn_ty,
                         );
 
-                        if !concrete_is_opaque
-                            || (is_function_return
-                                && matches!(opaque_decl.origin, hir::OpaqueTyOrigin::FnReturn))
-                        {
-                            // For return position impl Trait, the function
-                            // return is the only possible definition site, so
-                            // always record it.
+                        if !concrete_is_opaque {
                             obligations.add(
                                 infcx
                                     .at(&ObligationCause::dummy(), param_env)
