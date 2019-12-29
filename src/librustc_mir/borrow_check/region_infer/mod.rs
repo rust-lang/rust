@@ -44,49 +44,48 @@ pub struct RegionInferenceContext<'tcx> {
     /// variables are identified by their index (`RegionVid`). The
     /// definition contains information about where the region came
     /// from as well as its final inferred value.
-    pub(in crate::borrow_check) definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
 
     /// The liveness constraints added to each region. For most
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    pub(in crate::borrow_check) liveness_constraints: LivenessValues<RegionVid>,
+    liveness_constraints: LivenessValues<RegionVid>,
 
     /// The outlives constraints computed by the type-check.
-    pub(in crate::borrow_check) constraints: Rc<OutlivesConstraintSet>,
+    constraints: Rc<OutlivesConstraintSet>,
 
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
     /// the SCC (see `constraint_sccs`) and for error reporting.
-    pub(in crate::borrow_check) constraint_graph: Rc<NormalConstraintGraph>,
+    constraint_graph: Rc<NormalConstraintGraph>,
 
     /// The SCC computed from `constraints` and the constraint
     /// graph. We have an edge from SCC A to SCC B if `A: B`. Used to
     /// compute the values of each region.
-    pub(in crate::borrow_check) constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
+    constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
 
     /// Reverse of the SCC constraint graph -- i.e., an edge `A -> B`
     /// exists if `B: A`. Computed lazilly.
-    pub(in crate::borrow_check) rev_constraint_graph: Option<Rc<VecGraph<ConstraintSccIndex>>>,
+    rev_constraint_graph: Option<Rc<VecGraph<ConstraintSccIndex>>>,
 
     /// The "R0 member of [R1..Rn]" constraints, indexed by SCC.
-    pub(in crate::borrow_check) member_constraints:
-        Rc<MemberConstraintSet<'tcx, ConstraintSccIndex>>,
+    member_constraints: Rc<MemberConstraintSet<'tcx, ConstraintSccIndex>>,
 
     /// Records the member constraints that we applied to each scc.
     /// This is useful for error reporting. Once constraint
     /// propagation is done, this vector is sorted according to
     /// `member_region_scc`.
-    pub(in crate::borrow_check) member_constraints_applied: Vec<AppliedMemberConstraint>,
+    member_constraints_applied: Vec<AppliedMemberConstraint>,
 
     /// Map closure bounds to a `Span` that should be used for error reporting.
-    pub(in crate::borrow_check) closure_bounds_mapping:
+    closure_bounds_mapping:
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
 
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
     /// visible from this index.
-    pub(in crate::borrow_check) scc_universes: IndexVec<ConstraintSccIndex, ty::UniverseIndex>,
+    scc_universes: IndexVec<ConstraintSccIndex, ty::UniverseIndex>,
 
     /// Contains a "representative" from each SCC. This will be the
     /// minimal RegionVid belonging to that universe. It is used as a
@@ -95,23 +94,23 @@ pub struct RegionInferenceContext<'tcx> {
     /// of its SCC and be sure that -- if they have the same repr --
     /// they *must* be equal (though not having the same repr does not
     /// mean they are unequal).
-    pub(in crate::borrow_check) scc_representatives: IndexVec<ConstraintSccIndex, ty::RegionVid>,
+    scc_representatives: IndexVec<ConstraintSccIndex, ty::RegionVid>,
 
     /// The final inferred values of the region variables; we compute
     /// one value per SCC. To get the value for any given *region*,
     /// you first find which scc it is a part of.
-    pub(in crate::borrow_check) scc_values: RegionValues<ConstraintSccIndex>,
+    scc_values: RegionValues<ConstraintSccIndex>,
 
     /// Type constraints that we check after solving.
-    pub(in crate::borrow_check) type_tests: Vec<TypeTest<'tcx>>,
+    type_tests: Vec<TypeTest<'tcx>>,
 
     /// Information about the universally quantified regions in scope
     /// on this function.
-    pub(in crate::borrow_check) universal_regions: Rc<UniversalRegions<'tcx>>,
+    universal_regions: Rc<UniversalRegions<'tcx>>,
 
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
-    pub(in crate::borrow_check) universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+    universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
 }
 
 /// Each time that `apply_member_constraint` is successful, it appends
@@ -1838,6 +1837,38 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         })
         .map(|(_path, r)| r)
         .unwrap()
+    }
+
+    /// Get the region outlived by `longer_fr` and live at `element`.
+    crate fn region_from_element(&self, longer_fr: RegionVid, element: RegionElement) -> RegionVid {
+        match element {
+            RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
+            RegionElement::RootUniversalRegion(r) => r,
+            RegionElement::PlaceholderRegion(error_placeholder) => self
+                .definitions
+                .iter_enumerated()
+                .filter_map(|(r, definition)| match definition.origin {
+                    NLLRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
+                    _ => None,
+                })
+                .next()
+                .unwrap(),
+        }
+    }
+
+    /// Get the region definition of `r`.
+    crate fn region_definition(&self, r: RegionVid) -> &RegionDefinition<'tcx> {
+        &self.definitions[r]
+    }
+
+    /// Check if the SCC of `r` contains `upper`.
+    crate fn upper_bound_in_region_scc(&self, r: RegionVid, upper: RegionVid) -> bool {
+        let r_scc = self.constraint_sccs.scc(r);
+        self.scc_values.contains(r_scc, upper)
+    }
+
+    crate fn universal_regions(&self) -> Rc<UniversalRegions<'tcx>> {
+        self.universal_regions.clone()
     }
 
     /// Tries to find the best constraint to blame for the fact that

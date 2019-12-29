@@ -113,18 +113,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// one (e.g., this is just some random part of the CFG).
     pub(super) fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
         self.to_error_region_vid(r)
-            .and_then(|r| self.nonlexical_regioncx.definitions[r].external_name)
+            .and_then(|r| self.nonlexical_regioncx.region_definition(r).external_name)
     }
 
     /// Returns the `RegionVid` corresponding to the region returned by
     /// `to_error_region`.
     pub(super) fn to_error_region_vid(&self, r: RegionVid) -> Option<RegionVid> {
-        if self.nonlexical_regioncx.universal_regions.is_universal_region(r) {
+        if self.nonlexical_regioncx.universal_regions().is_universal_region(r) {
             Some(r)
         } else {
-            let r_scc = self.nonlexical_regioncx.constraint_sccs.scc(r);
             let upper_bound = self.nonlexical_regioncx.universal_upper_bound(r);
-            if self.nonlexical_regioncx.scc_values.contains(r_scc, upper_bound) {
+
+            if self.nonlexical_regioncx.upper_bound_in_region_scc(r, upper_bound) {
                 self.to_error_region_vid(upper_bound)
             } else {
                 None
@@ -137,7 +137,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
             if let ty::BoundRegion::BrEnv = free_region.bound_region {
                 if let DefiningTy::Closure(def_id, substs) =
-                    self.nonlexical_regioncx.universal_regions.defining_ty
+                    self.nonlexical_regioncx.universal_regions().defining_ty
                 {
                     let closure_kind_ty = substs.as_closure().kind_ty(def_id, self.infcx.tcx);
                     return Some(ty::ClosureKind::FnMut) == closure_kind_ty.to_opt_closure_kind();
@@ -302,8 +302,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         let (fr_is_local, outlived_fr_is_local): (bool, bool) = (
-            self.nonlexical_regioncx.universal_regions.is_local_free_region(fr),
-            self.nonlexical_regioncx.universal_regions.is_local_free_region(outlived_fr),
+            self.nonlexical_regioncx.universal_regions().is_local_free_region(fr),
+            self.nonlexical_regioncx.universal_regions().is_local_free_region(outlived_fr),
         );
 
         debug!(
@@ -378,7 +378,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // We should check if the return type of this closure is in fact a closure - in that
         // case, we can special case the error further.
         let return_type_is_closure =
-            self.nonlexical_regioncx.universal_regions.unnormalized_output_ty.is_closure();
+            self.nonlexical_regioncx.universal_regions().unnormalized_output_ty.is_closure();
         let message = if return_type_is_closure {
             "returns a closure that contains a reference to a captured variable, which then \
              escapes the closure body"
@@ -445,7 +445,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             errci.outlived_fr,
         );
 
-        let escapes_from = match self.nonlexical_regioncx.universal_regions.defining_ty {
+        let escapes_from = match self.nonlexical_regioncx.universal_regions().defining_ty {
             DefiningTy::Closure(..) => "closure",
             DefiningTy::Generator(..) => "generator",
             DefiningTy::FnDef(..) => "function",
