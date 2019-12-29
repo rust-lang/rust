@@ -36,6 +36,7 @@ use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
 use rustc_metadata::creader::{CStore, CrateLoader};
 
 use errors::{Applicability, DiagnosticBuilder};
+use rustc_expand::base::SyntaxExtension;
 use syntax::ast::{self, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
 use syntax::ast::{Crate, CRATE_NODE_ID};
 use syntax::ast::{ItemKind, Path};
@@ -45,7 +46,6 @@ use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{struct_span_err, unwrap_or};
-use syntax_expand::base::SyntaxExtension;
 use syntax_pos::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
 use syntax_pos::{Span, DUMMY_SP};
 

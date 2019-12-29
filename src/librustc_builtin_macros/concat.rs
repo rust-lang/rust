@@ -1,7 +1,7 @@
+use rustc_expand::base::{self, DummyResult};
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::TokenStream;
-use syntax_expand::base::{self, DummyResult};
 
 use std::string::String;
 

@@ -1,6 +1,8 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use log::debug;
+use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
 use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
@@ -12,8 +14,6 @@ use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::source_map::respan;
 use syntax::symbol::{sym, Symbol};
-use syntax_expand::base::{ExtCtxt, Resolver};
-use syntax_expand::expand::{AstFragment, ExpansionConfig};
 use syntax_pos::hygiene::{AstPass, SyntaxContext, Transparency};
 use syntax_pos::{Span, DUMMY_SP};
 

@@ -1,8 +1,8 @@
+use rustc_expand::base::{self, *};
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::token::{self, Token};
 use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax_expand::base::{self, *};
 use syntax_pos::symbol::Symbol;
 use syntax_pos::Span;
 

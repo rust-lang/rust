@@ -9,13 +9,13 @@
 /// therefore apply.
 use errors::DiagnosticBuilder;
 
+use rustc_expand::base::{self, *};
 use smallvec::smallvec;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::source_map::respan;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
-use syntax_expand::base::{self, *};
 use syntax_pos::Span;
 
 pub fn expand_global_asm<'cx>(

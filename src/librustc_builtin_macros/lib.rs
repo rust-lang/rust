@@ -13,11 +13,11 @@ extern crate proc_macro;
 
 use crate::deriving::*;
 
+use rustc_expand::base::{MacroExpanderFn, Resolver, SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::proc_macro::BangProcMacro;
 use syntax::ast::Ident;
 use syntax::edition::Edition;
 use syntax::symbol::sym;
-use syntax_expand::base::{MacroExpanderFn, Resolver, SyntaxExtension, SyntaxExtensionKind};
-use syntax_expand::proc_macro::BangProcMacro;
 
 mod asm;
 mod assert;

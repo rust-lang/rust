@@ -1,9 +1,9 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
+use rustc_expand::base::{Annotatable, ExtCtxt, MultiItemModifier};
 use syntax::ast::{self, ItemKind, MetaItem};
 use syntax::ptr::P;
 use syntax::symbol::{sym, Symbol};
-use syntax_expand::base::{Annotatable, ExtCtxt, MultiItemModifier};
 use syntax_pos::Span;
 
 macro path_local($x:ident) {

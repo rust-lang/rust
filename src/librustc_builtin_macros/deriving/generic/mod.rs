@@ -181,6 +181,7 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
+use rustc_expand::base::{Annotatable, ExtCtxt};
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{GenericArg, GenericParamKind, VariantData};
 use syntax::attr;
@@ -189,7 +190,6 @@ use syntax::sess::ParseSess;
 use syntax::source_map::respan;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::util::map_in_place::MapInPlace;
-use syntax_expand::base::{Annotatable, ExtCtxt};
 use syntax_pos::Span;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};

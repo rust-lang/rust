@@ -3,6 +3,7 @@
 use State::*;
 
 use errors::{DiagnosticBuilder, PResult};
+use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
 use syntax::ast::{self, AsmDialect};
 use syntax::ptr::P;
@@ -10,7 +11,6 @@ use syntax::symbol::{kw, sym, Symbol};
 use syntax::token::{self, Token};
 use syntax::tokenstream::{self, TokenStream};
 use syntax::{span_err, struct_span_err};
-use syntax_expand::base::*;
 use syntax_pos::Span;
 
 use rustc_error_codes::*;

@@ -2,8 +2,8 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
+use rustc_expand::base::{Annotatable, ExtCtxt};
 use syntax::ast::MetaItem;
-use syntax_expand::base::{Annotatable, ExtCtxt};
 use syntax_pos::Span;
 
 pub fn expand_deriving_copy(

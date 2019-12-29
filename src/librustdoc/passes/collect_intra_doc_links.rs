@@ -8,12 +8,12 @@ use rustc::hir::def::{
 use rustc::hir::def_id::DefId;
 use rustc::lint;
 use rustc::ty;
+use rustc_expand::base::SyntaxExtensionKind;
 use rustc_feature::UnstableFeatures;
 use rustc_resolve::ParentScope;
 use syntax;
 use syntax::ast::{self, Ident};
 use syntax::symbol::Symbol;
-use syntax_expand::base::SyntaxExtensionKind;
 use syntax_pos::DUMMY_SP;
 
 use std::ops::Range;

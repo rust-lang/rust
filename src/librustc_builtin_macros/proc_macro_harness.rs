@@ -1,5 +1,7 @@
 use std::mem;
 
+use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
@@ -9,8 +11,6 @@ use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
-use syntax_expand::base::{ExtCtxt, Resolver};
-use syntax_expand::expand::{AstFragment, ExpansionConfig};
 use syntax_pos::hygiene::AstPass;
 use syntax_pos::{Span, DUMMY_SP};
 

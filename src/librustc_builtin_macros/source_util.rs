@@ -1,3 +1,5 @@
+use rustc_expand::base::{self, *};
+use rustc_expand::panictry;
 use rustc_parse::{self, new_sub_parser_from_file, parser::Parser, DirectoryOwnership};
 use syntax::ast;
 use syntax::early_buffered_lints::INCOMPLETE_INCLUDE;
@@ -6,8 +8,6 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
-use syntax_expand::base::{self, *};
-use syntax_expand::panictry;
 
 use smallvec::SmallVec;
 use syntax_pos::{self, Pos, Span};

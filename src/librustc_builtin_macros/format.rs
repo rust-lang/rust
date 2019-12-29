@@ -7,12 +7,12 @@ use errors::pluralize;
 use errors::Applicability;
 use errors::DiagnosticBuilder;
 
+use rustc_expand::base::{self, *};
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::symbol::{sym, Symbol};
 use syntax::token;
 use syntax::tokenstream::TokenStream;
-use syntax_expand::base::{self, *};
 use syntax_pos::{MultiSpan, Span};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

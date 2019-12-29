@@ -22,13 +22,13 @@ use std::{cmp, fs};
 
 use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
+use rustc_expand::base::SyntaxExtension;
 use syntax::ast;
 use syntax::attr;
 use syntax::edition::Edition;
 use syntax::expand::allocator::{global_allocator_spans, AllocatorKind};
 use syntax::span_fatal;
 use syntax::symbol::{sym, Symbol};
-use syntax_expand::base::SyntaxExtension;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_error_codes::*;

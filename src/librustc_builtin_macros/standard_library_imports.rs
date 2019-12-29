@@ -1,10 +1,10 @@
+use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::expand::ExpansionConfig;
 use syntax::edition::Edition;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax::{ast, attr};
-use syntax_expand::base::{ExtCtxt, Resolver};
-use syntax_expand::expand::ExpansionConfig;
 use syntax_pos::hygiene::AstPass;
 use syntax_pos::DUMMY_SP;
 

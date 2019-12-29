@@ -1,5 +1,6 @@
 use errors::{Applicability, DiagnosticBuilder};
 
+use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
 use syntax::ast::{self, *};
 use syntax::print::pprust;
@@ -7,7 +8,6 @@ use syntax::ptr::P;
 use syntax::symbol::{sym, Symbol};
 use syntax::token::{self, TokenKind};
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
-use syntax_expand::base::*;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub fn expand_assert<'cx>(

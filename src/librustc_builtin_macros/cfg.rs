@@ -3,11 +3,11 @@
 /// current compilation environment.
 use errors::DiagnosticBuilder;
 
+use rustc_expand::base::{self, *};
 use syntax::ast;
 use syntax::attr;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
-use syntax_expand::base::{self, *};
 use syntax_pos::Span;
 
 pub fn expand_cfg(

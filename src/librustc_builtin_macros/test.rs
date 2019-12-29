@@ -2,12 +2,12 @@
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::check_builtin_macro_attribute;
 
+use rustc_expand::base::*;
 use syntax::ast;
 use syntax::attr;
 use syntax::print::pprust;
 use syntax::source_map::respan;
 use syntax::symbol::{sym, Symbol};
-use syntax_expand::base::*;
 use syntax_pos::Span;
 
 use std::iter;

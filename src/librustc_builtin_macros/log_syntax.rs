@@ -1,6 +1,6 @@
+use rustc_expand::base;
 use syntax::print;
 use syntax::tokenstream::TokenStream;
-use syntax_expand::base;
 use syntax_pos;
 
 pub fn expand_log_syntax<'cx>(

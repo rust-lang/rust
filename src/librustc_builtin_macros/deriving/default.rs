@@ -2,11 +2,11 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
+use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use syntax::ast::{Expr, MetaItem};
 use syntax::ptr::P;
 use syntax::span_err;
 use syntax::symbol::{kw, sym};
-use syntax_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use syntax_pos::Span;
 
 use rustc_error_codes::*;

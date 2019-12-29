@@ -1,7 +1,7 @@
+use rustc_expand::base::ExtCtxt;
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use syntax::ast::MetaItem;
-use syntax_expand::base::ExtCtxt;
 use syntax_pos::Symbol;
 
 pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {

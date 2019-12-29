@@ -3,10 +3,10 @@
 // interface.
 //
 
+use rustc_expand::base::{self, *};
 use syntax::ast::{self, GenericArg, Ident};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::TokenStream;
-use syntax_expand::base::{self, *};
 use syntax_pos::Span;
 
 use std::env;
