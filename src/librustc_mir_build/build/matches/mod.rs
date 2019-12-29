@@ -659,7 +659,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-crate struct Candidate<'pat, 'tcx> {
+struct Candidate<'pat, 'tcx> {
     /// `Span` of the original pattern that gave rise to this candidate
     span: Span,
 

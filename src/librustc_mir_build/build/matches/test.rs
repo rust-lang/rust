@@ -24,7 +24,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a simplifiable pattern.
-    crate fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
+    pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
             PatKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
                 span: match_pair.pattern.span,
@@ -81,7 +81,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    crate fn add_cases_to_switch<'pat>(
+    pub(super) fn add_cases_to_switch<'pat>(
         &mut self,
         test_place: &Place<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
@@ -125,7 +125,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    crate fn add_variants_to_switch<'pat>(
+    pub(super) fn add_variants_to_switch<'pat>(
         &mut self,
         test_place: &Place<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
@@ -152,7 +152,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    crate fn perform_test(
+    pub(super) fn perform_test(
         &mut self,
         block: BasicBlock,
         place: &Place<'tcx>,
@@ -498,7 +498,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// that it *doesn't* apply. For now, we return false, indicate that the
     /// test does not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    crate fn sort_candidate<'pat>(
+    pub(super) fn sort_candidate<'pat>(
         &mut self,
         test_place: &Place<'tcx>,
         test: &Test<'tcx>,

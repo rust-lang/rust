@@ -38,7 +38,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// only generates a single switch. If this happens this method returns
     /// `true`.
-    crate fn simplify_candidate<'pat>(&mut self, candidate: &mut Candidate<'pat, 'tcx>) -> bool {
+    pub(super) fn simplify_candidate<'pat>(
+        &mut self,
+        candidate: &mut Candidate<'pat, 'tcx>,
+    ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
