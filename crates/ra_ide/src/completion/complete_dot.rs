@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::Type;
+use hir::{HasVisibility, Type};
 
 use crate::completion::completion_item::CompletionKind;
 use crate::{
@@ -38,9 +38,15 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
+            if ctx.module.map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
+                // Skip private field. FIXME: If the definition location of the
+                // field is editable, we should show the completion
+                continue;
+            }
             acc.add_field(ctx, field, &ty);
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
+            // FIXME: Handle visibility
             acc.add_tuple_field(ctx, i, &ty);
         }
     }
@@ -183,6 +189,55 @@ mod tests {
             ",
         ),
         @"[]"
+        );
+    }
+
+    #[test]
+    fn test_struct_field_visibility_private() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+            mod inner {
+                struct A {
+                    private_field: u32,
+                    pub pub_field: u32,
+                    pub(crate) crate_field: u32,
+                    pub(super) super_field: u32,
+                }
+            }
+            fn foo(a: inner::A) {
+               a.<|>
+            }
+            ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "crate_field",
+                source_range: [313; 313),
+                delete: [313; 313),
+                insert: "crate_field",
+                kind: Field,
+                detail: "u32",
+            },
+            CompletionItem {
+                label: "pub_field",
+                source_range: [313; 313),
+                delete: [313; 313),
+                insert: "pub_field",
+                kind: Field,
+                detail: "u32",
+            },
+            CompletionItem {
+                label: "super_field",
+                source_range: [313; 313),
+                delete: [313; 313),
+                insert: "super_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
         );
     }
 

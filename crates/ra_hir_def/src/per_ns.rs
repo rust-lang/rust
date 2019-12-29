@@ -5,13 +5,13 @@
 
 use hir_expand::MacroDefId;
 
-use crate::ModuleDefId;
+use crate::{visibility::Visibility, ModuleDefId};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PerNs {
-    pub types: Option<ModuleDefId>,
-    pub values: Option<ModuleDefId>,
-    pub macros: Option<MacroDefId>,
+    pub types: Option<(ModuleDefId, Visibility)>,
+    pub values: Option<(ModuleDefId, Visibility)>,
+    pub macros: Option<(MacroDefId, Visibility)>,
 }
 
 impl Default for PerNs {
@@ -25,20 +25,20 @@ impl PerNs {
         PerNs { types: None, values: None, macros: None }
     }
 
-    pub fn values(t: ModuleDefId) -> PerNs {
-        PerNs { types: None, values: Some(t), macros: None }
+    pub fn values(t: ModuleDefId, v: Visibility) -> PerNs {
+        PerNs { types: None, values: Some((t, v)), macros: None }
     }
 
-    pub fn types(t: ModuleDefId) -> PerNs {
-        PerNs { types: Some(t), values: None, macros: None }
+    pub fn types(t: ModuleDefId, v: Visibility) -> PerNs {
+        PerNs { types: Some((t, v)), values: None, macros: None }
     }
 
-    pub fn both(types: ModuleDefId, values: ModuleDefId) -> PerNs {
-        PerNs { types: Some(types), values: Some(values), macros: None }
+    pub fn both(types: ModuleDefId, values: ModuleDefId, v: Visibility) -> PerNs {
+        PerNs { types: Some((types, v)), values: Some((values, v)), macros: None }
     }
 
-    pub fn macros(macro_: MacroDefId) -> PerNs {
-        PerNs { types: None, values: None, macros: Some(macro_) }
+    pub fn macros(macro_: MacroDefId, v: Visibility) -> PerNs {
+        PerNs { types: None, values: None, macros: Some((macro_, v)) }
     }
 
     pub fn is_none(&self) -> bool {
@@ -46,15 +46,35 @@ impl PerNs {
     }
 
     pub fn take_types(self) -> Option<ModuleDefId> {
+        self.types.map(|it| it.0)
+    }
+
+    pub fn take_types_vis(self) -> Option<(ModuleDefId, Visibility)> {
         self.types
     }
 
     pub fn take_values(self) -> Option<ModuleDefId> {
-        self.values
+        self.values.map(|it| it.0)
     }
 
     pub fn take_macros(self) -> Option<MacroDefId> {
-        self.macros
+        self.macros.map(|it| it.0)
+    }
+
+    pub fn filter_visibility(self, mut f: impl FnMut(Visibility) -> bool) -> PerNs {
+        PerNs {
+            types: self.types.filter(|(_, v)| f(*v)),
+            values: self.values.filter(|(_, v)| f(*v)),
+            macros: self.macros.filter(|(_, v)| f(*v)),
+        }
+    }
+
+    pub fn with_visibility(self, vis: Visibility) -> PerNs {
+        PerNs {
+            types: self.types.map(|(it, _)| (it, vis)),
+            values: self.values.map(|(it, _)| (it, vis)),
+            macros: self.macros.map(|(it, _)| (it, vis)),
+        }
     }
 
     pub fn or(self, other: PerNs) -> PerNs {

@@ -24,6 +24,7 @@ use crate::{
     },
     path::{ModPath, PathKind},
     per_ns::PerNs,
+    visibility::Visibility,
     AdtId, AstId, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
     LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
@@ -108,7 +109,7 @@ struct MacroDirective {
 struct DefCollector<'a, DB> {
     db: &'a DB,
     def_map: CrateDefMap,
-    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, raw::Import)>>,
+    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
     unexpanded_macros: Vec<MacroDirective>,
@@ -214,7 +215,11 @@ where
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
         if export {
-            self.update(self.def_map.root, &[(name, PerNs::macros(macro_))]);
+            self.update(
+                self.def_map.root,
+                &[(name, PerNs::macros(macro_, Visibility::Public))],
+                Visibility::Public,
+            );
         }
     }
 
@@ -348,9 +353,12 @@ where
 
     fn record_resolved_import(&mut self, directive: &ImportDirective) {
         let module_id = directive.module_id;
-        let import_id = directive.import_id;
         let import = &directive.import;
         let def = directive.status.namespaces();
+        let vis = self
+            .def_map
+            .resolve_visibility(self.db, module_id, &directive.import.visibility)
+            .unwrap_or(Visibility::Public);
 
         if import.is_glob {
             log::debug!("glob import: {:?}", import);
@@ -366,9 +374,16 @@ where
                         let scope = &item_map[m.local_id].scope;
 
                         // Module scoped macros is included
-                        let items = scope.collect_resolutions();
+                        let items = scope
+                            .resolutions()
+                            // only keep visible names...
+                            .map(|(n, res)| {
+                                (n, res.filter_visibility(|v| v.is_visible_from_other_crate()))
+                            })
+                            .filter(|(_, res)| !res.is_none())
+                            .collect::<Vec<_>>();
 
-                        self.update(module_id, &items);
+                        self.update(module_id, &items, vis);
                     } else {
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
@@ -376,13 +391,25 @@ where
                         let scope = &self.def_map[m.local_id].scope;
 
                         // Module scoped macros is included
-                        let items = scope.collect_resolutions();
+                        let items = scope
+                            .resolutions()
+                            // only keep visible names...
+                            .map(|(n, res)| {
+                                (
+                                    n,
+                                    res.filter_visibility(|v| {
+                                        v.is_visible_from_def_map(&self.def_map, module_id)
+                                    }),
+                                )
+                            })
+                            .filter(|(_, res)| !res.is_none())
+                            .collect::<Vec<_>>();
 
-                        self.update(module_id, &items);
+                        self.update(module_id, &items, vis);
                         // record the glob import in case we add further items
                         let glob = self.glob_imports.entry(m.local_id).or_default();
-                        if !glob.iter().any(|it| *it == (module_id, import_id)) {
-                            glob.push((module_id, import_id));
+                        if !glob.iter().any(|(mid, _)| *mid == module_id) {
+                            glob.push((module_id, vis));
                         }
                     }
                 }
@@ -396,11 +423,11 @@ where
                         .map(|(local_id, variant_data)| {
                             let name = variant_data.name.clone();
                             let variant = EnumVariantId { parent: e, local_id };
-                            let res = PerNs::both(variant.into(), variant.into());
+                            let res = PerNs::both(variant.into(), variant.into(), vis);
                             (name, res)
                         })
                         .collect::<Vec<_>>();
-                    self.update(module_id, &resolutions);
+                    self.update(module_id, &resolutions, vis);
                 }
                 Some(d) => {
                     log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
@@ -422,21 +449,24 @@ where
                         }
                     }
 
-                    self.update(module_id, &[(name, def)]);
+                    self.update(module_id, &[(name, def)], vis);
                 }
                 None => tested_by!(bogus_paths),
             }
         }
     }
 
-    fn update(&mut self, module_id: LocalModuleId, resolutions: &[(Name, PerNs)]) {
-        self.update_recursive(module_id, resolutions, 0)
+    fn update(&mut self, module_id: LocalModuleId, resolutions: &[(Name, PerNs)], vis: Visibility) {
+        self.update_recursive(module_id, resolutions, vis, 0)
     }
 
     fn update_recursive(
         &mut self,
         module_id: LocalModuleId,
         resolutions: &[(Name, PerNs)],
+        // All resolutions are imported with this visibility; the visibilies in
+        // the `PerNs` values are ignored and overwritten
+        vis: Visibility,
         depth: usize,
     ) {
         if depth > 100 {
@@ -446,7 +476,7 @@ where
         let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            changed |= scope.push_res(name.clone(), *res);
+            changed |= scope.push_res(name.clone(), res.with_visibility(vis));
         }
 
         if !changed {
@@ -459,9 +489,13 @@ where
             .flat_map(|v| v.iter())
             .cloned()
             .collect::<Vec<_>>();
-        for (glob_importing_module, _glob_import) in glob_imports {
-            // We pass the glob import so that the tracked import in those modules is that glob import
-            self.update_recursive(glob_importing_module, resolutions, depth + 1);
+        for (glob_importing_module, glob_import_vis) in glob_imports {
+            // we know all resolutions have the same visibility (`vis`), so we
+            // just need to check that once
+            if !vis.is_visible_from_def_map(&self.def_map, glob_importing_module) {
+                continue;
+            }
+            self.update_recursive(glob_importing_module, resolutions, glob_import_vis, depth + 1);
         }
     }
 
@@ -633,9 +667,13 @@ where
         let is_macro_use = attrs.by_key("macro_use").exists();
         match module {
             // inline module, just recurse
-            raw::ModuleData::Definition { name, items, ast_id } => {
-                let module_id =
-                    self.push_child_module(name.clone(), AstId::new(self.file_id, *ast_id), None);
+            raw::ModuleData::Definition { name, visibility, items, ast_id } => {
+                let module_id = self.push_child_module(
+                    name.clone(),
+                    AstId::new(self.file_id, *ast_id),
+                    None,
+                    &visibility,
+                );
 
                 ModCollector {
                     def_collector: &mut *self.def_collector,
@@ -650,7 +688,7 @@ where
                 }
             }
             // out of line module, resolve, parse and recurse
-            raw::ModuleData::Declaration { name, ast_id } => {
+            raw::ModuleData::Declaration { name, visibility, ast_id } => {
                 let ast_id = AstId::new(self.file_id, *ast_id);
                 match self.mod_dir.resolve_declaration(
                     self.def_collector.db,
@@ -659,7 +697,12 @@ where
                     path_attr,
                 ) {
                     Ok((file_id, mod_dir)) => {
-                        let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
+                        let module_id = self.push_child_module(
+                            name.clone(),
+                            ast_id,
+                            Some(file_id),
+                            &visibility,
+                        );
                         let raw_items = self.def_collector.db.raw_items(file_id.into());
                         ModCollector {
                             def_collector: &mut *self.def_collector,
@@ -690,7 +733,13 @@ where
         name: Name,
         declaration: AstId<ast::Module>,
         definition: Option<FileId>,
+        visibility: &crate::visibility::RawVisibility,
     ) -> LocalModuleId {
+        let vis = self
+            .def_collector
+            .def_map
+            .resolve_visibility(self.def_collector.db, self.module_id, visibility)
+            .unwrap_or(Visibility::Public);
         let modules = &mut self.def_collector.def_map.modules;
         let res = modules.alloc(ModuleData::default());
         modules[res].parent = Some(self.module_id);
@@ -702,7 +751,7 @@ where
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
         let def: ModuleDefId = module.into();
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        self.def_collector.update(self.module_id, &[(name, def.into())]);
+        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))], vis);
         res
     }
 
@@ -716,6 +765,7 @@ where
 
         let name = def.name.clone();
         let container = ContainerId::ModuleId(module);
+        let vis = &def.visibility;
         let def: ModuleDefId = match def.kind {
             raw::DefKind::Function(ast_id) => FunctionLoc {
                 container: container.into(),
@@ -761,7 +811,12 @@ where
             .into(),
         };
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        self.def_collector.update(self.module_id, &[(name, def.into())])
+        let vis = self
+            .def_collector
+            .def_map
+            .resolve_visibility(self.def_collector.db, self.module_id, vis)
+            .unwrap_or(Visibility::Public);
+        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))], vis)
     }
 
     fn collect_derives(&mut self, attrs: &Attrs, def: &raw::DefData) {

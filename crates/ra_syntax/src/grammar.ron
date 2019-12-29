@@ -412,7 +412,7 @@ Grammar(
         "ModuleItem": (
             enum: ["StructDef", "UnionDef", "EnumDef", "FnDef", "TraitDef", "TypeAliasDef", "ImplBlock",
                    "UseItem", "ExternCrateItem", "ConstDef", "StaticDef", "Module" ],
-            traits: ["AttrsOwner"],
+            traits: ["AttrsOwner", "VisibilityOwner"],
         ),
         "ImplItem": (
             enum: ["FnDef", "TypeAliasDef", "ConstDef"],
@@ -683,7 +683,7 @@ Grammar(
             ]
         ),
         "UseItem": (
-            traits: ["AttrsOwner"],
+            traits: ["AttrsOwner", "VisibilityOwner"],
             options: [ "UseTree" ],
         ),
         "UseTree": (
@@ -696,7 +696,7 @@ Grammar(
             collections: [("use_trees", "UseTree")]
         ),
         "ExternCrateItem": (
-            traits: ["AttrsOwner"],
+            traits: ["AttrsOwner", "VisibilityOwner"],
             options: ["NameRef", "Alias"],
         ),
         "ArgList": (

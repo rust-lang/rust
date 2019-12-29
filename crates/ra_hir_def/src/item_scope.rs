@@ -5,7 +5,10 @@ use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
 
-use crate::{per_ns::PerNs, AdtId, BuiltinType, ImplId, MacroDefId, ModuleDefId, TraitId};
+use crate::{
+    per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ImplId, MacroDefId, ModuleDefId,
+    TraitId,
+};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
@@ -30,7 +33,7 @@ pub struct ItemScope {
 static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
     BuiltinType::ALL
         .iter()
-        .map(|(name, ty)| (name.clone(), PerNs::types(ty.clone().into())))
+        .map(|(name, ty)| (name.clone(), PerNs::types(ty.clone().into(), Visibility::Public)))
         .collect()
 });
 
@@ -144,8 +147,8 @@ impl ItemScope {
         changed
     }
 
-    pub(crate) fn collect_resolutions(&self) -> Vec<(Name, PerNs)> {
-        self.visible.iter().map(|(name, res)| (name.clone(), res.clone())).collect()
+    pub(crate) fn resolutions<'a>(&'a self) -> impl Iterator<Item = (Name, PerNs)> + 'a {
+        self.visible.iter().map(|(name, res)| (name.clone(), res.clone()))
     }
 
     pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroDefId> {
@@ -153,20 +156,20 @@ impl ItemScope {
     }
 }
 
-impl From<ModuleDefId> for PerNs {
-    fn from(def: ModuleDefId) -> PerNs {
+impl PerNs {
+    pub(crate) fn from_def(def: ModuleDefId, v: Visibility) -> PerNs {
         match def {
-            ModuleDefId::ModuleId(_) => PerNs::types(def),
-            ModuleDefId::FunctionId(_) => PerNs::values(def),
+            ModuleDefId::ModuleId(_) => PerNs::types(def, v),
+            ModuleDefId::FunctionId(_) => PerNs::values(def, v),
             ModuleDefId::AdtId(adt) => match adt {
-                AdtId::StructId(_) | AdtId::UnionId(_) => PerNs::both(def, def),
-                AdtId::EnumId(_) => PerNs::types(def),
+                AdtId::StructId(_) | AdtId::UnionId(_) => PerNs::both(def, def, v),
+                AdtId::EnumId(_) => PerNs::types(def, v),
             },
-            ModuleDefId::EnumVariantId(_) => PerNs::both(def, def),
-            ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => PerNs::values(def),
-            ModuleDefId::TraitId(_) => PerNs::types(def),
-            ModuleDefId::TypeAliasId(_) => PerNs::types(def),
-            ModuleDefId::BuiltinType(_) => PerNs::types(def),
+            ModuleDefId::EnumVariantId(_) => PerNs::both(def, def, v),
+            ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => PerNs::values(def, v),
+            ModuleDefId::TraitId(_) => PerNs::types(def, v),
+            ModuleDefId::TypeAliasId(_) => PerNs::types(def, v),
+            ModuleDefId::BuiltinType(_) => PerNs::types(def, v),
         }
     }
 }

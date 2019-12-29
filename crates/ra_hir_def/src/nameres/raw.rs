@@ -16,12 +16,15 @@ use hir_expand::{
 use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, AttrsOwner, NameOwner},
+    ast::{self, AttrsOwner, NameOwner, VisibilityOwner},
     AstNode,
 };
 use test_utils::tested_by;
 
-use crate::{attr::Attrs, db::DefDatabase, path::ModPath, FileAstId, HirFileId, InFile};
+use crate::{
+    attr::Attrs, db::DefDatabase, path::ModPath, visibility::RawVisibility, FileAstId, HirFileId,
+    InFile,
+};
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
 ///
@@ -122,8 +125,17 @@ impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ModuleData {
-    Declaration { name: Name, ast_id: FileAstId<ast::Module> },
-    Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
+    Declaration {
+        name: Name,
+        visibility: RawVisibility,
+        ast_id: FileAstId<ast::Module>,
+    },
+    Definition {
+        name: Name,
+        visibility: RawVisibility,
+        ast_id: FileAstId<ast::Module>,
+        items: Vec<RawItem>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -138,6 +150,7 @@ pub struct ImportData {
     pub(super) is_prelude: bool,
     pub(super) is_extern_crate: bool,
     pub(super) is_macro_use: bool,
+    pub(super) visibility: RawVisibility,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -148,6 +161,7 @@ impl_arena_id!(Def);
 pub(super) struct DefData {
     pub(super) name: Name,
     pub(super) kind: DefKind,
+    pub(super) visibility: RawVisibility,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -218,6 +232,7 @@ impl RawItemsCollector {
 
     fn add_item(&mut self, current_module: Option<Module>, item: ast::ModuleItem) {
         let attrs = self.parse_attrs(&item);
+        let visibility = RawVisibility::from_ast_with_hygiene(item.visibility(), &self.hygiene);
         let (kind, name) = match item {
             ast::ModuleItem::Module(module) => {
                 self.add_module(current_module, module);
@@ -266,7 +281,7 @@ impl RawItemsCollector {
         };
         if let Some(name) = name {
             let name = name.as_name();
-            let def = self.raw_items.defs.alloc(DefData { name, kind });
+            let def = self.raw_items.defs.alloc(DefData { name, kind, visibility });
             self.push_item(current_module, attrs, RawItemKind::Def(def));
         }
     }
@@ -277,10 +292,12 @@ impl RawItemsCollector {
             None => return,
         };
         let attrs = self.parse_attrs(&module);
+        let visibility = RawVisibility::from_ast_with_hygiene(module.visibility(), &self.hygiene);
 
         let ast_id = self.source_ast_id_map.ast_id(&module);
         if module.has_semi() {
-            let item = self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id });
+            let item =
+                self.raw_items.modules.alloc(ModuleData::Declaration { name, visibility, ast_id });
             self.push_item(current_module, attrs, RawItemKind::Module(item));
             return;
         }
@@ -288,6 +305,7 @@ impl RawItemsCollector {
         if let Some(item_list) = module.item_list() {
             let item = self.raw_items.modules.alloc(ModuleData::Definition {
                 name,
+                visibility,
                 ast_id,
                 items: Vec::new(),
             });
@@ -302,6 +320,7 @@ impl RawItemsCollector {
         // FIXME: cfg_attr
         let is_prelude = use_item.has_atom_attr("prelude_import");
         let attrs = self.parse_attrs(&use_item);
+        let visibility = RawVisibility::from_ast_with_hygiene(use_item.visibility(), &self.hygiene);
 
         let mut buf = Vec::new();
         ModPath::expand_use_item(
@@ -315,6 +334,7 @@ impl RawItemsCollector {
                     is_prelude,
                     is_extern_crate: false,
                     is_macro_use: false,
+                    visibility: visibility.clone(),
                 };
                 buf.push(import_data);
             },
@@ -331,6 +351,8 @@ impl RawItemsCollector {
     ) {
         if let Some(name_ref) = extern_crate.name_ref() {
             let path = ModPath::from_name_ref(&name_ref);
+            let visibility =
+                RawVisibility::from_ast_with_hygiene(extern_crate.visibility(), &self.hygiene);
             let alias = extern_crate.alias().and_then(|a| a.name()).map(|it| it.as_name());
             let attrs = self.parse_attrs(&extern_crate);
             // FIXME: cfg_attr
@@ -342,6 +364,7 @@ impl RawItemsCollector {
                 is_prelude: false,
                 is_extern_crate: true,
                 is_macro_use,
+                visibility,
             };
             self.push_import(current_module, attrs, import_data);
         }

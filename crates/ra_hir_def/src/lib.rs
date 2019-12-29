@@ -36,6 +36,8 @@ pub mod nameres;
 pub mod src;
 pub mod child_by_source;
 
+pub mod visibility;
+
 #[cfg(test)]
 mod test_db;
 #[cfg(test)]

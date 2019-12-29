@@ -1064,6 +1064,7 @@ impl AstNode for ExternCrateItem {
     }
 }
 impl ast::AttrsOwner for ExternCrateItem {}
+impl ast::VisibilityOwner for ExternCrateItem {}
 impl ExternCrateItem {
     pub fn name_ref(&self) -> Option<NameRef> {
         AstChildren::new(&self.syntax).next()
@@ -2006,6 +2007,7 @@ impl AstNode for ModuleItem {
     }
 }
 impl ast::AttrsOwner for ModuleItem {}
+impl ast::VisibilityOwner for ModuleItem {}
 impl ModuleItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name {
@@ -3893,6 +3895,7 @@ impl AstNode for UseItem {
     }
 }
 impl ast::AttrsOwner for UseItem {}
+impl ast::VisibilityOwner for UseItem {}
 impl UseItem {
     pub fn use_tree(&self) -> Option<UseTree> {
         AstChildren::new(&self.syntax).next()
