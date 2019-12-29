@@ -24,6 +24,7 @@ use hir_def::{
     body::Body,
     data::{ConstData, FunctionData},
     expr::{BindingAnnotation, ExprId, PatId},
+    lang_item::LangItemTarget,
     path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
@@ -32,6 +33,7 @@ use hir_def::{
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
+use ra_syntax::SmolStr;
 use test_utils::tested_by;
 
 use super::{
@@ -482,6 +484,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.infer_expr_coerce(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
     }
 
+    fn resolve_lang_item(&self, name: &str) -> Option<LangItemTarget> {
+        let krate = self.resolver.krate()?;
+        let name = SmolStr::new_inline_from_ascii(name.len(), name.as_bytes());
+        self.db.lang_item(krate, name)
+    }
+
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
         let path = path![std::iter::IntoIterator];
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
@@ -495,26 +503,22 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
-        let path = path![std::ops::Neg];
-        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        let trait_ = self.resolve_lang_item("neg")?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
-        let path = path![std::ops::Not];
-        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        let trait_ = self.resolve_lang_item("not")?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
-        let path = path![std::future::Future];
-        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        let trait_ = self.resolve_lang_item("future_trait")?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let path = path![std::boxed::Box];
-        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        let struct_ = self.resolve_lang_item("owned_box")?.as_struct()?;
         Some(struct_.into())
     }
 
@@ -555,8 +559,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_ops_index_output(&self) -> Option<TypeAliasId> {
-        let path = path![std::ops::Index];
-        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        let trait_ = self.resolve_lang_item("index")?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 }
