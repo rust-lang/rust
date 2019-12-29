@@ -631,7 +631,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
 
                 debug!(
                     "visit_terminator_drop \
-                        loc: {:?} term: {:?} drop_place: {:?} drop_place_ty: {:?} span: {:?}",
+                     loc: {:?} term: {:?} drop_place: {:?} drop_place_ty: {:?} span: {:?}",
                     loc, term, drop_place, drop_place_ty, span
                 );
 
@@ -1477,38 +1477,42 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         for nll_error in nll_errors.into_iter() {
             match nll_error {
-                RegionErrorKind::TypeTestDoesNotLiveLongEnough { span, generic } => {
-                    // FIXME. We should handle this case better. It
-                    // indicates that we have e.g., some region variable
-                    // whose value is like `'a+'b` where `'a` and `'b` are
-                    // distinct unrelated univesal regions that are not
-                    // known to outlive one another. It'd be nice to have
-                    // some examples where this arises to decide how best
-                    // to report it; we could probably handle it by
-                    // iterating over the universal regions and reporting
-                    // an error that multiple bounds are required.
-                    self.infcx
-                        .tcx
-                        .sess
-                        .struct_span_err(span, &format!("`{}` does not live long enough", generic))
-                        .buffer(&mut self.errors_buffer);
-                }
+                RegionErrorKind::TypeTestError { type_test } => {
+                    // Try to convert the lower-bound region into something named we can print for the user.
+                    let lower_bound_region =
+                        self.nonlexical_regioncx.to_error_region(type_test.lower_bound);
 
-                RegionErrorKind::TypeTestGenericBoundError {
-                    span,
-                    generic,
-                    lower_bound_region,
-                } => {
-                    let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
-                    self.infcx
-                        .construct_generic_bound_failure(
-                            region_scope_tree,
-                            span,
-                            None,
-                            generic,
-                            lower_bound_region,
-                        )
-                        .buffer(&mut self.errors_buffer);
+                    // Skip duplicate-ish errors.
+                    let type_test_span = type_test.locations.span(&self.body);
+
+                    if let Some(lower_bound_region) = lower_bound_region {
+                        let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
+                        self.infcx
+                            .construct_generic_bound_failure(
+                                region_scope_tree,
+                                type_test_span,
+                                None,
+                                type_test.generic_kind,
+                                lower_bound_region,
+                            )
+                            .buffer(&mut self.errors_buffer);
+                    } else {
+                        // FIXME. We should handle this case better. It indicates that we have
+                        // e.g., some region variable whose value is like `'a+'b` where `'a` and
+                        // `'b` are distinct unrelated univesal regions that are not known to
+                        // outlive one another. It'd be nice to have some examples where this
+                        // arises to decide how best to report it; we could probably handle it by
+                        // iterating over the universal regions and reporting an error that
+                        // multiple bounds are required.
+                        self.infcx
+                            .tcx
+                            .sess
+                            .struct_span_err(
+                                type_test_span,
+                                &format!("`{}` does not live long enough", type_test.generic_kind),
+                            )
+                            .buffer(&mut self.errors_buffer);
+                    }
                 }
 
                 RegionErrorKind::UnexpectedHiddenRegion {
@@ -1530,8 +1534,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 RegionErrorKind::BoundUniversalRegionError {
                     longer_fr,
                     fr_origin,
-                    error_region,
+                    error_element,
                 } => {
+                    let error_region =
+                        self.nonlexical_regioncx.region_from_element(longer_fr, error_element);
+
                     // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
                     let (_, span) = self.nonlexical_regioncx.find_outlives_blame_span(
                         &self.body,
@@ -2225,7 +2232,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             let upvar = &self.upvars[field.index()];
                             debug!(
                                 "upvar.mutability={:?} local_mutation_is_allowed={:?} \
-                                place={:?}",
+                                 place={:?}",
                                 upvar, is_local_mutation_allowed, place
                             );
                             match (upvar.mutability, is_local_mutation_allowed) {

@@ -838,39 +838,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             // Type-test failed. Report the error.
-
-            // Try to convert the lower-bound region into something named we can print for the user.
-            let lower_bound_region = self.to_error_region(type_test.lower_bound);
-
-            // Skip duplicate-ish errors.
-            let type_test_span = type_test.locations.span(body);
-            let erased_generic_kind = tcx.erase_regions(&type_test.generic_kind);
-            if !deduplicate_errors.insert((
+            let erased_generic_kind = infcx.tcx.erase_regions(&type_test.generic_kind);
+            if deduplicate_errors.insert((
                 erased_generic_kind,
-                lower_bound_region,
+                type_test.lower_bound,
                 type_test.locations,
             )) {
-                continue;
-            } else {
                 debug!(
                     "check_type_test: reporting error for erased_generic_kind={:?}, \
                      lower_bound_region={:?}, \
                      type_test.locations={:?}",
-                    erased_generic_kind, lower_bound_region, type_test.locations,
+                    erased_generic_kind, type_test.lower_bound, type_test.locations,
                 );
-            }
 
-            if let Some(lower_bound_region) = lower_bound_region {
-                errors_buffer.push(RegionErrorKind::TypeTestGenericBoundError {
-                    span: type_test_span,
-                    generic: type_test.generic_kind,
-                    lower_bound_region,
-                });
-            } else {
-                errors_buffer.push(RegionErrorKind::TypeTestDoesNotLiveLongEnough {
-                    span: type_test_span,
-                    generic: type_test.generic_kind,
-                });
+                errors_buffer.push(RegionErrorKind::TypeTestError { type_test: type_test.clone() });
             }
         }
     }
@@ -1355,7 +1336,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for (longer_fr, shorter_fr) in subset_errors.into_iter() {
             debug!(
                 "check_polonius_subset_errors: subset_error longer_fr={:?},\
-                shorter_fr={:?}",
+                 shorter_fr={:?}",
                 longer_fr, shorter_fr
             );
 
@@ -1572,23 +1553,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("check_bound_universal_region: error_element = {:?}", error_element);
 
         // Find the region that introduced this `error_element`.
-        let error_region = match error_element {
-            RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
-            RegionElement::RootUniversalRegion(r) => r,
-            RegionElement::PlaceholderRegion(error_placeholder) => self
-                .definitions
-                .iter_enumerated()
-                .filter_map(|(r, definition)| match definition.origin {
-                    NLLRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
-                    _ => None,
-                })
-                .next()
-                .unwrap(),
-        };
-
         errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
             longer_fr,
-            error_region,
+            error_element,
             fr_origin: NLLRegionVariableOrigin::Placeholder(placeholder),
         });
     }
@@ -1626,6 +1593,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 hidden_ty: m_c.hidden_ty,
                 member_region,
             });
+        }
+    }
+
+    /// Get the region outlived by `longer_fr` and live at `element`.
+    crate fn region_from_element(&self, longer_fr: RegionVid, element: RegionElement) -> RegionVid {
+        match element {
+            RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
+            RegionElement::RootUniversalRegion(r) => r,
+            RegionElement::PlaceholderRegion(error_placeholder) => self
+                .definitions
+                .iter_enumerated()
+                .filter_map(|(r, definition)| match definition.origin {
+                    NLLRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
+                    _ => None,
+                })
+                .next()
+                .unwrap(),
         }
     }
 }

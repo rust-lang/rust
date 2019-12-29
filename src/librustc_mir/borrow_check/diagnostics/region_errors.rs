@@ -1,8 +1,7 @@
 //! Error reporting machinery for lifetime errors.
 
 use rustc::infer::{
-    error_reporting::nice_region_error::NiceRegionError, region_constraints::GenericKind,
-    InferCtxt, NLLRegionVariableOrigin,
+    error_reporting::nice_region_error::NiceRegionError, InferCtxt, NLLRegionVariableOrigin,
 };
 use rustc::mir::{Body, ConstraintCategory, Location};
 use rustc::ty::{self, RegionVid, Ty};
@@ -16,8 +15,11 @@ use std::collections::VecDeque;
 use crate::util::borrowck_errors;
 
 use crate::borrow_check::{
-    constraints::OutlivesConstraint, nll::ConstraintDescription,
-    region_infer::RegionInferenceContext, type_check::Locations, universal_regions::DefiningTy,
+    constraints::OutlivesConstraint,
+    nll::ConstraintDescription,
+    region_infer::{values::RegionElement, RegionInferenceContext, TypeTest},
+    type_check::Locations,
+    universal_regions::DefiningTy,
     MirBorrowckCtxt,
 };
 
@@ -62,23 +64,8 @@ crate type RegionErrors<'tcx> = Vec<RegionErrorKind<'tcx>>;
 
 #[derive(Clone, Debug)]
 crate enum RegionErrorKind<'tcx> {
-    /// An error for a type test: `T: 'a` does not live long enough.
-    TypeTestDoesNotLiveLongEnough {
-        /// The span of the type test.
-        span: Span,
-        /// The generic type of the type test.
-        generic: GenericKind<'tcx>,
-    },
-
-    /// A generic bound failure for a type test.
-    TypeTestGenericBoundError {
-        /// The span of the type test.
-        span: Span,
-        /// The generic type of the type test.
-        generic: GenericKind<'tcx>,
-        /// The lower bound region.
-        lower_bound_region: ty::Region<'tcx>,
-    },
+    /// A generic bound failure for a type test (`T: 'a`).
+    TypeTestError { type_test: TypeTest<'tcx> },
 
     /// An unexpected hidden region for an opaque type.
     UnexpectedHiddenRegion {
@@ -94,8 +81,8 @@ crate enum RegionErrorKind<'tcx> {
     BoundUniversalRegionError {
         /// The placeholder free region.
         longer_fr: RegionVid,
-        /// The region that erroneously must be outlived by `longer_fr`.
-        error_region: RegionVid,
+        /// The region element that erroneously must be outlived by `longer_fr`.
+        error_element: RegionElement,
         /// The origin of the placeholder region.
         fr_origin: NLLRegionVariableOrigin,
     },
