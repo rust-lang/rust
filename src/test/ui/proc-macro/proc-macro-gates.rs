@@ -10,12 +10,8 @@ fn _test_inner() {
     #![empty_attr] //~ ERROR: non-builtin inner attributes are unstable
 }
 
-#[empty_attr] //~ ERROR: custom attributes cannot be applied to modules
-mod _test2 {}
-
 mod _test2_inner {
-    #![empty_attr] //~ ERROR: custom attributes cannot be applied to modules
-          //~| ERROR: non-builtin inner attributes are unstable
+    #![empty_attr] //~ ERROR: non-builtin inner attributes are unstable
 }
 
 #[empty_attr = "y"] //~ ERROR: key-value macro attributes are not supported
