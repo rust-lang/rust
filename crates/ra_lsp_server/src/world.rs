@@ -12,7 +12,9 @@ use crossbeam_channel::{unbounded, Receiver};
 use lsp_server::ErrorCode;
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_cargo_watch::{CheckOptions, CheckWatcher, CheckWatcherSharedState};
+use ra_cargo_watch::{
+    url_from_path_with_drive_lowercasing, CheckOptions, CheckWatcher, CheckWatcherSharedState,
+};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
     SourceRootId,
@@ -21,13 +23,11 @@ use ra_project_model::{get_rustc_cfg_options, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
 use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
 use relative_path::RelativePathBuf;
-use std::path::{Component, Prefix};
 
 use crate::{
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     LspError, Result,
 };
-use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct Options {
@@ -292,63 +292,5 @@ impl WorldSnapshot {
 
     pub fn feature_flags(&self) -> &FeatureFlags {
         self.analysis.feature_flags()
-    }
-}
-
-/// Returns a `Url` object from a given path, will lowercase drive letters if present.
-/// This will only happen when processing windows paths.
-///
-/// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
-fn url_from_path_with_drive_lowercasing(path: impl AsRef<Path>) -> Result<Url> {
-    let component_has_windows_drive = path.as_ref().components().any(|comp| {
-        if let Component::Prefix(c) = comp {
-            match c.kind() {
-                Prefix::Disk(_) | Prefix::VerbatimDisk(_) => return true,
-                _ => return false,
-            }
-        }
-        false
-    });
-
-    // VSCode expects drive letters to be lowercased, where rust will uppercase the drive letters.
-    if component_has_windows_drive {
-        let url_original = Url::from_file_path(&path)
-            .map_err(|_| format!("can't convert path to url: {}", path.as_ref().display()))?;
-
-        let drive_partition: Vec<&str> = url_original.as_str().rsplitn(2, ':').collect();
-
-        // There is a drive partition, but we never found a colon.
-        // This should not happen, but in this case we just pass it through.
-        if drive_partition.len() == 1 {
-            return Ok(url_original);
-        }
-
-        let joined = drive_partition[1].to_ascii_lowercase() + ":" + drive_partition[0];
-        let url = Url::from_str(&joined).expect("This came from a valid `Url`");
-
-        Ok(url)
-    } else {
-        Ok(Url::from_file_path(&path)
-            .map_err(|_| format!("can't convert path to url: {}", path.as_ref().display()))?)
-    }
-}
-
-// `Url` is not able to parse windows paths on unix machines.
-#[cfg(target_os = "windows")]
-#[cfg(test)]
-mod path_conversion_windows_tests {
-    use super::url_from_path_with_drive_lowercasing;
-    #[test]
-    fn test_lowercase_drive_letter_with_drive() {
-        let url = url_from_path_with_drive_lowercasing("C:\\Test").unwrap();
-
-        assert_eq!(url.to_string(), "file:///c:/Test");
-    }
-
-    #[test]
-    fn test_drive_without_colon_passthrough() {
-        let url = url_from_path_with_drive_lowercasing(r#"\\localhost\C$\my_dir"#).unwrap();
-
-        assert_eq!(url.to_string(), "file://localhost/C$/my_dir");
     }
 }
