@@ -5,17 +5,16 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
-use crate::hir::def::{DefKind, Res};
-use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use crate::hir::map::Map;
-use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName, QPath};
-use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
+use rustc::hir::def::{DefKind, Res};
+use rustc::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc::hir::map::Map;
+use rustc::hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
+use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
-use crate::rustc::lint;
-use crate::session::Session;
-use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
 use errors::{pluralize, Applicability, DiagnosticBuilder};
-use rustc_macros::HashStable;
+use rustc::lint;
+use rustc::session::Session;
+use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::{replace, take};
@@ -24,37 +23,11 @@ use syntax::attr;
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
-use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use crate::hir::{self, GenericParamKind, LifetimeParamKind};
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::{self, GenericParamKind, LifetimeParamKind};
 
+use rustc::middle::resolve_lifetime::*;
 use rustc_error_codes::*;
-
-/// The origin of a named lifetime definition.
-///
-/// This is used to prevent the usage of in-band lifetimes in `Fn`/`fn` syntax.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum LifetimeDefOrigin {
-    // Explicit binders like `fn foo<'a>(x: &'a u8)` or elided like `impl Foo<&u32>`
-    ExplicitOrElided,
-    // In-band declarations like `fn foo(x: &'a u8)`
-    InBand,
-    // Some kind of erroneous origin
-    Error,
-}
-
-impl LifetimeDefOrigin {
-    fn from_param(param: &GenericParam<'_>) -> Self {
-        match param.kind {
-            GenericParamKind::Lifetime { kind } => match kind {
-                LifetimeParamKind::InBand => LifetimeDefOrigin::InBand,
-                LifetimeParamKind::Explicit => LifetimeDefOrigin::ExplicitOrElided,
-                LifetimeParamKind::Elided => LifetimeDefOrigin::ExplicitOrElided,
-                LifetimeParamKind::Error => LifetimeDefOrigin::Error,
-            },
-            _ => bug!("expected a lifetime param"),
-        }
-    }
-}
 
 // This counts the no of times a lifetime is used
 #[derive(Clone, Copy, Debug)]
@@ -63,16 +36,25 @@ pub enum LifetimeUseSet<'tcx> {
     Many,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum Region {
-    Static,
-    EarlyBound(/* index */ u32, /* lifetime decl */ DefId, LifetimeDefOrigin),
-    LateBound(ty::DebruijnIndex, /* lifetime decl */ DefId, LifetimeDefOrigin),
-    LateBoundAnon(ty::DebruijnIndex, /* anon index */ u32),
-    Free(DefId, /* lifetime decl */ DefId),
+trait RegionExt {
+    fn early(hir_map: &Map<'_>, index: &mut u32, param: &GenericParam<'_>) -> (ParamName, Region);
+
+    fn late(hir_map: &Map<'_>, param: &GenericParam<'_>) -> (ParamName, Region);
+
+    fn late_anon(index: &Cell<u32>) -> Region;
+
+    fn id(&self) -> Option<DefId>;
+
+    fn shifted(self, amount: u32) -> Region;
+
+    fn shifted_out_to_binder(self, binder: ty::DebruijnIndex) -> Region;
+
+    fn subst<'a, L>(self, params: L, map: &NamedRegionMap) -> Option<Region>
+    where
+        L: Iterator<Item = &'a hir::Lifetime>;
 }
 
-impl Region {
+impl RegionExt for Region {
     fn early(hir_map: &Map<'_>, index: &mut u32, param: &GenericParam<'_>) -> (ParamName, Region) {
         let i = *index;
         *index += 1;
@@ -146,28 +128,6 @@ impl Region {
     }
 }
 
-/// A set containing, at most, one known element.
-/// If two distinct values are inserted into a set, then it
-/// becomes `Many`, which can be used to detect ambiguities.
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum Set1<T> {
-    Empty,
-    One(T),
-    Many,
-}
-
-impl<T: PartialEq> Set1<T> {
-    pub fn insert(&mut self, value: T) {
-        *self = match self {
-            Set1::Empty => Set1::One(value),
-            Set1::One(old) if *old == value => return,
-            _ => Set1::Many,
-        };
-    }
-}
-
-pub type ObjectLifetimeDefault = Set1<Region>;
-
 /// Maps the id of each lifetime reference to the lifetime decl
 /// that it corresponds to.
 ///
@@ -178,25 +138,16 @@ pub type ObjectLifetimeDefault = Set1<Region>;
 struct NamedRegionMap {
     // maps from every use of a named (not anonymous) lifetime to a
     // `Region` describing how that region is bound
-    pub defs: HirIdMap<Region>,
+    defs: HirIdMap<Region>,
 
     // the set of lifetime def ids that are late-bound; a region can
     // be late-bound if (a) it does NOT appear in a where-clause and
     // (b) it DOES appear in the arguments.
-    pub late_bound: HirIdSet,
+    late_bound: HirIdSet,
 
     // For each type and trait definition, maps type parameters
     // to the trait object lifetime defaults computed from them.
-    pub object_lifetime_defaults: HirIdMap<Vec<ObjectLifetimeDefault>>,
-}
-
-/// See [`NamedRegionMap`].
-#[derive(Default, HashStable)]
-pub struct ResolveLifetimes {
-    defs: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Region>>,
-    late_bound: FxHashMap<LocalDefId, FxHashSet<ItemLocalId>>,
-    object_lifetime_defaults:
-        FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>>,
+    object_lifetime_defaults: HirIdMap<Vec<ObjectLifetimeDefault>>,
 }
 
 struct LifetimeContext<'a, 'tcx> {
@@ -323,17 +274,17 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 
         named_region_map: |tcx, id| {
             let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
-            tcx.resolve_lifetimes(LOCAL_CRATE).defs.get(&id)
+            tcx.resolve_lifetimes(LOCAL_CRATE).named_region_map(&id)
         },
 
         is_late_bound_map: |tcx, id| {
             let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
-            tcx.resolve_lifetimes(LOCAL_CRATE).late_bound.get(&id)
+            tcx.resolve_lifetimes(LOCAL_CRATE).is_late_bound_map(&id)
         },
 
         object_lifetime_defaults_map: |tcx, id| {
             let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
-            tcx.resolve_lifetimes(LOCAL_CRATE).object_lifetime_defaults.get(&id)
+            tcx.resolve_lifetimes(LOCAL_CRATE).object_lifetime_defaults_map(&id)
         },
 
         ..*providers
@@ -351,21 +302,11 @@ fn resolve_lifetimes(tcx: TyCtxt<'_>, for_krate: CrateNum) -> &ResolveLifetimes 
 
     let named_region_map = krate(tcx);
 
-    let mut rl = ResolveLifetimes::default();
-
-    for (hir_id, v) in named_region_map.defs {
-        let map = rl.defs.entry(hir_id.owner_local_def_id()).or_default();
-        map.insert(hir_id.local_id, v);
-    }
-    for hir_id in named_region_map.late_bound {
-        let map = rl.late_bound.entry(hir_id.owner_local_def_id()).or_default();
-        map.insert(hir_id.local_id);
-    }
-    for (hir_id, v) in named_region_map.object_lifetime_defaults {
-        let map = rl.object_lifetime_defaults.entry(hir_id.owner_local_def_id()).or_default();
-        map.insert(hir_id.local_id, v);
-    }
-
+    let rl = ResolveLifetimes::new(
+        named_region_map.defs,
+        named_region_map.late_bound,
+        named_region_map.object_lifetime_defaults,
+    );
     tcx.arena.alloc(rl)
 }
 
@@ -2899,7 +2840,7 @@ fn insert_late_bound_lifetimes(
     }
 }
 
-pub fn report_missing_lifetime_specifiers(
+fn report_missing_lifetime_specifiers(
     sess: &Session,
     span: Span,
     count: usize,
