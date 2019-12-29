@@ -1,3 +1,4 @@
+// compile-flags: -Zmir-opt-level=1
 #![feature(rustc_attrs)]
 #![allow(unused_attributes)]
 
