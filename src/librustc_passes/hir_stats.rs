@@ -160,7 +160,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_expr(self, ex)
     }
 
-    fn visit_ty(&mut self, t: &'v hir::Ty) {
+    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
         self.record("Ty", Id::Node(t.hir_id), t);
         hir_visit::walk_ty(self, t)
     }
@@ -168,7 +168,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_fn(
         &mut self,
         fk: hir_visit::FnKind<'v>,
-        fd: &'v hir::FnDecl,
+        fd: &'v hir::FnDecl<'v>,
         b: hir::BodyId,
         s: Span,
         id: hir::HirId,
@@ -177,7 +177,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_fn(self, fk, fd, b, s, id)
     }
 
-    fn visit_where_predicate(&mut self, predicate: &'v hir::WherePredicate) {
+    fn visit_where_predicate(&mut self, predicate: &'v hir::WherePredicate<'v>) {
         self.record("WherePredicate", Id::None, predicate);
         hir_visit::walk_where_predicate(self, predicate)
     }
@@ -192,7 +192,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_param_bound(&mut self, bounds: &'v hir::GenericBound) {
+    fn visit_param_bound(&mut self, bounds: &'v hir::GenericBound<'v>) {
         self.record("GenericBound", Id::None, bounds);
         hir_visit::walk_param_bound(self, bounds)
     }
@@ -205,7 +205,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_variant(
         &mut self,
         v: &'v hir::Variant<'v>,
-        g: &'v hir::Generics,
+        g: &'v hir::Generics<'v>,
         item_id: hir::HirId,
     ) {
         self.record("Variant", Id::None, v);
@@ -217,22 +217,22 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: hir::HirId, span: Span) {
+    fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId, span: Span) {
         self.record("QPath", Id::None, qpath);
         hir_visit::walk_qpath(self, qpath, id, span)
     }
 
-    fn visit_path(&mut self, path: &'v hir::Path, _id: hir::HirId) {
+    fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v hir::PathSegment) {
+    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v hir::PathSegment<'v>) {
         self.record("PathSegment", Id::None, path_segment);
         hir_visit::walk_path_segment(self, path_span, path_segment)
     }
 
-    fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding) {
+    fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding<'v>) {
         self.record("TypeBinding", Id::Node(type_binding.hir_id), type_binding);
         hir_visit::walk_assoc_type_binding(self, type_binding)
     }

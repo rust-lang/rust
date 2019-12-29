@@ -229,7 +229,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         &mut self,
         def: &'tcx hir::VariantData<'tcx>,
         _: ast::Name,
-        _: &hir::Generics,
+        _: &hir::Generics<'_>,
         _: hir::HirId,
         _: syntax_pos::Span,
     ) {
@@ -295,12 +295,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         self.in_pat = false;
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, _: hir::HirId) {
+    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
         self.handle_res(path.res);
         intravisit::walk_path(self, path);
     }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
         match ty.kind {
             TyKind::Def(item_id, _) => {
                 let item = self.tcx.hir().expect_item(item_id.id);
@@ -619,7 +619,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     fn visit_variant(
         &mut self,
         variant: &'tcx hir::Variant<'tcx>,
-        g: &'tcx hir::Generics,
+        g: &'tcx hir::Generics<'tcx>,
         id: hir::HirId,
     ) {
         if self.should_warn_about_variant(&variant) {

@@ -452,7 +452,7 @@ pub struct LateContext<'a, 'tcx> {
     last_node_with_lint_attrs: hir::HirId,
 
     /// Generic type parameters in scope for the item we are in.
-    pub generics: Option<&'tcx hir::Generics>,
+    pub generics: Option<&'tcx hir::Generics<'tcx>>,
 
     /// We are only looking at one module
     only_module: bool,
@@ -956,7 +956,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     fn visit_fn(
         &mut self,
         fk: hir_visit::FnKind<'tcx>,
-        decl: &'tcx hir::FnDecl,
+        decl: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
         span: Span,
         id: hir::HirId,
@@ -976,7 +976,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         &mut self,
         s: &'tcx hir::VariantData<'tcx>,
         _: ast::Name,
-        _: &'tcx hir::Generics,
+        _: &'tcx hir::Generics<'tcx>,
         _: hir::HirId,
         _: Span,
     ) {
@@ -995,7 +995,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     fn visit_variant(
         &mut self,
         v: &'tcx hir::Variant<'tcx>,
-        g: &'tcx hir::Generics,
+        g: &'tcx hir::Generics<'tcx>,
         item_id: hir::HirId,
     ) {
         self.with_lint_attrs(v.id, &v.attrs, |cx| {
@@ -1005,7 +1005,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         })
     }
 
-    fn visit_ty(&mut self, t: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
         lint_callback!(self, check_ty, t);
         hir_visit::walk_ty(self, t);
     }
@@ -1038,22 +1038,26 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         hir_visit::walk_arm(self, a);
     }
 
-    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam) {
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
         lint_callback!(self, check_generic_param, p);
         hir_visit::walk_generic_param(self, p);
     }
 
-    fn visit_generics(&mut self, g: &'tcx hir::Generics) {
+    fn visit_generics(&mut self, g: &'tcx hir::Generics<'tcx>) {
         lint_callback!(self, check_generics, g);
         hir_visit::walk_generics(self, g);
     }
 
-    fn visit_where_predicate(&mut self, p: &'tcx hir::WherePredicate) {
+    fn visit_where_predicate(&mut self, p: &'tcx hir::WherePredicate<'tcx>) {
         lint_callback!(self, check_where_predicate, p);
         hir_visit::walk_where_predicate(self, p);
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef, m: hir::TraitBoundModifier) {
+    fn visit_poly_trait_ref(
+        &mut self,
+        t: &'tcx hir::PolyTraitRef<'tcx>,
+        m: hir::TraitBoundModifier,
+    ) {
         lint_callback!(self, check_poly_trait_ref, t, m);
         hir_visit::walk_poly_trait_ref(self, t, m);
     }
@@ -1089,7 +1093,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         hir_visit::walk_lifetime(self, lt);
     }
 
-    fn visit_path(&mut self, p: &'tcx hir::Path, id: hir::HirId) {
+    fn visit_path(&mut self, p: &'tcx hir::Path<'tcx>, id: hir::HirId) {
         lint_callback!(self, check_path, p, id);
         hir_visit::walk_path(self, p);
     }

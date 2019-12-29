@@ -421,7 +421,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
     fn visit_fn(
         &mut self,
         fk: intravisit::FnKind<'tcx>,
-        _: &'tcx hir::FnDecl,
+        _: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
         span: Span,
         hir_id: hir::HirId,

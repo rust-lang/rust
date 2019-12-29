@@ -10,6 +10,7 @@ use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
 
 use crate::hir;
+use crate::hir::HirVec;
 use crate::hir::{GenericArg, GenericParam, GenericParamKind};
 use crate::hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 
@@ -140,7 +141,7 @@ where
     printer.s.eof()
 }
 
-pub fn visibility_qualified<S: Into<Cow<'static, str>>>(vis: &hir::Visibility, w: S) -> String {
+pub fn visibility_qualified<S: Into<Cow<'static, str>>>(vis: &hir::Visibility<'_>, w: S) -> String {
     to_string(NO_ANN, |s| {
         s.print_visibility(vis);
         s.s.word(w)
@@ -266,7 +267,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_type(&mut self, ty: &hir::Ty) {
+    pub fn print_type(&mut self, ty: &hir::Ty<'_>) {
         self.maybe_print_comment(ty.span.lo());
         self.ibox(0);
         match ty.kind {
@@ -307,7 +308,7 @@ impl<'a> State<'a> {
             }
             hir::TyKind::Def(..) => {}
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
-            hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
+            hir::TyKind::TraitObject(bounds, ref lifetime) => {
                 let mut first = true;
                 for bound in bounds {
                     if first {
@@ -398,9 +399,9 @@ impl<'a> State<'a> {
     fn print_associated_const(
         &mut self,
         ident: ast::Ident,
-        ty: &hir::Ty,
+        ty: &hir::Ty<'_>,
         default: Option<hir::BodyId>,
-        vis: &hir::Visibility,
+        vis: &hir::Visibility<'_>,
     ) {
         self.s.word(visibility_qualified(vis, ""));
         self.word_space("const");
@@ -418,8 +419,8 @@ impl<'a> State<'a> {
     fn print_associated_type(
         &mut self,
         ident: ast::Ident,
-        bounds: Option<&hir::GenericBounds>,
-        ty: Option<&hir::Ty>,
+        bounds: Option<hir::GenericBounds<'_>>,
+        ty: Option<&hir::Ty<'_>>,
     ) {
         self.word_space("type");
         self.print_ident(ident);
@@ -437,7 +438,7 @@ impl<'a> State<'a> {
     fn print_item_type(
         &mut self,
         item: &hir::Item<'_>,
-        generics: &hir::Generics,
+        generics: &hir::Generics<'_>,
         inner: impl Fn(&mut Self),
     ) {
         self.head(visibility_qualified(&item.vis, "type"));
@@ -682,11 +683,11 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Item(item))
     }
 
-    pub fn print_trait_ref(&mut self, t: &hir::TraitRef) {
+    pub fn print_trait_ref(&mut self, t: &hir::TraitRef<'_>) {
         self.print_path(&t.path, false)
     }
 
-    fn print_formal_generic_params(&mut self, generic_params: &[hir::GenericParam]) {
+    fn print_formal_generic_params(&mut self, generic_params: &[hir::GenericParam<'_>]) {
         if !generic_params.is_empty() {
             self.s.word("for");
             self.print_generic_params(generic_params);
@@ -694,7 +695,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef) {
+    fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef<'_>) {
         self.print_formal_generic_params(&t.bound_generic_params);
         self.print_trait_ref(&t.trait_ref)
     }
@@ -702,10 +703,10 @@ impl<'a> State<'a> {
     pub fn print_enum_def(
         &mut self,
         enum_definition: &hir::EnumDef<'_>,
-        generics: &hir::Generics,
+        generics: &hir::Generics<'_>,
         name: ast::Name,
         span: syntax_pos::Span,
-        visibility: &hir::Visibility,
+        visibility: &hir::Visibility<'_>,
     ) {
         self.head(visibility_qualified(visibility, "enum"));
         self.print_name(name);
@@ -730,7 +731,7 @@ impl<'a> State<'a> {
         self.bclose(span)
     }
 
-    pub fn print_visibility(&mut self, vis: &hir::Visibility) {
+    pub fn print_visibility(&mut self, vis: &hir::Visibility<'_>) {
         match vis.node {
             hir::VisibilityKind::Public => self.word_nbsp("pub"),
             hir::VisibilityKind::Crate(ast::CrateSugar::JustCrate) => self.word_nbsp("crate"),
@@ -761,7 +762,7 @@ impl<'a> State<'a> {
     pub fn print_struct(
         &mut self,
         struct_def: &hir::VariantData<'_>,
-        generics: &hir::Generics,
+        generics: &hir::Generics<'_>,
         name: ast::Name,
         span: syntax_pos::Span,
         print_finalizer: bool,
@@ -822,9 +823,9 @@ impl<'a> State<'a> {
     pub fn print_method_sig(
         &mut self,
         ident: ast::Ident,
-        m: &hir::FnSig,
-        generics: &hir::Generics,
-        vis: &hir::Visibility,
+        m: &hir::FnSig<'_>,
+        generics: &hir::Generics<'_>,
+        vis: &hir::Visibility<'_>,
         arg_names: &[ast::Ident],
         body_id: Option<hir::BodyId>,
     ) {
@@ -891,7 +892,7 @@ impl<'a> State<'a> {
             hir::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
             }
-            hir::ImplItemKind::OpaqueTy(ref bounds) => {
+            hir::ImplItemKind::OpaqueTy(bounds) => {
                 self.word_space("type");
                 self.print_ident(ii.ident);
                 self.print_bounds("= impl", bounds);
@@ -1044,7 +1045,7 @@ impl<'a> State<'a> {
 
     fn print_expr_struct(
         &mut self,
-        qpath: &hir::QPath,
+        qpath: &hir::QPath<'_>,
         fields: &[hir::Field<'_>],
         wth: &Option<&'hir hir::Expr<'_>>,
     ) {
@@ -1103,7 +1104,7 @@ impl<'a> State<'a> {
         self.print_call_post(args)
     }
 
-    fn print_expr_method_call(&mut self, segment: &hir::PathSegment, args: &[hir::Expr<'_>]) {
+    fn print_expr_method_call(&mut self, segment: &hir::PathSegment<'_>, args: &[hir::Expr<'_>]) {
         let base_args = &args[1..];
         self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX);
         self.s.word(".");
@@ -1440,7 +1441,7 @@ impl<'a> State<'a> {
         self.print_expr(coll)
     }
 
-    pub fn print_path(&mut self, path: &hir::Path, colons_before_params: bool) {
+    pub fn print_path(&mut self, path: &hir::Path<'_>, colons_before_params: bool) {
         self.maybe_print_comment(path.span.lo());
 
         for (i, segment) in path.segments.iter().enumerate() {
@@ -1458,14 +1459,14 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_path_segment(&mut self, segment: &hir::PathSegment) {
+    pub fn print_path_segment(&mut self, segment: &hir::PathSegment<'_>) {
         if segment.ident.name != kw::PathRoot {
             self.print_ident(segment.ident);
             self.print_generic_args(segment.generic_args(), segment.infer_args, false);
         }
     }
 
-    pub fn print_qpath(&mut self, qpath: &hir::QPath, colons_before_params: bool) {
+    pub fn print_qpath(&mut self, qpath: &hir::QPath<'_>, colons_before_params: bool) {
         match *qpath {
             hir::QPath::Resolved(None, ref path) => self.print_path(path, colons_before_params),
             hir::QPath::Resolved(Some(ref qself), ref path) => {
@@ -1523,7 +1524,7 @@ impl<'a> State<'a> {
 
     fn print_generic_args(
         &mut self,
-        generic_args: &hir::GenericArgs,
+        generic_args: &hir::GenericArgs<'_>,
         infer_args: bool,
         colons_before_params: bool,
     ) {
@@ -1586,7 +1587,7 @@ impl<'a> State<'a> {
                         self.word_space("=");
                         self.print_type(ty);
                     }
-                    hir::TypeBindingKind::Constraint { ref bounds } => {
+                    hir::TypeBindingKind::Constraint { bounds } => {
                         self.print_bounds(":", bounds);
                     }
                 }
@@ -1814,11 +1815,11 @@ impl<'a> State<'a> {
 
     pub fn print_fn(
         &mut self,
-        decl: &hir::FnDecl,
+        decl: &hir::FnDecl<'_>,
         header: hir::FnHeader,
         name: Option<ast::Name>,
-        generics: &hir::Generics,
-        vis: &hir::Visibility,
+        generics: &hir::Generics<'_>,
+        vis: &hir::Visibility<'_>,
         arg_names: &[ast::Ident],
         body_id: Option<hir::BodyId>,
     ) {
@@ -1858,7 +1859,7 @@ impl<'a> State<'a> {
         self.print_where_clause(&generics.where_clause)
     }
 
-    fn print_closure_params(&mut self, decl: &hir::FnDecl, body_id: hir::BodyId) {
+    fn print_closure_params(&mut self, decl: &hir::FnDecl<'_>, body_id: hir::BodyId) {
         self.s.word("|");
         let mut i = 0;
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
@@ -1903,7 +1904,7 @@ impl<'a> State<'a> {
     pub fn print_bounds<'b>(
         &mut self,
         prefix: &'static str,
-        bounds: impl IntoIterator<Item = &'b hir::GenericBound>,
+        bounds: impl IntoIterator<Item = &'b hir::GenericBound<'b>>,
     ) {
         let mut first = true;
         for bound in bounds {
@@ -1933,7 +1934,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_generic_params(&mut self, generic_params: &[GenericParam]) {
+    pub fn print_generic_params(&mut self, generic_params: &[GenericParam<'_>]) {
         if !generic_params.is_empty() {
             self.s.word("<");
 
@@ -1943,7 +1944,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_generic_param(&mut self, param: &GenericParam) {
+    pub fn print_generic_param(&mut self, param: &GenericParam<'_>) {
         if let GenericParamKind::Const { .. } = param.kind {
             self.word_space("const");
         }
@@ -1953,9 +1954,9 @@ impl<'a> State<'a> {
         match param.kind {
             GenericParamKind::Lifetime { .. } => {
                 let mut sep = ":";
-                for bound in &param.bounds {
+                for bound in param.bounds {
                     match bound {
-                        GenericBound::Outlives(lt) => {
+                        GenericBound::Outlives(ref lt) => {
                             self.s.word(sep);
                             self.print_lifetime(lt);
                             sep = "+";
@@ -1965,7 +1966,7 @@ impl<'a> State<'a> {
                 }
             }
             GenericParamKind::Type { ref default, .. } => {
-                self.print_bounds(":", &param.bounds);
+                self.print_bounds(":", param.bounds);
                 match default {
                     Some(default) => {
                         self.s.space();
@@ -1986,7 +1987,7 @@ impl<'a> State<'a> {
         self.print_ident(lifetime.name.ident())
     }
 
-    pub fn print_where_clause(&mut self, where_clause: &hir::WhereClause) {
+    pub fn print_where_clause(&mut self, where_clause: &hir::WhereClause<'_>) {
         if where_clause.predicates.is_empty() {
             return;
         }
@@ -2003,7 +2004,7 @@ impl<'a> State<'a> {
                 &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                     ref bound_generic_params,
                     ref bounded_ty,
-                    ref bounds,
+                    bounds,
                     ..
                 }) => {
                     self.print_formal_generic_params(bound_generic_params);
@@ -2056,12 +2057,12 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_mt(&mut self, mt: &hir::MutTy, print_const: bool) {
+    pub fn print_mt(&mut self, mt: &hir::MutTy<'_>, print_const: bool) {
         self.print_mutability(mt.mutbl, print_const);
         self.print_type(&mt.ty)
     }
 
-    pub fn print_fn_output(&mut self, decl: &hir::FnDecl) {
+    pub fn print_fn_output(&mut self, decl: &hir::FnDecl<'_>) {
         if let hir::DefaultReturn(..) = decl.output {
             return;
         }
@@ -2085,9 +2086,9 @@ impl<'a> State<'a> {
         &mut self,
         abi: Abi,
         unsafety: hir::Unsafety,
-        decl: &hir::FnDecl,
+        decl: &hir::FnDecl<'_>,
         name: Option<ast::Name>,
-        generic_params: &[hir::GenericParam],
+        generic_params: &[hir::GenericParam<'_>],
         arg_names: &[ast::Ident],
     ) {
         self.ibox(INDENT_UNIT);
@@ -2096,11 +2097,8 @@ impl<'a> State<'a> {
             self.print_generic_params(generic_params);
         }
         let generics = hir::Generics {
-            params: hir::HirVec::new(),
-            where_clause: hir::WhereClause {
-                predicates: hir::HirVec::new(),
-                span: syntax_pos::DUMMY_SP,
-            },
+            params: HirVec::new(),
+            where_clause: hir::WhereClause { predicates: &[], span: syntax_pos::DUMMY_SP },
             span: syntax_pos::DUMMY_SP,
         };
         self.print_fn(
@@ -2164,7 +2162,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_fn_header_info(&mut self, header: hir::FnHeader, vis: &hir::Visibility) {
+    pub fn print_fn_header_info(&mut self, header: hir::FnHeader, vis: &hir::Visibility<'_>) {
         self.s.word(visibility_qualified(vis, ""));
 
         match header.constness {

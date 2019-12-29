@@ -73,7 +73,7 @@ impl Visitor<'tcx> for CaptureCollector<'a, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, _: hir::HirId) {
+    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
         if let Res::Local(var_id) = path.res {
             self.visit_local_use(var_id, path.span);
         }

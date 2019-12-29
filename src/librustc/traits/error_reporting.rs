@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let suggest_restriction =
-            |generics: &hir::Generics, msg, err: &mut DiagnosticBuilder<'_>| {
+            |generics: &hir::Generics<'_>, msg, err: &mut DiagnosticBuilder<'_>| {
                 let span = generics.where_clause.span_for_predicates_or_empty_place();
                 if !span.from_expansion() && span.desugaring_kind().is_none() {
                     err.span_suggestion(
@@ -2851,7 +2851,7 @@ impl ArgKind {
 
 /// Suggest restricting a type param with a new bound.
 pub fn suggest_constraining_type_param(
-    generics: &hir::Generics,
+    generics: &hir::Generics<'_>,
     err: &mut DiagnosticBuilder<'_>,
     param_name: &str,
     constraint: &str,

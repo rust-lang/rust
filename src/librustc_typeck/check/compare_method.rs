@@ -873,12 +873,12 @@ fn compare_synthetic_generics<'tcx>(
                         let impl_m = tcx.hir().as_local_hir_id(impl_m.def_id)?;
                         let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
                         let input_tys = match impl_m.kind {
-                            hir::ImplItemKind::Method(ref sig, _) => &sig.decl.inputs,
+                            hir::ImplItemKind::Method(ref sig, _) => sig.decl.inputs,
                             _ => unreachable!(),
                         };
                         struct Visitor(Option<Span>, hir::def_id::DefId);
                         impl<'v> hir::intravisit::Visitor<'v> for Visitor {
-                            fn visit_ty(&mut self, ty: &'v hir::Ty) {
+                            fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
                                 hir::intravisit::walk_ty(self, ty);
                                 if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) =
                                     ty.kind

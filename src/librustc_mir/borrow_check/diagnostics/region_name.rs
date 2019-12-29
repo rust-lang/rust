@@ -410,7 +410,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<RegionName> {
         let mir_hir_id = infcx.tcx.hir().as_local_hir_id(mir_def_id)?;
         let fn_decl = infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
-        let argument_hir_ty: &hir::Ty = fn_decl.inputs.get(argument_index)?;
+        let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but
@@ -504,10 +504,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         tcx: TyCtxt<'tcx>,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
-        argument_hir_ty: &hir::Ty,
+        argument_hir_ty: &hir::Ty<'_>,
         renctx: &mut RegionErrorNamingCtx,
     ) -> Option<RegionName> {
-        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty)> =
+        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> =
             &mut vec![(argument_ty, argument_hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
@@ -570,7 +570,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // just worry about trying to match up the rustc type
                 // with the HIR types:
                 (ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
-                    search_stack.extend(elem_tys.iter().map(|k| k.expect_ty()).zip(elem_hir_tys));
+                    search_stack.extend(elem_tys.iter().map(|k| k.expect_ty()).zip(*elem_hir_tys));
                 }
 
                 (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
@@ -600,9 +600,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         substs: SubstsRef<'tcx>,
         needle_fr: RegionVid,
-        last_segment: &'hir hir::PathSegment,
+        last_segment: &'hir hir::PathSegment<'hir>,
         renctx: &mut RegionErrorNamingCtx,
-        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty)>,
+        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<RegionName> {
         // Did the user give explicit arguments? (e.g., `Foo<..>`)
         let args = last_segment.args.as_ref()?;
@@ -647,8 +647,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         substs: SubstsRef<'tcx>,
         needle_fr: RegionVid,
-        args: &'hir hir::GenericArgs,
-        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty)>,
+        args: &'hir hir::GenericArgs<'hir>,
+        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<&'hir hir::Lifetime> {
         for (kind, hir_arg) in substs.iter().zip(&args.args) {
             match (kind.unpack(), hir_arg) {

@@ -306,7 +306,7 @@ impl Clean<Attributes> for [ast::Attribute] {
     }
 }
 
-impl Clean<GenericBound> for hir::GenericBound {
+impl Clean<GenericBound> for hir::GenericBound<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> GenericBound {
         match *self {
             hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
@@ -406,7 +406,7 @@ impl Clean<Lifetime> for hir::Lifetime {
     }
 }
 
-impl Clean<Lifetime> for hir::GenericParam {
+impl Clean<Lifetime> for hir::GenericParam<'_> {
     fn clean(&self, _: &DocContext<'_>) -> Lifetime {
         match self.kind {
             hir::GenericParamKind::Lifetime { .. } => {
@@ -469,7 +469,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
     }
 }
 
-impl Clean<WherePredicate> for hir::WherePredicate {
+impl Clean<WherePredicate> for hir::WherePredicate<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> WherePredicate {
         match *self {
             hir::WherePredicate::BoundPredicate(ref wbp) => WherePredicate::BoundPredicate {
@@ -615,7 +615,7 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
     }
 }
 
-impl Clean<GenericParamDef> for hir::GenericParam {
+impl Clean<GenericParamDef> for hir::GenericParam<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> GenericParamDef {
         let (name, kind) = match self.kind {
             hir::GenericParamKind::Lifetime { .. } => {
@@ -657,12 +657,12 @@ impl Clean<GenericParamDef> for hir::GenericParam {
     }
 }
 
-impl Clean<Generics> for hir::Generics {
+impl Clean<Generics> for hir::Generics<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Generics {
         // Synthetic type-parameters are inserted after normal ones.
         // In order for normal parameters to be able to refer to synthetic ones,
         // scans them first.
-        fn is_impl_trait(param: &hir::GenericParam) -> bool {
+        fn is_impl_trait(param: &hir::GenericParam<'_>) -> bool {
             match param.kind {
                 hir::GenericParamKind::Type { synthetic, .. } => {
                     synthetic == Some(hir::SyntheticTyParamKind::ImplTrait)
@@ -892,7 +892,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
 }
 
 impl<'a> Clean<Method>
-    for (&'a hir::FnSig, &'a hir::Generics, hir::BodyId, Option<hir::Defaultness>)
+    for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId, Option<hir::Defaultness>)
 {
     fn clean(&self, cx: &DocContext<'_>) -> Method {
         let (generics, decl) =
@@ -933,7 +933,7 @@ impl Clean<Item> for doctree::Function<'_> {
     }
 }
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty], &'a [ast::Ident]) {
+impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [ast::Ident]) {
     fn clean(&self, cx: &DocContext<'_>) -> Arguments {
         Arguments {
             values: self
@@ -953,7 +953,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty], &'a [ast::Ident]) {
     }
 }
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty], hir::BodyId) {
+impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
     fn clean(&self, cx: &DocContext<'_>) -> Arguments {
         let body = cx.tcx.hir().body(self.1);
 
@@ -971,9 +971,9 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty], hir::BodyId) {
     }
 }
 
-impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
+impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl<'a>, A)
 where
-    (&'a [hir::Ty], A): Clean<Arguments>,
+    (&'a [hir::Ty<'a>], A): Clean<Arguments>,
 {
     fn clean(&self, cx: &DocContext<'_>) -> FnDecl {
         FnDecl {
@@ -1013,7 +1013,7 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     }
 }
 
-impl Clean<FunctionRetTy> for hir::FunctionRetTy {
+impl Clean<FunctionRetTy> for hir::FunctionRetTy<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> FunctionRetTy {
         match *self {
             hir::Return(ref typ) => Return(typ.clean(cx)),
@@ -1075,13 +1075,13 @@ impl Clean<bool> for hir::IsAuto {
     }
 }
 
-impl Clean<Type> for hir::TraitRef {
+impl Clean<Type> for hir::TraitRef<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         resolve_type(cx, self.path.clean(cx), self.hir_ref_id)
     }
 }
 
-impl Clean<PolyTrait> for hir::PolyTraitRef {
+impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> PolyTrait {
         PolyTrait {
             trait_: self.trait_ref.clean(cx),
@@ -1324,7 +1324,7 @@ impl Clean<Item> for ty::AssocItem {
     }
 }
 
-impl Clean<Type> for hir::Ty {
+impl Clean<Type> for hir::Ty<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         use rustc::hir::*;
 
@@ -1480,7 +1480,7 @@ impl Clean<Type> for hir::Ty {
                 if let ty::Projection(proj) = ty.kind {
                     res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
                 }
-                let trait_path = hir::Path { span: self.span, res, segments: vec![].into() };
+                let trait_path = hir::Path { span: self.span, res, segments: &[] };
                 Type::QPath {
                     name: segment.ident.name.clean(cx),
                     self_type: box qself.clean(cx),
@@ -1760,7 +1760,7 @@ impl Clean<Item> for ty::FieldDef {
     }
 }
 
-impl Clean<Visibility> for hir::Visibility {
+impl Clean<Visibility> for hir::Visibility<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Visibility {
         match self.node {
             hir::VisibilityKind::Public => Visibility::Public,
@@ -1937,7 +1937,7 @@ impl Clean<Span> for syntax_pos::Span {
     }
 }
 
-impl Clean<Path> for hir::Path {
+impl Clean<Path> for hir::Path<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Path {
         Path {
             global: self.is_global(),
@@ -1947,7 +1947,7 @@ impl Clean<Path> for hir::Path {
     }
 }
 
-impl Clean<GenericArgs> for hir::GenericArgs {
+impl Clean<GenericArgs> for hir::GenericArgs<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> GenericArgs {
         if self.parenthesized {
             let output = self.bindings[0].ty().clean(cx);
@@ -1979,7 +1979,7 @@ impl Clean<GenericArgs> for hir::GenericArgs {
     }
 }
 
-impl Clean<PathSegment> for hir::PathSegment {
+impl Clean<PathSegment> for hir::PathSegment<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> PathSegment {
         PathSegment { name: self.ident.name.clean(cx), args: self.generic_args().clean(cx) }
     }
@@ -2038,7 +2038,7 @@ impl Clean<Item> for doctree::OpaqueTy<'_> {
     }
 }
 
-impl Clean<BareFunctionDecl> for hir::BareFnTy {
+impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, || {
             (self.generic_params.clean(cx), (&*self.decl, &self.param_names[..]).clean(cx))
@@ -2377,13 +2377,13 @@ impl Clean<Deprecation> for attr::Deprecation {
     }
 }
 
-impl Clean<TypeBinding> for hir::TypeBinding {
+impl Clean<TypeBinding> for hir::TypeBinding<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> TypeBinding {
         TypeBinding { name: self.ident.name.clean(cx), kind: self.kind.clean(cx) }
     }
 }
 
-impl Clean<TypeBindingKind> for hir::TypeBindingKind {
+impl Clean<TypeBindingKind> for hir::TypeBindingKind<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> TypeBindingKind {
         match *self {
             hir::TypeBindingKind::Equality { ref ty } => {

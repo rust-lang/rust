@@ -255,7 +255,7 @@ fn const_not_var(
     err: &mut DiagnosticBuilder<'_>,
     tcx: TyCtxt<'_>,
     pat: &Pat<'_>,
-    path: &hir::Path,
+    path: &hir::Path<'_>,
 ) {
     let descr = path.res.descr();
     err.span_label(

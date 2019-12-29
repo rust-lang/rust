@@ -162,7 +162,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn visit_fn(
         &mut self,
         fk: FnKind<'tcx>,
-        fd: &'tcx hir::FnDecl,
+        fd: &'tcx hir::FnDecl<'tcx>,
         b: hir::BodyId,
         s: Span,
         id: HirId,
@@ -351,7 +351,7 @@ impl IrMaps<'tcx> {
 fn visit_fn<'tcx>(
     ir: &mut IrMaps<'tcx>,
     fk: FnKind<'tcx>,
-    decl: &'tcx hir::FnDecl,
+    decl: &'tcx hir::FnDecl<'tcx>,
     body_id: hir::BodyId,
     sp: Span,
     id: hir::HirId,
@@ -1285,7 +1285,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn access_path(
         &mut self,
         hir_id: HirId,
-        path: &hir::Path,
+        path: &hir::Path<'_>,
         succ: LiveNode,
         acc: u32,
     ) -> LiveNode {

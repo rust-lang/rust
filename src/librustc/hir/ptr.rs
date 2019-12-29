@@ -22,14 +22,6 @@ pub fn P<T: 'static>(value: T) -> P<T> {
     P { ptr: box value }
 }
 
-impl<T: 'static> P<T> {
-    // HACK(eddyb) used by HIR lowering in a few places still.
-    // NOTE: do not make this more public than `pub(super)`.
-    pub(super) fn into_inner(self) -> T {
-        *self.ptr
-    }
-}
-
 impl<T: ?Sized> Deref for P<T> {
     type Target = T;
 

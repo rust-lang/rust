@@ -987,7 +987,7 @@ impl UnreachablePub {
         cx: &LateContext<'_, '_>,
         what: &str,
         id: hir::HirId,
-        vis: &hir::Visibility,
+        vis: &hir::Visibility<'_>,
         span: Span,
         exportable: bool,
     ) {
@@ -1069,7 +1069,7 @@ declare_lint_pass!(
 );
 
 impl TypeAliasBounds {
-    fn is_type_variable_assoc(qpath: &hir::QPath) -> bool {
+    fn is_type_variable_assoc(qpath: &hir::QPath<'_>) -> bool {
         match *qpath {
             hir::QPath::TypeRelative(ref ty, _) => {
                 // If this is a type variable, we found a `T::Assoc`.
@@ -1085,7 +1085,7 @@ impl TypeAliasBounds {
         }
     }
 
-    fn suggest_changing_assoc_types(ty: &hir::Ty, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut DiagnosticBuilder<'_>) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
         // bound.  Let's see if this type does that.
 
@@ -1099,7 +1099,7 @@ impl TypeAliasBounds {
                 intravisit::NestedVisitorMap::None
             }
 
-            fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: hir::HirId, span: Span) {
+            fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(
                         span,
@@ -1537,7 +1537,7 @@ impl ExplicitOutlivesRequirements {
 
     fn collect_outlived_lifetimes<'tcx>(
         &self,
-        param: &'tcx hir::GenericParam,
+        param: &'tcx hir::GenericParam<'tcx>,
         tcx: TyCtxt<'tcx>,
         inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
         ty_generics: &'tcx ty::Generics,
@@ -1558,7 +1558,7 @@ impl ExplicitOutlivesRequirements {
     fn collect_outlives_bound_spans<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        bounds: &hir::GenericBounds,
+        bounds: &hir::GenericBounds<'_>,
         inferred_outlives: &[ty::Region<'tcx>],
         infer_static: bool,
     ) -> Vec<(usize, Span)> {
@@ -1589,7 +1589,7 @@ impl ExplicitOutlivesRequirements {
     fn consolidate_outlives_bound_spans(
         &self,
         lo: Span,
-        bounds: &hir::GenericBounds,
+        bounds: &hir::GenericBounds<'_>,
         bound_spans: Vec<(usize, Span)>,
     ) -> Vec<Span> {
         if bounds.is_empty() {

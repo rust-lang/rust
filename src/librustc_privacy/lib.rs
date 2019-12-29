@@ -378,7 +378,7 @@ impl Visitor<'tcx> for PubRestrictedVisitor<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
-    fn visit_vis(&mut self, vis: &'tcx hir::Visibility) {
+    fn visit_vis(&mut self, vis: &'tcx hir::Visibility<'tcx>) {
         self.has_pub_restricted = self.has_pub_restricted || vis.node.is_pub_restricted();
     }
 }
@@ -644,7 +644,10 @@ impl EmbargoVisitor<'tcx> {
     ///
     /// FIXME: This solution won't work with glob imports and doesn't respect
     /// namespaces. See <https://github.com/rust-lang/rust/pull/57922#discussion_r251234202>.
-    fn update_visibility_of_intermediate_use_statements(&mut self, segments: &[hir::PathSegment]) {
+    fn update_visibility_of_intermediate_use_statements(
+        &mut self,
+        segments: &[hir::PathSegment<'_>],
+    ) {
         if let Some([module, segment]) = segments.rchunks_exact(2).next() {
             if let Some(item) = module
                 .res
@@ -1199,7 +1202,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         self.in_body = orig_in_body;
     }
 
-    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
         self.span = hir_ty.span;
         if self.in_body {
             // Types in bodies.
@@ -1218,7 +1221,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         intravisit::walk_ty(self, hir_ty);
     }
 
-    fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef) {
+    fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef<'tcx>) {
         self.span = trait_ref.path.span;
         if !self.in_body {
             // Avoid calling `hir_trait_to_predicates` in bodies, it will ICE.
@@ -1282,7 +1285,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     // we prohibit access to private statics from other crates, this allows to give
     // more code internal visibility at link time. (Access to private functions
     // is already prohibited by type privacy for function types.)
-    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath, id: hir::HirId, span: Span) {
+    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath<'tcx>, id: hir::HirId, span: Span) {
         let def = match self.tables.qpath_res(qpath, id) {
             Res::Def(kind, def_id) => Some((kind, def_id)),
             _ => None,
@@ -1397,7 +1400,7 @@ struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
-    fn path_is_private_type(&self, path: &hir::Path) -> bool {
+    fn path_is_private_type(&self, path: &hir::Path<'_>) -> bool {
         let did = match path.res {
             Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => return false,
             res => res.def_id(),
@@ -1423,7 +1426,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         self.access_levels.is_public(trait_id)
     }
 
-    fn check_generic_bound(&mut self, bound: &hir::GenericBound) {
+    fn check_generic_bound(&mut self, bound: &hir::GenericBound<'_>) {
         if let hir::GenericBound::Trait(ref trait_ref, _) = *bound {
             if self.path_is_private_type(&trait_ref.trait_ref.path) {
                 self.old_error_set.insert(trait_ref.trait_ref.hir_ref_id);
@@ -1431,7 +1434,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn item_is_public(&self, id: &hir::HirId, vis: &hir::Visibility) -> bool {
+    fn item_is_public(&self, id: &hir::HirId, vis: &hir::Visibility<'_>) -> bool {
         self.access_levels.is_reachable(*id) || vis.node.is_pub()
     }
 }
@@ -1441,7 +1444,7 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a
         NestedVisitorMap::None
     }
 
-    fn visit_ty(&mut self, ty: &hir::Ty) {
+    fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
         if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = ty.kind {
             if self.inner.path_is_private_type(path) {
                 self.contains_private = true;
@@ -1649,13 +1652,13 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         intravisit::walk_item(self, item);
     }
 
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
         for param in &generics.params {
-            for bound in &param.bounds {
+            for bound in param.bounds {
                 self.check_generic_bound(bound);
             }
         }
-        for predicate in &generics.where_clause.predicates {
+        for predicate in generics.where_clause.predicates {
             match predicate {
                 hir::WherePredicate::BoundPredicate(bound_pred) => {
                     for bound in bound_pred.bounds.iter() {
@@ -1676,7 +1679,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, t: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
         if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = t.kind {
             if self.path_is_private_type(path) {
                 self.old_error_set.insert(t.hir_id);
@@ -1688,7 +1691,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_variant(
         &mut self,
         v: &'tcx hir::Variant<'tcx>,
-        g: &'tcx hir::Generics,
+        g: &'tcx hir::Generics<'tcx>,
         item_id: hir::HirId,
     ) {
         if self.access_levels.is_reachable(v.id) {

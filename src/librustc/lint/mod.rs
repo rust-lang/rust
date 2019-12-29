@@ -107,20 +107,20 @@ macro_rules! late_lint_methods {
             fn check_pat(a: &$hir hir::Pat<$hir>);
             fn check_expr(a: &$hir hir::Expr<$hir>);
             fn check_expr_post(a: &$hir hir::Expr<$hir>);
-            fn check_ty(a: &$hir hir::Ty);
-            fn check_generic_param(a: &$hir hir::GenericParam);
-            fn check_generics(a: &$hir hir::Generics);
-            fn check_where_predicate(a: &$hir hir::WherePredicate);
-            fn check_poly_trait_ref(a: &$hir hir::PolyTraitRef, b: hir::TraitBoundModifier);
+            fn check_ty(a: &$hir hir::Ty<$hir>);
+            fn check_generic_param(a: &$hir hir::GenericParam<$hir>);
+            fn check_generics(a: &$hir hir::Generics<$hir>);
+            fn check_where_predicate(a: &$hir hir::WherePredicate<$hir>);
+            fn check_poly_trait_ref(a: &$hir hir::PolyTraitRef<$hir>, b: hir::TraitBoundModifier);
             fn check_fn(
                 a: hir::intravisit::FnKind<$hir>,
-                b: &$hir hir::FnDecl,
+                b: &$hir hir::FnDecl<$hir>,
                 c: &$hir hir::Body<$hir>,
                 d: Span,
                 e: hir::HirId);
             fn check_fn_post(
                 a: hir::intravisit::FnKind<$hir>,
-                b: &$hir hir::FnDecl,
+                b: &$hir hir::FnDecl<$hir>,
                 c: &$hir hir::Body<$hir>,
                 d: Span,
                 e: hir::HirId
@@ -135,7 +135,7 @@ macro_rules! late_lint_methods {
             fn check_variant(a: &$hir hir::Variant<$hir>);
             fn check_variant_post(a: &$hir hir::Variant<$hir>);
             fn check_lifetime(a: &$hir hir::Lifetime);
-            fn check_path(a: &$hir hir::Path, b: hir::HirId);
+            fn check_path(a: &$hir hir::Path<$hir>, b: hir::HirId);
             fn check_attribute(a: &$hir ast::Attribute);
 
             /// Called when entering a syntax node that can have lint attributes such
@@ -643,7 +643,7 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     fn visit_variant(
         &mut self,
         v: &'tcx hir::Variant<'tcx>,
-        g: &'tcx hir::Generics,
+        g: &'tcx hir::Generics<'tcx>,
         item_id: hir::HirId,
     ) {
         self.with_lint_attrs(v.id, &v.attrs, |builder| {

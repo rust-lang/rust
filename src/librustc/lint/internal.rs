@@ -76,7 +76,7 @@ declare_lint_pass!(TyTyKind => [
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
-    fn check_path(&mut self, cx: &LateContext<'_, '_>, path: &'tcx Path, _: HirId) {
+    fn check_path(&mut self, cx: &LateContext<'_, '_>, path: &'tcx Path<'tcx>, _: HirId) {
         let segments = path.segments.iter().rev().skip(1).rev();
 
         if let Some(last) = segments.last() {
@@ -94,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_, '_>, ty: &'tcx Ty) {
+    fn check_ty(&mut self, cx: &LateContext<'_, '_>, ty: &'tcx Ty<'tcx>) {
         match &ty.kind {
             TyKind::Path(qpath) => {
                 if let QPath::Resolved(_, path) = qpath {
@@ -159,7 +159,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
     }
 }
 
-fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
+fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment<'_>) -> bool {
     if let Some(res) = segment.res {
         if let Some(did) = res.opt_def_id() {
             return cx.tcx.is_diagnostic_item(sym::TyKind, did);
@@ -169,7 +169,7 @@ fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
     false
 }
 
-fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty) -> Option<String> {
+fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty<'_>) -> Option<String> {
     match &ty.kind {
         TyKind::Path(qpath) => {
             if let QPath::Resolved(_, path) = qpath {
@@ -187,7 +187,7 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty) -> Option<String> {
     None
 }
 
-fn gen_args(segment: &PathSegment) -> String {
+fn gen_args(segment: &PathSegment<'_>) -> String {
     if let Some(args) = &segment.args {
         let lifetimes = args
             .args

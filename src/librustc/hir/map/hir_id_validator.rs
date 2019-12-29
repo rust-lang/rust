@@ -161,7 +161,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         self.hir_ids_seen.insert(hir_id.local_id);
     }
 
-    fn visit_impl_item_ref(&mut self, _: &'hir hir::ImplItemRef) {
+    fn visit_impl_item_ref(&mut self, _: &'hir hir::ImplItemRef<'hir>) {
         // Explicitly do nothing here. ImplItemRefs contain hir::Visibility
         // values that actually belong to an ImplItem instead of the ItemKind::Impl
         // we are currently in. So for those it's correct that they have a

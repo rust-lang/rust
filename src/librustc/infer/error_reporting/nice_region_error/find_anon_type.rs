@@ -25,7 +25,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         &self,
         region: Region<'tcx>,
         br: &ty::BoundRegion,
-    ) -> Option<(&hir::Ty, &hir::FnDecl)> {
+    ) -> Option<(&hir::Ty<'_>, &hir::FnDecl<'_>)> {
         if let Some(anon_reg) = self.tcx().is_suitable_region(region) {
             let def_id = anon_reg.def_id;
             if let Some(hir_id) = self.tcx().hir().as_local_hir_id(def_id) {
@@ -57,9 +57,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     // to the anonymous region.
     fn find_component_for_bound_region(
         &self,
-        arg: &'tcx hir::Ty,
+        arg: &'tcx hir::Ty<'tcx>,
         br: &ty::BoundRegion,
-    ) -> Option<&'tcx hir::Ty> {
+    ) -> Option<&'tcx hir::Ty<'tcx>> {
         let mut nested_visitor = FindNestedTypeVisitor {
             tcx: self.tcx(),
             bound_region: *br,
@@ -85,7 +85,7 @@ struct FindNestedTypeVisitor<'tcx> {
     bound_region: ty::BoundRegion,
     // The type where the anonymous lifetime appears
     // for e.g., Vec<`&u8`> and <`&u8`>
-    found_type: Option<&'tcx hir::Ty>,
+    found_type: Option<&'tcx hir::Ty<'tcx>>,
     current_index: ty::DebruijnIndex,
 }
 
@@ -94,7 +94,7 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
         match arg.kind {
             hir::TyKind::BareFn(_) => {
                 self.current_index.shift_in(1);
@@ -103,7 +103,7 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                 return;
             }
 
-            hir::TyKind::TraitObject(ref bounds, _) => {
+            hir::TyKind::TraitObject(bounds, _) => {
                 for bound in bounds {
                     self.current_index.shift_in(1);
                     self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
@@ -250,7 +250,7 @@ impl Visitor<'tcx> for TyPathVisitor<'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
         // ignore nested types
         //
         // If you have a type like `Foo<'a, &Ty>` we

@@ -1,7 +1,6 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 use crate::hir;
 use crate::hir::def::Res;
-use crate::hir::ptr::P;
 
 use rustc_data_structures::thin_vec::ThinVec;
 
@@ -64,12 +63,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Cast(ref expr, ref ty) => {
                 let expr = self.lower_expr(expr);
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
-                hir::ExprKind::Cast(expr, self.arena.alloc(ty.into_inner()))
+                hir::ExprKind::Cast(expr, ty)
             }
             ExprKind::Type(ref expr, ref ty) => {
                 let expr = self.lower_expr(expr);
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
-                hir::ExprKind::Type(expr, self.arena.alloc(ty.into_inner()))
+                hir::ExprKind::Type(expr, ty)
             }
             ExprKind::AddrOf(k, m, ref ohs) => {
                 let ohs = self.lower_expr(ohs);
@@ -490,9 +489,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             None => FunctionRetTy::Default(span),
         };
         let ast_decl = FnDecl { inputs: vec![], output };
-        let decl = self.arena.alloc(
-            self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None).into_inner(),
-        );
+        let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
         let body_id = self.lower_fn_body(&ast_decl, |this| {
             this.generator_kind = Some(hir::GeneratorKind::Async(async_gen_kind));
             body(this)
@@ -686,7 +683,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         // Lower outside new scope to preserve `is_in_loop_condition`.
         let fn_decl = self.lower_fn_decl(decl, None, false, None);
-        let fn_decl = self.arena.alloc(fn_decl.into_inner());
 
         self.with_new_scopes(move |this| {
             let prev = this.current_item;
@@ -749,7 +745,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
         let fn_decl = self.lower_fn_decl(&outer_decl, None, false, None);
-        let fn_decl = self.arena.alloc(fn_decl.into_inner());
 
         self.with_new_scopes(move |this| {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
@@ -832,7 +827,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let is_unit = fields.is_empty();
         let struct_path = [sym::ops, path];
         let struct_path = self.std_path(span, &struct_path, None, is_unit);
-        let struct_path = hir::QPath::Resolved(None, P(struct_path));
+        let struct_path = hir::QPath::Resolved(None, self.arena.alloc(struct_path));
 
         if is_unit {
             hir::ExprKind::Path(struct_path)
@@ -1341,9 +1336,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assoc_fn_name: &str,
         args: &'hir [hir::Expr<'hir>],
     ) -> hir::ExprKind<'hir> {
-        let ty_path = P(self.std_path(span, ty_path_components, None, false));
-        let ty = P(self.ty_path(ty_path_id, span, hir::QPath::Resolved(None, ty_path)));
-        let fn_seg = P(hir::PathSegment::from_ident(Ident::from_str(assoc_fn_name)));
+        let ty_path = self.arena.alloc(self.std_path(span, ty_path_components, None, false));
+        let ty =
+            self.arena.alloc(self.ty_path(ty_path_id, span, hir::QPath::Resolved(None, ty_path)));
+        let fn_seg = self.arena.alloc(hir::PathSegment::from_ident(Ident::from_str(assoc_fn_name)));
         let fn_path = hir::QPath::TypeRelative(ty, fn_seg);
         let fn_expr =
             self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path), ThinVec::new()));
@@ -1354,11 +1350,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         components: &[Symbol],
-        params: Option<P<hir::GenericArgs>>,
+        params: Option<&'hir hir::GenericArgs<'hir>>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
         let path = self.std_path(span, components, params, true);
-        self.expr(span, hir::ExprKind::Path(hir::QPath::Resolved(None, P(path))), attrs)
+        self.expr(
+            span,
+            hir::ExprKind::Path(hir::QPath::Resolved(None, self.arena.alloc(path))),
+            attrs,
+        )
     }
 
     pub(super) fn expr_ident(
@@ -1388,10 +1388,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::Expr<'hir> {
         let expr_path = hir::ExprKind::Path(hir::QPath::Resolved(
             None,
-            P(hir::Path {
+            self.arena.alloc(hir::Path {
                 span,
                 res: Res::Local(binding),
-                segments: hir_vec![hir::PathSegment::from_ident(ident)],
+                segments: arena_vec![self; hir::PathSegment::from_ident(ident)],
             }),
         ));
 
