@@ -22,7 +22,6 @@ use rustc::ty::layout::{Integer, IntegerExt, Size};
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
 
-use smallvec::smallvec;
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -49,7 +48,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, ref place }] =
                 *match_pairs
             {
-                candidate.subcandidates = self.create_or_subcanidates(candidate, place, pats);
+                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
                 return true;
             }
 
@@ -76,7 +75,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    fn create_or_subcanidates<'pat>(
+    fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,
         place: &Place<'tcx>,
@@ -84,18 +83,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
             .map(|pat| {
-                let mut candidate = Candidate {
-                    span: pat.span,
-                    has_guard: candidate.has_guard,
-                    needs_otherwise_block: candidate.needs_otherwise_block,
-                    match_pairs: smallvec![MatchPair { place: place.clone(), pattern: pat }],
-                    bindings: vec![],
-                    ascriptions: vec![],
-                    subcandidates: vec![],
-                    otherwise_block: None,
-                    pre_binding_block: None,
-                    next_candidate_pre_binding_block: None,
-                };
+                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard);
                 self.simplify_candidate(&mut candidate);
                 candidate
             })
