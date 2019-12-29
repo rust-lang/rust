@@ -228,11 +228,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<RegionName> {
         let error_region = self.to_error_region(fr)?;
 
+        let tcx = mbcx.infcx.tcx;
+
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match error_region {
             ty::ReEarlyBound(ebr) => {
                 if ebr.has_name() {
-                    let span = mbcx.infcx.tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
+                    let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
                     Some(RegionName {
                         name: ebr.name,
                         source: RegionNameSource::NamedEarlyBoundRegion(span),
@@ -249,8 +251,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             ty::ReFree(free_region) => match free_region.bound_region {
                 ty::BoundRegion::BrNamed(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
-                    let span =
-                        mbcx.infcx.tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
+                    let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
                     debug!(
                         "bound region named: {:?}, is_named: {:?}",
                         name,
@@ -285,7 +286,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                     if let DefiningTy::Closure(def_id, substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
-                            mbcx.infcx.tcx.hir().expect_expr(mir_hir_id).kind
+                            tcx.hir().expect_expr(mir_hir_id).kind
                         {
                             span
                         } else {
@@ -293,7 +294,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         };
                         let region_name = renctx.synthesize_region_name();
 
-                        let closure_kind_ty = substs.as_closure().kind_ty(def_id, mbcx.infcx.tcx);
+                        let closure_kind_ty = substs.as_closure().kind_ty(def_id, tcx);
                         let note = match closure_kind_ty.to_opt_closure_kind() {
                             Some(ty::ClosureKind::Fn) => {
                                 "closure implements `Fn`, so references to captured variables \
