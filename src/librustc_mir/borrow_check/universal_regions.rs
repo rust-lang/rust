@@ -5,7 +5,7 @@
 //! fn foo<'a, 'b, 'c: 'b>() { }
 //! ```
 //!
-//! here we would be returning a map assigning each of `{'a, 'b, 'c}`
+//! here we would return a map assigning each of `{'a, 'b, 'c}`
 //! to an index, as well as the `FreeRegionMap` which can compute
 //! relationships between them.
 //!
