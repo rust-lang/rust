@@ -1122,7 +1122,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,
-                        Some(this.arena.alloc(expr)),
+                        Some(expr),
                         parameter.pat,
                         hir::LocalSource::AsyncFn,
                     );
@@ -1152,7 +1152,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let move_stmt = this.stmt_let_pat(
                         AttrVec::new(),
                         desugared_span,
-                        Some(this.arena.alloc(move_expr)),
+                        Some(move_expr),
                         move_pat,
                         hir::LocalSource::AsyncFn,
                     );
@@ -1163,7 +1163,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let pattern_stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,
-                        Some(this.arena.alloc(pattern_expr)),
+                        Some(pattern_expr),
                         parameter.pat,
                         hir::LocalSource::AsyncFn,
                     );
