@@ -1585,7 +1585,7 @@ impl<'a> Formatter<'a> {
     ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
     ///         if let Some(width) = formatter.width() {
     ///             // If we received a width, we use it
-    ///             write!(formatter, "{:width$}", &format!("Foo({})", self.0), width = width)
+    ///             write!(formatter, "{:width$}", format_args!("Foo({})", self.0), width = width)
     ///         } else {
     ///             // Otherwise we do nothing special
     ///             write!(formatter, "Foo({})", self.0)
