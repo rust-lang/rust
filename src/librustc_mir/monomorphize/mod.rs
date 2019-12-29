@@ -12,17 +12,17 @@ pub fn custom_coerce_unsize_info<'tcx>(
 ) -> CustomCoerceUnsized {
     let def_id = tcx.lang_items().coerce_unsized_trait().unwrap();
 
-    let trait_ref = ty::Binder::bind(ty::TraitRef {
-        def_id: def_id,
-        substs: tcx.mk_substs_trait(source_ty, &[target_ty.into()]),
+    let trait_ref =
+        ty::TraitRef { def_id, substs: tcx.mk_substs_trait(source_ty, &[target_ty.into()]) };
+
+    let impl_def_id = tcx.infer_ctxt().enter(|ref infcx| {
+        match infcx.resolve_vtable(ty::ParamEnv::reveal_all(), trait_ref).unwrap() {
+            traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => impl_def_id,
+            vtable => {
+                bug!("invalid `CoerceUnsized` vtable: {:?}", vtable);
+            }
+        }
     });
 
-    match tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref)) {
-        traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
-            tcx.coerce_unsized_info(impl_def_id).custom_kind.unwrap()
-        }
-        vtable => {
-            bug!("invalid `CoerceUnsized` vtable: {:?}", vtable);
-        }
-    }
+    tcx.coerce_unsized_info(impl_def_id).custom_kind.unwrap()
 }

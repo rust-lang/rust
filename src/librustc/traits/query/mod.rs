@@ -15,6 +15,7 @@ pub mod method_autoderef;
 pub mod normalize;
 pub mod normalize_erasing_regions;
 pub mod outlives_bounds;
+pub mod resolve_vtable;
 pub mod type_op;
 
 pub type CanonicalProjectionGoal<'tcx> =
@@ -23,6 +24,8 @@ pub type CanonicalProjectionGoal<'tcx> =
 pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
 
 pub type CanonicalPredicateGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
+
+pub type CanonicalTraitGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::PolyTraitRef<'tcx>>>;
 
 pub type CanonicalTypeOpAscribeUserTypeGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::ascribe_user_type::AscribeUserType<'tcx>>>;

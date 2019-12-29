@@ -3,7 +3,7 @@ use crate::mir;
 use crate::mir::interpret::ConstEvalInput;
 use crate::traits;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTraitGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
@@ -592,17 +592,15 @@ rustc_queries! {
             no_force
             desc { |tcx| "finding all methods for trait {}", tcx.def_path_str(key.def_id()) }
         }
-    }
 
-    Codegen {
-        query codegen_fulfill_obligation(
-            key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-        ) -> Vtable<'tcx, ()> {
+        /// Do not call this query directly: invoke `infcx.resolve_vtable()` instead.
+        query resolve_vtable(
+            goal: CanonicalTraitGoal<'tcx>
+        ) -> Result<&'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vtable<'tcx, ()>>>, NoSolution> {
             no_force
-            cache_on_disk_if { true }
             desc { |tcx|
-                "checking if `{}` fulfills its obligations",
-                tcx.def_path_str(key.1.def_id())
+                "resolving vtable for `{}`",
+                tcx.def_path_str(goal.value.value.def_id())
             }
         }
     }

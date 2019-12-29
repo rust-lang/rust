@@ -19,6 +19,7 @@ mod implied_outlives_bounds;
 pub mod lowering;
 mod normalize_erasing_regions;
 mod normalize_projection_ty;
+mod resolve_vtable;
 mod type_op;
 
 use rustc::ty::query::Providers;
@@ -31,5 +32,6 @@ pub fn provide(p: &mut Providers<'_>) {
     chalk_context::provide(p);
     normalize_projection_ty::provide(p);
     normalize_erasing_regions::provide(p);
+    resolve_vtable::provide(p);
     type_op::provide(p);
 }

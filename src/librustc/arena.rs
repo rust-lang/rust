@@ -65,6 +65,12 @@ macro_rules! arena_types {
                         Vec<rustc::traits::query::outlives_bounds::OutlivesBound<'tcx>>
                     >
                 >,
+            [] resolve_vtables:
+                rustc::infer::canonical::Canonical<'tcx,
+                    rustc::infer::canonical::QueryResponse<'tcx,
+                        rustc::traits::Vtable<'tcx, ()>
+                    >
+                >,
             [] type_op_subtype:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx, ()>

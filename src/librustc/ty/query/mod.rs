@@ -22,7 +22,7 @@ use crate::traits::query::method_autoderef::MethodAutoderefStepsResult;
 use crate::traits::query::normalize::NormalizationResult;
 use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTraitGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
 };
