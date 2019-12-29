@@ -686,7 +686,6 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     stability::provide(providers);
     rustc_passes::provide(providers);
     rustc_traits::provide(providers);
-    middle::region::provide(providers);
     rustc_metadata::provide(providers);
     lint::provide(providers);
     rustc_lint::provide(providers);

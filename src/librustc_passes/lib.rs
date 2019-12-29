@@ -31,6 +31,7 @@ mod lib_features;
 mod liveness;
 pub mod loops;
 mod reachable;
+mod region;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_const::provide(providers);
@@ -41,4 +42,5 @@ pub fn provide(providers: &mut Providers<'_>) {
     liveness::provide(providers);
     intrinsicck::provide(providers);
     reachable::provide(providers);
+    region::provide(providers);
 }
