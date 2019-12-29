@@ -1603,23 +1603,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    /// Get the region outlived by `longer_fr` and live at `element`.
-    crate fn region_from_element(&self, longer_fr: RegionVid, element: RegionElement) -> RegionVid {
-        match element {
-            RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
-            RegionElement::RootUniversalRegion(r) => r,
-            RegionElement::PlaceholderRegion(error_placeholder) => self
-                .definitions
-                .iter_enumerated()
-                .filter_map(|(r, definition)| match definition.origin {
-                    NLLRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
-                    _ => None,
-                })
-                .next()
-                .unwrap(),
-        }
-    }
-
     /// We have a constraint `fr1: fr2` that is not satisfied, where
     /// `fr2` represents some universal region. Here, `r` is some
     /// region where we know that `fr1: r` and this function has the

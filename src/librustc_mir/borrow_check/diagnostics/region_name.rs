@@ -3,7 +3,6 @@ use std::fmt::{self, Display};
 use rustc::ty::print::RegionHighlightMode;
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::{self, RegionVid, Ty};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -50,46 +49,6 @@ crate enum RegionNameSource {
     AnonRegionFromYieldTy(Span, String),
     /// An anonymous region from an async fn.
     AnonRegionFromAsyncFn(Span),
-}
-
-/// Records region names that have been assigned before so that we can use the same ones in later
-/// diagnostics.
-#[derive(Debug, Clone)]
-crate struct RegionErrorNamingCtx {
-    /// Record the region names generated for each region in the given
-    /// MIR def so that we can reuse them later in help/error messages.
-    renctx: FxHashMap<RegionVid, RegionName>,
-
-    /// The counter for generating new region names.
-    counter: usize,
-}
-
-impl RegionErrorNamingCtx {
-    crate fn new() -> Self {
-        Self { counter: 1, renctx: FxHashMap::default() }
-    }
-
-    /// Get the name of `region` if it has previously been named.
-    crate fn get(&self, region: &RegionVid) -> Option<&RegionName> {
-        self.renctx.get(region)
-    }
-
-    /// Give `region` the name `name`.
-    crate fn insert(&mut self, region: RegionVid, name: RegionName) {
-        self.renctx.insert(region, name);
-    }
-
-    /// Creates a synthetic region named `'N`, where `N` is the next value of the counter. Then,
-    /// increment the counter.
-    ///
-    /// The name is not memoized. A separate call to `insert` should be made later. (Currently,
-    /// this happens at the end of `give_region_a_name`).
-    crate fn synthesize_region_name(&mut self) -> Symbol {
-        let c = self.counter;
-        self.counter += 1;
-
-        Symbol::intern(&format!("'{:?}", c))
-    }
 }
 
 impl RegionName {
@@ -159,6 +118,17 @@ impl Display for RegionName {
 }
 
 impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
+    /// Generate a synthetic region named `'N`, where `N` is the next value of the counter. Then,
+    /// increment the counter.
+    ///
+    /// This is _not_ idempotent. Call `give_region_a_name` when possible.
+    fn synthesize_region_name(&self) -> Symbol {
+        let mut counter = self.next_region_name.try_borrow_mut().unwrap();
+        let c = *counter;
+        *counter += 1;
+        Symbol::intern(&format!("'{:?}", c))
+    }
+
     /// Maps from an internal MIR region vid to something that we can
     /// report to the user. In some cases, the region vids will map
     /// directly to lifetimes that the user has a name for (e.g.,
@@ -166,6 +136,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// have to find some way to identify the lifetime to the user. To
     /// that end, this function takes a "diagnostic" so that it can
     /// create auxiliary notes as needed.
+    ///
+    /// The names are memoized, so this is both cheap to recompute and idempotent.
     ///
     /// Example (function arguments):
     ///
@@ -184,28 +156,28 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// ```
     ///
     /// and then return the name `'1` for us to use.
-    crate fn give_region_a_name(
-        &self,
-        renctx: &mut RegionErrorNamingCtx,
-        fr: RegionVid,
-    ) -> Option<RegionName> {
-        debug!("give_region_a_name(fr={:?}, counter={:?})", fr, renctx.counter);
+    crate fn give_region_a_name(&self, fr: RegionVid) -> Option<RegionName> {
+        debug!(
+            "give_region_a_name(fr={:?}, counter={:?})",
+            fr,
+            self.next_region_name.try_borrow().unwrap()
+        );
 
         assert!(self.regioncx.universal_regions().is_universal_region(fr));
 
-        if let Some(value) = renctx.get(&fr) {
+        if let Some(value) = self.region_names.try_borrow_mut().unwrap().get(&fr) {
             return Some(value.clone());
         }
 
         let value = self
-            .give_name_from_error_region(fr, renctx)
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_arguments(fr, renctx))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_upvars(fr, renctx))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_output(fr, renctx))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_yield_ty(fr, renctx));
+            .give_name_from_error_region(fr)
+            .or_else(|| self.give_name_if_anonymous_region_appears_in_arguments(fr))
+            .or_else(|| self.give_name_if_anonymous_region_appears_in_upvars(fr))
+            .or_else(|| self.give_name_if_anonymous_region_appears_in_output(fr))
+            .or_else(|| self.give_name_if_anonymous_region_appears_in_yield_ty(fr));
 
         if let Some(ref value) = value {
-            renctx.insert(fr, value.clone());
+            self.region_names.try_borrow_mut().unwrap().insert(fr, value.clone());
         }
 
         debug!("give_region_a_name: gave name {:?}", value);
@@ -216,11 +188,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// *user* has a name for. In that case, we'll be able to map
     /// `fr` to a `Region<'tcx>`, and that region will be one of
     /// named variants.
-    fn give_name_from_error_region(
-        &self,
-        fr: RegionVid,
-        renctx: &mut RegionErrorNamingCtx,
-    ) -> Option<RegionName> {
+    fn give_name_from_error_region(&self, fr: RegionVid) -> Option<RegionName> {
         let error_region = self.to_error_region(fr)?;
 
         let tcx = self.infcx.tcx;
@@ -262,7 +230,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         // happen if we have an elided name in an async fn for example: the
                         // compiler will generate a region named `'_`, but reporting such a name is
                         // not actually useful, so we synthesize a name for it instead.
-                        let name = renctx.synthesize_region_name();
+                        let name = self.synthesize_region_name();
                         Some(RegionName {
                             name,
                             source: RegionNameSource::AnonRegionFromAsyncFn(span),
@@ -287,7 +255,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         } else {
                             bug!("Closure is not defined by a closure expr");
                         };
-                        let region_name = renctx.synthesize_region_name();
+                        let region_name = self.synthesize_region_name();
 
                         let closure_kind_ty = substs.as_closure().kind_ty(def_id, tcx);
                         let note = match closure_kind_ty.to_opt_closure_kind() {
@@ -342,7 +310,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     fn give_name_if_anonymous_region_appears_in_arguments(
         &self,
         fr: RegionVid,
-        renctx: &mut RegionErrorNamingCtx,
     ) -> Option<RegionName> {
         let implicit_inputs = self.regioncx.universal_regions().defining_ty.implicit_inputs();
         let argument_index = self.regioncx.get_argument_index_for_region(self.infcx.tcx, fr)?;
@@ -350,12 +317,12 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
             [implicit_inputs + argument_index];
         if let Some(region_name) =
-            self.give_name_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index, renctx)
+            self.give_name_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index)
         {
             return Some(region_name);
         }
 
-        self.give_name_if_we_cannot_match_hir_ty(fr, arg_ty, renctx)
+        self.give_name_if_we_cannot_match_hir_ty(fr, arg_ty)
     }
 
     fn give_name_if_we_can_match_hir_ty_from_argument(
@@ -363,7 +330,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
         argument_index: usize,
-        renctx: &mut RegionErrorNamingCtx,
     ) -> Option<RegionName> {
         let mir_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id)?;
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
@@ -376,12 +342,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             // (`give_name_if_anonymous_region_appears_in_arguments`).
             hir::TyKind::Infer => None,
 
-            _ => self.give_name_if_we_can_match_hir_ty(
-                needle_fr,
-                argument_ty,
-                argument_hir_ty,
-                renctx,
-            ),
+            _ => self.give_name_if_we_can_match_hir_ty(needle_fr, argument_ty, argument_hir_ty),
         }
     }
 
@@ -400,9 +361,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         &self,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
-        renctx: &mut RegionErrorNamingCtx,
     ) -> Option<RegionName> {
-        let counter = renctx.counter;
+        let counter = *self.next_region_name.try_borrow().unwrap();
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(needle_fr, counter);
         let type_name = self.infcx.extract_type_name(&argument_ty, Some(highlight)).0;
@@ -425,7 +385,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 // This counter value will already have been used, so this function will increment
                 // it so the next value will be used next and return the region name that would
                 // have been used.
-                name: renctx.synthesize_region_name(),
+                name: self.synthesize_region_name(),
                 source: RegionNameSource::CannotMatchHirTy(span, type_name),
             })
         } else {
@@ -461,7 +421,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
         argument_hir_ty: &hir::Ty<'_>,
-        renctx: &mut RegionErrorNamingCtx,
     ) -> Option<RegionName> {
         let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> =
             &mut vec![(argument_ty, argument_hir_ty)];
@@ -479,7 +438,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::TyKind::Rptr(_lifetime, referent_hir_ty),
                 ) => {
                     if region.to_region_vid() == needle_fr {
-                        let region_name = renctx.synthesize_region_name();
+                        let region_name = self.synthesize_region_name();
 
                         // Just grab the first character, the `&`.
                         let source_map = self.infcx.tcx.sess.source_map();
@@ -512,7 +471,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                                     substs,
                                     needle_fr,
                                     last_segment,
-                                    renctx,
                                     search_stack,
                                 ) {
                                     return Some(name);
@@ -557,7 +515,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         substs: SubstsRef<'tcx>,
         needle_fr: RegionVid,
         last_segment: &'hir hir::PathSegment<'hir>,
-        renctx: &mut RegionErrorNamingCtx,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<RegionName> {
         // Did the user give explicit arguments? (e.g., `Foo<..>`)
@@ -569,7 +526,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             | hir::LifetimeName::Error
             | hir::LifetimeName::Static
             | hir::LifetimeName::Underscore => {
-                let region_name = renctx.synthesize_region_name();
+                let region_name = self.synthesize_region_name();
                 let ampersand_span = lifetime.span;
                 Some(RegionName {
                     name: region_name,
@@ -650,18 +607,14 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///  | let x = Some(&22);
     ///        - fully elaborated type of `x` is `Option<&'1 u32>`
     /// ```
-    fn give_name_if_anonymous_region_appears_in_upvars(
-        &self,
-        fr: RegionVid,
-        renctx: &mut RegionErrorNamingCtx,
-    ) -> Option<RegionName> {
+    fn give_name_if_anonymous_region_appears_in_upvars(&self, fr: RegionVid) -> Option<RegionName> {
         let upvar_index = self.regioncx.get_upvar_index_for_region(self.infcx.tcx, fr)?;
         let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
             self.infcx.tcx,
             &self.upvars,
             upvar_index,
         );
-        let region_name = renctx.synthesize_region_name();
+        let region_name = self.synthesize_region_name();
 
         Some(RegionName {
             name: region_name,
@@ -673,11 +626,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// must be a closure since, in a free fn, such an argument would
     /// have to either also appear in an argument (if using elision)
     /// or be early bound (named, not in argument).
-    fn give_name_if_anonymous_region_appears_in_output(
-        &self,
-        fr: RegionVid,
-        renctx: &mut RegionErrorNamingCtx,
-    ) -> Option<RegionName> {
+    fn give_name_if_anonymous_region_appears_in_output(&self, fr: RegionVid) -> Option<RegionName> {
         let tcx = self.infcx.tcx;
 
         let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
@@ -687,7 +636,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }
 
         let mut highlight = RegionHighlightMode::default();
-        highlight.highlighting_region_vid(fr, renctx.counter);
+        highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
         let type_name = self.infcx.extract_type_name(&return_ty, Some(highlight)).0;
 
         let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id).expect("non-local mir");
@@ -714,7 +663,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             // This counter value will already have been used, so this function will increment it
             // so the next value will be used next and return the region name that would have been
             // used.
-            name: renctx.synthesize_region_name(),
+            name: self.synthesize_region_name(),
             source: RegionNameSource::AnonRegionFromOutput(
                 return_span,
                 mir_description.to_string(),
@@ -726,7 +675,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     fn give_name_if_anonymous_region_appears_in_yield_ty(
         &self,
         fr: RegionVid,
-        renctx: &mut RegionErrorNamingCtx,
     ) -> Option<RegionName> {
         // Note: generators from `async fn` yield `()`, so we don't have to
         // worry about them here.
@@ -740,7 +688,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }
 
         let mut highlight = RegionHighlightMode::default();
-        highlight.highlighting_region_vid(fr, renctx.counter);
+        highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
         let type_name = self.infcx.extract_type_name(&yield_ty, Some(highlight)).0;
 
         let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id).expect("non-local mir");
@@ -759,7 +707,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         );
 
         Some(RegionName {
-            name: renctx.synthesize_region_name(),
+            name: self.synthesize_region_name(),
             source: RegionNameSource::AnonRegionFromYieldTy(yield_span, type_name),
         })
     }

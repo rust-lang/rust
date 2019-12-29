@@ -16,8 +16,8 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use crate::borrow_check::{
-    borrow_set::BorrowData, diagnostics::RegionErrorNamingCtx, nll::ConstraintDescription,
-    region_infer::Cause, MirBorrowckCtxt, WriteKind,
+    borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
+    WriteKind,
 };
 
 use super::{find_use, RegionName, UseSpans};
@@ -267,8 +267,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
         );
 
-        let mut renctx = RegionErrorNamingCtx::new();
-        let outlived_fr_name = self.give_region_a_name(&mut renctx, outlived_region);
+        let outlived_fr_name = self.give_region_a_name(outlived_region);
 
         (category, from_closure, span, outlived_fr_name)
     }

@@ -19,7 +19,7 @@ use crate::borrow_check::{
     MirBorrowckCtxt,
 };
 
-use super::{OutlivesSuggestionBuilder, RegionErrorNamingCtx, RegionName, RegionNameSource};
+use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 
 impl ConstraintDescription for ConstraintCategory {
     fn description(&self) -> &'static str {
@@ -152,8 +152,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // Iterate through all the errors, producing a diagnostic for each one. The diagnostics are
         // buffered in the `MirBorrowckCtxt`.
 
-        // TODO(mark-i-m): Would be great to get rid of the naming context.
-        let mut region_naming = RegionErrorNamingCtx::new();
         let mut outlives_suggestion = OutlivesSuggestionBuilder::default();
 
         for nll_error in nll_errors.into_iter() {
@@ -243,7 +241,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             fr_origin,
                             shorter_fr,
                             &mut outlives_suggestion,
-                            &mut region_naming,
                         );
                     } else {
                         // We only report the first error, so as not to overwhelm the user. See
@@ -262,7 +259,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         // Emit one outlives suggestions for each MIR def we borrowck
-        outlives_suggestion.add_suggestion(self, &mut region_naming);
+        outlives_suggestion.add_suggestion(self);
     }
 
     /// Report an error because the universal region `fr` was required to outlive
@@ -279,7 +276,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         fr_origin: NLLRegionVariableOrigin,
         outlived_fr: RegionVid,
         outlives_suggestion: &mut OutlivesSuggestionBuilder,
-        renctx: &mut RegionErrorNamingCtx,
     ) {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
@@ -320,21 +316,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let diag = match (category, fr_is_local, outlived_fr_is_local) {
             (ConstraintCategory::Return, true, false) if self.is_closure_fn_mut(fr) => {
-                self.report_fnmut_error(&errci, renctx)
+                self.report_fnmut_error(&errci)
             }
             (ConstraintCategory::Assignment, true, false)
             | (ConstraintCategory::CallArgument, true, false) => {
-                let mut db = self.report_escaping_data_error(&errci, renctx);
+                let mut db = self.report_escaping_data_error(&errci);
 
-                outlives_suggestion.intermediate_suggestion(self, &errci, renctx, &mut db);
+                outlives_suggestion.intermediate_suggestion(self, &errci, &mut db);
                 outlives_suggestion.collect_constraint(fr, outlived_fr);
 
                 db
             }
             _ => {
-                let mut db = self.report_general_error(&errci, renctx);
+                let mut db = self.report_general_error(&errci);
 
-                outlives_suggestion.intermediate_suggestion(self, &errci, renctx, &mut db);
+                outlives_suggestion.intermediate_suggestion(self, &errci, &mut db);
                 outlives_suggestion.collect_constraint(fr, outlived_fr);
 
                 db
@@ -360,11 +356,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///            executing...
     ///    = note: ...therefore, returned references to captured variables will escape the closure
     /// ```
-    fn report_fnmut_error(
-        &self,
-        errci: &ErrorConstraintInfo,
-        renctx: &mut RegionErrorNamingCtx,
-    ) -> DiagnosticBuilder<'tcx> {
+    fn report_fnmut_error(&self, errci: &ErrorConstraintInfo) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut diag = self
@@ -386,7 +378,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         diag.span_label(*span, message);
 
-        match self.give_region_a_name(renctx, *outlived_fr).unwrap().source {
+        match self.give_region_a_name(*outlived_fr).unwrap().source {
             RegionNameSource::NamedEarlyBoundRegion(fr_span)
             | RegionNameSource::NamedFreeRegion(fr_span)
             | RegionNameSource::SynthesizedFreeEnvRegion(fr_span, _)
@@ -421,11 +413,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// LL |     ref_obj(x)
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
-    fn report_escaping_data_error(
-        &self,
-        errci: &ErrorConstraintInfo,
-        renctx: &mut RegionErrorNamingCtx,
-    ) -> DiagnosticBuilder<'tcx> {
+    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
@@ -456,10 +444,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             || (*category == ConstraintCategory::Assignment && escapes_from == "function")
             || escapes_from == "const"
         {
-            return self.report_general_error(
-                &ErrorConstraintInfo { fr_is_local: true, outlived_fr_is_local: false, ..*errci },
-                renctx,
-            );
+            return self.report_general_error(&ErrorConstraintInfo {
+                fr_is_local: true,
+                outlived_fr_is_local: false,
+                ..*errci
+            });
         }
 
         let mut diag =
@@ -505,11 +494,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it
     ///    |                    is returning data with lifetime `'b`
     /// ```
-    fn report_general_error(
-        &self,
-        errci: &ErrorConstraintInfo,
-        renctx: &mut RegionErrorNamingCtx,
-    ) -> DiagnosticBuilder<'tcx> {
+    fn report_general_error(&self, errci: &ErrorConstraintInfo) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo {
             fr,
             fr_is_local,
@@ -526,9 +511,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mir_def_name =
             if self.infcx.tcx.is_closure(self.mir_def_id) { "closure" } else { "function" };
 
-        let fr_name = self.give_region_a_name(renctx, *fr).unwrap();
+        let fr_name = self.give_region_a_name(*fr).unwrap();
         fr_name.highlight_region_name(&mut diag);
-        let outlived_fr_name = self.give_region_a_name(renctx, *outlived_fr).unwrap();
+        let outlived_fr_name = self.give_region_a_name(*outlived_fr).unwrap();
         outlived_fr_name.highlight_region_name(&mut diag);
 
         match (category, outlived_fr_is_local, fr_is_local) {

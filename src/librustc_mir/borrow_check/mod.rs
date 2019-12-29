@@ -11,7 +11,8 @@ use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, RegionVid, TyCtxt};
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
@@ -21,6 +22,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 
 use smallvec::SmallVec;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::mem;
 use std::rc::Rc;
@@ -39,7 +41,7 @@ use crate::dataflow::{do_dataflow, DebugFormatted};
 use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::transform::MirSource;
 
-use self::diagnostics::AccessKind;
+use self::diagnostics::{AccessKind, RegionName};
 use self::flows::Flows;
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
@@ -290,6 +292,8 @@ fn do_mir_borrowck<'a, 'tcx>(
         dominators,
         upvars,
         local_names,
+        region_names: RefCell::default(),
+        next_region_name: RefCell::new(1),
     };
 
     // Compute and report region errors, if any.
@@ -489,6 +493,13 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Names of local (user) variables (extracted from `var_debug_info`).
     local_names: IndexVec<Local, Option<Name>>,
+
+    /// Record the region names generated for each region in the given
+    /// MIR def so that we can reuse them later in help/error messages.
+    region_names: RefCell<FxHashMap<RegionVid, RegionName>>,
+
+    /// The counter for generating new region names.
+    next_region_name: RefCell<usize>,
 }
 
 // Check that:
