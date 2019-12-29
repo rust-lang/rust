@@ -1,4 +1,4 @@
-//! This file builds up the `ScopeTree`, which describes
+//! This file declares the `ScopeTree` type, which describes
 //! the parent links in the region hierarchy.
 //!
 //! For more information about how MIR-based region-checking works,
