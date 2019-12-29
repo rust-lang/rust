@@ -3,7 +3,7 @@
 use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
     DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
-    ImplementationProviderCapability, RenameOptions, RenameProviderCapability,
+    ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
     SelectionRangeProviderCapability, ServerCapabilities, SignatureHelpOptions,
     TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
     TypeDefinitionProviderCapability, WorkDoneProgressOptions,
@@ -16,7 +16,7 @@ pub fn server_capabilities() -> ServerCapabilities {
             change: Some(TextDocumentSyncKind::Full),
             will_save: None,
             will_save_wait_until: None,
-            save: None,
+            save: Some(SaveOptions::default()),
         })),
         hover_provider: Some(true),
         completion_provider: Some(CompletionOptions {

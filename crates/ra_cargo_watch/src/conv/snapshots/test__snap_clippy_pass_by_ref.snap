@@ -1,0 +1,85 @@
+---
+source: crates/ra_cargo_watch/src/conv/test.rs
+expression: diag
+---
+MappedRustDiagnostic {
+    location: Location {
+        uri: "file:///test/compiler/mir/tagset.rs",
+        range: Range {
+            start: Position {
+                line: 41,
+                character: 23,
+            },
+            end: Position {
+                line: 41,
+                character: 28,
+            },
+        },
+    },
+    diagnostic: Diagnostic {
+        range: Range {
+            start: Position {
+                line: 41,
+                character: 23,
+            },
+            end: Position {
+                line: 41,
+                character: 28,
+            },
+        },
+        severity: Some(
+            Warning,
+        ),
+        code: Some(
+            String(
+                "trivially_copy_pass_by_ref",
+            ),
+        ),
+        source: Some(
+            "clippy",
+        ),
+        message: "this argument is passed by reference, but would be more efficient if passed by value\n#[warn(clippy::trivially_copy_pass_by_ref)] implied by #[warn(clippy::all)]\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref",
+        related_information: Some(
+            [
+                DiagnosticRelatedInformation {
+                    location: Location {
+                        uri: "file:///test/compiler/lib.rs",
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 8,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 19,
+                            },
+                        },
+                    },
+                    message: "lint level defined here",
+                },
+            ],
+        ),
+        tags: None,
+    },
+    suggested_fixes: [
+        SuggestedFix {
+            title: "consider passing by value instead: \'self\'",
+            location: Location {
+                uri: "file:///test/compiler/mir/tagset.rs",
+                range: Range {
+                    start: Position {
+                        line: 41,
+                        character: 23,
+                    },
+                    end: Position {
+                        line: 41,
+                        character: 28,
+                    },
+                },
+            },
+            replacement: "self",
+            applicability: Unspecified,
+            diagnostics: [],
+        },
+    ],
+}

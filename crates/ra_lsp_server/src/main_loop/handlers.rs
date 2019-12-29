@@ -654,6 +654,29 @@ pub fn handle_code_action(
         res.push(action.into());
     }
 
+    for fix in world.check_watcher.read().fixes_for(&params.text_document.uri).into_iter().flatten()
+    {
+        let fix_range = fix.location.range.conv_with(&line_index);
+        if fix_range.intersection(&range).is_none() {
+            continue;
+        }
+
+        let edits = vec![TextEdit::new(fix.location.range, fix.replacement.clone())];
+        let mut edit_map = std::collections::HashMap::new();
+        edit_map.insert(fix.location.uri.clone(), edits);
+        let edit = WorkspaceEdit::new(edit_map);
+
+        let action = CodeAction {
+            title: fix.title.clone(),
+            kind: Some("quickfix".to_string()),
+            diagnostics: Some(fix.diagnostics.clone()),
+            edit: Some(edit),
+            command: None,
+            is_preferred: None,
+        };
+        res.push(action.into());
+    }
+
     for assist in assists {
         let title = assist.change.label.clone();
         let edit = assist.change.try_conv_with(&world)?;
@@ -820,7 +843,7 @@ pub fn publish_diagnostics(
     let _p = profile("publish_diagnostics");
     let uri = world.file_id_to_uri(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let diagnostics = world
+    let mut diagnostics: Vec<Diagnostic> = world
         .analysis()
         .diagnostics(file_id)?
         .into_iter()
@@ -834,6 +857,9 @@ pub fn publish_diagnostics(
             tags: None,
         })
         .collect();
+    if let Some(check_diags) = world.check_watcher.read().diagnostics_for(&uri) {
+        diagnostics.extend(check_diags.iter().cloned());
+    }
     Ok(req::PublishDiagnosticsParams { uri, diagnostics, version: None })
 }
 

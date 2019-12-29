@@ -12,6 +12,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use lsp_server::ErrorCode;
 use lsp_types::Url;
 use parking_lot::RwLock;
+use ra_cargo_watch::{CheckOptions, CheckWatcher, CheckWatcherSharedState};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
     SourceRootId,
@@ -34,6 +35,7 @@ pub struct Options {
     pub supports_location_link: bool,
     pub line_folding_only: bool,
     pub max_inlay_hint_length: Option<usize>,
+    pub cargo_watch: CheckOptions,
 }
 
 /// `WorldState` is the primary mutable state of the language server
@@ -52,6 +54,7 @@ pub struct WorldState {
     pub vfs: Arc<RwLock<Vfs>>,
     pub task_receiver: Receiver<VfsTask>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
+    pub check_watcher: CheckWatcher,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -61,6 +64,7 @@ pub struct WorldSnapshot {
     pub analysis: Analysis,
     pub vfs: Arc<RwLock<Vfs>>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
+    pub check_watcher: Arc<RwLock<CheckWatcherSharedState>>,
 }
 
 impl WorldState {
@@ -127,6 +131,10 @@ impl WorldState {
         }
         change.set_crate_graph(crate_graph);
 
+        // FIXME: Figure out the multi-workspace situation
+        let check_watcher =
+            CheckWatcher::new(&options.cargo_watch, folder_roots.first().cloned().unwrap());
+
         let mut analysis_host = AnalysisHost::new(lru_capacity, feature_flags);
         analysis_host.apply_change(change);
         WorldState {
@@ -138,6 +146,7 @@ impl WorldState {
             vfs: Arc::new(RwLock::new(vfs)),
             task_receiver,
             latest_requests: Default::default(),
+            check_watcher,
         }
     }
 
@@ -199,6 +208,7 @@ impl WorldState {
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
             latest_requests: Arc::clone(&self.latest_requests),
+            check_watcher: self.check_watcher.shared.clone(),
         }
     }
 

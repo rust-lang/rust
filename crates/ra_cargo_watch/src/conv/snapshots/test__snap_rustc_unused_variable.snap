@@ -1,0 +1,70 @@
+---
+source: crates/ra_cargo_watch/src/conv/test.rs
+expression: diag
+---
+MappedRustDiagnostic {
+    location: Location {
+        uri: "file:///test/driver/subcommand/repl.rs",
+        range: Range {
+            start: Position {
+                line: 290,
+                character: 8,
+            },
+            end: Position {
+                line: 290,
+                character: 11,
+            },
+        },
+    },
+    diagnostic: Diagnostic {
+        range: Range {
+            start: Position {
+                line: 290,
+                character: 8,
+            },
+            end: Position {
+                line: 290,
+                character: 11,
+            },
+        },
+        severity: Some(
+            Warning,
+        ),
+        code: Some(
+            String(
+                "unused_variables",
+            ),
+        ),
+        source: Some(
+            "rustc",
+        ),
+        message: "unused variable: `foo`\n#[warn(unused_variables)] on by default",
+        related_information: None,
+        tags: Some(
+            [
+                Unnecessary,
+            ],
+        ),
+    },
+    suggested_fixes: [
+        SuggestedFix {
+            title: "consider prefixing with an underscore: \'_foo\'",
+            location: Location {
+                uri: "file:///test/driver/subcommand/repl.rs",
+                range: Range {
+                    start: Position {
+                        line: 290,
+                        character: 8,
+                    },
+                    end: Position {
+                        line: 290,
+                        character: 11,
+                    },
+                },
+            },
+            replacement: "_foo",
+            applicability: MachineApplicable,
+            diagnostics: [],
+        },
+    ],
+}

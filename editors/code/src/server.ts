@@ -55,6 +55,11 @@ export class Server {
                 publishDecorations: true,
                 lruCapacity: Server.config.lruCapacity,
                 maxInlayHintLength: Server.config.maxInlayHintLength,
+                cargoWatchEnable: Server.config.cargoWatchOptions.enable,
+                cargoWatchArgumets: Server.config.cargoWatchOptions.arguments,
+                cargoWatchCommand: Server.config.cargoWatchOptions.command,
+                cargoWatchAllTargets:
+                    Server.config.cargoWatchOptions.allTargets,
                 excludeGlobs: Server.config.excludeGlobs,
                 useClientWatching: Server.config.useClientWatching,
                 featureFlags: Server.config.featureFlags,

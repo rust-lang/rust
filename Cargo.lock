@@ -899,6 +899,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ra_cargo_watch"
+version = "0.1.0"
+dependencies = [
+ "cargo_metadata 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crossbeam-channel 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "insta 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jod-thread 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lsp-types 0.67.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.44 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "ra_cfg"
 version = "0.1.0"
 dependencies = [
@@ -1059,6 +1073,7 @@ dependencies = [
  "lsp-server 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types 0.67.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_cargo_watch 0.1.0",
  "ra_ide 0.1.0",
  "ra_prof 0.1.0",
  "ra_project_model 0.1.0",
