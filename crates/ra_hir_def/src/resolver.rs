@@ -644,7 +644,7 @@ impl HasResolver for ContainerId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
         match self {
             ContainerId::ModuleId(it) => it.resolver(db),
-            ContainerId::DefWithBodyId(it) => it.resolver(db),
+            ContainerId::DefWithBodyId(it) => it.module(db).resolver(db),
         }
     }
 }

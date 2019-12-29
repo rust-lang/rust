@@ -1,6 +1,7 @@
-use super::infer;
 use insta::assert_snapshot;
 use test_utils::covers;
+
+use super::infer;
 
 #[test]
 fn bug_484() {
@@ -330,4 +331,37 @@ pub fn main_loop() {
     [175; 195) 'FxHash...ault()': HashSet<{unknown}, FxHasher>
     "###
     );
+}
+
+#[test]
+fn issue_2669() {
+    assert_snapshot!(
+        infer(
+            r#"trait A {}
+    trait Write {}
+    struct Response<T> {}
+
+    trait D {
+        fn foo();
+    }
+
+    impl<T:A> D for Response<T> {
+        fn foo() {
+            end();
+            fn end<W: Write>() {
+                let _x: T =  loop {};
+            }
+        }
+    }"#
+        ),
+        @r###"
+    [147; 262) '{     ...     }': ()
+    [161; 164) 'end': fn end<{unknown}>() -> ()
+    [161; 166) 'end()': ()
+    [199; 252) '{     ...     }': ()
+    [221; 223) '_x': !
+    [230; 237) 'loop {}': !
+    [235; 237) '{}': ()
+    "###
+    )
 }
