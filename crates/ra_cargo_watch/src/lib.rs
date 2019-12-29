@@ -36,8 +36,8 @@ pub struct CheckOptions {
 #[derive(Debug)]
 pub struct CheckWatcher {
     pub task_recv: Receiver<CheckTask>,
-    pub cmd_send: Option<Sender<CheckCommand>>,
     pub shared: Arc<RwLock<CheckWatcherSharedState>>,
+    cmd_send: Option<Sender<CheckCommand>>,
     handle: Option<JoinHandle<()>>,
 }
 
@@ -171,7 +171,7 @@ struct CheckWatcherState {
 }
 
 impl CheckWatcherState {
-    pub fn new(
+    fn new(
         options: CheckOptions,
         workspace_root: PathBuf,
         shared: Arc<RwLock<CheckWatcherSharedState>>,
@@ -180,7 +180,7 @@ impl CheckWatcherState {
         CheckWatcherState { options, workspace_root, watcher, last_update_req: None, shared }
     }
 
-    pub fn run(&mut self, task_send: &Sender<CheckTask>, cmd_recv: &Receiver<CheckCommand>) {
+    fn run(&mut self, task_send: &Sender<CheckTask>, cmd_recv: &Receiver<CheckCommand>) {
         loop {
             select! {
                 recv(&cmd_recv) -> cmd => match cmd {
