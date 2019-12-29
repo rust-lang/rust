@@ -96,7 +96,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MemReplace =>
     [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
 
-fn check_replace_option_with_none(cx: &LateContext<'_, '_>, src: &Expr, dest: &Expr, expr_span: Span) {
+fn check_replace_option_with_none(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if let ExprKind::Path(ref replacement_qpath) = src.kind {
         // Check that second argument is `Option::None`
         if match_qpath(replacement_qpath, &paths::OPTION_NONE) {
@@ -134,7 +134,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_, '_>, src: &Expr, dest: &E
     }
 }
 
-fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr, expr_span: Span) {
+fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, expr_span: Span) {
     if let ExprKind::Call(ref repl_func, ref repl_args) = src.kind {
         if_chain! {
             if repl_args.is_empty();
@@ -164,7 +164,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr, expr_span: Sp
     }
 }
 
-fn check_replace_with_default(cx: &LateContext<'_, '_>, src: &Expr, dest: &Expr, expr_span: Span) {
+fn check_replace_with_default(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if let ExprKind::Call(ref repl_func, _) = src.kind {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, expr_span);
