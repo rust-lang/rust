@@ -48,7 +48,7 @@ fn map_macro_span_to_location(
 
 /// Converts a Rust span to a LSP location
 fn map_span_to_location(span: &DiagnosticSpan, workspace_root: &PathBuf) -> Location {
-    if is_from_macro(&span.file_name) && span.expansion.is_some() {
+    if span.expansion.is_some() {
         let expansion = span.expansion.as_ref().unwrap();
         if let Some(macro_range) = map_macro_span_to_location(&expansion, workspace_root) {
             return macro_range;
