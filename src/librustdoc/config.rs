@@ -269,12 +269,7 @@ impl Options {
         let codegen_options = build_codegen_options(matches, error_format);
         let debugging_options = build_debugging_options(matches, error_format);
 
-        let diag = new_handler(
-            error_format,
-            None,
-            debugging_options.treat_err_as_bug,
-            debugging_options.ui_testing(),
-        );
+        let diag = new_handler(error_format, None, &debugging_options);
 
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
