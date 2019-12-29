@@ -943,12 +943,11 @@ pub fn build_session_with_source_map(
     let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
 
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
-
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
     let dont_buffer_diagnostics = sopts.debugging_opts.dont_buffer_diagnostics;
     let report_delayed_bugs = sopts.debugging_opts.report_delayed_bugs;
-
     let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
+    let deduplicate_diagnostics = sopts.debugging_opts.deduplicate_diagnostics.unwrap_or(true);
 
     let write_dest = match diagnostics_output {
         DiagnosticOutput::Default => None,
@@ -964,7 +963,7 @@ pub fn build_session_with_source_map(
             report_delayed_bugs,
             dont_buffer_diagnostics,
             external_macro_backtrace,
-            ..Default::default()
+            deduplicate_diagnostics,
         },
     );
 
