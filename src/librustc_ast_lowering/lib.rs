@@ -1723,17 +1723,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
         } else {
             match decl.output {
-                FunctionRetTy::Ty(ref ty) => match in_band_ty_params {
-                    Some((def_id, _)) if impl_trait_return_allow => {
-                        hir::FunctionRetTy::Return(self.lower_ty(
-                            ty,
-                            ImplTraitContext::OpaqueTy(Some(def_id), hir::OpaqueTyOrigin::FnReturn),
-                        ))
-                    }
-                    _ => hir::FunctionRetTy::Return(
-                        self.lower_ty(ty, ImplTraitContext::disallowed()),
-                    ),
-                },
+                FunctionRetTy::Ty(ref ty) => {
+                    let context = match in_band_ty_params {
+                        Some((def_id, _)) if impl_trait_return_allow => {
+                            ImplTraitContext::OpaqueTy(Some(def_id), hir::OpaqueTyOrigin::FnReturn)
+                        }
+                        _ => ImplTraitContext::disallowed(),
+                    };
+                    hir::FunctionRetTy::Return(self.lower_ty(ty, context))
+                }
                 FunctionRetTy::Default(span) => hir::FunctionRetTy::DefaultReturn(span),
             }
         };
@@ -1961,10 +1959,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::GenericBound<'hir> {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
-            FunctionRetTy::Ty(ty) => self.lower_ty(
-                ty,
-                ImplTraitContext::OpaqueTy(Some(fn_def_id), hir::OpaqueTyOrigin::FnReturn),
-            ),
+            FunctionRetTy::Ty(ty) => {
+                // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
+                // `impl Future` opaque type that `async fn` implicitly
+                // generates.
+                let context =
+                    ImplTraitContext::OpaqueTy(Some(fn_def_id), hir::OpaqueTyOrigin::FnReturn);
+                self.lower_ty(ty, context)
+            }
             FunctionRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
 

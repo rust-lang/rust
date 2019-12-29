@@ -1471,7 +1471,9 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                             &tcx.mir_borrowck(owner).concrete_opaque_types
                         }
                         hir::OpaqueTyOrigin::Misc => {
-                            // We shouldn't leak borrowck results through impl Trait in bindings.
+                            // We shouldn't leak borrowck results through impl trait in bindings.
+                            // For example, we shouldn't be able to tell if `x` in
+                            // `let x: impl Sized + 'a = &()` has type `&'static ()` or `&'a ()`.
                             &tcx.typeck_tables_of(owner).concrete_opaque_types
                         }
                         hir::OpaqueTyOrigin::TypeAlias => {
@@ -1482,9 +1484,6 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         .get(&def_id)
                         .map(|opaque| opaque.concrete_type)
                         .unwrap_or_else(|| {
-                            // This can occur if some error in the
-                            // owner fn prevented us from populating
-                            // the `concrete_opaque_types` table.
                             tcx.sess.delay_span_bug(
                                 DUMMY_SP,
                                 &format!(
@@ -1492,7 +1491,20 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     owner, def_id,
                                 ),
                             );
-                            tcx.types.err
+                            if tcx.typeck_tables_of(owner).tainted_by_errors {
+                                // Some error in the
+                                // owner fn prevented us from populating
+                                // the `concrete_opaque_types` table.
+                                tcx.types.err
+                            } else {
+                                // We failed to resolve the opaque type or it
+                                // resolves to itself. Return the non-revealed
+                                // type, which should result in E0720.
+                                tcx.mk_opaque(
+                                    def_id,
+                                    InternalSubsts::identity_for_item(tcx, def_id),
+                                )
+                            }
                         });
                     debug!("concrete_ty = {:?}", concrete_ty);
                     if concrete_ty.has_erased_regions() {
