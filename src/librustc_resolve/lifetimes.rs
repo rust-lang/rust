@@ -203,7 +203,9 @@ enum Scope<'a> {
         /// Whether or not this binder would serve as the parent
         /// binder for opaque types introduced within. For example:
         ///
+        /// ```text
         ///     fn foo<'a>() -> impl for<'b> Trait<Item = impl Trait2<'a>>
+        /// ```
         ///
         /// Here, the opaque types we create for the `impl Trait`
         /// and `impl Trait2` references will both have the `foo` item
