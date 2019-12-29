@@ -1,0 +1,8 @@
+error: cannot find derive macro `Unresolved` in this scope
+  --> $DIR/deduplicate-diagnostics.rs:4:10
+   |
+LL | #[derive(Unresolved)]
+   |          ^^^^^^^^^^
+
+error: aborting due to previous error
+
