@@ -6,9 +6,9 @@
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
 use crate::def_collector::collect_definitions;
+use crate::imports::ImportDirective;
+use crate::imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use crate::macros::{LegacyBinding, LegacyScope};
-use crate::resolve_imports::ImportDirective;
-use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
 use crate::{CrateLint, Determinacy, PathResult, ResolutionError, VisResolutionError};
 use crate::{

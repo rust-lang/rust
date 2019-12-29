@@ -23,7 +23,7 @@
 //  - `check_crate` finally emits the diagnostics based on the data generated
 //    in the last step
 
-use crate::resolve_imports::ImportDirectiveSubclass;
+use crate::imports::ImportDirectiveSubclass;
 use crate::Resolver;
 
 use errors::pluralize;

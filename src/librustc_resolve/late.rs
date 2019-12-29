@@ -3,7 +3,7 @@
 //! So it just walks through the crate and resolves all the expressions, types, etc.
 //!
 //! If you wonder why there's no `early.rs`, that's because it's split into three files -
-//! `build_reduced_graph.rs`, `macros.rs` and `resolve_imports.rs`.
+//! `build_reduced_graph.rs`, `macros.rs` and `imports.rs`.
 
 use RibKind::*;
 

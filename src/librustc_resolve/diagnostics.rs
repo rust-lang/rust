@@ -19,8 +19,8 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{BytePos, MultiSpan, Span};
 
+use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::path_names_to_string;
-use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::VisResolutionError;
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};

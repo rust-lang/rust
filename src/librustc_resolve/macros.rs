@@ -1,7 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::resolve_imports::ImportResolver;
+use crate::imports::ImportResolver;
 use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};

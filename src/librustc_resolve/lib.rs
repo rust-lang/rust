@@ -60,9 +60,9 @@ use std::{cmp, fmt, iter, ptr};
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
 use diagnostics::{ImportSuggestion, Suggestion};
+use imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver, NameResolution};
 use late::{HasGenericParams, PathSource, Rib, RibKind::*};
 use macros::{LegacyBinding, LegacyScope};
-use resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver, NameResolution};
 
 use rustc_error_codes::*;
 
@@ -72,9 +72,9 @@ mod build_reduced_graph;
 mod check_unused;
 mod def_collector;
 mod diagnostics;
+mod imports;
 mod late;
 mod macros;
-mod resolve_imports;
 
 enum Weak {
     Yes,
