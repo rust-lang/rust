@@ -11,8 +11,8 @@ use std::fmt::Write;
 use std::sync::Arc;
 
 use hir_def::{
-    body::BodySourceMap, child_by_source::ChildBySource, db::DefDatabase, keys,
-    nameres::CrateDefMap, AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
+    body::BodySourceMap, child_by_source::ChildBySource, db::DefDatabase, item_scope::ItemScope,
+    keys, nameres::CrateDefMap, AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::InFile;
 use insta::assert_snapshot;
@@ -163,32 +163,66 @@ fn visit_module(
     module_id: LocalModuleId,
     cb: &mut dyn FnMut(DefWithBodyId),
 ) {
-    for decl in crate_def_map[module_id].scope.declarations() {
-        match decl {
-            ModuleDefId::FunctionId(it) => cb(it.into()),
-            ModuleDefId::ConstId(it) => cb(it.into()),
-            ModuleDefId::StaticId(it) => cb(it.into()),
-            ModuleDefId::TraitId(it) => {
-                let trait_data = db.trait_data(it);
-                for &(_, item) in trait_data.items.iter() {
-                    match item {
-                        AssocItemId::FunctionId(it) => cb(it.into()),
-                        AssocItemId::ConstId(it) => cb(it.into()),
-                        AssocItemId::TypeAliasId(_) => (),
-                    }
-                }
-            }
-            ModuleDefId::ModuleId(it) => visit_module(db, crate_def_map, it.local_id, cb),
-            _ => (),
-        }
-    }
+    visit_scope(db, crate_def_map, &crate_def_map[module_id].scope, cb);
     for impl_id in crate_def_map[module_id].scope.impls() {
         let impl_data = db.impl_data(impl_id);
         for &item in impl_data.items.iter() {
             match item {
-                AssocItemId::FunctionId(it) => cb(it.into()),
-                AssocItemId::ConstId(it) => cb(it.into()),
+                AssocItemId::FunctionId(it) => {
+                    let def = it.into();
+                    cb(def);
+                    let body = db.body(def);
+                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                }
+                AssocItemId::ConstId(it) => {
+                    let def = it.into();
+                    cb(def);
+                    let body = db.body(def);
+                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                }
                 AssocItemId::TypeAliasId(_) => (),
+            }
+        }
+    }
+
+    fn visit_scope(
+        db: &TestDB,
+        crate_def_map: &CrateDefMap,
+        scope: &ItemScope,
+        cb: &mut dyn FnMut(DefWithBodyId),
+    ) {
+        for decl in scope.declarations() {
+            match decl {
+                ModuleDefId::FunctionId(it) => {
+                    let def = it.into();
+                    cb(def);
+                    let body = db.body(def);
+                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                }
+                ModuleDefId::ConstId(it) => {
+                    let def = it.into();
+                    cb(def);
+                    let body = db.body(def);
+                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                }
+                ModuleDefId::StaticId(it) => {
+                    let def = it.into();
+                    cb(def);
+                    let body = db.body(def);
+                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                }
+                ModuleDefId::TraitId(it) => {
+                    let trait_data = db.trait_data(it);
+                    for &(_, item) in trait_data.items.iter() {
+                        match item {
+                            AssocItemId::FunctionId(it) => cb(it.into()),
+                            AssocItemId::ConstId(it) => cb(it.into()),
+                            AssocItemId::TypeAliasId(_) => (),
+                        }
+                    }
+                }
+                ModuleDefId::ModuleId(it) => visit_module(db, crate_def_map, it.local_id, cb),
+                _ => (),
             }
         }
     }
