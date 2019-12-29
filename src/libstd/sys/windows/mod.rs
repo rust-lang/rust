@@ -81,10 +81,20 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
+pub fn wmemchr(needle: u16, haystack: &[u16]) -> Option<usize> {
+    extern "C" {
+        fn wmemchr(s: *const u16, c: u16, n: usize) -> *mut u16;
+    }
+    let len = haystack.len();
+    let ptr = haystack.as_ptr();
+    let p = unsafe { wmemchr(ptr, needle, len) };
+    if p.is_null() { None } else { Some((p as usize - ptr as usize) / 2) }
+}
+
 pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
         let mut maybe_result: Vec<u16> = s.encode_wide().collect();
-        if maybe_result.iter().any(|&u| u == 0) {
+        if wmemchr(0, &maybe_result).is_some() {
             return Err(crate::io::Error::new(
                 ErrorKind::InvalidInput,
                 "strings passed to WinAPI cannot contain NULs",
@@ -214,7 +224,7 @@ fn wide_char_to_multi_byte(
 }
 
 pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
-    match v.iter().position(|c| *c == 0) {
+    match wmemchr(0, v) {
         // don't include the 0
         Some(i) => &v[..i],
         None => v,
