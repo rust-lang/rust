@@ -215,8 +215,32 @@ impl SourceAnalyzer {
         self.body_source_map.as_ref()?.node_pat(src)
     }
 
+    fn expand_expr(
+        &self,
+        db: &impl HirDatabase,
+        expr: InFile<&ast::Expr>,
+    ) -> Option<InFile<ast::Expr>> {
+        let macro_call = ast::MacroCall::cast(expr.value.syntax().clone())?;
+        let macro_file =
+            self.body_source_map.as_ref()?.node_macro_file(expr.with_value(&macro_call))?;
+        let expanded = db.parse_or_expand(macro_file)?;
+        let kind = expanded.kind();
+        let expr = InFile::new(macro_file, ast::Expr::cast(expanded)?);
+
+        if ast::MacroCall::can_cast(kind) {
+            self.expand_expr(db, expr.as_ref())
+        } else {
+            Some(expr)
+        }
+    }
+
     pub fn type_of(&self, db: &impl HirDatabase, expr: &ast::Expr) -> Option<Type> {
-        let expr_id = self.expr_id(expr)?;
+        let expr_id = if let Some(expr) = self.expand_expr(db, InFile::new(self.file_id, expr)) {
+            self.body_source_map.as_ref()?.node_expr(expr.as_ref())?
+        } else {
+            self.expr_id(expr)?
+        };
+
         let ty = self.infer.as_ref()?[expr_id].clone();
         let environment = TraitEnvironment::lower(db, &self.resolver);
         Some(Type { krate: self.resolver.krate()?, ty: InEnvironment { value: ty, environment } })

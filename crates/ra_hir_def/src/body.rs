@@ -163,6 +163,7 @@ pub struct BodySourceMap {
     pat_map: FxHashMap<PatSource, PatId>,
     pat_map_back: ArenaMap<PatId, PatSource>,
     field_map: FxHashMap<(ExprId, usize), AstPtr<ast::RecordField>>,
+    expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 }
 
 impl Body {
@@ -235,6 +236,11 @@ impl BodySourceMap {
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
         let src = node.map(|it| Either::Left(AstPtr::new(it)));
         self.expr_map.get(&src).cloned()
+    }
+
+    pub fn node_macro_file(&self, node: InFile<&ast::MacroCall>) -> Option<HirFileId> {
+        let src = node.map(|it| AstPtr::new(it));
+        self.expansions.get(&src).cloned()
     }
 
     pub fn field_init_shorthand_expr(&self, node: InFile<&ast::RecordField>) -> Option<ExprId> {
