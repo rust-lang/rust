@@ -449,7 +449,7 @@ fn main_options(options: config::Options) -> i32 {
         options.error_format,
         None,
         options.debugging_options.treat_err_as_bug,
-        options.debugging_options.ui_testing,
+        options.debugging_options.ui_testing(),
     );
 
     match (options.should_test, options.markdown_input()) {
@@ -466,7 +466,7 @@ fn main_options(options: config::Options) -> i32 {
     let diag_opts = (
         options.error_format,
         options.debugging_options.treat_err_as_bug,
-        options.debugging_options.ui_testing,
+        options.debugging_options.ui_testing(),
         options.edition,
     );
     let show_coverage = options.show_coverage;
