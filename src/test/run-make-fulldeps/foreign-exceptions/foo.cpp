@@ -57,4 +57,21 @@ extern "C" {
             throw;
         }
     }
+
+    void swallow_exception(void (*cb)()) {
+        try {
+            // Do a rethrow to ensure that the exception is only dropped once.
+            // This is necessary since we don't support copying exceptions.
+            try {
+                cb();
+            } catch (...) {
+                println("rethrowing Rust panic");
+                throw;
+            };
+        } catch (rust_panic e) {
+            assert(false && "shouldn't be able to catch a rust panic");
+        } catch (...) {
+            println("swallowing foreign exception in catch (...)");
+        }
+    }
 }
