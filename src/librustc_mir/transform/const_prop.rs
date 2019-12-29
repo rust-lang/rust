@@ -554,7 +554,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             this.ecx.read_immediate(this.ecx.eval_operand(op, None)?)
         })?;
 
-        // Do not try to read bits for ZSTs
+        // Do not try to read bits for ZSTs. This can occur when casting an enum with one variant
+        // to an integer. Such enums are represented as ZSTs but still have a discriminant value
+        // which can be casted.
         if value.layout.is_zst() {
             return Some(());
         }
