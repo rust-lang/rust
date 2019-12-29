@@ -34,7 +34,8 @@
     "dependencies": {
         "lookpath": "^1.0.4",
         "seedrandom": "^3.0.5",
-        "vscode-languageclient": "^6.0.0-next.9"
+        "vscode-languageclient": "^6.0.0-next.9",
+        "jsonc-parser": "^2.1.0"
     },
     "devDependencies": {
         "@types/glob": "^7.1.1",
@@ -165,6 +166,68 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Highlight Rust code (overrides built-in syntax highlighting)"
+                },
+                "rust-analyzer.scopeMappings": {
+                    "type": "object",
+                    "definitions": {},
+                    "properties": {
+                        "comment": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "string": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "keyword": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "keyword.control": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "keyword.unsafe": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "function": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "parameter": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "constant": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "type": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "builtin": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "text": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "attribute": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "literal": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "macro": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "variable": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "variable.mut": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "field": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        },
+                        "module": {
+                            "$ref": "vscode://schemas/textmate-colors#/items/properties/scope"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "description": "Mapping Rust Analyzer scopes to TextMateRule scopes list."
                 },
                 "rust-analyzer.rainbowHighlightingOn": {
                     "type": "boolean",

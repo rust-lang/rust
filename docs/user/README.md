@@ -87,7 +87,16 @@ host.
 
 ### Settings
 
-* `rust-analyzer.highlightingOn`: enables experimental syntax highlighting
+* `rust-analyzer.highlightingOn`: enables experimental syntax highlighting.
+* `rust-analyzer.scopeMappings` -- a scheme backed JSON object to tweak Rust Analyzer scopes to TextMate scopes.
+   ```jsonc
+    {
+        //Will autocomplete keys to available RA scopes. 
+        "keyword.unsafe": ["keyword", "keyword.control"],
+        //Values are string | TextMateScope | [string | TextMateScope]
+        "variable.mut": "variable"
+    }
+   ```
 * `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts
   `Enter` key to make it easier to continue comments. Note that it may conflict with VIM emulation plugin.
 * `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
@@ -106,7 +115,7 @@ host.
 * `rust-analyzer.trace.cargo-watch`: enables cargo-watch logging
 * `RUST_SRC_PATH`: environment variable that overwrites the sysroot
 * `rust-analyzer.featureFlags` -- a JSON object to tweak fine-grained behavior:
-   ```js
+   ```jsonc
    {
        // Show diagnostics produced by rust-analyzer itself.
        "lsp.diagnostics": true,

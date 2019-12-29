@@ -1,6 +1,8 @@
 import seedrandom = require('seedrandom');
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+import * as scopes from './scopes';
+import * as scopesMapper from './scopes_mapper';
 
 import { Server } from './server';
 
@@ -23,6 +25,41 @@ function fancify(seed: string, shade: 'light' | 'dark') {
     return `hsl(${h},${s}%,${l}%)`;
 }
 
+function createDecorationFromTextmate(
+    themeStyle: scopes.TextMateRuleSettings,
+): vscode.TextEditorDecorationType {
+    const decorationOptions: vscode.DecorationRenderOptions = {};
+    decorationOptions.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen;
+
+    if (themeStyle.foreground) {
+        decorationOptions.color = themeStyle.foreground;
+    }
+
+    if (themeStyle.background) {
+        decorationOptions.backgroundColor = themeStyle.background;
+    }
+
+    if (themeStyle.fontStyle) {
+        const parts: string[] = themeStyle.fontStyle.split(' ');
+        parts.forEach(part => {
+            switch (part) {
+                case 'italic':
+                    decorationOptions.fontStyle = 'italic';
+                    break;
+                case 'bold':
+                    decorationOptions.fontWeight = 'bold';
+                    break;
+                case 'underline':
+                    decorationOptions.textDecoration = 'underline';
+                    break;
+                default:
+                    break;
+            }
+        });
+    }
+    return vscode.window.createTextEditorDecorationType(decorationOptions);
+}
+
 export class Highlighter {
     private static initDecorations(): Map<
         string,
@@ -32,12 +69,25 @@ export class Highlighter {
             tag: string,
             textDecoration?: string,
         ): [string, vscode.TextEditorDecorationType] => {
-            const color = new vscode.ThemeColor('ralsp.' + tag);
-            const decor = vscode.window.createTextEditorDecorationType({
-                color,
-                textDecoration,
-            });
-            return [tag, decor];
+            const rule = scopesMapper.toRule(tag, scopes.find);
+
+            if (rule) {
+                const decor = createDecorationFromTextmate(rule);
+                return [tag, decor];
+            } else {
+                const fallBackTag = 'ralsp.' + tag;
+                // console.log(' ');
+                // console.log('Missing theme for: <"' + tag + '"> for following mapped scopes:');
+                // console.log(scopesMapper.find(tag));
+                // console.log('Falling back to values defined in: ' + fallBackTag);
+                // console.log(' ');
+                const color = new vscode.ThemeColor(fallBackTag);
+                const decor = vscode.window.createTextEditorDecorationType({
+                    color,
+                    textDecoration,
+                });
+                return [tag, decor];
+            }
         };
 
         const decorations: Iterable<[
