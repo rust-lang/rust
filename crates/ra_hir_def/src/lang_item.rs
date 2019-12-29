@@ -22,6 +22,50 @@ pub enum LangItemTarget {
     TraitId(TraitId),
 }
 
+impl LangItemTarget {
+    pub fn as_enum(self) -> Option<EnumId> {
+        match self {
+            LangItemTarget::EnumId(id) => Some(id),
+            _ => None,
+        }
+    }
+
+    pub fn as_function(self) -> Option<FunctionId> {
+        match self {
+            LangItemTarget::FunctionId(id) => Some(id),
+            _ => None,
+        }
+    }
+
+    pub fn as_impl_block(self) -> Option<ImplId> {
+        match self {
+            LangItemTarget::ImplBlockId(id) => Some(id),
+            _ => None,
+        }
+    }
+
+    pub fn as_static(self) -> Option<StaticId> {
+        match self {
+            LangItemTarget::StaticId(id) => Some(id),
+            _ => None,
+        }
+    }
+
+    pub fn as_struct(self) -> Option<StructId> {
+        match self {
+            LangItemTarget::StructId(id) => Some(id),
+            _ => None,
+        }
+    }
+
+    pub fn as_trait(self) -> Option<TraitId> {
+        match self {
+            LangItemTarget::TraitId(id) => Some(id),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LangItems {
     items: FxHashMap<SmolStr, LangItemTarget>,
