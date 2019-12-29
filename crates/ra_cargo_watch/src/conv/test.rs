@@ -698,3 +698,232 @@ fn snap_handles_macro_location() {
     let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
     insta::assert_debug_snapshot!(diag);
 }
+
+#[test]
+fn snap_macro_compiler_error() {
+    let diag = parse_diagnostic(
+        r##"{
+    "rendered": "error: Please register your known path in the path module\n   --> crates/ra_hir_def/src/path.rs:265:9\n    |\n265 |         compile_error!(\"Please register your known path in the path module\")\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    | \n   ::: crates/ra_hir_def/src/data.rs:80:16\n    |\n80  |     let path = path![std::future::Future];\n    |                -------------------------- in this macro invocation\n\n",
+    "children": [],
+    "code": null,
+    "level": "error",
+    "message": "Please register your known path in the path module",
+    "spans": [
+        {
+            "byte_end": 8285,
+            "byte_start": 8217,
+            "column_end": 77,
+            "column_start": 9,
+            "expansion": {
+                "def_site_span": {
+                    "byte_end": 8294,
+                    "byte_start": 7858,
+                    "column_end": 2,
+                    "column_start": 1,
+                    "expansion": null,
+                    "file_name": "crates/ra_hir_def/src/path.rs",
+                    "is_primary": false,
+                    "label": null,
+                    "line_end": 267,
+                    "line_start": 254,
+                    "suggested_replacement": null,
+                    "suggestion_applicability": null,
+                    "text": [
+                        {
+                            "highlight_end": 28,
+                            "highlight_start": 1,
+                            "text": "macro_rules! __known_path {"
+                        },
+                        {
+                            "highlight_end": 37,
+                            "highlight_start": 1,
+                            "text": "    (std::iter::IntoIterator) => {};"
+                        },
+                        {
+                            "highlight_end": 33,
+                            "highlight_start": 1,
+                            "text": "    (std::result::Result) => {};"
+                        },
+                        {
+                            "highlight_end": 29,
+                            "highlight_start": 1,
+                            "text": "    (std::ops::Range) => {};"
+                        },
+                        {
+                            "highlight_end": 33,
+                            "highlight_start": 1,
+                            "text": "    (std::ops::RangeFrom) => {};"
+                        },
+                        {
+                            "highlight_end": 33,
+                            "highlight_start": 1,
+                            "text": "    (std::ops::RangeFull) => {};"
+                        },
+                        {
+                            "highlight_end": 31,
+                            "highlight_start": 1,
+                            "text": "    (std::ops::RangeTo) => {};"
+                        },
+                        {
+                            "highlight_end": 40,
+                            "highlight_start": 1,
+                            "text": "    (std::ops::RangeToInclusive) => {};"
+                        },
+                        {
+                            "highlight_end": 38,
+                            "highlight_start": 1,
+                            "text": "    (std::ops::RangeInclusive) => {};"
+                        },
+                        {
+                            "highlight_end": 27,
+                            "highlight_start": 1,
+                            "text": "    (std::ops::Try) => {};"
+                        },
+                        {
+                            "highlight_end": 22,
+                            "highlight_start": 1,
+                            "text": "    ($path:path) => {"
+                        },
+                        {
+                            "highlight_end": 77,
+                            "highlight_start": 1,
+                            "text": "        compile_error!(\"Please register your known path in the path module\")"
+                        },
+                        {
+                            "highlight_end": 7,
+                            "highlight_start": 1,
+                            "text": "    };"
+                        },
+                        {
+                            "highlight_end": 2,
+                            "highlight_start": 1,
+                            "text": "}"
+                        }
+                    ]
+                },
+                "macro_decl_name": "$crate::__known_path!",
+                "span": {
+                    "byte_end": 8427,
+                    "byte_start": 8385,
+                    "column_end": 51,
+                    "column_start": 9,
+                    "expansion": {
+                        "def_site_span": {
+                            "byte_end": 8611,
+                            "byte_start": 8312,
+                            "column_end": 2,
+                            "column_start": 1,
+                            "expansion": null,
+                            "file_name": "crates/ra_hir_def/src/path.rs",
+                            "is_primary": false,
+                            "label": null,
+                            "line_end": 277,
+                            "line_start": 270,
+                            "suggested_replacement": null,
+                            "suggestion_applicability": null,
+                            "text": [
+                                {
+                                    "highlight_end": 22,
+                                    "highlight_start": 1,
+                                    "text": "macro_rules! __path {"
+                                },
+                                {
+                                    "highlight_end": 43,
+                                    "highlight_start": 1,
+                                    "text": "    ($start:ident $(:: $seg:ident)*) => ({"
+                                },
+                                {
+                                    "highlight_end": 51,
+                                    "highlight_start": 1,
+                                    "text": "        $crate::__known_path!($start $(:: $seg)*);"
+                                },
+                                {
+                                    "highlight_end": 87,
+                                    "highlight_start": 1,
+                                    "text": "        $crate::path::ModPath::from_simple_segments($crate::path::PathKind::Abs, vec!["
+                                },
+                                {
+                                    "highlight_end": 76,
+                                    "highlight_start": 1,
+                                    "text": "            $crate::path::__name![$start], $($crate::path::__name![$seg],)*"
+                                },
+                                {
+                                    "highlight_end": 11,
+                                    "highlight_start": 1,
+                                    "text": "        ])"
+                                },
+                                {
+                                    "highlight_end": 8,
+                                    "highlight_start": 1,
+                                    "text": "    });"
+                                },
+                                {
+                                    "highlight_end": 2,
+                                    "highlight_start": 1,
+                                    "text": "}"
+                                }
+                            ]
+                        },
+                        "macro_decl_name": "path!",
+                        "span": {
+                            "byte_end": 2966,
+                            "byte_start": 2940,
+                            "column_end": 42,
+                            "column_start": 16,
+                            "expansion": null,
+                            "file_name": "crates/ra_hir_def/src/data.rs",
+                            "is_primary": false,
+                            "label": null,
+                            "line_end": 80,
+                            "line_start": 80,
+                            "suggested_replacement": null,
+                            "suggestion_applicability": null,
+                            "text": [
+                                {
+                                    "highlight_end": 42,
+                                    "highlight_start": 16,
+                                    "text": "    let path = path![std::future::Future];"
+                                }
+                            ]
+                        }
+                    },
+                    "file_name": "crates/ra_hir_def/src/path.rs",
+                    "is_primary": false,
+                    "label": null,
+                    "line_end": 272,
+                    "line_start": 272,
+                    "suggested_replacement": null,
+                    "suggestion_applicability": null,
+                    "text": [
+                        {
+                            "highlight_end": 51,
+                            "highlight_start": 9,
+                            "text": "        $crate::__known_path!($start $(:: $seg)*);"
+                        }
+                    ]
+                }
+            },
+            "file_name": "crates/ra_hir_def/src/path.rs",
+            "is_primary": true,
+            "label": null,
+            "line_end": 265,
+            "line_start": 265,
+            "suggested_replacement": null,
+            "suggestion_applicability": null,
+            "text": [
+                {
+                    "highlight_end": 77,
+                    "highlight_start": 9,
+                    "text": "        compile_error!(\"Please register your known path in the path module\")"
+                }
+            ]
+        }
+    ]
+}
+        "##,
+    );
+
+    let workspace_root = PathBuf::from("/test/");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    insta::assert_debug_snapshot!(diag);
+}

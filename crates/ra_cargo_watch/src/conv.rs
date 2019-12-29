@@ -46,7 +46,7 @@ fn map_macro_span_to_location(
     None
 }
 
-/// Converts a Rust span to a LSP location
+/// Converts a Rust span to a LSP location, resolving macro expansion site if neccesary
 fn map_span_to_location(span: &DiagnosticSpan, workspace_root: &PathBuf) -> Location {
     if span.expansion.is_some() {
         let expansion = span.expansion.as_ref().unwrap();
@@ -55,6 +55,11 @@ fn map_span_to_location(span: &DiagnosticSpan, workspace_root: &PathBuf) -> Loca
         }
     }
 
+    map_span_to_location_naive(span, workspace_root)
+}
+
+/// Converts a Rust span to a LSP location
+fn map_span_to_location_naive(span: &DiagnosticSpan, workspace_root: &PathBuf) -> Location {
     let mut file_name = workspace_root.clone();
     file_name.push(&span.file_name);
     let uri = Url::from_file_path(file_name).unwrap();
@@ -223,6 +228,16 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 
     let mut related_information = vec![];
     let mut tags = vec![];
+
+    // If error occurs from macro expansion, add related info pointing to
+    // where the error originated
+    if !is_from_macro(&primary_span.file_name) && primary_span.expansion.is_some() {
+        let def_loc = map_span_to_location_naive(&primary_span, workspace_root);
+        related_information.push(DiagnosticRelatedInformation {
+            location: def_loc,
+            message: "Error originated from macro here".to_string(),
+        });
+    }
 
     for secondary_span in rd.spans.iter().filter(|s| !s.is_primary) {
         let related = map_secondary_span_to_related(secondary_span, workspace_root);
