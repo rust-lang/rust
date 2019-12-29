@@ -26,6 +26,7 @@
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(unwind_attributes)]
+#![feature(abi_thiscall)]
 #![panic_runtime]
 #![feature(panic_runtime)]
 
