@@ -4,6 +4,11 @@ error[E0391]: cycle detected when const-evaluating + checking `Alpha::V3::{{cons
 LL |     V3 = Self::V1 {} as u8 + 2,
    |          ^^^^^^^^
    |
+note: ...which requires const-evaluating + checking `Alpha::V3::{{constant}}#0`...
+  --> $DIR/self-in-enum-definition.rs:5:10
+   |
+LL |     V3 = Self::V1 {} as u8 + 2,
+   |          ^^^^^^^^
 note: ...which requires const-evaluating `Alpha::V3::{{constant}}#0`...
   --> $DIR/self-in-enum-definition.rs:5:10
    |
