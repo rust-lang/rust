@@ -16,13 +16,6 @@
 #![feature(nll)]
 #![recursion_limit = "256"]
 
-#[macro_use]
-extern crate rustc;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate syntax;
-
 pub use rustc::hir::def::{Namespace, PerNS};
 
 use Determinacy::*;

@@ -1,9 +1,4 @@
-//! Name resolution for lifetimes.
-//!
-//! Name resolution for lifetimes follows *much* simpler rules than the
-//! full resolve. For example, lifetime names are never exported or
-//! used between functions, and they operate in a purely top-down
-//! way. Therefore, we break lifetime name resolution into a separate pass.
+//! Name resolution for lifetimes: type declarations.
 
 use crate::hir::def_id::{DefId, LocalDefId};
 use crate::hir::{GenericParam, ItemLocalId};

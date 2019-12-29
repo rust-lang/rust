@@ -26,6 +26,10 @@ use syntax_pos::Span;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::{self, GenericParamKind, LifetimeParamKind};
 
+use log::debug;
+use rustc::{bug, span_bug};
+use syntax::{help, span_err, struct_span_err, walk_list};
+
 use rustc::middle::resolve_lifetime::*;
 use rustc_error_codes::*;
 
