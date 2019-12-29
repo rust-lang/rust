@@ -9,7 +9,7 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyLayout};
 use rustc::ty::query::TyCtxtAt;
-use rustc::ty::subst::SubstsRef;
+use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -25,6 +25,7 @@ use super::{
 };
 use rustc::infer::canonical::OriginalQueryValues;
 use rustc::infer::InferCtxt;
+use rustc::traits::ObligationCause;
 
 pub struct InterpCx<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -345,26 +346,18 @@ impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M>
         &self,
         value: T,
     ) -> T {
-        let mut param_env = self.param_env;
-        param_env.caller_bounds =
-            self.tcx.mk_predicates(param_env.caller_bounds.iter().filter(|predicate| {
-                match *predicate {
-                    ty::Predicate::Trait(..)
-                    | ty::Predicate::Subtype(..)
-                    | ty::Predicate::Projection(..)
-                    | ty::Predicate::WellFormed(..)
-                    | ty::Predicate::ObjectSafe(..)
-                    | ty::Predicate::ClosureKind(..)
-                    | ty::Predicate::ConstEvaluatable(..) => true,
-                    ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => false,
-                }
-            }));
+        let substituted = value.subst(*self.tcx, self.frame().instance.substs);
+        let erased_value = self.tcx.erase_regions(&substituted);
 
-        self.tcx.subst_and_normalize_erasing_regions(
-            self.frame().instance.substs,
-            param_env,
-            &value,
-        )
+        // TODO handle normalization failure and obligations
+        let normalized_value = self
+            .infcx
+            .at(&ObligationCause::dummy(), self.param_env)
+            .normalize(&erased_value)
+            .unwrap()
+            .value;
+        let normalized_value = self.infcx.resolve_vars_if_possible(&normalized_value);
+        self.tcx.erase_regions(&normalized_value)
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
