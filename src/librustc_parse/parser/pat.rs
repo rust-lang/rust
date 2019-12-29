@@ -671,7 +671,7 @@ impl<'a> Parser<'a> {
         err.cancel();
 
         let expected = expected.unwrap_or("pattern");
-        let msg = format!("expected {}, found {}", expected, self.this_token_descr());
+        let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
         let mut err = self.fatal(&msg);
         err.span_label(self.token.span, format!("expected {}", expected));
@@ -876,7 +876,7 @@ impl<'a> Parser<'a> {
                     etc_span = Some(etc_sp);
                     break;
                 }
-                let token_str = self.this_token_descr();
+                let token_str = super::token_descr(&self.token);
                 let mut err = self.fatal(&format!("expected `}}`, found {}", token_str));
 
                 err.span_label(self.token.span, "expected `}`");

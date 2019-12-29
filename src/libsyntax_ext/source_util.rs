@@ -133,15 +133,17 @@ pub fn expand_include<'cx>(
             while self.p.token != token::Eof {
                 match panictry!(self.p.parse_item()) {
                     Some(item) => ret.push(item),
-                    None => self
-                        .p
-                        .sess
-                        .span_diagnostic
-                        .span_fatal(
-                            self.p.token.span,
-                            &format!("expected item, found `{}`", self.p.this_token_to_string()),
-                        )
-                        .raise(),
+                    None => {
+                        let token = pprust::token_to_string(&self.p.token);
+                        self.p
+                            .sess
+                            .span_diagnostic
+                            .span_fatal(
+                                self.p.token.span,
+                                &format!("expected item, found `{}`", token),
+                            )
+                            .raise();
+                    }
                 }
             }
             Some(ret)

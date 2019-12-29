@@ -4,7 +4,7 @@ error: expected `{`, found keyword `in`
 LL |     if i in 1..10 {
    |     --   ^^ expected `{`
    |     |
-   |     this `if` statement has a condition, but no block
+   |     this `if` expression has a condition, but no block
 
 error: aborting due to previous error
 

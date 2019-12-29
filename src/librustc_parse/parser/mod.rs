@@ -354,6 +354,24 @@ pub enum FollowedByType {
     No,
 }
 
+fn token_descr_opt(token: &Token) -> Option<&'static str> {
+    Some(match token.kind {
+        _ if token.is_special_ident() => "reserved identifier",
+        _ if token.is_used_keyword() => "keyword",
+        _ if token.is_unused_keyword() => "reserved keyword",
+        token::DocComment(..) => "doc comment",
+        _ => return None,
+    })
+}
+
+pub(super) fn token_descr(token: &Token) -> String {
+    let token_str = pprust::token_to_string(token);
+    match token_descr_opt(token) {
+        Some(prefix) => format!("{} `{}`", prefix, token_str),
+        _ => format!("`{}`", token_str),
+    }
+}
+
 impl<'a> Parser<'a> {
     pub fn new(
         sess: &'a ParseSess,
@@ -420,29 +438,6 @@ impl<'a> Parser<'a> {
             next.span = self.prev_span.with_ctxt(next.span.ctxt());
         }
         next
-    }
-
-    /// Converts the current token to a string using `self`'s reader.
-    pub fn this_token_to_string(&self) -> String {
-        pprust::token_to_string(&self.token)
-    }
-
-    fn token_descr(&self) -> Option<&'static str> {
-        Some(match &self.token.kind {
-            _ if self.token.is_special_ident() => "reserved identifier",
-            _ if self.token.is_used_keyword() => "keyword",
-            _ if self.token.is_unused_keyword() => "reserved keyword",
-            token::DocComment(..) => "doc comment",
-            _ => return None,
-        })
-    }
-
-    pub(super) fn this_token_descr(&self) -> String {
-        if let Some(prefix) = self.token_descr() {
-            format!("{} `{}`", prefix, self.this_token_to_string())
-        } else {
-            format!("`{}`", self.this_token_to_string())
-        }
     }
 
     crate fn unexpected<T>(&mut self) -> PResult<'a, T> {
