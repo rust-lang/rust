@@ -1,6 +1,8 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc::infer::{error_reporting::nice_region_error::NiceRegionError, NLLRegionVariableOrigin};
+use rustc::infer::{
+    error_reporting::nice_region_error::NiceRegionError, opaque_types, NLLRegionVariableOrigin,
+};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -109,8 +111,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// existentially bound, then we check its inferred value and try
     /// to find a good name from that. Returns `None` if we can't find
     /// one (e.g., this is just some random part of the CFG).
-    // TODO(mark-i-m): make this private when we move report_region_errors here...
-    crate fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
+    pub(super) fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
         self.to_error_region_vid(r)
             .and_then(|r| self.nonlexical_regioncx.definitions[r].external_name)
     }
@@ -145,6 +146,125 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         false
+    }
+
+    /// Produces nice borrowck error diagnostics for all the errors collected in `nll_errors`.
+    pub(in crate::borrow_check) fn report_region_errors(&mut self, nll_errors: RegionErrors<'tcx>) {
+        // Iterate through all the errors, producing a diagnostic for each one. The diagnostics are
+        // buffered in the `MirBorrowckCtxt`.
+
+        // TODO(mark-i-m): Would be great to get rid of the naming context.
+        let mut region_naming = RegionErrorNamingCtx::new();
+        let mut outlives_suggestion = OutlivesSuggestionBuilder::default();
+
+        for nll_error in nll_errors.into_iter() {
+            match nll_error {
+                RegionErrorKind::TypeTestError { type_test } => {
+                    // Try to convert the lower-bound region into something named we can print for the user.
+                    let lower_bound_region = self.to_error_region(type_test.lower_bound);
+
+                    // Skip duplicate-ish errors.
+                    let type_test_span = type_test.locations.span(&self.body);
+
+                    if let Some(lower_bound_region) = lower_bound_region {
+                        let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
+                        self.infcx
+                            .construct_generic_bound_failure(
+                                region_scope_tree,
+                                type_test_span,
+                                None,
+                                type_test.generic_kind,
+                                lower_bound_region,
+                            )
+                            .buffer(&mut self.errors_buffer);
+                    } else {
+                        // FIXME. We should handle this case better. It
+                        // indicates that we have e.g., some region variable
+                        // whose value is like `'a+'b` where `'a` and `'b` are
+                        // distinct unrelated univesal regions that are not
+                        // known to outlive one another. It'd be nice to have
+                        // some examples where this arises to decide how best
+                        // to report it; we could probably handle it by
+                        // iterating over the universal regions and reporting
+                        // an error that multiple bounds are required.
+                        self.infcx
+                            .tcx
+                            .sess
+                            .struct_span_err(
+                                type_test_span,
+                                &format!("`{}` does not live long enough", type_test.generic_kind),
+                            )
+                            .buffer(&mut self.errors_buffer);
+                    }
+                }
+
+                RegionErrorKind::UnexpectedHiddenRegion {
+                    opaque_type_def_id,
+                    hidden_ty,
+                    member_region,
+                } => {
+                    let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
+                    opaque_types::unexpected_hidden_region_diagnostic(
+                        self.infcx.tcx,
+                        Some(region_scope_tree),
+                        opaque_type_def_id,
+                        hidden_ty,
+                        member_region,
+                    )
+                    .buffer(&mut self.errors_buffer);
+                }
+
+                RegionErrorKind::BoundUniversalRegionError {
+                    longer_fr,
+                    fr_origin,
+                    error_element,
+                } => {
+                    let error_region =
+                        self.nonlexical_regioncx.region_from_element(longer_fr, error_element);
+
+                    // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
+                    let (_, span) = self.nonlexical_regioncx.find_outlives_blame_span(
+                        &self.body,
+                        longer_fr,
+                        fr_origin,
+                        error_region,
+                    );
+
+                    // FIXME: improve this error message
+                    self.infcx
+                        .tcx
+                        .sess
+                        .struct_span_err(span, "higher-ranked subtype error")
+                        .buffer(&mut self.errors_buffer);
+                }
+
+                RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
+                    if is_reported {
+                        self.report_error(
+                            longer_fr,
+                            fr_origin,
+                            shorter_fr,
+                            &mut outlives_suggestion,
+                            &mut region_naming,
+                        );
+                    } else {
+                        // We only report the first error, so as not to overwhelm the user. See
+                        // `RegRegionErrorKind` docs.
+                        //
+                        // FIXME: currently we do nothing with these, but perhaps we can do better?
+                        // FIXME: try collecting these constraints on the outlives suggestion
+                        // builder. Does it make the suggestions any better?
+                        debug!(
+                            "Unreported region error: can't prove that {:?}: {:?}",
+                            longer_fr, shorter_fr
+                        );
+                    }
+                }
+            }
+        }
+
+        // Emit one outlives suggestions for each MIR def we borrowck
+        outlives_suggestion.add_suggestion(self, &mut region_naming);
     }
 
     /// Report an error because the universal region `fr` was required to outlive
