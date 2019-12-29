@@ -191,7 +191,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ) -> Option<RegionName> {
         debug!("give_region_a_name(fr={:?}, counter={:?})", fr, renctx.counter);
 
-        assert!(self.nonlexical_regioncx.universal_regions().is_universal_region(fr));
+        assert!(self.regioncx.universal_regions().is_universal_region(fr));
 
         if let Some(value) = renctx.get(&fr) {
             return Some(value.clone());
@@ -277,7 +277,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         .hir()
                         .as_local_hir_id(self.mir_def_id)
                         .expect("non-local mir");
-                    let def_ty = self.nonlexical_regioncx.universal_regions().defining_ty;
+                    let def_ty = self.regioncx.universal_regions().defining_ty;
 
                     if let DefiningTy::Closure(def_id, substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
@@ -344,12 +344,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         fr: RegionVid,
         renctx: &mut RegionErrorNamingCtx,
     ) -> Option<RegionName> {
-        let implicit_inputs =
-            self.nonlexical_regioncx.universal_regions().defining_ty.implicit_inputs();
-        let argument_index =
-            self.nonlexical_regioncx.get_argument_index_for_region(self.infcx.tcx, fr)?;
+        let implicit_inputs = self.regioncx.universal_regions().defining_ty.implicit_inputs();
+        let argument_index = self.regioncx.get_argument_index_for_region(self.infcx.tcx, fr)?;
 
-        let arg_ty = self.nonlexical_regioncx.universal_regions().unnormalized_input_tys
+        let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
             [implicit_inputs + argument_index];
         if let Some(region_name) =
             self.give_name_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index, renctx)
@@ -415,10 +413,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         );
         let assigned_region_name = if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
-            let argument_index = self
-                .nonlexical_regioncx
-                .get_argument_index_for_region(self.infcx.tcx, needle_fr)?;
-            let (_, span) = self.nonlexical_regioncx.get_argument_name_and_span_for_region(
+            let argument_index =
+                self.regioncx.get_argument_index_for_region(self.infcx.tcx, needle_fr)?;
+            let (_, span) = self.regioncx.get_argument_name_and_span_for_region(
                 &self.body,
                 &self.local_names,
                 argument_index,
@@ -658,9 +655,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         fr: RegionVid,
         renctx: &mut RegionErrorNamingCtx,
     ) -> Option<RegionName> {
-        let upvar_index =
-            self.nonlexical_regioncx.get_upvar_index_for_region(self.infcx.tcx, fr)?;
-        let (upvar_name, upvar_span) = self.nonlexical_regioncx.get_upvar_name_and_span_for_region(
+        let upvar_index = self.regioncx.get_upvar_index_for_region(self.infcx.tcx, fr)?;
+        let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
             self.infcx.tcx,
             &self.upvars,
             upvar_index,
@@ -684,7 +680,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ) -> Option<RegionName> {
         let tcx = self.infcx.tcx;
 
-        let return_ty = self.nonlexical_regioncx.universal_regions().unnormalized_output_ty;
+        let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
         debug!("give_name_if_anonymous_region_appears_in_output: return_ty = {:?}", return_ty);
         if !tcx.any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr) {
             return None;
@@ -734,7 +730,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ) -> Option<RegionName> {
         // Note: generators from `async fn` yield `()`, so we don't have to
         // worry about them here.
-        let yield_ty = self.nonlexical_regioncx.universal_regions().yield_ty?;
+        let yield_ty = self.regioncx.universal_regions().yield_ty?;
         debug!("give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}", yield_ty,);
 
         let tcx = self.infcx.tcx;

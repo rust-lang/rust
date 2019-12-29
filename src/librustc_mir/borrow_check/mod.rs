@@ -283,7 +283,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: Default::default(),
         errors_buffer,
-        nonlexical_regioncx: regioncx,
+        regioncx,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set,
@@ -474,10 +474,9 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
     used_mut_upvars: SmallVec<[Field; 8]>,
-    /// Non-lexical region inference context, if NLL is enabled. This
-    /// contains the results from region inference and lets us e.g.
+    /// Region inference context. This contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
-    nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
+    regioncx: Rc<RegionInferenceContext<'tcx>>,
 
     /// The set of borrows extracted from the MIR
     borrow_set: Rc<BorrowSet<'tcx>>,

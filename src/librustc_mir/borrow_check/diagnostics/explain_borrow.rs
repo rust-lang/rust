@@ -260,17 +260,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow_region: RegionVid,
         outlived_region: RegionVid,
     ) -> (ConstraintCategory, bool, Span, Option<RegionName>) {
-        let (category, from_closure, span) = self.nonlexical_regioncx.best_blame_constraint(
+        let (category, from_closure, span) = self.regioncx.best_blame_constraint(
             &self.body,
             borrow_region,
             NLLRegionVariableOrigin::FreeRegion,
-            |r| {
-                self.nonlexical_regioncx.provides_universal_region(
-                    r,
-                    borrow_region,
-                    outlived_region,
-                )
-            },
+            |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
         );
 
         let mut renctx = RegionErrorNamingCtx::new();
@@ -303,15 +297,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             location, borrow, kind_place
         );
 
-        let regioncx = &self.nonlexical_regioncx;
+        let regioncx = &self.regioncx;
         let body: &Body<'_> = &self.body;
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;
         debug!("explain_why_borrow_contains_point: borrow_region_vid={:?}", borrow_region_vid);
 
-        let region_sub =
-            self.nonlexical_regioncx.find_sub_region_live_at(borrow_region_vid, location);
+        let region_sub = self.regioncx.find_sub_region_live_at(borrow_region_vid, location);
         debug!("explain_why_borrow_contains_point: region_sub={:?}", region_sub);
 
         match find_use::find(body, regioncx, tcx, region_sub, location) {
