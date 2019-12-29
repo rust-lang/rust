@@ -4,9 +4,9 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Build Extension",
       "type": "npm",
       "script": "compile",
-      "label": "Build Extension",
       "problemMatcher": {
         "owner": "typescript",
         "pattern": "$tsc",
@@ -18,9 +18,9 @@
       "path": "editors/code/"
     },
     {
-      "label": "Build Lsp",
+      "label": "Build Server",
       "type": "shell",
-      "command": "cargo build",
+      "command": "cargo build --package ra_lsp_server",
       "problemMatcher": "$rustc"
     },
     {
@@ -28,7 +28,7 @@
       "group": "build",
       "dependsOn": [
         "Build Extension",
-        "Build Lsp"
+        "Build Server"
       ],
       "problemMatcher": []
     },

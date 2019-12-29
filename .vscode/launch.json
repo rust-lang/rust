@@ -5,18 +5,22 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Extension",
+      "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
-        "--disable-extensions"
+        "--disable-extensions",
+        "--user-data-dir",
+        "${workspaceFolder}/target/vscode",
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
       ],
       "env": {
         "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/ra_lsp_server"
       },
-      "outFiles": ["${workspaceFolder}/editors/code/bundle/**/*.js"],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/bundle/**/*.js"
+      ],
       "preLaunchTask": "Build All"
     },
     {
@@ -25,7 +29,9 @@
       "request": "attach",
       "program": "${workspaceFolder}/target/debug/ra_lsp_server",
       "pid": "${command:pickMyProcess}",
-      "sourceLanguages": ["rust"]
+      "sourceLanguages": [
+        "rust"
+      ]
     },
   ]
 }
