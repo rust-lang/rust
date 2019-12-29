@@ -1,11 +1,11 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "syntax_pos"
+name = "rustc_span"
 version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "syntax_pos"
+name = "rustc_span"
 path = "lib.rs"
 doctest = false
 

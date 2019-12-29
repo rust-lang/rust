@@ -12,7 +12,7 @@ doctest = false
 [dependencies]
 log = "0.4"
 rustc_serialize = { path = "../libserialize", package = "serialize" }
-syntax_pos = { path = "../libsyntax_pos" }
+syntax_pos = { path = "../librustc_span", package = "rustc_span" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 unicode-width = "0.1.4"
 atty = "0.2"

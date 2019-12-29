@@ -1,11 +1,11 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "syntax_ext"
+name = "rustc_builtin_macros"
 version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "syntax_ext"
+name = "rustc_builtin_macros"
 path = "lib.rs"
 doctest = false
 
@@ -19,6 +19,6 @@ rustc_parse = { path = "../librustc_parse" }
 rustc_target = { path = "../librustc_target" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }
-syntax_expand = { path = "../libsyntax_expand" }
-syntax_pos = { path = "../libsyntax_pos" }
+syntax_expand = { path = "../librustc_expand", package = "rustc_expand" }
+syntax_pos = { path = "../librustc_span", package = "rustc_span" }
 rustc_error_codes = { path = "../librustc_error_codes" }

@@ -92,8 +92,8 @@ fn inject_impl_of_structural_trait(
         _ => {
             // Non-Item derive is an error, but it should have been
             // set earlier; see
-            // libsyntax_expand/expand.rs:MacroExpander::fully_expand_fragment()
-            // libsyntax_expand/base.rs:Annotatable::derive_allowed()
+            // librustc_expand/expand.rs:MacroExpander::fully_expand_fragment()
+            // librustc_expand/base.rs:Annotatable::derive_allowed()
             return;
         }
     };
