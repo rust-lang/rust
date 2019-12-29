@@ -8,8 +8,8 @@ use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `ATOMIC_X_INIT`, `ONCE_INIT`, and
-    /// `uX/iX::MIN/MAX`.
+    /// **What it does:** Checks for usage of standard library
+    /// `const`s that could be replaced by `const fn`s.
     ///
     /// **Why is this bad?** `const fn`s exist
     ///
@@ -17,15 +17,15 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// # use core::sync::atomic::{ATOMIC_ISIZE_INIT, AtomicIsize};
-    /// static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
+    /// let x = std::u32::MIN;
+    /// let y = std::u32::MAX;
     /// ```
     ///
     /// Could be written:
     ///
     /// ```rust
-    /// # use core::sync::atomic::AtomicIsize;
-    /// static FOO: AtomicIsize = AtomicIsize::new(0);
+    /// let x = u32::min_value();
+    /// let y = u32::max_value();
     /// ```
     pub REPLACE_CONSTS,
     pedantic,
