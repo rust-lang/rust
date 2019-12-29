@@ -260,12 +260,8 @@ macro_rules! __known_path {
     (std::ops::RangeTo) => {};
     (std::ops::RangeToInclusive) => {};
     (std::ops::RangeInclusive) => {};
-    (std::boxed::Box) => {};
     (std::future::Future) => {};
     (std::ops::Try) => {};
-    (std::ops::Neg) => {};
-    (std::ops::Not) => {};
-    (std::ops::Index) => {};
     ($path:path) => {
         compile_error!("Please register your known path in the path module")
     };

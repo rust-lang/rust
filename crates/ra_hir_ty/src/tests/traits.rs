@@ -27,6 +27,7 @@ fn test() {
 //- /std.rs crate:std
 #[prelude_import] use future::*;
 mod future {
+    #[lang = "future_trait"]
     trait Future {
         type Output;
     }
@@ -56,6 +57,7 @@ fn test() {
 //- /std.rs crate:std
 #[prelude_import] use future::*;
 mod future {
+    #[lang = "future_trait"]
     trait Future {
         type Output;
     }
@@ -198,6 +200,7 @@ fn test() {
 
 #[prelude_import] use ops::*;
 mod ops {
+    #[lang = "neg"]
     pub trait Neg {
         type Output;
     }
@@ -230,6 +233,7 @@ fn test() {
 
 #[prelude_import] use ops::*;
 mod ops {
+    #[lang = "not"]
     pub trait Not {
         type Output;
     }
@@ -506,6 +510,7 @@ fn test() {
 
 #[prelude_import] use ops::*;
 mod ops {
+    #[lang = "index"]
     pub trait Index<Idx> {
         type Output;
     }

@@ -20,6 +20,7 @@ fn test() {
 mod prelude {}
 
 mod boxed {
+    #[lang = "owned_box"]
     pub struct Box<T: ?Sized> {
         inner: *mut T,
     }
