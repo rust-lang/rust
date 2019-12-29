@@ -32,29 +32,5 @@
       ],
       "problemMatcher": []
     },
-    {
-      "label": "cargo watch",
-      "group": "build",
-      "isBackground": true,
-      "type": "shell",
-      "command": "cargo",
-      "args": [
-        "watch"
-      ],
-      "problemMatcher": "$rustc-watch"
-    },
-    {
-      "label": "cargo watch tests",
-      "group": "build",
-      "isBackground": true,
-      "type": "shell",
-      "command": "cargo",
-      "args": [
-        "watch",
-        "-x",
-        "check --tests"
-      ],
-      "problemMatcher": "$rustc-watch"
-    }
   ]
 }
