@@ -2,12 +2,13 @@
 
 use std::collections::VecDeque;
 
+use rustc::infer::NLLRegionVariableOrigin;
 use rustc::mir::{
     Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
     Statement, StatementKind, TerminatorKind,
 };
 use rustc::ty::adjustment::PointerCast;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_index::vec::IndexVec;
@@ -15,8 +16,8 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use crate::borrow_check::{
-    borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
-    WriteKind,
+    borrow_set::BorrowData, diagnostics::RegionErrorNamingCtx, nll::ConstraintDescription,
+    region_infer::Cause, MirBorrowckCtxt, WriteKind,
 };
 
 use super::{find_use, RegionName, UseSpans};
@@ -254,6 +255,32 @@ impl BorrowExplanation {
 }
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
+    fn free_region_constraint_info(
+        &self,
+        borrow_region: RegionVid,
+        outlived_region: RegionVid,
+    ) -> (ConstraintCategory, bool, Span, Option<RegionName>) {
+        let (category, from_closure, span) = self.nonlexical_regioncx.best_blame_constraint(
+            &self.body,
+            borrow_region,
+            NLLRegionVariableOrigin::FreeRegion,
+            |r| {
+                self.nonlexical_regioncx.provides_universal_region(
+                    r,
+                    borrow_region,
+                    outlived_region,
+                )
+            },
+        );
+
+        let mut renctx = RegionErrorNamingCtx::new();
+        let outlived_fr_name =
+            self.nonlexical_regioncx.give_region_a_name(self, &mut renctx, outlived_region);
+        // TODO(mark-i-m): just return the region and let the caller name it
+
+        (category, from_closure, span, outlived_fr_name)
+    }
+
     /// Returns structured explanation for *why* the borrow contains the
     /// point from `location`. This is key for the "3-point errors"
     /// [described in the NLL RFC][d].
@@ -285,7 +312,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let borrow_region_vid = borrow.region;
         debug!("explain_why_borrow_contains_point: borrow_region_vid={:?}", borrow_region_vid);
 
-        let region_sub = regioncx.find_sub_region_live_at(borrow_region_vid, location);
+        let region_sub =
+            self.nonlexical_regioncx.find_sub_region_live_at(borrow_region_vid, location);
         debug!("explain_why_borrow_contains_point: region_sub={:?}", region_sub);
 
         match find_use::find(body, regioncx, tcx, region_sub, location) {
@@ -330,9 +358,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             None => {
                 if let Some(region) = regioncx.to_error_region_vid(borrow_region_vid) {
-                    let (category, from_closure, span, region_name) = self
-                        .nonlexical_regioncx
-                        .free_region_constraint_info(self, borrow_region_vid, region);
+                    let (category, from_closure, span, region_name) =
+                        self.free_region_constraint_info(borrow_region_vid, region);
                     if let Some(region_name) = region_name {
                         let opt_place_desc = self.describe_place(borrow.borrowed_place.as_ref());
                         BorrowExplanation::MustBeValidFor {
@@ -345,14 +372,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     } else {
                         debug!(
                             "explain_why_borrow_contains_point: \
-                                Could not generate a region name"
+                             Could not generate a region name"
                         );
                         BorrowExplanation::Unexplained
                     }
                 } else {
                     debug!(
                         "explain_why_borrow_contains_point: \
-                            Could not generate an error region vid"
+                         Could not generate an error region vid"
                     );
                     BorrowExplanation::Unexplained
                 }
