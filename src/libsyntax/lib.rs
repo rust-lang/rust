@@ -13,7 +13,7 @@
 #![feature(label_break_value)]
 #![feature(nll)]
 #![feature(try_trait)]
-#![feature(slice_patterns)]
+#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(unicode_internals)]
 #![recursion_limit = "256"]
 
