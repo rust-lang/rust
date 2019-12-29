@@ -471,16 +471,9 @@ impl<'a> StringReader<'a> {
 
     /// As symbol_from, with the text normalized into Unicode NFC form.
     fn nfc_symbol_from(&self, start: BytePos) -> Symbol {
-        use unicode_normalization::{is_nfc_quick, IsNormalized, UnicodeNormalization};
         debug!("taking an normalized ident from {:?} to {:?}", start, self.pos);
         let sym = self.str_from(start);
-        match is_nfc_quick(sym.chars()) {
-            IsNormalized::Yes => Symbol::intern(sym),
-            _ => {
-                let sym_str: String = sym.chars().nfc().collect();
-                Symbol::intern(&sym_str)
-            }
-        }
+        nfc_normalize(sym)
     }
 
     /// Slice of the source text spanning from `start` up to but excluding `end`.
@@ -648,6 +641,17 @@ impl<'a> StringReader<'a> {
                 let hi = content_start + BytePos(2 + idx + c.len_utf8() as u32);
                 self.err_span_(lo, hi, &format!("invalid digit for a base {} literal", base));
             }
+        }
+    }
+}
+
+pub fn nfc_normalize(string: &str) -> Symbol {
+    use unicode_normalization::{is_nfc_quick, IsNormalized, UnicodeNormalization};
+    match is_nfc_quick(string.chars()) {
+        IsNormalized::Yes => Symbol::intern(string),
+        _ => {
+            let normalized_str: String = string.chars().nfc().collect();
+            Symbol::intern(&normalized_str)
         }
     }
 }
