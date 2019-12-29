@@ -21,6 +21,8 @@ mod conv;
 
 use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic, SuggestedFix};
 
+pub use crate::conv::url_from_path_with_drive_lowercasing;
+
 #[derive(Clone, Debug)]
 pub struct CheckOptions {
     pub enable: bool,
