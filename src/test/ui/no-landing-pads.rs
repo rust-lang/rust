@@ -1,6 +1,7 @@
 // run-pass
 // compile-flags: -Z no-landing-pads -C codegen-units=1
 // ignore-emscripten no threads support
+// ignore-test fails because catch_unwind doesn't work with no-landing-pads
 
 use std::thread;
 
