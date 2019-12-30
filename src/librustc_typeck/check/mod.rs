@@ -1242,13 +1242,17 @@ fn check_fn<'a, 'tcx>(
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
 
+    let tcx = fcx.tcx;
+    let sess = tcx.sess;
+    let hir = tcx.hir();
+
     let declared_ret_ty = fn_sig.output();
     fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
     let revealed_ret_ty =
         fcx.instantiate_opaque_types_from_value(fn_id, &declared_ret_ty, decl.output.span());
     debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
-    fn_sig = fcx.tcx.mk_fn_sig(
+    fn_sig = tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
         revealed_ret_ty,
         fn_sig.c_variadic,
@@ -1258,7 +1262,7 @@ fn check_fn<'a, 'tcx>(
 
     let span = body.value.span;
 
-    fn_maybe_err(fcx.tcx, span, fn_sig.abi);
+    fn_maybe_err(tcx, span, fn_sig.abi);
 
     if body.generator_kind.is_some() && can_be_generator.is_some() {
         let yield_ty = fcx
@@ -1267,23 +1271,23 @@ fn check_fn<'a, 'tcx>(
         fcx.yield_ty = Some(yield_ty);
     }
 
-    let outer_def_id = fcx.tcx.closure_base_def_id(fcx.tcx.hir().local_def_id(fn_id));
-    let outer_hir_id = fcx.tcx.hir().as_local_hir_id(outer_def_id).unwrap();
+    let outer_def_id = tcx.closure_base_def_id(hir.local_def_id(fn_id));
+    let outer_hir_id = hir.as_local_hir_id(outer_def_id).unwrap();
     GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id }.visit_body(body);
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
     let maybe_va_list = if fn_sig.c_variadic {
-        let va_list_did = fcx.tcx.require_lang_item(
+        let va_list_did = tcx.require_lang_item(
             lang_items::VaListTypeLangItem,
             Some(body.params.last().unwrap().span),
         );
-        let region = fcx.tcx.mk_region(ty::ReScope(region::Scope {
+        let region = tcx.mk_region(ty::ReScope(region::Scope {
             id: body.value.hir_id.local_id,
             data: region::ScopeData::CallSite,
         }));
 
-        Some(fcx.tcx.type_of(va_list_did).subst(fcx.tcx, &[region.into()]))
+        Some(tcx.type_of(va_list_did).subst(tcx, &[region.into()]))
     } else {
         None
     };
@@ -1297,7 +1301,7 @@ fn check_fn<'a, 'tcx>(
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if param.pat.simple_ident().is_none() && !fcx.tcx.features().unsized_locals {
+        if param.pat.simple_ident().is_none() && !tcx.features().unsized_locals {
             fcx.require_type_is_sized(param_ty, decl.output.span(), traits::SizedArgumentType);
         }
 
@@ -1358,11 +1362,11 @@ fn check_fn<'a, 'tcx>(
     fcx.demand_suptype(span, revealed_ret_ty, actual_return_ty);
 
     // Check that the main return type implements the termination trait.
-    if let Some(term_id) = fcx.tcx.lang_items().termination() {
-        if let Some((def_id, EntryFnType::Main)) = fcx.tcx.entry_fn(LOCAL_CRATE) {
-            let main_id = fcx.tcx.hir().as_local_hir_id(def_id).unwrap();
+    if let Some(term_id) = tcx.lang_items().termination() {
+        if let Some((def_id, EntryFnType::Main)) = tcx.entry_fn(LOCAL_CRATE) {
+            let main_id = hir.as_local_hir_id(def_id).unwrap();
             if main_id == fn_id {
-                let substs = fcx.tcx.mk_substs_trait(declared_ret_ty, &[]);
+                let substs = tcx.mk_substs_trait(declared_ret_ty, &[]);
                 let trait_ref = ty::TraitRef::new(term_id, substs);
                 let return_ty_span = decl.output.span();
                 let cause = traits::ObligationCause::new(
@@ -1381,15 +1385,15 @@ fn check_fn<'a, 'tcx>(
     }
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
-    if let Some(panic_impl_did) = fcx.tcx.lang_items().panic_impl() {
-        if panic_impl_did == fcx.tcx.hir().local_def_id(fn_id) {
-            if let Some(panic_info_did) = fcx.tcx.lang_items().panic_info() {
+    if let Some(panic_impl_did) = tcx.lang_items().panic_impl() {
+        if panic_impl_did == hir.local_def_id(fn_id) {
+            if let Some(panic_info_did) = tcx.lang_items().panic_info() {
                 if declared_ret_ty.kind != ty::Never {
-                    fcx.tcx.sess.span_err(decl.output.span(), "return type should be `!`");
+                    sess.span_err(decl.output.span(), "return type should be `!`");
                 }
 
                 let inputs = fn_sig.inputs();
-                let span = fcx.tcx.hir().span(fn_id);
+                let span = hir.span(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_panic_info = match inputs[0].kind {
                         ty::Ref(region, ty, mutbl) => match ty.kind {
@@ -1404,38 +1408,36 @@ fn check_fn<'a, 'tcx>(
                     };
 
                     if !arg_is_panic_info {
-                        fcx.tcx
-                            .sess
-                            .span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
+                        sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
                     }
 
-                    if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
+                    if let Node::Item(item) = hir.get(fn_id) {
                         if let ItemKind::Fn(_, ref generics, _) = item.kind {
                             if !generics.params.is_empty() {
-                                fcx.tcx.sess.span_err(span, "should have no type parameters");
+                                sess.span_err(span, "should have no type parameters");
                             }
                         }
                     }
                 } else {
-                    let span = fcx.tcx.sess.source_map().def_span(span);
-                    fcx.tcx.sess.span_err(span, "function should have one argument");
+                    let span = sess.source_map().def_span(span);
+                    sess.span_err(span, "function should have one argument");
                 }
             } else {
-                fcx.tcx.sess.err("language item required, but not found: `panic_info`");
+                sess.err("language item required, but not found: `panic_info`");
             }
         }
     }
 
     // Check that a function marked as `#[alloc_error_handler]` has signature `fn(Layout) -> !`
-    if let Some(alloc_error_handler_did) = fcx.tcx.lang_items().oom() {
-        if alloc_error_handler_did == fcx.tcx.hir().local_def_id(fn_id) {
-            if let Some(alloc_layout_did) = fcx.tcx.lang_items().alloc_layout() {
+    if let Some(alloc_error_handler_did) = tcx.lang_items().oom() {
+        if alloc_error_handler_did == hir.local_def_id(fn_id) {
+            if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
                 if declared_ret_ty.kind != ty::Never {
-                    fcx.tcx.sess.span_err(decl.output.span(), "return type should be `!`");
+                    sess.span_err(decl.output.span(), "return type should be `!`");
                 }
 
                 let inputs = fn_sig.inputs();
-                let span = fcx.tcx.hir().span(fn_id);
+                let span = hir.span(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_alloc_layout = match inputs[0].kind {
                         ty::Adt(ref adt, _) => adt.did == alloc_layout_did,
@@ -1443,13 +1445,13 @@ fn check_fn<'a, 'tcx>(
                     };
 
                     if !arg_is_alloc_layout {
-                        fcx.tcx.sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
+                        sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
                     }
 
-                    if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
+                    if let Node::Item(item) = hir.get(fn_id) {
                         if let ItemKind::Fn(_, ref generics, _) = item.kind {
                             if !generics.params.is_empty() {
-                                fcx.tcx.sess.span_err(
+                                sess.span_err(
                                     span,
                                     "`#[alloc_error_handler]` function should have no type \
                                      parameters",
@@ -1458,11 +1460,11 @@ fn check_fn<'a, 'tcx>(
                         }
                     }
                 } else {
-                    let span = fcx.tcx.sess.source_map().def_span(span);
-                    fcx.tcx.sess.span_err(span, "function should have one argument");
+                    let span = sess.source_map().def_span(span);
+                    sess.span_err(span, "function should have one argument");
                 }
             } else {
-                fcx.tcx.sess.err("language item required, but not found: `alloc_layout`");
+                sess.err("language item required, but not found: `alloc_layout`");
             }
         }
     }
