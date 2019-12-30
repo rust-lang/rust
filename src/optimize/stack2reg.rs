@@ -182,7 +182,7 @@ pub(super) fn optimize_function(
                     let store_ebb = opt_ctx.ctx.func.layout.inst_ebb(store).unwrap();
                     let stored_value = opt_ctx.ctx.func.dfg.inst_args(store)[0];
                     let stored_type = opt_ctx.ctx.func.dfg.value_type(stored_value);
-                    if stored_type == loaded_type && store_ebb == load_ebb {
+                    if stored_type == loaded_type {
                         println!("Store to load forward {} -> {}", store, load);
                         users.change_load_to_alias(&mut opt_ctx.ctx.func, load, stored_value);
                     }
@@ -379,34 +379,31 @@ enum TemporalOrder {
 fn temporal_order(ctx: &Context, src: Inst, dest: Inst) -> TemporalOrder {
     debug_assert_ne!(src, dest);
 
+    if ctx.domtree.dominates(src, dest, &ctx.func.layout) {
+        return TemporalOrder::DefinitivelyBefore;
+    } else if ctx.domtree.dominates(src, dest, &ctx.func.layout) {
+        return TemporalOrder::NeverBefore;
+    }
+
     let src_ebb = ctx.func.layout.inst_ebb(src).unwrap();
     let dest_ebb = ctx.func.layout.inst_ebb(dest).unwrap();
-    if src_ebb == dest_ebb {
-        use std::cmp::Ordering::*;
-        match ctx.func.layout.cmp(src, dest) {
-            Less => TemporalOrder::DefinitivelyBefore,
-            Equal => unreachable!(),
-            Greater => TemporalOrder::MaybeBefore, // FIXME use dominator to check for loops
+
+    // FIXME O(stack_load count * ebb count)
+    // FIXME reuse memory allocations
+    let mut visited = EntitySet::new();
+    let mut todo = EntitySet::new();
+    todo.insert(dest_ebb);
+    while let Some(ebb) = todo.pop() {
+        if visited.contains(ebb) {
+            continue;
         }
-    } else {
-        // FIXME O(stack_load count * ebb count)
-        // FIXME reuse memory allocations
-        // FIXME return DefinitivelyBefore is src dominates dest
-        let mut visited = EntitySet::new();
-        let mut todo = EntitySet::new();
-        todo.insert(dest_ebb);
-        while let Some(ebb) = todo.pop() {
-            if visited.contains(ebb) {
-                continue;
-            }
-            visited.insert(ebb);
-            if ebb == src_ebb {
-                return TemporalOrder::MaybeBefore;
-            }
-            for bb in ctx.cfg.pred_iter(ebb) {
-                todo.insert(bb.ebb);
-            }
+        visited.insert(ebb);
+        if ebb == src_ebb {
+            return TemporalOrder::MaybeBefore;
         }
-        TemporalOrder::NeverBefore
+        for bb in ctx.cfg.pred_iter(ebb) {
+            todo.insert(bb.ebb);
+        }
     }
+    TemporalOrder::NeverBefore
 }
