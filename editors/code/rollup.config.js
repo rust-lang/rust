@@ -4,7 +4,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import nodeBuiltins from 'builtin-modules';
 
 export default {
-    input: 'src/extension.ts',
+    input: 'src/main.ts',
     plugins: [
         typescript(),
         resolve({
@@ -19,7 +19,7 @@ export default {
     ],
     external: [...nodeBuiltins, 'vscode'],
     output: {
-        file: './out/extension.js',
+        file: './out/main.js',
         format: 'cjs'
     }
 };

@@ -43,7 +43,7 @@
         "onCommand:rust-analyzer.collectGarbage",
         "workspaceContains:**/Cargo.toml"
     ],
-    "main": "./out/extension",
+    "main": "./out/main",
     "contributes": {
         "taskDefinitions": [
             {
