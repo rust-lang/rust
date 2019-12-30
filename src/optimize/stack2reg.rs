@@ -59,6 +59,31 @@ impl StackSlotUsage {
             }
         }).collect::<Vec<Inst>>()
     }
+
+    fn remove_unused_stack_addr(&mut self, func: &mut Function, inst: Inst) {
+        func.dfg.detach_results(inst);
+        func.dfg.replace(inst).nop();
+        self.stack_addr.remove(&inst);
+    }
+
+    fn remove_unused_load(&mut self, func: &mut Function, load: Inst) {
+        func.dfg.detach_results(load);
+        func.dfg.replace(load).nop();
+        self.stack_load.remove(&load);
+    }
+
+    fn remove_dead_store(&mut self, func: &mut Function, store: Inst) {
+        func.dfg.replace(store).nop();
+        self.stack_store.remove(&store);
+    }
+
+    fn change_load_to_alias(&mut self, func: &mut Function, load: Inst, value: Value) {
+        let loaded_value = func.dfg.inst_results(load)[0];
+        func.dfg.detach_results(load);
+        func.dfg.replace(load).nop();
+        func.dfg.change_to_alias(loaded_value, value);
+        self.stack_load.remove(&load);
+    }
 }
 
 struct OptimizeContext<'a> {
@@ -159,10 +184,7 @@ pub(super) fn optimize_function(
                     let stored_type = opt_ctx.ctx.func.dfg.value_type(stored_value);
                     if stored_type == loaded_type && store_ebb == load_ebb {
                         println!("Store to load forward {} -> {}", store, load);
-                        opt_ctx.ctx.func.dfg.detach_results(load);
-                        opt_ctx.ctx.func.dfg.replace(load).nop();
-                        opt_ctx.ctx.func.dfg.change_to_alias(loaded_value, stored_value);
-                        users.stack_load.remove(&load);
+                        users.change_load_to_alias(&mut opt_ctx.ctx.func, load, stored_value);
                     }
                 }
                 _ => {} // FIXME implement this
@@ -186,8 +208,7 @@ pub(super) fn optimize_function(
                 // Never loaded; can safely remove all stores and the stack slot.
                 // FIXME also remove stores when there is always a next store before a load.
                 println!("[{}] Remove dead stack store {} of {}", name, opt_ctx.ctx.func.dfg.display_inst(store, None), stack_slot.0);
-                opt_ctx.ctx.func.dfg.replace(store).nop();
-                users.stack_store.remove(&store);
+                users.remove_dead_store(&mut opt_ctx.ctx.func, store);
             }
         }
 
@@ -265,17 +286,13 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext) {
         // FIXME remove clone
         for &inst in stack_slot_users.stack_addr.clone().iter() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                opt_ctx.ctx.func.dfg.detach_results(inst);
-                opt_ctx.ctx.func.dfg.replace(inst).nop();
-                stack_slot_users.stack_addr.remove(&inst);
+                stack_slot_users.remove_unused_stack_addr(&mut opt_ctx.ctx.func, inst);
             }
         }
 
         for &inst in stack_slot_users.stack_load.clone().iter() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                opt_ctx.ctx.func.dfg.detach_results(inst);
-                opt_ctx.ctx.func.dfg.replace(inst).nop();
-                stack_slot_users.stack_load.remove(&inst);
+                stack_slot_users.remove_unused_load(&mut opt_ctx.ctx.func, inst);
             }
         }
     }
