@@ -212,11 +212,7 @@ pub fn const_eval_validated_provider<'tcx>(
         key.param_env.reveal = Reveal::UserFacing;
         match tcx.const_eval_validated(key) {
             // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {
-                // Promoteds should never be "too generic" when getting evaluated.
-                // They either don't get evaluated, or we are in a monomorphic context
-                assert!(key.value.promoted.is_none());
-            }
+            Err(ErrorHandled::TooGeneric) => {}
             // dedupliate calls
             other => return other,
         }
@@ -301,10 +297,18 @@ pub fn const_eval_raw_provider<'tcx>(
                 // Ensure that if the above error was either `TooGeneric` or `Reported`
                 // an error must be reported.
                 let v = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
-                tcx.sess.delay_span_bug(
-                    err.span,
-                    &format!("static eval failure did not emit an error: {:#?}", v),
-                );
+
+                // If this is `Reveal:All`, then we need to make sure an error is reported but if
+                // this is `Reveal::UserFacing`, then it's expected that we could get a
+                // `TooGeneric` error. When we fall back to `Reveal::All`, then it will either
+                // succeed or we'll report this error then.
+                if key.param_env.reveal == Reveal::All {
+                    tcx.sess.delay_span_bug(
+                        err.span,
+                        &format!("static eval failure did not emit an error: {:#?}", v),
+                    );
+                }
+
                 v
             } else if def_id.is_local() {
                 // constant defined in this crate, we can figure out a lint level!

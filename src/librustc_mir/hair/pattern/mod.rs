@@ -742,7 +742,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let kind = match res {
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let substs = self.tables.node_substs(id);
-                match self.tcx.const_eval_resolve(self.param_env, def_id, substs, Some(span)) {
+                // Use `Reveal::All` here because patterns are always monomorphic even if their function isn't.
+                match self.tcx.const_eval_resolve(
+                    self.param_env.with_reveal_all(),
+                    def_id,
+                    substs,
+                    Some(span),
+                ) {
                     Ok(value) => {
                         let pattern = self.const_to_pat(value, id, span);
                         if !is_associated_const {

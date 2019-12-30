@@ -6,6 +6,7 @@ use std::cell::Cell;
 
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
+use rustc::hir::HirId;
 use rustc::mir::interpret::{InterpResult, PanicInfo, Scalar};
 use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
@@ -20,7 +21,7 @@ use rustc::ty::layout::{
     HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
 };
 use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
+use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use syntax::ast::Mutability;
@@ -260,6 +261,9 @@ struct ConstPropagator<'mir, 'tcx> {
     source_scopes: IndexVec<SourceScope, SourceScopeData>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     ret: Option<OpTy<'tcx, ()>>,
+    // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
+    // the last known `SourceInfo` here and just keep revisiting it.
+    source_info: Option<SourceInfo>,
 }
 
 impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
@@ -293,12 +297,19 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'mir, 'tcx> {
         let def_id = source.def_id();
-        let param_env = tcx.param_env(def_id);
+        let substs = &InternalSubsts::identity_for_item(tcx, def_id);
+        let mut param_env = tcx.param_env(def_id);
+
+        // If we're evaluating inside a monomorphic function, then use `Reveal::All` because
+        // we want to see the same instances that codegen will see. This allows us to `resolve()`
+        // specializations.
+        if !substs.needs_subst() {
+            param_env = param_env.with_reveal_all();
+        }
+
         let span = tcx.def_span(def_id);
         let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine, ());
         let can_const_prop = CanConstProp::check(body);
-
-        let substs = &InternalSubsts::identity_for_item(tcx, def_id);
 
         let ret = ecx
             .layout_of(body.return_ty().subst(tcx, substs))
@@ -331,6 +342,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: body.local_decls.clone(),
             ret: ret.map(Into::into),
+            source_info: None,
         }
     }
 
@@ -352,6 +364,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
     }
 
+    fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
+        match &self.source_scopes[source_info.scope].local_data {
+            ClearCrossCrate::Set(data) => Some(data.lint_root),
+            ClearCrossCrate::Clear => None,
+        }
+    }
+
     fn use_ecx<F, T>(&mut self, source_info: SourceInfo, f: F) -> Option<T>
     where
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
@@ -360,10 +379,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // FIXME(eddyb) move this to the `Panic(_)` error case, so that
         // `f(self)` is always called, and that the only difference when the
         // scope's `local_data` is missing, is that the lint isn't emitted.
-        let lint_root = match &self.source_scopes[source_info.scope].local_data {
-            ClearCrossCrate::Set(data) => data.lint_root,
-            ClearCrossCrate::Clear => return None,
-        };
+        let lint_root = self.lint_root(source_info)?;
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
@@ -409,13 +425,31 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         r
     }
 
-    fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<Const<'tcx>> {
+    fn eval_constant(
+        &mut self,
+        c: &Constant<'tcx>,
+        source_info: SourceInfo,
+    ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = c.span;
         match self.ecx.eval_const_to_op(c.literal, None) {
             Ok(op) => Some(op),
             Err(error) => {
                 let err = error_to_const_error(&self.ecx, error);
-                err.report_as_error(self.ecx.tcx, "erroneous constant used");
+                match self.lint_root(source_info) {
+                    Some(lint_root) if c.literal.needs_subst() => {
+                        // Out of backwards compatibility we cannot report hard errors in unused
+                        // generic functions using associated constants of the generic parameters.
+                        err.report_as_lint(
+                            self.ecx.tcx,
+                            "erroneous constant used",
+                            lint_root,
+                            Some(c.span),
+                        );
+                    }
+                    _ => {
+                        err.report_as_error(self.ecx.tcx, "erroneous constant used");
+                    }
+                }
                 None
             }
         }
@@ -428,7 +462,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c),
+            Operand::Constant(ref c) => self.eval_constant(c, source_info),
             Operand::Move(ref place) | Operand::Copy(ref place) => {
                 self.eval_place(place, source_info)
             }
@@ -495,10 +529,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let right_size = r.layout.size;
                     let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
                     if r_bits.map_or(false, |b| b >= left_bits as u128) {
-                        let lint_root = match &self.source_scopes[source_info.scope].local_data {
-                            ClearCrossCrate::Set(data) => data.lint_root,
-                            ClearCrossCrate::Clear => return None,
-                        };
+                        let lint_root = self.lint_root(source_info)?;
                         let dir = if *op == BinOp::Shr { "right" } else { "left" };
                         self.tcx.lint_hir(
                             ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
@@ -748,18 +779,19 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
-        self.eval_constant(constant);
+        self.eval_constant(constant, self.source_info.unwrap());
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         trace!("visit_statement: {:?}", statement);
+        let source_info = statement.source_info;
+        self.source_info = Some(source_info);
         if let StatementKind::Assign(box (ref place, ref mut rval)) = statement.kind {
             let place_ty: Ty<'tcx> = place.ty(&self.local_decls, self.tcx).ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 if let Some(local) = place.as_local() {
-                    let source = statement.source_info;
                     let can_const_prop = self.can_const_prop[local];
-                    if let Some(()) = self.const_prop(rval, place_layout, source, place) {
+                    if let Some(()) = self.const_prop(rval, place_layout, source_info, place) {
                         if can_const_prop == ConstPropMode::FullConstProp
                             || can_const_prop == ConstPropMode::OnlyPropagateInto
                         {
@@ -802,8 +834,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
-        self.super_terminator(terminator, location);
         let source_info = terminator.source_info;
+        self.source_info = Some(source_info);
+        self.super_terminator(terminator, location);
         match &mut terminator.kind {
             TerminatorKind::Assert { expected, ref msg, ref mut cond, .. } => {
                 if let Some(value) = self.eval_operand(&cond, source_info) {
