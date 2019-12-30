@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
-import { HintsUpdater } from './commands/inlay_hints';
-import { StatusDisplay } from './commands/watch_status';
+import { activateInlayHints } from './inlay_hints';
+import { StatusDisplay } from './status_display';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
@@ -13,6 +13,8 @@ let ctx!: Ctx;
 
 export async function activate(context: vscode.ExtensionContext) {
     ctx = new Ctx(context);
+
+    // Commands which invokes manually via command pallet, shortcut, etc.
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
@@ -20,30 +22,11 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('parentModule', commands.parentModule);
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('expandMacro', commands.expandMacro);
+    ctx.registerCommand('run', commands.run);
 
-    function disposeOnDeactivation(disposable: vscode.Disposable) {
-        context.subscriptions.push(disposable);
-    }
-
-    function registerCommand(name: string, f: any) {
-        disposeOnDeactivation(vscode.commands.registerCommand(name, f));
-    }
-
-    // Commands are requests from vscode to the language server
-    registerCommand('rust-analyzer.run', commands.runnables.handle);
-    // Unlike the above this does not send requests to the language server
-    registerCommand('rust-analyzer.runSingle', commands.runnables.handleSingle);
-    registerCommand(
-        'rust-analyzer.showReferences',
-        (uri: string, position: lc.Position, locations: lc.Location[]) => {
-            vscode.commands.executeCommand(
-                'editor.action.showReferences',
-                vscode.Uri.parse(uri),
-                Server.client.protocol2CodeConverter.asPosition(position),
-                locations.map(Server.client.protocol2CodeConverter.asLocation),
-            );
-        },
-    );
+    // Internal commands which are invoked by the server.
+    ctx.registerCommand('runSingle', commands.runSingle);
+    ctx.registerCommand('showReferences', commands.showReferences);
 
     if (Server.config.enableEnhancedTyping) {
         ctx.overrideCommand('type', commands.onEnter);
@@ -52,7 +35,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const watchStatus = new StatusDisplay(
         Server.config.cargoWatchOptions.command,
     );
-    disposeOnDeactivation(watchStatus);
+    ctx.pushCleanup(watchStatus);
 
     // Notifications are events triggered by the language server
     const allNotifications: [string, lc.GenericNotificationHandler][] = [
@@ -84,38 +67,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     if (Server.config.displayInlayHints) {
-        const hintsUpdater = new HintsUpdater();
-        hintsUpdater.refreshHintsForVisibleEditors().then(() => {
-            // vscode may ignore top level hintsUpdater.refreshHintsForVisibleEditors()
-            // so update the hints once when the focus changes to guarantee their presence
-            let editorChangeDisposable: vscode.Disposable | null = null;
-            editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
-                _ => {
-                    if (editorChangeDisposable !== null) {
-                        editorChangeDisposable.dispose();
-                    }
-                    return hintsUpdater.refreshHintsForVisibleEditors();
-                },
-            );
-
-            disposeOnDeactivation(
-                vscode.window.onDidChangeVisibleTextEditors(_ =>
-                    hintsUpdater.refreshHintsForVisibleEditors(),
-                ),
-            );
-            disposeOnDeactivation(
-                vscode.workspace.onDidChangeTextDocument(e =>
-                    hintsUpdater.refreshHintsForVisibleEditors(e),
-                ),
-            );
-            disposeOnDeactivation(
-                vscode.workspace.onDidChangeConfiguration(_ =>
-                    hintsUpdater.toggleHintsDisplay(
-                        Server.config.displayInlayHints,
-                    ),
-                ),
-            );
-        });
+        activateInlayHints(ctx);
     }
 }
 

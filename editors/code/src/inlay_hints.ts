@@ -1,14 +1,49 @@
 import * as vscode from 'vscode';
-import { Range, TextDocumentChangeEvent, TextEditor } from 'vscode';
-import { TextDocumentIdentifier } from 'vscode-languageclient';
-import { Server } from '../server';
+import * as lc from 'vscode-languageclient';
+import { Server } from './server';
+import { Ctx } from './ctx';
+
+export function activateInlayHints(ctx: Ctx) {
+    const hintsUpdater = new HintsUpdater();
+    hintsUpdater.refreshHintsForVisibleEditors().then(() => {
+        // vscode may ignore top level hintsUpdater.refreshHintsForVisibleEditors()
+        // so update the hints once when the focus changes to guarantee their presence
+        let editorChangeDisposable: vscode.Disposable | null = null;
+        editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
+            _ => {
+                if (editorChangeDisposable !== null) {
+                    editorChangeDisposable.dispose();
+                }
+                return hintsUpdater.refreshHintsForVisibleEditors();
+            },
+        );
+
+        ctx.pushCleanup(
+            vscode.window.onDidChangeVisibleTextEditors(_ =>
+                hintsUpdater.refreshHintsForVisibleEditors(),
+            ),
+        );
+        ctx.pushCleanup(
+            vscode.workspace.onDidChangeTextDocument(e =>
+                hintsUpdater.refreshHintsForVisibleEditors(e),
+            ),
+        );
+        ctx.pushCleanup(
+            vscode.workspace.onDidChangeConfiguration(_ =>
+                hintsUpdater.toggleHintsDisplay(
+                    Server.config.displayInlayHints,
+                ),
+            ),
+        );
+    });
+}
 
 interface InlayHintsParams {
-    textDocument: TextDocumentIdentifier;
+    textDocument: lc.TextDocumentIdentifier;
 }
 
 interface InlayHint {
-    range: Range;
+    range: vscode.Range;
     kind: string;
     label: string;
 }
@@ -19,7 +54,7 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
     },
 });
 
-export class HintsUpdater {
+class HintsUpdater {
     private displayHints = true;
 
     public async toggleHintsDisplay(displayHints: boolean): Promise<void> {
@@ -32,11 +67,10 @@ export class HintsUpdater {
     }
 
     public async refreshHintsForVisibleEditors(
-        cause?: TextDocumentChangeEvent,
+        cause?: vscode.TextDocumentChangeEvent,
     ): Promise<void> {
-        if (!this.displayHints) {
-            return;
-        }
+        if (!this.displayHints) return;
+
         if (
             cause !== undefined &&
             (cause.contentChanges.length === 0 ||
@@ -79,7 +113,7 @@ export class HintsUpdater {
     }
 
     private async updateDecorationsFromServer(
-        editor: TextEditor,
+        editor: vscode.TextEditor,
     ): Promise<void> {
         const newHints = await this.queryHints(editor.document.uri.toString());
         if (newHints !== null) {

@@ -1,7 +1,67 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
-import { Server } from '../server';
+import { Ctx, Cmd } from '../ctx';
+
+export function run(ctx: Ctx): Cmd {
+    let prevRunnable: RunnableQuickPick | undefined;
+
+    return async () => {
+        const editor = ctx.activeRustEditor;
+        if (!editor) return;
+
+        const textDocument: lc.TextDocumentIdentifier = {
+            uri: editor.document.uri.toString(),
+        };
+        const params: RunnablesParams = {
+            textDocument,
+            position: ctx.client.code2ProtocolConverter.asPosition(
+                editor.selection.active,
+            ),
+        };
+        const runnables = await ctx.client.sendRequest<Runnable[]>(
+            'rust-analyzer/runnables',
+            params,
+        );
+        const items: RunnableQuickPick[] = [];
+        if (prevRunnable) {
+            items.push(prevRunnable);
+        }
+        for (const r of runnables) {
+            if (
+                prevRunnable &&
+                JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)
+            ) {
+                continue;
+            }
+            items.push(new RunnableQuickPick(r));
+        }
+        const item = await vscode.window.showQuickPick(items);
+        if (!item) return;
+
+        item.detail = 'rerun';
+        prevRunnable = item;
+        const task = createTask(item.runnable);
+        return await vscode.tasks.executeTask(task);
+    };
+}
+
+export function runSingle(ctx: Ctx): Cmd {
+    return async (runnable: Runnable) => {
+        const editor = ctx.activeRustEditor;
+        if (!editor) return;
+
+        const task = createTask(runnable);
+        task.group = vscode.TaskGroup.Build;
+        task.presentationOptions = {
+            reveal: vscode.TaskRevealKind.Always,
+            panel: vscode.TaskPanelKind.Dedicated,
+            clear: true,
+        };
+
+        return vscode.tasks.executeTask(task);
+    };
+}
 
 interface RunnablesParams {
     textDocument: lc.TextDocumentIdentifier;
@@ -66,64 +126,4 @@ function createTask(spec: Runnable): vscode.Task {
     );
     t.presentationOptions.clear = true;
     return t;
-}
-
-let prevRunnable: RunnableQuickPick | undefined;
-export async function handle(): Promise<vscode.TaskExecution | undefined> {
-    const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId !== 'rust') {
-        return;
-    }
-    const textDocument: lc.TextDocumentIdentifier = {
-        uri: editor.document.uri.toString(),
-    };
-    const params: RunnablesParams = {
-        textDocument,
-        position: Server.client.code2ProtocolConverter.asPosition(
-            editor.selection.active,
-        ),
-    };
-    const runnables = await Server.client.sendRequest<Runnable[]>(
-        'rust-analyzer/runnables',
-        params,
-    );
-    const items: RunnableQuickPick[] = [];
-    if (prevRunnable) {
-        items.push(prevRunnable);
-    }
-    for (const r of runnables) {
-        if (
-            prevRunnable &&
-            JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)
-        ) {
-            continue;
-        }
-        items.push(new RunnableQuickPick(r));
-    }
-    const item = await vscode.window.showQuickPick(items);
-    if (!item) {
-        return;
-    }
-
-    item.detail = 'rerun';
-    prevRunnable = item;
-    const task = createTask(item.runnable);
-    return await vscode.tasks.executeTask(task);
-}
-
-export async function handleSingle(runnable: Runnable) {
-    const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId !== 'rust') {
-        return;
-    }
-
-    const task = createTask(runnable);
-    task.group = vscode.TaskGroup.Build;
-    task.presentationOptions = {
-        reveal: vscode.TaskRevealKind.Always,
-        panel: vscode.TaskPanelKind.Dedicated,
-        clear: true,
-    };
-
-    return vscode.tasks.executeTask(task);
 }
