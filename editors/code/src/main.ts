@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
-import { HintsUpdater } from './inlay_hints';
+import { activateInlayHints } from './inlay_hints';
 import { StatusDisplay } from './status_display';
 import * as events from './events';
 import * as notifications from './notifications';
@@ -37,10 +37,6 @@ export async function activate(context: vscode.ExtensionContext) {
     );
     ctx.pushCleanup(watchStatus);
 
-    function disposeOnDeactivation(disposable: vscode.Disposable) {
-        context.subscriptions.push(disposable);
-    }
-
     // Notifications are events triggered by the language server
     const allNotifications: [string, lc.GenericNotificationHandler][] = [
         [
@@ -71,38 +67,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     if (Server.config.displayInlayHints) {
-        const hintsUpdater = new HintsUpdater();
-        hintsUpdater.refreshHintsForVisibleEditors().then(() => {
-            // vscode may ignore top level hintsUpdater.refreshHintsForVisibleEditors()
-            // so update the hints once when the focus changes to guarantee their presence
-            let editorChangeDisposable: vscode.Disposable | null = null;
-            editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
-                _ => {
-                    if (editorChangeDisposable !== null) {
-                        editorChangeDisposable.dispose();
-                    }
-                    return hintsUpdater.refreshHintsForVisibleEditors();
-                },
-            );
-
-            disposeOnDeactivation(
-                vscode.window.onDidChangeVisibleTextEditors(_ =>
-                    hintsUpdater.refreshHintsForVisibleEditors(),
-                ),
-            );
-            disposeOnDeactivation(
-                vscode.workspace.onDidChangeTextDocument(e =>
-                    hintsUpdater.refreshHintsForVisibleEditors(e),
-                ),
-            );
-            disposeOnDeactivation(
-                vscode.workspace.onDidChangeConfiguration(_ =>
-                    hintsUpdater.toggleHintsDisplay(
-                        Server.config.displayInlayHints,
-                    ),
-                ),
-            );
-        });
+        activateInlayHints(ctx);
     }
 }
 
