@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as scopes from './scopes';
 import * as scopesMapper from './scopes_mapper';
-import { Server } from './server';
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
@@ -55,8 +54,6 @@ export class Config {
 
     public userConfigChanged() {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
-
-        Server.highlighter.removeHighlights();
 
         let requireReloadMessage = null;
 

@@ -102,7 +102,7 @@ class HintsUpdater {
         };
         let tokenSource = new vscode.CancellationTokenSource();
         let prev = this.pending.get(documentUri);
-        if (prev) prev.cancel()
+        if (prev) prev.cancel();
         this.pending.set(documentUri, tokenSource);
         try {
             return await this.ctx.sendRequestWithRetry<InlayHint[] | null>(
@@ -112,7 +112,7 @@ class HintsUpdater {
             );
         } finally {
             if (!tokenSource.token.isCancellationRequested) {
-                this.pending.delete(documentUri)
+                this.pending.delete(documentUri);
             }
         }
     }
