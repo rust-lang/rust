@@ -280,17 +280,17 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 
         named_region_map: |tcx, id| {
             let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
-            tcx.resolve_lifetimes(LOCAL_CRATE).named_region_map(&id)
+            tcx.resolve_lifetimes(LOCAL_CRATE).defs.get(&id)
         },
 
         is_late_bound_map: |tcx, id| {
             let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
-            tcx.resolve_lifetimes(LOCAL_CRATE).is_late_bound_map(&id)
+            tcx.resolve_lifetimes(LOCAL_CRATE).late_bound.get(&id)
         },
 
         object_lifetime_defaults_map: |tcx, id| {
             let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
-            tcx.resolve_lifetimes(LOCAL_CRATE).object_lifetime_defaults_map(&id)
+            tcx.resolve_lifetimes(LOCAL_CRATE).object_lifetime_defaults.get(&id)
         },
 
         ..*providers
@@ -308,11 +308,21 @@ fn resolve_lifetimes(tcx: TyCtxt<'_>, for_krate: CrateNum) -> &ResolveLifetimes 
 
     let named_region_map = krate(tcx);
 
-    let rl = ResolveLifetimes::new(
-        named_region_map.defs,
-        named_region_map.late_bound,
-        named_region_map.object_lifetime_defaults,
-    );
+    let mut rl = ResolveLifetimes::default();
+
+    for (hir_id, v) in named_region_map.defs {
+        let map = rl.defs.entry(hir_id.owner_local_def_id()).or_default();
+        map.insert(hir_id.local_id, v);
+    }
+    for hir_id in named_region_map.late_bound {
+        let map = rl.late_bound.entry(hir_id.owner_local_def_id()).or_default();
+        map.insert(hir_id.local_id);
+    }
+    for (hir_id, v) in named_region_map.object_lifetime_defaults {
+        let map = rl.object_lifetime_defaults.entry(hir_id.owner_local_def_id()).or_default();
+        map.insert(hir_id.local_id, v);
+    }
+
     tcx.arena.alloc(rl)
 }
 
