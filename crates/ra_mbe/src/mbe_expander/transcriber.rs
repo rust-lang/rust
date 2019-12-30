@@ -18,16 +18,16 @@ impl Bindings {
         let mut b = self.inner.get(name).ok_or_else(|| {
             ExpandError::BindingError(format!("could not find binding `{}`", name))
         })?;
-        for s in nesting.iter_mut() {
-            s.hit = true;
+        for nesting_state in nesting.iter_mut() {
+            nesting_state.hit = true;
             b = match b {
                 Binding::Fragment(_) => break,
-                Binding::Nested(bs) => bs.get(s.idx).ok_or_else(|| {
-                    s.at_end = true;
+                Binding::Nested(bs) => bs.get(nesting_state.idx).ok_or_else(|| {
+                    nesting_state.at_end = true;
                     ExpandError::BindingError(format!("could not find nested binding `{}`", name))
                 })?,
                 Binding::Empty => {
-                    s.at_end = true;
+                    nesting_state.at_end = true;
                     return Err(ExpandError::BindingError(format!(
                         "could not find empty binding `{}`",
                         name
@@ -61,7 +61,11 @@ pub(super) fn transcribe(
 #[derive(Debug)]
 struct NestingState {
     idx: usize,
+    /// `hit` is currently necessary to tell `expand_repeat` if it should stop
+    /// because there is no variable in use by the current repetition
     hit: bool,
+    /// `at_end` is currently necessary to tell `expand_repeat` if it should stop
+    /// because there is no more value avaible for the current repetition
     at_end: bool,
 }
 
@@ -130,8 +134,7 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> Result<Fragment, ExpandError>
         .into();
         Fragment::Tokens(tt)
     } else {
-        let fragment = ctx.bindings.get(&v, &mut ctx.nesting)?.clone();
-        fragment
+        ctx.bindings.get(&v, &mut ctx.nesting)?.clone()
     };
     Ok(res)
 }
