@@ -6,6 +6,7 @@ use std::{
 };
 
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath};
+use crate::db::DefDatabase;
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
@@ -54,6 +55,18 @@ impl FileLoader for TestDB {
 }
 
 impl TestDB {
+    pub fn module_for_file(&self, file_id: FileId) -> crate::ModuleId {
+        for &krate in self.relevant_crates(file_id).iter() {
+            let crate_def_map = self.crate_def_map(krate);
+            for (local_id, data) in crate_def_map.modules.iter() {
+                if data.origin.file_id() == Some(file_id) {
+                    return crate::ModuleId { krate, local_id };
+                }
+            }
+        }
+        panic!("Can't find module for file")
+    }
+
     pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<TestDB>> {
         *self.events.lock().unwrap() = Some(Vec::new());
         f();
