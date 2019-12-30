@@ -4,7 +4,6 @@ import * as lc from 'vscode-languageclient';
 import * as commands from './commands';
 import { ExpandMacroContentProvider } from './commands/expand_macro';
 import { HintsUpdater } from './commands/inlay_hints';
-import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import { StatusDisplay } from './commands/watch_status';
 import * as events from './events';
 import * as notifications from './notifications';
@@ -18,6 +17,9 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
+    ctx.registerCommand('joinLines', commands.joinLines);
+    ctx.registerCommand('parentModule', commands.parentModule);
+    ctx.registerCommand('syntaxTree', commands.syntaxTree);
 
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
@@ -26,45 +28,11 @@ export async function activate(context: vscode.ExtensionContext) {
     function registerCommand(name: string, f: any) {
         disposeOnDeactivation(vscode.commands.registerCommand(name, f));
     }
-    function overrideCommand(
-        name: string,
-        f: (...args: any[]) => Promise<boolean>,
-    ) {
-        const defaultCmd = `default:${name}`;
-        const original = (...args: any[]) =>
-            vscode.commands.executeCommand(defaultCmd, ...args);
-
-        try {
-            registerCommand(name, async (...args: any[]) => {
-                const editor = vscode.window.activeTextEditor;
-                if (
-                    !editor ||
-                    !editor.document ||
-                    editor.document.languageId !== 'rust'
-                ) {
-                    return await original(...args);
-                }
-                if (!(await f(...args))) {
-                    return await original(...args);
-                }
-            });
-        } catch (_) {
-            vscode.window.showWarningMessage(
-                'Enhanced typing feature is disabled because of incompatibility with VIM extension, consider turning off rust-analyzer.enableEnhancedTyping: https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/README.md#settings',
-            );
-        }
-    }
 
     // Commands are requests from vscode to the language server
-    registerCommand('rust-analyzer.joinLines', commands.joinLines.handle);
-    registerCommand('rust-analyzer.parentModule', commands.parentModule.handle);
     registerCommand('rust-analyzer.run', commands.runnables.handle);
     // Unlike the above this does not send requests to the language server
     registerCommand('rust-analyzer.runSingle', commands.runnables.handleSingle);
-    registerCommand(
-        'rust-analyzer.applySourceChange',
-        commands.applySourceChange.handle,
-    );
     registerCommand(
         'rust-analyzer.showReferences',
         (uri: string, position: lc.Position, locations: lc.Location[]) => {
@@ -78,7 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     if (Server.config.enableEnhancedTyping) {
-        overrideCommand('type', commands.onEnter.handle);
+        ctx.overrideCommand('type', commands.onEnter);
     }
 
     const watchStatus = new StatusDisplay(
@@ -87,10 +55,7 @@ export async function activate(context: vscode.ExtensionContext) {
     disposeOnDeactivation(watchStatus);
 
     // Notifications are events triggered by the language server
-    const allNotifications: Iterable<[
-        string,
-        lc.GenericNotificationHandler,
-    ]> = [
+    const allNotifications: [string, lc.GenericNotificationHandler][] = [
         [
             'rust-analyzer/publishDecorations',
             notifications.publishDecorations.handle,
@@ -100,20 +65,13 @@ export async function activate(context: vscode.ExtensionContext) {
             params => watchStatus.handleProgressNotification(params),
         ],
     ];
-    const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
     const expandMacroContentProvider = new ExpandMacroContentProvider();
 
     // The events below are plain old javascript events, triggered and handled by vscode
     vscode.window.onDidChangeActiveTextEditor(
-        events.changeActiveTextEditor.makeHandler(syntaxTreeContentProvider),
+        events.changeActiveTextEditor.makeHandler(),
     );
 
-    disposeOnDeactivation(
-        vscode.workspace.registerTextDocumentContentProvider(
-            'rust-analyzer',
-            syntaxTreeContentProvider,
-        ),
-    );
     disposeOnDeactivation(
         vscode.workspace.registerTextDocumentContentProvider(
             'rust-analyzer',
@@ -122,18 +80,8 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     registerCommand(
-        'rust-analyzer.syntaxTree',
-        commands.syntaxTree.createHandle(syntaxTreeContentProvider),
-    );
-    registerCommand(
         'rust-analyzer.expandMacro',
         commands.expandMacro.createHandle(expandMacroContentProvider),
-    );
-
-    vscode.workspace.onDidChangeTextDocument(
-        events.changeTextDocument.createHandler(syntaxTreeContentProvider),
-        null,
-        context.subscriptions,
     );
 
     const startServer = () => Server.start(allNotifications);
