@@ -40,10 +40,9 @@ export function analyzerStatus(ctx: Ctx): Cmd {
 class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
 
+    ctx: Ctx
     uri = vscode.Uri.parse('rust-analyzer-status://status');
     eventEmitter = new vscode.EventEmitter<vscode.Uri>();
-
-    ctx: Ctx
 
     constructor(ctx: Ctx) {
         this.ctx = ctx
@@ -53,9 +52,8 @@ class TextDocumentContentProvider
         _uri: vscode.Uri,
     ): vscode.ProviderResult<string> {
         const editor = vscode.window.activeTextEditor;
-        if (editor == null) {
-            return '';
-        }
+        if (editor == null) return '';
+
         return this.ctx.client.sendRequest<string>(
             'rust-analyzer/analyzerStatus',
             null,

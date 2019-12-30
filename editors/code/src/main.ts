@@ -27,44 +27,12 @@ export async function activate(context: vscode.ExtensionContext) {
     function registerCommand(name: string, f: any) {
         disposeOnDeactivation(vscode.commands.registerCommand(name, f));
     }
-    function overrideCommand(
-        name: string,
-        f: (...args: any[]) => Promise<boolean>,
-    ) {
-        const defaultCmd = `default:${name}`;
-        const original = (...args: any[]) =>
-            vscode.commands.executeCommand(defaultCmd, ...args);
-
-        try {
-            registerCommand(name, async (...args: any[]) => {
-                const editor = vscode.window.activeTextEditor;
-                if (
-                    !editor ||
-                    !editor.document ||
-                    editor.document.languageId !== 'rust'
-                ) {
-                    return await original(...args);
-                }
-                if (!(await f(...args))) {
-                    return await original(...args);
-                }
-            });
-        } catch (_) {
-            vscode.window.showWarningMessage(
-                'Enhanced typing feature is disabled because of incompatibility with VIM extension, consider turning off rust-analyzer.enableEnhancedTyping: https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/README.md#settings',
-            );
-        }
-    }
 
     // Commands are requests from vscode to the language server
     registerCommand('rust-analyzer.parentModule', commands.parentModule.handle);
     registerCommand('rust-analyzer.run', commands.runnables.handle);
     // Unlike the above this does not send requests to the language server
     registerCommand('rust-analyzer.runSingle', commands.runnables.handleSingle);
-    registerCommand(
-        'rust-analyzer.applySourceChange',
-        commands.applySourceChange.handle,
-    );
     registerCommand(
         'rust-analyzer.showReferences',
         (uri: string, position: lc.Position, locations: lc.Location[]) => {
@@ -78,7 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     if (Server.config.enableEnhancedTyping) {
-        overrideCommand('type', commands.onEnter.handle);
+        ctx.overrideCommand('type', commands.onEnter);
     }
 
     const watchStatus = new StatusDisplay(
@@ -91,15 +59,15 @@ export async function activate(context: vscode.ExtensionContext) {
         string,
         lc.GenericNotificationHandler,
     ]> = [
-        [
-            'rust-analyzer/publishDecorations',
-            notifications.publishDecorations.handle,
-        ],
-        [
-            '$/progress',
-            params => watchStatus.handleProgressNotification(params),
-        ],
-    ];
+            [
+                'rust-analyzer/publishDecorations',
+                notifications.publishDecorations.handle,
+            ],
+            [
+                '$/progress',
+                params => watchStatus.handleProgressNotification(params),
+            ],
+        ];
     const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
     const expandMacroContentProvider = new ExpandMacroContentProvider();
 

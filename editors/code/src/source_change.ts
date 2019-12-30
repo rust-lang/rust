@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
-import { Server } from '../server';
+import { Ctx } from './ctx';
 
 export interface SourceChange {
     label: string;
@@ -9,8 +9,8 @@ export interface SourceChange {
     cursorPosition?: lc.TextDocumentPositionParams;
 }
 
-export async function handle(change: SourceChange) {
-    const wsEdit = Server.client.protocol2CodeConverter.asWorkspaceEdit(
+export async function applySourceChange(ctx: Ctx, change: SourceChange) {
+    const wsEdit = ctx.client.protocol2CodeConverter.asWorkspaceEdit(
         change.workspaceEdit,
     );
     let created;
@@ -32,10 +32,10 @@ export async function handle(change: SourceChange) {
         const doc = await vscode.workspace.openTextDocument(toOpenUri);
         await vscode.window.showTextDocument(doc);
     } else if (toReveal) {
-        const uri = Server.client.protocol2CodeConverter.asUri(
+        const uri = ctx.client.protocol2CodeConverter.asUri(
             toReveal.textDocument.uri,
         );
-        const position = Server.client.protocol2CodeConverter.asPosition(
+        const position = ctx.client.protocol2CodeConverter.asPosition(
             toReveal.position,
         );
         const editor = vscode.window.activeTextEditor;
