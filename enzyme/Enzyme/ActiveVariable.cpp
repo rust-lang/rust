@@ -31,6 +31,8 @@
 
 #include "llvm/Support/raw_ostream.h"
 
+#include "llvm/IR/InlineAsm.h"
+
 #include "ActiveVariable.h"
 #include "Utils.h"
 
@@ -834,6 +836,18 @@ bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, Small
                 
                 typeseen.insert(typeseen0.begin(), typeseen0.end());
                 if (fast_tracking) return true;
+            }
+        }
+    }
+
+    if (auto ev = dyn_cast<ExtractValueInst>(v)) {
+        if (auto ci = dyn_cast<CallInst>(ev->getOperand(0))) {
+            if (auto iasm = dyn_cast<InlineAsm>(ci->getCalledValue())) {
+                if (iasm->getAsmString() == "cpuid") {
+                    intseen[idx] = IntType::Integer;
+                    intUse = true;
+                    if (fast_tracking) return true;
+                }
             }
         }
     }

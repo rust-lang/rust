@@ -1593,7 +1593,11 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[op]);
       auto anti = gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), "shadow"));
       if (I != E && placeholder == &*I) I++;
-      freeKnownAllocation(Builder2, gutils->lookupM(anti, Builder2), *called, TLI)->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+      Value* tofree = gutils->lookupM(anti, Builder2);
+      assert(tofree);
+      assert(tofree->getType());
+      assert(Type::getInt8PtrTy(tofree->getContext()));
+      freeKnownAllocation(Builder2, tofree, *called, TLI)->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
     }
 
     //TODO enable this if we need to free the memory
