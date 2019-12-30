@@ -46,7 +46,7 @@ export class Server {
                 lruCapacity: Server.config.lruCapacity,
                 maxInlayHintLength: Server.config.maxInlayHintLength,
                 cargoWatchEnable: Server.config.cargoWatchOptions.enable,
-                cargoWatchArgumets: Server.config.cargoWatchOptions.arguments,
+                cargoWatchArgs: Server.config.cargoWatchOptions.arguments,
                 cargoWatchCommand: Server.config.cargoWatchOptions.command,
                 cargoWatchAllTargets:
                     Server.config.cargoWatchOptions.allTargets,
