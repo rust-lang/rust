@@ -251,8 +251,12 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Type error arising from type checking a pattern against an expected type.
     Pattern {
-        span: Span,
-        ty: Ty<'tcx>,
+        /// The span of the scrutinee or type expression which caused the `root_ty` type.
+        span: Option<Span>,
+        /// The root expected type induced by a scrutinee or type expression.
+        root_ty: Ty<'tcx>,
+        /// Whether the `Span` came from an expression or a type expression.
+        origin_expr: bool,
     },
 
     /// Constants in patterns must have `Structural` type.

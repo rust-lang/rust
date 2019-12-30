@@ -1293,9 +1293,11 @@ fn check_fn<'a, 'tcx>(
     };
 
     // Add formal parameters.
-    for (param_ty, param) in fn_sig.inputs().iter().copied().chain(maybe_va_list).zip(body.params) {
+    let inputs_hir = hir.fn_decl_by_hir_id(fn_id).map(|decl| &decl.inputs);
+    let inputs_fn = fn_sig.inputs().iter().copied();
+    for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
-        fcx.check_pat_top(&param.pat, param_ty, None);
+        fcx.check_pat_top(&param.pat, param_ty, try { inputs_hir?.get(idx)?.span }, false);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -4276,16 +4278,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Type check a `let` statement.
     pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
+        // Determine and write the type which we'll check the pattern against.
         let ty = self.local_ty(local.span, local.hir_id).decl_ty;
         self.write_ty(local.hir_id, ty);
 
+        // Type check the initializer.
         if let Some(ref init) = local.init {
             let init_ty = self.check_decl_initializer(local, &init);
             self.overwrite_local_ty_if_err(local, ty, init_ty);
         }
 
-        self.check_pat_top(&local.pat, ty, local.init.map(|init| init.span));
+        // Does the expected pattern type originate from an expression and what is the span?
+        let (origin_expr, ty_span) = match (local.ty, local.init) {
+            (Some(ty), _) => (false, Some(ty.span)), // Bias towards the explicit user type.
+            (_, Some(init)) => (true, Some(init.span)), // No explicit type; so use the scrutinee.
+            _ => (false, None), // We have `let $pat;`, so the expected type is unconstrained.
+        };
+
+        // Type check the pattern. Override if necessary to avoid knock-on errors.
+        self.check_pat_top(&local.pat, ty, ty_span, origin_expr);
         let pat_ty = self.node_ty(local.pat.hir_id);
         self.overwrite_local_ty_if_err(local, ty, pat_ty);
     }
@@ -4297,7 +4310,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) {
         if ty.references_error() {
-            // Override the types everywhere with `types.err` to avoid knock down errors.
+            // Override the types everywhere with `types.err` to avoid knock on errors.
             self.write_ty(local.hir_id, ty);
             self.write_ty(local.pat.hir_id, ty);
             let local_ty = LocalTy { decl_ty, revealed_ty: ty };

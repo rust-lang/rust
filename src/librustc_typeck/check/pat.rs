@@ -37,9 +37,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
 struct TopInfo<'tcx> {
     /// The `expected` type at the top level of type checking a pattern.
     expected: Ty<'tcx>,
+    /// Was the origin of the `span` from a scrutinee expression?
+    ///
+    /// Otherwise there is no scrutinee and it could be e.g. from the type of a formal parameter.
+    origin_expr: bool,
     /// The span giving rise to the `expected` type, if one could be provided.
     ///
-    /// This is the span of the scrutinee as in:
+    /// If `origin_expr` is `true`, then this is the span of the scrutinee as in:
     ///
     /// - `match scrutinee { ... }`
     /// - `let _ = scrutinee;`
@@ -70,11 +74,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        let cause = if let Some(span) = ti.span {
-            self.cause(cause_span, Pattern { span, ty: ti.expected })
-        } else {
-            self.misc(cause_span)
-        };
+        let code = Pattern { span: ti.span, root_ty: ti.expected, origin_expr: ti.origin_expr };
+        let cause = self.cause(cause_span, code);
         self.demand_eqtype_with_origin(&cause, expected, actual)
     }
 
@@ -92,11 +93,21 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type check the given top level pattern against the `expected` type.
     ///
-    /// If a `Some(span)` is provided, then the `span` represents the scrutinee's span.
+    /// If a `Some(span)` is provided and `origin_expr` holds,
+    /// then the `span` represents the scrutinee's span.
     /// The scrutinee is found in e.g. `match scrutinee { ... }` and `let pat = scrutinee;`.
-    pub fn check_pat_top(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, span: Option<Span>) {
+    ///
+    /// Otherwise, `Some(span)` represents the span of a type expression
+    /// which originated the `expected` type.
+    pub fn check_pat_top(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        expected: Ty<'tcx>,
+        span: Option<Span>,
+        origin_expr: bool,
+    ) {
         let def_bm = BindingMode::BindByValue(hir::Mutability::Not);
-        self.check_pat(pat, expected, def_bm, TopInfo { expected, span });
+        self.check_pat(pat, expected, def_bm, TopInfo { expected, origin_expr, span });
     }
 
     /// Type check the given `pat` against the `expected` type

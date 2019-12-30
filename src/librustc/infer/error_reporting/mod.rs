@@ -581,8 +581,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
     ) {
         match cause.code {
-            ObligationCauseCode::Pattern { span, ty } => {
-                let ty = self.resolve_vars_if_possible(&ty);
+            ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
+                let ty = self.resolve_vars_if_possible(&root_ty);
                 if ty.is_suggestable() {
                     // don't show type `_`
                     err.span_label(span, format!("this expression has type `{}`", ty));
@@ -599,6 +599,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         }
                     }
                 }
+            }
+            ObligationCauseCode::Pattern { origin_expr: false, span: Some(span), .. } => {
+                err.span_label(span, "expected due to this");
             }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 source,

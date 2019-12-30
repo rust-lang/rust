@@ -61,7 +61,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .map(|arm| {
                 let mut all_pats_diverge = Diverges::WarnedAlways;
                 self.diverges.set(Diverges::Maybe);
-                self.check_pat_top(&arm.pat, discrim_ty, Some(discrim.span));
+                self.check_pat_top(&arm.pat, discrim_ty, Some(discrim.span), true);
                 all_pats_diverge &= self.diverges.get();
 
                 // As discussed with @eddyb, this is for disabling unreachable_code

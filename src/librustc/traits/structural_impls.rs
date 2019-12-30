@@ -521,7 +521,9 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                     discrim_hir_id,
                 })
             }),
-            super::Pattern { span, ty } => tcx.lift(&ty).map(|ty| super::Pattern { span, ty }),
+            super::Pattern { span, root_ty, origin_expr } => {
+                tcx.lift(&root_ty).map(|root_ty| super::Pattern { span, root_ty, origin_expr })
+            }
             super::IfExpression(box super::IfExpressionCause { then, outer, semicolon }) => {
                 Some(super::IfExpression(box super::IfExpressionCause { then, outer, semicolon }))
             }
