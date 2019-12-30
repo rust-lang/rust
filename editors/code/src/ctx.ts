@@ -16,7 +16,7 @@ export class Ctx {
 
     registerCommand(
         name: string,
-        factory: (ctx: Ctx) => () => Promise<vscode.TextEditor>,
+        factory: (ctx: Ctx) => Cmd,
     ) {
         const fullName = `rust-analyzer.${name}`
         const cmd = factory(this);
@@ -28,3 +28,5 @@ export class Ctx {
         this.extCtx.subscriptions.push(d)
     }
 }
+
+export type Cmd = (...args: any[]) => any;

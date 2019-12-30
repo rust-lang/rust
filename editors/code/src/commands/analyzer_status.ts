@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { Ctx } from '../ctx';
+import { Ctx, Cmd } from '../ctx';
 // Shows status of rust-analyzer (for debugging)
 
-export function analyzerStatus(ctx: Ctx) {
+export function analyzerStatus(ctx: Ctx): Cmd {
     let poller: NodeJS.Timer | null = null;
     const tdcp = new TextDocumentContentProvider(ctx);
 
