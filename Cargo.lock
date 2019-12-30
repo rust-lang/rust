@@ -3379,7 +3379,7 @@ dependencies = [
  "rustc_llvm",
  "rustc_session",
  "rustc_target",
- "smallvec 0.6.10",
+ "smallvec 1.0.0",
  "syntax",
  "syntax_expand",
  "syntax_pos",
