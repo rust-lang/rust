@@ -5,13 +5,16 @@ use std::{fmt::Write as _, io::Write as _};
 
 use lsp_server::ErrorCode;
 use lsp_types::{
+    CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
+    CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
     DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
     Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
     Range, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide::{
-    AssistId, FileId, FilePosition, FileRange, Query, Runnable, RunnableKind, SearchScope,
+    AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
+    SearchScope,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
@@ -21,7 +24,10 @@ use serde_json::to_value;
 
 use crate::{
     cargo_target_spec::{runnable_args, CargoTargetSpec},
-    conv::{to_location, Conv, ConvWith, FoldConvCtx, MapConvWith, TryConvWith, TryConvWithToVec},
+    conv::{
+        to_call_hierarchy_item, to_location, Conv, ConvWith, FoldConvCtx, MapConvWith, TryConvWith,
+        TryConvWithToVec,
+    },
     req::{self, Decoration, InlayHint, InlayHintsParams, InlayKind},
     world::WorldSnapshot,
     LspError, Result,
@@ -935,4 +941,92 @@ pub fn handle_inlay_hints(
             },
         })
         .collect())
+}
+
+pub fn handle_call_hierarchy_prepare(
+    world: WorldSnapshot,
+    params: CallHierarchyPrepareParams,
+) -> Result<Option<Vec<CallHierarchyItem>>> {
+    let _p = profile("handle_call_hierarchy_prepare");
+    let position = params.text_document_position_params.try_conv_with(&world)?;
+    let file_id = position.file_id;
+
+    let nav_info = match world.analysis().call_hierarchy(position)? {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let RangeInfo { range, info: navs } = nav_info;
+    let res = navs
+        .into_iter()
+        .filter(|it| it.kind() == SyntaxKind::FN_DEF)
+        .filter_map(|it| to_call_hierarchy_item(file_id, range, &world, &line_index, it).ok())
+        .collect();
+
+    Ok(Some(res))
+}
+
+pub fn handle_call_hierarchy_incoming(
+    world: WorldSnapshot,
+    params: CallHierarchyIncomingCallsParams,
+) -> Result<Option<Vec<CallHierarchyIncomingCall>>> {
+    let _p = profile("handle_call_hierarchy_incoming");
+    let item = params.item;
+
+    let doc = TextDocumentIdentifier::new(item.uri);
+    let frange: FileRange = (&doc, item.range).try_conv_with(&world)?;
+    let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
+
+    let call_items = match world.analysis().incoming_calls(fpos)? {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+
+    let mut res = vec![];
+
+    for call_item in call_items.into_iter() {
+        let file_id = call_item.target.file_id();
+        let line_index = world.analysis().file_line_index(file_id)?;
+        let range = call_item.target.range();
+        let item = to_call_hierarchy_item(file_id, range, &world, &line_index, call_item.target)?;
+        res.push(CallHierarchyIncomingCall {
+            from: item,
+            from_ranges: call_item.ranges.iter().map(|it| it.conv_with(&line_index)).collect(),
+        });
+    }
+
+    Ok(Some(res))
+}
+
+pub fn handle_call_hierarchy_outgoing(
+    world: WorldSnapshot,
+    params: CallHierarchyOutgoingCallsParams,
+) -> Result<Option<Vec<CallHierarchyOutgoingCall>>> {
+    let _p = profile("handle_call_hierarchy_outgoing");
+    let item = params.item;
+
+    let doc = TextDocumentIdentifier::new(item.uri);
+    let frange: FileRange = (&doc, item.range).try_conv_with(&world)?;
+    let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
+
+    let call_items = match world.analysis().outgoing_calls(fpos)? {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+
+    let mut res = vec![];
+
+    for call_item in call_items.into_iter() {
+        let file_id = call_item.target.file_id();
+        let line_index = world.analysis().file_line_index(file_id)?;
+        let range = call_item.target.range();
+        let item = to_call_hierarchy_item(file_id, range, &world, &line_index, call_item.target)?;
+        res.push(CallHierarchyOutgoingCall {
+            to: item,
+            from_ranges: call_item.ranges.iter().map(|it| it.conv_with(&line_index)).collect(),
+        });
+    }
+
+    Ok(Some(res))
 }

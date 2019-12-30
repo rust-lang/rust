@@ -24,6 +24,7 @@ mod goto_definition;
 mod goto_type_definition;
 mod extend_selection;
 mod hover;
+mod call_hierarchy;
 mod call_info;
 mod syntax_highlighting;
 mod parent_module;
@@ -62,6 +63,7 @@ use crate::{db::LineIndexDatabase, display::ToNav, symbol_index::FileSymbol};
 
 pub use crate::{
     assists::{Assist, AssistId},
+    call_hierarchy::CallItem,
     change::{AnalysisChange, LibraryData},
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     diagnostics::Severity,
@@ -410,6 +412,24 @@ impl Analysis {
     /// Computes parameter information for the given call expression.
     pub fn call_info(&self, position: FilePosition) -> Cancelable<Option<CallInfo>> {
         self.with_db(|db| call_info::call_info(db, position))
+    }
+
+    /// Computes call hierarchy candidates for the given file position.
+    pub fn call_hierarchy(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
+        self.with_db(|db| call_hierarchy::call_hierarchy(db, position))
+    }
+
+    /// Computes incoming calls for the given file position.
+    pub fn incoming_calls(&self, position: FilePosition) -> Cancelable<Option<Vec<CallItem>>> {
+        self.with_db(|db| call_hierarchy::incoming_calls(db, position))
+    }
+
+    /// Computes incoming calls for the given file position.
+    pub fn outgoing_calls(&self, position: FilePosition) -> Cancelable<Option<Vec<CallItem>>> {
+        self.with_db(|db| call_hierarchy::outgoing_calls(db, position))
     }
 
     /// Returns a `mod name;` declaration which created the current module.

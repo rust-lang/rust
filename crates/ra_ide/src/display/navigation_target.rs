@@ -19,7 +19,7 @@ use super::short_label::ShortLabel;
 ///
 /// Typically, a `NavigationTarget` corresponds to some element in the source
 /// code, like a function or a struct, but this is not strictly required.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NavigationTarget {
     file_id: FileId,
     name: SmolStr,
