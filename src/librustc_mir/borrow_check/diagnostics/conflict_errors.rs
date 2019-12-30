@@ -882,9 +882,27 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 err.span_label(
                     drop_span,
                     format!(
-                        "...but `{}` will be dropped here, when the function `{}` returns",
+                        "...but `{}` will be dropped here, when the {} returns",
                         name,
-                        self.infcx.tcx.hir().name(fn_hir_id),
+                        self.infcx
+                            .tcx
+                            .hir()
+                            .opt_name(fn_hir_id)
+                            .map(|name| format!("function `{}`", name))
+                            .unwrap_or_else(|| {
+                                match &self
+                                    .infcx
+                                    .tcx
+                                    .typeck_tables_of(self.mir_def_id)
+                                    .node_type(fn_hir_id)
+                                    .kind
+                                {
+                                    ty::Closure(..) => "enclosing closure",
+                                    ty::Generator(..) => "enclosing generator",
+                                    kind => bug!("expected closure or generator, found {:?}", kind),
+                                }
+                                .to_string()
+                            })
                     ),
                 );
 
