@@ -41,6 +41,7 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
 });
 
 class HintsUpdater {
+    private pending: Map<string, vscode.CancellationTokenSource> = new Map();
     private ctx: Ctx;
     private enabled = true;
 
@@ -67,7 +68,8 @@ class HintsUpdater {
 
     private async refreshEditor(editor: vscode.TextEditor): Promise<void> {
         const newHints = await this.queryHints(editor.document.uri.toString());
-        const newDecorations = (newHints ? newHints : []).map(hint => ({
+        if (newHints == null) return;
+        const newDecorations = newHints.map(hint => ({
             range: hint.range,
             renderOptions: {
                 after: {
@@ -98,9 +100,20 @@ class HintsUpdater {
         const request: InlayHintsParams = {
             textDocument: { uri: documentUri },
         };
-        return this.ctx.sendRequestWithRetry<InlayHint[] | null>(
-            'rust-analyzer/inlayHints',
-            request,
-        );
+        let tokenSource = new vscode.CancellationTokenSource();
+        let prev = this.pending.get(documentUri);
+        if (prev) prev.cancel()
+        this.pending.set(documentUri, tokenSource);
+        try {
+            return await this.ctx.sendRequestWithRetry<InlayHint[] | null>(
+                'rust-analyzer/inlayHints',
+                request,
+                tokenSource.token,
+            );
+        } finally {
+            if (!tokenSource.token.isCancellationRequested) {
+                this.pending.delete(documentUri)
+            }
+        }
     }
 }

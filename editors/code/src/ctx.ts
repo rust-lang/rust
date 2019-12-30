@@ -62,20 +62,23 @@ export class Ctx {
         this.extCtx.subscriptions.push(d);
     }
 
-    async sendRequestWithRetry<R>(method: string, param: any): Promise<R> {
+    async sendRequestWithRetry<R>(method: string, param: any, token: vscode.CancellationToken): Promise<R> {
         await this.client.onReady();
-        const nRetries = 3;
-        for (let triesLeft = nRetries; ; triesLeft--) {
+        for (const delay of [2, 4, 6, 8, 10, null]) {
             try {
-                return await this.client.sendRequest(method, param);
+                return await this.client.sendRequest(method, param, token);
             } catch (e) {
-                if (e.code === lc.ErrorCodes.ContentModified && triesLeft > 0) {
+                if (e.code === lc.ErrorCodes.ContentModified && delay !== null) {
+                    await sleep(10 * (1 << delay))
                     continue;
                 }
                 throw e;
             }
         }
+        throw 'unreachable'
     }
 }
 
 export type Cmd = (...args: any[]) => any;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
