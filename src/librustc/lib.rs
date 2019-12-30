@@ -95,24 +95,7 @@ pub mod hir;
 pub mod ich;
 pub mod infer;
 pub mod lint;
-
-pub mod middle {
-    pub mod cstore;
-    pub mod dependency_format;
-    pub mod diagnostic_items;
-    pub mod exported_symbols;
-    pub mod free_region;
-    pub mod lang_items;
-    pub mod lib_features;
-    pub mod privacy;
-    pub mod reachable;
-    pub mod recursion_limit;
-    pub mod region;
-    pub mod resolve_lifetime;
-    pub mod stability;
-    pub mod weak_lang_items;
-}
-
+pub mod middle;
 pub mod mir;
 pub use rustc_session as session;
 pub mod traits;

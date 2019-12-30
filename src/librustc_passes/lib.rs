@@ -22,17 +22,23 @@ use rustc::ty::query::Providers;
 pub mod ast_validation;
 mod check_const;
 pub mod dead;
+mod diagnostic_items;
 pub mod entry;
 pub mod hir_stats;
 mod intrinsicck;
 pub mod layout_test;
+mod lib_features;
 mod liveness;
 pub mod loops;
+mod reachable;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_const::provide(providers);
+    diagnostic_items::provide(providers);
     entry::provide(providers);
+    lib_features::provide(providers);
     loops::provide(providers);
     liveness::provide(providers);
     intrinsicck::provide(providers);
+    reachable::provide(providers);
 }

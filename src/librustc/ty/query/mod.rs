@@ -10,7 +10,6 @@ use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use crate::middle::lang_items::{LangItem, LanguageItems};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
-use crate::middle::reachable::ReachableSet;
 use crate::middle::region;
 use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
 use crate::middle::stability::{self, DeprecationEntry};
@@ -37,7 +36,7 @@ use crate::ty::subst::SubstsRef;
 use crate::ty::util::NeedsDrop;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::{DefIdMap, DefIdSet};
+use crate::util::nodemap::{DefIdMap, DefIdSet, HirIdSet};
 use rustc_data_structures::profiling::ProfileCategory::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;

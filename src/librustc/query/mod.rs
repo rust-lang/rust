@@ -510,7 +510,7 @@ rustc_queries! {
     }
 
     Other {
-        query reachable_set(_: CrateNum) -> ReachableSet {
+        query reachable_set(_: CrateNum) -> Lrc<HirIdSet> {
             desc { "reachability" }
         }
 
