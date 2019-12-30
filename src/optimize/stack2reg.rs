@@ -34,12 +34,12 @@ struct StackSlotUsage {
 impl StackSlotUsage {
     fn potential_stores_for_load(&self, ctx: &Context, load: Inst) -> Vec<Inst> {
         self.stack_store.iter().cloned().filter(|&store| {
-            match spatial_overlap(&ctx.func, load, store) {
+            match spatial_overlap(&ctx.func, store, load) {
                 SpatialOverlap::No => false, // Can never be the source of the loaded value.
                 SpatialOverlap::Partial | SpatialOverlap::Full => true,
             }
         }).filter(|&store| {
-            match temporal_order(ctx, load, store) {
+            match temporal_order(ctx, store, load) {
                 TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
                 TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
             }
