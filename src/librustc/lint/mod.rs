@@ -170,56 +170,6 @@ macro_rules! declare_late_lint_pass {
 late_lint_methods!(declare_late_lint_pass, [], ['tcx]);
 
 #[macro_export]
-macro_rules! expand_combined_late_lint_pass_method {
-    ([$($passes:ident),*], $self: ident, $name: ident, $params:tt) => ({
-        $($self.$passes.$name $params;)*
-    })
-}
-
-#[macro_export]
-macro_rules! expand_combined_late_lint_pass_methods {
-    ($passes:tt, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &LateContext<'a, 'tcx>, $($param: $arg),*) {
-            expand_combined_late_lint_pass_method!($passes, self, $name, (context, $($param),*));
-        })*
-    )
-}
-
-#[macro_export]
-macro_rules! declare_combined_late_lint_pass {
-    ([$v:vis $name:ident, [$($passes:ident: $constructor:expr,)*]], [$hir:tt], $methods:tt) => (
-        #[allow(non_snake_case)]
-        $v struct $name {
-            $($passes: $passes,)*
-        }
-
-        impl $name {
-            $v fn new() -> Self {
-                Self {
-                    $($passes: $constructor,)*
-                }
-            }
-
-            $v fn get_lints() -> LintArray {
-                let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$passes::get_lints());)*
-                lints
-            }
-        }
-
-        impl<'a, 'tcx> LateLintPass<'a, 'tcx> for $name {
-            expand_combined_late_lint_pass_methods!([$($passes),*], $methods);
-        }
-
-        impl LintPass for $name {
-            fn name(&self) -> &'static str {
-                panic!()
-            }
-        }
-    )
-}
-
-#[macro_export]
 macro_rules! early_lint_methods {
     ($macro:path, $args:tt) => (
         $macro!($args, [
@@ -295,56 +245,6 @@ macro_rules! declare_early_lint_pass {
 }
 
 early_lint_methods!(declare_early_lint_pass, []);
-
-#[macro_export]
-macro_rules! expand_combined_early_lint_pass_method {
-    ([$($passes:ident),*], $self: ident, $name: ident, $params:tt) => ({
-        $($self.$passes.$name $params;)*
-    })
-}
-
-#[macro_export]
-macro_rules! expand_combined_early_lint_pass_methods {
-    ($passes:tt, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
-            expand_combined_early_lint_pass_method!($passes, self, $name, (context, $($param),*));
-        })*
-    )
-}
-
-#[macro_export]
-macro_rules! declare_combined_early_lint_pass {
-    ([$v:vis $name:ident, [$($passes:ident: $constructor:expr,)*]], $methods:tt) => (
-        #[allow(non_snake_case)]
-        $v struct $name {
-            $($passes: $passes,)*
-        }
-
-        impl $name {
-            $v fn new() -> Self {
-                Self {
-                    $($passes: $constructor,)*
-                }
-            }
-
-            $v fn get_lints() -> LintArray {
-                let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$passes::get_lints());)*
-                lints
-            }
-        }
-
-        impl EarlyLintPass for $name {
-            expand_combined_early_lint_pass_methods!([$($passes),*], $methods);
-        }
-
-        impl LintPass for $name {
-            fn name(&self) -> &'static str {
-                panic!()
-            }
-        }
-    )
-}
 
 /// A lint pass boxed up as a trait object.
 pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
