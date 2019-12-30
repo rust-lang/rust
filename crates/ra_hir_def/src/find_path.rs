@@ -8,22 +8,12 @@ use crate::{
 };
 use hir_expand::name::Name;
 
-// TODO handle prelude
-// TODO handle enum variants
 // TODO don't import from super imports? or at least deprioritize
 // TODO use super?
 // TODO use shortest path
 // TODO performance / memoize
 
 pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
-    // 1. Find all locations that the item could be imported from (i.e. that are visible)
-    //    - this needs to consider other crates, for reexports from transitive dependencies
-    //    - filter by visibility
-    // 2. For each of these, go up the module tree until we find an
-    //    item/module/crate that is already in scope (including because it is in
-    //    the prelude, and including aliases!)
-    // 3. Then select the one that gives the shortest path
-
     // Base cases:
 
     // - if the item is already in scope, return the name under which it is
@@ -46,10 +36,28 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Optio
     }
 
     // - if the item is in the prelude, return the name from there
-    // TODO check prelude
+    if let Some(prelude_module) = def_map.prelude {
+        let prelude_def_map = db.crate_def_map(prelude_module.krate);
+        let prelude_scope: &crate::item_scope::ItemScope = &prelude_def_map.modules[prelude_module.local_id].scope;
+        if let Some((name, vis)) = prelude_scope.reverse_get(item) {
+            if vis.is_visible_from(db, from) {
+                return Some(ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]));
+            }
+        }
+    }
 
     // Recursive case:
     // - if the item is an enum variant, refer to it via the enum
+    if let Some(ModuleDefId::EnumVariantId(variant)) = item.as_module_def_id() {
+        if let Some(mut path) = find_path(db, ItemInNs::Types(variant.parent.into()), from) {
+            let data = db.enum_data(variant.parent);
+            path.segments.push(data.variants[variant.local_id].name.clone());
+            return Some(path);
+        }
+        // If this doesn't work, it seems we have no way of referring to the
+        // enum; that's very weird, but there might still be a reexport of the
+        // variant somewhere
+    }
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
     let importable_locations = find_importable_locations(db, item, from);
@@ -129,6 +137,16 @@ mod tests {
             <|>
         "#;
         check_found_path(code, "S");
+    }
+
+    #[test]
+    fn enum_variant() {
+        let code = r#"
+            //- /main.rs
+            enum E { A }
+            <|>
+        "#;
+        check_found_path(code, "E::A");
     }
 
     #[test]
@@ -216,6 +234,19 @@ mod tests {
     }
 
     #[test]
+    fn different_crate_reexport() {
+        let code = r#"
+            //- /main.rs crate:main deps:std
+            <|>
+            //- /std.rs crate:std deps:core
+            pub use core::S;
+            //- /core.rs crate:core
+            pub struct S;
+        "#;
+        check_found_path(code, "std::S");
+    }
+
+    #[test]
     fn prelude() {
         let code = r#"
             //- /main.rs crate:main deps:std
@@ -226,5 +257,22 @@ mod tests {
             pub use prelude::*;
         "#;
         check_found_path(code, "S");
+    }
+
+    #[test]
+    fn enum_variant_from_prelude() {
+        let code = r#"
+            //- /main.rs crate:main deps:std
+            <|>
+            //- /std.rs crate:std
+            pub mod prelude {
+                pub enum Option<T> { Some(T), None }
+                pub use Option::*;
+            }
+            #[prelude_import]
+            pub use prelude::*;
+        "#;
+        check_found_path(code, "None");
+        check_found_path(code, "Some");
     }
 }

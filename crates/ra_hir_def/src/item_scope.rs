@@ -204,4 +204,12 @@ impl ItemInNs {
             },
         }
     }
+
+    pub fn as_module_def_id(self) -> Option<ModuleDefId> {
+        match self {
+            ItemInNs::Types(t) => Some(t),
+            ItemInNs::Values(v) => Some(v),
+            ItemInNs::Macros(_) => None,
+        }
+    }
 }
