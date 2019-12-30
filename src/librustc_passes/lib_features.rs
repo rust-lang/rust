@@ -4,38 +4,19 @@
 // and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
-use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use crate::ty::TyCtxt;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_macros::HashStable;
+use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::middle::lib_features::LibFeatures;
+use rustc::ty::query::Providers;
+use rustc::ty::TyCtxt;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 use syntax::symbol::Symbol;
 use syntax_pos::{sym, Span};
 
 use rustc_error_codes::*;
 
-#[derive(HashStable)]
-pub struct LibFeatures {
-    // A map from feature to stabilisation version.
-    pub stable: FxHashMap<Symbol, Symbol>,
-    pub unstable: FxHashSet<Symbol>,
-}
-
-impl LibFeatures {
-    fn new() -> LibFeatures {
-        LibFeatures { stable: Default::default(), unstable: Default::default() }
-    }
-
-    pub fn to_vec(&self) -> Vec<(Symbol, Option<Symbol>)> {
-        let mut all_features: Vec<_> = self
-            .stable
-            .iter()
-            .map(|(f, s)| (*f, Some(*s)))
-            .chain(self.unstable.iter().map(|f| (*f, None)))
-            .collect();
-        all_features.sort_unstable_by_key(|f| f.0.as_str());
-        all_features
-    }
+fn new_lib_features() -> LibFeatures {
+    LibFeatures { stable: Default::default(), unstable: Default::default() }
 }
 
 pub struct LibFeatureCollector<'tcx> {
@@ -45,7 +26,7 @@ pub struct LibFeatureCollector<'tcx> {
 
 impl LibFeatureCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> LibFeatureCollector<'tcx> {
-        LibFeatureCollector { tcx, lib_features: LibFeatures::new() }
+        LibFeatureCollector { tcx, lib_features: new_lib_features() }
     }
 
     fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
@@ -142,7 +123,7 @@ impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
     }
 }
 
-pub fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
+fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
     let krate = tcx.hir().krate();
     for attr in krate.non_exported_macro_attrs {
@@ -150,4 +131,11 @@ pub fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
     }
     intravisit::walk_crate(&mut collector, krate);
     collector.lib_features
+}
+
+pub fn provide(providers: &mut Providers<'_>) {
+    providers.get_lib_features = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        tcx.arena.alloc(collect(tcx))
+    };
 }

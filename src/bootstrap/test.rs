@@ -736,7 +736,7 @@ impl Step for Tidy {
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             builder.info("fmt check");
-            crate::format::format(&builder.build, true);
+            crate::format::format(&builder.build, !builder.config.cmd.bless());
         }
     }
 

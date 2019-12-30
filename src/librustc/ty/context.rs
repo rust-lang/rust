@@ -2751,21 +2751,9 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
     };
-    providers.get_lib_features = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        tcx.arena.alloc(middle::lib_features::collect(tcx))
-    };
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.arena.alloc(middle::lang_items::collect(tcx))
-    };
-    providers.diagnostic_items = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        middle::diagnostic_items::collect(tcx)
-    };
-    providers.all_diagnostic_items = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        middle::diagnostic_items::collect_all(tcx)
     };
     providers.maybe_unused_trait_import = |tcx, id| tcx.maybe_unused_trait_imports.contains(&id);
     providers.maybe_unused_extern_crates = |tcx, cnum| {

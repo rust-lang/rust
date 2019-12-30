@@ -216,6 +216,11 @@
 //! Common iterator adapters include [`map`], [`take`], and [`filter`].
 //! For more, see their documentation.
 //!
+//! If an iterator adapter panics, the iterator will be in an unspecified (but
+//! memory safe) state.  This state is also not guaranteed to stay the same
+//! across versions of Rust, so you should avoid relying on the exact values
+//! returned by an iterator which panicked.
+//!
 //! [`map`]: trait.Iterator.html#method.map
 //! [`take`]: trait.Iterator.html#method.take
 //! [`filter`]: trait.Iterator.html#method.filter

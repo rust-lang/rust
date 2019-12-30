@@ -5,23 +5,22 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use crate::hir::def::{DefKind, Res};
-use crate::hir::def_id::{CrateNum, DefId};
-use crate::hir::Node;
-use crate::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
-use crate::middle::privacy;
-use crate::session::config;
-use crate::ty::query::Providers;
-use crate::ty::{self, TyCtxt};
-use crate::util::nodemap::{FxHashSet, HirIdSet};
+use rustc::hir::def::{DefKind, Res};
+use rustc::hir::def_id::{CrateNum, DefId};
+use rustc::hir::Node;
+use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc::middle::privacy;
+use rustc::session::config;
+use rustc::ty::query::Providers;
+use rustc::ty::{self, TyCtxt};
+use rustc::util::nodemap::{FxHashSet, HirIdSet};
 use rustc_data_structures::sync::Lrc;
 
-use crate::hir;
-use crate::hir::def_id::LOCAL_CRATE;
-use crate::hir::intravisit;
-use crate::hir::intravisit::{NestedVisitorMap, Visitor};
-use crate::hir::itemlikevisit::ItemLikeVisitor;
-use rustc_macros::HashStable;
+use rustc::hir;
+use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::hir::intravisit;
+use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc_target::spec::abi::Abi;
 
 // Returns true if the given item must be inlined because it may be
@@ -378,12 +377,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
     }
 }
 
-// We introduce a new-type here, so we can have a specialized HashStable
-// implementation for it.
-#[derive(Clone, HashStable)]
-pub struct ReachableSet(pub Lrc<HirIdSet>);
-
-fn reachable_set(tcx: TyCtxt<'_>, crate_num: CrateNum) -> ReachableSet {
+fn reachable_set(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Lrc<HirIdSet> {
     debug_assert!(crate_num == LOCAL_CRATE);
 
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
@@ -429,7 +423,7 @@ fn reachable_set(tcx: TyCtxt<'_>, crate_num: CrateNum) -> ReachableSet {
     debug!("Inline reachability shows: {:?}", reachable_context.reachable_symbols);
 
     // Return the set of reachable symbols.
-    ReachableSet(Lrc::new(reachable_context.reachable_symbols))
+    Lrc::new(reachable_context.reachable_symbols)
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
