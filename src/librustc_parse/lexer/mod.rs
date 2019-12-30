@@ -220,7 +220,7 @@ impl<'a> StringReader<'a> {
                 if is_raw_ident {
                     ident_start = ident_start + BytePos(2);
                 }
-                let sym = self.nfc_symbol_from(ident_start);
+                let sym = nfc_normalize(self.str_from(ident_start));
                 if is_raw_ident {
                     let span = self.mk_sp(start, self.pos);
                     if !sym.can_be_raw() {
@@ -467,13 +467,6 @@ impl<'a> StringReader<'a> {
     fn symbol_from_to(&self, start: BytePos, end: BytePos) -> Symbol {
         debug!("taking an ident from {:?} to {:?}", start, end);
         Symbol::intern(self.str_from_to(start, end))
-    }
-
-    /// As symbol_from, with the text normalized into Unicode NFC form.
-    fn nfc_symbol_from(&self, start: BytePos) -> Symbol {
-        debug!("taking an normalized ident from {:?} to {:?}", start, self.pos);
-        let sym = self.str_from(start);
-        nfc_normalize(sym)
     }
 
     /// Slice of the source text spanning from `start` up to but excluding `end`.
