@@ -22,7 +22,6 @@ use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_target::spec::abi;
-use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
@@ -2208,26 +2207,25 @@ impl<'tcx> TyS<'tcx> {
     /// Pushes onto `out` the regions directly referenced from this type (but not
     /// types reachable from this type via `walk_tys`). This ignores late-bound
     /// regions binders.
-    pub fn push_regions(&self, out: &mut SmallVec<[ty::Region<'tcx>; 4]>) {
-        match self.kind {
-            Ref(region, _, _) => {
-                out.push(region);
-            }
-            Dynamic(ref obj, region) => {
-                out.push(region);
-                if let Some(principal) = obj.principal() {
-                    out.extend(principal.skip_binder().substs.regions());
-                }
-            }
-            Adt(_, substs) | Opaque(_, substs) => out.extend(substs.regions()),
-            Closure(_, ref substs) | Generator(_, ref substs, _) => out.extend(substs.regions()),
+    pub fn regions(&self) -> impl Iterator<Item = ty::Region<'tcx>> {
+        let (opt_region, opt_subst_regions) = match self.kind {
+            Ref(region, _, _) => (Some(region), None),
+            Dynamic(ref obj, region) => (
+                Some(region),
+                obj.principal().map(|principal| principal.skip_binder().substs.regions()),
+            ),
+            Adt(_, substs) | Opaque(_, substs) => (None, Some(substs.regions())),
+            Closure(_, ref substs) | Generator(_, ref substs, _) => (None, Some(substs.regions())),
             Projection(ref data) | UnnormalizedProjection(ref data) => {
-                out.extend(data.substs.regions())
+                (None, Some(data.substs.regions()))
             }
             FnDef(..) | FnPtr(_) | GeneratorWitness(..) | Bool | Char | Int(_) | Uint(_)
             | Float(_) | Str | Array(..) | Slice(_) | RawPtr(_) | Never | Tuple(..)
-            | Foreign(..) | Param(_) | Bound(..) | Placeholder(..) | Infer(_) | Error => {}
-        }
+            | Foreign(..) | Param(_) | Bound(..) | Placeholder(..) | Infer(_) | Error => {
+                (None, None)
+            }
+        };
+        opt_region.into_iter().chain(opt_subst_regions.into_iter().flatten())
     }
 
     /// When we create a closure, we record its kind (i.e., what trait

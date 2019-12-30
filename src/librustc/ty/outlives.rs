@@ -157,7 +157,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // list is maintained explicitly, because bound regions
                 // themselves can be readily identified.
 
-                push_region_constraints(ty, out);
+                out.extend(region_constraints(ty));
                 for subty in ty.walk_shallow() {
                     self.compute_components(subty, out);
                 }
@@ -167,16 +167,14 @@ impl<'tcx> TyCtxt<'tcx> {
 
     fn capture_components(&self, ty: Ty<'tcx>) -> Vec<Component<'tcx>> {
         let mut temp = smallvec![];
-        push_region_constraints(ty, &mut temp);
+        temp.extend(region_constraints(ty));
         for subty in ty.walk_shallow() {
             self.compute_components(subty, &mut temp);
         }
-        temp.into_iter().collect()
+        temp.into_vec()
     }
 }
 
-fn push_region_constraints<'tcx>(ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
-    let mut regions = smallvec![];
-    ty.push_regions(&mut regions);
-    out.extend(regions.iter().filter(|&r| !r.is_late_bound()).map(|r| Component::Region(r)));
+fn region_constraints<'tcx>(ty: Ty<'tcx>) -> impl Iterator<Item = Component<'tcx>> {
+    ty.regions().filter(|&r| !r.is_late_bound()).map(|r| Component::Region(r))
 }

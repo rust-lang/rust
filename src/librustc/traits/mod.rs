@@ -59,7 +59,7 @@ pub use self::specialize::find_associated_item;
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
-pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
+pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs, Elaborator};
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{
     supertrait_def_ids, supertraits, transitive_bounds, SupertraitDefIds, Supertraits,

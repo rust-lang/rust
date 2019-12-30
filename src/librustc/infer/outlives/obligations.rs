@@ -289,7 +289,7 @@ where
         components: &[Component<'tcx>],
         region: ty::Region<'tcx>,
     ) {
-        for component in components.iter() {
+        for component in components {
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
@@ -367,8 +367,8 @@ where
         // Compute the bounds we can derive from the environment. This
         // is an "approximate" match -- in some cases, these bounds
         // may not apply.
-        let mut approx_env_bounds =
-            self.verify_bound.projection_approx_declared_bounds_from_env(projection_ty);
+        let mut approx_env_bounds: Vec<_> =
+            self.verify_bound.projection_approx_declared_bounds_from_env(projection_ty).collect();
         debug!("projection_must_outlive: approx_env_bounds={:?}", approx_env_bounds);
 
         // Remove outlives bounds that we get from the environment but
