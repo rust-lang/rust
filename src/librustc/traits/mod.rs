@@ -249,8 +249,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// Computing common supertype in the arms of a match expression
     MatchExpressionArm(Box<MatchExpressionArmCause<'tcx>>),
 
-    /// Computing common supertype in the pattern guard for the arms of a match expression
-    MatchExpressionArmPattern {
+    /// Type error arising from type checking a pattern against an expected type.
+    Pattern {
         span: Span,
         ty: Ty<'tcx>,
     },

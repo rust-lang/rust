@@ -87,10 +87,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match_expr_span: Option<Span>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
         let cause = if let Some(span) = match_expr_span {
-            self.cause(
-                cause_span,
-                ObligationCauseCode::MatchExpressionArmPattern { span, ty: expected },
-            )
+            self.cause(cause_span, ObligationCauseCode::Pattern { span, ty: expected })
         } else {
             self.misc(cause_span)
         };

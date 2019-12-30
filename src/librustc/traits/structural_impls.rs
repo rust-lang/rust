@@ -521,9 +521,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                     discrim_hir_id,
                 })
             }),
-            super::MatchExpressionArmPattern { span, ty } => {
-                tcx.lift(&ty).map(|ty| super::MatchExpressionArmPattern { span, ty })
-            }
+            super::Pattern { span, ty } => tcx.lift(&ty).map(|ty| super::Pattern { span, ty }),
             super::IfExpression(box super::IfExpressionCause { then, outer, semicolon }) => {
                 Some(super::IfExpression(box super::IfExpressionCause { then, outer, semicolon }))
             }

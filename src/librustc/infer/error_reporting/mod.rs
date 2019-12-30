@@ -581,7 +581,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
     ) {
         match cause.code {
-            ObligationCauseCode::MatchExpressionArmPattern { span, ty } => {
+            ObligationCauseCode::Pattern { span, ty } => {
                 if ty.is_suggestable() {
                     // don't show type `_`
                     err.span_label(span, format!("this expression has type `{}`", ty));
