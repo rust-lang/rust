@@ -72,7 +72,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let is_nrp = self.is_non_ref_pat(pat, path_resolution.map(|(res, ..)| res));
         let (expected, def_bm) = self.calc_default_binding_mode(pat, expected, def_bm, is_nrp);
 
-        let ty = match &pat.kind {
+        let ty = match pat.kind {
             PatKind::Wild => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, discrim_span),
             PatKind::Range(begin, end, _) => {
@@ -82,50 +82,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             PatKind::Binding(ba, var_id, _, sub) => {
-                let sub = sub.as_deref();
-                self.check_pat_ident(pat, *ba, *var_id, sub, expected, def_bm, discrim_span)
+                self.check_pat_ident(pat, ba, var_id, sub, expected, def_bm, discrim_span)
             }
-            PatKind::TupleStruct(qpath, subpats, ddpos) => self.check_pat_tuple_struct(
+            PatKind::TupleStruct(ref qpath, subpats, ddpos) => self.check_pat_tuple_struct(
                 pat,
                 qpath,
                 subpats,
-                *ddpos,
+                ddpos,
                 expected,
                 def_bm,
                 discrim_span,
             ),
-            PatKind::Path(qpath) => {
+            PatKind::Path(ref qpath) => {
                 self.check_pat_path(pat, path_resolution.unwrap(), qpath, expected)
             }
-            PatKind::Struct(qpath, fields, etc) => {
-                self.check_pat_struct(pat, qpath, fields, *etc, expected, def_bm, discrim_span)
+            PatKind::Struct(ref qpath, fields, etc) => {
+                self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, discrim_span)
             }
             PatKind::Or(pats) => {
-                for pat in *pats {
+                for pat in pats {
                     self.check_pat(pat, expected, def_bm, discrim_span);
                 }
                 expected
             }
             PatKind::Tuple(elements, ddpos) => {
-                self.check_pat_tuple(pat.span, *elements, *ddpos, expected, def_bm, discrim_span)
+                self.check_pat_tuple(pat.span, elements, ddpos, expected, def_bm, discrim_span)
             }
             PatKind::Box(inner) => {
                 self.check_pat_box(pat.span, inner, expected, def_bm, discrim_span)
             }
             PatKind::Ref(inner, mutbl) => {
-                self.check_pat_ref(pat, inner, *mutbl, expected, def_bm, discrim_span)
+                self.check_pat_ref(pat, inner, mutbl, expected, def_bm, discrim_span)
             }
             PatKind::Slice(before, slice, after) => {
-                let slice = slice.as_deref();
-                self.check_pat_slice(
-                    pat.span,
-                    *before,
-                    slice,
-                    *after,
-                    expected,
-                    def_bm,
-                    discrim_span,
-                )
+                self.check_pat_slice(pat.span, before, slice, after, expected, def_bm, discrim_span)
             }
         };
 
