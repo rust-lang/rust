@@ -10,18 +10,28 @@
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
-        "--disable-extensions",
-        "--user-data-dir",
-        "${workspaceFolder}/target/vscode",
         "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
       ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Extension"
+    },
+    {
+      "name": "Run Extension (Dev Server)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Extension",
       "env": {
         "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/ra_lsp_server"
-      },
-      "outFiles": [
-        "${workspaceFolder}/editors/code/bundle/**/*.js"
-      ],
-      "preLaunchTask": "Build All"
+      }
     },
     {
       "name": "Debug Lsp Server",

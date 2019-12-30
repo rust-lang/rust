@@ -5,32 +5,25 @@
   "tasks": [
     {
       "label": "Build Extension",
+      "group": "build",
       "type": "npm",
-      "script": "compile",
+      "script": "watch",
+      "path": "editors/code/",
       "problemMatcher": {
-        "owner": "typescript",
-        "pattern": "$tsc",
-        "fileLocation": [
-          "relative",
-          "${workspaceRoot}/editors/code"
-        ]
+        "base": "$tsc-watch",
+        "fileLocation": ["relative", "${workspaceFolder}/editors/code/"]
       },
-      "path": "editors/code/"
+      "isBackground": true,
+      "presentation": {
+        "reveal": "never"
+      },
     },
     {
       "label": "Build Server",
+      "group": "build",
       "type": "shell",
       "command": "cargo build --package ra_lsp_server",
       "problemMatcher": "$rustc"
-    },
-    {
-      "label": "Build All",
-      "group": "build",
-      "dependsOn": [
-        "Build Extension",
-        "Build Server"
-      ],
-      "problemMatcher": []
     },
   ]
 }

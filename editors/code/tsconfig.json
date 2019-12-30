@@ -3,7 +3,9 @@
         "module": "commonjs",
         "target": "es2018",
         "outDir": "out",
-        "lib": ["es2018"],
+        "lib": [
+            "es2018"
+        ],
         "sourceMap": true,
         "rootDir": "src",
         "strict": true,
@@ -12,5 +14,7 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true
     },
-    "exclude": ["node_modules", ".vscode-test"]
+    "exclude": [
+        "node_modules"
+    ]
 }
