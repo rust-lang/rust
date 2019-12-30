@@ -18,109 +18,8 @@ LL | |     }
    |
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
-error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-  --> $DIR/methods.rs:176:13
-   |
-LL |       let _ = opt.map(|x| x + 1)
-   |  _____________^
-LL | |                 // Should lint even though this call is on a separate line.
-LL | |                .unwrap_or(0);
-   | |____________________________^
-   |
-   = note: `-D clippy::option-map-unwrap-or` implied by `-D warnings`
-   = note: replace `map(|x| x + 1).unwrap_or(0)` with `map_or(0, |x| x + 1)`
-
-error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-  --> $DIR/methods.rs:180:13
-   |
-LL |       let _ = opt.map(|x| {
-   |  _____________^
-LL | |                         x + 1
-LL | |                     }
-LL | |               ).unwrap_or(0);
-   | |____________________________^
-
-error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-  --> $DIR/methods.rs:184:13
-   |
-LL |       let _ = opt.map(|x| x + 1)
-   |  _____________^
-LL | |                .unwrap_or({
-LL | |                     0
-LL | |                 });
-   | |__________________^
-
-error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
-  --> $DIR/methods.rs:189:13
-   |
-LL |     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: replace `map(|x| Some(x + 1)).unwrap_or(None)` with `and_then(|x| Some(x + 1))`
-
-error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
-  --> $DIR/methods.rs:191:13
-   |
-LL |       let _ = opt.map(|x| {
-   |  _____________^
-LL | |         Some(x + 1)
-LL | |     }
-LL | |     ).unwrap_or(None);
-   | |_____________________^
-
-error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
-  --> $DIR/methods.rs:195:13
-   |
-LL |       let _ = opt
-   |  _____________^
-LL | |         .map(|x| Some(x + 1))
-LL | |         .unwrap_or(None);
-   | |________________________^
-   |
-   = note: replace `map(|x| Some(x + 1)).unwrap_or(None)` with `and_then(|x| Some(x + 1))`
-
-error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-  --> $DIR/methods.rs:206:13
-   |
-LL |     let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: replace `map(|p| format!("{}.", p)).unwrap_or(id)` with `map_or(id, |p| format!("{}.", p))`
-
-error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-  --> $DIR/methods.rs:210:13
-   |
-LL |       let _ = opt.map(|x| x + 1)
-   |  _____________^
-LL | |                 // Should lint even though this call is on a separate line.
-LL | |                .unwrap_or_else(|| 0);
-   | |____________________________________^
-   |
-   = note: `-D clippy::option-map-unwrap-or-else` implied by `-D warnings`
-   = note: replace `map(|x| x + 1).unwrap_or_else(|| 0)` with `map_or_else(|| 0, |x| x + 1)`
-
-error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-  --> $DIR/methods.rs:214:13
-   |
-LL |       let _ = opt.map(|x| {
-   |  _____________^
-LL | |                         x + 1
-LL | |                     }
-LL | |               ).unwrap_or_else(|| 0);
-   | |____________________________________^
-
-error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-  --> $DIR/methods.rs:218:13
-   |
-LL |       let _ = opt.map(|x| x + 1)
-   |  _____________^
-LL | |                .unwrap_or_else(||
-LL | |                     0
-LL | |                 );
-   | |_________________^
-
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:248:13
+  --> $DIR/methods.rs:173:13
    |
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -129,7 +28,7 @@ LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:251:13
+  --> $DIR/methods.rs:176:13
    |
 LL |       let _ = v.iter().filter(|&x| {
    |  _____________^
@@ -139,7 +38,7 @@ LL | |                    ).next();
    | |___________________________^
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:268:22
+  --> $DIR/methods.rs:193:22
    |
 LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| *x < 0)`
@@ -147,25 +46,25 @@ LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    = note: `-D clippy::search-is-some` implied by `-D warnings`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:269:20
+  --> $DIR/methods.rs:194:20
    |
 LL |     let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| **y == x)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:270:20
+  --> $DIR/methods.rs:195:20
    |
 LL |     let _ = (0..1).find(|x| *x == 0).is_some();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| x == 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:271:22
+  --> $DIR/methods.rs:196:22
    |
 LL |     let _ = v.iter().find(|x| **x == 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| *x == 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:274:13
+  --> $DIR/methods.rs:199:13
    |
 LL |       let _ = v.iter().find(|&x| {
    |  _____________^
@@ -175,13 +74,13 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:280:22
+  --> $DIR/methods.rs:205:22
    |
 LL |     let _ = v.iter().position(|&x| x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:283:13
+  --> $DIR/methods.rs:208:13
    |
 LL |       let _ = v.iter().position(|&x| {
    |  _____________^
@@ -191,13 +90,13 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:289:22
+  --> $DIR/methods.rs:214:22
    |
 LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:292:13
+  --> $DIR/methods.rs:217:13
    |
 LL |       let _ = v.iter().rposition(|&x| {
    |  _____________^
@@ -206,5 +105,5 @@ LL | |                                }
 LL | |                    ).is_some();
    | |______________________________^
 
-error: aborting due to 23 previous errors
+error: aborting due to 13 previous errors
 
