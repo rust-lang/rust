@@ -194,11 +194,44 @@ bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& 
     return false;
 }
 
-bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/);
+// This function looks for recusion in the trace and removes the cycle
+void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
+    for(int i=newtrace.size()-1; i>=0; i--) {
+        if (newtrace[i] == call) {
+            bool failedcycle = false;
+            for(int j=0; ;j++) {
+                // finished cycle
+                if (newtrace.size()-1-j == i) break;
+
+                // out of bounds
+                if (i-j < 0) {
+                    failedcycle = true;
+                    break;
+                }
+
+                if (newtrace[i-j] != newtrace[newtrace.size()-1-j]) {
+                    failedcycle = true;
+                    break;
+                }
+            }
+            if (!failedcycle) {
+                //erase all elements after i
+                newtrace.resize(i+1);
+                assert(newtrace.back() == call);
+                return;
+            }
+        }
+    }
+    newtrace.push_back(call);
+}
+
+
+bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/);
         
-bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool onlyFirst, std::vector<int> indices = {}) {
-    if (seen.find(v) != seen.end()) return false;
-    seen.insert(v);
+bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool onlyFirst, std::vector<int> indices = {}) {
+    auto idx = std::tuple<const std::vector<CallInst*>, Value*>(trace, v);
+    if (seen.find(idx) != seen.end()) return false;
+    seen.insert(idx);
 
     assert(v->getType()->isPointerTy());
     
@@ -342,6 +375,28 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
                     }
 
                     //TODO we should handle calls interprocedurally, allowing better propagation of type information
+                    if (!ci->empty()) {
+                        auto a = ci->arg_begin();
+                        //bool shouldHandleReturn=false;
+                        std::vector<CallInst*> newtrace(trace);
+                        addCallRemovingCycle(newtrace, call);
+                        for(size_t i=0; i<call->getNumArgOperands(); i++) {
+                            if (call->getArgOperand(i) == v) {
+                                //TODO consider allowing return to be ignored as an unknown use below, so long as we also then look at use of call value itself
+                                if(trackPointer(newtrace, a, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                                    if (fast_tracking) return true;
+                                }
+                            }
+                            a++;
+                        }
+                        #if 0
+                        if (shouldHandleReturn) {
+                            if(trackInt(trace, call, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, sawReturn)) {
+                                if (fast_tracking) return true;
+                            }
+                        }
+                        #endif
+                    }
                 }
             }
 
@@ -407,7 +462,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
     return false;
 }
 
-bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
+bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
     auto idx = std::tuple<const std::vector<CallInst*>, Value*, bool>(trace, v, shouldConsiderUnknownUse);
     if (intseen.find(idx) != intseen.end()) {
         if (intseen[idx] == IntType::Integer) {
@@ -564,7 +619,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
                     auto a = ci->arg_begin();
                     bool shouldHandleReturn=false;
                     std::vector<CallInst*> newtrace(trace);
-                    newtrace.push_back(call);
+                    addCallRemovingCycle(newtrace, call);
                     for(size_t i=0; i<call->getNumArgOperands(); i++) {
                         if (call->getArgOperand(i) == v) {
                             //TODO consider allowing return to be ignored as an unknown use below, so long as we also then look at use of call value itself
@@ -736,7 +791,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
 
         bool intUse0 = false, intUse1 = false;
         std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
-        SmallPtrSet<Value*, 4> ptrseen0(ptrseen.begin(), ptrseen.end());
+        std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen0(ptrseen.begin(), ptrseen.end());
         SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
         bool fakeunknownuse0 = false;
         
@@ -771,7 +826,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
     
     if (auto phi = dyn_cast<PHINode>(v)) {
         std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
-        SmallPtrSet<Value*, 4> ptrseen0(ptrseen.begin(), ptrseen.end());
+        std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen0(ptrseen.begin(), ptrseen.end());
         SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
         bool allintUse = true;
         for (auto& val : phi->incoming_values() ) {
@@ -807,11 +862,11 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
     if (auto ci = dyn_cast<CallInst>(v)) {
         if (auto F = ci->getCalledFunction()) {
             std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
-            SmallPtrSet<Value*, 4> ptrseen0(ptrseen.begin(), ptrseen.end());
+            std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen0(ptrseen.begin(), ptrseen.end());
             SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
             bool allintUse = true;
             std::vector<CallInst*> newtrace(trace);
-            newtrace.push_back(ci);
+            addCallRemovingCycle(newtrace, ci);
 
             for (llvm::inst_iterator I = llvm::inst_begin(F), E = llvm::inst_end(F); I != E; ++I) {
                 if (auto ri = dyn_cast<ReturnInst>(&*I)) {
@@ -891,7 +946,7 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
         bool pointerUse = false;
         bool intUse = false;
         std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen;
-        SmallPtrSet<Value*, 4> ptrseen;
+        std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen;
         
         SmallPtrSet<Type*, 4> typeseen;
 
@@ -950,7 +1005,7 @@ Type* isIntPointerASecretFloat(Value* val, bool onlyFirst) {
     std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen;
     SmallPtrSet<Type*, 4> typeseen;
 
-    SmallPtrSet<Value*, 4> seen;
+    std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen;
     std::vector<CallInst*> trace;
 
     trackPointer(trace, val, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst);
