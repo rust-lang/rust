@@ -1424,7 +1424,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
 /// Helper struct for delayed construction of Generics.
 pub(super) struct GenericsCtor<'hir> {
-    pub(super) params: SmallVec<[hir::GenericParam<'hir>; 1]>,
+    pub(super) params: SmallVec<[hir::GenericParam<'hir>; 4]>,
     where_clause: hir::WhereClause<'hir>,
     span: Span,
 }

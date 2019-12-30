@@ -3298,7 +3298,7 @@ fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'hir>>) -> Vec<hir::BodyId>
 
 /// Helper struct for delayed construction of GenericArgs.
 struct GenericArgsCtor<'hir> {
-    args: SmallVec<[hir::GenericArg<'hir>; 1]>,
+    args: SmallVec<[hir::GenericArg<'hir>; 4]>,
     bindings: &'hir [hir::TypeBinding<'hir>],
     parenthesized: bool,
 }
