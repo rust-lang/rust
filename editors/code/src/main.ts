@@ -4,10 +4,10 @@ import * as lc from 'vscode-languageclient';
 import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
 import { StatusDisplay } from './status_display';
-import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
 import { Ctx } from './ctx';
+import { activateHighlighting } from './highlighting';
 
 let ctx!: Ctx;
 
@@ -28,14 +28,14 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('runSingle', commands.runSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
 
-    if (Server.config.enableEnhancedTyping) {
+    if (ctx.config.enableEnhancedTyping) {
         ctx.overrideCommand('type', commands.onEnter);
     }
 
-    const watchStatus = new StatusDisplay(
-        Server.config.cargoWatchOptions.command,
-    );
+    const watchStatus = new StatusDisplay(ctx.config.cargoWatchOptions.command);
     ctx.pushCleanup(watchStatus);
+
+    activateHighlighting(ctx);
 
     // Notifications are events triggered by the language server
     const allNotifications: [string, lc.GenericNotificationHandler][] = [
@@ -49,11 +49,6 @@ export async function activate(context: vscode.ExtensionContext) {
         ],
     ];
 
-    // The events below are plain old javascript events, triggered and handled by vscode
-    vscode.window.onDidChangeActiveTextEditor(
-        events.changeActiveTextEditor.makeHandler(),
-    );
-
     const startServer = () => Server.start(allNotifications);
     const reloadCommand = () => reloadServer(startServer);
 
@@ -66,7 +61,7 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(e.message);
     }
 
-    if (Server.config.displayInlayHints) {
+    if (ctx.config.displayInlayHints) {
         activateInlayHints(ctx);
     }
 }

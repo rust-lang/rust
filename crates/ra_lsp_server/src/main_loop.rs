@@ -709,16 +709,11 @@ where
             Ok(lsp_error) => Response::new_err(id, lsp_error.code, lsp_error.message),
             Err(e) => {
                 if is_canceled(&e) {
-                    // FIXME: When https://github.com/Microsoft/vscode-languageserver-node/issues/457
-                    // gets fixed, we can return the proper response.
-                    // This works around the issue where "content modified" error would continuously
-                    // show an message pop-up in VsCode
-                    // Response::err(
-                    //     id,
-                    //     ErrorCode::ContentModified as i32,
-                    //     "content modified".to_string(),
-                    // )
-                    Response::new_ok(id, ())
+                    Response::new_err(
+                        id,
+                        ErrorCode::ContentModified as i32,
+                        "content modified".to_string(),
+                    )
                 } else {
                     Response::new_err(id, ErrorCode::InternalError as i32, e.to_string())
                 }

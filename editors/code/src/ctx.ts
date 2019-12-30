@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import { Server } from './server';
+import { Config } from './config';
 
 export class Ctx {
     private extCtx: vscode.ExtensionContext;
@@ -11,6 +12,10 @@ export class Ctx {
 
     get client(): lc.LanguageClient {
         return Server.client;
+    }
+
+    get config(): Config {
+        return Server.config;
     }
 
     get activeRustEditor(): vscode.TextEditor | undefined {
@@ -56,6 +61,24 @@ export class Ctx {
     pushCleanup(d: { dispose(): any }) {
         this.extCtx.subscriptions.push(d);
     }
+
+    async sendRequestWithRetry<R>(method: string, param: any, token: vscode.CancellationToken): Promise<R> {
+        await this.client.onReady();
+        for (const delay of [2, 4, 6, 8, 10, null]) {
+            try {
+                return await this.client.sendRequest(method, param, token);
+            } catch (e) {
+                if (e.code === lc.ErrorCodes.ContentModified && delay !== null) {
+                    await sleep(10 * (1 << delay))
+                    continue;
+                }
+                throw e;
+            }
+        }
+        throw 'unreachable'
+    }
 }
 
 export type Cmd = (...args: any[]) => any;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
