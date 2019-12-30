@@ -166,8 +166,8 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_i
     }
 }
 
-fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item<'_>, impl_items: &[ImplItemRef]) {
-    fn is_named_self(cx: &LateContext<'_, '_>, item: &ImplItemRef, name: &str) -> bool {
+fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item<'_>, impl_items: &[ImplItemRef<'_>]) {
+    fn is_named_self(cx: &LateContext<'_, '_>, item: &ImplItemRef<'_>, name: &str) -> bool {
         item.ident.name.as_str() == name
             && if let AssocItemKind::Method { has_self } = item.kind {
                 has_self && {

@@ -81,7 +81,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableKeyType {
     }
 }
 
-fn check_sig<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item_hir_id: hir::HirId, decl: &hir::FnDecl) {
+fn check_sig<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item_hir_id: hir::HirId, decl: &hir::FnDecl<'_>) {
     let fn_def_id = cx.tcx.hir().local_def_id(item_hir_id);
     let fn_sig = cx.tcx.fn_sig(fn_def_id);
     for (hir_ty, ty) in decl.inputs.iter().zip(fn_sig.inputs().skip_binder().iter()) {

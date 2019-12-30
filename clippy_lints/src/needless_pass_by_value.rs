@@ -71,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         kind: FnKind<'tcx>,
-        decl: &'tcx FnDecl,
+        decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
         hir_id: HirId,

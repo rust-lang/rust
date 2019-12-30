@@ -70,7 +70,7 @@ struct UnwrappableVariablesVisitor<'a, 'tcx> {
 #[derive(Copy, Clone, Debug)]
 struct UnwrapInfo<'tcx> {
     /// The variable that is checked
-    ident: &'tcx Path,
+    ident: &'tcx Path<'tcx>,
     /// The check, like `x.is_ok()`
     check: &'tcx Expr<'tcx>,
     /// Whether `is_some()` or `is_ok()` was called (as opposed to `is_err()` or `is_none()`).
@@ -191,7 +191,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unwrap {
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         kind: FnKind<'tcx>,
-        decl: &'tcx FnDecl,
+        decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
         fn_id: HirId,

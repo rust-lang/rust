@@ -32,7 +32,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {
         intravisit::walk_block(&mut MutVisitor { cx }, block);
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ty: &'tcx hir::Ty) {
+    fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ty: &'tcx hir::Ty<'_>) {
         use rustc::hir::intravisit::Visitor;
 
         MutVisitor { cx }.visit_ty(ty);
@@ -77,7 +77,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
         if let hir::TyKind::Rptr(
             _,
             hir::MutTy {

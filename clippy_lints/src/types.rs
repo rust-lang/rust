@@ -170,7 +170,15 @@ declare_clippy_lint! {
 declare_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
-    fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body<'_>, _: Span, id: HirId) {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'_, '_>,
+        _: FnKind<'_>,
+        decl: &FnDecl<'_>,
+        _: &Body<'_>,
+        _: Span,
+        id: HirId,
+    ) {
         // Skip trait implementations; see issue #605.
         if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.kind {
@@ -200,8 +208,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
     }
 }
 
-fn check_fn_decl(cx: &LateContext<'_, '_>, decl: &FnDecl) {
-    for input in &decl.inputs {
+fn check_fn_decl(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>) {
+    for input in decl.inputs {
         check_ty(cx, input, false);
     }
 
@@ -211,7 +219,7 @@ fn check_fn_decl(cx: &LateContext<'_, '_>, decl: &FnDecl) {
 }
 
 /// Checks if `qpath` has last segment with type parameter matching `path`
-fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) -> bool {
+fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, path: &[&str]) -> bool {
     let last = last_path_segment(qpath);
     if_chain! {
         if let Some(ref params) = last.args;
@@ -236,7 +244,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
 /// The parameter `is_local` distinguishes the context of the type; types from
 /// local bindings should only be checked for the `BORROWED_BOX` lint.
 #[allow(clippy::too_many_lines)]
-fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
+fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
     if hir_ty.span.from_expansion() {
         return;
     }
@@ -359,7 +367,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
         TyKind::Slice(ref ty) | TyKind::Array(ref ty, _) | TyKind::Ptr(MutTy { ref ty, .. }) => {
             check_ty(cx, ty, is_local)
         },
-        TyKind::Tup(ref tys) => {
+        TyKind::Tup(tys) => {
             for ty in tys {
                 check_ty(cx, ty, is_local);
             }
@@ -368,7 +376,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
     }
 }
 
-fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
+fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool, lt: &Lifetime, mut_ty: &MutTy<'_>) {
     match mut_ty.ty.kind {
         TyKind::Path(ref qpath) => {
             let hir_id = mut_ty.ty.hir_id;
@@ -425,10 +433,10 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt:
 }
 
 // Returns true if given type is `Any` trait.
-fn is_any_trait(t: &hir::Ty) -> bool {
+fn is_any_trait(t: &hir::Ty<'_>) -> bool {
     if_chain! {
         if let TyKind::TraitObject(ref traits, _) = t.kind;
-        if traits.len() >= 1;
+        if !traits.is_empty();
         // Only Send/Sync can be used as additional traits, so it is enough to
         // check only the first trait.
         if match_path(&traits[0].trait_ref.path, &paths::ANY_TRAIT);
@@ -1394,7 +1402,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
-        decl: &'tcx FnDecl,
+        decl: &'tcx FnDecl<'_>,
         _: &'tcx Body<'_>,
         _: Span,
         _: HirId,
@@ -1440,8 +1448,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
 }
 
 impl<'a, 'tcx> TypeComplexity {
-    fn check_fndecl(&self, cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl) {
-        for arg in &decl.inputs {
+    fn check_fndecl(&self, cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl<'_>) {
+        for arg in decl.inputs {
             self.check_type(cx, arg);
         }
         if let Return(ref ty) = decl.output {
@@ -1449,7 +1457,7 @@ impl<'a, 'tcx> TypeComplexity {
         }
     }
 
-    fn check_type(&self, cx: &LateContext<'_, '_>, ty: &hir::Ty) {
+    fn check_type(&self, cx: &LateContext<'_, '_>, ty: &hir::Ty<'_>) {
         if ty.span.from_expansion() {
             return;
         }
@@ -1479,7 +1487,7 @@ struct TypeComplexityVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
         let (add_score, sub_nest) = match ty.kind {
             // _, &x and *x have only small overhead; don't mess with nesting level
             TyKind::Infer | TyKind::Ptr(..) | TyKind::Rptr(..) => (1, 0),
@@ -2131,7 +2139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             ItemKind::Fn(ref sig, ref generics, body_id) => {
                 let body = cx.tcx.hir().body(body_id);
 
-                for ty in &sig.decl.inputs {
+                for ty in sig.decl.inputs {
                     let mut vis = ImplicitHasherTypeVisitor::new(cx);
                     vis.visit_ty(ty);
 
@@ -2179,7 +2187,7 @@ enum ImplicitHasherType<'tcx> {
 
 impl<'tcx> ImplicitHasherType<'tcx> {
     /// Checks that `ty` is a target type without a `BuildHasher`.
-    fn new<'a>(cx: &LateContext<'a, 'tcx>, hir_ty: &hir::Ty) -> Option<Self> {
+    fn new<'a>(cx: &LateContext<'a, 'tcx>, hir_ty: &hir::Ty<'_>) -> Option<Self> {
         if let TyKind::Path(QPath::Resolved(None, ref path)) = hir_ty.kind {
             let params: Vec<_> = path
                 .segments
@@ -2258,7 +2266,7 @@ impl<'a, 'tcx> ImplicitHasherTypeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, t: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
         if let Some(target) = ImplicitHasherType::new(self.cx, t) {
             self.found.push(target);
         }

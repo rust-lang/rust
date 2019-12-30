@@ -84,7 +84,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
 fn check_hash_peq<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     span: Span,
-    trait_ref: &TraitRef,
+    trait_ref: &TraitRef<'_>,
     ty: Ty<'tcx>,
     hash_is_automatically_derived: bool,
 ) {
@@ -130,7 +130,7 @@ fn check_hash_peq<'a, 'tcx>(
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait_ref: &TraitRef, ty: Ty<'tcx>) {
+fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait_ref: &TraitRef<'_>, ty: Ty<'tcx>) {
     if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
         if !is_copy(cx, ty) {
             return;

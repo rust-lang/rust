@@ -237,7 +237,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         k: FnKind<'tcx>,
-        decl: &'tcx FnDecl,
+        decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
         _: HirId,
@@ -626,7 +626,7 @@ fn non_macro_local(cx: &LateContext<'_, '_>, res: def::Res) -> bool {
     }
 }
 
-fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr<'_>, ty: &Ty) {
+fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr<'_>, ty: &Ty<'_>) {
     if_chain! {
         if let TyKind::Ptr(ref mut_ty) = ty.kind;
         if let ExprKind::Lit(ref lit) = e.kind;

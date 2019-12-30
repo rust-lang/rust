@@ -172,7 +172,7 @@ impl PrintVisitor {
         }
     }
 
-    fn print_qpath(&mut self, path: &QPath) {
+    fn print_qpath(&mut self, path: &QPath<'_>) {
         print!("    if match_qpath({}, &[", self.current);
         print_path(path, &mut true);
         println!("]);");
@@ -725,10 +725,10 @@ fn loop_desugaring_name(des: hir::LoopSource) -> &'static str {
     }
 }
 
-fn print_path(path: &QPath, first: &mut bool) {
+fn print_path(path: &QPath<'_>, first: &mut bool) {
     match *path {
         QPath::Resolved(_, ref path) => {
-            for segment in &path.segments {
+            for segment in path.segments {
                 if *first {
                     *first = false;
                 } else {

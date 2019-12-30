@@ -88,7 +88,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Shadow {
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
-        decl: &'tcx FnDecl,
+        decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
         _: HirId,
@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Shadow {
     }
 }
 
-fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: &'tcx Body<'_>) {
+fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl<'_>, body: &'tcx Body<'_>) {
     let mut bindings = Vec::new();
     for arg in iter_input_pats(decl, body) {
         if let PatKind::Binding(.., ident, _) = arg.pat.kind {
@@ -345,7 +345,7 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, bindin
     }
 }
 
-fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut Vec<(Name, Span)>) {
+fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty<'_>, bindings: &mut Vec<(Name, Span)>) {
     match ty.kind {
         TyKind::Slice(ref sty) => check_ty(cx, sty, bindings),
         TyKind::Array(ref fty, ref anon_const) => {
@@ -355,7 +355,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
         TyKind::Ptr(MutTy { ty: ref mty, .. }) | TyKind::Rptr(_, MutTy { ty: ref mty, .. }) => {
             check_ty(cx, mty, bindings)
         },
-        TyKind::Tup(ref tup) => {
+        TyKind::Tup(tup) => {
             for t in tup {
                 check_ty(cx, t, bindings)
             }
@@ -377,6 +377,6 @@ fn is_self_shadow(name: Name, expr: &Expr<'_>) -> bool {
     }
 }
 
-fn path_eq_name(name: Name, path: &Path) -> bool {
+fn path_eq_name(name: Name, path: &Path<'_>) -> bool {
     !path.is_global() && path.segments.len() == 1 && path.segments[0].ident.as_str() == name.as_str()
 }

@@ -23,7 +23,7 @@ pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &'a LateContext<'a,
 }
 
 pub fn is_potentially_mutated<'a, 'tcx>(
-    variable: &'tcx Path,
+    variable: &'tcx Path<'_>,
     expr: &'tcx Expr<'_>,
     cx: &'a LateContext<'a, 'tcx>,
 ) -> bool {

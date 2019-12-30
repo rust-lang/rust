@@ -190,7 +190,7 @@ fn lint_for_missing_headers<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     hir_id: hir::HirId,
     span: impl Into<MultiSpan> + Copy,
-    sig: &hir::FnSig,
+    sig: &hir::FnSig<'_>,
     headers: DocHeaders,
 ) {
     if !cx.access_levels.is_exported(hir_id) {

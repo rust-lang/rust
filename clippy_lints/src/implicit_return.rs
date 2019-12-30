@@ -129,7 +129,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
-        _: &'tcx FnDecl,
+        _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
         _: HirId,

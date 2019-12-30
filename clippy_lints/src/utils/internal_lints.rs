@@ -214,7 +214,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     }
 }
 
-fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty) -> bool {
+fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty<'_>) -> bool {
     if let TyKind::Rptr(
         _,
         MutTy {
@@ -243,7 +243,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
         walk_expr(self, expr);
     }
 
-    fn visit_path(&mut self, path: &'tcx Path, _: HirId) {
+    fn visit_path(&mut self, path: &'tcx Path<'_>, _: HirId) {
         if path.segments.len() == 1 {
             self.output.insert(path.segments[0].ident.name);
         }

@@ -187,7 +187,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         kind: intravisit::FnKind<'tcx>,
-        decl: &'tcx hir::FnDecl,
+        decl: &'tcx hir::FnDecl<'_>,
         body: &'tcx hir::Body<'_>,
         span: Span,
         hir_id: hir::HirId,
@@ -306,7 +306,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
 }
 
 impl<'a, 'tcx> Functions {
-    fn check_arg_number(self, cx: &LateContext<'_, '_>, decl: &hir::FnDecl, fn_span: Span) {
+    fn check_arg_number(self, cx: &LateContext<'_, '_>, decl: &hir::FnDecl<'_>, fn_span: Span) {
         let args = decl.inputs.len() as u64;
         if args > self.threshold {
             span_lint(
@@ -375,7 +375,7 @@ impl<'a, 'tcx> Functions {
     fn check_raw_ptr(
         cx: &LateContext<'a, 'tcx>,
         unsafety: hir::Unsafety,
-        decl: &'tcx hir::FnDecl,
+        decl: &'tcx hir::FnDecl<'_>,
         body: &'tcx hir::Body<'_>,
         hir_id: hir::HirId,
     ) {
@@ -402,7 +402,7 @@ impl<'a, 'tcx> Functions {
 
 fn check_needless_must_use(
     cx: &LateContext<'_, '_>,
-    decl: &hir::FnDecl,
+    decl: &hir::FnDecl<'_>,
     item_id: hir::HirId,
     item_span: Span,
     fn_header_span: Span,
@@ -439,7 +439,7 @@ fn check_needless_must_use(
 
 fn check_must_use_candidate<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    decl: &'tcx hir::FnDecl,
+    decl: &'tcx hir::FnDecl<'_>,
     body: &'tcx hir::Body<'_>,
     item_span: Span,
     item_id: hir::HirId,
@@ -467,7 +467,7 @@ fn check_must_use_candidate<'a, 'tcx>(
     });
 }
 
-fn returns_unit(decl: &hir::FnDecl) -> bool {
+fn returns_unit(decl: &hir::FnDecl<'_>) -> bool {
     match decl.output {
         hir::FunctionRetTy::DefaultReturn(_) => true,
         hir::FunctionRetTy::Return(ref ty) => match ty.kind {
@@ -518,7 +518,7 @@ fn is_mutable_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span,
     }
 }
 
-fn raw_ptr_arg(arg: &hir::Param<'_>, ty: &hir::Ty) -> Option<hir::HirId> {
+fn raw_ptr_arg(arg: &hir::Param<'_>, ty: &hir::Ty<'_>) -> Option<hir::HirId> {
     if let (&hir::PatKind::Binding(_, id, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.kind, &ty.kind) {
         Some(id)
     } else {
