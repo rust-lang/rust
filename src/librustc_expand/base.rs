@@ -270,10 +270,9 @@ pub trait MultiItemModifier {
     ) -> Vec<Annotatable>;
 }
 
-impl<F, T> MultiItemModifier for F
+impl<F> MultiItemModifier for F
 where
-    F: Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, Annotatable) -> T,
-    T: Into<Vec<Annotatable>>,
+    F: Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, Annotatable) -> Vec<Annotatable>,
 {
     fn expand(
         &self,
@@ -282,13 +281,7 @@ where
         meta_item: &ast::MetaItem,
         item: Annotatable,
     ) -> Vec<Annotatable> {
-        (*self)(ecx, span, meta_item, item).into()
-    }
-}
-
-impl Into<Vec<Annotatable>> for Annotatable {
-    fn into(self) -> Vec<Annotatable> {
-        vec![self]
+        self(ecx, span, meta_item, item)
     }
 }
 
