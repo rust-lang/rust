@@ -9,8 +9,18 @@ import { StatusDisplay } from './commands/watch_status';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
+import { Ctx } from './ctx'
+
+let ctx!: Ctx;
 
 export async function activate(context: vscode.ExtensionContext) {
+    ctx = new Ctx(context);
+    ctx.registerCommand(
+        'analyzerStatus',
+        commands.analyzerStatus
+    );
+
+
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
     }
@@ -48,10 +58,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // Commands are requests from vscode to the language server
-    registerCommand(
-        'rust-analyzer.analyzerStatus',
-        commands.analyzerStatus.makeCommand(context),
-    );
     registerCommand('rust-analyzer.collectGarbage', () =>
         Server.client.sendRequest<null>('rust-analyzer/collectGarbage', null),
     );
@@ -94,15 +100,15 @@ export async function activate(context: vscode.ExtensionContext) {
         string,
         lc.GenericNotificationHandler,
     ]> = [
-        [
-            'rust-analyzer/publishDecorations',
-            notifications.publishDecorations.handle,
-        ],
-        [
-            '$/progress',
-            params => watchStatus.handleProgressNotification(params),
-        ],
-    ];
+            [
+                'rust-analyzer/publishDecorations',
+                notifications.publishDecorations.handle,
+            ],
+            [
+                '$/progress',
+                params => watchStatus.handleProgressNotification(params),
+            ],
+        ];
     const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
     const expandMacroContentProvider = new ExpandMacroContentProvider();
 

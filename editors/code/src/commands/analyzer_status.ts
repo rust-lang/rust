@@ -1,19 +1,19 @@
 import * as vscode from 'vscode';
-import { Server } from '../server';
+import { Ctx } from '../ctx';
 // Shows status of rust-analyzer (for debugging)
 
-export function makeCommand(context: vscode.ExtensionContext) {
+export function analyzerStatus(ctx: Ctx) {
     let poller: NodeJS.Timer | null = null;
-    const tdcp = new TextDocumentContentProvider();
+    const tdcp = new TextDocumentContentProvider(ctx);
 
-    context.subscriptions.push(
+    ctx.pushCleanup(
         vscode.workspace.registerTextDocumentContentProvider(
             'rust-analyzer-status',
             tdcp,
         ),
     );
 
-    context.subscriptions.push({
+    ctx.pushCleanup({
         dispose() {
             if (poller != null) {
                 clearInterval(poller);
@@ -39,8 +39,15 @@ export function makeCommand(context: vscode.ExtensionContext) {
 
 class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
+
     uri = vscode.Uri.parse('rust-analyzer-status://status');
     eventEmitter = new vscode.EventEmitter<vscode.Uri>();
+
+    ctx: Ctx
+
+    constructor(ctx: Ctx) {
+        this.ctx = ctx
+    }
 
     provideTextDocumentContent(
         _uri: vscode.Uri,
@@ -49,7 +56,7 @@ class TextDocumentContentProvider
         if (editor == null) {
             return '';
         }
-        return Server.client.sendRequest<string>(
+        return this.ctx.client.sendRequest<string>(
             'rust-analyzer/analyzerStatus',
             null,
         );

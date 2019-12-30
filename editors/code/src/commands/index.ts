@@ -1,4 +1,4 @@
-import * as analyzerStatus from './analyzer_status';
+import { analyzerStatus } from './analyzer_status';
 import * as applySourceChange from './apply_source_change';
 import * as expandMacro from './expand_macro';
 import * as inlayHints from './inlay_hints';
