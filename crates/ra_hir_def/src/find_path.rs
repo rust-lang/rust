@@ -8,8 +8,6 @@ use crate::{
 };
 use hir_expand::name::Name;
 
-// TODO don't import from super imports? or at least deprioritize
-// TODO use super?
 // TODO performance / memoize
 
 pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
@@ -25,6 +23,13 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Optio
     // - if the item is the crate root, return `crate`
     if item == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId { krate: from.krate, local_id: def_map.root })) {
         return Some(ModPath::from_simple_segments(PathKind::Crate, Vec::new()));
+    }
+
+    // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
+    if let Some(parent_id) = def_map.modules[from.local_id].parent {
+        if item == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId { krate: from.krate, local_id: parent_id })) {
+            return Some(ModPath::from_simple_segments(PathKind::Super(1), Vec::new()));
+        }
     }
 
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
@@ -80,6 +85,19 @@ fn find_importable_locations(db: &impl DefDatabase, item: ItemInNs, from: Module
         let def_map = db.crate_def_map(krate);
         for (local_id, data) in def_map.modules.iter() {
             if let Some((name, vis)) = data.scope.reverse_get(item) {
+                let is_private = if let crate::visibility::Visibility::Module(private_to) = vis {
+                    private_to.local_id == local_id
+                } else { false };
+                let is_original_def = if let Some(module_def_id) = item.as_module_def_id() {
+                    data.scope.declarations().any(|it| it == module_def_id)
+                } else { false };
+                if is_private && !is_original_def {
+                    // Ignore private imports. these could be used if we are
+                    // in a submodule of this module, but that's usually not
+                    // what the user wants; and if this module can import
+                    // the item and we're a submodule of it, so can we.
+                    continue;
+                }
                 if vis.is_visible_from(db, from) {
                     result.push((ModuleId { krate, local_id }, name.clone()));
                 }
@@ -158,6 +176,20 @@ mod tests {
             <|>
         "#;
         check_found_path(code, "foo::S");
+    }
+
+    #[test]
+    fn super_module() {
+        let code = r#"
+            //- /main.rs
+            mod foo;
+            //- /foo.rs
+            mod bar;
+            struct S;
+            //- /foo/bar.rs
+            <|>
+        "#;
+        check_found_path(code, "super::S");
     }
 
     #[test]
@@ -289,5 +321,19 @@ mod tests {
             pub use crate::foo::bar::S;
         "#;
         check_found_path(code, "baz::S");
+    }
+
+    #[test]
+    fn discount_private_imports() {
+        let code = r#"
+            //- /main.rs
+            mod foo;
+            pub mod bar { pub struct S; }
+            use bar::S;
+            //- /foo.rs
+            <|>
+        "#;
+        // crate::S would be shorter, but using private imports seems wrong
+        check_found_path(code, "crate::bar::S");
     }
 }
