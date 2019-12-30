@@ -8,7 +8,7 @@ export function run(ctx: Ctx): Cmd {
 
     return async () => {
         const editor = ctx.activeRustEditor;
-        if (!editor) return
+        if (!editor) return;
 
         const textDocument: lc.TextDocumentIdentifier = {
             uri: editor.document.uri.toString(),
@@ -43,13 +43,13 @@ export function run(ctx: Ctx): Cmd {
         prevRunnable = item;
         const task = createTask(item.runnable);
         return await vscode.tasks.executeTask(task);
-    }
+    };
 }
 
 export function runSingle(ctx: Ctx): Cmd {
     return async (runnable: Runnable) => {
         const editor = ctx.activeRustEditor;
-        if (!editor) return
+        if (!editor) return;
 
         const task = createTask(runnable);
         task.group = vscode.TaskGroup.Build;
@@ -60,7 +60,7 @@ export function runSingle(ctx: Ctx): Cmd {
         };
 
         return vscode.tasks.executeTask(task);
-    }
+    };
 }
 
 interface RunnablesParams {

@@ -1,3 +1,6 @@
+import * as vscode from 'vscode';
+import * as lc from 'vscode-languageclient';
+
 import { Ctx, Cmd } from '../ctx';
 
 import { analyzerStatus } from './analyzer_status';
@@ -16,6 +19,17 @@ function collectGarbage(ctx: Ctx): Cmd {
     };
 }
 
+function showReferences(ctx: Ctx): Cmd {
+    return (uri: string, position: lc.Position, locations: lc.Location[]) => {
+        vscode.commands.executeCommand(
+            'editor.action.showReferences',
+            vscode.Uri.parse(uri),
+            ctx.client.protocol2CodeConverter.asPosition(position),
+            locations.map(ctx.client.protocol2CodeConverter.asLocation),
+        );
+    };
+}
+
 export {
     analyzerStatus,
     expandMacro,
@@ -27,5 +41,6 @@ export {
     inlayHints,
     collectGarbage,
     run,
-    runSingle
+    runSingle,
+    showReferences,
 };

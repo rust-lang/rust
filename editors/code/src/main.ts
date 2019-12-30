@@ -13,6 +13,8 @@ let ctx!: Ctx;
 
 export async function activate(context: vscode.ExtensionContext) {
     ctx = new Ctx(context);
+
+    // Commands which invokes manually via command pallet, shortcut, etc.
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
@@ -21,27 +23,14 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
-    ctx.registerCommand('runSingle', commands.runSingle); // Internal action for lenses
+
+    // Internal commands which are invoked by the server.
+    ctx.registerCommand('runSingle', commands.runSingle);
+    ctx.registerCommand('showReferences', commands.showReferences);
 
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
     }
-
-    function registerCommand(name: string, f: any) {
-        disposeOnDeactivation(vscode.commands.registerCommand(name, f));
-    }
-
-    registerCommand(
-        'rust-analyzer.showReferences',
-        (uri: string, position: lc.Position, locations: lc.Location[]) => {
-            vscode.commands.executeCommand(
-                'editor.action.showReferences',
-                vscode.Uri.parse(uri),
-                Server.client.protocol2CodeConverter.asPosition(position),
-                locations.map(Server.client.protocol2CodeConverter.asLocation),
-            );
-        },
-    );
 
     if (Server.config.enableEnhancedTyping) {
         ctx.overrideCommand('type', commands.onEnter);
