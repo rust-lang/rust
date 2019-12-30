@@ -73,12 +73,10 @@ use syntax_pos::Span;
 use rustc_error_codes::*;
 
 macro_rules! arena_vec {
-    () => (
-        &[]
-    );
-    ($this:expr; $($x:expr),*) => (
-        $this.arena.alloc_from_iter(vec![$($x),*])
-    );
+    ($this:expr; $($x:expr),*) => ({
+        let a = [$($x),*];
+        $this.arena.alloc_from_iter(std::array::IntoIter::new(a))
+    });
 }
 
 mod expr;
@@ -2018,7 +2016,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 FunctionRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
                 FunctionRetTy::Default(_) => this.arena.alloc(this.ty_tup(span, &[])),
             };
-            let args = vec![GenericArg::Type(this.ty_tup(span, inputs))];
+            let args = smallvec![GenericArg::Type(this.ty_tup(span, inputs))];
             let binding = hir::TypeBinding {
                 hir_id: this.next_id(),
                 ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
@@ -3300,7 +3298,7 @@ fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'hir>>) -> Vec<hir::BodyId>
 
 /// Helper struct for delayed construction of GenericArgs.
 struct GenericArgsCtor<'hir> {
-    args: Vec<hir::GenericArg<'hir>>,
+    args: SmallVec<[hir::GenericArg<'hir>; 1]>,
     bindings: &'hir [hir::TypeBinding<'hir>],
     parenthesized: bool,
 }
