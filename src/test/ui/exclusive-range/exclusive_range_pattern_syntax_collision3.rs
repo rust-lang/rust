@@ -6,6 +6,7 @@ fn main() {
         //~^ ERROR `..X` range patterns are not supported
         //~| ERROR mismatched types
         //~| ERROR mismatched types
+        //~| ERROR mismatched types
         _ => {},
     }
 }
