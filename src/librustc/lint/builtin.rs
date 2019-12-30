@@ -4,7 +4,7 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use crate::lint::{FutureIncompatibleInfo, LateLintPass, LintArray, LintPass};
+use crate::lint::FutureIncompatibleInfo;
 use crate::middle::stability;
 use crate::session::Session;
 use errors::{pluralize, Applicability, DiagnosticBuilder};
@@ -13,7 +13,6 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 use syntax::ast;
-use syntax::early_buffered_lints::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,
@@ -443,70 +442,6 @@ declare_lint! {
     };
 }
 
-declare_lint_pass! {
-    /// Does nothing as a lint pass, but registers some `Lint`s
-    /// that are used by other parts of the compiler.
-    HardwiredLints => [
-        ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-        EXCEEDING_BITSHIFTS,
-        UNUSED_IMPORTS,
-        UNUSED_EXTERN_CRATES,
-        UNUSED_QUALIFICATIONS,
-        UNKNOWN_LINTS,
-        UNUSED_VARIABLES,
-        UNUSED_ASSIGNMENTS,
-        DEAD_CODE,
-        UNREACHABLE_CODE,
-        UNREACHABLE_PATTERNS,
-        OVERLAPPING_PATTERNS,
-        UNUSED_MACROS,
-        WARNINGS,
-        UNUSED_FEATURES,
-        STABLE_FEATURES,
-        UNKNOWN_CRATE_TYPES,
-        TRIVIAL_CASTS,
-        TRIVIAL_NUMERIC_CASTS,
-        PRIVATE_IN_PUBLIC,
-        EXPORTED_PRIVATE_DEPENDENCIES,
-        PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-        INVALID_TYPE_PARAM_DEFAULT,
-        CONST_ERR,
-        RENAMED_AND_REMOVED_LINTS,
-        SAFE_PACKED_BORROWS,
-        PATTERNS_IN_FNS_WITHOUT_BODY,
-        MISSING_FRAGMENT_SPECIFIER,
-        LATE_BOUND_LIFETIME_ARGUMENTS,
-        ORDER_DEPENDENT_TRAIT_OBJECTS,
-        DEPRECATED,
-        UNUSED_UNSAFE,
-        UNUSED_MUT,
-        UNCONDITIONAL_RECURSION,
-        SINGLE_USE_LIFETIMES,
-        UNUSED_LIFETIMES,
-        UNUSED_LABELS,
-        TYVAR_BEHIND_RAW_POINTER,
-        ELIDED_LIFETIMES_IN_PATHS,
-        BARE_TRAIT_OBJECTS,
-        ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
-        UNSTABLE_NAME_COLLISIONS,
-        IRREFUTABLE_LET_PATTERNS,
-        INTRA_DOC_LINK_RESOLUTION_FAILURE,
-        MISSING_DOC_CODE_EXAMPLES,
-        PRIVATE_DOC_TESTS,
-        WHERE_CLAUSES_OBJECT_SAFETY,
-        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-        MACRO_USE_EXTERN_CRATE,
-        MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-        ILL_FORMED_ATTRIBUTE_INPUT,
-        META_VARIABLE_MISUSE,
-        DEPRECATED_IN_FUTURE,
-        AMBIGUOUS_ASSOCIATED_ITEMS,
-        MUTABLE_BORROW_RESERVATION_CONFLICT,
-        INDIRECT_STRUCTURAL_MATCH,
-        SOFT_UNSTABLE,
-    ]
-}
-
 // this could be a closure, but then implementing derive traits
 // becomes hacky (and it gets allocated)
 #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
@@ -646,5 +581,3 @@ impl BuiltinLintDiagnostics {
         }
     }
 }
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HardwiredLints {}

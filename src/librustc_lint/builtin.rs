@@ -43,6 +43,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
 use syntax::ast::{self, Expr};
 use syntax::attr::{self, HasAttrs};
+use syntax::early_buffered_lints::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::{self, expr_to_string};
 use syntax::ptr::P;
@@ -58,6 +59,72 @@ use log::debug;
 
 // hardwired lints from librustc
 pub use lint::builtin::*;
+
+declare_lint_pass! {
+    /// Does nothing as a lint pass, but registers some `Lint`s
+    /// that are used by other parts of the compiler.
+    HardwiredLints => [
+        ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+        EXCEEDING_BITSHIFTS,
+        UNUSED_IMPORTS,
+        UNUSED_EXTERN_CRATES,
+        UNUSED_QUALIFICATIONS,
+        UNKNOWN_LINTS,
+        UNUSED_VARIABLES,
+        UNUSED_ASSIGNMENTS,
+        DEAD_CODE,
+        UNREACHABLE_CODE,
+        UNREACHABLE_PATTERNS,
+        OVERLAPPING_PATTERNS,
+        UNUSED_MACROS,
+        WARNINGS,
+        UNUSED_FEATURES,
+        STABLE_FEATURES,
+        UNKNOWN_CRATE_TYPES,
+        TRIVIAL_CASTS,
+        TRIVIAL_NUMERIC_CASTS,
+        PRIVATE_IN_PUBLIC,
+        EXPORTED_PRIVATE_DEPENDENCIES,
+        PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+        INVALID_TYPE_PARAM_DEFAULT,
+        CONST_ERR,
+        RENAMED_AND_REMOVED_LINTS,
+        SAFE_PACKED_BORROWS,
+        PATTERNS_IN_FNS_WITHOUT_BODY,
+        MISSING_FRAGMENT_SPECIFIER,
+        LATE_BOUND_LIFETIME_ARGUMENTS,
+        ORDER_DEPENDENT_TRAIT_OBJECTS,
+        DEPRECATED,
+        UNUSED_UNSAFE,
+        UNUSED_MUT,
+        UNCONDITIONAL_RECURSION,
+        SINGLE_USE_LIFETIMES,
+        UNUSED_LIFETIMES,
+        UNUSED_LABELS,
+        TYVAR_BEHIND_RAW_POINTER,
+        ELIDED_LIFETIMES_IN_PATHS,
+        BARE_TRAIT_OBJECTS,
+        ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+        UNSTABLE_NAME_COLLISIONS,
+        IRREFUTABLE_LET_PATTERNS,
+        INTRA_DOC_LINK_RESOLUTION_FAILURE,
+        MISSING_DOC_CODE_EXAMPLES,
+        PRIVATE_DOC_TESTS,
+        WHERE_CLAUSES_OBJECT_SAFETY,
+        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+        MACRO_USE_EXTERN_CRATE,
+        MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+        ILL_FORMED_ATTRIBUTE_INPUT,
+        META_VARIABLE_MISUSE,
+        DEPRECATED_IN_FUTURE,
+        AMBIGUOUS_ASSOCIATED_ITEMS,
+        MUTABLE_BORROW_RESERVATION_CONFLICT,
+        INDIRECT_STRUCTURAL_MATCH,
+        SOFT_UNSTABLE,
+    ]
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HardwiredLints {}
 
 declare_lint! {
     WHILE_TRUE,

@@ -253,8 +253,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     let cpath = Some(input.clone());
     let input = Input::File(input);
 
-    let intra_link_resolution_failure_name = lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE.name;
-    let warnings_lint_name = lint::builtin::WARNINGS.name;
+    let intra_link_resolution_failure_name =
+        rustc_lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE.name;
+    let warnings_lint_name = rustc_lint::builtin::WARNINGS.name;
     let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
@@ -272,7 +273,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = || {
-        lint::builtin::HardwiredLints::get_lints()
+        rustc_lint::builtin::HardwiredLints::get_lints()
             .into_iter()
             .chain(rustc_lint::SoftLints::get_lints().into_iter())
     };
