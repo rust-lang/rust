@@ -14,11 +14,11 @@ doctest = false
 bitflags = "1.2.1"
 log = "0.4"
 syntax = { path = "../libsyntax" }
-syntax_expand = { path = "../libsyntax_expand" }
+rustc_expand = { path = "../librustc_expand" }
 rustc = { path = "../librustc" }
 arena = { path = "../libarena" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
-syntax_pos = { path = "../libsyntax_pos" }
+syntax_pos = { path = "../librustc_span", package = "rustc_span" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_metadata = { path = "../librustc_metadata" }

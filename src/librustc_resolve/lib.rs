@@ -36,6 +36,7 @@ use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
 use rustc_metadata::creader::{CStore, CrateLoader};
 
 use errors::{Applicability, DiagnosticBuilder};
+use rustc_expand::base::SyntaxExtension;
 use syntax::ast::{self, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
 use syntax::ast::{Crate, CRATE_NODE_ID};
 use syntax::ast::{ItemKind, Path};
@@ -45,7 +46,6 @@ use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{struct_span_err, unwrap_or};
-use syntax_expand::base::SyntaxExtension;
 use syntax_pos::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -60,9 +60,9 @@ use std::{cmp, fmt, iter, ptr};
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
 use diagnostics::{ImportSuggestion, Suggestion};
+use imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver, NameResolution};
 use late::{HasGenericParams, PathSource, Rib, RibKind::*};
 use macros::{LegacyBinding, LegacyScope};
-use resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver, NameResolution};
 
 use rustc_error_codes::*;
 
@@ -72,9 +72,9 @@ mod build_reduced_graph;
 mod check_unused;
 mod def_collector;
 mod diagnostics;
+mod imports;
 mod late;
 mod macros;
-mod resolve_imports;
 
 enum Weak {
     Yes,

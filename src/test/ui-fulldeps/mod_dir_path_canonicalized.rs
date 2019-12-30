@@ -5,7 +5,6 @@
 #![feature(rustc_private)]
 
 extern crate syntax;
-extern crate syntax_expand;
 extern crate rustc_parse;
 
 use rustc_parse::new_parser_from_file;

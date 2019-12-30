@@ -1,0 +1,24 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_builtin_macros"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+name = "rustc_builtin_macros"
+path = "lib.rs"
+doctest = false
+
+[dependencies]
+errors = { path = "../librustc_errors", package = "rustc_errors" }
+fmt_macros = { path = "../libfmt_macros" }
+log = "0.4"
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_feature = { path = "../librustc_feature" }
+rustc_parse = { path = "../librustc_parse" }
+rustc_target = { path = "../librustc_target" }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+syntax = { path = "../libsyntax" }
+rustc_expand = { path = "../librustc_expand" }
+syntax_pos = { path = "../librustc_span", package = "rustc_span" }
+rustc_error_codes = { path = "../librustc_error_codes" }

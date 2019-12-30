@@ -21,7 +21,6 @@
 
 extern crate rustc_data_structures;
 extern crate syntax;
-extern crate syntax_expand;
 extern crate rustc_parse;
 
 use rustc_data_structures::thin_vec::ThinVec;

@@ -1,7 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::resolve_imports::ImportResolver;
+use crate::imports::ImportResolver;
 use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
@@ -12,16 +12,16 @@ use rustc::middle::stability;
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{lint, span_bug, ty};
+use rustc_expand::base::SyntaxExtension;
+use rustc_expand::base::{self, Indeterminate, InvocationRes};
+use rustc_expand::compile_declarative_macro;
+use rustc_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use rustc_feature::is_builtin_attr_name;
 use syntax::ast::{self, Ident, NodeId};
 use syntax::attr::{self, StabilityLevel};
 use syntax::edition::Edition;
 use syntax::feature_gate::feature_err;
 use syntax::print::pprust;
-use syntax_expand::base::SyntaxExtension;
-use syntax_expand::base::{self, Indeterminate, InvocationRes};
-use syntax_expand::compile_declarative_macro;
-use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use syntax_pos::hygiene::{self, ExpnData, ExpnId, ExpnKind};
 use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP};

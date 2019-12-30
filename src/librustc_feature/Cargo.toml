@@ -12,4 +12,4 @@ doctest = false
 [dependencies]
 rustc_data_structures = { path = "../librustc_data_structures" }
 lazy_static = "1.0.0"
-syntax_pos = { path = "../libsyntax_pos" }
+syntax_pos = { path = "../librustc_span", package = "rustc_span" }

@@ -33,12 +33,12 @@ use std::u32;
 
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
+use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::source_map::{self, respan, Spanned};
-use syntax_expand::base::{SyntaxExtension, SyntaxExtensionKind};
-use syntax_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use syntax_pos::symbol::{sym, Symbol};
 use syntax_pos::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 
@@ -637,7 +637,7 @@ impl<'a, 'tcx> CrateMetadata {
         // DefIndex's in root.proc_macro_data have a one-to-one correspondence
         // with items in 'raw_proc_macros'.
         // NOTE: If you update the order of macros in 'proc_macro_data' for any reason,
-        // you must also update src/libsyntax_ext/proc_macro_harness.rs
+        // you must also update src/librustc_builtin_macros/proc_macro_harness.rs
         // Failing to do so will result in incorrect data being associated
         // with proc macros when deserialized.
         let pos = self.root.proc_macro_data.unwrap().decode(self).position(|i| i == id).unwrap();

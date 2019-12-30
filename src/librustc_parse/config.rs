@@ -1,7 +1,7 @@
 //! Process the potential `cfg` attributes on a module.
 //! Also determine if the module should be included in this configuration.
 //!
-//! This module properly belongs in syntax_expand, but for now it's tied into
+//! This module properly belongs in rustc_expand, but for now it's tied into
 //! parsing, so we leave it here to avoid complicated out-of-line dependencies.
 //!
 //! A principled solution to this wrong location would be to implement [#64197].

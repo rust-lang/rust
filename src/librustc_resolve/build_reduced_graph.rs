@@ -6,9 +6,9 @@
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
 use crate::def_collector::collect_definitions;
+use crate::imports::ImportDirective;
+use crate::imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use crate::macros::{LegacyBinding, LegacyScope};
-use crate::resolve_imports::ImportDirective;
-use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
 use crate::{CrateLint, Determinacy, PathResult, ResolutionError, VisResolutionError};
 use crate::{
@@ -29,6 +29,8 @@ use std::ptr;
 
 use errors::Applicability;
 
+use rustc_expand::base::SyntaxExtension;
+use rustc_expand::expand::AstFragment;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use syntax::ast::{Ident, Name};
@@ -38,8 +40,6 @@ use syntax::span_err;
 use syntax::symbol::{kw, sym};
 use syntax::token::{self, Token};
 use syntax::visit::{self, Visitor};
-use syntax_expand::base::SyntaxExtension;
-use syntax_expand::expand::AstFragment;
 use syntax_pos::hygiene::{ExpnId, MacroKind};
 use syntax_pos::{Span, DUMMY_SP};
 

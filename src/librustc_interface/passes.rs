@@ -19,12 +19,14 @@ use rustc::traits;
 use rustc::ty::steal::Steal;
 use rustc::ty::{self, AllArenas, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc::util::common::{time, ErrorReported};
+use rustc_builtin_macros;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
 use rustc_data_structures::sync::{par_iter, Lrc, Once, ParallelIterator, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
+use rustc_expand::base::ExtCtxt;
 use rustc_incremental;
 use rustc_mir as mir;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
@@ -39,8 +41,6 @@ use syntax::mut_visit::MutVisitor;
 use syntax::symbol::Symbol;
 use syntax::util::node_count::NodeCounter;
 use syntax::{self, ast, visit};
-use syntax_expand::base::ExtCtxt;
-use syntax_ext;
 use syntax_pos::FileName;
 
 use rustc_serialize::json;
@@ -164,14 +164,14 @@ pub fn register_plugins<'a>(
     crate_name: &str,
 ) -> Result<(ast::Crate, Lrc<lint::LintStore>)> {
     krate = time(sess, "attributes injection", || {
-        syntax_ext::cmdline_attrs::inject(
+        rustc_builtin_macros::cmdline_attrs::inject(
             krate,
             &sess.parse_sess,
             &sess.opts.debugging_opts.crate_attr,
         )
     });
 
-    let (krate, features) = syntax_expand::config::features(
+    let (krate, features) = rustc_expand::config::features(
         krate,
         &sess.parse_sess,
         sess.edition(),
@@ -243,11 +243,11 @@ fn configure_and_expand_inner<'a>(
     });
 
     let mut resolver = Resolver::new(sess, &krate, crate_name, metadata_loader, &resolver_arenas);
-    syntax_ext::register_builtin_macros(&mut resolver, sess.edition());
+    rustc_builtin_macros::register_builtin_macros(&mut resolver, sess.edition());
 
     krate = time(sess, "crate injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| Symbol::intern(s));
-        let (krate, name) = syntax_ext::standard_library_imports::inject(
+        let (krate, name) = rustc_builtin_macros::standard_library_imports::inject(
             krate,
             &mut resolver,
             &sess.parse_sess,
@@ -297,12 +297,12 @@ fn configure_and_expand_inner<'a>(
 
         // Create the config for macro expansion
         let features = sess.features_untracked();
-        let cfg = syntax_expand::expand::ExpansionConfig {
+        let cfg = rustc_expand::expand::ExpansionConfig {
             features: Some(&features),
             recursion_limit: *sess.recursion_limit.get(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
-            ..syntax_expand::expand::ExpansionConfig::default(crate_name.to_string())
+            ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
         let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver);
@@ -332,7 +332,7 @@ fn configure_and_expand_inner<'a>(
     });
 
     time(sess, "maybe building test harness", || {
-        syntax_ext::test_harness::inject(
+        rustc_builtin_macros::test_harness::inject(
             &sess.parse_sess,
             &mut resolver,
             sess.opts.test,
@@ -380,7 +380,7 @@ fn configure_and_expand_inner<'a>(
         krate = time(sess, "maybe creating a macro crate", || {
             let num_crate_types = crate_types.len();
             let is_test_crate = sess.opts.test;
-            syntax_ext::proc_macro_harness::inject(
+            rustc_builtin_macros::proc_macro_harness::inject(
                 &sess.parse_sess,
                 &mut resolver,
                 krate,

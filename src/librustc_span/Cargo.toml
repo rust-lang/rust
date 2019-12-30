@@ -1,0 +1,21 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_span"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+name = "rustc_span"
+path = "lib.rs"
+doctest = false
+
+[dependencies]
+rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_macros = { path = "../librustc_macros" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_index = { path = "../librustc_index" }
+arena = { path = "../libarena" }
+scoped-tls = "1.0"
+unicode-width = "0.1.4"
+cfg-if = "0.1.2"
+log = "0.4"
