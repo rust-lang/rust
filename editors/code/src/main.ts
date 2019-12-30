@@ -20,6 +20,8 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('parentModule', commands.parentModule);
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('expandMacro', commands.expandMacro);
+    ctx.registerCommand('run', commands.run);
+    ctx.registerCommand('runSingle', commands.runSingle); // Internal action for lenses
 
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
@@ -29,10 +31,6 @@ export async function activate(context: vscode.ExtensionContext) {
         disposeOnDeactivation(vscode.commands.registerCommand(name, f));
     }
 
-    // Commands are requests from vscode to the language server
-    registerCommand('rust-analyzer.run', commands.runnables.handle);
-    // Unlike the above this does not send requests to the language server
-    registerCommand('rust-analyzer.runSingle', commands.runnables.handleSingle);
     registerCommand(
         'rust-analyzer.showReferences',
         (uri: string, position: lc.Position, locations: lc.Location[]) => {

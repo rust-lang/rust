@@ -8,7 +8,7 @@ import { parentModule } from './parent_module';
 import { syntaxTree } from './syntax_tree';
 import { expandMacro } from './expand_macro';
 import * as inlayHints from './inlay_hints';
-import * as runnables from './runnables';
+import { run, runSingle } from './runnables';
 
 function collectGarbage(ctx: Ctx): Cmd {
     return async () => {
@@ -22,9 +22,10 @@ export {
     joinLines,
     matchingBrace,
     parentModule,
-    runnables,
     syntaxTree,
     onEnter,
     inlayHints,
     collectGarbage,
+    run,
+    runSingle
 };
