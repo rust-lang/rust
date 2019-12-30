@@ -4,10 +4,18 @@ use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
     path::{ModPath, PathKind},
-    ModuleId,
+    ModuleId, ModuleDefId,
 };
+use hir_expand::name::Name;
 
-pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> ModPath {
+// TODO handle prelude
+// TODO handle enum variants
+// TODO don't import from super imports? or at least deprioritize
+// TODO use super?
+// TODO use shortest path
+// TODO performance / memoize
+
+pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     // 1. Find all locations that the item could be imported from (i.e. that are visible)
     //    - this needs to consider other crates, for reexports from transitive dependencies
     //    - filter by visibility
@@ -15,12 +23,63 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> ModPa
     //    item/module/crate that is already in scope (including because it is in
     //    the prelude, and including aliases!)
     // 3. Then select the one that gives the shortest path
+
+    // Base cases:
+
+    // - if the item is already in scope, return the name under which it is
     let def_map = db.crate_def_map(from.krate);
     let from_scope: &crate::item_scope::ItemScope = &def_map.modules[from.local_id].scope;
     if let Some((name, _)) = from_scope.reverse_get(item) {
-        return ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]);
+        return Some(ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]));
     }
-    todo!()
+
+    // - if the item is the crate root, return `crate`
+    if item == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId { krate: from.krate, local_id: def_map.root })) {
+        return Some(ModPath::from_simple_segments(PathKind::Crate, Vec::new()));
+    }
+
+    // - if the item is the crate root of a dependency crate, return the name from the extern prelude
+    for (name, def_id) in &def_map.extern_prelude {
+        if item == ItemInNs::Types(*def_id) {
+            return Some(ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]));
+        }
+    }
+
+    // - if the item is in the prelude, return the name from there
+    // TODO check prelude
+
+    // Recursive case:
+    // - if the item is an enum variant, refer to it via the enum
+
+    // - otherwise, look for modules containing (reexporting) it and import it from one of those
+    let importable_locations = find_importable_locations(db, item, from);
+    // XXX going in order for now
+    for (module_id, name) in importable_locations {
+        // TODO prevent infinite loops
+        let mut path = match find_path(db, ItemInNs::Types(ModuleDefId::ModuleId(module_id)), from) {
+            None => continue,
+            Some(path) => path,
+        };
+        path.segments.push(name);
+        return Some(path);
+    }
+    None
+}
+
+fn find_importable_locations(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Vec<(ModuleId, Name)> {
+    let crate_graph = db.crate_graph();
+    let mut result = Vec::new();
+    for krate in Some(from.krate).into_iter().chain(crate_graph.dependencies(from.krate).map(|dep| dep.crate_id)) {
+        let def_map = db.crate_def_map(krate);
+        for (local_id, data) in def_map.modules.iter() {
+            if let Some((name, vis)) = data.scope.reverse_get(item) {
+                if vis.is_visible_from(db, from) {
+                    result.push((ModuleId { krate, local_id }, name.clone()));
+                }
+            }
+        }
+    }
+    result
 }
 
 #[cfg(test)]
@@ -59,7 +118,7 @@ mod tests {
 
         let found_path = find_path(&db, ItemInNs::Types(resolved), module);
 
-        assert_eq!(mod_path, found_path);
+        assert_eq!(found_path, Some(mod_path));
     }
 
     #[test]
@@ -82,6 +141,17 @@ mod tests {
             <|>
         "#;
         check_found_path(code, "foo::S");
+    }
+
+    #[test]
+    fn crate_root() {
+        let code = r#"
+            //- /main.rs
+            mod foo;
+            //- /foo.rs
+            <|>
+        "#;
+        check_found_path(code, "crate");
     }
 
     #[test]
@@ -108,6 +178,18 @@ mod tests {
     }
 
     #[test]
+    fn different_crate_renamed() {
+        let code = r#"
+            //- /main.rs crate:main deps:std
+            extern crate std as std_renamed;
+            <|>
+            //- /std.rs crate:std
+            pub struct S;
+        "#;
+        check_found_path(code, "std_renamed::S");
+    }
+
+    #[test]
     fn same_crate_reexport() {
         let code = r#"
             //- /main.rs
@@ -118,5 +200,31 @@ mod tests {
             <|>
         "#;
         check_found_path(code, "bar::S");
+    }
+
+    #[test]
+    fn same_crate_reexport_rename() {
+        let code = r#"
+            //- /main.rs
+            mod bar {
+                mod foo { pub(super) struct S; }
+                pub(crate) use foo::S as U;
+            }
+            <|>
+        "#;
+        check_found_path(code, "bar::U");
+    }
+
+    #[test]
+    fn prelude() {
+        let code = r#"
+            //- /main.rs crate:main deps:std
+            <|>
+            //- /std.rs crate:std
+            pub mod prelude { pub struct S; }
+            #[prelude_import]
+            pub use prelude::*;
+        "#;
+        check_found_path(code, "S");
     }
 }

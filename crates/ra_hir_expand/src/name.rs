@@ -37,6 +37,10 @@ impl Name {
         Name(Repr::TupleField(idx))
     }
 
+    pub fn for_crate_dependency(dep: &ra_db::Dependency) -> Name {
+        Name::new_text(dep.name.clone())
+    }
+
     /// Shortcut to create inline plain text name
     const fn new_inline_ascii(text: &[u8]) -> Name {
         Name::new_text(SmolStr::new_inline_from_ascii(text.len(), text))
