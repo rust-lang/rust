@@ -401,6 +401,29 @@ impl Foo for S {
     }
 
     #[test]
+    fn test_qualify_path_1() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    struct Bar;
+    trait Foo { fn foo(&self, bar: Bar); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    struct Bar;
+    trait Foo { fn foo(&self, bar: Bar); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: foo::Bar) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
     fn test_empty_trait() {
         check_assist_not_applicable(
             add_missing_impl_members,
