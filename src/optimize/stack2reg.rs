@@ -31,6 +31,36 @@ struct StackSlotUsage {
     stack_store: HashSet<Inst>,
 }
 
+impl StackSlotUsage {
+    fn potential_stores_for_load(&self, ctx: &Context, load: Inst) -> Vec<Inst> {
+        self.stack_store.iter().cloned().filter(|&store| {
+            match spatial_overlap(&ctx.func, load, store) {
+                SpatialOverlap::No => false, // Can never be the source of the loaded value.
+                SpatialOverlap::Partial | SpatialOverlap::Full => true,
+            }
+        }).filter(|&store| {
+            match temporal_order(ctx, load, store) {
+                TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
+                TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
+            }
+        }).collect::<Vec<Inst>>()
+    }
+
+    fn potential_loads_of_store(&self, ctx: &Context, store: Inst) -> Vec<Inst> {
+        self.stack_load.iter().cloned().filter(|&load| {
+            match spatial_overlap(&ctx.func, store, load) {
+                SpatialOverlap::No => false, // Can never be the source of the loaded value.
+                SpatialOverlap::Partial | SpatialOverlap::Full => true,
+            }
+        }).filter(|&load| {
+            match temporal_order(ctx, store, load) {
+                TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
+                TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
+            }
+        }).collect::<Vec<Inst>>()
+    }
+}
+
 struct OptimizeContext<'a> {
     ctx: &'a mut Context,
     stack_slot_usage_map: BTreeMap<OrdStackSlot, StackSlotUsage>,
@@ -103,23 +133,12 @@ pub(super) fn optimize_function(
             continue;
         }
 
-        for load in users.stack_load.clone().drain() {
+        for load in users.stack_load.clone().into_iter() {
             let load_ebb = opt_ctx.ctx.func.layout.inst_ebb(load).unwrap();
             let loaded_value = opt_ctx.ctx.func.dfg.inst_results(load)[0];
             let loaded_type = opt_ctx.ctx.func.dfg.value_type(loaded_value);
 
-            let ctx = &*opt_ctx.ctx;
-            let potential_stores = users.stack_store.iter().cloned().filter(|&store| {
-                match spatial_overlap(&ctx.func, load, store) {
-                    SpatialOverlap::No => false, // Can never be the source of the loaded value.
-                    SpatialOverlap::Partial | SpatialOverlap::Full => true,
-                }
-            }).filter(|&store| {
-                match temporal_order(ctx, load, store) {
-                    TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
-                    TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
-                }
-            }).collect::<Vec<Inst>>();
+            let potential_stores = users.potential_stores_for_load(&opt_ctx.ctx, load);
 
             for &store in &potential_stores {
                 println!(
@@ -127,7 +146,7 @@ pub(super) fn optimize_function(
                     opt_ctx.ctx.func.dfg.display_inst(store, None),
                     opt_ctx.ctx.func.dfg.display_inst(load, None),
                     spatial_overlap(&opt_ctx.ctx.func, store, load),
-                    temporal_order(&*opt_ctx.ctx, store, load),
+                    temporal_order(&opt_ctx.ctx, store, load),
                 );
             }
 
@@ -150,27 +169,16 @@ pub(super) fn optimize_function(
             }
         }
 
-        for store in users.stack_store.clone().drain() {
-            let ctx = &*opt_ctx.ctx;
-            let potential_loads = users.stack_load.iter().cloned().filter(|&load| {
-                match spatial_overlap(&ctx.func, store, load) {
-                    SpatialOverlap::No => false, // Can never be the source of the loaded value.
-                    SpatialOverlap::Partial | SpatialOverlap::Full => true,
-                }
-            }).filter(|&load| {
-                match temporal_order(ctx, store, load) {
-                    TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
-                    TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
-                }
-            }).collect::<Vec<Inst>>();
+        for store in users.stack_store.clone().into_iter() {
+            let potential_loads = users.potential_loads_of_store(&opt_ctx.ctx, store);
 
             for &load in &potential_loads {
                 println!(
                     "Potential load from store {} <- {} ({:?}, {:?})",
                     opt_ctx.ctx.func.dfg.display_inst(load, None),
                     opt_ctx.ctx.func.dfg.display_inst(store, None),
-                    spatial_overlap(&ctx.func, store, load),
-                    temporal_order(&*opt_ctx.ctx, store, load),
+                    spatial_overlap(&opt_ctx.ctx.func, store, load),
+                    temporal_order(&opt_ctx.ctx, store, load),
                 );
             }
 
