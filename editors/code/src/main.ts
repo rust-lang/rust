@@ -9,7 +9,7 @@ import { StatusDisplay } from './commands/watch_status';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
-import { Ctx } from './ctx'
+import { Ctx } from './ctx';
 
 let ctx!: Ctx;
 
@@ -94,15 +94,15 @@ export async function activate(context: vscode.ExtensionContext) {
         string,
         lc.GenericNotificationHandler,
     ]> = [
-            [
-                'rust-analyzer/publishDecorations',
-                notifications.publishDecorations.handle,
-            ],
-            [
-                '$/progress',
-                params => watchStatus.handleProgressNotification(params),
-            ],
-        ];
+        [
+            'rust-analyzer/publishDecorations',
+            notifications.publishDecorations.handle,
+        ],
+        [
+            '$/progress',
+            params => watchStatus.handleProgressNotification(params),
+        ],
+    ];
     const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
     const expandMacroContentProvider = new ExpandMacroContentProvider();
 
