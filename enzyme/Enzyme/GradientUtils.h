@@ -148,6 +148,11 @@ private:
   SmallVector<Value*, 4> addedMallocs;
   unsigned tapeidx;
   Value* tape;
+
+  std::map<std::pair<Value*, int>, MDNode*> invariantGroups;
+  std::map<Value*, MDNode*> valueInvariantGroups;
+  std::map<std::pair<Value*, BasicBlock*>, Value*> unwrap_cache;
+  std::map<std::pair<Value*, BasicBlock*>, Value*> lookup_cache;
 public:
   bool shouldRecompute(Value* val, const ValueToValueMapTy& available);
 
@@ -246,23 +251,13 @@ public:
             assert(0 && "erasing something in invertedPointers map");
         }
     }
+
     {
-        //std::vector<BasicBlock*> unwrap_cache_blocks;
         std::vector<std::pair<Value*, BasicBlock*>> unwrap_cache_pairs;
         for(auto& a : unwrap_cache) {
             if (a.second == I) {
                 unwrap_cache_pairs.push_back(a.first);
-                /*
-
-                llvm::errs() << *oldFunc << "\n";
-                llvm::errs() << *newFunc << "\n";
-                
-                llvm::errs() << "cache block: " << *a.first.second << "\n";
-                llvm::errs() << "cache val: " << *a.first.first << "\n";
-                llvm::errs() << "stored: " << *I << "\n";
-                */
             }
-            //assert(a.second != I);
             if (a.first.first == I) {
                 unwrap_cache_pairs.push_back(a.first);
             }
@@ -271,6 +266,22 @@ public:
             unwrap_cache.erase(a);
         }
     }
+    
+    {
+        std::vector<std::pair<Value*, BasicBlock*>> lookup_cache_pairs;
+        for(auto& a : lookup_cache) {
+            if (a.second == I) {
+                lookup_cache_pairs.push_back(a.first);
+            }
+            if (a.first.first == I) {
+                lookup_cache_pairs.push_back(a.first);
+            }
+        }
+        for(auto a : lookup_cache_pairs) {
+            lookup_cache.erase(a);
+        }
+    }
+
     if (!I->use_empty()) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
@@ -279,6 +290,7 @@ public:
     assert(I->use_empty());
     I->eraseFromParent();
   }
+  //TODO consider invariant group and/or valueInvariant group
 
   void setTape(Value* newtape) {
     assert(tape == nullptr);
@@ -1012,7 +1024,6 @@ public:
       }
   }
 
-  std::map<std::pair<Value*, BasicBlock*>, Value*> unwrap_cache;
   Value* unwrapM(Value* const val, IRBuilder<>& BuilderM, const ValueToValueMapTy& available, bool lookupIfAble) {
       assert(val);
 
@@ -1309,7 +1320,6 @@ endCheck:
         }
         return sublimits;
     }
-    std::map<std::pair<Value*, int>, MDNode*> invariantGroups;
    
     //! Caching mechanism: creates a cache of type T in a scope given by ctx (where if ctx is in a loop there will be a corresponding number of slots)
     AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, bool shouldFree, bool allocateInternal=true) {
@@ -1549,9 +1559,7 @@ endCheck:
         }
         return next;
     }
-    
-    std::map<Value*, MDNode*> valueInvariantGroups;
-    
+     
     LoadInst* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache) {
         auto result = BuilderM.CreateLoad(getCachePointer(BuilderM, ctx, cache));
         
@@ -1675,7 +1683,6 @@ endCheck:
         return inst;
     }
 
-    std::map<std::pair<Value*, BasicBlock*>, Value*> lookup_cache;
     Value* lookupM(Value* val, IRBuilder<>& BuilderM);
 
     Value* invertPointerM(Value* val, IRBuilder<>& BuilderM);

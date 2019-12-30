@@ -1596,6 +1596,8 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       Value* tofree = gutils->lookupM(anti, Builder2);
       assert(tofree);
       assert(tofree->getType());
+      assert(Type::getInt8Ty(tofree->getContext()));
+      assert(PointerType::getUnqual(Type::getInt8Ty(tofree->getContext())));
       assert(Type::getInt8PtrTy(tofree->getContext()));
       freeKnownAllocation(Builder2, tofree, *called, TLI)->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
     }

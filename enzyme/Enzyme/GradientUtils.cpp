@@ -893,7 +893,10 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
 
     auto idx = std::make_pair(val, BuilderM.GetInsertBlock());
     if (lookup_cache.find(idx) != lookup_cache.end()) {
-        return lookup_cache[idx];
+        auto result = lookup_cache[idx];
+        assert(result);
+        assert(result->getType());
+        return result;
     }
 
     LoopContext lc;
@@ -929,6 +932,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
       if (shouldRecompute(inst, available)) {
           auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/true);
           assert(op);
+          assert(op->getType());
           return op;
       }
     }
@@ -938,6 +942,8 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     Value* result = lookupValueFromCache(BuilderM, inst->getParent(), scopeMap[inst]);
     assert(result->getType() == inst->getType());
     lookup_cache[idx] = result;
+    assert(result);
+    assert(result->getType());
     return result;
 }
 
