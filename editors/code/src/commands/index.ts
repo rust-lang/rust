@@ -10,7 +10,6 @@ import { onEnter } from './on_enter';
 import { parentModule } from './parent_module';
 import { syntaxTree } from './syntax_tree';
 import { expandMacro } from './expand_macro';
-import * as inlayHints from './inlay_hints';
 import { run, runSingle } from './runnables';
 
 function collectGarbage(ctx: Ctx): Cmd {
@@ -38,7 +37,6 @@ export {
     parentModule,
     syntaxTree,
     onEnter,
-    inlayHints,
     collectGarbage,
     run,
     runSingle,

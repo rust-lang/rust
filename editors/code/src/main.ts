@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
-import { HintsUpdater } from './commands/inlay_hints';
+import { HintsUpdater } from './inlay_hints';
 import { StatusDisplay } from './commands/watch_status';
 import * as events from './events';
 import * as notifications from './notifications';

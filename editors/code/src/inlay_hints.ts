@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import { Server } from '../server';
+import { Server } from './server';
 
 interface InlayHintsParams {
     textDocument: lc.TextDocumentIdentifier;
