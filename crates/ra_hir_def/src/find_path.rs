@@ -10,7 +10,6 @@ use hir_expand::name::Name;
 
 // TODO don't import from super imports? or at least deprioritize
 // TODO use super?
-// TODO use shortest path
 // TODO performance / memoize
 
 pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
@@ -61,7 +60,7 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Optio
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
     let importable_locations = find_importable_locations(db, item, from);
-    // XXX going in order for now
+    let mut candidate_paths = Vec::new();
     for (module_id, name) in importable_locations {
         // TODO prevent infinite loops
         let mut path = match find_path(db, ItemInNs::Types(ModuleDefId::ModuleId(module_id)), from) {
@@ -69,9 +68,9 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Optio
             Some(path) => path,
         };
         path.segments.push(name);
-        return Some(path);
+        candidate_paths.push(path);
     }
-    None
+    candidate_paths.into_iter().min_by_key(|path| path.segments.len())
 }
 
 fn find_importable_locations(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Vec<(ModuleId, Name)> {
@@ -274,5 +273,21 @@ mod tests {
         "#;
         check_found_path(code, "None");
         check_found_path(code, "Some");
+    }
+
+    #[test]
+    fn shortest_path() {
+        let code = r#"
+            //- /main.rs
+            pub mod foo;
+            pub mod baz;
+            struct S;
+            <|>
+            //- /foo.rs
+            pub mod bar { pub struct S; }
+            //- /baz.rs
+            pub use crate::foo::bar::S;
+        "#;
+        check_found_path(code, "baz::S");
     }
 }
