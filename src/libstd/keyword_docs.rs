@@ -1149,20 +1149,39 @@ mod where_keyword {}
 //
 /// Return a [`Future`] instead of blocking the current thread.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// Use `async` in front of `fn`, `closure`, or a `block` to turn the marked code into a `Future`.
+/// As such the code will not be run immediately, but will only be evaluated when the returned
+/// future is `.await`ed.
+///
+/// We have written an [async book] detailing async/await and trade-offs compared to using threads.
+///
+/// ## Editions
+///
+/// `async` is a keyword from the 2018 edition onwards.
+///
+/// It is available for use in stable rust from version 1.39 onwards.
 ///
 /// [`Future`]: ./future/trait.Future.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// [async book]: https://rust-lang.github.io/async-book/
 mod async_keyword {}
 
 #[doc(keyword = "await")]
 //
 /// Suspend execution until the result of a [`Future`] is ready.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `.await`ing a future will suspend the current function's execution until the `executor`
+/// has run the future to completion.
+///
+/// Read the [async book] for details on how async/await and executors work.
+///
+/// ## Editions
+///
+/// `await` is a keyword from the 2018 edition onwards.
+///
+/// It is available for use in stable rust from version 1.39 onwards.
 ///
 /// [`Future`]: ./future/trait.Future.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// [async book]: https://rust-lang.github.io/async-book/
 mod await_keyword {}
 
 #[doc(keyword = "dyn")]
