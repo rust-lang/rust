@@ -28,11 +28,11 @@ export class StatusDisplay implements vscode.Disposable {
                 if (this.packageName) {
                     this.statusBarItem!.text = `cargo ${this.command} [${
                         this.packageName
-                        }] ${this.frame()}`;
+                    }] ${this.frame()}`;
                 } else {
                     this.statusBarItem!.text = `cargo ${
                         this.command
-                        } ${this.frame()}`;
+                    } ${this.frame()}`;
                 }
             }, 300);
 
