@@ -9,16 +9,23 @@ use crate::{
 };
 use hir_expand::name::Name;
 
+const MAX_PATH_LEN: usize = 15;
+
 pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
-    find_path_inner(db, item, from, 15)
+    find_path_inner(db, item, from, MAX_PATH_LEN)
 }
 
-fn find_path_inner(db: &impl DefDatabase, item: ItemInNs, from: ModuleId, max_len: usize) -> Option<ModPath> {
-    // Base cases:
-
+fn find_path_inner(
+    db: &impl DefDatabase,
+    item: ItemInNs,
+    from: ModuleId,
+    max_len: usize,
+) -> Option<ModPath> {
     if max_len == 0 {
         return None;
     }
+
+    // Base cases:
 
     // - if the item is already in scope, return the name under which it is
     let def_map = db.crate_def_map(from.krate);
@@ -86,8 +93,12 @@ fn find_path_inner(db: &impl DefDatabase, item: ItemInNs, from: ModuleId, max_le
     let mut best_path = None;
     let mut best_path_len = max_len;
     for (module_id, name) in importable_locations {
-        let mut path = match find_path_inner(db, ItemInNs::Types(ModuleDefId::ModuleId(module_id)), from, best_path_len - 1)
-        {
+        let mut path = match find_path_inner(
+            db,
+            ItemInNs::Types(ModuleDefId::ModuleId(module_id)),
+            from,
+            best_path_len - 1,
+        ) {
             None => continue,
             Some(path) => path,
         };
@@ -101,13 +112,14 @@ fn find_path_inner(db: &impl DefDatabase, item: ItemInNs, from: ModuleId, max_le
 }
 
 fn path_len(path: &ModPath) -> usize {
-    path.segments.len() + match path.kind {
-        PathKind::Plain => 0,
-        PathKind::Super(i) => i as usize,
-        PathKind::Crate => 1,
-        PathKind::Abs => 0,
-        PathKind::DollarCrate(_) => 1,
-    }
+    path.segments.len()
+        + match path.kind {
+            PathKind::Plain => 0,
+            PathKind::Super(i) => i as usize,
+            PathKind::Crate => 1,
+            PathKind::Abs => 0,
+            PathKind::DollarCrate(_) => 1,
+        }
 }
 
 fn find_importable_locations(
