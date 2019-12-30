@@ -63,6 +63,22 @@ struct TopInfo<'tcx> {
     ///              found type `std::result::Result<_, _>`
     /// ```
     span: Option<Span>,
+    /// This refers to the parent pattern. Used to provide extra diagnostic information on errors.
+    /// ```text
+    /// error[E0308]: mismatched types
+    ///   --> $DIR/const-in-struct-pat.rs:8:17
+    ///   |
+    /// L | struct f;
+    ///   | --------- unit struct defined here
+    /// ...
+    /// L |     let Thing { f } = t;
+    ///   |                 ^
+    ///   |                 |
+    ///   |                 expected struct `std::string::String`, found struct `f`
+    ///   |                 `f` is interpreted as a unit struct, not a new binding
+    ///   |                 help: bind the struct field to a different name instead: `f: other_f`
+    /// ```
+    parent_pat: Option<&'tcx Pat<'tcx>>,
 }
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
@@ -120,7 +136,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Option<Span>,
         origin_expr: bool,
     ) {
-        self.check_pat(pat, expected, INITIAL_BM, TopInfo { expected, origin_expr, span });
+        let info = TopInfo { expected, origin_expr, span, parent_pat: None };
+        self.check_pat(pat, expected, INITIAL_BM, info);
     }
 
     /// Type check the given `pat` against the `expected` type
@@ -161,8 +178,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, ti)
             }
             PatKind::Or(pats) => {
+                let parent_pat = Some(pat);
                 for pat in pats {
-                    self.check_pat(pat, expected, def_bm, ti);
+                    self.check_pat(pat, expected, def_bm, TopInfo { parent_pat, ..ti });
                 }
                 expected
             }
@@ -501,7 +519,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_ident(
         &self,
-        pat: &Pat<'_>,
+        pat: &'tcx Pat<'tcx>,
         ba: hir::BindingAnnotation,
         var_id: HirId,
         sub: Option<&'tcx Pat<'tcx>>,
@@ -546,7 +564,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(p) = sub {
-            self.check_pat(&p, expected, def_bm, ti);
+            self.check_pat(&p, expected, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
         }
 
         local_ty
@@ -647,6 +665,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             variant_ty
         } else {
             for field in fields {
+                let ti = TopInfo { parent_pat: Some(&pat), ..ti };
                 self.check_pat(&field.pat, self.tcx.types.err, def_bm, ti);
             }
             return self.tcx.types.err;
@@ -656,9 +675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_pat(pat.span, expected, pat_ty, ti);
 
         // Type-check subpatterns.
-        if self
-            .check_struct_pat_fields(pat_ty, pat.hir_id, pat.span, variant, fields, etc, def_bm, ti)
-        {
+        if self.check_struct_pat_fields(pat_ty, &pat, variant, fields, etc, def_bm, ti) {
             pat_ty
         } else {
             self.tcx.types.err
@@ -696,18 +713,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Type-check the path.
-        let pat_ty = self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id).0;
-        if let Some(mut err) =
+        let (pat_ty, pat_res) =
+            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id);
+        if let Some(err) =
             self.demand_suptype_with_origin(&self.pattern_cause(ti, pat.span), expected, pat_ty)
         {
-            err.emit();
+            self.emit_bad_pat_path(err, pat.span, res, pat_res, segments, ti.parent_pat);
         }
         pat_ty
     }
 
+    fn emit_bad_pat_path(
+        &self,
+        mut e: DiagnosticBuilder<'_>,
+        pat_span: Span,
+        res: Res,
+        pat_res: Res,
+        segments: &'b [hir::PathSegment<'b>],
+        parent_pat: Option<&Pat<'_>>,
+    ) {
+        if let Some(span) = self.tcx.hir().res_span(pat_res) {
+            e.span_label(span, &format!("{} defined here", res.descr()));
+            if let [hir::PathSegment { ident, .. }] = &*segments {
+                e.span_label(
+                    pat_span,
+                    &format!(
+                        "`{}` is interpreted as {} {}, not a new binding",
+                        ident,
+                        res.article(),
+                        res.descr(),
+                    ),
+                );
+                let (msg, sugg) = match parent_pat {
+                    Some(Pat { kind: hir::PatKind::Struct(..), .. }) => (
+                        "bind the struct field to a different name instead",
+                        format!("{}: other_{}", ident, ident.as_str().to_lowercase()),
+                    ),
+                    _ => (
+                        "introduce a new binding instead",
+                        format!("other_{}", ident.as_str().to_lowercase()),
+                    ),
+                };
+                e.span_suggestion(ident.span, msg, sugg, Applicability::HasPlaceholders);
+            }
+        }
+        e.emit();
+    }
+
     fn check_pat_tuple_struct(
         &self,
-        pat: &Pat<'_>,
+        pat: &'tcx Pat<'tcx>,
         qpath: &hir::QPath<'_>,
         subpats: &'tcx [&'tcx Pat<'tcx>],
         ddpos: Option<usize>,
@@ -717,8 +772,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let on_error = || {
+            let parent_pat = Some(pat);
             for pat in subpats {
-                self.check_pat(&pat, tcx.types.err, def_bm, ti);
+                self.check_pat(&pat, tcx.types.err, def_bm, TopInfo { parent_pat, ..ti });
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -793,7 +849,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
-                self.check_pat(&subpat, field_ty, def_bm, ti);
+                self.check_pat(&subpat, field_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
 
                 self.tcx.check_stability(variant.fields[i].did, Some(pat.hir_id), subpat.span);
             }
@@ -938,8 +994,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_struct_pat_fields(
         &self,
         adt_ty: Ty<'tcx>,
-        pat_id: HirId,
-        span: Span,
+        pat: &'tcx Pat<'tcx>,
         variant: &'tcx ty::VariantDef,
         fields: &'tcx [hir::FieldPat<'tcx>],
         etc: bool,
@@ -950,7 +1005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (substs, adt) = match adt_ty.kind {
             ty::Adt(adt, substs) => (substs, adt),
-            _ => span_bug!(span, "struct pattern is not an ADT"),
+            _ => span_bug!(pat.span, "struct pattern is not an ADT"),
         };
         let kind_name = adt.variant_descr();
 
@@ -983,7 +1038,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .get(&ident)
                         .map(|(i, f)| {
                             self.write_field_index(field.hir_id, *i);
-                            self.tcx.check_stability(f.did, Some(pat_id), span);
+                            self.tcx.check_stability(f.did, Some(pat.hir_id), span);
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
@@ -994,7 +1049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            self.check_pat(&field.pat, field_ty, def_bm, ti);
+            self.check_pat(&field.pat, field_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
         }
 
         let mut unmentioned_fields = variant
@@ -1017,7 +1072,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if variant.is_field_list_non_exhaustive() && !adt.did.is_local() && !etc {
             struct_span_err!(
                 tcx.sess,
-                span,
+                pat.span,
                 E0638,
                 "`..` required with {} marked as non-exhaustive",
                 kind_name
@@ -1029,14 +1084,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if kind_name == "union" {
             if fields.len() != 1 {
                 tcx.sess
-                    .struct_span_err(span, "union patterns should have exactly one field")
+                    .struct_span_err(pat.span, "union patterns should have exactly one field")
                     .emit();
             }
             if etc {
-                tcx.sess.struct_span_err(span, "`..` cannot be used in union patterns").emit();
+                tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
             }
         } else if !etc && !unmentioned_fields.is_empty() {
-            self.error_unmentioned_fields(span, &unmentioned_fields, variant);
+            self.error_unmentioned_fields(pat.span, &unmentioned_fields, variant);
         }
         no_field_errors
     }
@@ -1196,7 +1251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_ref(
         &self,
-        pat: &Pat<'_>,
+        pat: &'tcx Pat<'tcx>,
         inner: &'tcx Pat<'tcx>,
         mutbl: hir::Mutability,
         expected: Ty<'tcx>,
@@ -1236,7 +1291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             (tcx.types.err, tcx.types.err)
         };
-        self.check_pat(&inner, inner_ty, def_bm, ti);
+        self.check_pat(&inner, inner_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
         rptr_ty
     }
 
