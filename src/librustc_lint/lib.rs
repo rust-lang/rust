@@ -25,6 +25,7 @@ extern crate rustc_session;
 mod array_into_iter;
 pub mod builtin;
 mod early;
+mod internal;
 mod late;
 mod levels;
 mod non_ascii_idents;
@@ -54,7 +55,6 @@ use builtin::*;
 use non_ascii_idents::*;
 use nonstandard_style::*;
 use redundant_semicolon::*;
-use rustc::lint::internal::*;
 use types::*;
 use unused::*;
 
@@ -390,6 +390,7 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
 }
 
 fn register_internals(store: &mut lint::LintStore) {
+    use internal::*;
     store.register_lints(&DefaultHashTypes::get_lints());
     store.register_early_pass(|| box DefaultHashTypes::new());
     store.register_lints(&LintPassImpl::get_lints());

@@ -369,7 +369,6 @@ pub type LevelSource = (Level, LintSource);
 
 pub mod builtin;
 mod context;
-pub mod internal;
 mod levels;
 
 pub use self::levels::{LintLevelMap, LintLevelSets, LintLevelsBuilder};
