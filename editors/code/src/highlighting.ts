@@ -12,7 +12,7 @@ export function activateHighlighting(ctx: Ctx) {
     vscode.window.onDidChangeActiveTextEditor(
         async (editor: vscode.TextEditor | undefined) => {
             if (!editor || editor.document.languageId !== 'rust') return;
-            if (!Server.config.highlightingOn) return;
+            if (!ctx.config.highlightingOn) return;
 
             const params: lc.TextDocumentIdentifier = {
                 uri: editor.document.uri.toString(),

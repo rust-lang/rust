@@ -28,13 +28,11 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('runSingle', commands.runSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
 
-    if (Server.config.enableEnhancedTyping) {
+    if (ctx.config.enableEnhancedTyping) {
         ctx.overrideCommand('type', commands.onEnter);
     }
 
-    const watchStatus = new StatusDisplay(
-        Server.config.cargoWatchOptions.command,
-    );
+    const watchStatus = new StatusDisplay(ctx.config.cargoWatchOptions.command);
     ctx.pushCleanup(watchStatus);
 
     activateHighlighting(ctx);
@@ -63,7 +61,7 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(e.message);
     }
 
-    if (Server.config.displayInlayHints) {
+    if (ctx.config.displayInlayHints) {
         activateInlayHints(ctx);
     }
 }

@@ -30,9 +30,7 @@ export function activateInlayHints(ctx: Ctx) {
         );
         ctx.pushCleanup(
             vscode.workspace.onDidChangeConfiguration(_ =>
-                hintsUpdater.toggleHintsDisplay(
-                    Server.config.displayInlayHints,
-                ),
+                hintsUpdater.toggleHintsDisplay(ctx.config.displayInlayHints),
             ),
         );
     });

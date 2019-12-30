@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import { Server } from './server';
+import { Config } from './config';
 
 export class Ctx {
     private extCtx: vscode.ExtensionContext;
@@ -11,6 +12,10 @@ export class Ctx {
 
     get client(): lc.LanguageClient {
         return Server.client;
+    }
+
+    get config(): Config {
+        return Server.config;
     }
 
     get activeRustEditor(): vscode.TextEditor | undefined {
