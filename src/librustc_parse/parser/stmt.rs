@@ -193,7 +193,8 @@ impl<'a> Parser<'a> {
             if self.prev_token_kind == PrevTokenKind::DocComment {
                 self.span_fatal_err(self.prev_span, Error::UselessDocComment).emit();
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                self.span_err(self.token.span, "expected statement after outer attribute");
+                self.struct_span_err(self.token.span, "expected statement after outer attribute")
+                    .emit();
             }
         }
     }

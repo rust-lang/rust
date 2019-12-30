@@ -410,5 +410,11 @@ error: expected statement after outer attribute
 LL | #[cfg(FALSE)] fn e() { { fn foo() { #[attr]; } } }
    |                                            ^
 
-error: aborting due to 56 previous errors
+error: expected statement after outer attribute
+  --> $DIR/attr-stmt-expr-attr-bad.rs:114:45
+   |
+LL | #[cfg(FALSE)] fn e() { { fn foo() { #[attr] } } }
+   |                                             ^
+
+error: aborting due to 57 previous errors
 

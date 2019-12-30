@@ -822,7 +822,11 @@ impl<'a> Parser<'a> {
         } else {
             // Field access `expr.f`
             if let Some(args) = segment.args {
-                self.span_err(args.span(), "field expressions may not have generic arguments");
+                self.struct_span_err(
+                    args.span(),
+                    "field expressions may not have generic arguments",
+                )
+                .emit();
             }
 
             let span = lo.to(self.prev_span);

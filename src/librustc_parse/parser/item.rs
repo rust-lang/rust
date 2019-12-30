@@ -617,7 +617,7 @@ impl<'a> Parser<'a> {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
                     _ => {
-                        self.span_err(ty_first.span, "expected a trait, found type");
+                        self.struct_span_err(ty_first.span, "expected a trait, found type").emit();
                         err_path(ty_first.span)
                     }
                 };
