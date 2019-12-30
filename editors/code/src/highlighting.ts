@@ -6,11 +6,10 @@ const seedrandom = seedrandom_; // https://github.com/jvandemo/generator-angular
 import * as scopes from './scopes';
 import * as scopesMapper from './scopes_mapper';
 
-import { Server } from './server';
 import { Ctx } from './ctx';
 
 export function activateHighlighting(ctx: Ctx) {
-    const highlighter = new Highlighter();
+    const highlighter = new Highlighter(ctx);
 
     ctx.client.onReady().then(() => {
         ctx.client.onNotification(
@@ -118,6 +117,12 @@ function createDecorationFromTextmate(
 }
 
 class Highlighter {
+    private ctx: Ctx;
+
+    constructor(ctx: Ctx) {
+        this.ctx = ctx;
+    }
+
     private static initDecorations(): Map<
         string,
         vscode.TextEditorDecorationType
@@ -213,7 +218,7 @@ class Highlighter {
             string,
             [vscode.Range[], boolean]
         > = new Map();
-        const rainbowTime = Server.config.rainbowHighlightingOn;
+        const rainbowTime = this.ctx.config.rainbowHighlightingOn;
 
         for (const tag of this.decorations.keys()) {
             byTag.set(tag, []);
@@ -232,13 +237,13 @@ class Highlighter {
                 colorfulIdents
                     .get(d.bindingHash)![0]
                     .push(
-                        Server.client.protocol2CodeConverter.asRange(d.range),
+                        this.ctx.client.protocol2CodeConverter.asRange(d.range),
                     );
             } else {
                 byTag
                     .get(d.tag)!
                     .push(
-                        Server.client.protocol2CodeConverter.asRange(d.range),
+                        this.ctx.client.protocol2CodeConverter.asRange(d.range),
                     );
             }
         }

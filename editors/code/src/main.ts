@@ -26,6 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
+    ctx.registerCommand('applySourceChange', commands.applySourceChange);
 
     if (ctx.config.enableEnhancedTyping) {
         ctx.overrideCommand('type', commands.onEnter);
