@@ -9,8 +9,16 @@ import { StatusDisplay } from './commands/watch_status';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
+import { Ctx } from './ctx';
+
+let ctx!: Ctx;
 
 export async function activate(context: vscode.ExtensionContext) {
+    ctx = new Ctx(context);
+    ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
+    ctx.registerCommand('collectGarbage', commands.collectGarbage);
+    ctx.registerCommand('matchingBrace', commands.matchingBrace);
+
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
     }
@@ -48,17 +56,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // Commands are requests from vscode to the language server
-    registerCommand(
-        'rust-analyzer.analyzerStatus',
-        commands.analyzerStatus.makeCommand(context),
-    );
-    registerCommand('rust-analyzer.collectGarbage', () =>
-        Server.client.sendRequest<null>('rust-analyzer/collectGarbage', null),
-    );
-    registerCommand(
-        'rust-analyzer.matchingBrace',
-        commands.matchingBrace.handle,
-    );
     registerCommand('rust-analyzer.joinLines', commands.joinLines.handle);
     registerCommand('rust-analyzer.parentModule', commands.parentModule.handle);
     registerCommand('rust-analyzer.run', commands.runnables.handle);
