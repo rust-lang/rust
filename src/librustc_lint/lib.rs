@@ -14,6 +14,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(never_type)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 

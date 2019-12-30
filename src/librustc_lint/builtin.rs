@@ -51,6 +51,7 @@ use syntax::visit::FnKind;
 
 use rustc::hir::{self, GenericParamKind, PatKind};
 
+use crate::late::LateContextExt;
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
 use log::debug;
