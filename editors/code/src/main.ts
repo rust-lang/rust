@@ -17,6 +17,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx = new Ctx(context);
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
+    ctx.registerCommand('matchingBrace', commands.matchingBrace);
 
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
@@ -55,10 +56,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // Commands are requests from vscode to the language server
-    registerCommand(
-        'rust-analyzer.matchingBrace',
-        commands.matchingBrace.handle,
-    );
     registerCommand('rust-analyzer.joinLines', commands.joinLines.handle);
     registerCommand('rust-analyzer.parentModule', commands.parentModule.handle);
     registerCommand('rust-analyzer.run', commands.runnables.handle);

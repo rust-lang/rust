@@ -13,6 +13,13 @@ export class Ctx {
         return Server.client;
     }
 
+    get activeRustEditor(): vscode.TextEditor | undefined {
+        const editor = vscode.window.activeTextEditor;
+        return editor && editor.document.languageId === 'rust'
+            ? editor
+            : undefined;
+    }
+
     registerCommand(name: string, factory: (ctx: Ctx) => Cmd) {
         const fullName = `rust-analyzer.${name}`;
         const cmd = factory(this);

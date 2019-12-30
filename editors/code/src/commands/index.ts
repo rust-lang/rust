@@ -1,11 +1,11 @@
 import { Ctx, Cmd } from '../ctx'
 
 import { analyzerStatus } from './analyzer_status';
+import { matchingBrace } from './matching_brace';
 import * as applySourceChange from './apply_source_change';
 import * as expandMacro from './expand_macro';
 import * as inlayHints from './inlay_hints';
 import * as joinLines from './join_lines';
-import * as matchingBrace from './matching_brace';
 import * as onEnter from './on_enter';
 import * as parentModule from './parent_module';
 import * as runnables from './runnables';
