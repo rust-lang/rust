@@ -1137,7 +1137,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
         self.parse_opt_lit().ok_or_else(|| {
             let msg = format!("unexpected token: {}", super::token_descr(&self.token));
-            self.span_fatal(self.token.span, &msg)
+            self.struct_span_err(self.token.span, &msg)
         })
     }
 

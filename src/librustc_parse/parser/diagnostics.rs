@@ -158,11 +158,7 @@ crate enum ConsumeClosingDelim {
 
 impl<'a> Parser<'a> {
     pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
-        self.span_fatal(self.token.span, m)
-    }
-
-    crate fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
-        self.sess.span_diagnostic.struct_span_fatal(sp, m)
+        self.sess.span_diagnostic.struct_span_fatal(self.token.span, m)
     }
 
     pub(super) fn span_fatal_err<S: Into<MultiSpan>>(

@@ -796,7 +796,9 @@ impl<'a> Parser<'a> {
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to `parse_enum_variant()`.
         if self.token == token::OpenDelim(token::Paren) {
-            return Err(self.span_fatal(self.prev_span, "expected identifier, found enum pattern"));
+            return Err(
+                self.struct_span_err(self.prev_span, "expected identifier, found enum pattern")
+            );
         }
 
         Ok(PatKind::Ident(binding_mode, ident, sub))

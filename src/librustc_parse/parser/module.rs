@@ -262,7 +262,7 @@ impl<'a> Parser<'a> {
                 err.push_str(" -> ");
             }
             err.push_str(&path.to_string_lossy());
-            return Err(self.span_fatal(id_sp, &err[..]));
+            return Err(self.struct_span_err(id_sp, &err[..]));
         }
         included_mod_stack.push(path.clone());
         drop(included_mod_stack);

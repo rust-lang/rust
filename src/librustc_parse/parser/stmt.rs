@@ -325,7 +325,7 @@ impl<'a> Parser<'a> {
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
         let sp = self.token.span;
         let tok = super::token_descr(&self.token);
-        let mut e = self.span_fatal(sp, &format!("expected `{{`, found {}", tok));
+        let mut e = self.struct_span_err(sp, &format!("expected `{{`, found {}", tok));
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
 
         // Check to see if the user has written something like

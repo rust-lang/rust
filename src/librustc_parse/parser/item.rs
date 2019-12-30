@@ -445,9 +445,7 @@ impl<'a> Parser<'a> {
         // FAILURE TO PARSE ITEM
         match visibility.node {
             VisibilityKind::Inherited => {}
-            _ => {
-                return Err(self.span_fatal(self.prev_span, "unmatched visibility `pub`"));
-            }
+            _ => return Err(self.struct_span_err(self.prev_span, "unmatched visibility `pub`")),
         }
 
         if !attributes_allowed && !attrs.is_empty() {
