@@ -5,8 +5,6 @@ import { Ctx } from './ctx';
 
 export function activateInlayHints(ctx: Ctx) {
     const hintsUpdater = new HintsUpdater(ctx);
-    console.log('activateInlayHints');
-
     vscode.window.onDidChangeVisibleTextEditors(async _ => {
         await hintsUpdater.refresh();
     }, ctx.subscriptions);
@@ -69,7 +67,6 @@ class HintsUpdater {
 
     private async refreshEditor(editor: vscode.TextEditor): Promise<void> {
         const newHints = await this.queryHints(editor.document.uri.toString());
-
         const newDecorations = (newHints ? newHints : []).map(hint => ({
             range: hint.range,
             renderOptions: {
@@ -101,9 +98,7 @@ class HintsUpdater {
         const request: InlayHintsParams = {
             textDocument: { uri: documentUri },
         };
-        await this.ctx.client.onReady();
-
-        return this.ctx.client.sendRequest<InlayHint[] | null>(
+        return this.ctx.sendRequestWithRetry<InlayHint[] | null>(
             'rust-analyzer/inlayHints',
             request,
         );

@@ -61,6 +61,21 @@ export class Ctx {
     pushCleanup(d: { dispose(): any }) {
         this.extCtx.subscriptions.push(d);
     }
+
+    async sendRequestWithRetry<R>(method: string, param: any): Promise<R> {
+        await this.client.onReady();
+        const nRetries = 3;
+        for (let triesLeft = nRetries; ; triesLeft--) {
+            try {
+                return await this.client.sendRequest(method, param);
+            } catch (e) {
+                if (e.code === lc.ErrorCodes.ContentModified && triesLeft > 0) {
+                    continue;
+                }
+                throw e;
+            }
+        }
+    }
 }
 
 export type Cmd = (...args: any[]) => any;
