@@ -1523,6 +1523,8 @@ fn test_issue_2520() {
 
 #[test]
 fn test_repeat_bad_var() {
+    // FIXME: the second rule of the macro should be removed and an error about
+    // `$( $c )+` raised
     parse_macro(
         r#"
         macro_rules! foo {
