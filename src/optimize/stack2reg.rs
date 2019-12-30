@@ -79,9 +79,16 @@ impl StackSlotUsage {
 
     fn change_load_to_alias(&mut self, func: &mut Function, load: Inst, value: Value) {
         let loaded_value = func.dfg.inst_results(load)[0];
-        func.dfg.detach_results(load);
-        func.dfg.replace(load).nop();
-        func.dfg.change_to_alias(loaded_value, value);
+        let loaded_type = func.dfg.value_type(loaded_value);
+
+        if func.dfg.value_type(value) == loaded_type {
+            func.dfg.detach_results(load);
+            func.dfg.replace(load).nop();
+            func.dfg.change_to_alias(loaded_value, value);
+        } else {
+            func.dfg.replace(load).bitcast(loaded_type, value);
+        }
+
         self.stack_load.remove(&load);
     }
 }
@@ -159,7 +166,6 @@ pub(super) fn optimize_function(
         }
 
         for load in users.stack_load.clone().into_iter() {
-            let load_ebb = opt_ctx.ctx.func.layout.inst_ebb(load).unwrap();
             let loaded_value = opt_ctx.ctx.func.dfg.inst_results(load)[0];
             let loaded_type = opt_ctx.ctx.func.dfg.value_type(loaded_value);
 
@@ -179,13 +185,9 @@ pub(super) fn optimize_function(
                 [] => println!("[{}] [BUG?] Reading uninitialized memory", name),
                 [store] if spatial_overlap(&opt_ctx.ctx.func, store, load) == SpatialOverlap::Full && temporal_order(&opt_ctx.ctx, store, load) == TemporalOrder::DefinitivelyBefore => {
                     // Only one store could have been the origin of the value.
-                    let store_ebb = opt_ctx.ctx.func.layout.inst_ebb(store).unwrap();
                     let stored_value = opt_ctx.ctx.func.dfg.inst_args(store)[0];
-                    let stored_type = opt_ctx.ctx.func.dfg.value_type(stored_value);
-                    if stored_type == loaded_type {
-                        println!("Store to load forward {} -> {}", store, load);
-                        users.change_load_to_alias(&mut opt_ctx.ctx.func, load, stored_value);
-                    }
+                    println!("Store to load forward {} -> {}", store, load);
+                    users.change_load_to_alias(&mut opt_ctx.ctx.func, load, stored_value);
                 }
                 _ => {} // FIXME implement this
             }
