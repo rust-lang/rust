@@ -66,10 +66,9 @@ interface SyntaxTreeParams {
 
 class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
-    ctx: Ctx;
+    private ctx: Ctx;
     uri = vscode.Uri.parse('rust-analyzer://syntaxtree');
     eventEmitter = new vscode.EventEmitter<vscode.Uri>();
-    syntaxTree: string = 'Not available';
 
     constructor(ctx: Ctx) {
         this.ctx = ctx;
@@ -86,8 +85,8 @@ class TextDocumentContentProvider
             range = editor.selection.isEmpty
                 ? undefined
                 : this.ctx.client.code2ProtocolConverter.asRange(
-                    editor.selection,
-                );
+                      editor.selection,
+                  );
         }
 
         const request: SyntaxTreeParams = {

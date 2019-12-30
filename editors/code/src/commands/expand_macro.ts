@@ -1,71 +1,29 @@
 import * as vscode from 'vscode';
-import { Position, TextDocumentIdentifier } from 'vscode-languageclient';
-import { Server } from '../server';
+import * as lc from 'vscode-languageclient';
 
-export const expandMacroUri = vscode.Uri.parse(
-    'rust-analyzer://expandMacro/[EXPANSION].rs',
-);
-
-export class ExpandMacroContentProvider
-    implements vscode.TextDocumentContentProvider {
-    public eventEmitter = new vscode.EventEmitter<vscode.Uri>();
-
-    public provideTextDocumentContent(
-        _uri: vscode.Uri,
-    ): vscode.ProviderResult<string> {
-        async function handle() {
-            const editor = vscode.window.activeTextEditor;
-            if (editor == null) {
-                return '';
-            }
-
-            const position = editor.selection.active;
-            const request: MacroExpandParams = {
-                textDocument: { uri: editor.document.uri.toString() },
-                position,
-            };
-            const expanded = await Server.client.sendRequest<ExpandedMacro>(
-                'rust-analyzer/expandMacro',
-                request,
-            );
-
-            if (expanded == null) {
-                return 'Not available';
-            }
-
-            return code_format(expanded);
-        }
-
-        return handle();
-    }
-
-    get onDidChange(): vscode.Event<vscode.Uri> {
-        return this.eventEmitter.event;
-    }
-}
+import { Ctx, Cmd } from '../ctx';
 
 // Opens the virtual file that will show the syntax tree
 //
 // The contents of the file come from the `TextDocumentContentProvider`
-export function createHandle(provider: ExpandMacroContentProvider) {
+export function expandMacro(ctx: Ctx): Cmd {
+    const tdcp = new TextDocumentContentProvider(ctx);
+    ctx.pushCleanup(
+        vscode.workspace.registerTextDocumentContentProvider(
+            'rust-analyzer',
+            tdcp,
+        ),
+    );
+
     return async () => {
-        const uri = expandMacroUri;
-
-        const document = await vscode.workspace.openTextDocument(uri);
-
-        provider.eventEmitter.fire(uri);
-
+        const document = await vscode.workspace.openTextDocument(tdcp.uri);
+        tdcp.eventEmitter.fire(tdcp.uri);
         return vscode.window.showTextDocument(
             document,
             vscode.ViewColumn.Two,
             true,
         );
     };
-}
-
-interface MacroExpandParams {
-    textDocument: TextDocumentIdentifier;
-    position: Position;
 }
 
 interface ExpandedMacro {
@@ -80,4 +38,38 @@ function code_format(expanded: ExpandedMacro): string {
     result += expanded.expansion;
 
     return result;
+}
+
+class TextDocumentContentProvider
+    implements vscode.TextDocumentContentProvider {
+    private ctx: Ctx;
+    uri = vscode.Uri.parse('rust-analyzer://expandMacro/[EXPANSION].rs');
+    eventEmitter = new vscode.EventEmitter<vscode.Uri>();
+
+    constructor(ctx: Ctx) {
+        this.ctx = ctx;
+    }
+
+    async provideTextDocumentContent(_uri: vscode.Uri): Promise<string> {
+        const editor = vscode.window.activeTextEditor;
+        if (editor == null) return '';
+
+        const position = editor.selection.active;
+        const request: lc.TextDocumentPositionParams = {
+            textDocument: { uri: editor.document.uri.toString() },
+            position,
+        };
+        const expanded = await this.ctx.client.sendRequest<ExpandedMacro>(
+            'rust-analyzer/expandMacro',
+            request,
+        );
+
+        if (expanded == null) return 'Not available';
+
+        return code_format(expanded);
+    }
+
+    get onDidChange(): vscode.Event<vscode.Uri> {
+        return this.eventEmitter.event;
+    }
 }
