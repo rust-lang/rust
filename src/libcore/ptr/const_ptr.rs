@@ -288,10 +288,7 @@ impl<T: ?Sized> *const T {
         T: Sized,
     {
         let pointee_size = mem::size_of::<T>();
-        let ok = 0 < pointee_size && pointee_size <= isize::max_value() as usize;
-        // assert that the pointee size is valid in a const eval compatible way
-        // FIXME: do this with a real assert at some point
-        [()][(!ok) as usize];
+        assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
         intrinsics::ptr_offset_from(self, origin)
     }
 
