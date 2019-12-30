@@ -1,7 +1,3 @@
-// http://rust-lang.org/COPYRIGHT.
-
-#![feature(slice_patterns)]
-
 fn main() {
     let mut a = [1, 2, 3, 4];
     let t = match a {
