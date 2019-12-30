@@ -1,4 +1,5 @@
-import { Range, TextDocumentIdentifier } from 'vscode-languageclient';
+import * as lc from 'vscode-languageclient';
+
 import { Ctx, Cmd } from '../ctx';
 import { applySourceChange, SourceChange } from '../source_change';
 
@@ -20,6 +21,6 @@ export function joinLines(ctx: Ctx): Cmd {
 }
 
 interface JoinLinesParams {
-    textDocument: TextDocumentIdentifier;
-    range: Range;
+    textDocument: lc.TextDocumentIdentifier;
+    range: lc.Range;
 }

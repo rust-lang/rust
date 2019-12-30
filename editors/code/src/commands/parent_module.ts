@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-
 import * as lc from 'vscode-languageclient';
+
 import { Ctx, Cmd } from '../ctx';
 
 export function parentModule(ctx: Ctx): Cmd {
