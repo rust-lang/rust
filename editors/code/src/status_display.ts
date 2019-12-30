@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 export class StatusDisplay implements vscode.Disposable {
-    public packageName?: string;
+    packageName?: string;
 
     private i = 0;
     private statusBarItem: vscode.StatusBarItem;
@@ -19,7 +19,7 @@ export class StatusDisplay implements vscode.Disposable {
         this.statusBarItem.hide();
     }
 
-    public show() {
+    show() {
         this.packageName = undefined;
 
         this.timer =
@@ -28,18 +28,18 @@ export class StatusDisplay implements vscode.Disposable {
                 if (this.packageName) {
                     this.statusBarItem!.text = `cargo ${this.command} [${
                         this.packageName
-                    }] ${this.frame()}`;
+                        }] ${this.frame()}`;
                 } else {
                     this.statusBarItem!.text = `cargo ${
                         this.command
-                    } ${this.frame()}`;
+                        } ${this.frame()}`;
                 }
             }, 300);
 
         this.statusBarItem.show();
     }
 
-    public hide() {
+    hide() {
         if (this.timer) {
             clearInterval(this.timer);
             this.timer = undefined;
@@ -48,7 +48,7 @@ export class StatusDisplay implements vscode.Disposable {
         this.statusBarItem.hide();
     }
 
-    public dispose() {
+    dispose() {
         if (this.timer) {
             clearInterval(this.timer);
             this.timer = undefined;
@@ -57,7 +57,7 @@ export class StatusDisplay implements vscode.Disposable {
         this.statusBarItem.dispose();
     }
 
-    public handleProgressNotification(params: ProgressParams) {
+    handleProgressNotification(params: ProgressParams) {
         const { token, value } = params;
         if (token !== 'rustAnalyzer/cargoWatcher') {
             return;

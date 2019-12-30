@@ -3,7 +3,7 @@ import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
 import { HintsUpdater } from './inlay_hints';
-import { StatusDisplay } from './commands/watch_status';
+import { StatusDisplay } from './status_display';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
@@ -28,10 +28,6 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('runSingle', commands.runSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
 
-    function disposeOnDeactivation(disposable: vscode.Disposable) {
-        context.subscriptions.push(disposable);
-    }
-
     if (Server.config.enableEnhancedTyping) {
         ctx.overrideCommand('type', commands.onEnter);
     }
@@ -39,7 +35,11 @@ export async function activate(context: vscode.ExtensionContext) {
     const watchStatus = new StatusDisplay(
         Server.config.cargoWatchOptions.command,
     );
-    disposeOnDeactivation(watchStatus);
+    ctx.pushCleanup(watchStatus);
+
+    function disposeOnDeactivation(disposable: vscode.Disposable) {
+        context.subscriptions.push(disposable);
+    }
 
     // Notifications are events triggered by the language server
     const allNotifications: [string, lc.GenericNotificationHandler][] = [
