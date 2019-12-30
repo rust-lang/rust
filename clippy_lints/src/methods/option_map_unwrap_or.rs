@@ -83,7 +83,7 @@ struct UnwrapVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
-    fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
+    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         self.identifiers.insert(ident(path));
         walk_path(self, path);
     }
@@ -100,7 +100,7 @@ struct MapExprVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
-    fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
+    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         if self.identifiers.contains(&ident(path)) {
             self.found_identifier = true;
             return;
@@ -113,7 +113,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
     }
 }
 
-fn ident(path: &Path) -> Symbol {
+fn ident(path: &Path<'_>) -> Symbol {
     path.segments
         .last()
         .expect("segments should be composed of at least 1 element")

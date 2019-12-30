@@ -3109,8 +3109,8 @@ enum OutType {
 }
 
 impl OutType {
-    fn matches(self, cx: &LateContext<'_, '_>, ty: &hir::FunctionRetTy) -> bool {
-        let is_unit = |ty: &hir::Ty| SpanlessEq::new(cx).eq_ty_kind(&ty.kind, &hir::TyKind::Tup(vec![].into()));
+    fn matches(self, cx: &LateContext<'_, '_>, ty: &hir::FunctionRetTy<'_>) -> bool {
+        let is_unit = |ty: &hir::Ty<'_>| SpanlessEq::new(cx).eq_ty_kind(&ty.kind, &hir::TyKind::Tup(&[]));
         match (self, ty) {
             (Self::Unit, &hir::DefaultReturn(_)) => true,
             (Self::Unit, &hir::Return(ref ty)) if is_unit(ty) => true,
@@ -3122,7 +3122,7 @@ impl OutType {
     }
 }
 
-fn is_bool(ty: &hir::Ty) -> bool {
+fn is_bool(ty: &hir::Ty<'_>) -> bool {
     if let hir::TyKind::Path(ref p) = ty.kind {
         match_qpath(p, &["bool"])
     } else {

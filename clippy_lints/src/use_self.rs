@@ -52,7 +52,7 @@ declare_lint_pass!(UseSelf => [USE_SELF]);
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
-fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path, last_segment: Option<&PathSegment>) {
+fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path<'_>, last_segment: Option<&PathSegment<'_>>) {
     let last_segment = last_segment.unwrap_or_else(|| path.segments.last().expect(SEGMENTS_MSG));
 
     // Path segments only include actual path, no methods or fields.
@@ -84,7 +84,7 @@ struct TraitImplTyVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, t: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
         let trait_ty = self.trait_type_walker.next();
         let impl_ty = self.impl_type_walker.next();
 
@@ -116,7 +116,7 @@ fn check_trait_method_impl_decl<'a, 'tcx>(
     cx: &'a LateContext<'a, 'tcx>,
     item_type: Ty<'tcx>,
     impl_item: &ImplItem<'_>,
-    impl_decl: &'tcx FnDecl,
+    impl_decl: &'tcx FnDecl<'_>,
     impl_trait_ref: &ty::TraitRef<'_>,
 ) {
     let trait_method = cx
@@ -218,12 +218,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
 }
 
 struct UseSelfVisitor<'a, 'tcx> {
-    item_path: &'a Path,
+    item_path: &'a Path<'a>,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
-    fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
+    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         if !path.segments.iter().any(|p| p.ident.span.is_dummy()) {
             if path.segments.len() >= 2 {
                 let last_but_one = &path.segments[path.segments.len() - 2];

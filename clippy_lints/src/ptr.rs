@@ -145,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
 }
 
 #[allow(clippy::too_many_lines)]
-fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: Option<BodyId>) {
+fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: Option<BodyId>) {
     let fn_def_id = cx.tcx.hir().local_def_id(fn_id);
     let sig = cx.tcx.fn_sig(fn_def_id);
     let fn_ty = sig.skip_binder();
@@ -285,7 +285,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
     }
 }
 
-fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {
+fn get_rptr_lm<'tcx>(ty: &'tcx Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {
     if let TyKind::Rptr(ref lt, ref m) = ty.kind {
         Some((lt, m.mutbl, ty.span))
     } else {

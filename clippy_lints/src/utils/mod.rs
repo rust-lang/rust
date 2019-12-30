@@ -162,14 +162,14 @@ pub fn match_var(expr: &Expr<'_>, var: Name) -> bool {
     false
 }
 
-pub fn last_path_segment(path: &QPath) -> &PathSegment {
+pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     match *path {
         QPath::Resolved(_, ref path) => path.segments.last().expect("A path must have at least one segment"),
         QPath::TypeRelative(_, ref seg) => seg,
     }
 }
 
-pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
+pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
     match *path {
         QPath::Resolved(_, ref path) if path.segments.len() == 1 => Some(&path.segments[0]),
         QPath::Resolved(..) => None,
@@ -186,7 +186,7 @@ pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
 /// ```rust,ignore
 /// match_qpath(path, &["std", "rt", "begin_unwind"])
 /// ```
-pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
+pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
     match *path {
         QPath::Resolved(_, ref path) => match_path(path, segments),
         QPath::TypeRelative(ref ty, ref segment) => match ty.kind {
@@ -216,7 +216,7 @@ pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
 ///     // This is a `rustc::lint::Lint`.
 /// }
 /// ```
-pub fn match_path(path: &Path, segments: &[&str]) -> bool {
+pub fn match_path(path: &Path<'_>, segments: &[&str]) -> bool {
     path.segments
         .iter()
         .rev()
@@ -275,7 +275,7 @@ pub fn path_to_res(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<def::Res> 
     }
 }
 
-pub fn qpath_res(cx: &LateContext<'_, '_>, qpath: &hir::QPath, id: hir::HirId) -> Res {
+pub fn qpath_res(cx: &LateContext<'_, '_>, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
     match qpath {
         hir::QPath::Resolved(_, path) => path.res,
         hir::QPath::TypeRelative(..) => {
@@ -340,7 +340,7 @@ pub fn implements_trait<'a, 'tcx>(
 ///     }
 /// }
 /// ```
-pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'_, 'tcx>, hir_id: HirId) -> Option<&'tcx TraitRef> {
+pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'_, 'tcx>, hir_id: HirId) -> Option<&'tcx TraitRef<'tcx>> {
     // Get the implemented trait for the current function
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if_chain! {
@@ -661,7 +661,7 @@ pub fn get_enclosing_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, hir_id: HirId) 
 }
 
 /// Returns the base type for HIR references and pointers.
-pub fn walk_ptrs_hir_ty(ty: &hir::Ty) -> &hir::Ty {
+pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
     match ty.kind {
         TyKind::Ptr(ref mut_ty) | TyKind::Rptr(_, ref mut_ty) => walk_ptrs_hir_ty(&mut_ty.ty),
         _ => ty,
@@ -826,7 +826,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Exp
 
 /// Returns `true` if a pattern is refutable.
 pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat<'_>) -> bool {
-    fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> bool {
+    fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, id: HirId) -> bool {
         matches!(
             cx.tables.qpath_res(qpath, id),
             def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), _)
@@ -892,7 +892,7 @@ pub fn is_self(slf: &Param<'_>) -> bool {
     }
 }
 
-pub fn is_self_ty(slf: &hir::Ty) -> bool {
+pub fn is_self_ty(slf: &hir::Ty<'_>) -> bool {
     if_chain! {
         if let TyKind::Path(ref qp) = slf.kind;
         if let QPath::Resolved(None, ref path) = *qp;
@@ -904,7 +904,7 @@ pub fn is_self_ty(slf: &hir::Ty) -> bool {
     false
 }
 
-pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body<'_>) -> impl Iterator<Item = &'tcx Param<'tcx>> {
+pub fn iter_input_pats<'tcx>(decl: &FnDecl<'_>, body: &'tcx Body<'_>) -> impl Iterator<Item = &'tcx Param<'tcx>> {
     (0..decl.inputs.len()).map(move |i| &body.params[i])
 }
 

@@ -287,7 +287,7 @@ fn get_types_from_cast<'a>(expr: &'a Expr<'_>, func: &'a str, types: &'a [&str])
 }
 
 /// Gets the type which implements the called function
-fn get_implementing_type<'a>(path: &QPath, candidates: &'a [&str], function: &str) -> Option<&'a str> {
+fn get_implementing_type<'a>(path: &QPath<'_>, candidates: &'a [&str], function: &str) -> Option<&'a str> {
     if_chain! {
         if let QPath::TypeRelative(ref ty, ref path) = &path;
         if path.ident.name.as_str() == function;
@@ -304,7 +304,7 @@ fn get_implementing_type<'a>(path: &QPath, candidates: &'a [&str], function: &st
 }
 
 /// Gets the type as a string, if it is a supported integer
-fn int_ty_to_sym(path: &QPath) -> Option<&str> {
+fn int_ty_to_sym<'tcx>(path: &QPath<'_>) -> Option<&'tcx str> {
     if_chain! {
         if let QPath::Resolved(_, ref path) = *path;
         if let [ty] = &*path.segments;

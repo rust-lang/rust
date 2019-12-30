@@ -39,21 +39,21 @@ const DROP_BOUNDS_SUMMARY: &str = "Bounds of the form `T: Drop` are useless. \
 declare_lint_pass!(DropBounds => [DROP_BOUNDS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DropBounds {
-    fn check_generic_param(&mut self, cx: &rustc::lint::LateContext<'a, 'tcx>, p: &'tcx GenericParam) {
-        for bound in &p.bounds {
+    fn check_generic_param(&mut self, cx: &rustc::lint::LateContext<'a, 'tcx>, p: &'tcx GenericParam<'_>) {
+        for bound in p.bounds.iter() {
             lint_bound(cx, bound);
         }
     }
-    fn check_where_predicate(&mut self, cx: &rustc::lint::LateContext<'a, 'tcx>, p: &'tcx WherePredicate) {
+    fn check_where_predicate(&mut self, cx: &rustc::lint::LateContext<'a, 'tcx>, p: &'tcx WherePredicate<'_>) {
         if let WherePredicate::BoundPredicate(WhereBoundPredicate { bounds, .. }) = p {
-            for bound in bounds {
+            for bound in *bounds {
                 lint_bound(cx, bound);
             }
         }
     }
 }
 
-fn lint_bound<'a, 'tcx>(cx: &rustc::lint::LateContext<'a, 'tcx>, bound: &'tcx GenericBound) {
+fn lint_bound<'a, 'tcx>(cx: &rustc::lint::LateContext<'a, 'tcx>, bound: &'tcx GenericBound<'_>) {
     if_chain! {
         if let GenericBound::Trait(t, _) = bound;
         if let Some(def_id) = t.trait_ref.path.res.opt_def_id();

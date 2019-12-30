@@ -2,7 +2,7 @@ use crate::utils::{has_drop, is_entrypoint_fn, span_lint, trait_ref_of_method};
 use rustc::declare_lint_pass;
 use rustc::hir;
 use rustc::hir::intravisit::FnKind;
-use rustc::hir::{Body, Constness, FnDecl, HirId, HirVec};
+use rustc::hir::{Body, Constness, FnDecl, HirId};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
 use rustc_session::declare_tool_lint;
@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         &mut self,
         cx: &LateContext<'_, '_>,
         kind: FnKind<'_>,
-        _: &FnDecl,
+        _: &FnDecl<'_>,
         _: &Body<'_>,
         span: Span,
         hir_id: HirId,
@@ -98,7 +98,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
             FnKind::Method(_, sig, ..) => {
                 if trait_ref_of_method(cx, hir_id).is_some()
                     || already_const(sig.header)
-                    || method_accepts_dropable(cx, &sig.decl.inputs)
+                    || method_accepts_dropable(cx, sig.decl.inputs)
                 {
                     return;
                 }
@@ -120,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
 
 /// Returns true if any of the method parameters is a type that implements `Drop`. The method
 /// can't be made const then, because `drop` can't be const-evaluated.
-fn method_accepts_dropable(cx: &LateContext<'_, '_>, param_tys: &HirVec<hir::Ty>) -> bool {
+fn method_accepts_dropable(cx: &LateContext<'_, '_>, param_tys: &[hir::Ty<'_>]) -> bool {
     // If any of the params are dropable, return true
     param_tys.iter().any(|hir_ty| {
         let ty_ty = hir_ty_to_ty(cx.tcx, hir_ty);

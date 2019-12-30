@@ -32,7 +32,7 @@ declare_clippy_lint! {
 impl_lint_pass!(TraitBounds => [TYPE_REPETITION_IN_BOUNDS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
-    fn check_generics(&mut self, cx: &LateContext<'a, 'tcx>, gen: &'tcx Generics) {
+    fn check_generics(&mut self, cx: &LateContext<'a, 'tcx>, gen: &'tcx Generics<'_>) {
         if in_macro(gen.span) {
             return;
         }
@@ -42,7 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
             hasher.finish()
         };
         let mut map = FxHashMap::default();
-        for bound in &gen.where_clause.predicates {
+        for bound in gen.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref p) = bound {
                 let h = hash(&p.bounded_ty);
                 if let Some(ref v) = map.insert(h, p.bounds.iter().collect::<Vec<_>>()) {

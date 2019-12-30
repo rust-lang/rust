@@ -320,7 +320,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 
     /// Lookup a possibly constant expression from a `ExprKind::Path`.
-    fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
+    fn fetch_path(&mut self, qpath: &QPath<'_>, id: HirId) -> Option<Constant> {
         let res = self.tables.qpath_res(qpath, id);
         match res {
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {

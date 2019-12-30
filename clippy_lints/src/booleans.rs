@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         _: intravisit::FnKind<'tcx>,
-        _: &'tcx FnDecl,
+        _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
         _: HirId,

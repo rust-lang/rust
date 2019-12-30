@@ -172,8 +172,8 @@ fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_
 
 fn find_good_method_for_match<'a>(
     arms: &[Arm<'_>],
-    path_left: &QPath,
-    path_right: &QPath,
+    path_left: &QPath<'_>,
+    path_right: &QPath<'_>,
     expected_left: &[&str],
     expected_right: &[&str],
     should_be_left: &'a str,

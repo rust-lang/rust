@@ -86,7 +86,7 @@ struct UnusedSelfVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnusedSelfVisitor<'a, 'tcx> {
-    fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
+    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         if self.uses_self {
             // This function already uses `self`
             return;

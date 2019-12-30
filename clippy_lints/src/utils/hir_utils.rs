@@ -167,7 +167,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_generic_arg(&mut self, left: &GenericArg, right: &GenericArg) -> bool {
+    fn eq_generic_arg(&mut self, left: &GenericArg<'_>, right: &GenericArg<'_>) -> bool {
         match (left, right) {
             (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
             (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
@@ -209,7 +209,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     #[allow(clippy::similar_names)]
-    fn eq_qpath(&mut self, left: &QPath, right: &QPath) -> bool {
+    fn eq_qpath(&mut self, left: &QPath<'_>, right: &QPath<'_>) -> bool {
         match (left, right) {
             (&QPath::Resolved(ref lty, ref lpath), &QPath::Resolved(ref rty, ref rpath)) => {
                 both(lty, rty, |l, r| self.eq_ty(l, r)) && self.eq_path(lpath, rpath)
@@ -221,12 +221,12 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_path(&mut self, left: &Path, right: &Path) -> bool {
+    fn eq_path(&mut self, left: &Path<'_>, right: &Path<'_>) -> bool {
         left.is_global() == right.is_global()
             && over(&left.segments, &right.segments, |l, r| self.eq_path_segment(l, r))
     }
 
-    fn eq_path_parameters(&mut self, left: &GenericArgs, right: &GenericArgs) -> bool {
+    fn eq_path_parameters(&mut self, left: &GenericArgs<'_>, right: &GenericArgs<'_>) -> bool {
         if !(left.parenthesized || right.parenthesized) {
             over(&left.args, &right.args, |l, r| self.eq_generic_arg(l, r)) // FIXME(flip1995): may not work
                 && over(&left.bindings, &right.bindings, |l, r| self.eq_type_binding(l, r))
@@ -240,11 +240,11 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    pub fn eq_path_segments(&mut self, left: &[PathSegment], right: &[PathSegment]) -> bool {
+    pub fn eq_path_segments(&mut self, left: &[PathSegment<'_>], right: &[PathSegment<'_>]) -> bool {
         left.len() == right.len() && left.iter().zip(right).all(|(l, r)| self.eq_path_segment(l, r))
     }
 
-    pub fn eq_path_segment(&mut self, left: &PathSegment, right: &PathSegment) -> bool {
+    pub fn eq_path_segment(&mut self, left: &PathSegment<'_>, right: &PathSegment<'_>) -> bool {
         // The == of idents doesn't work with different contexts,
         // we have to be explicit about hygiene
         if left.ident.as_str() != right.ident.as_str() {
@@ -257,12 +257,12 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    pub fn eq_ty(&mut self, left: &Ty, right: &Ty) -> bool {
+    pub fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
         self.eq_ty_kind(&left.kind, &right.kind)
     }
 
     #[allow(clippy::similar_names)]
-    pub fn eq_ty_kind(&mut self, left: &TyKind, right: &TyKind) -> bool {
+    pub fn eq_ty_kind(&mut self, left: &TyKind<'_>, right: &TyKind<'_>) -> bool {
         match (left, right) {
             (&TyKind::Slice(ref l_vec), &TyKind::Slice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyKind::Array(ref lt, ref ll_id), &TyKind::Array(ref rt, ref rl_id)) => {
@@ -293,7 +293,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_type_binding(&mut self, left: &TypeBinding, right: &TypeBinding) -> bool {
+    fn eq_type_binding(&mut self, left: &TypeBinding<'_>, right: &TypeBinding<'_>) -> bool {
         left.ident.name == right.ident.name && self.eq_ty(&left.ty(), &right.ty())
     }
 }
@@ -544,7 +544,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         n.as_str().hash(&mut self.s);
     }
 
-    pub fn hash_qpath(&mut self, p: &QPath) {
+    pub fn hash_qpath(&mut self, p: &QPath<'_>) {
         match *p {
             QPath::Resolved(_, ref path) => {
                 self.hash_path(path);
@@ -556,9 +556,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         // self.cx.tables.qpath_res(p, id).hash(&mut self.s);
     }
 
-    pub fn hash_path(&mut self, p: &Path) {
+    pub fn hash_path(&mut self, p: &Path<'_>) {
         p.is_global().hash(&mut self.s);
-        for p in &p.segments {
+        for p in p.segments {
             self.hash_name(p.ident.name);
         }
     }
@@ -603,11 +603,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_ty(&mut self, ty: &Ty) {
+    pub fn hash_ty(&mut self, ty: &Ty<'_>) {
         self.hash_tykind(&ty.kind);
     }
 
-    pub fn hash_tykind(&mut self, ty: &TyKind) {
+    pub fn hash_tykind(&mut self, ty: &TyKind<'_>) {
         std::mem::discriminant(ty).hash(&mut self.s);
         match ty {
             TyKind::Slice(ty) => {
@@ -629,7 +629,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::BareFn(bfn) => {
                 bfn.unsafety.hash(&mut self.s);
                 bfn.abi.hash(&mut self.s);
-                for arg in &bfn.decl.inputs {
+                for arg in bfn.decl.inputs {
                     self.hash_ty(&arg);
                 }
                 match bfn.decl.output {
@@ -643,7 +643,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 bfn.decl.c_variadic.hash(&mut self.s);
             },
             TyKind::Tup(ty_list) => {
-                for ty in ty_list {
+                for ty in *ty_list {
                     self.hash_ty(ty);
                 }
             },
@@ -652,7 +652,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     if let Some(ref ty) = maybe_ty {
                         self.hash_ty(ty);
                     }
-                    for segment in &path.segments {
+                    for segment in path.segments {
                         segment.ident.name.hash(&mut self.s);
                     }
                 },
@@ -662,7 +662,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 },
             },
             TyKind::Def(_, arg_list) => {
-                for arg in arg_list {
+                for arg in *arg_list {
                     match arg {
                         GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
                         GenericArg::Type(ref ty) => self.hash_ty(&ty),
