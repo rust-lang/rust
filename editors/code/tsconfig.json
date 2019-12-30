@@ -12,7 +12,8 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true
+        "noFallthroughCasesInSwitch": true,
+        "newLine": "LF"
     },
     "exclude": [
         "node_modules"

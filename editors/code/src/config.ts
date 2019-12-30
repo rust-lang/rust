@@ -171,9 +171,9 @@ export class Config {
             (this.cargoFeatures.allFeatures !==
                 this.prevCargoFeatures.allFeatures ||
                 this.cargoFeatures.noDefaultFeatures !==
-                    this.prevCargoFeatures.noDefaultFeatures ||
+                this.prevCargoFeatures.noDefaultFeatures ||
                 this.cargoFeatures.features.length !==
-                    this.prevCargoFeatures.features.length ||
+                this.prevCargoFeatures.features.length ||
                 this.cargoFeatures.features.some(
                     (v, i) => v !== this.prevCargoFeatures!.features[i],
                 ))
