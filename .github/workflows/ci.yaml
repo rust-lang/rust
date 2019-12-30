@@ -67,14 +67,7 @@ jobs:
         with:
           node-version: 12.x
 
-      - name: Install xvfb
-        run: sudo apt-get install xvfb
       - run: npm ci
         working-directory: ./editors/code
-      - run: npm run vscode:prepublish
+      - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
-      - run: xvfb-run --auto-servernum npm run travis
-        working-directory: ./editors/code
-
-      - name: Cleanup xvfb
-        uses: bcomnes/cleanup-xvfb@v1

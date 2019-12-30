@@ -4,57 +4,23 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
-      "script": "compile",
       "label": "Build Extension",
+      "group": "build",
+      "type": "npm",
+      "script": "watch",
+      "path": "editors/code/",
       "problemMatcher": {
-        "owner": "typescript",
-        "pattern": "$tsc",
-        "fileLocation": [
-          "relative",
-          "${workspaceRoot}/editors/code"
-        ]
+        "base": "$tsc-watch",
+        "fileLocation": ["relative", "${workspaceFolder}/editors/code/"]
       },
-      "path": "editors/code/"
+      "isBackground": true,
     },
     {
-      "label": "Build Lsp",
+      "label": "Build Server",
+      "group": "build",
       "type": "shell",
-      "command": "cargo build",
+      "command": "cargo build --package ra_lsp_server",
       "problemMatcher": "$rustc"
     },
-    {
-      "label": "Build All",
-      "group": "build",
-      "dependsOn": [
-        "Build Extension",
-        "Build Lsp"
-      ],
-      "problemMatcher": []
-    },
-    {
-      "label": "cargo watch",
-      "group": "build",
-      "isBackground": true,
-      "type": "shell",
-      "command": "cargo",
-      "args": [
-        "watch"
-      ],
-      "problemMatcher": "$rustc-watch"
-    },
-    {
-      "label": "cargo watch tests",
-      "group": "build",
-      "isBackground": true,
-      "type": "shell",
-      "command": "cargo",
-      "args": [
-        "watch",
-        "-x",
-        "check --tests"
-      ],
-      "problemMatcher": "$rustc-watch"
-    }
   ]
 }

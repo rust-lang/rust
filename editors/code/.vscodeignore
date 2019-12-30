@@ -1,9 +1,4 @@
-.vscode/**
-.vscode-test/**
-out/**
-src/**
-.gitignore
-tsconfig.json
-vsc-extension-quickstart.md
-tslint.json
-node_modules/**
+**
+!out/extension.js
+!package.json
+!package-lock.json

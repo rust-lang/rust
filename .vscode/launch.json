@@ -5,19 +5,33 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Extension",
+      "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
-        "--disable-extensions"
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
       ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Extension"
+    },
+    {
+      "name": "Run Extension (Dev Server)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Extension",
       "env": {
         "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/ra_lsp_server"
-      },
-      "outFiles": ["${workspaceFolder}/editors/code/bundle/**/*.js"],
-      "preLaunchTask": "Build All"
+      }
     },
     {
       "name": "Debug Lsp Server",
@@ -25,316 +39,9 @@
       "request": "attach",
       "program": "${workspaceFolder}/target/debug/ra_lsp_server",
       "pid": "${command:pickMyProcess}",
-      "sourceLanguages": ["rust"]
+      "sourceLanguages": [
+        "rust"
+      ]
     },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in library 'gen_lsp_server'",
-      "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=gen_lsp_server"],
-        "filter": {
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in library 'ra_analysis'",
-      "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=ra_analysis"],
-        "filter": {
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug test 'tests'",
-      "cargo": {
-        "args": ["build", "--test=tests", "--package=ra_analysis"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in test 'tests'",
-      "cargo": {
-        "args": ["test", "--no-run", "--test=tests", "--package=ra_analysis"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in library 'ra_hir'",
-      "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=ra_hir"],
-        "filter": {
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in library 'ra_db'",
-      "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=ra_db"],
-        "filter": {
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in library 'ra_editor'",
-      "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=ra_editor"],
-        "filter": {
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in library 'ra_syntax'",
-      "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=ra_syntax"],
-        "filter": {
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug test 'test'",
-      "cargo": {
-        "args": ["build", "--test=test", "--package=ra_syntax"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in test 'test'",
-      "cargo": {
-        "args": ["test", "--no-run", "--test=test", "--package=ra_syntax"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in library 'test_utils'",
-      "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=test_utils"],
-        "filter": {
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug executable 'ra_cli'",
-      "cargo": {
-        "args": ["build", "--bin=ra_cli", "--package=ra_cli"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in executable 'ra_cli'",
-      "cargo": {
-        "args": ["test", "--no-run", "--bin=ra_cli", "--package=ra_cli"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in library 'tools'",
-      "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=tools"],
-        "filter": {
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug executable 'tools'",
-      "cargo": {
-        "args": ["build", "--bin=tools", "--package=tools"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in executable 'tools'",
-      "cargo": {
-        "args": ["test", "--no-run", "--bin=tools", "--package=tools"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug test 'cli'",
-      "cargo": {
-        "args": ["build", "--test=cli", "--package=tools"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in test 'cli'",
-      "cargo": {
-        "args": ["test", "--no-run", "--test=cli", "--package=tools"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in library 'ra_lsp_server'",
-      "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=ra_lsp_server"],
-        "filter": {
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug executable 'ra_lsp_server'",
-      "cargo": {
-        "args": ["build", "--bin=ra_lsp_server", "--package=ra_lsp_server"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in executable 'ra_lsp_server'",
-      "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--bin=ra_lsp_server",
-          "--package=ra_lsp_server"
-        ],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug test 'heavy_tests'",
-      "cargo": {
-        "args": ["build", "--test=heavy_tests", "--package=ra_lsp_server"],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in test 'heavy_tests'",
-      "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--test=heavy_tests",
-          "--package=ra_lsp_server"
-        ],
-        "filter": {
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    }
   ]
 }
