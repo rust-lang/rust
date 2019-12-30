@@ -1,6 +1,5 @@
 #![crate_name = "compiletest"]
 #![feature(test)]
-#![feature(vec_remove_item)]
 #![deny(warnings)]
 
 extern crate test;
