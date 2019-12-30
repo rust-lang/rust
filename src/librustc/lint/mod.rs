@@ -39,8 +39,7 @@ use syntax::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use syntax::symbol::Symbol;
 
 pub use crate::lint::context::{
-    check_crate, late_lint_mod, BufferedEarlyLint, CheckLintNameResult, EarlyContext, LateContext,
-    LintContext, LintStore,
+    BufferedEarlyLint, CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore,
 };
 
 pub use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintId};

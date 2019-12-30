@@ -886,7 +886,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                     },
                     {
                         time(sess, "lint checking", || {
-                            lint::check_crate(tcx, || {
+                            rustc_lint::check_crate(tcx, || {
                                 rustc_lint::BuiltinCombinedLateLintPass::new()
                             });
                         });
