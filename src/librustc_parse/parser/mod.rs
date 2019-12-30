@@ -1056,8 +1056,7 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 };
                 let span = self.prev_span.to(self.token.span);
-                self.diagnostic()
-                    .struct_span_fatal(span, &format!("unknown macro variable `{}`", name))
+                self.struct_span_err(span, &format!("unknown macro variable `{}`", name))
                     .span_label(span, "unknown macro variable")
                     .emit();
                 self.bump();
