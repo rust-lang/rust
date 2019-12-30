@@ -6,6 +6,7 @@ use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::hir::{self, HirId, Pat, PatKind};
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc::traits::Pattern;
 use rustc::ty::subst::GenericArg;
 use rustc::ty::{self, BindingMode, Ty, TypeFoldable};
 use syntax::ast;
@@ -28,6 +29,34 @@ pointers. If you encounter this error you should try to avoid dereferencing the 
 
 You can read more about trait objects in the Trait Objects section of the Reference: \
 https://doc.rust-lang.org/reference/types.html#trait-objects";
+
+impl<'tcx> FnCtxt<'_, 'tcx> {
+    fn demand_eqtype_pat_diag(
+        &self,
+        cause_span: Span,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+        match_expr_span: Option<Span>,
+    ) -> Option<DiagnosticBuilder<'tcx>> {
+        let cause = if let Some(span) = match_expr_span {
+            self.cause(cause_span, Pattern { span, ty: expected })
+        } else {
+            self.misc(cause_span)
+        };
+        self.demand_eqtype_with_origin(&cause, expected, actual)
+    }
+
+    fn demand_eqtype_pat(
+        &self,
+        cause_span: Span,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+        match_expr_span: Option<Span>,
+    ) {
+        self.demand_eqtype_pat_diag(cause_span, expected, actual, match_expr_span)
+            .map(|mut err| err.emit());
+    }
+}
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_pat_top(
