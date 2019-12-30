@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-3680.rs:3:9
    |
 LL |     match None {
-   |           ---- this match expression has type `std::option::Option<_>`
+   |           ---- this expression has type `std::option::Option<_>`
 LL |         Err(_) => ()
    |         ^^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
    |

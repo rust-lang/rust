@@ -10,7 +10,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-13624.rs:20:9
    |
 LL |       match enum_struct_variant {
-   |             ------------------- this match expression has type `()`
+   |             ------------------- this expression has type `()`
 LL |         a::Enum::EnumStructVariant { x, y, z } => {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found enum `a::Enum`
 

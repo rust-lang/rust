@@ -584,7 +584,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ObligationCauseCode::MatchExpressionArmPattern { span, ty } => {
                 if ty.is_suggestable() {
                     // don't show type `_`
-                    err.span_label(span, format!("this match expression has type `{}`", ty));
+                    err.span_label(span, format!("this expression has type `{}`", ty));
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found {
                     if ty.is_box() && ty.boxed_ty() == found {
