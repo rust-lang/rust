@@ -26,9 +26,6 @@ fn test_foo(x: Foo) -> MatchArm {
         // multiple or-patterns for one structure.
         Foo::Two(42 | 255, 1024 | 2048) => MatchArm::Arm(2),
         // mix of pattern types in one or-pattern (range).
-        //
-        // FIXME(dlrobertson | Nadrieril): Fix or-pattern completeness and
-        // unreachabilitychecks for ranges.
         Foo::One(100 | 110..=120 | 210..=220) => MatchArm::Arm(3),
         // multiple or-patterns with wild.
         Foo::Two(0..=10 | 100..=110, 0 | _) => MatchArm::Arm(4),

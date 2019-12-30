@@ -840,10 +840,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///     (false, true) => (),
     /// }
     ///
-    /// For this match we check if `x.0` matches `true` (for the first
-    /// arm) if that's false we check `x.1`, if it's `true` we check if
+    /// For this match, we check if `x.0` matches `true` (for the first
+    /// arm). If that's false, we check `x.1`. If it's `true` we check if
     /// `x.0` matches `false` (for the third arm). In the (impossible at
-    /// runtime) case when `x.0` is now `true` we branch to
+    /// runtime) case when `x.0` is now `true`, we branch to
     /// `otherwise_block`.
     fn match_candidates<'pat>(
         &mut self,
@@ -1104,6 +1104,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let (first_candidate, remaining_candidates) = candidates.split_first_mut().unwrap();
 
+        // All of the or-patterns have been sorted to the end, so if the first
+        // pattern is an or-pattern we only have or-patterns.
         match *first_candidate.match_pairs[0].pattern.kind {
             PatKind::Or { .. } => (),
             _ => {
