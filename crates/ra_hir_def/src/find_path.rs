@@ -4,11 +4,10 @@ use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
     path::{ModPath, PathKind},
-    ModuleId, ModuleDefId,
+    visibility::Visibility,
+    CrateId, ModuleDefId, ModuleId,
 };
 use hir_expand::name::Name;
-
-// TODO performance / memoize
 
 pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     // Base cases:
@@ -21,13 +20,23 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Optio
     }
 
     // - if the item is the crate root, return `crate`
-    if item == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId { krate: from.krate, local_id: def_map.root })) {
+    if item
+        == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId {
+            krate: from.krate,
+            local_id: def_map.root,
+        }))
+    {
         return Some(ModPath::from_simple_segments(PathKind::Crate, Vec::new()));
     }
 
     // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
     if let Some(parent_id) = def_map.modules[from.local_id].parent {
-        if item == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId { krate: from.krate, local_id: parent_id })) {
+        if item
+            == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId {
+                krate: from.krate,
+                local_id: parent_id,
+            }))
+        {
             return Some(ModPath::from_simple_segments(PathKind::Super(1), Vec::new()));
         }
     }
@@ -42,7 +51,8 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Optio
     // - if the item is in the prelude, return the name from there
     if let Some(prelude_module) = def_map.prelude {
         let prelude_def_map = db.crate_def_map(prelude_module.krate);
-        let prelude_scope: &crate::item_scope::ItemScope = &prelude_def_map.modules[prelude_module.local_id].scope;
+        let prelude_scope: &crate::item_scope::ItemScope =
+            &prelude_def_map.modules[prelude_module.local_id].scope;
         if let Some((name, vis)) = prelude_scope.reverse_get(item) {
             if vis.is_visible_from(db, from) {
                 return Some(ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]));
@@ -68,7 +78,8 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Optio
     let mut candidate_paths = Vec::new();
     for (module_id, name) in importable_locations {
         // TODO prevent infinite loops
-        let mut path = match find_path(db, ItemInNs::Types(ModuleDefId::ModuleId(module_id)), from) {
+        let mut path = match find_path(db, ItemInNs::Types(ModuleDefId::ModuleId(module_id)), from)
+        {
             None => continue,
             Some(path) => path,
         };
@@ -78,33 +89,58 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Optio
     candidate_paths.into_iter().min_by_key(|path| path.segments.len())
 }
 
-fn find_importable_locations(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Vec<(ModuleId, Name)> {
+fn find_importable_locations(
+    db: &impl DefDatabase,
+    item: ItemInNs,
+    from: ModuleId,
+) -> Vec<(ModuleId, Name)> {
     let crate_graph = db.crate_graph();
     let mut result = Vec::new();
-    for krate in Some(from.krate).into_iter().chain(crate_graph.dependencies(from.krate).map(|dep| dep.crate_id)) {
-        let def_map = db.crate_def_map(krate);
-        for (local_id, data) in def_map.modules.iter() {
-            if let Some((name, vis)) = data.scope.reverse_get(item) {
-                let is_private = if let crate::visibility::Visibility::Module(private_to) = vis {
-                    private_to.local_id == local_id
-                } else { false };
-                let is_original_def = if let Some(module_def_id) = item.as_module_def_id() {
-                    data.scope.declarations().any(|it| it == module_def_id)
-                } else { false };
-                if is_private && !is_original_def {
-                    // Ignore private imports. these could be used if we are
-                    // in a submodule of this module, but that's usually not
-                    // what the user wants; and if this module can import
-                    // the item and we're a submodule of it, so can we.
-                    continue;
-                }
-                if vis.is_visible_from(db, from) {
-                    result.push((ModuleId { krate, local_id }, name.clone()));
-                }
-            }
-        }
+    for krate in Some(from.krate)
+        .into_iter()
+        .chain(crate_graph.dependencies(from.krate).map(|dep| dep.crate_id))
+    {
+        result.extend(
+            db.importable_locations_in_crate(item, krate)
+                .iter()
+                .filter(|(_, _, vis)| vis.is_visible_from(db, from))
+                .map(|(m, n, _)| (*m, n.clone())),
+        );
     }
     result
+}
+
+pub(crate) fn importable_locations_in_crate_query(
+    db: &impl DefDatabase,
+    item: ItemInNs,
+    krate: CrateId,
+) -> std::sync::Arc<[(ModuleId, Name, Visibility)]> {
+    let def_map = db.crate_def_map(krate);
+    let mut result = Vec::new();
+    for (local_id, data) in def_map.modules.iter() {
+        if let Some((name, vis)) = data.scope.reverse_get(item) {
+            let is_private = if let Visibility::Module(private_to) = vis {
+                private_to.local_id == local_id
+            } else {
+                false
+            };
+            let is_original_def = if let Some(module_def_id) = item.as_module_def_id() {
+                data.scope.declarations().any(|it| it == module_def_id)
+            } else {
+                false
+            };
+            if is_private && !is_original_def {
+                // Ignore private imports. these could be used if we are
+                // in a submodule of this module, but that's usually not
+                // what the user wants; and if this module can import
+                // the item and we're a submodule of it, so can we.
+                // Also this keeps the cached data smaller.
+                continue;
+            }
+            result.push((ModuleId { krate, local_id }, name.clone(), vis));
+        }
+    }
+    result.into()
 }
 
 #[cfg(test)]

@@ -183,7 +183,7 @@ impl PerNs {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum ItemInNs {
     Types(ModuleDefId),
     Values(ModuleDefId),
@@ -195,13 +195,13 @@ impl ItemInNs {
         match self {
             ItemInNs::Types(def) => {
                 per_ns.types.filter(|(other_def, _)| *other_def == def).map(|(_, vis)| vis)
-            },
+            }
             ItemInNs::Values(def) => {
                 per_ns.values.filter(|(other_def, _)| *other_def == def).map(|(_, vis)| vis)
-            },
+            }
             ItemInNs::Macros(def) => {
                 per_ns.macros.filter(|(other_def, _)| *other_def == def).map(|(_, vis)| vis)
-            },
+            }
         }
     }
 
