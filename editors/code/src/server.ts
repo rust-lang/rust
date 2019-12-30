@@ -3,7 +3,6 @@ import * as lc from 'vscode-languageclient';
 
 import { window, workspace } from 'vscode';
 import { Config } from './config';
-import { Highlighter } from './highlighting';
 
 function expandPathResolving(path: string) {
     if (path.startsWith('~/')) {
@@ -13,7 +12,6 @@ function expandPathResolving(path: string) {
 }
 
 export class Server {
-    public static highlighter = new Highlighter();
     public static config = new Config();
     public static client: lc.LanguageClient;
 
