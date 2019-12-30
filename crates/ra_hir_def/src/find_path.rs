@@ -10,7 +10,15 @@ use crate::{
 use hir_expand::name::Name;
 
 pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
+    find_path_inner(db, item, from, 15)
+}
+
+fn find_path_inner(db: &impl DefDatabase, item: ItemInNs, from: ModuleId, max_len: usize) -> Option<ModPath> {
     // Base cases:
+
+    if max_len == 0 {
+        return None;
+    }
 
     // - if the item is already in scope, return the name under which it is
     let def_map = db.crate_def_map(from.krate);
@@ -75,18 +83,31 @@ pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Optio
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
     let importable_locations = find_importable_locations(db, item, from);
-    let mut candidate_paths = Vec::new();
+    let mut best_path = None;
+    let mut best_path_len = max_len;
     for (module_id, name) in importable_locations {
-        // TODO prevent infinite loops
-        let mut path = match find_path(db, ItemInNs::Types(ModuleDefId::ModuleId(module_id)), from)
+        let mut path = match find_path_inner(db, ItemInNs::Types(ModuleDefId::ModuleId(module_id)), from, best_path_len - 1)
         {
             None => continue,
             Some(path) => path,
         };
         path.segments.push(name);
-        candidate_paths.push(path);
+        if path_len(&path) < best_path_len {
+            best_path_len = path_len(&path);
+            best_path = Some(path);
+        }
     }
-    candidate_paths.into_iter().min_by_key(|path| path.segments.len())
+    best_path
+}
+
+fn path_len(path: &ModPath) -> usize {
+    path.segments.len() + match path.kind {
+        PathKind::Plain => 0,
+        PathKind::Super(i) => i as usize,
+        PathKind::Crate => 1,
+        PathKind::Abs => 0,
+        PathKind::DollarCrate(_) => 1,
+    }
 }
 
 fn find_importable_locations(
@@ -96,6 +117,9 @@ fn find_importable_locations(
 ) -> Vec<(ModuleId, Name)> {
     let crate_graph = db.crate_graph();
     let mut result = Vec::new();
+    // We only look in the crate from which we are importing, and the direct
+    // dependencies. We cannot refer to names from transitive dependencies
+    // directly (only through reexports in direct dependencies).
     for krate in Some(from.krate)
         .into_iter()
         .chain(crate_graph.dependencies(from.krate).map(|dep| dep.crate_id))
@@ -110,6 +134,13 @@ fn find_importable_locations(
     result
 }
 
+/// Collects all locations from which we might import the item in a particular
+/// crate. These include the original definition of the item, and any
+/// non-private `use`s.
+///
+/// Note that the crate doesn't need to be the one in which the item is defined;
+/// it might be re-exported in other crates. We cache this as a query since we
+/// need to walk the whole def map for it.
 pub(crate) fn importable_locations_in_crate_query(
     db: &impl DefDatabase,
     item: ItemInNs,
@@ -371,5 +402,23 @@ mod tests {
         "#;
         // crate::S would be shorter, but using private imports seems wrong
         check_found_path(code, "crate::bar::S");
+    }
+
+    #[test]
+    fn import_cycle() {
+        let code = r#"
+            //- /main.rs
+            pub mod foo;
+            pub mod bar;
+            pub mod baz;
+            //- /bar.rs
+            <|>
+            //- /foo.rs
+            pub use super::baz;
+            pub struct S;
+            //- /baz.rs
+            pub use super::foo;
+        "#;
+        check_found_path(code, "crate::foo::S");
     }
 }
