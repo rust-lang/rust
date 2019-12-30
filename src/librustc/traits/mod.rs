@@ -315,7 +315,7 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
     pub last_ty: Ty<'tcx>,
-    pub discrim_hir_id: hir::HirId,
+    pub scrut_hir_id: hir::HirId,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

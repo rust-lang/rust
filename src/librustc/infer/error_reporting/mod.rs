@@ -607,7 +607,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 source,
                 ref prior_arms,
                 last_ty,
-                discrim_hir_id,
+                scrut_hir_id,
                 ..
             }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
@@ -616,16 +616,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 hir::MatchSource::TryDesugar => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
-                        let discrim_expr = self.tcx.hir().expect_expr(discrim_hir_id);
-                        let discrim_ty = if let hir::ExprKind::Call(_, args) = &discrim_expr.kind {
+                        let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
+                        let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
                             let arg_expr = args.first().expect("try desugaring call w/out arg");
                             self.in_progress_tables
                                 .and_then(|tables| tables.borrow().expr_ty_opt(arg_expr))
                         } else {
-                            bug!("try desugaring w/out call expr as discriminant");
+                            bug!("try desugaring w/out call expr as scrutinee");
                         };
 
-                        match discrim_ty {
+                        match scrut_ty {
                             Some(ty) if expected == ty => {
                                 let source_map = self.tcx.sess.source_map();
                                 err.span_suggestion(

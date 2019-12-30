@@ -511,14 +511,14 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 source,
                 ref prior_arms,
                 last_ty,
-                discrim_hir_id,
+                scrut_hir_id,
             }) => tcx.lift(&last_ty).map(|last_ty| {
                 super::MatchExpressionArm(box super::MatchExpressionArmCause {
                     arm_span,
                     source,
                     prior_arms: prior_arms.clone(),
                     last_ty,
-                    discrim_hir_id,
+                    scrut_hir_id,
                 })
             }),
             super::Pattern { span, root_ty, origin_expr } => {
