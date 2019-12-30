@@ -18,6 +18,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
+    ctx.registerCommand('joinLines', commands.joinLines);
 
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
@@ -56,7 +57,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // Commands are requests from vscode to the language server
-    registerCommand('rust-analyzer.joinLines', commands.joinLines.handle);
     registerCommand('rust-analyzer.parentModule', commands.parentModule.handle);
     registerCommand('rust-analyzer.run', commands.runnables.handle);
     // Unlike the above this does not send requests to the language server
