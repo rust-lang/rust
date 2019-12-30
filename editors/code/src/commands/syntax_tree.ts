@@ -7,12 +7,12 @@ import { Ctx, Cmd } from '../ctx';
 //
 // The contents of the file come from the `TextDocumentContentProvider`
 export function syntaxTree(ctx: Ctx): Cmd {
-    const stcp = new SyntaxTreeContentProvider(ctx);
+    const tdcp = new TextDocumentContentProvider(ctx);
 
     ctx.pushCleanup(
         vscode.workspace.registerTextDocumentContentProvider(
             'rust-analyzer',
-            stcp,
+            tdcp,
         ),
     );
 
@@ -20,7 +20,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
         (event: vscode.TextDocumentChangeEvent) => {
             const doc = event.document;
             if (doc.languageId !== 'rust') return;
-            afterLs(() => stcp.eventEmitter.fire(stcp.uri));
+            afterLs(() => tdcp.eventEmitter.fire(tdcp.uri));
         },
         ctx.subscriptions,
     );
@@ -28,7 +28,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
     vscode.window.onDidChangeActiveTextEditor(
         (editor: vscode.TextEditor | undefined) => {
             if (!editor || editor.document.languageId !== 'rust') return;
-            stcp.eventEmitter.fire(stcp.uri);
+            tdcp.eventEmitter.fire(tdcp.uri);
         },
         ctx.subscriptions,
     );
@@ -38,12 +38,12 @@ export function syntaxTree(ctx: Ctx): Cmd {
         const rangeEnabled = !!(editor && !editor.selection.isEmpty);
 
         const uri = rangeEnabled
-            ? vscode.Uri.parse(`${stcp.uri.toString()}?range=true`)
-            : stcp.uri;
+            ? vscode.Uri.parse(`${tdcp.uri.toString()}?range=true`)
+            : tdcp.uri;
 
         const document = await vscode.workspace.openTextDocument(uri);
 
-        stcp.eventEmitter.fire(uri);
+        tdcp.eventEmitter.fire(uri);
 
         return vscode.window.showTextDocument(
             document,
@@ -64,12 +64,11 @@ interface SyntaxTreeParams {
     range?: lc.Range;
 }
 
-export class SyntaxTreeContentProvider
+class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
-    ctx: Ctx;
+    private ctx: Ctx;
     uri = vscode.Uri.parse('rust-analyzer://syntaxtree');
     eventEmitter = new vscode.EventEmitter<vscode.Uri>();
-    syntaxTree: string = 'Not available';
 
     constructor(ctx: Ctx) {
         this.ctx = ctx;

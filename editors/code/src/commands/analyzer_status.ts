@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
 import { Ctx, Cmd } from '../ctx';
-// Shows status of rust-analyzer (for debugging)
 
+// Shows status of rust-analyzer (for debugging)
 export function analyzerStatus(ctx: Ctx): Cmd {
     let poller: NodeJS.Timer | null = null;
     const tdcp = new TextDocumentContentProvider(ctx);
@@ -37,7 +37,7 @@ export function analyzerStatus(ctx: Ctx): Cmd {
 
 class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
-    ctx: Ctx;
+    private ctx: Ctx;
     uri = vscode.Uri.parse('rust-analyzer-status://status');
     eventEmitter = new vscode.EventEmitter<vscode.Uri>();
 

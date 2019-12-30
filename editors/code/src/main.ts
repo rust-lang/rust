@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
-import { ExpandMacroContentProvider } from './commands/expand_macro';
 import { HintsUpdater } from './commands/inlay_hints';
 import { StatusDisplay } from './commands/watch_status';
 import * as events from './events';
@@ -20,6 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('joinLines', commands.joinLines);
     ctx.registerCommand('parentModule', commands.parentModule);
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
+    ctx.registerCommand('expandMacro', commands.expandMacro);
 
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
@@ -65,23 +65,10 @@ export async function activate(context: vscode.ExtensionContext) {
             params => watchStatus.handleProgressNotification(params),
         ],
     ];
-    const expandMacroContentProvider = new ExpandMacroContentProvider();
 
     // The events below are plain old javascript events, triggered and handled by vscode
     vscode.window.onDidChangeActiveTextEditor(
         events.changeActiveTextEditor.makeHandler(),
-    );
-
-    disposeOnDeactivation(
-        vscode.workspace.registerTextDocumentContentProvider(
-            'rust-analyzer',
-            expandMacroContentProvider,
-        ),
-    );
-
-    registerCommand(
-        'rust-analyzer.expandMacro',
-        commands.expandMacro.createHandle(expandMacroContentProvider),
     );
 
     const startServer = () => Server.start(allNotifications);
