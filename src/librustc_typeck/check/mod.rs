@@ -4275,17 +4275,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
-        let t = self.local_ty(local.span, local.hir_id).decl_ty;
-        self.write_ty(local.hir_id, t);
+        let ty = self.local_ty(local.span, local.hir_id).decl_ty;
+        self.write_ty(local.hir_id, ty);
 
         if let Some(ref init) = local.init {
             let init_ty = self.check_decl_initializer(local, &init);
-            self.overwrite_local_ty_if_err(local, t, init_ty);
+            self.overwrite_local_ty_if_err(local, ty, init_ty);
         }
 
-        self.check_pat_top(&local.pat, t, None);
+        self.check_pat_top(&local.pat, ty, local.init.map(|init| init.span));
         let pat_ty = self.node_ty(local.pat.hir_id);
-        self.overwrite_local_ty_if_err(local, t, pat_ty);
+        self.overwrite_local_ty_if_err(local, ty, pat_ty);
     }
 
     fn overwrite_local_ty_if_err(

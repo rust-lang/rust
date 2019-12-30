@@ -59,14 +59,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn check_pat_top(
-        &self,
-        pat: &'tcx Pat<'tcx>,
-        expected: Ty<'tcx>,
-        discrim_span: Option<Span>,
-    ) {
+    pub fn check_pat_top(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, span: Option<Span>) {
         let def_bm = BindingMode::BindByValue(hir::Mutability::Not);
-        self.check_pat(pat, expected, def_bm, discrim_span);
+        self.check_pat(pat, expected, def_bm, span);
     }
 
     /// `discrim_span` argument having a `Span` indicates that this pattern is part of a match
