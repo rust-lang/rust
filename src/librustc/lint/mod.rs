@@ -39,8 +39,8 @@ use syntax::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use syntax::symbol::Symbol;
 
 pub use crate::lint::context::{
-    check_ast_crate, check_crate, late_lint_mod, BufferedEarlyLint, CheckLintNameResult,
-    EarlyContext, LateContext, LintContext, LintStore,
+    check_crate, late_lint_mod, BufferedEarlyLint, CheckLintNameResult, EarlyContext, LateContext,
+    LintContext, LintStore,
 };
 
 pub use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintId};
@@ -380,7 +380,7 @@ pub use self::levels::{LintLevelMap, LintLevelSets};
 
 #[derive(Default)]
 pub struct LintBuffer {
-    map: NodeMap<Vec<BufferedEarlyLint>>,
+    pub map: NodeMap<Vec<BufferedEarlyLint>>,
 }
 
 impl LintBuffer {
@@ -405,7 +405,7 @@ impl LintBuffer {
         }
     }
 
-    fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
+    pub fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
         self.map.remove(&id).unwrap_or_default()
     }
 

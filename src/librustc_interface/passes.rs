@@ -231,7 +231,7 @@ fn configure_and_expand_inner<'a>(
     metadata_loader: &'a MetadataLoaderDyn,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     time(sess, "pre-AST-expansion lint checks", || {
-        lint::check_ast_crate(
+        rustc_lint::check_ast_crate(
             sess,
             lint_store,
             &krate,
@@ -458,7 +458,7 @@ pub fn lower_to_hir<'res, 'tcx>(
     });
 
     time(sess, "early lint checks", || {
-        lint::check_ast_crate(
+        rustc_lint::check_ast_crate(
             sess,
             lint_store,
             &krate,
