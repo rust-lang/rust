@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import { Ctx, Cmd } from '../ctx';
+import * as sourceChange from '../source_change';
 
 import { analyzerStatus } from './analyzer_status';
 import { matchingBrace } from './matching_brace';
@@ -29,6 +30,12 @@ function showReferences(ctx: Ctx): Cmd {
     };
 }
 
+function applySourceChange(ctx: Ctx): Cmd {
+    return async (change: sourceChange.SourceChange) => {
+        sourceChange.applySourceChange(ctx, change);
+    }
+}
+
 export {
     analyzerStatus,
     expandMacro,
@@ -41,4 +48,5 @@ export {
     run,
     runSingle,
     showReferences,
+    applySourceChange,
 };
