@@ -5,10 +5,10 @@ import { matchingBrace } from './matching_brace';
 import { joinLines } from './join_lines';
 import { onEnter } from './on_enter';
 import { parentModule } from './parent_module';
+import { syntaxTree } from './syntax_tree';
 import * as expandMacro from './expand_macro';
 import * as inlayHints from './inlay_hints';
 import * as runnables from './runnables';
-import * as syntaxTree from './syntaxTree';
 
 function collectGarbage(ctx: Ctx): Cmd {
     return async () => {

@@ -4,7 +4,6 @@ import * as lc from 'vscode-languageclient';
 import * as commands from './commands';
 import { ExpandMacroContentProvider } from './commands/expand_macro';
 import { HintsUpdater } from './commands/inlay_hints';
-import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import { StatusDisplay } from './commands/watch_status';
 import * as events from './events';
 import * as notifications from './notifications';
@@ -20,6 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
     ctx.registerCommand('joinLines', commands.joinLines);
     ctx.registerCommand('parentModule', commands.parentModule);
+    ctx.registerCommand('syntaxTree', commands.syntaxTree);
 
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
@@ -55,10 +55,7 @@ export async function activate(context: vscode.ExtensionContext) {
     disposeOnDeactivation(watchStatus);
 
     // Notifications are events triggered by the language server
-    const allNotifications: Iterable<[
-        string,
-        lc.GenericNotificationHandler,
-    ]> = [
+    const allNotifications: [string, lc.GenericNotificationHandler][] = [
         [
             'rust-analyzer/publishDecorations',
             notifications.publishDecorations.handle,
@@ -68,20 +65,13 @@ export async function activate(context: vscode.ExtensionContext) {
             params => watchStatus.handleProgressNotification(params),
         ],
     ];
-    const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
     const expandMacroContentProvider = new ExpandMacroContentProvider();
 
     // The events below are plain old javascript events, triggered and handled by vscode
     vscode.window.onDidChangeActiveTextEditor(
-        events.changeActiveTextEditor.makeHandler(syntaxTreeContentProvider),
+        events.changeActiveTextEditor.makeHandler(),
     );
 
-    disposeOnDeactivation(
-        vscode.workspace.registerTextDocumentContentProvider(
-            'rust-analyzer',
-            syntaxTreeContentProvider,
-        ),
-    );
     disposeOnDeactivation(
         vscode.workspace.registerTextDocumentContentProvider(
             'rust-analyzer',
@@ -90,18 +80,8 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     registerCommand(
-        'rust-analyzer.syntaxTree',
-        commands.syntaxTree.createHandle(syntaxTreeContentProvider),
-    );
-    registerCommand(
         'rust-analyzer.expandMacro',
         commands.expandMacro.createHandle(expandMacroContentProvider),
-    );
-
-    vscode.workspace.onDidChangeTextDocument(
-        events.changeTextDocument.createHandler(syntaxTreeContentProvider),
-        null,
-        context.subscriptions,
     );
 
     const startServer = () => Server.start(allNotifications);

@@ -49,6 +49,10 @@ export class Ctx {
         }
     }
 
+    get subscriptions(): { dispose(): any }[] {
+        return this.extCtx.subscriptions;
+    }
+
     pushCleanup(d: { dispose(): any }) {
         this.extCtx.subscriptions.push(d);
     }
