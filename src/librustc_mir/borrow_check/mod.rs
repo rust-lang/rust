@@ -1482,8 +1482,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // FIXME(mark-i-m): Would be great to get rid of the naming context.
         let mut region_naming = RegionErrorNamingCtx::new();
-        let mut outlives_suggestion =
-            OutlivesSuggestionBuilder::new(self.mir_def_id, &self.local_names);
+        let mut outlives_suggestion = OutlivesSuggestionBuilder::default();
 
         for nll_error in nll_errors.into_iter() {
             match nll_error {
@@ -1561,11 +1560,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
                     if is_reported {
                         let db = self.nonlexical_regioncx.report_error(
-                            &self.body,
-                            &self.local_names,
-                            &self.upvars,
-                            self.infcx,
-                            self.mir_def_id,
+                            self,
                             longer_fr,
                             fr_origin,
                             shorter_fr,
@@ -1591,13 +1586,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         // Emit one outlives suggestions for each MIR def we borrowck
-        outlives_suggestion.add_suggestion(
-            &self.body,
-            &self.nonlexical_regioncx,
-            self.infcx,
-            &mut self.errors_buffer,
-            &mut region_naming,
-        );
+        outlives_suggestion.add_suggestion(self, &mut region_naming);
     }
 }
 

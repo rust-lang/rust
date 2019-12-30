@@ -4,20 +4,15 @@
 use std::collections::BTreeMap;
 
 use log::debug;
-use rustc::mir::{Body, Local};
-use rustc::{hir::def_id::DefId, infer::InferCtxt, ty::RegionVid};
+use rustc::ty::RegionVid;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Diagnostic, DiagnosticBuilder};
-use rustc_index::vec::IndexVec;
-use syntax_pos::symbol::Symbol;
+use rustc_errors::DiagnosticBuilder;
 
 use smallvec::SmallVec;
 
-use crate::borrow_check::region_infer::RegionInferenceContext;
+use crate::borrow_check::MirBorrowckCtxt;
 
-use super::{
-    ErrorConstraintInfo, ErrorReportingCtx, RegionErrorNamingCtx, RegionName, RegionNameSource,
-};
+use super::{ErrorConstraintInfo, RegionErrorNamingCtx, RegionName, RegionNameSource};
 
 /// The different things we could suggest.
 enum SuggestedConstraint {
@@ -35,12 +30,8 @@ enum SuggestedConstraint {
 /// corresponding to a function definition.
 ///
 /// Adds a help note suggesting adding a where clause with the needed constraints.
-pub struct OutlivesSuggestionBuilder<'a> {
-    /// The MIR DefId of the fn with the lifetime error.
-    mir_def_id: DefId,
-
-    local_names: &'a IndexVec<Local, Option<Symbol>>,
-
+#[derive(Default)]
+pub struct OutlivesSuggestionBuilder {
     /// The list of outlives constraints that need to be added. Specifically, we map each free
     /// region to all other regions that it must outlive. I will use the shorthand `fr:
     /// outlived_frs`. Not all of these regions will already have names necessarily. Some could be
@@ -49,16 +40,7 @@ pub struct OutlivesSuggestionBuilder<'a> {
     constraints_to_add: BTreeMap<RegionVid, Vec<RegionVid>>,
 }
 
-impl OutlivesSuggestionBuilder<'a> {
-    /// Create a new builder for the given MIR node representing a fn definition.
-    crate fn new(mir_def_id: DefId, local_names: &'a IndexVec<Local, Option<Symbol>>) -> Self {
-        OutlivesSuggestionBuilder {
-            mir_def_id,
-            local_names,
-            constraints_to_add: BTreeMap::default(),
-        }
-    }
-
+impl OutlivesSuggestionBuilder {
     /// Returns `true` iff the `RegionNameSource` is a valid source for an outlives
     /// suggestion.
     //
@@ -94,22 +76,19 @@ impl OutlivesSuggestionBuilder<'a> {
     /// Returns a name for the region if it is suggestable. See `region_name_is_suggestable`.
     fn region_vid_to_name(
         &self,
-        errctx: &ErrorReportingCtx<'_, '_, '_>,
+        mbcx: &MirBorrowckCtxt<'_, '_>,
         renctx: &mut RegionErrorNamingCtx,
         region: RegionVid,
     ) -> Option<RegionName> {
-        errctx
-            .region_infcx
-            .give_region_a_name(errctx, renctx, region)
+        mbcx.nonlexical_regioncx
+            .give_region_a_name(mbcx, renctx, region)
             .filter(Self::region_name_is_suggestable)
     }
 
     /// Compiles a list of all suggestions to be printed in the final big suggestion.
-    fn compile_all_suggestions<'tcx>(
+    fn compile_all_suggestions(
         &self,
-        body: &Body<'tcx>,
-        region_infcx: &RegionInferenceContext<'tcx>,
-        infcx: &InferCtxt<'_, 'tcx>,
+        mbcx: &MirBorrowckCtxt<'_, '_>,
         renctx: &mut RegionErrorNamingCtx,
     ) -> SmallVec<[SuggestedConstraint; 2]> {
         let mut suggested = SmallVec::new();
@@ -118,20 +97,8 @@ impl OutlivesSuggestionBuilder<'a> {
         // out silly duplicate messages.
         let mut unified_already = FxHashSet::default();
 
-        let errctx = ErrorReportingCtx {
-            region_infcx,
-            infcx,
-            body,
-            mir_def_id: self.mir_def_id,
-            local_names: self.local_names,
-
-            // We should not be suggesting naming upvars, so we pass in a dummy set of upvars that
-            // should never be used.
-            upvars: &[],
-        };
-
         for (fr, outlived) in &self.constraints_to_add {
-            let fr_name = if let Some(fr_name) = self.region_vid_to_name(&errctx, renctx, *fr) {
+            let fr_name = if let Some(fr_name) = self.region_vid_to_name(mbcx, renctx, *fr) {
                 fr_name
             } else {
                 continue;
@@ -141,7 +108,7 @@ impl OutlivesSuggestionBuilder<'a> {
                 .iter()
                 // if there is a `None`, we will just omit that constraint
                 .filter_map(|fr| {
-                    self.region_vid_to_name(&errctx, renctx, *fr).map(|rname| (fr, rname))
+                    self.region_vid_to_name(mbcx, renctx, *fr).map(|rname| (fr, rname))
                 })
                 .collect::<Vec<_>>();
 
@@ -204,14 +171,14 @@ impl OutlivesSuggestionBuilder<'a> {
     /// suggestable.
     crate fn intermediate_suggestion(
         &mut self,
-        errctx: &ErrorReportingCtx<'_, '_, '_>,
+        mbcx: &MirBorrowckCtxt<'_, '_>,
         errci: &ErrorConstraintInfo,
         renctx: &mut RegionErrorNamingCtx,
         diag: &mut DiagnosticBuilder<'_>,
     ) {
         // Emit an intermediate note.
-        let fr_name = self.region_vid_to_name(errctx, renctx, errci.fr);
-        let outlived_fr_name = self.region_vid_to_name(errctx, renctx, errci.outlived_fr);
+        let fr_name = self.region_vid_to_name(mbcx, renctx, errci.fr);
+        let outlived_fr_name = self.region_vid_to_name(mbcx, renctx, errci.outlived_fr);
 
         if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name) {
             if let RegionNameSource::Static = outlived_fr_name.source {
@@ -227,12 +194,9 @@ impl OutlivesSuggestionBuilder<'a> {
 
     /// If there is a suggestion to emit, add a diagnostic to the buffer. This is the final
     /// suggestion including all collected constraints.
-    crate fn add_suggestion<'tcx>(
+    crate fn add_suggestion(
         &self,
-        body: &Body<'tcx>,
-        region_infcx: &RegionInferenceContext<'tcx>,
-        infcx: &InferCtxt<'_, 'tcx>,
-        errors_buffer: &mut Vec<Diagnostic>,
+        mbcx: &mut MirBorrowckCtxt<'_, '_>,
         renctx: &mut RegionErrorNamingCtx,
     ) {
         // No constraints to add? Done.
@@ -251,7 +215,7 @@ impl OutlivesSuggestionBuilder<'a> {
         }
 
         // Get all suggestable constraints.
-        let suggested = self.compile_all_suggestions(body, region_infcx, infcx, renctx);
+        let suggested = self.compile_all_suggestions(mbcx, renctx);
 
         // If there are no suggestable constraints...
         if suggested.is_empty() {
@@ -262,7 +226,7 @@ impl OutlivesSuggestionBuilder<'a> {
         // If there is exactly one suggestable constraints, then just suggest it. Otherwise, emit a
         // list of diagnostics.
         let mut diag = if suggested.len() == 1 {
-            infcx.tcx.sess.diagnostic().struct_help(&match suggested.last().unwrap() {
+            mbcx.infcx.tcx.sess.diagnostic().struct_help(&match suggested.last().unwrap() {
                 SuggestedConstraint::Outlives(a, bs) => {
                     let bs: SmallVec<[String; 2]> = bs.iter().map(|r| format!("{}", r)).collect();
                     format!("add bound `{}: {}`", a, bs.join(" + "))
@@ -275,7 +239,8 @@ impl OutlivesSuggestionBuilder<'a> {
             })
         } else {
             // Create a new diagnostic.
-            let mut diag = infcx
+            let mut diag = mbcx
+                .infcx
                 .tcx
                 .sess
                 .diagnostic()
@@ -305,10 +270,10 @@ impl OutlivesSuggestionBuilder<'a> {
         };
 
         // We want this message to appear after other messages on the mir def.
-        let mir_span = infcx.tcx.def_span(self.mir_def_id);
+        let mir_span = mbcx.infcx.tcx.def_span(mbcx.mir_def_id);
         diag.sort_span = mir_span.shrink_to_hi();
 
         // Buffer the diagnostic
-        diag.buffer(errors_buffer);
+        diag.buffer(&mut mbcx.errors_buffer);
     }
 }
