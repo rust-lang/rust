@@ -1,5 +1,5 @@
 #![feature(or_patterns)]
-#![feature(slice_patterns)]
+
 #![allow(incomplete_features)]
 #![deny(unreachable_patterns)]
 

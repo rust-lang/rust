@@ -4,7 +4,6 @@
 
 #![feature(bindings_after_at)]
 #![feature(box_patterns)]
-#![feature(slice_patterns)]
 
 #[derive(Copy, Clone)]
 struct C;

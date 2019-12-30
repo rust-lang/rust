@@ -1,4 +1,3 @@
-#![feature(slice_patterns)]
 #![allow(illegal_floating_point_literal_pattern)]
 
 enum T { A, B }

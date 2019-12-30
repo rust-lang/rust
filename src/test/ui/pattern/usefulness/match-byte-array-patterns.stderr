@@ -1,53 +1,53 @@
 error: unreachable pattern
-  --> $DIR/match-byte-array-patterns.rs:9:9
+  --> $DIR/match-byte-array-patterns.rs:8:9
    |
 LL |         &[0x41, 0x41, 0x41, 0x41] => {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/match-byte-array-patterns.rs:2:9
+  --> $DIR/match-byte-array-patterns.rs:1:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-byte-array-patterns.rs:15:9
+  --> $DIR/match-byte-array-patterns.rs:14:9
    |
 LL |         b"AAAA" => {},
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-byte-array-patterns.rs:21:9
+  --> $DIR/match-byte-array-patterns.rs:20:9
    |
 LL |         b"AAAA" => {},
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-byte-array-patterns.rs:27:9
+  --> $DIR/match-byte-array-patterns.rs:26:9
    |
 LL |         b"AAAA" => {},
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-byte-array-patterns.rs:35:9
+  --> $DIR/match-byte-array-patterns.rs:34:9
    |
 LL |         &[0x41, 0x41, 0x41, 0x41] => {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-byte-array-patterns.rs:41:9
+  --> $DIR/match-byte-array-patterns.rs:40:9
    |
 LL |         b"AAAA" => {},
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-byte-array-patterns.rs:47:9
+  --> $DIR/match-byte-array-patterns.rs:46:9
    |
 LL |         b"AAAA" => {},
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-byte-array-patterns.rs:53:9
+  --> $DIR/match-byte-array-patterns.rs:52:9
    |
 LL |         b"AAAA" => {},
    |         ^^^^^^^

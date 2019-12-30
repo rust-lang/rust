@@ -1,5 +1,4 @@
 // run-pass
-#![feature(slice_patterns)]
 
 use std::ops::Add;
 

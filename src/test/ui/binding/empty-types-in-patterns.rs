@@ -1,7 +1,8 @@
 // run-pass
+
 #![feature(never_type, never_type_fallback)]
 #![feature(exhaustive_patterns)]
-#![feature(slice_patterns)]
+
 #![allow(unreachable_patterns)]
 #![allow(unreachable_code)]
 #![allow(unused_variables)]

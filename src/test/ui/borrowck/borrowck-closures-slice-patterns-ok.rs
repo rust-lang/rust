@@ -1,6 +1,5 @@
 // Check that closure captures for slice patterns are inferred correctly
 
-#![feature(slice_patterns)]
 #![allow(unused_variables)]
 
 // run-pass
