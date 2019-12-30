@@ -48,13 +48,13 @@ pub fn resolve_vtable<'tcx>(
             // Currently, we use a fulfillment context to completely resolve
             // all nested obligations. This is because they can inform the
             // inference of the impl's type parameters.
-            let mut vtable = selection.map(|predicate| {
+            let vtable = selection.map(|predicate| {
                 debug!("resolve_vtable: register_predicate_obligation {:?}", predicate);
                 fulfill_cx.register_predicate_obligation(&infcx, predicate);
             });
 
-            vtable = infcx.resolve_vars_if_possible(&vtable);
-            vtable = tcx.erase_regions(&vtable);
+            let vtable = infcx.resolve_vars_if_possible(&vtable);
+            let vtable = tcx.erase_regions(&vtable);
 
             info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
             Ok(vtable)

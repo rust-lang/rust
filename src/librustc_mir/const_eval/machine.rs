@@ -17,7 +17,7 @@ use crate::interpret::{
 
 use super::error::*;
 
-impl<'infcx, 'mir, 'tcx> InterpCx<'infcx, 'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
+impl<'mir, 'tcx> InterpCx<'_, 'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
     /// Evaluate a const function where all arguments (if any) are zero-sized types.
     /// The evaluation is memoized thanks to the query system.
     ///

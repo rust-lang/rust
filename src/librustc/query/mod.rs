@@ -472,7 +472,7 @@ rustc_queries! {
             no_force
             desc { |tcx|
                 "const-evaluating `{}`",
-                tcx.def_path_str(key.value.value.instance.def.def_id())
+                tcx.def_path_str(key.def_id())
             }
         }
 
@@ -489,7 +489,7 @@ rustc_queries! {
             no_force
             desc { |tcx|
                 "const-evaluating + checking `{}`",
-                tcx.def_path_str(key.value.value.instance.def.def_id())
+                tcx.def_path_str(key.def_id())
             }
             cache_on_disk_if(_, opt_result) {
                 // Only store results without errors

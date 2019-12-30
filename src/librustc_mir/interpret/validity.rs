@@ -663,7 +663,7 @@ impl<'rt, 'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'infcx, 'mir,
     }
 }
 
-impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'_, 'mir, 'tcx, M> {
     /// This function checks the data at `op`. `op` is assumed to cover valid memory if it
     /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.

@@ -167,12 +167,12 @@ fn validate_and_turn_into_const<'tcx>(
     constant: RawConst<'tcx>,
     key: ConstEvalInput<'tcx>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
-    let span = tcx.def_span(key.value.value.instance.def_id());
+    let def_id = key.def_id();
+    let span = tcx.def_span(def_id);
     tcx.infer_ctxt().enter_with_canonical(
         span,
         &key,
         |ref infcx, ty::ParamEnvAnd { param_env, value: cid }, _| {
-            let def_id = cid.instance.def.def_id();
             let is_static = tcx.is_static(def_id);
             let ecx = InterpCx::new(
                 tcx.at(span),
@@ -227,9 +227,7 @@ pub fn const_eval_validated_provider<'tcx>(
 
     // see comment in const_eval_raw_provider for what we're doing here
     if param_env.reveal == Reveal::All {
-        let mut key = key.clone();
-        key.value.param_env.reveal = Reveal::UserFacing;
-        match tcx.const_eval_validated(key) {
+        match tcx.const_eval_validated(key.with_reveal_user_facing()) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
             // dedupliate calls
@@ -270,9 +268,7 @@ pub fn const_eval_raw_provider<'tcx>(
 
     // In case we fail in the `UserFacing` variant, we just do the real computation.
     if param_env.reveal == Reveal::All {
-        let mut key = key.clone();
-        key.value.param_env.reveal = Reveal::UserFacing;
-        match tcx.const_eval_raw(key) {
+        match tcx.const_eval_raw(key.with_reveal_user_facing()) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
             // dedupliate calls
@@ -289,7 +285,7 @@ pub fn const_eval_raw_provider<'tcx>(
         trace!("const eval: {:?} ({})", key, instance);
     }
 
-    let def_id = cid.instance.def.def_id();
+    let def_id = key.def_id();
 
     if def_id.is_local() && tcx.typeck_tables_of(def_id).tainted_by_errors {
         return Err(ErrorHandled::Reported);
@@ -297,7 +293,7 @@ pub fn const_eval_raw_provider<'tcx>(
 
     let is_static = tcx.is_static(def_id);
 
-    let span = tcx.def_span(cid.instance.def_id());
+    let span = tcx.def_span(def_id);
     tcx.infer_ctxt().enter_with_canonical(
         span,
         &key,

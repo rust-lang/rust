@@ -44,6 +44,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .enter(|ref infcx| infcx.const_eval_resolve(param_env, def_id, substs, span))
     }
 
+    /// Evaluates the constant represented by the instance.
     pub fn const_eval_instance(
         self,
         param_env: ty::ParamEnv<'tcx>,
@@ -72,6 +73,10 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    /// Evaluates the constant represented by the instance.
+    ///
+    /// The given `ParamEnv` and `Instance` can contain inference variables from this inference
+    /// context.
     pub fn const_eval_instance(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -88,6 +93,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Resolves and evaluates a constant.
+    ///
+    /// The constant can be located on a trait like `<A as B>::C`, in which case the given
+    /// substitutions and environment are used to resolve the constant. Alternatively if the
+    /// constant has generic parameters in scope the substitutions are used to evaluate the value of
+    /// the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
+    /// constant `bar::<T>()` requires a substitution for `T`, if the substitution for `T` is still
+    /// too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
+    /// returned.
+    ///
+    /// The given `ParamEnv` and `substs` can contain inference variables from this inference
+    /// context.
     pub fn const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,

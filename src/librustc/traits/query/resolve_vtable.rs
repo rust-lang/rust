@@ -4,6 +4,10 @@ use crate::traits::{ObligationCause, Vtable};
 use crate::ty;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+    /// Attempts to resolves the `Vtable` for a given trait within a `ParamEnv`.
+    ///
+    /// If it can't due to the result being ambiguous, or an error occurred during selection, `None`
+    /// is returned.
     pub fn resolve_vtable(
         &self,
         param_env: ty::ParamEnv<'tcx>,

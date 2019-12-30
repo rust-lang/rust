@@ -11,7 +11,7 @@ use rustc_apfloat::{Float, FloatConvert};
 
 use super::{FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy};
 
-impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'_, 'mir, 'tcx, M> {
     pub fn cast(
         &mut self,
         src: OpTy<'tcx, M::PointerTag>,

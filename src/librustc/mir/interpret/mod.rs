@@ -117,6 +117,7 @@ pub use self::pointer::{CheckInAllocMsg, Pointer, PointerArithmetic};
 
 use crate::infer::canonical::Canonical;
 use crate::mir;
+use crate::traits::Reveal;
 use crate::ty::codec::TyDecoder;
 use crate::ty::layout::{self, Size};
 use crate::ty::subst::GenericArgKind;
@@ -148,7 +149,22 @@ pub struct GlobalId<'tcx> {
     pub promoted: Option<mir::Promoted>,
 }
 
+/// The input type for const eval queries. Const eval queries a given both the `ParamEnv` in which
+/// the constant is evaluated in and the identifier of the constant.
 pub type ConstEvalInput<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>>;
+
+impl ConstEvalInput<'_> {
+    /// The `DefId` of the constant that is being evaluated.
+    pub fn def_id(&self) -> DefId {
+        self.value.value.instance.def_id()
+    }
+
+    pub fn with_reveal_user_facing(&self) -> Self {
+        let mut new_input = self.clone();
+        new_input.value.param_env.reveal = Reveal::UserFacing;
+        new_input
+    }
+}
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);

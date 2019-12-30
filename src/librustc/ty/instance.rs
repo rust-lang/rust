@@ -203,10 +203,6 @@ impl<'tcx> Instance<'tcx> {
     /// trying to resolve `Debug::fmt` applied to `T` will yield `None`, because we do not
     /// know what code ought to run. (Note that this setting is also affected by the
     /// `RevealMode` in the parameter environment.)
-    ///
-    /// Presuming that coherence and type-check have succeeded, if this method is invoked
-    /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
-    /// `Some`.
     pub fn resolve<'infcx>(
         infcx: &'infcx InferCtxt<'infcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -255,6 +251,12 @@ impl<'tcx> Instance<'tcx> {
         result
     }
 
+    /// Resolves a `(def_id, substs)` pair to an instance within a monomorphic context
+    /// (i.e., like during codegen). This is most commonly used to find the precise code that
+    /// will run for a trait method invocation.
+    ///
+    /// This assumes that resolving the instance will be successful, so should only be used after
+    /// coherence and type-check have succeeded.
     pub fn resolve_mono(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,

@@ -179,14 +179,14 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     }
 }
 
-impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'infcx, 'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'_, 'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'infcx, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'infcx, 'mir, 'tcx, M>
+impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'_, 'mir, 'tcx, M>
 where
     M: Machine<'mir, 'tcx>,
 {
@@ -196,7 +196,7 @@ where
     }
 }
 
-impl<'infcx, 'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'infcx, 'mir, 'tcx, M>
+impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'_, 'mir, 'tcx, M>
 where
     M: Machine<'mir, 'tcx>,
 {
@@ -205,7 +205,7 @@ where
     }
 }
 
-impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'infcx, 'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'_, 'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyLayout = InterpResult<'tcx, TyLayout<'tcx>>;
 

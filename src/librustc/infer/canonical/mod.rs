@@ -267,6 +267,8 @@ impl<'tcx, R> Canonical<'tcx, QueryResponse<'tcx, R>> {
 }
 
 impl<'tcx, V: TypeFoldable<'tcx>> Canonical<'tcx, V> {
+    /// Construct a canonical `value` with an empty set of variables
+    /// in the `ROOT` universe.
     pub fn empty(value: V) -> Canonical<'tcx, V> {
         assert!(!value.has_local_value() && !value.has_placeholders());
         Canonical {
