@@ -14,9 +14,6 @@
         "fileLocation": ["relative", "${workspaceFolder}/editors/code/"]
       },
       "isBackground": true,
-      "presentation": {
-        "reveal": "never"
-      },
     },
     {
       "label": "Build Server",

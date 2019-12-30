@@ -16,21 +16,26 @@
         "vscode": "^1.41.0"
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
+        "vscode:prepublish": "rollup -c",
+        "package": "vsce package",
         "watch": "tsc -watch -p ./"
     },
     "dependencies": {
-        "vscode-languageclient": "^6.0.0-next.9",
         "jsonc-parser": "^2.1.0",
-        "lookpath": "^1.0.4",
-        "seedrandom": "^3.0.5"
+        "seedrandom": "^3.0.5",
+        "vscode-languageclient": "^6.0.0-next.9"
     },
     "devDependencies": {
+        "rollup": "^1.27.14",
+        "@rollup/plugin-commonjs": "^11.0.0",
+        "@rollup/plugin-node-resolve": "^6.0.0",
+        "@rollup/plugin-typescript": "^2.0.1",
+        "typescript": "^3.7.3",
+        "tslib": "^1.10.0",
+        "vsce": "^1.71.0",
         "@types/node": "^12.12.21",
-        "@types/vscode": "^1.41.0",
         "@types/seedrandom": "^2.4.28",
-        "typescript": "^3.7.3"
+        "@types/vscode": "^1.41.0"
     },
     "activationEvents": [
         "onLanguage:rust",
