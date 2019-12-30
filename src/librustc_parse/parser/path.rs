@@ -325,24 +325,23 @@ impl<'a> Parser<'a> {
 
                 // Make a span over ${unmatched angle bracket count} characters.
                 let span = lo.with_hi(lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count));
-                self.diagnostic()
-                    .struct_span_err(
-                        span,
-                        &format!(
-                            "unmatched angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                    )
-                    .span_suggestion(
-                        span,
-                        &format!(
-                            "remove extra angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.struct_span_err(
+                    span,
+                    &format!(
+                        "unmatched angle bracket{}",
+                        pluralize!(snapshot.unmatched_angle_bracket_count)
+                    ),
+                )
+                .span_suggestion(
+                    span,
+                    &format!(
+                        "remove extra angle bracket{}",
+                        pluralize!(snapshot.unmatched_angle_bracket_count)
+                    ),
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
 
                 // Try again without unmatched angle bracket characters.
                 self.parse_generic_args()

@@ -1915,8 +1915,7 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        self.diagnostic()
-            .struct_span_err(self.token.span, "expected `:`, found `=`")
+        self.struct_span_err(self.token.span, "expected `:`, found `=`")
             .span_suggestion(
                 field_name.span.shrink_to_hi().to(self.token.span),
                 "replace equals symbol with a colon",

@@ -699,8 +699,7 @@ impl<'a> Parser<'a> {
         let range_span = lo.to(end.span);
         let begin = self.mk_expr(range_span, ExprKind::Err, AttrVec::new());
 
-        self.diagnostic()
-            .struct_span_err(range_span, &format!("`{}X` range patterns are not supported", form))
+        self.struct_span_err(range_span, &format!("`{}X` range patterns are not supported", form))
             .span_suggestion(
                 range_span,
                 "try using the minimum value for the type",
@@ -722,18 +721,17 @@ impl<'a> Parser<'a> {
             // Parsing e.g. `X..`.
             let range_span = begin.span.to(self.prev_span);
 
-            self.diagnostic()
-                .struct_span_err(
-                    range_span,
-                    &format!("`X{}` range patterns are not supported", form),
-                )
-                .span_suggestion(
-                    range_span,
-                    "try using the maximum value for the type",
-                    format!("{}{}MAX", pprust::expr_to_string(&begin), form),
-                    Applicability::HasPlaceholders,
-                )
-                .emit();
+            self.struct_span_err(
+                range_span,
+                &format!("`X{}` range patterns are not supported", form),
+            )
+            .span_suggestion(
+                range_span,
+                "try using the maximum value for the type",
+                format!("{}{}MAX", pprust::expr_to_string(&begin), form),
+                Applicability::HasPlaceholders,
+            )
+            .emit();
 
             Ok(self.mk_expr(range_span, ExprKind::Err, AttrVec::new()))
         }

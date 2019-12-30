@@ -502,18 +502,17 @@ impl<'a> Parser<'a> {
             let span = lo.until(self.token.span);
 
             let total_num_of_gt = number_of_gt + number_of_shr * 2;
-            self.diagnostic()
-                .struct_span_err(
-                    span,
-                    &format!("unmatched angle bracket{}", pluralize!(total_num_of_gt)),
-                )
-                .span_suggestion(
-                    span,
-                    &format!("remove extra angle bracket{}", pluralize!(total_num_of_gt)),
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.struct_span_err(
+                span,
+                &format!("unmatched angle bracket{}", pluralize!(total_num_of_gt)),
+            )
+            .span_suggestion(
+                span,
+                &format!("remove extra angle bracket{}", pluralize!(total_num_of_gt)),
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
         }
     }
 
@@ -762,8 +761,7 @@ impl<'a> Parser<'a> {
         path.span = ty_span.to(self.prev_span);
 
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
-        self.diagnostic()
-            .struct_span_err(path.span, "missing angle brackets in associated item path")
+        self.struct_span_err(path.span, "missing angle brackets in associated item path")
             .span_suggestion(
                 // This is a best-effort recovery.
                 path.span,

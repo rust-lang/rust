@@ -129,7 +129,7 @@ impl<'a> Parser<'a> {
             DirectoryOwnership::UnownedViaBlock => {
                 let msg = "Cannot declare a non-inline module inside a block \
                     unless it has a path attribute";
-                let mut err = self.diagnostic().struct_span_err(id_sp, msg);
+                let mut err = self.struct_span_err(id_sp, msg);
                 if paths.path_exists {
                     let msg = format!(
                         "Maybe `use` the module `{}` instead of redeclaring it",
@@ -140,9 +140,8 @@ impl<'a> Parser<'a> {
                 Err(err)
             }
             DirectoryOwnership::UnownedViaMod => {
-                let mut err = self
-                    .diagnostic()
-                    .struct_span_err(id_sp, "cannot declare a new module at this location");
+                let mut err =
+                    self.struct_span_err(id_sp, "cannot declare a new module at this location");
                 if !id_sp.is_dummy() {
                     let src_path = self.sess.source_map().span_to_filename(id_sp);
                     if let FileName::Real(src_path) = src_path {

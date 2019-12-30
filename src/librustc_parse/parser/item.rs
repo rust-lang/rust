@@ -306,8 +306,7 @@ impl<'a> Parser<'a> {
                 // possible public struct definition where `struct` was forgotten
                 let ident = self.parse_ident().unwrap();
                 let msg = format!("add `struct` here to parse `{}` as a public struct", ident);
-                let mut err =
-                    self.diagnostic().struct_span_err(sp, "missing `struct` for struct definition");
+                let mut err = self.struct_span_err(sp, "missing `struct` for struct definition");
                 err.span_suggestion_short(
                     sp,
                     &msg,
@@ -335,7 +334,7 @@ impl<'a> Parser<'a> {
                 };
 
                 let msg = format!("missing `{}` for {} definition", kw, kw_name);
-                let mut err = self.diagnostic().struct_span_err(sp, &msg);
+                let mut err = self.struct_span_err(sp, &msg);
                 if !ambiguous {
                     self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
                     let suggestion =
@@ -375,7 +374,7 @@ impl<'a> Parser<'a> {
                     ("fn` or `struct", "function or struct", true)
                 };
                 let msg = format!("missing `{}` for {} definition", kw, kw_name);
-                let mut err = self.diagnostic().struct_span_err(sp, &msg);
+                let mut err = self.struct_span_err(sp, &msg);
                 if !ambiguous {
                     err.span_suggestion_short(
                         sp,
@@ -466,7 +465,7 @@ impl<'a> Parser<'a> {
             _ => "expected item after attributes",
         };
 
-        let mut err = self.diagnostic().struct_span_err(self.prev_span, message);
+        let mut err = self.struct_span_err(self.prev_span, message);
         if attrs.last().unwrap().is_doc_comment() {
             err.span_label(self.prev_span, "this doc comment doesn't document anything");
         }
@@ -536,7 +535,6 @@ impl<'a> Parser<'a> {
         //        ^^ `sp` below will point to this
         let sp = prev_span.between(self.prev_span);
         let mut err = self
-            .diagnostic()
             .struct_span_err(sp, &format!("{} for {}-item declaration", expected_kinds, item_type));
         err.span_label(sp, expected_kinds);
         err
@@ -1603,9 +1601,8 @@ impl<'a> Parser<'a> {
             VisibilityKind::Inherited => {}
             _ => {
                 let mut err = if self.token.is_keyword(sym::macro_rules) {
-                    let mut err = self
-                        .diagnostic()
-                        .struct_span_err(sp, "can't qualify macro_rules invocation with `pub`");
+                    let mut err =
+                        self.struct_span_err(sp, "can't qualify macro_rules invocation with `pub`");
                     err.span_suggestion(
                         sp,
                         "try exporting the macro",
@@ -1614,9 +1611,8 @@ impl<'a> Parser<'a> {
                     );
                     err
                 } else {
-                    let mut err = self
-                        .diagnostic()
-                        .struct_span_err(sp, "can't qualify macro invocation with `pub`");
+                    let mut err =
+                        self.struct_span_err(sp, "can't qualify macro invocation with `pub`");
                     err.help("try adjusting the macro to put `pub` inside the invocation");
                     err
                 };
