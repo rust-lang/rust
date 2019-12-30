@@ -582,6 +582,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) {
         match cause.code {
             ObligationCauseCode::Pattern { span, ty } => {
+                let ty = self.resolve_vars_if_possible(&ty);
                 if ty.is_suggestable() {
                     // don't show type `_`
                     err.span_label(span, format!("this expression has type `{}`", ty));
