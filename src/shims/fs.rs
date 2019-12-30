@@ -15,7 +15,7 @@ use shims::time::system_time_to_duration;
 #[derive(Debug)]
 pub struct FileHandle {
     file: File,
-    read_only: bool,
+    writable: bool,
 }
 
 pub struct FileHandler {
@@ -57,13 +57,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if (o_rdonly | o_wronly | o_rdwr) & !0b11 != 0 {
             throw_unsup_format!("Access mode flags on this platform are unsupported");
         }
-        let mut read_only = false;
+        let mut writable = true;
 
         // Now we check the access mode
         let access_mode = flag & 0b11;
 
         if access_mode == o_rdonly {
-            read_only = true;
+            writable = false;
             options.read(true);
         } else if access_mode == o_wronly {
             options.write(true);
@@ -109,7 +109,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = options.open(&path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
-            fh.handles.insert(fh.low, FileHandle { file, read_only }).unwrap_none();
+            fh.handles.insert(fh.low, FileHandle { file, writable }).unwrap_none();
             fh.low
         });
 
@@ -153,7 +153,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
             // We sync the file if it was opened in a mode different than read-only.
-            if !handle.read_only {
+            if handle.writable {
                 // `File::sync_all` does the checks that are done when closing a file. We do this to
                 // to handle possible errors correctly.
                 let result = this.try_unwrap_io_result(handle.file.sync_all().map(|_| 0i32));
@@ -164,7 +164,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             } else {
                 // We drop the file, this closes it but ignores any errors produced when closing
                 // it. This is done because `File::sync_call` cannot be done over files like
-                // `/dev/urandom`. Check
+                // `/dev/urandom` which are read-only. Check
                 // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439 for a deeper
                 // discussion.
                 drop(handle);
