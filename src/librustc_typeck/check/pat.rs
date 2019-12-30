@@ -577,8 +577,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_pat(pat.span, expected, pat_ty, discrim_span);
 
         // Type-check subpatterns.
-        if self.check_struct_pat_fields(pat_ty, pat.hir_id, pat.span, variant, fields, etc, def_bm)
-        {
+        if self.check_struct_pat_fields(
+            pat_ty,
+            pat.hir_id,
+            pat.span,
+            variant,
+            fields,
+            etc,
+            def_bm,
+            discrim_span,
+        ) {
             pat_ty
         } else {
             self.tcx.types.err
@@ -859,6 +867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::FieldPat<'tcx>],
         etc: bool,
         def_bm: BindingMode,
+        discrim_span: Option<Span>,
     ) -> bool {
         let tcx = self.tcx;
 
@@ -908,7 +917,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            self.check_pat(&field.pat, field_ty, def_bm, None);
+            self.check_pat(&field.pat, field_ty, def_bm, discrim_span);
         }
 
         let mut unmentioned_fields = variant
