@@ -692,7 +692,6 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_resolve::provide(providers);
     rustc_traits::provide(providers);
     rustc_metadata::provide(providers);
-    lint::provide(providers);
     rustc_lint::provide(providers);
     rustc_codegen_utils::provide(providers);
     rustc_codegen_ssa::provide(providers);

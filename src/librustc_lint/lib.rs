@@ -26,6 +26,7 @@ mod array_into_iter;
 pub mod builtin;
 mod early;
 mod late;
+mod levels;
 mod non_ascii_idents;
 mod nonstandard_style;
 mod redundant_semicolon;
@@ -63,6 +64,7 @@ pub use early::check_ast_crate;
 pub use late::check_crate;
 
 pub fn provide(providers: &mut Providers<'_>) {
+    levels::provide(providers);
     *providers = Providers { lint_mod, ..*providers };
 }
 
