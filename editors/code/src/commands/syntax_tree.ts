@@ -85,8 +85,8 @@ class TextDocumentContentProvider
             range = editor.selection.isEmpty
                 ? undefined
                 : this.ctx.client.code2ProtocolConverter.asRange(
-                      editor.selection,
-                  );
+                    editor.selection,
+                );
         }
 
         const request: SyntaxTreeParams = {
