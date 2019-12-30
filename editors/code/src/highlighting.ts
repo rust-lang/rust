@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import * as seedrandom from 'seedrandom';
+import * as seedrandom_ from 'seedrandom';
+const seedrandom = seedrandom_; // https://github.com/jvandemo/generator-angular2-library/issues/221#issuecomment-355945207
 
 import * as scopes from './scopes';
 import * as scopesMapper from './scopes_mapper';
