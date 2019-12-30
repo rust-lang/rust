@@ -18,7 +18,8 @@
     "scripts": {
         "vscode:prepublish": "rollup -c",
         "package": "vsce package",
-        "watch": "tsc -watch -p ./"
+        "watch": "tsc -watch -p ./",
+        "fmt": "tsfmt -r"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
@@ -35,6 +36,7 @@
         "rollup": "^1.27.14",
         "tslib": "^1.10.0",
         "typescript": "^3.7.3",
+        "typescript-formatter": "^7.2.2",
         "vsce": "^1.71.0"
     },
     "activationEvents": [
