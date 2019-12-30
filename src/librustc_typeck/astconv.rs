@@ -68,6 +68,7 @@ pub trait AstConv<'tcx> {
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
 
+    /// Returns `true` if `_` is allowed in type signatures in the current context.
     fn allow_ty_infer(&self) -> bool;
 
     /// Returns the const to use when a const is omitted.
@@ -2770,8 +2771,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         // We proactively collect all the infered type params to emit a single error per fn def.
-        let mut visitor = PlaceholderHirTyCollector::new();
-        for ty in &decl.inputs {
+        let mut visitor = PlaceholderHirTyCollector::default();
+        for ty in decl.inputs {
             visitor.visit_ty(ty);
         }
         let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
@@ -2789,6 +2790,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi));
 
         if !self.allow_ty_infer() {
+            // We always collect the spans for placeholder types when evaluating `fn`s, but we
+            // only want to emit an error complaining about them if infer types (`_`) are not
+            // allowed. `allow_ty_infer` gates this behavior.
             crate::collect::placeholder_type_error(
                 tcx,
                 ident_span.unwrap_or(DUMMY_SP),

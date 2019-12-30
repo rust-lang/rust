@@ -102,6 +102,7 @@ pub struct ItemCtxt<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
+#[derive(Default)]
 crate struct PlaceholderHirTyCollector(crate Vec<Span>);
 
 impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
@@ -116,16 +117,13 @@ impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
     }
 }
 
-impl PlaceholderHirTyCollector {
-    pub fn new() -> PlaceholderHirTyCollector {
-        PlaceholderHirTyCollector(vec![])
-    }
-}
-
 struct CollectItemTypesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
+/// If there are any placeholder types (`_`), emit an error explaining that this is not allowed
+/// and suggest adding type parameters in the appropriate place, taking into consideration any and
+/// all already existing generic type parameters to avoid suggesting a name that is already in use.
 crate fn placeholder_type_error(
     tcx: TyCtxt<'tcx>,
     ident_span: Span,
@@ -136,6 +134,7 @@ crate fn placeholder_type_error(
     if placeholder_types.is_empty() {
         return;
     }
+    // This is the whitelist of possible parameter names that we might suggest.
     let possible_names = ["T", "K", "L", "A", "B", "C"];
     let used_names = generics
         .iter()
@@ -181,7 +180,7 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
         _ => return,
     };
 
-    let mut visitor = PlaceholderHirTyCollector::new();
+    let mut visitor = PlaceholderHirTyCollector::default();
     visitor.visit_item(item);
 
     placeholder_type_error(tcx, item.ident.span, generics, visitor.0, suggest);
@@ -1796,15 +1795,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
     match &ty.kind {
         hir::TyKind::Infer => true,
         hir::TyKind::Slice(ty) | hir::TyKind::Array(ty, _) => is_suggestable_infer_ty(ty),
-        hir::TyKind::Tup(tys)
-            if !tys.is_empty()
-                && tys.iter().any(|ty| match ty.kind {
-                    hir::TyKind::Infer => true,
-                    _ => false,
-                }) =>
-        {
-            true
-        }
+        hir::TyKind::Tup(tys) => tys.iter().any(|ty| is_suggestable_infer_ty(ty)),
         _ => false,
     }
 }
@@ -1838,7 +1829,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             match get_infer_ret_ty(&sig.decl.output) {
                 Some(ty) => {
                     let fn_sig = tcx.typeck_tables_of(def_id).liberated_fn_sigs()[hir_id];
-                    let mut visitor = PlaceholderHirTyCollector::new();
+                    let mut visitor = PlaceholderHirTyCollector::default();
                     visitor.visit_ty(ty);
                     let mut diag = bad_placeholder_type(tcx, visitor.0);
                     let ret_ty = fn_sig.output();
