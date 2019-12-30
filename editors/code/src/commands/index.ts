@@ -1,4 +1,4 @@
-import { Ctx, Cmd } from '../ctx'
+import { Ctx, Cmd } from '../ctx';
 
 import { analyzerStatus } from './analyzer_status';
 import { matchingBrace } from './matching_brace';
@@ -11,7 +11,9 @@ import * as runnables from './runnables';
 import * as syntaxTree from './syntaxTree';
 
 function collectGarbage(ctx: Ctx): Cmd {
-    return async () => { ctx.client.sendRequest<null>('rust-analyzer/collectGarbage', null) }
+    return async () => {
+        ctx.client.sendRequest<null>('rust-analyzer/collectGarbage', null);
+    };
 }
 
 export {
@@ -24,5 +26,5 @@ export {
     syntaxTree,
     onEnter,
     inlayHints,
-    collectGarbage
+    collectGarbage,
 };

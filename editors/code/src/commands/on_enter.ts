@@ -1,8 +1,5 @@
 import * as lc from 'vscode-languageclient';
-import {
-    applySourceChange,
-    SourceChange,
-} from '../source_change';
+import { applySourceChange, SourceChange } from '../source_change';
 import { Cmd, Ctx } from '../ctx';
 
 export function onEnter(ctx: Ctx): Cmd {
@@ -24,5 +21,5 @@ export function onEnter(ctx: Ctx): Cmd {
 
         await applySourceChange(ctx, change);
         return true;
-    }
+    };
 }

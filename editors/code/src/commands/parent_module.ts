@@ -28,5 +28,5 @@ export function parentModule(ctx: Ctx): Cmd {
         const e = await vscode.window.showTextDocument(doc);
         e.selection = new vscode.Selection(range.start, range.start);
         e.revealRange(range, vscode.TextEditorRevealType.InCenter);
-    }
+    };
 }

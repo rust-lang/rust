@@ -19,7 +19,7 @@
         "vscode:prepublish": "rollup -c",
         "package": "vsce package",
         "watch": "tsc -watch -p ./",
-        "prettier": "prettier --write **/*.ts"
+        "prettier": "prettier --write '**/*.ts'"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",

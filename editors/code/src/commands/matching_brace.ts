@@ -10,7 +10,9 @@ export function matchingBrace(ctx: Ctx): Cmd {
         }
         const request: FindMatchingBraceParams = {
             textDocument: { uri: editor.document.uri.toString() },
-            offsets: editor.selections.map(s => ctx.client.code2ProtocolConverter.asPosition(s.active)),
+            offsets: editor.selections.map(s =>
+                ctx.client.code2ProtocolConverter.asPosition(s.active),
+            ),
         };
         const response = await ctx.client.sendRequest<Position[]>(
             'rust-analyzer/findMatchingBrace',
@@ -24,7 +26,7 @@ export function matchingBrace(ctx: Ctx): Cmd {
             return new vscode.Selection(anchor, active);
         });
         editor.revealRange(editor.selection);
-    }
+    };
 }
 
 interface FindMatchingBraceParams {

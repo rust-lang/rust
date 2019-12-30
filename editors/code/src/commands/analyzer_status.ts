@@ -23,10 +23,7 @@ export function analyzerStatus(ctx: Ctx): Cmd {
 
     return async function handle() {
         if (poller == null) {
-            poller = setInterval(
-                () => tdcp.eventEmitter.fire(tdcp.uri),
-                1000,
-            );
+            poller = setInterval(() => tdcp.eventEmitter.fire(tdcp.uri), 1000);
         }
         const document = await vscode.workspace.openTextDocument(tdcp.uri);
         return vscode.window.showTextDocument(
@@ -39,13 +36,12 @@ export function analyzerStatus(ctx: Ctx): Cmd {
 
 class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
-
-    ctx: Ctx
+    ctx: Ctx;
     uri = vscode.Uri.parse('rust-analyzer-status://status');
     eventEmitter = new vscode.EventEmitter<vscode.Uri>();
 
     constructor(ctx: Ctx) {
-        this.ctx = ctx
+        this.ctx = ctx;
     }
 
     provideTextDocumentContent(

@@ -1,8 +1,6 @@
 import { Range, TextDocumentIdentifier } from 'vscode-languageclient';
 import { Ctx, Cmd } from '../ctx';
-import {
-    applySourceChange, SourceChange
-} from '../source_change';
+import { applySourceChange, SourceChange } from '../source_change';
 
 export function joinLines(ctx: Ctx): Cmd {
     return async () => {
@@ -18,7 +16,7 @@ export function joinLines(ctx: Ctx): Cmd {
             request,
         );
         await applySourceChange(ctx, change);
-    }
+    };
 }
 
 interface JoinLinesParams {
