@@ -18,8 +18,7 @@
     "scripts": {
         "vscode:prepublish": "rollup -c",
         "package": "vsce package",
-        "watch": "tsc -watch -p ./",
-        "prettier": "prettier --write '**/*.ts'"
+        "watch": "tsc -watch -p ./"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
@@ -33,16 +32,10 @@
         "@types/node": "^12.12.21",
         "@types/seedrandom": "^2.4.28",
         "@types/vscode": "^1.41.0",
-        "prettier": "^1.19.1",
         "rollup": "^1.27.14",
         "tslib": "^1.10.0",
         "typescript": "^3.7.3",
         "vsce": "^1.71.0"
-    },
-    "prettier": {
-        "singleQuote": true,
-        "tabWidth": 4,
-        "trailingComma": "all"
     },
     "activationEvents": [
         "onLanguage:rust",
