@@ -1,14 +1,13 @@
 import * as vscode from 'vscode';
-import { Range, TextDocumentChangeEvent, TextEditor } from 'vscode';
-import { TextDocumentIdentifier } from 'vscode-languageclient';
+import * as lc from 'vscode-languageclient';
 import { Server } from '../server';
 
 interface InlayHintsParams {
-    textDocument: TextDocumentIdentifier;
+    textDocument: lc.TextDocumentIdentifier;
 }
 
 interface InlayHint {
-    range: Range;
+    range: vscode.Range;
     kind: string;
     label: string;
 }
@@ -32,11 +31,10 @@ export class HintsUpdater {
     }
 
     public async refreshHintsForVisibleEditors(
-        cause?: TextDocumentChangeEvent,
+        cause?: vscode.TextDocumentChangeEvent,
     ): Promise<void> {
-        if (!this.displayHints) {
-            return;
-        }
+        if (!this.displayHints) return;
+
         if (
             cause !== undefined &&
             (cause.contentChanges.length === 0 ||
@@ -79,7 +77,7 @@ export class HintsUpdater {
     }
 
     private async updateDecorationsFromServer(
-        editor: TextEditor,
+        editor: vscode.TextEditor,
     ): Promise<void> {
         const newHints = await this.queryHints(editor.document.uri.toString());
         if (newHints !== null) {
