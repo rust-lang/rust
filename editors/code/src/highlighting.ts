@@ -1,10 +1,30 @@
-import seedrandom = require('seedrandom');
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+import * as seedrandom from 'seedrandom';
+
 import * as scopes from './scopes';
 import * as scopesMapper from './scopes_mapper';
 
 import { Server } from './server';
+import { Ctx } from './ctx';
+
+export function activateHighlighting(ctx: Ctx) {
+    vscode.window.onDidChangeActiveTextEditor(
+        async (editor: vscode.TextEditor | undefined) => {
+            if (!editor || editor.document.languageId !== 'rust') return;
+            if (!Server.config.highlightingOn) return;
+
+            const params: lc.TextDocumentIdentifier = {
+                uri: editor.document.uri.toString(),
+            };
+            const decorations = await ctx.client.sendRequest<Decoration[]>(
+                'rust-analyzer/decorationsRequest',
+                params,
+            );
+            Server.highlighter.setHighlights(editor, decorations);
+        },
+    );
+}
 
 export interface Decoration {
     range: lc.Range;

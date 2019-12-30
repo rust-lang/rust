@@ -4,10 +4,10 @@ import * as lc from 'vscode-languageclient';
 import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
 import { StatusDisplay } from './status_display';
-import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
 import { Ctx } from './ctx';
+import { activateHighlighting } from './highlighting';
 
 let ctx!: Ctx;
 
@@ -37,6 +37,8 @@ export async function activate(context: vscode.ExtensionContext) {
     );
     ctx.pushCleanup(watchStatus);
 
+    activateHighlighting(ctx);
+
     // Notifications are events triggered by the language server
     const allNotifications: [string, lc.GenericNotificationHandler][] = [
         [
@@ -48,11 +50,6 @@ export async function activate(context: vscode.ExtensionContext) {
             params => watchStatus.handleProgressNotification(params),
         ],
     ];
-
-    // The events below are plain old javascript events, triggered and handled by vscode
-    vscode.window.onDidChangeActiveTextEditor(
-        events.changeActiveTextEditor.makeHandler(),
-    );
 
     const startServer = () => Server.start(allNotifications);
     const reloadCommand = () => reloadServer(startServer);
