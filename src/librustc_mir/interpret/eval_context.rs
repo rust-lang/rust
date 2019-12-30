@@ -349,7 +349,7 @@ impl<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'infcx, 'mir, 'tcx, M>
         let substituted = value.subst(*self.tcx, self.frame().instance.substs);
         let erased_value = self.tcx.erase_regions(&substituted);
 
-        // TODO handle normalization failure and obligations
+        // FIXME(skinny121) Can this fail or have obligations, as it has already been type checked?
         let normalized_value = self
             .infcx
             .at(&ObligationCause::dummy(), self.param_env)
