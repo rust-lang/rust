@@ -207,30 +207,29 @@ pub fn features(
     edition: Edition,
     allow_features: &Option<Vec<String>>,
 ) -> (ast::Crate, Features) {
-    let features;
-    {
-        let mut strip_unconfigured = StripUnconfigured { sess, features: None };
+    let mut strip_unconfigured = StripUnconfigured { sess, features: None };
 
-        let unconfigured_attrs = krate.attrs.clone();
-        let err_count = sess.span_diagnostic.err_count();
-        if let Some(attrs) = strip_unconfigured.configure(krate.attrs) {
-            krate.attrs = attrs;
-        } else {
-            // the entire crate is unconfigured
+    let unconfigured_attrs = krate.attrs.clone();
+    let diag = &sess.span_diagnostic;
+    let err_count = diag.err_count();
+    let features = match strip_unconfigured.configure(krate.attrs) {
+        None => {
+            // The entire crate is unconfigured.
             krate.attrs = Vec::new();
             krate.module.items = Vec::new();
-            return (krate, Features::default());
+            Features::default()
         }
-
-        features = get_features(&sess.span_diagnostic, &krate.attrs, edition, allow_features);
-
-        // Avoid reconfiguring malformed `cfg_attr`s
-        if err_count == sess.span_diagnostic.err_count() {
-            strip_unconfigured.features = Some(&features);
-            strip_unconfigured.configure(unconfigured_attrs);
+        Some(attrs) => {
+            krate.attrs = attrs;
+            let features = get_features(diag, &krate.attrs, edition, allow_features);
+            if err_count == diag.err_count() {
+                // Avoid reconfiguring malformed `cfg_attr`s.
+                strip_unconfigured.features = Some(&features);
+                strip_unconfigured.configure(unconfigured_attrs);
+            }
+            features
         }
-    }
-
+    };
     (krate, features)
 }
 
