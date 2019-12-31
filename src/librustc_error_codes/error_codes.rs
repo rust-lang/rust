@@ -238,6 +238,7 @@ E0463: include_str!("./error_codes/E0463.md"),
 E0466: include_str!("./error_codes/E0466.md"),
 E0468: include_str!("./error_codes/E0468.md"),
 E0469: include_str!("./error_codes/E0469.md"),
+E0477: include_str!("./error_codes/E0477.md"),
 E0478: include_str!("./error_codes/E0478.md"),
 E0491: include_str!("./error_codes/E0491.md"),
 E0492: include_str!("./error_codes/E0492.md"),
@@ -531,7 +532,6 @@ E0745: include_str!("./error_codes/E0745.md"),
     E0474, // captured variable `..` does not outlive the enclosing closure
     E0475, // index of slice outside its lifetime
     E0476, // lifetime of the source pointer does not outlive lifetime bound...
-    E0477, // the type `..` does not fulfill the required lifetime...
     E0479, // the type `..` (provided as the value of a type parameter) is...
     E0480, // lifetime of method receiver does not outlive the method call
     E0481, // lifetime of function argument does not outlive the function call
