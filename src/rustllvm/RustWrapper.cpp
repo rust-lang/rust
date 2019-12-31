@@ -496,9 +496,11 @@ static DINode::DIFlags fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagAppleBlock)) {
     Result |= DINode::DIFlags::FlagAppleBlock;
   }
+#if LLVM_VERSION_LT(10, 0)
   if (isSet(Flags & LLVMRustDIFlags::FlagBlockByrefStruct)) {
     Result |= DINode::DIFlags::FlagBlockByrefStruct;
   }
+#endif
   if (isSet(Flags & LLVMRustDIFlags::FlagVirtual)) {
     Result |= DINode::DIFlags::FlagVirtual;
   }
