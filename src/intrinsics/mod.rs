@@ -145,7 +145,6 @@ pub fn lane_type_and_count<'tcx>(
 
 fn simd_for_each_lane<'tcx, B: Backend>(
     fx: &mut FunctionCx<'_, 'tcx, B>,
-    intrinsic: &str,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
     f: impl Fn(
@@ -173,7 +172,6 @@ fn simd_for_each_lane<'tcx, B: Backend>(
 
 fn simd_pair_for_each_lane<'tcx, B: Backend>(
     fx: &mut FunctionCx<'_, 'tcx, B>,
-    intrinsic: &str,
     x: CValue<'tcx>,
     y: CValue<'tcx>,
     ret: CPlace<'tcx>,
@@ -231,10 +229,9 @@ fn bool_to_zero_or_max_uint<'tcx>(
 }
 
 macro simd_cmp {
-    ($fx:expr, $intrinsic:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
+    ($fx:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
         simd_pair_for_each_lane(
             $fx,
-            $intrinsic,
             $x,
             $y,
             $ret,
@@ -247,10 +244,9 @@ macro simd_cmp {
             },
         );
     },
-    ($fx:expr, $intrinsic:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
+    ($fx:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
         simd_pair_for_each_lane(
             $fx,
-            $intrinsic,
             $x,
             $y,
             $ret,

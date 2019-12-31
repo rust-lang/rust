@@ -21,7 +21,7 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_cast, (c a) {
-            simd_for_each_lane(fx, intrinsic, a, ret, |fx, lane_layout, ret_lane_layout, lane| {
+            simd_for_each_lane(fx, a, ret, |fx, lane_layout, ret_lane_layout, lane| {
                 let ret_lane_ty = fx.clif_type(ret_lane_layout.ty).unwrap();
 
                 let from_signed = type_sign(lane_layout.ty);
@@ -33,22 +33,22 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_eq, (c x, c y) {
-            simd_cmp!(fx, intrinsic, Equal(x, y) -> ret);
+            simd_cmp!(fx, Equal(x, y) -> ret);
         };
         simd_ne, (c x, c y) {
-            simd_cmp!(fx, intrinsic, NotEqual(x, y) -> ret);
+            simd_cmp!(fx, NotEqual(x, y) -> ret);
         };
         simd_lt, (c x, c y) {
-            simd_cmp!(fx, intrinsic, UnsignedLessThan|SignedLessThan(x, y) -> ret);
+            simd_cmp!(fx, UnsignedLessThan|SignedLessThan(x, y) -> ret);
         };
         simd_le, (c x, c y) {
-            simd_cmp!(fx, intrinsic, UnsignedLessThanOrEqual|SignedLessThanOrEqual(x, y) -> ret);
+            simd_cmp!(fx, UnsignedLessThanOrEqual|SignedLessThanOrEqual(x, y) -> ret);
         };
         simd_gt, (c x, c y) {
-            simd_cmp!(fx, intrinsic, UnsignedGreaterThan|SignedGreaterThan(x, y) -> ret);
+            simd_cmp!(fx, UnsignedGreaterThan|SignedGreaterThan(x, y) -> ret);
         };
         simd_ge, (c x, c y) {
-            simd_cmp!(fx, intrinsic, UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual(x, y) -> ret);
+            simd_cmp!(fx, UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual(x, y) -> ret);
         };
 
         // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U

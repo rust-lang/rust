@@ -479,7 +479,7 @@ impl<'tcx> CPlace<'tcx> {
             CValueInner::ByVal(val) => {
                 to_ptr.store(fx, val, MemFlags::new());
             }
-            CValueInner::ByValPair(value, extra) => {
+            CValueInner::ByValPair(_, _) => {
                 bug!(
                     "Non ScalarPair abi {:?} for ByValPair CValue",
                     dst_layout.abi
