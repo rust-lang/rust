@@ -273,7 +273,7 @@ impl Options {
             error_format,
             None,
             debugging_options.treat_err_as_bug,
-            debugging_options.ui_testing,
+            debugging_options.ui_testing(),
         );
 
         // check for deprecated options

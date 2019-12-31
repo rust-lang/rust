@@ -869,7 +869,7 @@ fn default_emitter(
                     short,
                     external_macro_backtrace,
                 );
-                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing()))
             } else {
                 let emitter = match dst {
                     None => EmitterWriter::stderr(
@@ -890,7 +890,7 @@ fn default_emitter(
                         external_macro_backtrace,
                     ),
                 };
-                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing()))
             }
         }
         (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
@@ -901,7 +901,7 @@ fn default_emitter(
                 json_rendered,
                 external_macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing),
+            .ui_testing(sopts.debugging_opts.ui_testing()),
         ),
         (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
             JsonEmitter::new(
@@ -912,7 +912,7 @@ fn default_emitter(
                 json_rendered,
                 external_macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing),
+            .ui_testing(sopts.debugging_opts.ui_testing()),
         ),
     }
 }

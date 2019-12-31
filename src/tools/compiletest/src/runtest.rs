@@ -1863,17 +1863,13 @@ impl<'test> TestCx<'test> {
                 if self.props.error_patterns.is_empty() {
                     rustc.args(&["--error-format", "json"]);
                 }
-                if !self.props.disable_ui_testing_normalization {
-                    rustc.arg("-Zui-testing");
-                }
+                rustc.arg("-Zui-testing");
             }
             Ui => {
                 if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
                     rustc.args(&["--error-format", "json"]);
                 }
-                if !self.props.disable_ui_testing_normalization {
-                    rustc.arg("-Zui-testing");
-                }
+                rustc.arg("-Zui-testing");
             }
             MirOpt => {
                 rustc.args(&[
