@@ -269,7 +269,7 @@ fn trans_stmt<'tcx>(
 
     fx.set_debug_loc(stmt.source_info);
 
-    #[cfg(false_debug_assertions)]
+    #[cfg(debug_assertions)]
     match &stmt.kind {
         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {

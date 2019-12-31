@@ -394,10 +394,6 @@ pub trait FnMut<Args>: FnOnce<Args> {
 
 #[lang = "panic"]
 pub fn panic(&(_msg, _file, _line, _col): &(&'static str, &'static str, u32, u32)) -> ! {
-    panic_inner(&_msg);
-}
-
-pub fn panic_inner(_msg: &&str) -> ! {
     unsafe {
         libc::puts("Panicking\0" as *const str as *const u8);
         intrinsics::abort();
