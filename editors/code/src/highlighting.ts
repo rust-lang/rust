@@ -47,7 +47,7 @@ export function activateHighlighting(ctx: Ctx) {
             const params: lc.TextDocumentIdentifier = {
                 uri: editor.document.uri.toString(),
             };
-            const decorations = await ctx.client.sendRequest<Decoration[]>(
+            const decorations = await ctx.sendRequestWithRetry<Decoration[]>(
                 'rust-analyzer/decorationsRequest',
                 params,
             );
@@ -62,7 +62,7 @@ interface PublishDecorationsParams {
     decorations: Decoration[];
 }
 
-export interface Decoration {
+interface Decoration {
     range: lc.Range;
     tag: string;
     bindingHash?: string;
@@ -81,115 +81,16 @@ function fancify(seed: string, shade: 'light' | 'dark') {
     return `hsl(${h},${s}%,${l}%)`;
 }
 
-function createDecorationFromTextmate(
-    themeStyle: scopes.TextMateRuleSettings,
-): vscode.TextEditorDecorationType {
-    const decorationOptions: vscode.DecorationRenderOptions = {};
-    decorationOptions.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen;
-
-    if (themeStyle.foreground) {
-        decorationOptions.color = themeStyle.foreground;
-    }
-
-    if (themeStyle.background) {
-        decorationOptions.backgroundColor = themeStyle.background;
-    }
-
-    if (themeStyle.fontStyle) {
-        const parts: string[] = themeStyle.fontStyle.split(' ');
-        parts.forEach(part => {
-            switch (part) {
-                case 'italic':
-                    decorationOptions.fontStyle = 'italic';
-                    break;
-                case 'bold':
-                    decorationOptions.fontWeight = 'bold';
-                    break;
-                case 'underline':
-                    decorationOptions.textDecoration = 'underline';
-                    break;
-                default:
-                    break;
-            }
-        });
-    }
-    return vscode.window.createTextEditorDecorationType(decorationOptions);
-}
-
 class Highlighter {
     private ctx: Ctx;
-
-    constructor(ctx: Ctx) {
-        this.ctx = ctx;
-    }
-
-    private static initDecorations(): Map<
-        string,
-        vscode.TextEditorDecorationType
-    > {
-        const decoration = (
-            tag: string,
-            textDecoration?: string,
-        ): [string, vscode.TextEditorDecorationType] => {
-            const rule = scopesMapper.toRule(tag, scopes.find);
-
-            if (rule) {
-                const decor = createDecorationFromTextmate(rule);
-                return [tag, decor];
-            } else {
-                const fallBackTag = 'ralsp.' + tag;
-                // console.log(' ');
-                // console.log('Missing theme for: <"' + tag + '"> for following mapped scopes:');
-                // console.log(scopesMapper.find(tag));
-                // console.log('Falling back to values defined in: ' + fallBackTag);
-                // console.log(' ');
-                const color = new vscode.ThemeColor(fallBackTag);
-                const decor = vscode.window.createTextEditorDecorationType({
-                    color,
-                    textDecoration,
-                });
-                return [tag, decor];
-            }
-        };
-
-        const decorations: Iterable<[
-            string,
-            vscode.TextEditorDecorationType,
-        ]> = [
-                decoration('comment'),
-                decoration('string'),
-                decoration('keyword'),
-                decoration('keyword.control'),
-                decoration('keyword.unsafe'),
-                decoration('function'),
-                decoration('parameter'),
-                decoration('constant'),
-                decoration('type.builtin'),
-                decoration('type.generic'),
-                decoration('type.lifetime'),
-                decoration('type.param'),
-                decoration('type.self'),
-                decoration('type'),
-                decoration('text'),
-                decoration('attribute'),
-                decoration('literal'),
-                decoration('literal.numeric'),
-                decoration('literal.char'),
-                decoration('literal.byte'),
-                decoration('macro'),
-                decoration('variable'),
-                decoration('variable.mut', 'underline'),
-                decoration('field'),
-                decoration('module'),
-            ];
-
-        return new Map<string, vscode.TextEditorDecorationType>(decorations);
-    }
-
     private decorations: Map<
         string,
         vscode.TextEditorDecorationType
     > | null = null;
+
+    constructor(ctx: Ctx) {
+        this.ctx = ctx;
+    }
 
     public removeHighlights() {
         if (this.decorations == null) {
@@ -210,7 +111,7 @@ class Highlighter {
         // Note: decoration objects need to be kept around so we can dispose them
         // if the user disables syntax highlighting
         if (this.decorations == null) {
-            this.decorations = Highlighter.initDecorations();
+            this.decorations = initDecorations();
         }
 
         const byTag: Map<string, vscode.Range[]> = new Map();
@@ -265,4 +166,102 @@ class Highlighter {
             editor.setDecorations(dec, ranges);
         }
     }
+}
+
+function initDecorations(): Map<
+    string,
+    vscode.TextEditorDecorationType
+> {
+    const decoration = (
+        tag: string,
+        textDecoration?: string,
+    ): [string, vscode.TextEditorDecorationType] => {
+        const rule = scopesMapper.toRule(tag, scopes.find);
+
+        if (rule) {
+            const decor = createDecorationFromTextmate(rule);
+            return [tag, decor];
+        } else {
+            const fallBackTag = 'ralsp.' + tag;
+            // console.log(' ');
+            // console.log('Missing theme for: <"' + tag + '"> for following mapped scopes:');
+            // console.log(scopesMapper.find(tag));
+            // console.log('Falling back to values defined in: ' + fallBackTag);
+            // console.log(' ');
+            const color = new vscode.ThemeColor(fallBackTag);
+            const decor = vscode.window.createTextEditorDecorationType({
+                color,
+                textDecoration,
+            });
+            return [tag, decor];
+        }
+    };
+
+    const decorations: Iterable<[
+        string,
+        vscode.TextEditorDecorationType,
+    ]> = [
+            decoration('comment'),
+            decoration('string'),
+            decoration('keyword'),
+            decoration('keyword.control'),
+            decoration('keyword.unsafe'),
+            decoration('function'),
+            decoration('parameter'),
+            decoration('constant'),
+            decoration('type.builtin'),
+            decoration('type.generic'),
+            decoration('type.lifetime'),
+            decoration('type.param'),
+            decoration('type.self'),
+            decoration('type'),
+            decoration('text'),
+            decoration('attribute'),
+            decoration('literal'),
+            decoration('literal.numeric'),
+            decoration('literal.char'),
+            decoration('literal.byte'),
+            decoration('macro'),
+            decoration('variable'),
+            decoration('variable.mut', 'underline'),
+            decoration('field'),
+            decoration('module'),
+        ];
+
+    return new Map<string, vscode.TextEditorDecorationType>(decorations);
+}
+
+function createDecorationFromTextmate(
+    themeStyle: scopes.TextMateRuleSettings,
+): vscode.TextEditorDecorationType {
+    const decorationOptions: vscode.DecorationRenderOptions = {};
+    decorationOptions.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen;
+
+    if (themeStyle.foreground) {
+        decorationOptions.color = themeStyle.foreground;
+    }
+
+    if (themeStyle.background) {
+        decorationOptions.backgroundColor = themeStyle.background;
+    }
+
+    if (themeStyle.fontStyle) {
+        const parts: string[] = themeStyle.fontStyle.split(' ');
+        parts.forEach(part => {
+            switch (part) {
+                case 'italic':
+                    decorationOptions.fontStyle = 'italic';
+                    break;
+                case 'bold':
+                    decorationOptions.fontWeight = 'bold';
+                    break;
+                case 'underline':
+                    decorationOptions.textDecoration = 'underline';
+                    break;
+                default:
+                    break;
+            }
+        });
+    }
+    return vscode.window.createTextEditorDecorationType(decorationOptions);
 }

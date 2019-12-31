@@ -65,7 +65,7 @@ export class Ctx {
     async sendRequestWithRetry<R>(
         method: string,
         param: any,
-        token: vscode.CancellationToken,
+        token?: vscode.CancellationToken,
     ): Promise<R> {
         await this.client.onReady();
         for (const delay of [2, 4, 6, 8, 10, null]) {
