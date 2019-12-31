@@ -14,21 +14,24 @@ impl Bindings {
         self.inner.contains_key(name)
     }
 
-    fn get(&self, name: &str, nesting: &[usize]) -> Result<&Fragment, ExpandError> {
+    fn get(&self, name: &str, nesting: &mut [NestingState]) -> Result<&Fragment, ExpandError> {
         let mut b = self.inner.get(name).ok_or_else(|| {
             ExpandError::BindingError(format!("could not find binding `{}`", name))
         })?;
-        for &idx in nesting.iter() {
+        for nesting_state in nesting.iter_mut() {
+            nesting_state.hit = true;
             b = match b {
                 Binding::Fragment(_) => break,
-                Binding::Nested(bs) => bs.get(idx).ok_or_else(|| {
+                Binding::Nested(bs) => bs.get(nesting_state.idx).ok_or_else(|| {
+                    nesting_state.at_end = true;
                     ExpandError::BindingError(format!("could not find nested binding `{}`", name))
                 })?,
                 Binding::Empty => {
+                    nesting_state.at_end = true;
                     return Err(ExpandError::BindingError(format!(
                         "could not find empty binding `{}`",
                         name
-                    )))
+                    )));
                 }
             };
         }
@@ -51,15 +54,25 @@ pub(super) fn transcribe(
     bindings: &Bindings,
 ) -> Result<tt::Subtree, ExpandError> {
     assert!(template.delimiter == None);
-    let mut ctx = ExpandCtx { bindings: &bindings, nesting: Vec::new(), var_expanded: false };
+    let mut ctx = ExpandCtx { bindings: &bindings, nesting: Vec::new() };
     expand_subtree(&mut ctx, template)
+}
+
+#[derive(Debug)]
+struct NestingState {
+    idx: usize,
+    /// `hit` is currently necessary to tell `expand_repeat` if it should stop
+    /// because there is no variable in use by the current repetition
+    hit: bool,
+    /// `at_end` is currently necessary to tell `expand_repeat` if it should stop
+    /// because there is no more value avaible for the current repetition
+    at_end: bool,
 }
 
 #[derive(Debug)]
 struct ExpandCtx<'a> {
     bindings: &'a Bindings,
-    nesting: Vec<usize>,
-    var_expanded: bool,
+    nesting: Vec<NestingState>,
 }
 
 fn expand_subtree(ctx: &mut ExpandCtx, template: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
@@ -121,9 +134,7 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> Result<Fragment, ExpandError>
         .into();
         Fragment::Tokens(tt)
     } else {
-        let fragment = ctx.bindings.get(&v, &ctx.nesting)?.clone();
-        ctx.var_expanded = true;
-        fragment
+        ctx.bindings.get(&v, &mut ctx.nesting)?.clone()
     };
     Ok(res)
 }
@@ -135,37 +146,24 @@ fn expand_repeat(
     separator: Option<Separator>,
 ) -> Result<Fragment, ExpandError> {
     let mut buf: Vec<tt::TokenTree> = Vec::new();
-    ctx.nesting.push(0);
+    ctx.nesting.push(NestingState { idx: 0, at_end: false, hit: false });
     // Dirty hack to make macro-expansion terminate.
     // This should be replaced by a propper macro-by-example implementation
-    let mut limit = 65536;
+    let limit = 65536;
     let mut has_seps = 0;
     let mut counter = 0;
 
-    // We store the old var expanded value, and restore it later
-    // It is because before this `$repeat`,
-    // it is possible some variables already expanad in the same subtree
-    //
-    // `some_var_expanded` keep check if the deeper subtree has expanded variables
-    let mut some_var_expanded = false;
-    let old_var_expanded = ctx.var_expanded;
-    ctx.var_expanded = false;
-
-    while let Ok(mut t) = expand_subtree(ctx, template) {
-        t.delimiter = None;
-        // if no var expanded in the child, we count it as a fail
-        if !ctx.var_expanded {
+    loop {
+        let res = expand_subtree(ctx, template);
+        let nesting_state = ctx.nesting.last_mut().unwrap();
+        if nesting_state.at_end || !nesting_state.hit {
             break;
         }
-
-        // Reset `ctx.var_expandeded` to see if there is other expanded variable
-        // in the next matching
-        some_var_expanded = true;
-        ctx.var_expanded = false;
+        nesting_state.idx += 1;
+        nesting_state.hit = false;
 
         counter += 1;
-        limit -= 1;
-        if limit == 0 {
+        if counter == limit {
             log::warn!(
                 "expand_tt excced in repeat pattern exceed limit => {:#?}\n{:#?}",
                 template,
@@ -174,8 +172,11 @@ fn expand_repeat(
             break;
         }
 
-        let idx = ctx.nesting.pop().unwrap();
-        ctx.nesting.push(idx + 1);
+        let mut t = match res {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        t.delimiter = None;
         push_subtree(&mut buf, t);
 
         if let Some(ref sep) = separator {
@@ -202,9 +203,6 @@ fn expand_repeat(
             break;
         }
     }
-
-    // Restore the `var_expanded` by combining old one and the new one
-    ctx.var_expanded = some_var_expanded || old_var_expanded;
 
     ctx.nesting.pop().unwrap();
     for _ in 0..has_seps {
