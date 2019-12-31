@@ -451,28 +451,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => unreachable!(),
                     };
                     if !item.derive_allowed() {
-                        let attr = attr::find_by_name(item.attrs(), sym::derive)
-                            .expect("`derive` attribute should exist");
-                        let span = attr.span;
-                        let mut err = self.cx.struct_span_err(
-                            span,
-                            "`derive` may only be applied to structs, enums and unions",
-                        );
-                        if let ast::AttrStyle::Inner = attr.style {
-                            let trait_list = derives
-                                .iter()
-                                .map(|t| pprust::path_to_string(t))
-                                .collect::<Vec<_>>();
-                            let suggestion = format!("#[derive({})]", trait_list.join(", "));
-                            err.span_suggestion(
-                                span,
-                                "try an outer attribute",
-                                suggestion,
-                                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        err.emit();
+                        self.error_derive_forbidden_on_non_adt(&derives, &item);
                     }
 
                     let mut item = self.fully_configure(item);
@@ -519,6 +498,27 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
         fragment_with_placeholders.mut_visit_with(&mut placeholder_expander);
         fragment_with_placeholders
+    }
+
+    fn error_derive_forbidden_on_non_adt(&self, derives: &[Path], item: &Annotatable) {
+        let attr =
+            attr::find_by_name(item.attrs(), sym::derive).expect("`derive` attribute should exist");
+        let span = attr.span;
+        let mut err = self
+            .cx
+            .struct_span_err(span, "`derive` may only be applied to structs, enums and unions");
+        if let ast::AttrStyle::Inner = attr.style {
+            let trait_list = derives.iter().map(|t| pprust::path_to_string(t)).collect::<Vec<_>>();
+            let suggestion = format!("#[derive({})]", trait_list.join(", "));
+            err.span_suggestion(
+                span,
+                "try an outer attribute",
+                suggestion,
+                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
+                Applicability::MaybeIncorrect,
+            );
+        }
+        err.emit();
     }
 
     fn resolve_imports(&mut self) {
