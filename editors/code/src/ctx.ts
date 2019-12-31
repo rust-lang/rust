@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import { Config } from './config';
-import { createClient } from './client'
+import { createClient } from './client';
 
 export class Ctx {
     readonly config: Config;
@@ -10,28 +10,28 @@ export class Ctx {
     // deal with it.
     //
     // Ideally, this should be replaced with async getter though.
-    client: lc.LanguageClient | null = null
+    client: lc.LanguageClient | null = null;
     private extCtx: vscode.ExtensionContext;
     private onDidRestartHooks: Array<(client: lc.LanguageClient) => void> = [];
 
     constructor(extCtx: vscode.ExtensionContext) {
-        this.config = new Config(extCtx)
+        this.config = new Config(extCtx);
         this.extCtx = extCtx;
     }
 
     async restartServer() {
         let old = this.client;
         if (old) {
-            await old.stop()
+            await old.stop();
         }
         this.client = null;
         const client = createClient(this.config);
         this.pushCleanup(client.start());
         await client.onReady();
 
-        this.client = client
+        this.client = client;
         for (const hook of this.onDidRestartHooks) {
-            hook(client)
+            hook(client);
         }
     }
 
@@ -80,7 +80,7 @@ export class Ctx {
     }
 
     onDidRestart(hook: (client: lc.LanguageClient) => void) {
-        this.onDidRestartHooks.push(hook)
+        this.onDidRestartHooks.push(hook);
     }
 }
 

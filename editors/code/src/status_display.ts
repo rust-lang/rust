@@ -9,7 +9,7 @@ export function activateStatusDisplay(ctx: Ctx) {
     ctx.pushCleanup(statusDisplay);
     ctx.onDidRestart(client => {
         client.onNotification('$/progress', params => statusDisplay.handleProgressNotification(params));
-    })
+    });
 }
 
 class StatusDisplay implements vscode.Disposable {

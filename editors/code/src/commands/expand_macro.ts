@@ -52,7 +52,7 @@ class TextDocumentContentProvider
 
     async provideTextDocumentContent(_uri: vscode.Uri): Promise<string> {
         const editor = vscode.window.activeTextEditor;
-        const client = this.ctx.client
+        const client = this.ctx.client;
         if (!editor || !client) return '';
 
         const position = editor.selection.active;

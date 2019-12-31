@@ -11,7 +11,7 @@ export interface SourceChange {
 
 export async function applySourceChange(ctx: Ctx, change: SourceChange) {
     const client = ctx.client;
-    if (!client) return
+    if (!client) return;
 
     const wsEdit = client.protocol2CodeConverter.asWorkspaceEdit(
         change.workspaceEdit,

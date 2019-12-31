@@ -49,7 +49,7 @@ class TextDocumentContentProvider
         _uri: vscode.Uri,
     ): vscode.ProviderResult<string> {
         const editor = vscode.window.activeTextEditor;
-        const client = this.ctx.client
+        const client = this.ctx.client;
         if (!editor || !client) return '';
 
         return client.sendRequest<string>(

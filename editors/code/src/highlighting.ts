@@ -30,7 +30,7 @@ export function activateHighlighting(ctx: Ctx) {
                 highlighter.setHighlights(targetEditor, params.decorations);
             },
         );
-    })
+    });
 
     vscode.workspace.onDidChangeConfiguration(
         _ => highlighter.removeHighlights(),
@@ -173,13 +173,13 @@ class Highlighter {
 
 function initDecorations(): Map<string, vscode.TextEditorDecorationType> {
     const theme = ColorTheme.load();
-    const res = new Map()
+    const res = new Map();
     TAG_TO_SCOPES.forEach((scopes, tag) => {
-        if (!scopes) throw `unmapped tag: ${tag}`
-        let rule = theme.lookup(scopes)
+        if (!scopes) throw `unmapped tag: ${tag}`;
+        let rule = theme.lookup(scopes);
         const decor = createDecorationFromTextmate(rule);
-        res.set(tag, decor)
-    })
+        res.set(tag, decor);
+    });
     return res;
 }
 

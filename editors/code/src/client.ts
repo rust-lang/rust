@@ -79,7 +79,7 @@ export function createClient(config: Config): lc.LanguageClient {
             }
         },
     };
-    res.registerProposedFeatures()
+    res.registerProposedFeatures();
     return res;
 }
 function expandPathResolving(path: string) {
