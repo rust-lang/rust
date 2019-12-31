@@ -9,9 +9,9 @@ export interface TextMateRule {
 }
 
 export interface TextMateRuleSettings {
-    foreground: string | undefined;
-    background: string | undefined;
-    fontStyle: string | undefined;
+    foreground?: string;
+    background?: string;
+    fontStyle?: string;
 }
 
 // Current theme colors
