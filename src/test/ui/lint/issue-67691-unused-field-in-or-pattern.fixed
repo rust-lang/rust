@@ -8,6 +8,11 @@ pub enum MyEnum {
     B { i: i32, j: i32 },
 }
 
+pub enum MixedEnum {
+    A { i: i32 },
+    B(i32),
+}
+
 pub fn no_ref(x: MyEnum) {
     use MyEnum::*;
 
@@ -52,10 +57,29 @@ pub fn inner_with_ref(x: Option<MyEnum>) {
     }
 }
 
+pub fn mixed_no_ref(x: MixedEnum) {
+    match x {
+        MixedEnum::A { i: _ } | MixedEnum::B(_i) => {
+            println!("match");
+        }
+    }
+}
+
+pub fn mixed_with_ref(x: MixedEnum) {
+    match x {
+        MixedEnum::A { i: _ } | MixedEnum::B(_i) => {
+            println!("match");
+        }
+    }
+}
+
 pub fn main() {
     no_ref(MyEnum::A { i: 1, j: 2 });
     with_ref(MyEnum::A { i: 1, j: 2 });
 
     inner_no_ref(Some(MyEnum::A { i: 1, j: 2 }));
     inner_with_ref(Some(MyEnum::A { i: 1, j: 2 }));
+
+    mixed_no_ref(MixedEnum::B(5));
+    mixed_with_ref(MixedEnum::B(5));
 }
