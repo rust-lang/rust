@@ -2,6 +2,7 @@
 
 use rustc::session::Session;
 use rustc::ty::{Ty, TyCtxt};
+use rustc_errors::struct_span_err;
 use rustc_span::Span;
 
 use crate::base;
@@ -196,5 +197,5 @@ pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 pub fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
-    span_err!(a, b, E0511, "{}", c);
+    struct_span_err!(a, b, E0511, "{}", c).emit();
 }

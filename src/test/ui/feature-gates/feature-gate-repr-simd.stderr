@@ -23,6 +23,8 @@ LL | #[repr(C)]
    |        ^
 LL | #[repr(simd)]
    |        ^^^^
+   |
+   = note: `#[warn(conflicting_repr_hints)]` on by default
 
 error: aborting due to 2 previous errors
 

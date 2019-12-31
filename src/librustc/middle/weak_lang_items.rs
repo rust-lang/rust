@@ -8,6 +8,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::intravisit;
 use crate::hir::intravisit::{NestedVisitorMap, Visitor};
 use crate::ty::TyCtxt;
+use errors::struct_span_err;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;
@@ -124,9 +125,12 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                 self.items.missing.push(lang_items::$item);
             }
         } else)* {
-            span_err!(self.tcx.sess, span, E0264,
-                      "unknown external lang item: `{}`",
-                      name);
+            struct_span_err!(
+                self.tcx.sess, span, E0264,
+                "unknown external lang item: `{}`",
+                name
+            )
+            .emit();
         }
     }
 }

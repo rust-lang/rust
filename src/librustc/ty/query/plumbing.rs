@@ -9,11 +9,7 @@ use crate::ty::query::Query;
 use crate::ty::tls;
 use crate::ty::{self, TyCtxt};
 
-use errors::Diagnostic;
-use errors::DiagnosticBuilder;
-use errors::FatalError;
-use errors::Handler;
-use errors::Level;
+use errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler, Level};
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::cold_path;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};

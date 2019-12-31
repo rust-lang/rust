@@ -18,6 +18,7 @@ use crate::util::nodemap::FxHashMap;
 
 use crate::hir;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
+use errors::struct_span_err;
 use rustc_macros::HashStable;
 use rustc_span::Span;
 use syntax::ast;
@@ -184,7 +185,8 @@ impl LanguageItemCollector<'tcx> {
                         span,
                         E0152,
                         "duplicate lang item found: `{}`.",
-                        name),
+                        name
+                    ),
                     None => {
                         match self.tcx.extern_crate(item_def_id) {
                             Some(ExternCrate {dependency_of, ..}) => {
@@ -204,7 +206,7 @@ impl LanguageItemCollector<'tcx> {
                     },
                 };
                 if let Some(span) = self.tcx.hir().span_if_local(original_def_id) {
-                    span_note!(&mut err, span, "first defined here.");
+                    err.span_note(span, "first defined here.");
                 } else {
                     match self.tcx.extern_crate(original_def_id) {
                         Some(ExternCrate {dependency_of, ..}) => {

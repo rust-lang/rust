@@ -3,9 +3,6 @@
 #![feature(nll)]
 #![recursion_limit = "256"]
 
-#[macro_use]
-extern crate syntax;
-
 use rustc::bug;
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -20,6 +17,7 @@ use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc::util::nodemap::HirIdSet;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::struct_span_err;
 use rustc_span::hygiene::Transparency;
 use rustc_span::Span;
 use syntax::ast::Ident;

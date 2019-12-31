@@ -71,8 +71,6 @@ This API is completely unstable and subject to change.
 
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate syntax;
 
 #[macro_use]
 extern crate rustc;
@@ -93,6 +91,7 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
+use errors::struct_span_err;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::{self, Node};
 use rustc::infer::InferOk;

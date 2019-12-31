@@ -32,9 +32,9 @@ use crate::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use crate::util::common::time;
 use crate::util::nodemap::FxHashMap;
 
-use errors::DiagnosticBuilder;
+use errors::{struct_span_err, DiagnosticBuilder};
 use rustc_data_structures::sync::{self, join, par_iter, ParallelIterator};
-use rustc_span::{symbol::Symbol, MultiSpan, Span};
+use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use std::slice;
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -295,7 +295,8 @@ impl LintStore {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
             CheckLintNameResult::NoLint(suggestion) => {
-                let mut err = struct_err!(sess, E0602, "unknown lint: `{}`", lint_name);
+                let mut err =
+                    struct_span_err!(sess, DUMMY_SP, E0602, "unknown lint: `{}`", lint_name);
 
                 if let Some(suggestion) = suggestion {
                     err.help(&format!("did you mean: `{}`", suggestion));

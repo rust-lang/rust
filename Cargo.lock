@@ -3774,6 +3774,7 @@ version = "0.0.0"
 dependencies = [
  "rustc",
  "rustc_error_codes",
+ "rustc_errors",
  "rustc_metadata",
  "rustc_span",
  "syntax",
@@ -3787,6 +3788,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_error_codes",
+ "rustc_errors",
  "rustc_span",
  "rustc_typeck",
  "syntax",

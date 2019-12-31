@@ -1,6 +1,6 @@
 use std::cmp::Reverse;
 
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use log::debug;
 use rustc::bug;
 use rustc::hir::def::Namespace::{self, *};
@@ -15,7 +15,6 @@ use rustc_span::{BytePos, MultiSpan, Span};
 use syntax::ast::{self, Ident, Path};
 use syntax::print::pprust;
 use syntax::source_map::SourceMap;
-use syntax::struct_span_err;
 use syntax::symbol::{kw, Symbol};
 use syntax::util::lev_distance::find_best_match_for_name;
 

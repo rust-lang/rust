@@ -1,9 +1,9 @@
+use errors::struct_span_err;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
-use syntax::symbol::sym;
-
 use rustc_error_codes::*;
+use syntax::symbol::sym;
 
 pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
     tcx.hir().krate().visit_all_item_likes(&mut OutlivesTest { tcx });
@@ -21,7 +21,7 @@ impl ItemLikeVisitor<'tcx> for OutlivesTest<'tcx> {
         // attribute and report an error with various results if found.
         if self.tcx.has_attr(item_def_id, sym::rustc_outlives) {
             let inferred_outlives_of = self.tcx.inferred_outlives_of(item_def_id);
-            span_err!(self.tcx.sess, item.span, E0640, "{:?}", inferred_outlives_of);
+            struct_span_err!(self.tcx.sess, item.span, E0640, "{:?}", inferred_outlives_of).emit();
         }
     }
 

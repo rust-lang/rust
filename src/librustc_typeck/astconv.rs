@@ -15,7 +15,7 @@ use crate::namespace::Namespace;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
-use errors::{Applicability, DiagnosticId};
+use errors::{struct_span_err, Applicability, DiagnosticId};
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
@@ -1118,13 +1118,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if unbound.is_none() {
                     unbound = Some(&ptr.trait_ref);
                 } else {
-                    span_err!(
+                    struct_span_err!(
                         tcx.sess,
                         span,
                         E0203,
                         "type parameter has more than one relaxed default \
                         bound, only one is supported"
-                    );
+                    )
+                    .emit();
                 }
             }
         }
@@ -1444,7 +1445,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         if regular_traits.is_empty() && auto_traits.is_empty() {
-            span_err!(tcx.sess, span, E0224, "at least one trait is required for an object type");
+            struct_span_err!(
+                tcx.sess,
+                span,
+                E0224,
+                "at least one trait is required for an object type"
+            )
+            .emit();
             return tcx.types.err;
         }
 
@@ -1599,13 +1606,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
-                        span_err!(
+                        struct_span_err!(
                             tcx.sess,
                             span,
                             E0228,
                             "the lifetime bound for this object type cannot be deduced \
                              from context; please supply an explicit bound"
-                        );
+                        )
+                        .emit();
                         tcx.lifetimes.re_static
                     })
                 }
@@ -2878,12 +2886,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // error.
         let r = derived_region_bounds[0];
         if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            span_err!(
+            struct_span_err!(
                 tcx.sess,
                 span,
                 E0227,
                 "ambiguous lifetime bound, explicit lifetime bound required"
-            );
+            )
+            .emit();
         }
         return Some(r);
     }

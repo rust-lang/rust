@@ -35,8 +35,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 extern crate log;
 #[macro_use]
 extern crate rustc;
-#[macro_use]
-extern crate syntax;
 
 mod borrow_check;
 mod build;

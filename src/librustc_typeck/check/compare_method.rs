@@ -1,4 +1,4 @@
-use errors::{Applicability, DiagnosticId};
+use errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::{self, GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
@@ -8,9 +8,7 @@ use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::util::ExplicitSelf;
 use rustc::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc::util::common::ErrorReported;
-
 use rustc_span::Span;
-use syntax::errors::pluralize;
 
 use super::{potentially_plural_count, FnCtxt, Inherited};
 

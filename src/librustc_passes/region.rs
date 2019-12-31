@@ -15,10 +15,10 @@ use rustc::middle::region::*;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
-
 use rustc_index::vec::Idx;
+use rustc_span::source_map;
 use rustc_span::Span;
-use syntax::source_map;
+use syntax::walk_list;
 
 use std::mem;
 

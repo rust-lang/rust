@@ -1,3 +1,4 @@
+use errors::struct_span_err;
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::DefId;
 use rustc::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};

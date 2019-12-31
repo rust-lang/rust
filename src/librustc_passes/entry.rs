@@ -1,3 +1,4 @@
+use errors::struct_span_err;
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map as hir_map;
@@ -6,7 +7,7 @@ use rustc::session::config::EntryFnType;
 use rustc::session::{config, Session};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use syntax::attr;
 use syntax::entry::EntryPointType;
 use syntax::symbol::sym;
@@ -108,7 +109,8 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
             if ctxt.main_fn.is_none() {
                 ctxt.main_fn = Some((item.hir_id, item.span));
             } else {
-                span_err!(ctxt.session, item.span, E0136, "multiple `main` functions");
+                struct_span_err!(ctxt.session, item.span, E0136, "multiple `main` functions")
+                    .emit();
             }
         }
         EntryPointType::OtherMain => {
@@ -166,8 +168,9 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     }
 
     // There is no main function.
-    let mut err = struct_err!(
+    let mut err = struct_span_err!(
         tcx.sess,
+        DUMMY_SP,
         E0601,
         "`main` function not found in crate `{}`",
         tcx.crate_name(LOCAL_CRATE)

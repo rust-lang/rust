@@ -76,15 +76,15 @@ pub struct DropckOutlivesResult<'tcx> {
 impl<'tcx> DropckOutlivesResult<'tcx> {
     pub fn report_overflows(&self, tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
         if let Some(overflow_ty) = self.overflows.iter().next() {
-            let mut err = struct_span_err!(
+            errors::struct_span_err!(
                 tcx.sess,
                 span,
                 E0320,
                 "overflow while adding drop-check rules for {}",
                 ty,
-            );
-            err.note(&format!("overflowed on {}", overflow_ty));
-            err.emit();
+            )
+            .note(&format!("overflowed on {}", overflow_ty))
+            .emit();
         }
     }
 

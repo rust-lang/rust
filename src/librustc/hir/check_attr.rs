@@ -8,11 +8,13 @@ use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::hir::DUMMY_HIR_ID;
 use crate::hir::{self, Attribute, HirId, Item, ItemKind, TraitItem, TraitItemKind};
-use crate::lint::builtin::UNUSED_ATTRIBUTES;
+use crate::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 
+use errors::{error_code, struct_span_err};
 use rustc_span::Span;
+
 use std::fmt::{self, Display};
 use syntax::{attr, symbol::sym};
 
@@ -192,7 +194,7 @@ impl CheckAttrVisitor<'tcx> {
             self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 
-        self.check_repr(attrs, span, target, item);
+        self.check_repr(attrs, span, target, item, hir_id);
         self.check_used(attrs, target);
     }
 
@@ -353,6 +355,7 @@ impl CheckAttrVisitor<'tcx> {
         span: &Span,
         target: Target,
         item: Option<&Item<'_>>,
+        hir_id: HirId,
     ) {
         // Extract the names of all repr hints, e.g., [foo, bar, align] for:
         // ```
@@ -428,21 +431,29 @@ impl CheckAttrVisitor<'tcx> {
         // Error on repr(transparent, <anything else>).
         if is_transparent && hints.len() > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
-            span_err!(
+            struct_span_err!(
                 self.tcx.sess,
                 hint_spans,
                 E0692,
                 "transparent {} cannot have other repr hints",
                 target
-            );
+            )
+            .emit();
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
             || (is_simd && is_c)
             || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item)))
         {
-            let hint_spans: Vec<_> = hint_spans.collect();
-            span_warn!(self.tcx.sess, hint_spans, E0566, "conflicting representation hints");
+            self.tcx
+                .struct_span_lint_hir(
+                    CONFLICTING_REPR_HINTS,
+                    hir_id,
+                    hint_spans.collect::<Vec<Span>>(),
+                    "conflicting representation hints",
+                )
+                .code(error_code!(E0566))
+                .emit();
         }
     }
 

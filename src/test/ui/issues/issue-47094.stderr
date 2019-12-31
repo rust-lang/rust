@@ -3,6 +3,8 @@ warning[E0566]: conflicting representation hints
    |
 LL | #[repr(C,u8)]
    |        ^ ^^
+   |
+   = note: `#[warn(conflicting_repr_hints)]` on by default
 
 warning[E0566]: conflicting representation hints
   --> $DIR/issue-47094.rs:9:8

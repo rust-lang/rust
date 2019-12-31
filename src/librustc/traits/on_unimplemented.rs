@@ -5,6 +5,7 @@ use crate::ty::{self, GenericParamDefKind, TyCtxt};
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 
+use errors::struct_span_err;
 use rustc_span::Span;
 use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;
@@ -293,26 +294,28 @@ impl<'tcx> OnUnimplementedFormatString {
                         match generics.params.iter().find(|param| param.name == s) {
                             Some(_) => (),
                             None => {
-                                span_err!(
+                                struct_span_err!(
                                     tcx.sess,
                                     span,
                                     E0230,
                                     "there is no parameter `{}` on trait `{}`",
                                     s,
                                     name
-                                );
+                                )
+                                .emit();
                                 result = Err(ErrorReported);
                             }
                         }
                     }
                     // `{:1}` and `{}` are not to be used
                     Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
-                        span_err!(
+                        struct_span_err!(
                             tcx.sess,
                             span,
                             E0231,
                             "only named substitution parameters are allowed"
-                        );
+                        )
+                        .emit();
                         result = Err(ErrorReported);
                     }
                 },

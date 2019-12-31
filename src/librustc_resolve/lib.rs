@@ -36,7 +36,7 @@ use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
 
 use rustc_metadata::creader::{CStore, CrateLoader};
 
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtension;
 use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{Span, DUMMY_SP};
@@ -47,8 +47,8 @@ use syntax::attr;
 use syntax::print::pprust;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
+use syntax::unwrap_or;
 use syntax::visit::{self, Visitor};
-use syntax::{struct_span_err, unwrap_or};
 
 use log::debug;
 

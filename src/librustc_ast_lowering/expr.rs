@@ -5,12 +5,12 @@ use rustc::hir;
 use rustc::hir::def::Res;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast::*;
 use syntax::attr;
 use syntax::ptr::P as AstP;
-use syntax::{span_err, struct_span_err};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -701,12 +701,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match generator_kind {
             Some(hir::GeneratorKind::Gen) => {
                 if !decl.inputs.is_empty() {
-                    span_err!(
+                    struct_span_err!(
                         self.sess,
                         fn_decl_span,
                         E0628,
                         "generators cannot have explicit parameters"
-                    );
+                    )
+                    .emit();
                 }
                 Some(movability)
             }
@@ -715,7 +716,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             None => {
                 if movability == Movability::Static {
-                    span_err!(self.sess, fn_decl_span, E0697, "closures cannot be static");
+                    struct_span_err!(self.sess, fn_decl_span, E0697, "closures cannot be static")
+                        .emit();
                 }
                 None
             }
@@ -962,7 +964,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.generator_kind {
             Some(hir::GeneratorKind::Gen) => {}
             Some(hir::GeneratorKind::Async(_)) => {
-                span_err!(self.sess, span, E0727, "`async` generators are not yet supported",);
+                struct_span_err!(
+                    self.sess,
+                    span,
+                    E0727,
+                    "`async` generators are not yet supported"
+                )
+                .emit();
                 return hir::ExprKind::Err;
             }
             None => self.generator_kind = Some(hir::GeneratorKind::Gen),
