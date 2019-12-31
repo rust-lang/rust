@@ -112,3 +112,4 @@ fn main() {}
 #[cfg(FALSE)] fn e() { { fn foo() { #[attr]; } } }
 //~^ ERROR expected statement after outer attribute
 #[cfg(FALSE)] fn e() { { fn foo() { #[attr] } } }
+//~^ ERROR expected statement after outer attribute

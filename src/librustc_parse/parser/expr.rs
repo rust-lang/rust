@@ -283,7 +283,7 @@ impl<'a> Parser<'a> {
                     self.mk_expr(span, aopexpr, AttrVec::new())
                 }
                 AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotEq => {
-                    self.bug("AssocOp should have been handled by special case")
+                    self.span_bug(span, "AssocOp should have been handled by special case")
                 }
             };
 
@@ -822,7 +822,11 @@ impl<'a> Parser<'a> {
         } else {
             // Field access `expr.f`
             if let Some(args) = segment.args {
-                self.span_err(args.span(), "field expressions may not have generic arguments");
+                self.struct_span_err(
+                    args.span(),
+                    "field expressions may not have generic arguments",
+                )
+                .emit();
             }
 
             let span = lo.to(self.prev_span);
@@ -1133,7 +1137,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
         self.parse_opt_lit().ok_or_else(|| {
             let msg = format!("unexpected token: {}", super::token_descr(&self.token));
-            self.span_fatal(self.token.span, &msg)
+            self.struct_span_err(self.token.span, &msg)
         })
     }
 
@@ -1446,9 +1450,7 @@ impl<'a> Parser<'a> {
         self.struct_span_err(sp, "missing condition for `if` expression")
             .span_label(sp, "expected if condition here")
             .emit();
-        let expr = self.mk_expr_err(span);
-        let stmt = self.mk_stmt(span, ast::StmtKind::Expr(expr));
-        self.mk_block(vec![stmt], BlockCheckMode::Default, span)
+        self.mk_block_err(span)
     }
 
     /// Parses the condition of a `if` or `while` expression.
@@ -1915,8 +1917,7 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        self.diagnostic()
-            .struct_span_err(self.token.span, "expected `:`, found `=`")
+        self.struct_span_err(self.token.span, "expected `:`, found `=`")
             .span_suggestion(
                 field_name.span.shrink_to_hi().to(self.token.span),
                 "replace equals symbol with a colon",

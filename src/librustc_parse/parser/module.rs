@@ -81,7 +81,8 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(&items) {
-                let mut err = self.fatal(&format!("expected item, found {}", token_str));
+                let msg = &format!("expected item, found {}", token_str);
+                let mut err = self.struct_span_err(self.token.span, msg);
                 err.span_label(self.token.span, "expected item");
                 return Err(err);
             }
@@ -129,7 +130,7 @@ impl<'a> Parser<'a> {
             DirectoryOwnership::UnownedViaBlock => {
                 let msg = "Cannot declare a non-inline module inside a block \
                     unless it has a path attribute";
-                let mut err = self.diagnostic().struct_span_err(id_sp, msg);
+                let mut err = self.struct_span_err(id_sp, msg);
                 if paths.path_exists {
                     let msg = format!(
                         "Maybe `use` the module `{}` instead of redeclaring it",
@@ -140,9 +141,8 @@ impl<'a> Parser<'a> {
                 Err(err)
             }
             DirectoryOwnership::UnownedViaMod => {
-                let mut err = self
-                    .diagnostic()
-                    .struct_span_err(id_sp, "cannot declare a new module at this location");
+                let mut err =
+                    self.struct_span_err(id_sp, "cannot declare a new module at this location");
                 if !id_sp.is_dummy() {
                     let src_path = self.sess.source_map().span_to_filename(id_sp);
                     if let FileName::Real(src_path) = src_path {
@@ -263,7 +263,7 @@ impl<'a> Parser<'a> {
                 err.push_str(" -> ");
             }
             err.push_str(&path.to_string_lossy());
-            return Err(self.span_fatal(id_sp, &err[..]));
+            return Err(self.struct_span_err(id_sp, &err[..]));
         }
         included_mod_stack.push(path.clone());
         drop(included_mod_stack);

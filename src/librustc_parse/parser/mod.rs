@@ -884,7 +884,8 @@ impl<'a> Parser<'a> {
     pub fn bump(&mut self) {
         if self.prev_token_kind == PrevTokenKind::Eof {
             // Bumping after EOF is a bad sign, usually an infinite loop.
-            self.bug("attempted to bump the parser past EOF (may be stuck in a loop)");
+            let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
+            self.span_bug(self.token.span, msg);
         }
 
         self.prev_span = self.meta_var_span.take().unwrap_or(self.token.span);
@@ -1056,8 +1057,7 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 };
                 let span = self.prev_span.to(self.token.span);
-                self.diagnostic()
-                    .struct_span_fatal(span, &format!("unknown macro variable `{}`", name))
+                self.struct_span_err(span, &format!("unknown macro variable `{}`", name))
                     .span_label(span, "unknown macro variable")
                     .emit();
                 self.bump();

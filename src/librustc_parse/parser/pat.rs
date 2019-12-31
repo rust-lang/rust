@@ -673,7 +673,7 @@ impl<'a> Parser<'a> {
         let expected = expected.unwrap_or("pattern");
         let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
-        let mut err = self.fatal(&msg);
+        let mut err = self.struct_span_err(self.token.span, &msg);
         err.span_label(self.token.span, format!("expected {}", expected));
 
         let sp = self.sess.source_map().start_point(self.token.span);
@@ -699,8 +699,7 @@ impl<'a> Parser<'a> {
         let range_span = lo.to(end.span);
         let begin = self.mk_expr(range_span, ExprKind::Err, AttrVec::new());
 
-        self.diagnostic()
-            .struct_span_err(range_span, &format!("`{}X` range patterns are not supported", form))
+        self.struct_span_err(range_span, &format!("`{}X` range patterns are not supported", form))
             .span_suggestion(
                 range_span,
                 "try using the minimum value for the type",
@@ -722,18 +721,17 @@ impl<'a> Parser<'a> {
             // Parsing e.g. `X..`.
             let range_span = begin.span.to(self.prev_span);
 
-            self.diagnostic()
-                .struct_span_err(
-                    range_span,
-                    &format!("`X{}` range patterns are not supported", form),
-                )
-                .span_suggestion(
-                    range_span,
-                    "try using the maximum value for the type",
-                    format!("{}{}MAX", pprust::expr_to_string(&begin), form),
-                    Applicability::HasPlaceholders,
-                )
-                .emit();
+            self.struct_span_err(
+                range_span,
+                &format!("`X{}` range patterns are not supported", form),
+            )
+            .span_suggestion(
+                range_span,
+                "try using the maximum value for the type",
+                format!("{}{}MAX", pprust::expr_to_string(&begin), form),
+                Applicability::HasPlaceholders,
+            )
+            .emit();
 
             Ok(self.mk_expr(range_span, ExprKind::Err, AttrVec::new()))
         }
@@ -798,7 +796,9 @@ impl<'a> Parser<'a> {
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to `parse_enum_variant()`.
         if self.token == token::OpenDelim(token::Paren) {
-            return Err(self.span_fatal(self.prev_span, "expected identifier, found enum pattern"));
+            return Err(
+                self.struct_span_err(self.prev_span, "expected identifier, found enum pattern")
+            );
         }
 
         Ok(PatKind::Ident(binding_mode, ident, sub))
@@ -807,12 +807,8 @@ impl<'a> Parser<'a> {
     /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
     fn parse_pat_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
         if qself.is_some() {
-            let msg = "unexpected `{` after qualified path";
-            let mut err = self.fatal(msg);
-            err.span_label(self.token.span, msg);
-            return Err(err);
+            return self.error_qpath_before_pat(&path, "{");
         }
-
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
             e.emit();
@@ -826,13 +822,20 @@ impl<'a> Parser<'a> {
     /// Parse tuple struct or tuple variant pattern (e.g. `Foo(...)` or `Foo::Bar(...)`).
     fn parse_pat_tuple_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
         if qself.is_some() {
-            let msg = "unexpected `(` after qualified path";
-            let mut err = self.fatal(msg);
-            err.span_label(self.token.span, msg);
-            return Err(err);
+            return self.error_qpath_before_pat(&path, "(");
         }
         let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner())?;
         Ok(PatKind::TupleStruct(path, fields))
+    }
+
+    /// Error when there's a qualified path, e.g. `<Foo as Bar>::Baz`
+    /// as the path of e.g., a tuple or record struct pattern.
+    fn error_qpath_before_pat(&mut self, path: &Path, token: &str) -> PResult<'a, PatKind> {
+        let msg = &format!("unexpected `{}` after qualified path", token);
+        let mut err = self.struct_span_err(self.token.span, msg);
+        err.span_label(self.token.span, msg);
+        err.span_label(path.span, "the qualified path");
+        Err(err)
     }
 
     /// Parses the fields of a struct-like pattern.
@@ -877,7 +880,8 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 let token_str = super::token_descr(&self.token);
-                let mut err = self.fatal(&format!("expected `}}`, found {}", token_str));
+                let msg = &format!("expected `}}`, found {}", token_str);
+                let mut err = self.struct_span_err(self.token.span, msg);
 
                 err.span_label(self.token.span, "expected `}`");
                 let mut comma_sp = None;
