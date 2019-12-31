@@ -104,6 +104,7 @@ use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, InstanceDef, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_span::symbol::Symbol;
@@ -796,6 +797,8 @@ where
     I: Iterator<Item = &'a MonoItem<'tcx>>,
     'tcx: 'a,
 {
+    let _prof_timer = tcx.prof.generic_activity("assert_symbols_are_distinct");
+
     let mut symbols: Vec<_> =
         mono_items.map(|mono_item| (mono_item, mono_item.symbol_name(tcx))).collect();
 
@@ -869,18 +872,23 @@ fn collect_and_partition_mono_items(
 
     tcx.sess.abort_if_errors();
 
-    assert_symbols_are_distinct(tcx, items.iter());
+    let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
+        sync::join(
+            || {
+                let strategy = if tcx.sess.opts.incremental.is_some() {
+                    PartitioningStrategy::PerModule
+                } else {
+                    PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
+                };
 
-    let strategy = if tcx.sess.opts.incremental.is_some() {
-        PartitioningStrategy::PerModule
-    } else {
-        PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
-    };
-
-    let codegen_units = partition(tcx, items.iter().cloned(), strategy, &inlining_map)
-        .into_iter()
-        .map(Arc::new)
-        .collect::<Vec<_>>();
+                partition(tcx, items.iter().cloned(), strategy, &inlining_map)
+                    .into_iter()
+                    .map(Arc::new)
+                    .collect::<Vec<_>>()
+            },
+            || assert_symbols_are_distinct(tcx, items.iter()),
+        )
+    });
 
     let mono_items: DefIdSet = items
         .iter()
