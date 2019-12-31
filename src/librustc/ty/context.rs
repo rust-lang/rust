@@ -209,7 +209,7 @@ fn validate_hir_id_for_typeck_tables(
             ty::tls::with(|tcx| {
                 bug!(
                     "node {} with HirId::owner {:?} cannot be placed in \
-                        TypeckTables with local_id_root {:?}",
+                     TypeckTables with local_id_root {:?}",
                     tcx.hir().node_to_string(hir_id),
                     DefId::local(hir_id.owner),
                     local_id_root
@@ -1510,6 +1510,20 @@ impl<'tcx> TyCtxt<'tcx> {
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(PanicLocationLangItem, None))
                 .subst(*self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
+        )
+    }
+
+    /// Returns a displayable description and article for the given `def_id` (e.g. `("a", "closure")`).
+    pub fn article_and_description(
+        &self,
+        def_id: crate::hir::def_id::DefId,
+    ) -> (&'static str, &'static str) {
+        self.def_kind(def_id).map_or_else(
+            || {
+                // TODO: is it a problem to try to use the ty here?
+                self.type_of(def_id).kind.article_and_description()
+            },
+            |def_kind| (def_kind.article(), def_kind.descr(def_id)),
         )
     }
 }

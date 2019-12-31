@@ -131,6 +131,29 @@ impl<'tcx> DefiningTy<'tcx> {
             DefiningTy::FnDef(..) | DefiningTy::Const(..) => 0,
         }
     }
+
+    pub fn is_closure(&self) -> bool {
+        match *self {
+            DefiningTy::Closure(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_fn_def(&self) -> bool {
+        match *self {
+            DefiningTy::FnDef(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn def_id(&self) -> DefId {
+        match *self {
+            DefiningTy::Closure(def_id, ..) => def_id,
+            DefiningTy::Generator(def_id, ..) => def_id,
+            DefiningTy::FnDef(def_id, ..) => def_id,
+            DefiningTy::Const(def_id, ..) => def_id,
+        }
+    }
 }
 
 #[derive(Debug)]

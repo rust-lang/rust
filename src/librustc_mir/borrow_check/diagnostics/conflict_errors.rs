@@ -1257,7 +1257,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             _ => bug!(
                 "report_escaping_closure_capture called with unexpected constraint \
-                       category: `{:?}`",
+                 category: `{:?}`",
                 category
             ),
         };
@@ -1279,8 +1279,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let tables = tcx.typeck_tables_of(self.mir_def_id);
             let mir_hir_id = tcx.hir().def_index_to_hir_id(self.mir_def_id.index);
             match tables.node_type(mir_hir_id).kind {
-                ty::Closure(..) => "closure",
-                ty::Generator(..) => "generator",
+                ref kind @ ty::Closure(..) | ref kind @ ty::Generator(..) => {
+                    kind.article_and_description().1
+                }
                 _ => bug!("Closure body doesn't have a closure or generator type"),
             }
         } else {
