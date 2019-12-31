@@ -3,7 +3,7 @@ import * as lc from 'vscode-languageclient';
 import * as seedrandom_ from 'seedrandom';
 const seedrandom = seedrandom_; // https://github.com/jvandemo/generator-angular2-library/issues/221#issuecomment-355945207
 
-import * as scopes from './scopes';
+import { loadThemeColors, TextMateRuleSettings } from './scopes';
 import * as scopesMapper from './scopes_mapper';
 
 import { Ctx } from './ctx';
@@ -172,11 +172,13 @@ function initDecorations(): Map<
     string,
     vscode.TextEditorDecorationType
 > {
+    const themeColors = loadThemeColors();
+
     const decoration = (
         tag: string,
         textDecoration?: string,
     ): [string, vscode.TextEditorDecorationType] => {
-        const rule = scopesMapper.toRule(tag, scopes.find);
+        const rule = scopesMapper.toRule(tag, it => themeColors.get(it));
 
         if (rule) {
             const decor = createDecorationFromTextmate(rule);
@@ -232,7 +234,7 @@ function initDecorations(): Map<
 }
 
 function createDecorationFromTextmate(
-    themeStyle: scopes.TextMateRuleSettings,
+    themeStyle: TextMateRuleSettings,
 ): vscode.TextEditorDecorationType {
     const decorationOptions: vscode.DecorationRenderOptions = {};
     decorationOptions.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen;
