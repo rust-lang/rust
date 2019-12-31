@@ -227,10 +227,7 @@ impl<'tcx> InliningMap<'tcx> {
         }
     }
 
-    fn record_accesses(&mut self, source: MonoItem<'tcx>, new_targets: &[(MonoItem<'tcx>, bool)])
-    {
-        assert!(!self.index.contains_key(&source));
-
+    fn record_accesses(&mut self, source: MonoItem<'tcx>, new_targets: &[(MonoItem<'tcx>, bool)]) {
         let start_index = self.targets.len();
         let new_items_count = new_targets.len();
         let new_items_count_total = new_items_count + self.targets.len();
@@ -246,7 +243,7 @@ impl<'tcx> InliningMap<'tcx> {
         }
 
         let end_index = self.targets.len();
-        self.index.insert(source, (start_index, end_index));
+        assert!(self.index.insert(source, (start_index, end_index)).is_none());
     }
 
     // Internally iterate over all items referenced by `source` which will be
