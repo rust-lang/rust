@@ -32,29 +32,29 @@ export class ColorTheme {
                 ? [rule.scope]
                 : rule.scope;
             for (const scope of scopes) {
-                res.rules.set(scope, rule.settings)
+                res.rules.set(scope, rule.settings);
             }
         }
-        return res
+        return res;
     }
 
     lookup(scopes: string[]): TextMateRuleSettings {
-        let res: TextMateRuleSettings = {}
+        let res: TextMateRuleSettings = {};
         for (const scope of scopes) {
             this.rules.forEach((value, key) => {
                 if (scope.startsWith(key)) {
-                    res = mergeRuleSettings(res, value)
+                    res = mergeRuleSettings(res, value);
                 }
-            })
+            });
         }
-        return res
+        return res;
     }
 
     mergeFrom(other: ColorTheme) {
         other.rules.forEach((value, key) => {
-            const merged = mergeRuleSettings(this.rules.get(key), value)
-            this.rules.set(key, merged)
-        })
+            const merged = mergeRuleSettings(this.rules.get(key), value);
+            this.rules.set(key, merged);
+        });
     }
 }
 
@@ -73,15 +73,15 @@ function loadThemeNamed(themeName: string): ColorTheme {
             return ext.packageJSON.contributes.themes
                 .filter((it: any) => (it.id || it.label) === themeName)
                 .map((it: any) => path.join(ext.extensionPath, it.path));
-        })
+        });
 
     const res = new ColorTheme();
     for (const themePath of themePaths) {
-        res.mergeFrom(loadThemeFile(themePath))
+        res.mergeFrom(loadThemeFile(themePath));
     }
 
     const customizations: any = vscode.workspace.getConfiguration('editor').get('tokenColorCustomizations');
-    res.mergeFrom(ColorTheme.fromRules(customizations?.textMateRules ?? []))
+    res.mergeFrom(ColorTheme.fromRules(customizations?.textMateRules ?? []));
 
     return res;
 }
@@ -89,7 +89,7 @@ function loadThemeNamed(themeName: string): ColorTheme {
 function loadThemeFile(themePath: string): ColorTheme {
     let text;
     try {
-        text = fs.readFileSync(themePath, 'utf8')
+        text = fs.readFileSync(themePath, 'utf8');
     } catch {
         return new ColorTheme();
     }
@@ -119,5 +119,5 @@ function mergeRuleSettings(
         foreground: override.foreground ?? defaultSetting?.foreground,
         background: override.background ?? defaultSetting?.background,
         fontStyle: override.fontStyle ?? defaultSetting?.fontStyle,
-    }
+    };
 }

@@ -36,14 +36,14 @@ function showReferences(ctx: Ctx): Cmd {
 function applySourceChange(ctx: Ctx): Cmd {
     return async (change: sourceChange.SourceChange) => {
         sourceChange.applySourceChange(ctx, change);
-    }
+    };
 }
 
 function reload(ctx: Ctx): Cmd {
     return async () => {
         vscode.window.showInformationMessage('Reloading rust-analyzer...');
         await ctx.restartServer();
-    }
+    };
 }
 
 export {

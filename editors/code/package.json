@@ -19,7 +19,7 @@
         "vscode:prepublish": "rollup -c",
         "package": "vsce package",
         "watch": "tsc -watch -p ./",
-        "fmt": "tsfmt -r"
+        "fmt": "tsfmt -r && tslint -c tslint.json 'src/**/*.ts' --fix"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
@@ -35,6 +35,7 @@
         "@types/vscode": "^1.41.0",
         "rollup": "^1.27.14",
         "tslib": "^1.10.0",
+        "tslint": "^5.20.1",
         "typescript": "^3.7.3",
         "typescript-formatter": "^7.2.2",
         "vsce": "^1.71.0"

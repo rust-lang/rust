@@ -1,0 +1,8 @@
+{
+    "rules": {
+        "semicolon": [
+            true,
+            "always"
+        ]
+    }
+}

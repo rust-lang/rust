@@ -19,7 +19,7 @@ export function activateInlayHints(ctx: Ctx) {
         hintsUpdater.setEnabled(ctx.config.displayInlayHints);
     }, ctx.subscriptions);
 
-    ctx.onDidRestart(_ => hintsUpdater.setEnabled(ctx.config.displayInlayHints))
+    ctx.onDidRestart(_ => hintsUpdater.setEnabled(ctx.config.displayInlayHints));
 }
 
 interface InlayHintsParams {
@@ -96,7 +96,7 @@ class HintsUpdater {
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
         let client = this.ctx.client;
-        if (!client) return null
+        if (!client) return null;
         const request: InlayHintsParams = {
             textDocument: { uri: documentUri },
         };
