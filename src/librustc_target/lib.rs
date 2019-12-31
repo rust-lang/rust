@@ -8,12 +8,18 @@
 //! LLVM.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
 #![feature(box_syntax)]
+#![feature(bool_to_option)]
 #![feature(nll)]
 #![feature(slice_patterns)]
 
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 pub mod abi;
 pub mod spec;
+
+/// Requirements for a `StableHashingContext` to be used in this crate.
+/// This is a hack to allow using the `HashStable_Generic` derive macro
+/// instead of implementing everything in librustc.
+pub trait HashStableContext {}

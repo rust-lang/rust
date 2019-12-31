@@ -1,12 +1,12 @@
 //! Upvar (closure capture) collection from cross-body HIR uses of `Res::Local`s.
 
-use crate::hir::{self, HirId};
 use crate::hir::def::Res;
-use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use crate::ty::TyCtxt;
+use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::hir::{self, HirId};
 use crate::ty::query::Providers;
+use crate::ty::TyCtxt;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use syntax_pos::Span;
-use rustc_data_structures::fx::{FxIndexMap, FxHashSet};
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.upvars = |tcx, def_id| {
@@ -46,7 +46,7 @@ impl Visitor<'tcx> for LocalCollector {
         NestedVisitorMap::None
     }
 
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         if let hir::PatKind::Binding(_, hir_id, ..) = pat.kind {
             self.locals.insert(hir_id);
         }
@@ -73,7 +73,7 @@ impl Visitor<'tcx> for CaptureCollector<'a, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, _: hir::HirId) {
+    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
         if let Res::Local(var_id) = path.res {
             self.visit_local_use(var_id, path.span);
         }
@@ -81,7 +81,7 @@ impl Visitor<'tcx> for CaptureCollector<'a, 'tcx> {
         intravisit::walk_path(self, path);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(..) = expr.kind {
             let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
             if let Some(upvars) = self.tcx.upvars(closure_def_id) {

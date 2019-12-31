@@ -1,10 +1,9 @@
 use errors::Applicability;
-use rustc_parse::lexer::{StringReader as Lexer};
-use syntax::token;
+use rustc_parse::lexer::StringReader as Lexer;
 use syntax::sess::ParseSess;
 use syntax::source_map::FilePathMapping;
-use syntax_expand::config::process_configure_mod;
-use syntax_pos::{InnerSpan, FileName};
+use syntax::token;
+use syntax_pos::{FileName, InnerSpan};
 
 use crate::clean;
 use crate::core::DocContext;
@@ -28,7 +27,7 @@ struct SyntaxChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
     fn check_rust_syntax(&self, item: &clean::Item, dox: &str, code_block: RustCodeBlock) {
-        let sess = ParseSess::new(FilePathMapping::empty(), process_configure_mod);
+        let sess = ParseSess::new(FilePathMapping::empty());
         let source_file = sess.source_map().new_source_file(
             FileName::Custom(String::from("doctest")),
             dox[code_block.code].to_owned(),
@@ -39,7 +38,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             let mut only_whitespace = true;
             // even if there is a syntax error, we need to run the lexer over the whole file
             let mut lexer = Lexer::new(&sess, source_file, None);
-            loop  {
+            loop {
                 match lexer.next_token().kind {
                     token::Eof => break,
                     token::Whitespace => (),

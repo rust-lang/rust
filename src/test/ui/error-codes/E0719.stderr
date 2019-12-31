@@ -1,4 +1,4 @@
-error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
+error[E0719]: the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified
   --> $DIR/E0719.rs:1:33
    |
 LL | trait Foo: Iterator<Item = i32, Item = i32> {}
@@ -6,7 +6,7 @@ LL | trait Foo: Iterator<Item = i32, Item = i32> {}
    |                     |
    |                     `Item` bound here first
 
-error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
+error[E0719]: the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified
   --> $DIR/E0719.rs:6:42
    |
 LL | fn test() -> Box<dyn Iterator<Item = (), Item = Unit>> {

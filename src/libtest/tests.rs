@@ -3,18 +3,31 @@ use super::*;
 use crate::{
     bench::Bencher,
     console::OutputLocation,
-    options::OutputFormat,
-    time::{TimeThreshold, TestTimeOptions},
     formatters::PrettyFormatter,
+    options::OutputFormat,
     test::{
-        filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap,
-        RunIgnored, RunStrategy, ShouldPanic, StaticTestName, TestDesc,
-        TestDescAndFn, TestOpts, TrIgnored, TrOk,
+        filter_tests,
+        parse_opts,
+        run_test,
+        DynTestFn,
+        DynTestName,
+        MetricMap,
+        RunIgnored,
+        RunStrategy,
+        ShouldPanic,
+        StaticTestName,
+        TestDesc,
+        TestDescAndFn,
+        TestOpts,
+        TrIgnored,
+        TrOk,
         // FIXME (introduced by #65251)
         // ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
         // TestType, TrFailedMsg, TrIgnored, TrOk,
     },
+    time::{TestTimeOptions, TimeThreshold},
 };
+use std::any::TypeId;
 use std::sync::mpsc::channel;
 use std::time::Duration;
 
@@ -24,6 +37,7 @@ impl TestOpts {
             list: false,
             filter: None,
             filter_exact: false,
+            force_run_in_process: false,
             exclude_should_panic: false,
             run_ignored: RunIgnored::No,
             run_tests: false,
@@ -83,7 +97,7 @@ pub fn do_not_run_ignored_tests() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result != TrOk);
+    assert_ne!(result, TrOk);
 }
 
 #[test]
@@ -102,7 +116,7 @@ pub fn ignored_tests_result_in_ignored() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrIgnored);
+    assert_eq!(result, TrIgnored);
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
@@ -125,7 +139,7 @@ fn test_should_panic() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrOk);
+    assert_eq!(result, TrOk);
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
@@ -148,7 +162,7 @@ fn test_should_panic_good_message() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrOk);
+    assert_eq!(result, TrOk);
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
@@ -160,7 +174,9 @@ fn test_should_panic_bad_message() {
         panic!("an error message");
     }
     let expected = "foobar";
-    let failed_msg = "panic did not include expected string";
+    let failed_msg = r#"panic did not contain expected string
+      panic message: `"an error message"`,
+ expected substring: `"foobar"`"#;
     let desc = TestDescAndFn {
         desc: TestDesc {
             name: StaticTestName("whatever"),
@@ -174,7 +190,38 @@ fn test_should_panic_bad_message() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
+    assert_eq!(result, TrFailedMsg(failed_msg.to_string()));
+}
+
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
+#[test]
+#[cfg(not(target_os = "emscripten"))]
+fn test_should_panic_non_string_message_type() {
+    use crate::tests::TrFailedMsg;
+    fn f() {
+        panic!(1i32);
+    }
+    let expected = "foobar";
+    let failed_msg = format!(
+        r#"expected panic with string value,
+ found non-string value: `{:?}`
+     expected substring: `"foobar"`"#,
+        TypeId::of::<i32>()
+    );
+    let desc = TestDescAndFn {
+        desc: TestDesc {
+            name: StaticTestName("whatever"),
+            ignore: false,
+            should_panic: ShouldPanic::YesWithMessage(expected),
+            allow_fail: false,
+            test_type: TestType::Unknown,
+        },
+        testfn: DynTestFn(Box::new(f)),
+    };
+    let (tx, rx) = channel();
+    run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
+    let result = rx.recv().unwrap().result;
+    assert_eq!(result, TrFailedMsg(failed_msg));
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
@@ -195,7 +242,7 @@ fn test_should_panic_but_succeeds() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrFailedMsg("test did not panic as expected".to_string()));
+    assert_eq!(result, TrFailedMsg("test did not panic as expected".to_string()));
 }
 
 fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
@@ -210,16 +257,9 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
         },
         testfn: DynTestFn(Box::new(f)),
     };
-    let time_options = if report_time {
-        Some(TestTimeOptions::default())
-    } else {
-        None
-    };
+    let time_options = if report_time { Some(TestTimeOptions::default()) } else { None };
 
-    let test_opts = TestOpts {
-        time_options,
-        ..TestOpts::new()
-    };
+    let test_opts = TestOpts { time_options, ..TestOpts::new() };
     let (tx, rx) = channel();
     run_test(&test_opts, false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let exec_time = rx.recv().unwrap().exec_time;
@@ -246,7 +286,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
             ignore: false,
             should_panic: ShouldPanic::No,
             allow_fail: false,
-            test_type
+            test_type,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -254,10 +294,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
     let mut time_options = TestTimeOptions::default();
     time_options.error_on_excess = true;
 
-    let test_opts = TestOpts {
-        time_options: Some(time_options),
-        ..TestOpts::new()
-    };
+    let test_opts = TestOpts { time_options: Some(time_options), ..TestOpts::new() };
     let (tx, rx) = channel();
     run_test(&test_opts, false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
@@ -286,7 +323,7 @@ fn typed_test_desc(test_type: TestType) -> TestDesc {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
-        test_type
+        test_type,
     }
 }
 
@@ -331,22 +368,14 @@ fn test_time_options_threshold() {
 
 #[test]
 fn parse_ignored_flag() {
-    let args = vec![
-        "progname".to_string(),
-        "filter".to_string(),
-        "--ignored".to_string(),
-    ];
+    let args = vec!["progname".to_string(), "filter".to_string(), "--ignored".to_string()];
     let opts = parse_opts(&args).unwrap().unwrap();
     assert_eq!(opts.run_ignored, RunIgnored::Only);
 }
 
 #[test]
 fn parse_show_output_flag() {
-    let args = vec![
-        "progname".to_string(),
-        "filter".to_string(),
-        "--show-output".to_string(),
-    ];
+    let args = vec!["progname".to_string(), "filter".to_string(), "--show-output".to_string()];
     let opts = parse_opts(&args).unwrap().unwrap();
     assert!(opts.options.display_output);
 }
@@ -439,78 +468,41 @@ pub fn exact_filter_match() {
             .collect()
     }
 
-    let substr = filter_tests(
-        &TestOpts {
-            filter: Some("base".into()),
-            ..TestOpts::new()
-        },
-        tests(),
-    );
+    let substr =
+        filter_tests(&TestOpts { filter: Some("base".into()), ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 4);
 
-    let substr = filter_tests(
-        &TestOpts {
-            filter: Some("bas".into()),
-            ..TestOpts::new()
-        },
-        tests(),
-    );
+    let substr = filter_tests(&TestOpts { filter: Some("bas".into()), ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 4);
 
-    let substr = filter_tests(
-        &TestOpts {
-            filter: Some("::test".into()),
-            ..TestOpts::new()
-        },
-        tests(),
-    );
+    let substr =
+        filter_tests(&TestOpts { filter: Some("::test".into()), ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 3);
 
-    let substr = filter_tests(
-        &TestOpts {
-            filter: Some("base::test".into()),
-            ..TestOpts::new()
-        },
-        tests(),
-    );
+    let substr =
+        filter_tests(&TestOpts { filter: Some("base::test".into()), ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 3);
 
     let exact = filter_tests(
-        &TestOpts {
-            filter: Some("base".into()),
-            filter_exact: true,
-            ..TestOpts::new()
-        },
+        &TestOpts { filter: Some("base".into()), filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 1);
 
     let exact = filter_tests(
-        &TestOpts {
-            filter: Some("bas".into()),
-            filter_exact: true,
-            ..TestOpts::new()
-        },
+        &TestOpts { filter: Some("bas".into()), filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 0);
 
     let exact = filter_tests(
-        &TestOpts {
-            filter: Some("::test".into()),
-            filter_exact: true,
-            ..TestOpts::new()
-        },
+        &TestOpts { filter: Some("::test".into()), filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 0);
 
     let exact = filter_tests(
-        &TestOpts {
-            filter: Some("base::test".into()),
-            filter_exact: true,
-            ..TestOpts::new()
-        },
+        &TestOpts { filter: Some("base::test".into()), filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 1);
@@ -569,7 +561,7 @@ pub fn sort_tests() {
     ];
 
     for (a, b) in expected.iter().zip(filtered) {
-        assert!(*a == b.desc.name.to_string());
+        assert_eq!(*a, b.desc.name.to_string());
     }
 }
 

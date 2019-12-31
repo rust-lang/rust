@@ -1,18 +1,23 @@
-error[E0284]: type annotations needed: cannot resolve `<Self as std::iter::Iterator>::Item == i32`
+error[E0284]: type annotations needed
   --> $DIR/associated-types-overridden-binding.rs:4:1
    |
 LL | trait Foo: Iterator<Item = i32> {}
    | ------------------------------- required by `Foo`
 LL | trait Bar: Foo<Item = u32> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `Self`
+   |
+   = note: cannot resolve `<Self as std::iter::Iterator>::Item == i32`
 
-error[E0282]: type annotations needed
+error[E0284]: type annotations needed
   --> $DIR/associated-types-overridden-binding.rs:7:1
    |
+LL | trait I32Iterator = Iterator<Item = i32>;
+   | ----------------------------------------- required by `I32Iterator`
 LL | trait U32Iterator = I32Iterator<Item = u32>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `Self`
+   |
+   = note: cannot resolve `<Self as std::iter::Iterator>::Item == i32`
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0282, E0284.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0284`.

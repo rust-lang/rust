@@ -1,0 +1,19 @@
+error: type-generic associated types are not yet implemented
+  --> $DIR/collections.rs:13:5
+   |
+LL | /     type Sibling<U>: Collection<U> =
+LL | |         <<Self as Collection<T>>::Family as CollectionFamily>::Member<U>;
+   | |_________________________________________________________________________^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+
+error: type-generic associated types are not yet implemented
+  --> $DIR/collections.rs:25:5
+   |
+LL |     type Member<T>: Collection<T, Family = Self>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+
+error: aborting due to 2 previous errors
+

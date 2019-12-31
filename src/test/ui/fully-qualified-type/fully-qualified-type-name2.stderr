@@ -5,9 +5,6 @@ LL | fn bar(x: x::Foo) -> y::Foo {
    |                      ------ expected `y::Foo` because of return type
 LL |     return x;
    |            ^ expected enum `y::Foo`, found enum `x::Foo`
-   |
-   = note: expected type `y::Foo`
-              found type `x::Foo`
 
 error: aborting due to previous error
 

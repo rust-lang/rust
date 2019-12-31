@@ -1,15 +1,15 @@
 //! Defines the set of legal keys that can be used in queries.
 
+use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use crate::infer::canonical::Canonical;
-use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
-use crate::traits;
-use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::subst::SubstsRef;
-use crate::ty::fast_reject::SimplifiedType;
 use crate::mir;
+use crate::traits;
+use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::subst::SubstsRef;
+use crate::ty::{self, Ty, TyCtxt};
 
-use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::symbol::Symbol;
+use syntax_pos::{Span, DUMMY_SP};
 
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.

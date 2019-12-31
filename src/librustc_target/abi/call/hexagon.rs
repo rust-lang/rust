@@ -1,4 +1,4 @@
-use crate::abi::call::{FnAbi, ArgAbi};
+use crate::abi::call::{ArgAbi, FnAbi};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if ret.layout.is_aggregate() && ret.layout.size.bits() > 64 {
@@ -16,7 +16,7 @@ fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_,Ty>) {
+pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }

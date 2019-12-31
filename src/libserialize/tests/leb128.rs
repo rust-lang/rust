@@ -2,7 +2,7 @@ extern crate serialize as rustc_serialize;
 use rustc_serialize::leb128::*;
 
 macro_rules! impl_test_unsigned_leb128 {
-    ($test_name:ident, $write_fn_name:ident, $read_fn_name:ident, $int_ty:ident) => (
+    ($test_name:ident, $write_fn_name:ident, $read_fn_name:ident, $int_ty:ident) => {
         #[test]
         fn $test_name() {
             let mut stream = Vec::new();
@@ -14,13 +14,13 @@ macro_rules! impl_test_unsigned_leb128 {
             let mut position = 0;
             for x in 0..62 {
                 let expected = (3u64 << x) as $int_ty;
-                let (actual, bytes_read) = $read_fn_name(&stream[position ..]);
+                let (actual, bytes_read) = $read_fn_name(&stream[position..]);
                 assert_eq!(expected, actual);
                 position += bytes_read;
             }
             assert_eq!(stream.len(), position);
         }
-    )
+    };
 }
 
 impl_test_unsigned_leb128!(test_u16_leb128, write_u16_leb128, read_u16_leb128, u16);

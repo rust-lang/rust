@@ -12,12 +12,12 @@ error: lifetime may not live long enough
 LL |       async fn do_sth<'a>(
    |                       -- lifetime `'a` defined here
 LL |           &'a self, foo: &dyn Foo
-   |                          - lifetime `'_` defined here
+   |                          - let's call the lifetime of this reference `'1`
 LL |       ) -> &dyn Foo
 LL | /     {
 LL | |         foo
 LL | |     }
-   | |_____^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'_`
+   | |_____^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
 
 error: aborting due to 2 previous errors
 

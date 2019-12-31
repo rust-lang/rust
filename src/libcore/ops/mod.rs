@@ -156,19 +156,19 @@ mod r#try;
 mod unsize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::arith::{Add, Sub, Mul, Div, Rem, Neg};
+pub use self::arith::{Add, Div, Mul, Neg, Rem, Sub};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-pub use self::arith::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
+pub use self::arith::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::bit::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
+pub use self::bit::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::bit::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::deref::{Deref, DerefMut};
 
-#[unstable(feature = "receiver_trait", issue = "0")]
+#[unstable(feature = "receiver_trait", issue = "none")]
 pub use self::deref::Receiver;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -184,7 +184,7 @@ pub use self::index::{Index, IndexMut};
 pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-pub use self::range::{RangeInclusive, RangeToInclusive, RangeBounds, Bound};
+pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 
 #[unstable(feature = "try_trait", issue = "42327")]
 pub use self::r#try::Try;
@@ -195,5 +195,5 @@ pub use self::generator::{Generator, GeneratorState};
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 pub use self::unsize::CoerceUnsized;
 
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 pub use self::unsize::DispatchFromDyn;

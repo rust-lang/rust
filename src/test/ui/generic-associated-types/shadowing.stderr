@@ -1,0 +1,35 @@
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/shadowing.rs:19:14
+   |
+LL | trait ShadowT<T> {
+   |               - first use of `T`
+LL |     type Bar<T>;
+   |              ^ already used
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/shadowing.rs:30:14
+   |
+LL | impl<T> NoShadowT<T> for Option<T> {
+   |      - first use of `T`
+LL |     type Bar<T> = i32;
+   |              ^ already used
+
+error: type-generic associated types are not yet implemented
+  --> $DIR/shadowing.rs:19:5
+   |
+LL |     type Bar<T>;
+   |     ^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+
+error: type-generic associated types are not yet implemented
+  --> $DIR/shadowing.rs:25:5
+   |
+LL |     type Bar<U>; // OK
+   |     ^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0403`.

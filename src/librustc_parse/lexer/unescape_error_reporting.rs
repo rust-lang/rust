@@ -1,12 +1,12 @@
 //! Utilities for rendering escape sequence errors as diagnostics.
 
-use std::ops::Range;
 use std::iter::once;
+use std::ops::Range;
 
 use rustc_lexer::unescape::{EscapeError, Mode};
-use syntax_pos::{Span, BytePos};
+use syntax_pos::{BytePos, Span};
 
-use syntax::errors::{Handler, Applicability};
+use syntax::errors::{Applicability, Handler};
 
 pub(crate) fn emit_unescape_error(
     handler: &Handler,
@@ -19,16 +19,20 @@ pub(crate) fn emit_unescape_error(
     range: Range<usize>,
     error: EscapeError,
 ) {
-    log::debug!("emit_unescape_error: {:?}, {:?}, {:?}, {:?}, {:?}",
-                lit, span_with_quotes, mode, range, error);
+    log::debug!(
+        "emit_unescape_error: {:?}, {:?}, {:?}, {:?}, {:?}",
+        lit,
+        span_with_quotes,
+        mode,
+        range,
+        error
+    );
     let span = {
         let Range { start, end } = range;
         let (start, end) = (start as u32, end as u32);
         let lo = span_with_quotes.lo() + BytePos(start + 1);
         let hi = lo + BytePos(end - start);
-            span_with_quotes
-            .with_lo(lo)
-            .with_hi(hi)
+        span_with_quotes.with_lo(lo).with_hi(hi)
     };
     let last_char = || {
         let c = lit[range.clone()].chars().rev().next().unwrap();
@@ -37,12 +41,14 @@ pub(crate) fn emit_unescape_error(
     };
     match error {
         EscapeError::LoneSurrogateUnicodeEscape => {
-            handler.struct_span_err(span, "invalid unicode character escape")
+            handler
+                .struct_span_err(span, "invalid unicode character escape")
                 .help("unicode escape must not be a surrogate")
                 .emit();
         }
         EscapeError::OutOfRangeUnicodeEscape => {
-            handler.struct_span_err(span, "invalid unicode character escape")
+            handler
+                .struct_span_err(span, "invalid unicode character escape")
                 .help("unicode escape must be at most 10FFFF")
                 .emit();
         }
@@ -63,7 +69,8 @@ pub(crate) fn emit_unescape_error(
                     msg,
                     format!("\"{}\"", lit),
                     Applicability::MachineApplicable,
-                ).emit()
+                )
+                .emit()
         }
         EscapeError::EscapeOnlyChar => {
             let (c, _span) = last_char();
@@ -72,7 +79,8 @@ pub(crate) fn emit_unescape_error(
                 "byte constant must be escaped: "
             } else {
                 "character constant must be escaped: "
-            }.to_string();
+            }
+            .to_string();
             push_escaped_char(&mut msg, c);
 
             handler.span_err(span, msg.as_str())
@@ -93,11 +101,8 @@ pub(crate) fn emit_unescape_error(
         EscapeError::InvalidEscape => {
             let (c, span) = last_char();
 
-            let label = if mode.is_bytes() {
-                "unknown byte escape"
-            } else {
-                "unknown character escape"
-            };
+            let label =
+                if mode.is_bytes() { "unknown byte escape" } else { "unknown character escape" };
             let mut msg = label.to_string();
             msg.push_str(": ");
             push_escaped_char(&mut msg, c);
@@ -105,11 +110,15 @@ pub(crate) fn emit_unescape_error(
             let mut diag = handler.struct_span_err(span, msg.as_str());
             diag.span_label(span, label);
             if c == '{' || c == '}' && !mode.is_bytes() {
-                diag.help("if used in a formatting string, \
-                           curly braces are escaped with `{{` and `}}`");
+                diag.help(
+                    "if used in a formatting string, \
+                           curly braces are escaped with `{{` and `}}`",
+                );
             } else if c == '\r' {
-                diag.help("this is an isolated carriage return; \
-                           consider checking your editor and version control settings");
+                diag.help(
+                    "this is an isolated carriage return; \
+                           consider checking your editor and version control settings",
+                );
             }
             diag.emit();
         }
@@ -123,7 +132,8 @@ pub(crate) fn emit_unescape_error(
                 "invalid character in numeric character escape: "
             } else {
                 "invalid character in unicode escape: "
-            }.to_string();
+            }
+            .to_string();
             push_escaped_char(&mut msg, c);
 
             handler.span_err(span, msg.as_str())
@@ -131,18 +141,22 @@ pub(crate) fn emit_unescape_error(
         EscapeError::NonAsciiCharInByte => {
             assert!(mode.is_bytes());
             let (_c, span) = last_char();
-            handler.span_err(span, "byte constant must be ASCII. \
-                                    Use a \\xHH escape for a non-ASCII byte")
+            handler.span_err(
+                span,
+                "byte constant must be ASCII. \
+                                    Use a \\xHH escape for a non-ASCII byte",
+            )
         }
         EscapeError::NonAsciiCharInByteString => {
             assert!(mode.is_bytes());
             let (_c, span) = last_char();
             handler.span_err(span, "raw byte string must be ASCII")
         }
-        EscapeError::OutOfRangeHexEscape => {
-            handler.span_err(span, "this form of character escape may only be used \
-                                    with characters in the range [\\x00-\\x7f]")
-        }
+        EscapeError::OutOfRangeHexEscape => handler.span_err(
+            span,
+            "this form of character escape may only be used \
+                                    with characters in the range [\\x00-\\x7f]",
+        ),
         EscapeError::LeadingUnderscoreUnicodeEscape => {
             let (_c, span) = last_char();
             handler.span_err(span, "invalid start of unicode escape")
@@ -178,26 +192,21 @@ pub(crate) fn emit_unescape_error(
                 );
             } else {
                 diag.span_label(span, msg);
-                diag.help(
-                    "format of unicode escape sequences is `\\u{...}`",
-                );
+                diag.help("format of unicode escape sequences is `\\u{...}`");
             }
 
             diag.emit();
         }
-        EscapeError::UnicodeEscapeInByte => {
-            handler.span_err(span, "unicode escape sequences cannot be used \
-                                    as a byte or in a byte string")
-        }
+        EscapeError::UnicodeEscapeInByte => handler.span_err(
+            span,
+            "unicode escape sequences cannot be used \
+                                    as a byte or in a byte string",
+        ),
         EscapeError::EmptyUnicodeEscape => {
             handler.span_err(span, "empty unicode escape (must have at least 1 hex digit)")
         }
-        EscapeError::ZeroChars => {
-            handler.span_err(span, "empty character literal")
-        }
-        EscapeError::LoneSlash => {
-            handler.span_err(span, "invalid trailing slash in literal")
-        }
+        EscapeError::ZeroChars => handler.span_err(span, "empty character literal"),
+        EscapeError::LoneSlash => handler.span_err(span, "invalid trailing slash in literal"),
     }
 }
 

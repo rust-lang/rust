@@ -1,6 +1,8 @@
 use rls_data::config::Config;
-use rls_data::{self, Analysis, CompilationOptions, CratePreludeData, Def, DefKind, Impl, Import,
-               MacroRef, Ref, RefKind, Relation};
+use rls_data::{
+    self, Analysis, CompilationOptions, CratePreludeData, Def, DefKind, Impl, Import, MacroRef,
+    Ref, RefKind, Relation,
+};
 use rls_span::{Column, Row};
 
 #[derive(Debug)]
@@ -16,10 +18,7 @@ pub struct Dumper {
 
 impl Dumper {
     pub fn new(config: Config) -> Dumper {
-        Dumper {
-            config: config.clone(),
-            result: Analysis::new(config),
-        }
+        Dumper { config: config.clone(), result: Analysis::new(config) }
     }
 
     pub fn analysis(&self) -> &Analysis {
@@ -44,8 +43,8 @@ impl Dumper {
     }
 
     pub fn import(&mut self, access: &Access, import: Import) {
-        if !access.public && self.config.pub_only
-            || !access.reachable && self.config.reachable_only {
+        if !access.public && self.config.pub_only || !access.reachable && self.config.reachable_only
+        {
             return;
         }
         self.result.imports.push(import);
@@ -59,19 +58,15 @@ impl Dumper {
     }
 
     pub fn dump_def(&mut self, access: &Access, mut data: Def) {
-        if !access.public && self.config.pub_only
-            || !access.reachable && self.config.reachable_only {
+        if !access.public && self.config.pub_only || !access.reachable && self.config.reachable_only
+        {
             return;
         }
         if data.kind == DefKind::Mod && data.span.file_name.to_str().unwrap() != data.value {
             // If the module is an out-of-line definition, then we'll make the
             // definition the first character in the module's file and turn
             // the declaration into a reference to it.
-            let rf = Ref {
-                kind: RefKind::Mod,
-                span: data.span,
-                ref_id: data.id,
-            };
+            let rf = Ref { kind: RefKind::Mod, span: data.span, ref_id: data.id };
             self.result.refs.push(rf);
             data.span = rls_data::SpanData {
                 file_name: data.value.clone().into(),

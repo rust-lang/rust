@@ -17,14 +17,14 @@
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_compiler).
 
+use crate::owning_ref::{Erased, OwningRef};
 use std::collections::HashMap;
-use std::hash::{Hash, BuildHasher};
+use std::hash::{BuildHasher, Hash};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use crate::owning_ref::{Erased, OwningRef};
 
-pub use std::sync::atomic::Ordering::SeqCst;
 pub use std::sync::atomic::Ordering;
+pub use std::sync::atomic::Ordering::SeqCst;
 
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
@@ -476,7 +476,10 @@ impl<T> Once<T> {
     /// otherwise if the inner value was already set it asserts that `value` is equal to the inner
     /// value and then returns `value` back to the caller
     #[inline]
-    pub fn try_set_same(&self, value: T) -> Option<T> where T: Eq {
+    pub fn try_set_same(&self, value: T) -> Option<T>
+    where
+        T: Eq,
+    {
         let mut lock = self.0.lock();
         if let Some(ref inner) = *lock {
             assert!(*inner == value);
@@ -518,11 +521,7 @@ impl<T> Once<T> {
     /// If the value is already initialized, the closure is not called and `None` is returned.
     #[inline]
     pub fn init_nonlocking<F: FnOnce() -> T>(&self, f: F) -> Option<T> {
-        if self.0.lock().is_some() {
-            None
-        } else {
-            self.try_set(f())
-        }
+        if self.0.lock().is_some() { None } else { self.try_set(f()) }
     }
 
     /// Tries to initialize the inner value by calling the closure without ensuring that no-one
@@ -535,12 +534,11 @@ impl<T> Once<T> {
     /// If our closure set the value, `None` is returned.
     /// If the value is already initialized, the closure is not called and `None` is returned.
     #[inline]
-    pub fn init_nonlocking_same<F: FnOnce() -> T>(&self, f: F) -> Option<T> where T: Eq {
-        if self.0.lock().is_some() {
-            None
-        } else {
-            self.try_set_same(f())
-        }
+    pub fn init_nonlocking_same<F: FnOnce() -> T>(&self, f: F) -> Option<T>
+    where
+        T: Eq,
+    {
+        if self.0.lock().is_some() { None } else { self.try_set_same(f()) }
     }
 
     /// Tries to get a reference to the inner value, returns `None` if it is not yet initialized

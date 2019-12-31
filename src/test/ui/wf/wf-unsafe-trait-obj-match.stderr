@@ -9,8 +9,8 @@ LL | |         None => &R,
 LL | |     }
    | |_____- `match` arms have incompatible types
    |
-   = note: expected type `&S`
-              found type `&R`
+   = note:   expected type `&S`
+           found reference `&R`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-unsafe-trait-obj-match.rs:26:21

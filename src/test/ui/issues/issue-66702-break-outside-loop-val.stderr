@@ -1,0 +1,11 @@
+error[E0267]: `break` inside of a closure
+  --> $DIR/issue-66702-break-outside-loop-val.rs:5:12
+   |
+LL |         || break 'some_label ();
+   |         -- ^^^^^^^^^^^^^^^^^^^^ cannot `break` inside of a closure
+   |         |
+   |         enclosing closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0267`.

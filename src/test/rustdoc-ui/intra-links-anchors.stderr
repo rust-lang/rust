@@ -1,0 +1,32 @@
+error: `[Foo::f#hola]` has an issue with the link anchor.
+  --> $DIR/intra-links-anchors.rs:25:15
+   |
+LL | /// Or maybe [Foo::f#hola].
+   |               ^^^^^^^^^^^ struct fields cannot be followed by anchors
+   |
+note: lint level defined here
+  --> $DIR/intra-links-anchors.rs:1:9
+   |
+LL | #![deny(intra_doc_link_resolution_failure)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `[hello#people#!]` has an issue with the link anchor.
+  --> $DIR/intra-links-anchors.rs:31:28
+   |
+LL | /// Another anchor error: [hello#people#!].
+   |                            ^^^^^^^^^^^^^^ only one `#` is allowed in a link
+
+error: `[Enum::A#whatever]` has an issue with the link anchor.
+  --> $DIR/intra-links-anchors.rs:37:28
+   |
+LL | /// Damn enum's variants: [Enum::A#whatever].
+   |                            ^^^^^^^^^^^^^^^^ variants cannot be followed by anchors
+
+error: `[u32#hello]` has an issue with the link anchor.
+  --> $DIR/intra-links-anchors.rs:43:6
+   |
+LL | /// [u32#hello]
+   |      ^^^^^^^^^ primitive types cannot be followed by anchors
+
+error: aborting due to 4 previous errors
+

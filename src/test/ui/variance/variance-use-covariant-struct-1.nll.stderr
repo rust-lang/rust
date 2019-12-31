@@ -8,6 +8,8 @@ LL | fn foo<'min,'max>(v: SomeStruct<&'min ()>)
 ...
 LL |     v
    |     ^ returning this value requires that `'min` must outlive `'max`
+   |
+   = help: consider adding the following bound: `'min: 'max`
 
 error: aborting due to previous error
 

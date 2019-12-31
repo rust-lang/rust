@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     inner(x)
    |     ^^^^^^^^ expected trait `std::iter::Iterator<Item = ()>`, found trait `std::iter::Iterator<Item = ()> + std::marker::Send`
    |
-   = note: expected type `std::option::Option<&dyn std::iter::Iterator<Item = ()>>`
-              found type `std::option::Option<&dyn std::iter::Iterator<Item = ()> + std::marker::Send>`
+   = note: expected enum `std::option::Option<&dyn std::iter::Iterator<Item = ()>>`
+              found enum `std::option::Option<&dyn std::iter::Iterator<Item = ()> + std::marker::Send>`
 
 error: aborting due to previous error
 

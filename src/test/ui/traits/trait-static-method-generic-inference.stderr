@@ -1,11 +1,13 @@
-error[E0283]: type annotations needed: cannot resolve `_: base::HasNew<base::Foo>`
+error[E0283]: type annotations needed
   --> $DIR/trait-static-method-generic-inference.rs:24:25
    |
 LL |         fn new() -> T;
    |         -------------- required by `base::HasNew::new`
 ...
 LL |     let _f: base::Foo = base::HasNew::new();
-   |                         ^^^^^^^^^^^^^^^^^
+   |                         ^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: cannot resolve `_: base::HasNew<base::Foo>`
 
 error: aborting due to previous error
 

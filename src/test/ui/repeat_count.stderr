@@ -8,40 +8,31 @@ error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:7:17
    |
 LL |     let b = [0; ()];
-   |                 ^^ expected usize, found ()
-   |
-   = note: expected type `usize`
-              found type `()`
+   |                 ^^ expected `usize`, found `()`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:12:17
+  --> $DIR/repeat_count.rs:10:17
    |
 LL |     let c = [0; true];
-   |                 ^^^^ expected usize, found bool
+   |                 ^^^^ expected `usize`, found `bool`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:15:17
+  --> $DIR/repeat_count.rs:13:17
    |
 LL |     let d = [0; 0.5];
-   |                 ^^^ expected usize, found floating-point number
-   |
-   = note: expected type `usize`
-              found type `{float}`
+   |                 ^^^ expected `usize`, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:20:17
+  --> $DIR/repeat_count.rs:16:17
    |
 LL |     let e = [0; "foo"];
-   |                 ^^^^^ expected usize, found reference
-   |
-   = note: expected type `usize`
-              found type `&'static str`
+   |                 ^^^^^ expected `usize`, found `&str`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:25:17
+  --> $DIR/repeat_count.rs:19:17
    |
 LL |     let f = [0; -4_isize];
-   |                 ^^^^^^^^ expected usize, found isize
+   |                 ^^^^^^^^ expected `usize`, found `isize`
    |
 help: you can convert an `isize` to `usize` and panic if the converted value wouldn't fit
    |
@@ -49,10 +40,10 @@ LL |     let f = [0; (-4_isize).try_into().unwrap()];
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:28:23
+  --> $DIR/repeat_count.rs:22:23
    |
 LL |     let f = [0_usize; -1_isize];
-   |                       ^^^^^^^^ expected usize, found isize
+   |                       ^^^^^^^^ expected `usize`, found `isize`
    |
 help: you can convert an `isize` to `usize` and panic if the converted value wouldn't fit
    |
@@ -60,13 +51,10 @@ LL |     let f = [0_usize; (-1_isize).try_into().unwrap()];
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:34:17
+  --> $DIR/repeat_count.rs:28:17
    |
 LL |     let g = [0; G { g: () }];
-   |                 ^^^^^^^^^^^ expected usize, found struct `main::G`
-   |
-   = note: expected type `usize`
-              found type `main::G`
+   |                 ^^^^^^^^^^^ expected `usize`, found struct `main::G`
 
 error: aborting due to 8 previous errors
 

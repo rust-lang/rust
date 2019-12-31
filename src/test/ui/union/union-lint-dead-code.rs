@@ -2,7 +2,7 @@
 
 union Foo {
     x: usize,
-    b: bool, //~ ERROR: field is never used
+    b: bool, //~ ERROR: field is never read
     _unused: u16,
 }
 

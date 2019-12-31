@@ -58,7 +58,7 @@ mod lock {
     pub fn lock() -> DropLock {
         loop {
             if LOCKED.swap(1, SeqCst) == 0 {
-                return DropLock
+                return DropLock;
             }
             // Ok so here's where things get a little depressing. At this point
             // in time we need to synchronously acquire a lock, but we're
@@ -67,7 +67,7 @@ mod lock {
             //
             //     unsafe {
             //         let r = core::arch::wasm32::i32_atomic_wait(
-            //             &LOCKED as *const AtomicI32 as *mut i32,
+            //             LOCKED.as_mut_ptr(),
             //             1,  //     expected value
             //             -1, //     timeout
             //         );
@@ -143,7 +143,7 @@ mod lock {
             //
             //     unsafe {
             //         core::arch::wasm32::atomic_notify(
-            //             &LOCKED as *const AtomicI32 as *mut i32,
+            //             LOCKED.as_mut_ptr(),
             //             1, //     only one thread
             //         );
             //     }

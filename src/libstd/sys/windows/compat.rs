@@ -28,8 +28,7 @@ pub fn lookup(module: &str, symbol: &str) -> Option<usize> {
     }
 }
 
-pub fn store_func(ptr: &AtomicUsize, module: &str, symbol: &str,
-                  fallback: usize) -> usize {
+pub fn store_func(ptr: &AtomicUsize, module: &str, symbol: &str, fallback: usize) -> usize {
     let value = lookup(module, symbol).unwrap_or(fallback);
     ptr.store(value, Ordering::SeqCst);
     value

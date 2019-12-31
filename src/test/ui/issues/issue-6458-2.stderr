@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/issue-6458-2.rs:3:21
    |
 LL |     format!("{:?}", None);
-   |                     ^^^^ cannot infer type for `T`
+   |                     ^^^^ cannot infer type for type parameter `T` declared on the enum `Option`
 
 error: aborting due to previous error
 

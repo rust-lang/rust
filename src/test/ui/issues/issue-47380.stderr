@@ -1,4 +1,4 @@
-error[E0369]: binary operation `+` cannot be applied to type `&str`
+error[E0369]: cannot add `&str` to `&str`
   --> $DIR/issue-47380.rs:3:35
    |
 LL |     println!("🦀🦀🦀🦀🦀"); let _a = b + ", World!";

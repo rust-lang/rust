@@ -11,16 +11,15 @@ pub struct Lazy<T> {
 }
 
 #[inline]
-const fn done<T>() -> *mut Arc<T> { 1_usize as *mut _ }
+const fn done<T>() -> *mut Arc<T> {
+    1_usize as *mut _
+}
 
 unsafe impl<T> Sync for Lazy<T> {}
 
 impl<T> Lazy<T> {
     pub const fn new() -> Lazy<T> {
-        Lazy {
-            lock: Mutex::new(),
-            ptr: Cell::new(ptr::null_mut()),
-        }
+        Lazy { lock: Mutex::new(), ptr: Cell::new(ptr::null_mut()) }
     }
 }
 

@@ -4,9 +4,7 @@ use super::*;
 fn test_lev_distance() {
     use std::char::{from_u32, MAX};
     // Test bytelength agnosticity
-    for c in (0..MAX as u32)
-             .filter_map(|i| from_u32(i))
-             .map(|i| i.to_string()) {
+    for c in (0..MAX as u32).filter_map(|i| from_u32(i)).map(|i| i.to_string()) {
         assert_eq!(lev_distance(&c[..], &c[..]), 0);
     }
 
@@ -31,10 +29,7 @@ fn test_find_best_match_for_name() {
             Some(Symbol::intern("aaab"))
         );
 
-        assert_eq!(
-            find_best_match_for_name(input.iter(), "1111111111", None),
-            None
-        );
+        assert_eq!(find_best_match_for_name(input.iter(), "1111111111", None), None);
 
         let input = vec![Symbol::intern("aAAA")];
         assert_eq!(
@@ -44,10 +39,7 @@ fn test_find_best_match_for_name() {
 
         let input = vec![Symbol::intern("AAAA")];
         // Returns None because `lev_distance > max_dist / 3`
-        assert_eq!(
-            find_best_match_for_name(input.iter(), "aaaa", None),
-            None
-        );
+        assert_eq!(find_best_match_for_name(input.iter(), "aaaa", None), None);
 
         let input = vec![Symbol::intern("AAAA")];
         assert_eq!(

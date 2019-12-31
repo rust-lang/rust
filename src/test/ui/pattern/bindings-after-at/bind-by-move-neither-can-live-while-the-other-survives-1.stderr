@@ -1,0 +1,56 @@
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:12:23
+   |
+LL |         Some(ref _y @ _z) => { },
+   |              ---------^^
+   |              |        |
+   |              |        by-move pattern here
+   |              by-ref pattern here
+
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:18:14
+   |
+LL |         Some(_z @ ref _y) => { },
+   |              ^^^^^^^^^^^ binds an already bound by-move value by moving it
+
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:25:27
+   |
+LL |         Some(ref mut _y @ _z) => { },
+   |              -------------^^
+   |              |            |
+   |              |            by-move pattern here
+   |              by-ref pattern here
+
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:31:14
+   |
+LL |         Some(_z @ ref mut _y) => { },
+   |              ^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
+
+error[E0382]: borrow of moved value
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:18:19
+   |
+LL |         Some(_z @ ref _y) => { },
+   |              -----^^^^^^
+   |              |    |
+   |              |    value borrowed here after move
+   |              value moved here
+   |
+   = note: move occurs because value has type `X`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:31:19
+   |
+LL |         Some(_z @ ref mut _y) => { },
+   |              -----^^^^^^^^^^
+   |              |    |
+   |              |    value borrowed here after move
+   |              value moved here
+   |
+   = note: move occurs because value has type `X`, which does not implement the `Copy` trait
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0007, E0009, E0382.
+For more information about an error, try `rustc --explain E0007`.

@@ -23,11 +23,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // avoids needing a mountain of temporary `()` variables.
         let expr2 = expr.clone();
         match expr.kind {
-            ExprKind::Scope {
-                region_scope,
-                lint_level,
-                value,
-            } => {
+            ExprKind::Scope { region_scope, lint_level, value } => {
                 let value = this.hir.mirror(value);
                 this.in_scope((region_scope, source_info), lint_level, |this| {
                     this.stmt_expr(block, value, statement_scope)
@@ -106,11 +102,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Return { value } => {
                 this.break_scope(block, value, BreakableTarget::Return, source_info)
             }
-            ExprKind::InlineAsm {
-                asm,
-                outputs,
-                inputs,
-            } => {
+            ExprKind::InlineAsm { asm, outputs, inputs } => {
                 debug!("stmt_expr InlineAsm block_context.push(SubExpr) : {:?}", expr2);
                 this.block_context.push(BlockFrame::SubExpr);
                 let outputs = outputs
@@ -121,11 +113,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let inputs = inputs
                     .into_iter()
                     .map(|input| {
-                        (
-                            input.span(),
-                            unpack!(block = this.as_local_operand(block, input)),
-                        )
-                    }).collect::<Vec<_>>()
+                        (input.span(), unpack!(block = this.as_local_operand(block, input)))
+                    })
+                    .collect::<Vec<_>>()
                     .into_boxed_slice();
                 this.cfg.push(
                     block,
@@ -166,17 +156,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     break;
                                 }
                             }
-                            this.block_context.push(BlockFrame::TailExpr {
-                                tail_result_is_ignored: true
-                            });
+                            this.block_context
+                                .push(BlockFrame::TailExpr { tail_result_is_ignored: true });
                             return Some(expr.span);
                         }
                     }
                     None
                 })();
 
-                let temp = unpack!(block =
-                    this.as_temp(block, statement_scope, expr, Mutability::Not));
+                let temp =
+                    unpack!(block = this.as_temp(block, statement_scope, expr, Mutability::Not));
 
                 if let Some(span) = adjusted_span {
                     this.local_decls[temp].source_info.span = span;

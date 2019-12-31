@@ -1,13 +1,13 @@
-use rustc::ty::{
-    TyCtxt, Ty,
-    subst::{GenericArgKind, GenericArg},
-    print::{Printer, PrettyPrinter, Print},
-    self,
-};
-use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::hir::def_id::CrateNum;
-use std::fmt::Write;
+use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::mir::interpret::Allocation;
+use rustc::ty::{
+    self,
+    print::{PrettyPrinter, Print, Printer},
+    subst::{GenericArg, GenericArgKind},
+    Ty, TyCtxt,
+};
+use std::fmt::Write;
 
 struct AbsolutePathPrinter<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -34,7 +34,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         match ty.kind {
             // Types without identity.
-            | ty::Bool
+            ty::Bool
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
@@ -47,22 +47,16 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::FnPtr(_)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Dynamic(_, _)
-            => self.pretty_print_type(ty),
+            | ty::Dynamic(_, _) => self.pretty_print_type(ty),
 
             // Placeholders (all printed as `_` to uniformize them).
-            | ty::Param(_)
-            | ty::Bound(..)
-            | ty::Placeholder(_)
-            | ty::Infer(_)
-            | ty::Error
-            => {
+            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error => {
                 write!(self, "_")?;
                 Ok(self)
             }
 
             // Types with identity (print the module path).
-            | ty::Adt(&ty::AdtDef { did: def_id, .. }, substs)
+            ty::Adt(&ty::AdtDef { did: def_id, .. }, substs)
             | ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
@@ -71,16 +65,11 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
-            ty::GeneratorWitness(_) => {
-                bug!("type_name: unexpected `GeneratorWitness`")
-            }
+            ty::GeneratorWitness(_) => bug!("type_name: unexpected `GeneratorWitness`"),
         }
     }
 
-    fn print_const(
-        self,
-        _: &'tcx ty::Const<'tcx>,
-    ) -> Result<Self::Const, Self::Error> {
+    fn print_const(self, _: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // don't print constants to the user
         Ok(self)
     }
@@ -158,11 +147,9 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
-        let args = args.iter().cloned().filter(|arg| {
-            match arg.unpack() {
-                GenericArgKind::Lifetime(_) => false,
-                _ => true,
-            }
+        let args = args.iter().cloned().filter(|arg| match arg.unpack() {
+            GenericArgKind::Lifetime(_) => false,
+            _ => true,
         });
         if args.clone().next().is_some() {
             self.generic_delimiters(|cx| cx.comma_sep(args))
@@ -172,10 +159,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 }
 impl PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
-    fn region_should_not_be_omitted(
-        &self,
-        _region: ty::Region<'_>,
-    ) -> bool {
+    fn region_should_not_be_omitted(&self, _region: ty::Region<'_>) -> bool {
         false
     }
     fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
@@ -213,10 +197,7 @@ impl Write for AbsolutePathPrinter<'_> {
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-crate fn alloc_type_name<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>
-) -> &'tcx Allocation {
+crate fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx Allocation {
     let path = AbsolutePathPrinter { tcx, path: String::new() }.print_type(ty).unwrap().path;
     let alloc = Allocation::from_byte_aligned_bytes(path.into_bytes());
     tcx.intern_const_alloc(alloc)

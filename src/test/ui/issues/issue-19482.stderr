@@ -1,11 +1,11 @@
-error[E0191]: the value of the associated type `A` (from the trait `Foo`) must be specified
-  --> $DIR/issue-19482.rs:10:12
+error[E0191]: the value of the associated type `A` (from trait `Foo`) must be specified
+  --> $DIR/issue-19482.rs:10:16
    |
 LL |     type A;
    |     ------- `A` defined here
 ...
 LL | fn bar(x: &dyn Foo) {}
-   |            ^^^^^^^ associated type `A` must be specified
+   |                ^^^ help: specify the associated type: `Foo<A = Type>`
 
 error: aborting due to previous error
 

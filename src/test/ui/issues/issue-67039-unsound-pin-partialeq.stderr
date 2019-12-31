@@ -1,0 +1,13 @@
+error[E0271]: type mismatch resolving `<std::rc::Rc<Apple> as std::ops::Deref>::Target == std::rc::Rc<Apple>`
+  --> $DIR/issue-67039-unsound-pin-partialeq.rs:25:29
+   |
+LL |     let _ = Pin::new(Apple) == Rc::pin(Apple);
+   |                             ^^ expected struct `Apple`, found struct `std::rc::Rc`
+   |
+   = note: expected type `Apple`
+            found struct `std::rc::Rc<Apple>`
+   = note: required because of the requirements on the impl of `std::cmp::PartialEq<std::pin::Pin<std::rc::Rc<Apple>>>` for `std::pin::Pin<Apple>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

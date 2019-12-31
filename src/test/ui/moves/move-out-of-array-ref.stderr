@@ -1,0 +1,47 @@
+error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
+  --> $DIR/move-out-of-array-ref.rs:10:24
+   |
+LL |     let [_, e, _, _] = *a;
+   |             -          ^^
+   |             |          |
+   |             |          cannot move out of here
+   |             |          help: consider borrowing here: `&*a`
+   |             data moved here
+   |             move occurs because `e` has type `D`, which does not implement the `Copy` trait
+
+error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
+  --> $DIR/move-out-of-array-ref.rs:15:27
+   |
+LL |     let [_, s @ .. , _] = *a;
+   |             ------        ^^
+   |             |             |
+   |             |             cannot move out of here
+   |             |             help: consider borrowing here: `&*a`
+   |             data moved here
+   |             move occurs because `s` has type `[D; 2]`, which does not implement the `Copy` trait
+
+error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
+  --> $DIR/move-out-of-array-ref.rs:20:24
+   |
+LL |     let [_, e, _, _] = *a;
+   |             -          ^^
+   |             |          |
+   |             |          cannot move out of here
+   |             |          help: consider borrowing here: `&*a`
+   |             data moved here
+   |             move occurs because `e` has type `D`, which does not implement the `Copy` trait
+
+error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
+  --> $DIR/move-out-of-array-ref.rs:25:27
+   |
+LL |     let [_, s @ .. , _] = *a;
+   |             ------        ^^
+   |             |             |
+   |             |             cannot move out of here
+   |             |             help: consider borrowing here: `&*a`
+   |             data moved here
+   |             move occurs because `s` has type `[D; 2]`, which does not implement the `Copy` trait
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0508`.

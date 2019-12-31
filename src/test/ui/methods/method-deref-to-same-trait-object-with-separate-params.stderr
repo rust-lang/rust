@@ -2,19 +2,17 @@ error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:85:24
    |
 LL |     let _seetype: () = z;
-   |                        ^ expected (), found u32
-   |
-   = note: expected type `()`
-              found type `u32`
+   |                   --   ^ expected `()`, found `u32`
+   |                   |
+   |                   expected due to this
 
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:102:24
    |
 LL |     let _seetype: () = z;
-   |                        ^ expected (), found u64
-   |
-   = note: expected type `()`
-              found type `u64`
+   |                   --   ^ expected `()`, found `u64`
+   |                   |
+   |                   expected due to this
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:120:15
@@ -27,46 +25,52 @@ note: candidate #1 is defined in an impl of the trait `internal::X` for the type
    |
 LL |         fn foo(self: Smaht<Self, u64>) -> u64 {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `internal::X::foo(x)` instead
 note: candidate #2 is defined in an impl of the trait `nuisance_foo::NuisanceFoo` for the type `_`
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:70:9
    |
 LL |         fn foo(self) {}
    |         ^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `nuisance_foo::NuisanceFoo::foo(x)` instead
 note: candidate #3 is defined in the trait `FinalFoo`
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:57:5
    |
 LL |     fn foo(&self) -> u8;
    |     ^^^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `FinalFoo::foo(x)` instead
+help: disambiguate the method call for candidate #1
+   |
+LL |     let z = internal::X::foo(x);
+   |             ^^^^^^^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #2
+   |
+LL |     let z = nuisance_foo::NuisanceFoo::foo(x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #3
+   |
+LL |     let z = FinalFoo::foo(x);
+   |             ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:137:24
    |
 LL |     let _seetype: () = z;
-   |                        ^ expected (), found u8
-   |
-   = note: expected type `()`
-              found type `u8`
+   |                   --   ^ expected `()`, found `u8`
+   |                   |
+   |                   expected due to this
 
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:155:24
    |
 LL |     let _seetype: () = z;
-   |                        ^ expected (), found u32
-   |
-   = note: expected type `()`
-              found type `u32`
+   |                   --   ^ expected `()`, found `u32`
+   |                   |
+   |                   expected due to this
 
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:172:24
    |
 LL |     let _seetype: () = z;
-   |                        ^ expected (), found u32
-   |
-   = note: expected type `()`
-              found type `u32`
+   |                   --   ^ expected `()`, found `u32`
+   |                   |
+   |                   expected due to this
 
 error: aborting due to 6 previous errors
 

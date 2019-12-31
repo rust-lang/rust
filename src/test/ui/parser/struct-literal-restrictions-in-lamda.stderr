@@ -21,10 +21,10 @@ LL |       while || Foo {
    |  ___________^
 LL | |         x: 3
 LL | |     }.hi() {
-   | |__________^ expected bool, found closure
+   | |__________^ expected `bool`, found closure
    |
    = note: expected type `bool`
-              found type `[closure@$DIR/struct-literal-restrictions-in-lamda.rs:12:11: 14:11]`
+           found closure `[closure@$DIR/struct-literal-restrictions-in-lamda.rs:12:11: 14:11]`
 
 error: aborting due to 2 previous errors
 

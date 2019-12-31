@@ -29,18 +29,19 @@ use crate::hash::Hasher;
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "send_trait")]
 #[rustc_on_unimplemented(
-    message="`{Self}` cannot be sent between threads safely",
-    label="`{Self}` cannot be sent between threads safely"
+    message = "`{Self}` cannot be sent between threads safely",
+    label = "`{Self}` cannot be sent between threads safely"
 )]
 pub unsafe auto trait Send {
     // empty.
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Send for *const T { }
+impl<T: ?Sized> !Send for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Send for *mut T { }
+impl<T: ?Sized> !Send for *mut T {}
 
 /// Types with a constant size known at compile time.
 ///
@@ -82,11 +83,11 @@ impl<T: ?Sized> !Send for *mut T { }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented(
-    on(parent_trait="std::path::Path", label="borrow the `Path` instead"),
-    message="the size for values of type `{Self}` cannot be known at compilation time",
-    label="doesn't have a size known at compile-time",
-    note="to learn more, visit <https://doc.rust-lang.org/book/\
-          ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>",
+    on(parent_trait = "std::path::Path", label = "borrow the `Path` instead"),
+    message = "the size for values of type `{Self}` cannot be known at compilation time",
+    label = "doesn't have a size known at compile-time",
+    note = "to learn more, visit <https://doc.rust-lang.org/book/\
+          ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>"
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 pub trait Sized {
@@ -96,7 +97,7 @@ pub trait Sized {
 /// Types that can be "unsized" to a dynamically-sized type.
 ///
 /// For example, the sized array type `[i8; 2]` implements `Unsize<[i8]>` and
-/// `Unsize<fmt::Debug>`.
+/// `Unsize<dyn fmt::Debug>`.
 ///
 /// All implementations of `Unsize` are provided automatically by the compiler.
 ///
@@ -141,13 +142,13 @@ pub trait Unsize<T: ?Sized> {
 /// In either of the two scenarios above, we reject usage of such a constant in
 /// a pattern match.
 ///
-/// See also the [structural match RFC][RFC1445], and [issue 63438][] which
+/// See also the [structural match RFC][RFC1445], and [issue 63438] which
 /// motivated migrating from attribute-based design to this trait.
 ///
 /// [RFC1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md
 /// [issue 63438]: https://github.com/rust-lang/rust/issues/63438
 #[unstable(feature = "structural_match", issue = "31434")]
-#[rustc_on_unimplemented(message="the type `{Self}` does not `#[derive(PartialEq)]`")]
+#[rustc_on_unimplemented(message = "the type `{Self}` does not `#[derive(PartialEq)]`")]
 #[lang = "structural_peq"]
 pub trait StructuralPartialEq {
     // Empty.
@@ -197,7 +198,7 @@ pub trait StructuralPartialEq {
 /// of the two derives (`#[derive(PartialEq)]` and `#[derive(Eq)]`) and check
 /// that both of them are present as part of structural-match checking.
 #[unstable(feature = "structural_match", issue = "31434")]
-#[rustc_on_unimplemented(message="the type `{Self}` does not `#[derive(Eq)]`")]
+#[rustc_on_unimplemented(message = "the type `{Self}` does not `#[derive(Eq)]`")]
 #[lang = "structural_teq"]
 pub trait StructuralEq {
     // Empty.
@@ -361,7 +362,7 @@ pub trait StructuralEq {
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
-pub trait Copy : Clone {
+pub trait Copy: Clone {
     // Empty.
 }
 
@@ -369,7 +370,9 @@ pub trait Copy : Clone {
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_clone_copy)]
-pub macro Copy($item:item) { /* compiler built-in */ }
+pub macro Copy($item:item) {
+    /* compiler built-in */
+}
 
 /// Types for which it is safe to share references between threads.
 ///
@@ -440,10 +443,11 @@ pub macro Copy($item:item) { /* compiler built-in */ }
 /// [ub]: ../../reference/behavior-considered-undefined.html
 /// [transmute]: ../../std/mem/fn.transmute.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "sync_trait")]
 #[lang = "sync"]
 #[rustc_on_unimplemented(
-    message="`{Self}` cannot be shared between threads safely",
-    label="`{Self}` cannot be shared between threads safely"
+    message = "`{Self}` cannot be shared between threads safely",
+    label = "`{Self}` cannot be shared between threads safely"
 )]
 pub unsafe auto trait Sync {
     // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`
@@ -460,67 +464,65 @@ pub unsafe auto trait Sync {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Sync for *const T { }
+impl<T: ?Sized> !Sync for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Sync for *mut T { }
+impl<T: ?Sized> !Sync for *mut T {}
 
-macro_rules! impls{
-    ($t: ident) => (
+macro_rules! impls {
+    ($t: ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> Hash for $t<T> {
+        impl<T: ?Sized> Hash for $t<T> {
             #[inline]
-            fn hash<H: Hasher>(&self, _: &mut H) {
-            }
+            fn hash<H: Hasher>(&self, _: &mut H) {}
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> cmp::PartialEq for $t<T> {
+        impl<T: ?Sized> cmp::PartialEq for $t<T> {
             fn eq(&self, _other: &$t<T>) -> bool {
                 true
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> cmp::Eq for $t<T> {
-        }
+        impl<T: ?Sized> cmp::Eq for $t<T> {}
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> cmp::PartialOrd for $t<T> {
+        impl<T: ?Sized> cmp::PartialOrd for $t<T> {
             fn partial_cmp(&self, _other: &$t<T>) -> Option<cmp::Ordering> {
                 Option::Some(cmp::Ordering::Equal)
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> cmp::Ord for $t<T> {
+        impl<T: ?Sized> cmp::Ord for $t<T> {
             fn cmp(&self, _other: &$t<T>) -> cmp::Ordering {
                 cmp::Ordering::Equal
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> Copy for $t<T> { }
+        impl<T: ?Sized> Copy for $t<T> {}
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> Clone for $t<T> {
+        impl<T: ?Sized> Clone for $t<T> {
             fn clone(&self) -> $t<T> {
                 $t
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> Default for $t<T> {
+        impl<T: ?Sized> Default for $t<T> {
             fn default() -> $t<T> {
                 $t
             }
         }
 
         #[unstable(feature = "structural_match", issue = "31434")]
-        impl<T: ?Sized> StructuralPartialEq for $t<T> { }
+        impl<T: ?Sized> StructuralPartialEq for $t<T> {}
 
         #[unstable(feature = "structural_match", issue = "31434")]
-        impl<T: ?Sized> StructuralEq for $t<T> { }
-        )
+        impl<T: ?Sized> StructuralEq for $t<T> {}
+    };
 }
 
 /// Zero-sized type used to mark things that "act like" they own a `T`.
@@ -659,7 +661,7 @@ macro_rules! impls{
 #[lang = "phantom_data"]
 #[structural_match]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<T:?Sized>;
+pub struct PhantomData<T: ?Sized>;
 
 impls! { PhantomData }
 
@@ -786,5 +788,4 @@ mod copy_impls {
     // Shared references can be copied, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Copy for &T {}
-
 }

@@ -4,11 +4,11 @@
 use rustc::mir::{BasicBlock, Location};
 use rustc_index::bit_set::{BitIter, BitSet, HybridBitSet};
 
-use crate::dataflow::{BitDenotation, DataflowResults, GenKillSet};
 use crate::dataflow::move_paths::{HasMoveData, MovePathIndex};
+use crate::dataflow::{BitDenotation, DataflowResults, GenKillSet};
 
-use std::iter;
 use std::borrow::Borrow;
+use std::iter;
 
 /// A trait for "cartesian products" of multiple FlowAtLocation.
 ///
@@ -98,11 +98,7 @@ where
         let bits_per_block = results.borrow().sets().bits_per_block();
         let curr_state = BitSet::new_empty(bits_per_block);
         let stmt_trans = GenKillSet::from_elem(HybridBitSet::new_empty(bits_per_block));
-        FlowAtLocation {
-            base_results: results,
-            curr_state,
-            stmt_trans,
-        }
+        FlowAtLocation { base_results: results, curr_state, stmt_trans }
     }
 
     /// Access the underlying operator.
@@ -154,37 +150,24 @@ where
 
     fn reconstruct_statement_effect(&mut self, loc: Location) {
         self.stmt_trans.clear();
-        self.base_results
-            .borrow()
-            .operator()
-            .before_statement_effect(&mut self.stmt_trans, loc);
+        self.base_results.borrow().operator().before_statement_effect(&mut self.stmt_trans, loc);
         self.stmt_trans.apply(&mut self.curr_state);
 
-        self.base_results
-            .borrow()
-            .operator()
-            .statement_effect(&mut self.stmt_trans, loc);
+        self.base_results.borrow().operator().statement_effect(&mut self.stmt_trans, loc);
     }
 
     fn reconstruct_terminator_effect(&mut self, loc: Location) {
         self.stmt_trans.clear();
-        self.base_results
-            .borrow()
-            .operator()
-            .before_terminator_effect(&mut self.stmt_trans, loc);
+        self.base_results.borrow().operator().before_terminator_effect(&mut self.stmt_trans, loc);
         self.stmt_trans.apply(&mut self.curr_state);
 
-        self.base_results
-            .borrow()
-            .operator()
-            .terminator_effect(&mut self.stmt_trans, loc);
+        self.base_results.borrow().operator().terminator_effect(&mut self.stmt_trans, loc);
     }
 
     fn apply_local_effect(&mut self, _loc: Location) {
         self.stmt_trans.apply(&mut self.curr_state)
     }
 }
-
 
 impl<'tcx, T, DR> FlowAtLocation<'tcx, T, DR>
 where

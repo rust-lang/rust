@@ -1,9 +1,8 @@
 use crate::hir;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_macros::HashStable;
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub enum PointerCast {
@@ -76,13 +75,13 @@ pub enum PointerCast {
 ///    At some point, of course, `Box` should move out of the compiler, in which
 ///    case this is analogous to transforming a struct. E.g., Box<[i32; 4]> ->
 ///    Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct Adjustment<'tcx> {
     pub kind: Adjust<'tcx>,
     pub target: Ty<'tcx>,
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum Adjust<'tcx> {
     /// Go from ! to any type.
     NeverToAny,
@@ -100,7 +99,7 @@ pub enum Adjust<'tcx> {
 /// call, with the signature `&'a T -> &'a U` or `&'a mut T -> &'a mut U`.
 /// The target type is `U` in both cases, with the region and mutability
 /// being those shared by both the receiver and the returned reference.
-#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct OverloadedDeref<'tcx> {
     pub region: ty::Region<'tcx>,
     pub mutbl: hir::Mutability,
@@ -109,11 +108,14 @@ pub struct OverloadedDeref<'tcx> {
 impl<'tcx> OverloadedDeref<'tcx> {
     pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {
         let trait_def_id = match self.mutbl {
-            hir::Mutability::Immutable => tcx.lang_items().deref_trait(),
-            hir::Mutability::Mutable => tcx.lang_items().deref_mut_trait()
+            hir::Mutability::Not => tcx.lang_items().deref_trait(),
+            hir::Mutability::Mut => tcx.lang_items().deref_mut_trait(),
         };
-        let method_def_id = tcx.associated_items(trait_def_id.unwrap())
-            .find(|m| m.kind == ty::AssocKind::Method).unwrap().def_id;
+        let method_def_id = tcx
+            .associated_items(trait_def_id.unwrap())
+            .find(|m| m.kind == ty::AssocKind::Method)
+            .unwrap()
+            .def_id;
         (method_def_id, tcx.mk_substs_trait(source, &[]))
     }
 }
@@ -133,25 +135,25 @@ impl<'tcx> OverloadedDeref<'tcx> {
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum AllowTwoPhase {
     Yes,
-    No
+    No,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum AutoBorrowMutability {
-    Mutable { allow_two_phase_borrow: AllowTwoPhase },
-    Immutable,
+    Mut { allow_two_phase_borrow: AllowTwoPhase },
+    Not,
 }
 
 impl From<AutoBorrowMutability> for hir::Mutability {
     fn from(m: AutoBorrowMutability) -> Self {
         match m {
-            AutoBorrowMutability::Mutable { .. } => hir::Mutability::Mutable,
-            AutoBorrowMutability::Immutable => hir::Mutability::Immutable,
+            AutoBorrowMutability::Mut { .. } => hir::Mutability::Mut,
+            AutoBorrowMutability::Not => hir::Mutability::Not,
         }
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum AutoBorrow<'tcx> {
     /// Converts from T to &T.
     Ref(ty::Region<'tcx>, AutoBorrowMutability),
@@ -172,11 +174,11 @@ pub struct CoerceUnsizedInfo {
     /// coercion is it? This applies to impls of `CoerceUnsized` for
     /// structs, primarily, where we store a bit of info about which
     /// fields need to be coerced.
-    pub custom_kind: Option<CustomCoerceUnsized>
+    pub custom_kind: Option<CustomCoerceUnsized>,
 }
 
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum CustomCoerceUnsized {
     /// Records the index of the field being coerced.
-    Struct(usize)
+    Struct(usize),
 }

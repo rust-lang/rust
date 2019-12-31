@@ -26,7 +26,7 @@ error: expected `{`, found `;`
   --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:20:31
    |
 LL |     if not  // lack of braces is [sic]
-   |     -- this `if` statement has a condition, but no block
+   |     -- this `if` expression has a condition, but no block
 LL |         println!("Then when?");
    |                               ^
    |                               |

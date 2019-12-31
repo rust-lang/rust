@@ -1,5 +1,6 @@
 // Test that the compiler will catch invalid inline assembly constraints.
 
+// build-fail
 // ignore-emscripten
 
 #![feature(asm)]

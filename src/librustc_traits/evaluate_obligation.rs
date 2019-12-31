@@ -7,10 +7,7 @@ use rustc::ty::{ParamEnvAnd, TyCtxt};
 use syntax::source_map::DUMMY_SP;
 
 crate fn provide(p: &mut Providers<'_>) {
-    *p = Providers {
-        evaluate_obligation,
-        ..*p
-    };
+    *p = Providers { evaluate_obligation, ..*p };
 }
 
 fn evaluate_obligation<'tcx>(
@@ -23,10 +20,7 @@ fn evaluate_obligation<'tcx>(
         &canonical_goal,
         |ref infcx, goal, _canonical_inference_vars| {
             debug!("evaluate_obligation: goal={:#?}", goal);
-            let ParamEnvAnd {
-                param_env,
-                value: predicate,
-            } = goal;
+            let ParamEnvAnd { param_env, value: predicate } = goal;
 
             let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
             let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);

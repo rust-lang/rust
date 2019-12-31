@@ -4,7 +4,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::cell::{UnsafeCell, Cell, RefCell, Ref, RefMut};
+use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::flt2dec;
@@ -13,9 +13,9 @@ use crate::result;
 use crate::slice;
 use crate::str;
 
+mod builders;
 mod float;
 mod num;
-mod builders;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 /// Possible alignments returned by `Formatter::align`
@@ -33,10 +33,9 @@ pub enum Alignment {
 }
 
 #[stable(feature = "debug_builders", since = "1.2.0")]
-pub use self::builders::{DebugStruct, DebugTuple, DebugSet, DebugList, DebugMap};
+pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-           issue = "0")]
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 #[doc(hidden)]
 pub mod rt {
     pub mod v1;
@@ -64,7 +63,7 @@ pub mod rt {
 ///
 /// let pythagorean_triple = Triangle { a: 3.0, b: 4.0, c: 5.0 };
 ///
-/// println!("{}", pythagorean_triple);
+/// assert_eq!(format!("{}", pythagorean_triple), "(3, 4, 5)");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result = result::Result<(), Error>;
@@ -234,7 +233,7 @@ pub struct Formatter<'a> {
     width: Option<usize>,
     precision: Option<usize>,
 
-    buf: &'a mut (dyn Write+'a),
+    buf: &'a mut (dyn Write + 'a),
     curarg: slice::Iter<'a, ArgumentV1<'a>>,
     args: &'a [ArgumentV1<'a>],
 }
@@ -260,8 +259,7 @@ struct Void {
 /// types, and then this struct is used to canonicalize arguments to one type.
 #[derive(Copy, Clone)]
 #[allow(missing_debug_implementations)]
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-           issue = "0")]
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 #[doc(hidden)]
 pub struct ArgumentV1<'a> {
     value: &'a Void,
@@ -275,21 +273,13 @@ impl<'a> ArgumentV1<'a> {
     }
 
     #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-               issue = "0")]
-    pub fn new<'b, T>(x: &'b T,
-                      f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
-        unsafe {
-            ArgumentV1 {
-                formatter: mem::transmute(f),
-                value: mem::transmute(x)
-            }
-        }
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
+        unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
     }
 
     #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-               issue = "0")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
         ArgumentV1::new(x, ArgumentV1::show_usize)
     }
@@ -305,21 +295,23 @@ impl<'a> ArgumentV1<'a> {
 
 // flags available in the v1 format of format_args
 #[derive(Copy, Clone)]
-enum FlagV1 { SignPlus, SignMinus, Alternate, SignAwareZeroPad, DebugLowerHex, DebugUpperHex }
+enum FlagV1 {
+    SignPlus,
+    SignMinus,
+    Alternate,
+    SignAwareZeroPad,
+    DebugLowerHex,
+    DebugUpperHex,
+}
 
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
-    #[doc(hidden)] #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-               issue = "0")]
-    pub fn new_v1(pieces: &'a [&'a str],
-                  args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
-        Arguments {
-            pieces,
-            fmt: None,
-            args,
-        }
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_v1(pieces: &'a [&'a str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
+        Arguments { pieces, fmt: None, args }
     }
 
     /// This function is used to specify nonstandard formatting parameters.
@@ -328,29 +320,26 @@ impl<'a> Arguments<'a> {
     /// `CountIsParam` or `CountIsNextParam` has to point to an argument
     /// created with `argumentusize`. However, failing to do so doesn't cause
     /// unsafety, but will ignore invalid .
-    #[doc(hidden)] #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-               issue = "0")]
-    pub fn new_v1_formatted(pieces: &'a [&'a str],
-                            args: &'a [ArgumentV1<'a>],
-                            fmt: &'a [rt::v1::Argument]) -> Arguments<'a> {
-        Arguments {
-            pieces,
-            fmt: Some(fmt),
-            args,
-        }
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_v1_formatted(
+        pieces: &'a [&'a str],
+        args: &'a [ArgumentV1<'a>],
+        fmt: &'a [rt::v1::Argument],
+    ) -> Arguments<'a> {
+        Arguments { pieces, fmt: Some(fmt), args }
     }
 
     /// Estimates the length of the formatted text.
     ///
     /// This is intended to be used for setting initial `String` capacity
     /// when using `format!`. Note: this is neither the lower nor upper bound.
-    #[doc(hidden)] #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-               issue = "0")]
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn estimated_capacity(&self) -> usize {
-        let pieces_length: usize = self.pieces.iter()
-            .map(|x| x.len()).sum();
+        let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
 
         if self.args.is_empty() {
             pieces_length
@@ -451,7 +440,7 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// println!("The origin is: {:?}", origin);
+/// assert_eq!(format!("The origin is: {:?}", origin), "The origin is: Point { x: 0, y: 0 }");
 /// ```
 ///
 /// Manually implementing:
@@ -466,28 +455,25 @@ impl Display for Arguments<'_> {
 ///
 /// impl fmt::Debug for Point {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         write!(f, "Point {{ x: {}, y: {} }}", self.x, self.y)
+///         f.debug_struct("Point")
+///          .field("x", &self.x)
+///          .field("y", &self.y)
+///          .finish()
 ///     }
 /// }
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// println!("The origin is: {:?}", origin);
+/// assert_eq!(format!("The origin is: {:?}", origin), "The origin is: Point { x: 0, y: 0 }");
 /// ```
 ///
-/// This outputs:
-///
-/// ```text
-/// The origin is: Point { x: 0, y: 0 }
-/// ```
-///
-/// There are a number of `debug_*` methods on [`Formatter`] to help you with manual
-/// implementations, such as [`debug_struct`][debug_struct].
+/// There are a number of helper methods on the [`Formatter`] struct to help you with manual
+/// implementations, such as [`debug_struct`].
 ///
 /// `Debug` implementations using either `derive` or the debug builder API
 /// on [`Formatter`] support pretty-printing using the alternate flag: `{:#?}`.
 ///
-/// [debug_struct]: ../../std/fmt/struct.Formatter.html#method.debug_struct
+/// [`debug_struct`]: ../../std/fmt/struct.Formatter.html#method.debug_struct
 /// [`Formatter`]: ../../std/fmt/struct.Formatter.html
 ///
 /// Pretty-printing with `#?`:
@@ -501,23 +487,22 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// println!("The origin is: {:#?}", origin);
-/// ```
-///
-/// This outputs:
-///
-/// ```text
-/// The origin is: Point {
+/// assert_eq!(format!("The origin is: {:#?}", origin),
+/// "The origin is: Point {
 ///     x: 0,
-///     y: 0
-/// }
+///     y: 0,
+/// }");
 /// ```
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
-    on(crate_local, label="`{Self}` cannot be formatted using `{{:?}}`",
-                    note="add `#[derive(Debug)]` or manually implement `{Debug}`"),
-    message="`{Self}` doesn't implement `{Debug}`",
-    label="`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`",
+    on(
+        crate_local,
+        label = "`{Self}` cannot be formatted using `{{:?}}`",
+        note = "add `#[derive(Debug)]` or manually implement `{Debug}`"
+    ),
+    message = "`{Self}` doesn't implement `{Debug}`",
+    label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`"
 )]
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "debug_trait"]
@@ -536,12 +521,20 @@ pub trait Debug {
     ///
     /// impl fmt::Debug for Position {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "({:?}, {:?})", self.longitude, self.latitude)
+    ///         f.debug_tuple("")
+    ///          .field(&self.longitude)
+    ///          .field(&self.latitude)
+    ///          .finish()
     ///     }
     /// }
     ///
-    /// assert_eq!("(1.987, 2.983)".to_owned(),
-    ///            format!("{:?}", Position { longitude: 1.987, latitude: 2.983, }));
+    /// let position = Position { longitude: 1.987, latitude: 2.983 };
+    /// assert_eq!(format!("{:?}", position), "(1.987, 2.983)");
+    ///
+    /// assert_eq!(format!("{:#?}", position), "(
+    ///     1.987,
+    ///     2.983,
+    /// )");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -553,7 +546,9 @@ pub(crate) mod macros {
     #[rustc_builtin_macro]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     #[allow_internal_unstable(core_intrinsics)]
-    pub macro Debug($item:item) { /* compiler built-in */ }
+    pub macro Debug($item:item) {
+        /* compiler built-in */
+    }
 }
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(inline)]
@@ -590,18 +585,18 @@ pub use macros::Debug;
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// println!("The origin is: {}", origin);
+/// assert_eq!(format!("The origin is: {}", origin), "The origin is: (0, 0)");
 /// ```
 #[rustc_on_unimplemented(
     on(
-        _Self="std::path::Path",
-        label="`{Self}` cannot be formatted with the default formatter; call `.display()` on it",
-        note="call `.display()` or `.to_string_lossy()` to safely print paths, \
-              as they may contain non-Unicode data"
+        _Self = "std::path::Path",
+        label = "`{Self}` cannot be formatted with the default formatter; call `.display()` on it",
+        note = "call `.display()` or `.to_string_lossy()` to safely print paths, \
+                as they may contain non-Unicode data"
     ),
-    message="`{Self}` doesn't implement `{Display}`",
-    label="`{Self}` cannot be formatted with the default formatter",
-    note="in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead",
+    message = "`{Self}` doesn't implement `{Display}`",
+    label = "`{Self}` cannot be formatted with the default formatter",
+    note = "in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead"
 )]
 #[doc(alias = "{}")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -624,7 +619,7 @@ pub trait Display {
     ///     }
     /// }
     ///
-    /// assert_eq!("(1.987, 2.983)".to_owned(),
+    /// assert_eq!("(1.987, 2.983)",
     ///            format!("{}", Position { longitude: 1.987, latitude: 2.983, }));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -668,13 +663,15 @@ pub trait Display {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         let val = self.0;
 ///
-///         write!(f, "{:o}", val) // delegate to i32's implementation
+///         fmt::Octal::fmt(&val, f) // delegate to i32's implementation
 ///     }
 /// }
 ///
 /// let l = Length(9);
 ///
-/// println!("l as octal is: {:o}", l);
+/// assert_eq!(format!("l as octal is: {:o}", l), "l as octal is: 11");
+///
+/// assert_eq!(format!("l as octal is: {:#06o}", l), "l as octal is: 0o0011");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Octal {
@@ -718,13 +715,18 @@ pub trait Octal {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         let val = self.0;
 ///
-///         write!(f, "{:b}", val) // delegate to i32's implementation
+///         fmt::Binary::fmt(&val, f) // delegate to i32's implementation
 ///     }
 /// }
 ///
 /// let l = Length(107);
 ///
-/// println!("l as binary is: {:b}", l);
+/// assert_eq!(format!("l as binary is: {:b}", l), "l as binary is: 1101011");
+///
+/// assert_eq!(
+///     format!("l as binary is: {:#032b}", l),
+///     "l as binary is: 0b000000000000000000000001101011"
+/// );
 /// ```
 ///
 /// [module]: ../../std/fmt/index.html
@@ -777,13 +779,15 @@ pub trait Binary {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         let val = self.0;
 ///
-///         write!(f, "{:x}", val) // delegate to i32's implementation
+///         fmt::LowerHex::fmt(&val, f) // delegate to i32's implementation
 ///     }
 /// }
 ///
 /// let l = Length(9);
 ///
-/// println!("l as hex is: {:x}", l);
+/// assert_eq!(format!("l as hex is: {:x}", l), "l as hex is: 9");
+///
+/// assert_eq!(format!("l as hex is: {:#010x}", l), "l as hex is: 0x00000009");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait LowerHex {
@@ -830,13 +834,15 @@ pub trait LowerHex {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         let val = self.0;
 ///
-///         write!(f, "{:X}", val) // delegate to i32's implementation
+///         fmt::UpperHex::fmt(&val, f) // delegate to i32's implementation
 ///     }
 /// }
 ///
-/// let l = Length(9);
+/// let l = Length(i32::max_value());
 ///
-/// println!("l as hex is: {:X}", l);
+/// assert_eq!(format!("l as hex is: {:X}", l), "l as hex is: 7FFFFFFF");
+///
+/// assert_eq!(format!("l as hex is: {:#010X}", l), "l as hex is: 0x7FFFFFFF");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait UpperHex {
@@ -875,13 +881,18 @@ pub trait UpperHex {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         // use `as` to convert to a `*const T`, which implements Pointer, which we can use
 ///
-///         write!(f, "{:p}", self as *const Length)
+///         let ptr = self as *const Self;
+///         fmt::Pointer::fmt(&ptr, f)
 ///     }
 /// }
 ///
 /// let l = Length(42);
 ///
 /// println!("l is in memory here: {:p}", l);
+///
+/// let l_ptr = format!("{:018p}", l);
+/// assert_eq!(l_ptr.len(), 18);
+/// assert_eq!(&l_ptr[..2], "0x");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Pointer {
@@ -917,14 +928,22 @@ pub trait Pointer {
 ///
 /// impl fmt::LowerExp for Length {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         let val = self.0;
-///         write!(f, "{}e1", val / 10)
+///         let val = f64::from(self.0);
+///         fmt::LowerExp::fmt(&val, f) // delegate to f64's implementation
 ///     }
 /// }
 ///
 /// let l = Length(100);
 ///
-/// println!("l in scientific notation is: {:e}", l);
+/// assert_eq!(
+///     format!("l in scientific notation is: {:e}", l),
+///     "l in scientific notation is: 1e2"
+/// );
+///
+/// assert_eq!(
+///     format!("l in scientific notation is: {:05e}", l),
+///     "l in scientific notation is: 001e2"
+/// );
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait LowerExp {
@@ -960,14 +979,22 @@ pub trait LowerExp {
 ///
 /// impl fmt::UpperExp for Length {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         let val = self.0;
-///         write!(f, "{}E1", val / 10)
+///         let val = f64::from(self.0);
+///         fmt::UpperExp::fmt(&val, f) // delegate to f64's implementation
 ///     }
 /// }
 ///
 /// let l = Length(100);
 ///
-/// println!("l in scientific notation is: {:E}", l);
+/// assert_eq!(
+///     format!("l in scientific notation is: {:E}", l),
+///     "l in scientific notation is: 1E2"
+/// );
+///
+/// assert_eq!(
+///     format!("l in scientific notation is: {:05E}", l),
+///     "l in scientific notation is: 001E2"
+/// );
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait UpperExp {
@@ -1073,7 +1100,9 @@ impl PostPadding {
 
 impl<'a> Formatter<'a> {
     fn wrap_buf<'b, 'c, F>(&'b mut self, wrap: F) -> Formatter<'c>
-        where 'b: 'c, F: FnOnce(&'b mut (dyn Write+'b)) -> &'c mut (dyn Write+'c)
+    where
+        'b: 'c,
+        F: FnOnce(&'b mut (dyn Write + 'b)) -> &'c mut (dyn Write + 'c),
     {
         Formatter {
             // We want to change this
@@ -1106,7 +1135,7 @@ impl<'a> Formatter<'a> {
 
         // Extract the correct argument
         let value = match arg.position {
-            rt::v1::Position::Next => { *self.curarg.next().unwrap() }
+            rt::v1::Position::Next => *self.curarg.next().unwrap(),
             rt::v1::Position::At(i) => self.args[i],
         };
 
@@ -1118,12 +1147,8 @@ impl<'a> Formatter<'a> {
         match *cnt {
             rt::v1::Count::Is(n) => Some(n),
             rt::v1::Count::Implied => None,
-            rt::v1::Count::Param(i) => {
-                self.args[i].as_usize()
-            }
-            rt::v1::Count::NextParam => {
-                self.curarg.next()?.as_usize()
-            }
+            rt::v1::Count::Param(i) => self.args[i].as_usize(),
+            rt::v1::Count::NextParam => self.curarg.next()?.as_usize(),
         }
     }
 
@@ -1174,18 +1199,16 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:0>#8}", Foo::new(-1)), "00-Foo 1");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pad_integral(&mut self,
-                        is_nonnegative: bool,
-                        prefix: &str,
-                        buf: &str)
-                        -> Result {
+    pub fn pad_integral(&mut self, is_nonnegative: bool, prefix: &str, buf: &str) -> Result {
         let mut width = buf.len();
 
         let mut sign = None;
         if !is_nonnegative {
-            sign = Some('-'); width += 1;
+            sign = Some('-');
+            width += 1;
         } else if self.sign_plus() {
-            sign = Some('+'); width += 1;
+            sign = Some('+');
+            width += 1;
         }
 
         let prefix = if self.alternate() {
@@ -1201,11 +1224,7 @@ impl<'a> Formatter<'a> {
             if let Some(c) = sign {
                 f.buf.write_char(c)?;
             }
-            if let Some(prefix) = prefix {
-                f.buf.write_str(prefix)
-            } else {
-                Ok(())
-            }
+            if let Some(prefix) = prefix { f.buf.write_str(prefix) } else { Ok(()) }
         }
 
         // The `width` field is more of a `min-width` parameter at this point.
@@ -1301,9 +1320,7 @@ impl<'a> Formatter<'a> {
             None => self.buf.write_str(s),
             // If we're under the maximum width, check if we're over the minimum
             // width, if so it's as easy as just emitting the string.
-            Some(width) if s.chars().count() >= width => {
-                self.buf.write_str(s)
-            }
+            Some(width) if s.chars().count() >= width => self.buf.write_str(s),
             // If we're under both the maximum and the minimum width, then fill
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
@@ -1321,17 +1338,16 @@ impl<'a> Formatter<'a> {
     fn padding(
         &mut self,
         padding: usize,
-        default: rt::v1::Alignment
+        default: rt::v1::Alignment,
     ) -> result::Result<PostPadding, Error> {
         let align = match self.align {
             rt::v1::Alignment::Unknown => default,
-            _ => self.align
+            _ => self.align,
         };
 
         let (pre_pad, post_pad) = match align {
             rt::v1::Alignment::Left => (0, padding),
-            rt::v1::Alignment::Right |
-            rt::v1::Alignment::Unknown => (padding, 0),
+            rt::v1::Alignment::Right | rt::v1::Alignment::Unknown => (padding, 0),
             rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
@@ -1368,7 +1384,8 @@ impl<'a> Formatter<'a> {
 
             // remaining parts go through the ordinary padding process.
             let len = formatted.len();
-            let ret = if width <= len { // no padding
+            let ret = if width <= len {
+                // no padding
                 self.write_formatted_parts(&formatted)
             } else {
                 let post_padding = self.padding(width - len, align)?;
@@ -1473,10 +1490,14 @@ impl<'a> Formatter<'a> {
 
     /// Flags for formatting
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.24.0",
-                       reason = "use the `sign_plus`, `sign_minus`, `alternate`, \
-                                 or `sign_aware_zero_pad` methods instead")]
-    pub fn flags(&self) -> u32 { self.flags }
+    #[rustc_deprecated(
+        since = "1.24.0",
+        reason = "use the `sign_plus`, `sign_minus`, `alternate`, \
+                  or `sign_aware_zero_pad` methods instead"
+    )]
+    pub fn flags(&self) -> u32 {
+        self.flags
+    }
 
     /// Character used as 'fill' whenever there is alignment.
     ///
@@ -1506,7 +1527,9 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:t>6}", Foo), "tttttt");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn fill(&self) -> char { self.fill }
+    pub fn fill(&self) -> char {
+        self.fill
+    }
 
     /// Flag indicating what form of alignment was requested.
     ///
@@ -1574,7 +1597,9 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn width(&self) -> Option<usize> { self.width }
+    pub fn width(&self) -> Option<usize> {
+        self.width
+    }
 
     /// Optionally specified precision for numeric types.
     ///
@@ -1601,7 +1626,9 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23.2)), "Foo(23.20)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn precision(&self) -> Option<usize> { self.precision }
+    pub fn precision(&self) -> Option<usize> {
+        self.precision
+    }
 
     /// Determines if the `+` flag was specified.
     ///
@@ -1629,7 +1656,9 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn sign_plus(&self) -> bool { self.flags & (1 << FlagV1::SignPlus as u32) != 0 }
+    pub fn sign_plus(&self) -> bool {
+        self.flags & (1 << FlagV1::SignPlus as u32) != 0
+    }
 
     /// Determines if the `-` flag was specified.
     ///
@@ -1655,7 +1684,9 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn sign_minus(&self) -> bool { self.flags & (1 << FlagV1::SignMinus as u32) != 0 }
+    pub fn sign_minus(&self) -> bool {
+        self.flags & (1 << FlagV1::SignMinus as u32) != 0
+    }
 
     /// Determines if the `#` flag was specified.
     ///
@@ -1680,7 +1711,9 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "23");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn alternate(&self) -> bool { self.flags & (1 << FlagV1::Alternate as u32) != 0 }
+    pub fn alternate(&self) -> bool {
+        self.flags & (1 << FlagV1::Alternate as u32) != 0
+    }
 
     /// Determines if the `0` flag was specified.
     ///
@@ -1709,9 +1742,13 @@ impl<'a> Formatter<'a> {
 
     // FIXME: Decide what public API we want for these two flags.
     // https://github.com/rust-lang/rust/issues/48584
-    fn debug_lower_hex(&self) -> bool { self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0 }
+    fn debug_lower_hex(&self) -> bool {
+        self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0
+    }
 
-    fn debug_upper_hex(&self) -> bool { self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0 }
+    fn debug_upper_hex(&self) -> bool {
+        self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0
+    }
 
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
     /// [`fmt::Debug`] implementations for structs.
@@ -1802,8 +1839,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // prints "[10, 11]"
-    /// println!("{:?}", Foo(vec![10, 11]));
+    /// assert_eq!(format!("{:?}", Foo(vec![10, 11])), "[10, 11]");
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_list<'b>(&'b mut self) -> DebugList<'b, 'a> {
@@ -1826,8 +1862,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // prints "{10, 11}"
-    /// println!("{:?}", Foo(vec![10, 11]));
+    /// assert_eq!(format!("{:?}", Foo(vec![10, 11])), "{10, 11}");
     /// ```
     ///
     /// [`format_args!`]: ../../std/macro.format_args.html
@@ -1885,8 +1920,10 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // prints "{"A": 10, "B": 11}"
-    /// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
+    /// assert_eq!(
+    ///     format!("{:?}",  Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     r#"{"A": 10, "B": 11}"#
+    ///  );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {
@@ -2067,11 +2104,15 @@ impl<T: ?Sized> Pointer for &mut T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for *const T {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result { Pointer::fmt(self, f) }
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Pointer::fmt(self, f)
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for *mut T {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result { Pointer::fmt(self, f) }
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Pointer::fmt(self, f)
+    }
 }
 
 macro_rules! peel {
@@ -2129,9 +2170,7 @@ impl<T: ?Sized> Debug for PhantomData<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Copy + Debug> Debug for Cell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_struct("Cell")
-            .field("value", &self.get())
-            .finish()
+        f.debug_struct("Cell").field("value", &self.get()).finish()
     }
 }
 
@@ -2139,11 +2178,7 @@ impl<T: Copy + Debug> Debug for Cell<T> {
 impl<T: ?Sized + Debug> Debug for RefCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self.try_borrow() {
-            Ok(borrow) => {
-                f.debug_struct("RefCell")
-                    .field("value", &borrow)
-                    .finish()
-            }
+            Ok(borrow) => f.debug_struct("RefCell").field("value", &borrow).finish(),
             Err(_) => {
                 // The RefCell is mutably borrowed so we can't look at its value
                 // here. Show a placeholder instead.
@@ -2155,9 +2190,7 @@ impl<T: ?Sized + Debug> Debug for RefCell<T> {
                     }
                 }
 
-                f.debug_struct("RefCell")
-                    .field("value", &BorrowedPlaceholder)
-                    .finish()
+                f.debug_struct("RefCell").field("value", &BorrowedPlaceholder).finish()
             }
         }
     }

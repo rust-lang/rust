@@ -5,9 +5,9 @@
 use crate::hir::HirId;
 use crate::util::nodemap::{DefIdSet, FxHashMap};
 
-use std::hash::Hash;
-use std::fmt;
 use rustc_macros::HashStable;
+use std::fmt;
+use std::hash::Hash;
 
 // Accessibility levels, sorted in ascending order
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable)]
@@ -28,7 +28,7 @@ pub enum AccessLevel {
 // Accessibility levels for reachable HIR nodes
 #[derive(Clone)]
 pub struct AccessLevels<Id = HirId> {
-    pub map: FxHashMap<Id, AccessLevel>
+    pub map: FxHashMap<Id, AccessLevel>,
 }
 
 impl<Id: Hash + Eq> AccessLevels<Id> {

@@ -4,11 +4,13 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use crate::lint::{LintPass, LateLintPass, LintArray, FutureIncompatibleInfo};
+use crate::lint::{FutureIncompatibleInfo, LateLintPass, LintArray, LintPass};
 use crate::middle::stability;
 use crate::session::Session;
-use errors::{Applicability, DiagnosticBuilder, pluralize};
+use errors::{pluralize, Applicability, DiagnosticBuilder};
+use rustc_session::declare_lint;
 use syntax::ast;
+use syntax::early_buffered_lints::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
 use syntax::edition::Edition;
 use syntax::source_map::Span;
 use syntax::symbol::Symbol;
@@ -327,7 +329,7 @@ declare_lint! {
 
 declare_lint! {
     pub UNUSED_LABELS,
-    Allow,
+    Warn,
     "detects labels that are never used"
 }
 
@@ -402,31 +404,6 @@ declare_lint! {
         reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
         edition: None,
     };
-}
-
-/// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
-pub mod parser {
-    declare_lint! {
-        pub ILL_FORMED_ATTRIBUTE_INPUT,
-        Deny,
-        "ill-formed attribute inputs that were previously accepted and used in practice",
-        @future_incompatible = super::FutureIncompatibleInfo {
-            reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
-            edition: None,
-        };
-    }
-
-    declare_lint! {
-        pub META_VARIABLE_MISUSE,
-        Allow,
-        "possible meta-variable misuse at macro definition"
-    }
-
-    declare_lint! {
-        pub INCOMPLETE_INCLUDE,
-        Deny,
-        "trailing content in included file"
-    }
 }
 
 declare_lint! {
@@ -520,8 +497,8 @@ declare_lint_pass! {
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-        parser::ILL_FORMED_ATTRIBUTE_INPUT,
-        parser::META_VARIABLE_MISUSE,
+        ILL_FORMED_ATTRIBUTE_INPUT,
+        META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         MUTABLE_BORROW_RESERVATION_CONFLICT,
@@ -584,7 +561,7 @@ pub(crate) fn add_elided_lifetime_in_path_suggestion(
         replace_span,
         &format!("indicate the anonymous lifetime{}", pluralize!(n)),
         suggestion,
-        Applicability::MachineApplicable
+        Applicability::MachineApplicable,
     );
 }
 
@@ -594,10 +571,11 @@ impl BuiltinLintDiagnostics {
             BuiltinLintDiagnostics::Normal => (),
             BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
                 let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                    Ok(ref s) if is_global => (format!("dyn ({})", s),
-                                               Applicability::MachineApplicable),
+                    Ok(ref s) if is_global => {
+                        (format!("dyn ({})", s), Applicability::MachineApplicable)
+                    }
                     Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders)
+                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
                 };
                 db.span_suggestion(span, "use `dyn`", sugg, app);
             }
@@ -606,27 +584,30 @@ impl BuiltinLintDiagnostics {
                     Ok(ref s) => {
                         // FIXME(Manishearth) ideally the emitting code
                         // can tell us whether or not this is global
-                        let opt_colon = if s.trim_start().starts_with("::") {
-                            ""
-                        } else {
-                            "::"
-                        };
+                        let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
 
                         (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
                     }
-                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders)
+                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
                 };
                 db.span_suggestion(span, "use `crate`", sugg, app);
             }
             BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
-                db.span_label(span, "names from parent modules are not \
-                                     accessible without an explicit import");
+                db.span_label(
+                    span,
+                    "names from parent modules are not \
+                                     accessible without an explicit import",
+                );
             }
             BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
                 db.span_note(span_def, "the macro is defined here");
             }
             BuiltinLintDiagnostics::ElidedLifetimesInPaths(
-                n, path_span, incl_angl_brckt, insertion_span, anon_lts
+                n,
+                path_span,
+                incl_angl_brckt,
+                insertion_span,
+                anon_lts,
             ) => {
                 add_elided_lifetime_in_path_suggestion(
                     sess,
@@ -655,12 +636,13 @@ impl BuiltinLintDiagnostics {
                     let introduced = if is_imported { "imported" } else { "defined" };
                     db.span_label(
                         span,
-                        format!("the item `{}` is already {} here", ident, introduced)
+                        format!("the item `{}` is already {} here", ident, introduced),
                     );
                 }
             }
-            BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) =>
-                stability::deprecation_suggestion(db, suggestion, span),
+            BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
+                stability::deprecation_suggestion(db, suggestion, span)
+            }
         }
     }
 }

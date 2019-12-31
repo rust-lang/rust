@@ -4,9 +4,8 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
-       test(attr(deny(warnings))))]
-
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
+#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(const_transmute)]
@@ -16,14 +15,12 @@
 #![feature(try_trait)]
 #![feature(slice_patterns)]
 #![feature(unicode_internals)]
+#![recursion_limit = "256"]
 
-#![recursion_limit="256"]
-
+use ast::AttrId;
 pub use errors;
 use rustc_data_structures::sync::Lock;
 use rustc_index::bit_set::GrowableBitSet;
-pub use rustc_data_structures::thin_vec::ThinVec;
-use ast::AttrId;
 use syntax_pos::edition::Edition;
 
 #[macro_export]
@@ -33,7 +30,7 @@ macro_rules! unwrap_or {
             Some(x) => x,
             None => $default,
         }
-    }
+    };
 }
 
 pub struct Globals {
@@ -55,16 +52,16 @@ impl Globals {
 }
 
 pub fn with_globals<F, R>(edition: Edition, f: F) -> R
-    where F: FnOnce() -> R
+where
+    F: FnOnce() -> R,
 {
     let globals = Globals::new(edition);
-    GLOBALS.set(&globals, || {
-        syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f)
-    })
+    GLOBALS.set(&globals, || syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f))
 }
 
 pub fn with_default_globals<F, R>(f: F) -> R
-    where F: FnOnce() -> R
+where
+    F: FnOnce() -> R,
 {
     with_globals(edition::DEFAULT_EDITION, f)
 }
@@ -82,33 +79,39 @@ pub mod util {
     pub mod comments;
     pub mod lev_distance;
     pub mod literal;
+    pub mod map_in_place;
     pub mod node_count;
     pub mod parser;
-    pub mod map_in_place;
 }
-
-pub mod json;
 
 pub mod ast;
 pub mod attr;
 pub mod expand;
-pub mod source_map;
+pub use syntax_pos::source_map;
 pub mod entry;
-pub mod feature_gate;
+pub mod feature_gate {
+    mod check;
+    pub use check::{check_attribute, check_crate, feature_err, feature_err_issue, get_features};
+}
 pub mod mut_visit;
 pub mod ptr;
 pub mod show_span;
+pub use rustc_session::parse as sess;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
-pub mod sess;
 pub mod token;
 pub mod tokenstream;
 pub mod visit;
 
 pub mod print {
+    mod helpers;
     pub mod pp;
     pub mod pprust;
-    mod helpers;
 }
 
 pub mod early_buffered_lints;
+
+/// Requirements for a `StableHashingContext` to be used in this crate.
+/// This is a hack to allow using the `HashStable_Generic` derive macro
+/// instead of implementing everything in librustc.
+pub trait HashStableContext: syntax_pos::HashStableContext {}

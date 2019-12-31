@@ -1,4 +1,4 @@
-error[E0369]: binary operation `+` cannot be applied to type `()`
+error[E0369]: cannot add `()` to `()`
   --> $DIR/for-loop-type-error.rs:2:16
    |
 LL |     let x = () + ();

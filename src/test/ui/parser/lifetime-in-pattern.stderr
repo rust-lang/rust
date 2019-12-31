@@ -2,7 +2,13 @@ error: unexpected lifetime `'a` in pattern
   --> $DIR/lifetime-in-pattern.rs:1:10
    |
 LL | fn test(&'a str) {
-   |          ^^ unexpected lifetime
+   |          ^^ help: remove the lifetime
 
-error: aborting due to previous error
+error: expected one of `:`, `@`, or `|`, found `)`
+  --> $DIR/lifetime-in-pattern.rs:1:16
+   |
+LL | fn test(&'a str) {
+   |                ^ expected one of `:`, `@`, or `|`
+
+error: aborting due to 2 previous errors
 

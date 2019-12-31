@@ -2,10 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/keyword-true-as-identifier.rs:2:9
    |
 LL |     let true = 22;
-   |         ^^^^ expected integer, found bool
-   |
-   = note: expected type `{integer}`
-              found type `bool`
+   |         ^^^^ expected integer, found `bool`
 
 error: aborting due to previous error
 

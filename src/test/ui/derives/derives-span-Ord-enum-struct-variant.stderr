@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Error: std::cmp::Ord` is not satisfied
-  --> $DIR/derives-span-Ord-enum-struct-variant.rs:10:6
+  --> $DIR/derives-span-Ord-enum-struct-variant.rs:13:6
    |
 LL |      x: Error
    |      ^^^^^^^^ the trait `std::cmp::Ord` is not implemented for `Error`

@@ -1,9 +1,12 @@
-error[E0017]: references in statics may only refer to immutable values
+error[E0658]: references in statics may only refer to immutable values
   --> $DIR/check-static-immutable-mut-slices.rs:3:37
    |
 LL | static TEST: &'static mut [isize] = &mut [];
    |                                     ^^^^^^^ statics require immutable values
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0017`.
+For more information about this error, try `rustc --explain E0658`.

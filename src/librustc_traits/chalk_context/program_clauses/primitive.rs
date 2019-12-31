@@ -1,18 +1,12 @@
-use rustc::traits::{
-    WellFormed,
-    DomainGoal,
-    GoalKind,
-    Clause,
-    Clauses,
-    ProgramClause,
-    ProgramClauseCategory,
-};
-use rustc::ty::{self, TyCtxt};
+use crate::generic_types;
+use crate::lowering::Lower;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::traits::{
+    Clause, Clauses, DomainGoal, GoalKind, ProgramClause, ProgramClauseCategory, WellFormed,
+};
+use rustc::ty::{self, TyCtxt};
 use rustc_target::spec::abi;
-use crate::lowering::Lower;
-use crate::generic_types;
 use std::iter;
 
 crate fn wf_clause_for_raw_ptr(tcx: TyCtxt<'_>, mutbl: hir::Mutability) -> Clauses<'_> {
@@ -58,19 +52,14 @@ crate fn wf_clause_for_slice(tcx: TyCtxt<'_>) -> Clauses<'_> {
         Some(def_id) => def_id,
         None => return ty::List::empty(),
     };
-    let sized_implemented = ty::TraitRef {
-        def_id: sized_trait,
-        substs: tcx.mk_substs_trait(ty, ty::List::empty()),
-    };
-    let sized_implemented: DomainGoal<'_> = ty::TraitPredicate {
-        trait_ref: sized_implemented
-    }.lower();
+    let sized_implemented =
+        ty::TraitRef { def_id: sized_trait, substs: tcx.mk_substs_trait(ty, ty::List::empty()) };
+    let sized_implemented: DomainGoal<'_> =
+        ty::TraitPredicate { trait_ref: sized_implemented }.lower();
 
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(slice_ty)),
-        hypotheses: tcx.mk_goals(
-            iter::once(tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)))
-        ),
+        hypotheses: tcx.mk_goals(iter::once(tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)))),
         category: ProgramClauseCategory::WellFormed,
     };
     let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
@@ -90,19 +79,14 @@ crate fn wf_clause_for_array<'tcx>(
         Some(def_id) => def_id,
         None => return ty::List::empty(),
     };
-    let sized_implemented = ty::TraitRef {
-        def_id: sized_trait,
-        substs: tcx.mk_substs_trait(ty, ty::List::empty()),
-    };
-    let sized_implemented: DomainGoal<'_> = ty::TraitPredicate {
-        trait_ref: sized_implemented
-    }.lower();
+    let sized_implemented =
+        ty::TraitRef { def_id: sized_trait, substs: tcx.mk_substs_trait(ty, ty::List::empty()) };
+    let sized_implemented: DomainGoal<'_> =
+        ty::TraitPredicate { trait_ref: sized_implemented }.lower();
 
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(array_ty)),
-        hypotheses: tcx.mk_goals(
-            iter::once(tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)))
-        ),
+        hypotheses: tcx.mk_goals(iter::once(tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)))),
         category: ProgramClauseCategory::WellFormed,
     };
     let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
@@ -122,7 +106,8 @@ crate fn wf_clause_for_tuple(tcx: TyCtxt<'_>, arity: usize) -> Clauses<'_> {
 
     // If `arity == 0` (i.e. the unit type) or `arity == 1`, this list of
     // hypotheses is actually empty.
-    let sized_implemented = type_list[0 .. std::cmp::max(arity, 1) - 1].iter()
+    let sized_implemented = type_list[0..std::cmp::max(arity, 1) - 1]
+        .iter()
         .map(|ty| ty::TraitRef {
             def_id: sized_trait,
             substs: tcx.mk_substs_trait(ty.expect_ty(), ty::List::empty()),
@@ -133,9 +118,7 @@ crate fn wf_clause_for_tuple(tcx: TyCtxt<'_>, arity: usize) -> Clauses<'_> {
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(tuple_ty)),
         hypotheses: tcx.mk_goals(
-            sized_implemented.map(|domain_goal| {
-                tcx.mk_goal(GoalKind::DomainGoal(domain_goal))
-            })
+            sized_implemented.map(|domain_goal| tcx.mk_goal(GoalKind::DomainGoal(domain_goal))),
         ),
         category: ProgramClauseCategory::WellFormed,
     };
@@ -153,21 +136,14 @@ crate fn wf_clause_for_tuple(tcx: TyCtxt<'_>, arity: usize) -> Clauses<'_> {
 }
 
 crate fn wf_clause_for_ref(tcx: TyCtxt<'_>, mutbl: hir::Mutability) -> Clauses<'_> {
-    let region = tcx.mk_region(
-        ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
-    );
+    let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0)));
     let ty = generic_types::bound(tcx, 1);
-    let ref_ty = tcx.mk_ref(region, ty::TypeAndMut {
-        ty,
-        mutbl,
-    });
+    let ref_ty = tcx.mk_ref(region, ty::TypeAndMut { ty, mutbl });
 
     let outlives: DomainGoal<'_> = ty::OutlivesPredicate(ty, region).lower();
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(ref_ty)),
-        hypotheses: tcx.mk_goals(
-            iter::once(tcx.mk_goal(outlives.into_goal()))
-        ),
+        hypotheses: tcx.mk_goals(iter::once(tcx.mk_goal(outlives.into_goal()))),
         category: ProgramClauseCategory::WellFormed,
     };
     let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));

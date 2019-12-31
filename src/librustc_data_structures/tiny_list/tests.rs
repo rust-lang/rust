@@ -1,18 +1,18 @@
 use super::*;
 
 extern crate test;
-use test::{Bencher, black_box};
+use test::{black_box, Bencher};
 
 #[test]
 fn test_contains_and_insert() {
-    fn do_insert(i : u32) -> bool {
+    fn do_insert(i: u32) -> bool {
         i % 2 == 0
     }
 
     let mut list = TinyList::new();
 
-    for i in 0 .. 10 {
-        for j in 0 .. i {
+    for i in 0..10 {
+        for j in 0..i {
             if do_insert(j) {
                 assert!(list.contains(&j));
             } else {
@@ -115,42 +115,30 @@ fn bench_insert_one(b: &mut Bencher) {
 
 #[bench]
 fn bench_contains_empty(b: &mut Bencher) {
-    b.iter(|| {
-        black_box(TinyList::new()).contains(&1)
-    });
+    b.iter(|| black_box(TinyList::new()).contains(&1));
 }
 
 #[bench]
 fn bench_contains_unknown(b: &mut Bencher) {
-    b.iter(|| {
-        black_box(TinyList::new_single(0)).contains(&1)
-    });
+    b.iter(|| black_box(TinyList::new_single(0)).contains(&1));
 }
 
 #[bench]
 fn bench_contains_one(b: &mut Bencher) {
-    b.iter(|| {
-        black_box(TinyList::new_single(1)).contains(&1)
-    });
+    b.iter(|| black_box(TinyList::new_single(1)).contains(&1));
 }
 
 #[bench]
 fn bench_remove_empty(b: &mut Bencher) {
-    b.iter(|| {
-        black_box(TinyList::new()).remove(&1)
-    });
+    b.iter(|| black_box(TinyList::new()).remove(&1));
 }
 
 #[bench]
 fn bench_remove_unknown(b: &mut Bencher) {
-    b.iter(|| {
-        black_box(TinyList::new_single(0)).remove(&1)
-    });
+    b.iter(|| black_box(TinyList::new_single(0)).remove(&1));
 }
 
 #[bench]
 fn bench_remove_one(b: &mut Bencher) {
-    b.iter(|| {
-        black_box(TinyList::new_single(1)).remove(&1)
-    });
+    b.iter(|| black_box(TinyList::new_single(1)).remove(&1));
 }

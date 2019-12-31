@@ -4,7 +4,7 @@
 #![crate_name = "trait_test"]
 
 // Regression test related to #56288. Check that a supertrait projection (of
-// `Output`) that references `Self` is ok if there is another occurence of
+// `Output`) that references `Self` is ok if there is another occurrence of
 // the same supertrait that specifies the projection explicitly, even if
 // the projection's associated type is not explicitly specified in the object type.
 //

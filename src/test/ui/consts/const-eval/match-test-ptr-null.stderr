@@ -1,4 +1,4 @@
-error[E0744]: `match` is not allowed in a `const`
+error[E0658]: `match` is not allowed in a `const`
   --> $DIR/match-test-ptr-null.rs:6:9
    |
 LL | /         match &1 as *const i32 as usize {
@@ -9,6 +9,9 @@ LL | |             0 => 42,
 LL | |             n => n,
 LL | |         }
    | |_________^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: casting pointers to integers in constants is unstable
   --> $DIR/match-test-ptr-null.rs:6:15
@@ -27,5 +30,5 @@ LL |         match &1 as *const i32 as usize {
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0080, E0658, E0744.
+Some errors have detailed explanations: E0080, E0658.
 For more information about an error, try `rustc --explain E0080`.

@@ -1,9 +1,9 @@
 //! Module containing different events that can occur
 //! during tests execution process.
 
-use super::types::TestDesc;
 use super::test_result::TestResult;
 use super::time::TestExecTime;
+use super::types::TestDesc;
 
 #[derive(Debug, Clone)]
 pub struct CompletedTest {
@@ -18,14 +18,9 @@ impl CompletedTest {
         desc: TestDesc,
         result: TestResult,
         exec_time: Option<TestExecTime>,
-        stdout: Vec<u8>
+        stdout: Vec<u8>,
     ) -> Self {
-        Self {
-            desc,
-            result,
-            exec_time,
-            stdout,
-        }
+        Self { desc, result, exec_time, stdout }
     }
 }
 

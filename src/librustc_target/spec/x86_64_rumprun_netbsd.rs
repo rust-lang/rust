@@ -24,9 +24,6 @@ pub fn target() -> TargetResult {
         target_env: String::new(),
         target_vendor: "rumprun".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
-        options: TargetOptions {
-            target_mcount: "__mcount".to_string(),
-            .. base
-        },
+        options: TargetOptions { target_mcount: "__mcount".to_string(), ..base },
     })
 }

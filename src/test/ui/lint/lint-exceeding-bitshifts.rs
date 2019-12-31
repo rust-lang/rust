@@ -1,3 +1,4 @@
+// build-fail
 // compile-flags: -O
 
 #![deny(exceeding_bitshifts, const_err)]

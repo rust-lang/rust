@@ -1,4 +1,4 @@
-error: field is never used: `b`
+error: field is never read: `b`
   --> $DIR/lint-dead-code-4.rs:7:5
    |
 LL |     b: bool,
@@ -38,13 +38,13 @@ error: variant is never constructed: `I`
 LL |     I,
    |     ^
 
-error: field is never used: `b`
+error: field is never read: `b`
   --> $DIR/lint-dead-code-4.rs:39:9
    |
 LL |         b: i32,
    |         ^^^^^^
 
-error: field is never used: `c`
+error: field is never read: `c`
   --> $DIR/lint-dead-code-4.rs:40:9
    |
 LL |         c: i32,
@@ -56,13 +56,13 @@ error: variant is never constructed: `K`
 LL |     K
    |     ^
 
-error: field is never used: `x`
+error: field is never read: `x`
   --> $DIR/lint-dead-code-4.rs:61:5
    |
 LL |     x: usize,
    |     ^^^^^^^^
 
-error: field is never used: `c`
+error: field is never read: `c`
   --> $DIR/lint-dead-code-4.rs:63:5
    |
 LL |     c: bool,

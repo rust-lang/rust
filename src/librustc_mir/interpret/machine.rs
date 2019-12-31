@@ -11,9 +11,8 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax_pos::Span;
 
 use super::{
-    Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
-    InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
-    Frame, Operand,
+    AllocId, Allocation, AllocationExtra, AssertMessage, Frame, ImmTy, InterpCx, InterpResult,
+    Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -28,7 +27,7 @@ pub enum StackPopInfo {
 
     /// Indicates that we should stop unwinding,
     /// as we've reached a catch frame
-    StopUnwinding
+    StopUnwinding,
 }
 
 /// Whether this kind of memory is allowed to leak
@@ -42,14 +41,16 @@ pub trait AllocMap<K: Hash + Eq, V> {
     /// Deliberately takes `&mut` because that is sufficient, and some implementations
     /// can be more efficient then (using `RefCell::get_mut`).
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
-        where K: Borrow<Q>;
+    where
+        K: Borrow<Q>;
 
     /// Inserts a new entry into the map.
     fn insert(&mut self, k: K, v: V) -> Option<V>;
 
     /// Removes an entry from the map.
     fn remove<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> Option<V>
-        where K: Borrow<Q>;
+    where
+        K: Borrow<Q>;
 
     /// Returns data based the keys and values in the map.
     fn filter_map_collect<T>(&self, f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T>;
@@ -57,20 +58,12 @@ pub trait AllocMap<K: Hash + Eq, V> {
     /// Returns a reference to entry `k`. If no such entry exists, call
     /// `vacant` and either forward its error, or add its result to the map
     /// and return a reference to *that*.
-    fn get_or<E>(
-        &self,
-        k: K,
-        vacant: impl FnOnce() -> Result<V, E>
-    ) -> Result<&V, E>;
+    fn get_or<E>(&self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&V, E>;
 
     /// Returns a mutable reference to entry `k`. If no such entry exists, call
     /// `vacant` and either forward its error, or add its result to the map
     /// and return a reference to *that*.
-    fn get_mut_or<E>(
-        &mut self,
-        k: K,
-        vacant: impl FnOnce() -> Result<V, E>
-    ) -> Result<&mut V, E>;
+    fn get_mut_or<E>(&mut self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&mut V, E>;
 
     /// Read-only lookup.
     fn get(&self, k: K) -> Option<&V> {
@@ -95,7 +88,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     type PointerTag: ::std::fmt::Debug + Copy + Eq + Hash + 'static;
 
     /// Machines can define extra (non-instance) things that represent values of function pointers.
-    /// For example, Miri uses this to return a fucntion pointer from `dlsym`
+    /// For example, Miri uses this to return a function pointer from `dlsym`
     /// that can later be called to execute the right thing.
     type ExtraFnVal: ::std::fmt::Debug + Copy;
 
@@ -111,13 +104,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     type AllocExtra: AllocationExtra<Self::PointerTag> + 'static;
 
     /// Memory's allocation map
-    type MemoryMap:
-        AllocMap<
+    type MemoryMap: AllocMap<
             AllocId,
-            (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag, Self::AllocExtra>)
-        > +
-        Default +
-        Clone;
+            (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag, Self::AllocExtra>),
+        > + Default
+        + Clone;
 
     /// The memory kind to use for copied statics -- or None if statics should not be mutated
     /// and thus any such attempt will cause a `ModifiedStatic` error to be raised.
@@ -141,39 +132,45 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Returns either the mir to use for the call, or `None` if execution should
     /// just proceed (which usually means this hook did all the work that the
     /// called function should usually have done). In the latter case, it is
-    /// this hook's responsibility to call `goto_block(ret)` to advance the instruction pointer!
+    /// this hook's responsibility to advance the instruction pointer!
     /// (This is to support functions like `__rust_maybe_catch_panic` that neither find a MIR
     /// nor just jump to `ret`, but instead push their own stack frame.)
     /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
     /// was used.
-    fn find_fn(
+    fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
-        unwind: Option<mir::BasicBlock>
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
-    /// Execute `fn_val`.  it is the hook's responsibility to advance the instruction
+    /// Execute `fn_val`.  It is the hook's responsibility to advance the instruction
     /// pointer as appropriate.
     fn call_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
-    /// Directly process an intrinsic without pushing a stack frame.
-    /// If this returns successfully, the engine will take care of jumping to the next block.
+    /// Directly process an intrinsic without pushing a stack frame. It is the hook's
+    /// responsibility to advance the instruction pointer as appropriate.
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx>;
+
+    /// Called to evaluate `Assert` MIR terminators that trigger a panic.
+    fn assert_panic(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
+        msg: &AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
@@ -216,6 +213,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Called before a `StaticKind::Static` value is accessed.
     fn before_access_static(
+        _memory_extra: &Self::MemoryExtra,
         _allocation: &Allocation,
     ) -> InterpResult<'tcx> {
         Ok(())
@@ -235,24 +233,20 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     ///
-    /// For static allocations, the tag returned must be the same as the one returned by
-    /// `tag_static_base_pointer`.
-    fn tag_allocation<'b>(
+    /// Also return the "base" tag to use for this allocation: the one that is used for direct
+    /// accesses to this allocation. If `kind == STATIC_KIND`, this tag must be consistent
+    /// with `tag_static_base_pointer`.
+    fn init_allocation_extra<'b>(
         memory_extra: &Self::MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
-    /// Return the "base" tag for the given static allocation: the one that is used for direct
-    /// accesses to this static/const/fn allocation.
-    ///
-    /// Be aware that requesting the `Allocation` for that `id` will lead to cycles
-    /// for cyclic statics!
-    fn tag_static_base_pointer(
-        memory_extra: &Self::MemoryExtra,
-        id: AllocId,
-    ) -> Self::PointerTag;
+    /// Return the "base" tag for the given *static* allocation: the one that is used for direct
+    /// accesses to this static/const/fn allocation. If `id` is not a static allocation,
+    /// this will return an unusable tag (i.e., accesses will be UB)!
+    fn tag_static_base_pointer(memory_extra: &Self::MemoryExtra, id: AllocId) -> Self::PointerTag;
 
     /// Executes a retagging operation
     #[inline]
@@ -271,7 +265,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn stack_pop(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _extra: Self::FrameExtra,
-        _unwinding: bool
+        _unwinding: bool,
     ) -> InterpResult<'tcx, StackPopInfo> {
         // By default, we do not support unwinding from panics
         Ok(StackPopInfo::Normal)
@@ -285,7 +279,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
             err_unsup!(InvalidNullPointerUsage)
         } else {
             err_unsup!(ReadBytesAsPointer)
-        }).into())
+        })
+        .into())
     }
 
     fn ptr_to_int(

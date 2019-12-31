@@ -1,14 +1,14 @@
-use crate::ffi::{OsString, CString, CStr};
+use crate::ffi::{CStr, CString, OsString};
 use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
 use crate::hash::{Hash, Hasher};
-use crate::io::{SeekFrom, IoSlice, IoSliceMut};
+use crate::io::{self, Error, ErrorKind};
+use crate::io::{IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
-use crate::sys::time::SystemTime;
-use crate::sys::{unsupported, Void};
+use crate::sys::cvt;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::fd::FileDesc;
-use crate::sys::cvt;
+use crate::sys::time::SystemTime;
+use crate::sys::{unsupported, Void};
 use crate::sys_common::os_str_bytes::OsStrExt;
 
 pub use crate::sys_common::fs::copy;
@@ -45,7 +45,7 @@ pub struct OpenOptions {
     create: bool,
     create_new: bool,
     // system-specific
-    mode: i32
+    mode: i32,
 }
 
 pub struct FilePermissions(Void);
@@ -53,7 +53,7 @@ pub struct FilePermissions(Void);
 pub struct FileType(Void);
 
 #[derive(Debug)]
-pub struct DirBuilder { }
+pub struct DirBuilder {}
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
@@ -109,8 +109,7 @@ impl PartialEq for FilePermissions {
     }
 }
 
-impl Eq for FilePermissions {
-}
+impl Eq for FilePermissions {}
 
 impl fmt::Debug for FilePermissions {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -146,8 +145,7 @@ impl PartialEq for FileType {
     }
 }
 
-impl Eq for FileType {
-}
+impl Eq for FileType {}
 
 impl Hash for FileType {
     fn hash<H: Hasher>(&self, _h: &mut H) {
@@ -204,50 +202,64 @@ impl OpenOptions {
             create: false,
             create_new: false,
             // system-specific
-            mode: 0x777
+            mode: 0x777,
         }
     }
 
-    pub fn read(&mut self, read: bool) { self.read = read; }
-    pub fn write(&mut self, write: bool) { self.write = write; }
-    pub fn append(&mut self, append: bool) { self.append = append; }
-    pub fn truncate(&mut self, truncate: bool) { self.truncate = truncate; }
-    pub fn create(&mut self, create: bool) { self.create = create; }
-    pub fn create_new(&mut self, create_new: bool) { self.create_new = create_new; }
+    pub fn read(&mut self, read: bool) {
+        self.read = read;
+    }
+    pub fn write(&mut self, write: bool) {
+        self.write = write;
+    }
+    pub fn append(&mut self, append: bool) {
+        self.append = append;
+    }
+    pub fn truncate(&mut self, truncate: bool) {
+        self.truncate = truncate;
+    }
+    pub fn create(&mut self, create: bool) {
+        self.create = create;
+    }
+    pub fn create_new(&mut self, create_new: bool) {
+        self.create_new = create_new;
+    }
 
     fn get_access_mode(&self) -> io::Result<i32> {
         match (self.read, self.write, self.append) {
-            (true,  false, false) => Ok(O_RDONLY),
-            (false, true,  false) => Ok(O_WRONLY),
-            (true,  true,  false) => Ok(O_RDWR),
-            (false, _,     true)  => Ok(O_WRONLY | O_APPEND),
-            (true,  _,     true)  => Ok(O_RDWR | O_APPEND),
+            (true, false, false) => Ok(O_RDONLY),
+            (false, true, false) => Ok(O_WRONLY),
+            (true, true, false) => Ok(O_RDWR),
+            (false, _, true) => Ok(O_WRONLY | O_APPEND),
+            (true, _, true) => Ok(O_RDWR | O_APPEND),
             (false, false, false) => {
                 Err(io::Error::new(ErrorKind::InvalidInput, "invalid access mode"))
-            },
+            }
         }
     }
 
     fn get_creation_mode(&self) -> io::Result<i32> {
         match (self.write, self.append) {
             (true, false) => {}
-            (false, false) =>
+            (false, false) => {
                 if self.truncate || self.create || self.create_new {
                     return Err(io::Error::new(ErrorKind::InvalidInput, "invalid creation mode"));
-                },
-            (_, true) =>
+                }
+            }
+            (_, true) => {
                 if self.truncate && !self.create_new {
                     return Err(io::Error::new(ErrorKind::InvalidInput, "invalid creation mode"));
-                },
+                }
+            }
         }
 
         Ok(match (self.create, self.truncate, self.create_new) {
-                (false, false, false) => 0,
-                (true,  false, false) => O_CREAT,
-                (false, true,  false) => O_TRUNC,
-                (true,  true,  false) => O_CREAT | O_TRUNC,
-                (_,      _,    true)  => O_CREAT | O_EXCL,
-           })
+            (false, false, false) => 0,
+            (true, false, false) => O_CREAT,
+            (false, true, false) => O_TRUNC,
+            (true, true, false) => O_CREAT | O_TRUNC,
+            (_, _, true) => O_CREAT | O_EXCL,
+        })
     }
 }
 
@@ -327,7 +339,7 @@ impl File {
 
 impl DirBuilder {
     pub fn new() -> DirBuilder {
-        DirBuilder { }
+        DirBuilder {}
     }
 
     pub fn mkdir(&self, _p: &Path) -> io::Result<()> {

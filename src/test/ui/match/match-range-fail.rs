@@ -19,6 +19,4 @@ fn main() {
         _ => { }
     };
     //~^^^ ERROR mismatched types
-    //~| expected type `{integer}`
-    //~| found type `char`
 }

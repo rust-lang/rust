@@ -7,6 +7,8 @@ LL | fn shared_to_const<'a, 'b>(x: &&'a i32) -> *const &'b i32 {
    |                    lifetime `'a` defined here
 LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-coercions.rs:8:5
@@ -17,6 +19,8 @@ LL | fn unique_to_const<'a, 'b>(x: &mut &'a i32) -> *const &'b i32 {
    |                    lifetime `'a` defined here
 LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-coercions.rs:13:5
@@ -28,6 +32,8 @@ LL | fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 {
 LL |     // Two errors because *mut is invariant
 LL |     x
    |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-coercions.rs:13:5
@@ -39,6 +45,10 @@ LL | fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 {
 LL |     // Two errors because *mut is invariant
 LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+help: `'b` and `'a` must be the same: replace one with the other
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-coercions.rs:18:5
@@ -49,6 +59,8 @@ LL | fn mut_to_const<'a, 'b>(x: *mut &'a i32) -> *const &'b i32 {
    |                 lifetime `'a` defined here
 LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-coercions.rs:24:5
@@ -60,6 +72,8 @@ LL | fn array_elem<'a, 'b>(x: &'a i32) -> *const &'b i32 {
 ...
 LL |     y
    |     ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-coercions.rs:30:5
@@ -71,6 +85,8 @@ LL | fn array_coerce<'a, 'b>(x: &'a i32) -> *const [&'b i32; 3] {
 ...
 LL |     y
    |     ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-coercions.rs:36:5
@@ -82,6 +98,8 @@ LL | fn nested_array<'a, 'b>(x: &'a i32) -> *const [&'b i32; 2] {
 ...
 LL |     y
    |     ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to 8 previous errors
 

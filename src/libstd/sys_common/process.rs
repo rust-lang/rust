@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-#![unstable(feature = "process_internals", issue = "0")]
+#![unstable(feature = "process_internals", issue = "none")]
 
 use crate::collections::BTreeMap;
 use crate::env;
@@ -11,16 +11,12 @@ use crate::sys::process::EnvKey;
 pub struct CommandEnv {
     clear: bool,
     saw_path: bool,
-    vars: BTreeMap<EnvKey, Option<OsString>>
+    vars: BTreeMap<EnvKey, Option<OsString>>,
 }
 
 impl Default for CommandEnv {
     fn default() -> Self {
-        CommandEnv {
-            clear: false,
-            saw_path: false,
-            vars: Default::default()
-        }
+        CommandEnv { clear: false, saw_path: false, vars: Default::default() }
     }
 }
 
@@ -64,11 +60,7 @@ impl CommandEnv {
     }
 
     pub fn capture_if_changed(&self) -> Option<BTreeMap<EnvKey, OsString>> {
-        if self.is_unchanged() {
-            None
-        } else {
-            Some(self.capture())
-        }
+        if self.is_unchanged() { None } else { Some(self.capture()) }
     }
 
     // The following functions build up changes

@@ -177,23 +177,22 @@ fn test_insert_prev() {
     }
     check_links(&m);
     assert_eq!(m.len(), 3 + len * 2);
-    assert_eq!(m.into_iter().collect::<Vec<_>>(),
-                [-2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1]);
+    assert_eq!(m.into_iter().collect::<Vec<_>>(), [-2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1]);
 }
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
-#[cfg(not(miri))] // Miri does not support threads
+#[cfg_attr(miri, ignore)] // Miri does not support threads
 fn test_send() {
     let n = list_from(&[1, 2, 3]);
     thread::spawn(move || {
-            check_links(&n);
-            let a: &[_] = &[&1, &2, &3];
-            assert_eq!(a, &*n.iter().collect::<Vec<_>>());
-        })
-        .join()
-        .ok()
-        .unwrap();
+        check_links(&n);
+        let a: &[_] = &[&1, &2, &3];
+        assert_eq!(a, &*n.iter().collect::<Vec<_>>());
+    })
+    .join()
+    .ok()
+    .unwrap();
 }
 
 #[test]

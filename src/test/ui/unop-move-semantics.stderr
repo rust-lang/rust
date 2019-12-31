@@ -2,9 +2,9 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/unop-move-semantics.rs:8:5
    |
 LL | fn move_then_borrow<T: Not<Output=T> + Clone>(x: T) {
-   |                     -                         - move occurs because `x` has type `T`, which does not implement the `Copy` trait
+   |                     --                        - move occurs because `x` has type `T`, which does not implement the `Copy` trait
    |                     |
-   |                     consider adding a `Copy` constraint to this type argument
+   |                     help: consider further restricting this bound: `T: Copy +`
 LL |     !x;
    |      - value moved here
 LL | 

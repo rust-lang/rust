@@ -1,5 +1,5 @@
 error: index out of bounds: the len is 1 but the index is 1
-  --> $DIR/const-prop-ice2.rs:4:20
+  --> $DIR/const-prop-ice2.rs:6:20
    |
 LL |     println!("{}", xs[Enum::One as usize]);
    |                    ^^^^^^^^^^^^^^^^^^^^^^

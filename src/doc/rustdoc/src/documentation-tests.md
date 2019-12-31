@@ -1,7 +1,7 @@
 # Documentation tests
 
 `rustdoc` supports executing your documentation examples as tests. This makes sure
-that your tests are up to date and working.
+that examples within your documentation are up to date and working.
 
 The basic idea is this:
 

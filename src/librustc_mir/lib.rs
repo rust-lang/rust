@@ -8,6 +8,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(in_band_lifetimes)]
 #![feature(inner_deref)]
 #![feature(slice_patterns)]
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
@@ -16,6 +17,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(decl_macro)]
 #![feature(drain_filter)]
 #![feature(exhaustive_patterns)]
+#![feature(iter_order_by)]
 #![feature(never_type)]
 #![feature(specialization)]
 #![feature(try_trait)]
@@ -26,26 +28,27 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(associated_type_bounds)]
 #![feature(range_is_empty)]
 #![feature(stmt_expr_attributes)]
-#![feature(bool_to_option)]
+#![feature(trait_alias)]
+#![recursion_limit = "256"]
 
-#![recursion_limit="256"]
-
-#[macro_use] extern crate log;
-#[macro_use] extern crate rustc;
-#[macro_use] extern crate rustc_data_structures;
-#[macro_use] extern crate syntax;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate rustc;
+#[macro_use]
+extern crate syntax;
 
 mod borrow_check;
 mod build;
+pub mod const_eval;
 pub mod dataflow;
 mod hair;
+pub mod interpret;
 mod lints;
+pub mod monomorphize;
 mod shim;
 pub mod transform;
 pub mod util;
-pub mod interpret;
-pub mod monomorphize;
-pub mod const_eval;
 
 use rustc::ty::query::Providers;
 
@@ -54,7 +57,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     shim::provide(providers);
     transform::provide(providers);
     monomorphize::partitioning::provide(providers);
-    providers.const_eval = const_eval::const_eval_provider;
+    providers.const_eval_validated = const_eval::const_eval_validated_provider;
     providers.const_eval_raw = const_eval::const_eval_raw_provider;
     providers.check_match = hair::pattern::check_match;
     providers.const_caller_location = const_eval::const_caller_location;

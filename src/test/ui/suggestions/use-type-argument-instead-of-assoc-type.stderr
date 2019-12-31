@@ -6,8 +6,8 @@ LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
    |                                |
    |                                unexpected type argument
 
-error[E0191]: the value of the associated types `A` (from the trait `T`), `C` (from the trait `T`) must be specified
-  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:12
+error[E0191]: the value of the associated types `A` (from trait `T`), `C` (from trait `T`) must be specified
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:16
    |
 LL |     type A;
    |     ------- `A` defined here
@@ -16,12 +16,9 @@ LL |     type C;
    |     ------- `C` defined here
 ...
 LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |            |
-   |            associated type `A` must be specified
-   |            associated type `C` must be specified
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated types `A`, `C` must be specified
    |
-help: if you meant to specify the associated types, write
+help: specify the associated types
    |
 LL |     i: Box<dyn T<usize, usize, A = usize, C = usize, B=usize>>,
    |                                ^^^^^^^^^  ^^^^^^^^^

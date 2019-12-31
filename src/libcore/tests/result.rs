@@ -1,31 +1,30 @@
-use core::option::*;
 use core::array::FixedSizeArray;
 use core::ops::DerefMut;
+use core::option::*;
 
-fn op1() -> Result<isize, &'static str> { Ok(666) }
-fn op2() -> Result<isize, &'static str> { Err("sadface") }
+fn op1() -> Result<isize, &'static str> {
+    Ok(666)
+}
+fn op2() -> Result<isize, &'static str> {
+    Err("sadface")
+}
 
 #[test]
 fn test_and() {
     assert_eq!(op1().and(Ok(667)).unwrap(), 667);
-    assert_eq!(op1().and(Err::<i32, &'static str>("bad")).unwrap_err(),
-               "bad");
+    assert_eq!(op1().and(Err::<i32, &'static str>("bad")).unwrap_err(), "bad");
 
     assert_eq!(op2().and(Ok(667)).unwrap_err(), "sadface");
-    assert_eq!(op2().and(Err::<i32,&'static str>("bad")).unwrap_err(),
-               "sadface");
+    assert_eq!(op2().and(Err::<i32, &'static str>("bad")).unwrap_err(), "sadface");
 }
 
 #[test]
 fn test_and_then() {
     assert_eq!(op1().and_then(|i| Ok::<isize, &'static str>(i + 1)).unwrap(), 667);
-    assert_eq!(op1().and_then(|_| Err::<isize, &'static str>("bad")).unwrap_err(),
-               "bad");
+    assert_eq!(op1().and_then(|_| Err::<isize, &'static str>("bad")).unwrap_err(), "bad");
 
-    assert_eq!(op2().and_then(|i| Ok::<isize, &'static str>(i + 1)).unwrap_err(),
-               "sadface");
-    assert_eq!(op2().and_then(|_| Err::<isize, &'static str>("bad")).unwrap_err(),
-               "sadface");
+    assert_eq!(op2().and_then(|i| Ok::<isize, &'static str>(i + 1)).unwrap_err(), "sadface");
+    assert_eq!(op2().and_then(|_| Err::<isize, &'static str>("bad")).unwrap_err(), "sadface");
 }
 
 #[test]
@@ -43,8 +42,7 @@ fn test_or_else() {
     assert_eq!(op1().or_else(|e| Err::<isize, &'static str>(e)).unwrap(), 666);
 
     assert_eq!(op2().or_else(|_| Ok::<isize, &'static str>(667)).unwrap(), 667);
-    assert_eq!(op2().or_else(|e| Err::<isize, &'static str>(e)).unwrap_err(),
-               "sadface");
+    assert_eq!(op2().or_else(|e| Err::<isize, &'static str>(e)).unwrap_err(), "sadface");
 }
 
 #[test]
@@ -67,9 +65,7 @@ fn test_collect() {
     let v: Result<Vec<isize>, ()> = (0..3).map(|x| Ok::<isize, ()>(x)).collect();
     assert!(v == Ok(vec![0, 1, 2]));
 
-    let v: Result<Vec<isize>, isize> = (0..3).map(|x| {
-        if x > 1 { Err(x) } else { Ok(x) }
-    }).collect();
+    let v: Result<Vec<isize>, isize> = (0..3).map(|x| if x > 1 { Err(x) } else { Ok(x) }).collect();
     assert!(v == Err(2));
 
     // test that it does not take more elements than it needs
@@ -103,11 +99,7 @@ fn test_unwrap_or() {
 #[test]
 fn test_unwrap_or_else() {
     fn handler(msg: &'static str) -> isize {
-        if msg == "I got this." {
-            50
-        } else {
-            panic!("BadBad")
-        }
+        if msg == "I got this." { 50 } else { panic!("BadBad") }
     }
 
     let ok: Result<isize, &'static str> = Ok(100);
@@ -121,17 +113,12 @@ fn test_unwrap_or_else() {
 #[should_panic]
 pub fn test_unwrap_or_else_panic() {
     fn handler(msg: &'static str) -> isize {
-        if msg == "I got this." {
-            50
-        } else {
-            panic!("BadBad")
-        }
+        if msg == "I got this." { 50 } else { panic!("BadBad") }
     }
 
     let bad_err: Result<isize, &'static str> = Err("Unrecoverable mess.");
-    let _ : isize = bad_err.unwrap_or_else(handler);
+    let _: isize = bad_err.unwrap_or_else(handler);
 }
-
 
 #[test]
 pub fn test_expect_ok() {
@@ -139,12 +126,11 @@ pub fn test_expect_ok() {
     assert_eq!(ok.expect("Unexpected error"), 100);
 }
 #[test]
-#[should_panic(expected="Got expected error: \"All good\"")]
+#[should_panic(expected = "Got expected error: \"All good\"")]
 pub fn test_expect_err() {
     let err: Result<isize, &'static str> = Err("All good");
     err.expect("Got expected error");
 }
-
 
 #[test]
 pub fn test_expect_err_err() {
@@ -152,7 +138,7 @@ pub fn test_expect_err_err() {
     assert_eq!(ok.expect_err("Unexpected ok"), 100);
 }
 #[test]
-#[should_panic(expected="Got expected ok: \"All good\"")]
+#[should_panic(expected = "Got expected ok: \"All good\"")]
 pub fn test_expect_err_ok() {
     let err: Result<&'static str, isize> = Ok("All good");
     err.expect_err("Got expected ok");

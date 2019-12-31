@@ -23,9 +23,7 @@ fi
 ci_dir=`cd $(dirname $0) && pwd`
 source "$ci_dir/shared.sh"
 
-branch_name=$(getCIBranch)
-
-if [ ! isCI ] || [ "$branch_name" = "auto" ] || [ "$branch_name" = "try" ]; then
+if ! isCI || isCiBranch auto || isCiBranch beta; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 fi
 
@@ -46,8 +44,13 @@ fi
 # FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
 #        either automatically or manually.
 export RUST_RELEASE_CHANNEL=nightly
+
+# Always set the release channel for bootstrap; this is normally not important (i.e., only dist
+# builds would seem to matter) but in practice bootstrap wants to know whether we're targeting
+# master, beta, or stable with a build to determine whether to run some checks (notably toolstate).
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
+
 if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.remap-debuginfo"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level-std=1"

@@ -1,5 +1,5 @@
-use crate::ptr;
 use crate::ops::{Deref, DerefMut};
+use crate::ptr;
 
 /// A wrapper to inhibit compiler from automatically calling `T`’s destructor.
 ///
@@ -63,6 +63,7 @@ impl<T> ManuallyDrop<T> {
     /// ManuallyDrop::new(Box::new(()));
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
+    #[rustc_const_stable(feature = "const_manually_drop", since = "1.36.0")]
     #[inline(always)]
     pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value }
@@ -80,6 +81,7 @@ impl<T> ManuallyDrop<T> {
     /// let _: Box<()> = ManuallyDrop::into_inner(x); // This drops the `Box`.
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
+    #[rustc_const_stable(feature = "const_manually_drop", since = "1.36.0")]
     #[inline(always)]
     pub const fn into_inner(slot: ManuallyDrop<T>) -> T {
         slot.value
@@ -119,7 +121,7 @@ impl<T: ?Sized> ManuallyDrop<T> {
     /// This function runs the destructor of the contained value and thus the wrapped value
     /// now represents uninitialized data. It is up to the user of this method to ensure the
     /// uninitialized data is not actually used.
-    /// In particular, this function can only be called called at most once
+    /// In particular, this function can only be called at most once
     /// for a given instance of `ManuallyDrop<T>`.
     ///
     /// [`ManuallyDrop::into_inner`]: #method.into_inner

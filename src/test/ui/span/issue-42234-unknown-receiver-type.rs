@@ -9,8 +9,8 @@ fn shines_a_beacon_through_the_darkness() {
 }
 
 fn courier_to_des_moines_and_points_west(data: &[u32]) -> String {
-    data.iter() //~ ERROR type annotations needed
-        .sum::<_>()
+    data.iter()
+        .sum::<_>() //~ ERROR type annotations needed
         .to_string()
 }
 

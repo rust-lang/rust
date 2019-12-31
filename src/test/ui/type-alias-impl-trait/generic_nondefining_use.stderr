@@ -4,7 +4,7 @@ error: at least one trait must be specified
 LL | type Cmp<T> = impl 'static;
    |               ^^^^^^^^^^^^
 
-error: defining opaque type use does not fully define opaque type
+error: defining opaque type use does not fully define opaque type: generic parameter `T` is specified as concrete type `u32`
   --> $DIR/generic_nondefining_use.rs:11:1
    |
 LL | / fn cmp() -> Cmp<u32> {

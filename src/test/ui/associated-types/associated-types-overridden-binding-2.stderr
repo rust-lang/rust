@@ -2,10 +2,8 @@ error[E0271]: type mismatch resolving `<std::vec::IntoIter<u32> as std::iter::It
   --> $DIR/associated-types-overridden-binding-2.rs:6:43
    |
 LL |     let _: &dyn I32Iterator<Item = u32> = &vec![42].into_iter();
-   |                                           ^^^^^^^^^^^^^^^^^^^^^ expected i32, found u32
+   |                                           ^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `u32`
    |
-   = note: expected type `i32`
-              found type `u32`
    = note: required for the cast to the object type `dyn std::iter::Iterator<Item = u32, Item = i32>`
 
 error: aborting due to previous error

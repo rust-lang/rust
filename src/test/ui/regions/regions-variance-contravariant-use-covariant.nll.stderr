@@ -8,6 +8,8 @@ LL | fn use_<'short,'long>(c: Contravariant<'short>,
 ...
 LL |     let _: Contravariant<'long> = c;
    |            ^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'short` must outlive `'long`
+   |
+   = help: consider adding the following bound: `'short: 'long`
 
 error: aborting due to previous error
 

@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::iter::FromIterator;
 use std::mem;
-use std::ops::{RangeBounds, Bound, Index, IndexMut};
+use std::ops::{Bound, Index, IndexMut, RangeBounds};
 
 /// `SortedMap` is a data structure with similar characteristics as BTreeMap but
 /// slightly different trade-offs: lookup, insertion, and removal are O(log(N))
@@ -12,18 +12,26 @@ use std::ops::{RangeBounds, Bound, Index, IndexMut};
 /// stores data in a more compact way. It also supports accessing contiguous
 /// ranges of elements as a slice, and slices of already sorted elements can be
 /// inserted efficiently.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, RustcEncodable,
-         RustcDecodable)]
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
+    Debug,
+    RustcEncodable,
+    RustcDecodable
+)]
 pub struct SortedMap<K: Ord, V> {
-    data: Vec<(K, V)>
+    data: Vec<(K, V)>,
 }
 
 impl<K: Ord, V> SortedMap<K, V> {
     #[inline]
     pub fn new() -> SortedMap<K, V> {
-        SortedMap {
-            data: vec![]
-        }
+        SortedMap { data: vec![] }
     }
 
     /// Construct a `SortedMap` from a presorted set of elements. This is faster
@@ -32,22 +40,17 @@ impl<K: Ord, V> SortedMap<K, V> {
     /// It is up to the caller to make sure that the elements are sorted by key
     /// and that there are no duplicates.
     #[inline]
-    pub fn from_presorted_elements(elements: Vec<(K, V)>) -> SortedMap<K, V>
-    {
+    pub fn from_presorted_elements(elements: Vec<(K, V)>) -> SortedMap<K, V> {
         debug_assert!(elements.windows(2).all(|w| w[0].0 < w[1].0));
 
-        SortedMap {
-            data: elements
-        }
+        SortedMap { data: elements }
     }
 
     #[inline]
     pub fn insert(&mut self, key: K, mut value: V) -> Option<V> {
         match self.lookup_index_for(&key) {
             Ok(index) => {
-                let slot = unsafe {
-                    self.data.get_unchecked_mut(index)
-                };
+                let slot = unsafe { self.data.get_unchecked_mut(index) };
                 mem::swap(&mut slot.1, &mut value);
                 Some(value)
             }
@@ -61,46 +64,32 @@ impl<K: Ord, V> SortedMap<K, V> {
     #[inline]
     pub fn remove(&mut self, key: &K) -> Option<V> {
         match self.lookup_index_for(key) {
-            Ok(index) => {
-                Some(self.data.remove(index).1)
-            }
-            Err(_) => {
-                None
-            }
+            Ok(index) => Some(self.data.remove(index).1),
+            Err(_) => None,
         }
     }
 
     #[inline]
     pub fn get<Q>(&self, key: &Q) -> Option<&V>
-        where K: Borrow<Q>,
-              Q: Ord + ?Sized
+    where
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
     {
         match self.lookup_index_for(key) {
-            Ok(index) => {
-                unsafe {
-                    Some(&self.data.get_unchecked(index).1)
-                }
-            }
-            Err(_) => {
-                None
-            }
+            Ok(index) => unsafe { Some(&self.data.get_unchecked(index).1) },
+            Err(_) => None,
         }
     }
 
     #[inline]
     pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
-        where K: Borrow<Q>,
-              Q: Ord + ?Sized
+    where
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
     {
         match self.lookup_index_for(key) {
-            Ok(index) => {
-                unsafe {
-                    Some(&mut self.data.get_unchecked_mut(index).1)
-                }
-            }
-            Err(_) => {
-                None
-            }
+            Ok(index) => unsafe { Some(&mut self.data.get_unchecked_mut(index).1) },
+            Err(_) => None,
         }
     }
 
@@ -139,25 +128,28 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     #[inline]
     pub fn range<R>(&self, range: R) -> &[(K, V)]
-        where R: RangeBounds<K>
+    where
+        R: RangeBounds<K>,
     {
         let (start, end) = self.range_slice_indices(range);
-        (&self.data[start .. end])
+        (&self.data[start..end])
     }
 
     #[inline]
     pub fn remove_range<R>(&mut self, range: R)
-        where R: RangeBounds<K>
+    where
+        R: RangeBounds<K>,
     {
         let (start, end) = self.range_slice_indices(range);
-        self.data.splice(start .. end, ::std::iter::empty());
+        self.data.splice(start..end, ::std::iter::empty());
     }
 
     /// Mutate all keys with the given function `f`. This mutation must not
     /// change the sort-order of keys.
     #[inline]
     pub fn offset_keys<F>(&mut self, f: F)
-        where F: Fn(&mut K)
+    where
+        F: Fn(&mut K),
     {
         self.data.iter_mut().map(|&mut (ref mut k, _)| k).for_each(f);
     }
@@ -171,7 +163,7 @@ impl<K: Ord, V> SortedMap<K, V> {
     #[inline]
     pub fn insert_presorted(&mut self, mut elements: Vec<(K, V)>) {
         if elements.is_empty() {
-            return
+            return;
         }
 
         debug_assert!(elements.windows(2).all(|w| w[0].0 < w[1].0));
@@ -185,12 +177,11 @@ impl<K: Ord, V> SortedMap<K, V> {
                 drain
             }
             Err(index) => {
-                if index == self.data.len() ||
-                   elements.last().unwrap().0 < self.data[index].0 {
+                if index == self.data.len() || elements.last().unwrap().0 < self.data[index].0 {
                     // We can copy the whole range without having to mix with
                     // existing elements.
-                    self.data.splice(index .. index, elements.drain(..));
-                    return
+                    self.data.splice(index..index, elements.drain(..));
+                    return;
                 }
 
                 let mut drain = elements.drain(..);
@@ -208,43 +199,37 @@ impl<K: Ord, V> SortedMap<K, V> {
     /// Looks up the key in `self.data` via `slice::binary_search()`.
     #[inline(always)]
     fn lookup_index_for<Q>(&self, key: &Q) -> Result<usize, usize>
-        where K: Borrow<Q>,
-              Q: Ord + ?Sized
+    where
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
     {
         self.data.binary_search_by(|&(ref x, _)| x.borrow().cmp(key))
     }
 
     #[inline]
     fn range_slice_indices<R>(&self, range: R) -> (usize, usize)
-        where R: RangeBounds<K>
+    where
+        R: RangeBounds<K>,
     {
         let start = match range.start_bound() {
-            Bound::Included(ref k) => {
-                match self.lookup_index_for(k) {
-                    Ok(index) | Err(index) => index
-                }
-            }
-            Bound::Excluded(ref k) => {
-                match self.lookup_index_for(k) {
-                    Ok(index) => index + 1,
-                    Err(index) => index,
-                }
-            }
+            Bound::Included(ref k) => match self.lookup_index_for(k) {
+                Ok(index) | Err(index) => index,
+            },
+            Bound::Excluded(ref k) => match self.lookup_index_for(k) {
+                Ok(index) => index + 1,
+                Err(index) => index,
+            },
             Bound::Unbounded => 0,
         };
 
         let end = match range.end_bound() {
-            Bound::Included(ref k) => {
-                match self.lookup_index_for(k) {
-                    Ok(index) => index + 1,
-                    Err(index) => index,
-                }
-            }
-            Bound::Excluded(ref k) => {
-                match self.lookup_index_for(k) {
-                    Ok(index) | Err(index) => index,
-                }
-            }
+            Bound::Included(ref k) => match self.lookup_index_for(k) {
+                Ok(index) => index + 1,
+                Err(index) => index,
+            },
+            Bound::Excluded(ref k) => match self.lookup_index_for(k) {
+                Ok(index) | Err(index) => index,
+            },
             Bound::Unbounded => self.data.len(),
         };
 
@@ -253,8 +238,9 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     #[inline]
     pub fn contains_key<Q>(&self, key: &Q) -> bool
-        where K: Borrow<Q>,
-              Q: Ord + ?Sized
+    where
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
     {
         self.get(key).is_some()
     }
@@ -270,8 +256,9 @@ impl<K: Ord, V> IntoIterator for SortedMap<K, V> {
 }
 
 impl<'a, K, Q, V> Index<&'a Q> for SortedMap<K, V>
-    where K: Ord + Borrow<Q>,
-          Q: Ord + ?Sized
+where
+    K: Ord + Borrow<Q>,
+    Q: Ord + ?Sized,
 {
     type Output = V;
 
@@ -281,8 +268,9 @@ impl<'a, K, Q, V> Index<&'a Q> for SortedMap<K, V>
 }
 
 impl<'a, K, Q, V> IndexMut<&'a Q> for SortedMap<K, V>
-    where K: Ord + Borrow<Q>,
-          Q: Ord + ?Sized
+where
+    K: Ord + Borrow<Q>,
+    Q: Ord + ?Sized,
 {
     fn index_mut(&mut self, key: &Q) -> &mut Self::Output {
         self.get_mut(key).expect("no entry found for key")
@@ -294,13 +282,9 @@ impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
         let mut data: Vec<(K, V)> = iter.into_iter().collect();
 
         data.sort_unstable_by(|&(ref k1, _), &(ref k2, _)| k1.cmp(k2));
-        data.dedup_by(|&mut (ref k1, _), &mut (ref k2, _)| {
-            k1.cmp(k2) == Ordering::Equal
-        });
+        data.dedup_by(|&mut (ref k1, _), &mut (ref k2, _)| k1.cmp(k2) == Ordering::Equal);
 
-        SortedMap {
-            data
-        }
+        SortedMap { data }
     }
 }
 

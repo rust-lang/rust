@@ -2,35 +2,33 @@
 
 mod cast;
 mod eval_context;
-mod place;
-mod operand;
+mod intern;
+mod intrinsics;
 mod machine;
 mod memory;
+mod operand;
 mod operator;
+mod place;
 pub(crate) mod snapshot; // for const_eval
 mod step;
 mod terminator;
 mod traits;
 mod validity;
-mod intrinsics;
 mod visitor;
-mod intern;
 
 pub use rustc::mir::interpret::*; // have all the `interpret` symbols in one place: here
 
-pub use self::eval_context::{
-    InterpCx, Frame, StackPopCleanup, LocalState, LocalValue,
-};
+pub use self::eval_context::{Frame, InterpCx, LocalState, LocalValue, StackPopCleanup};
 
-pub use self::place::{Place, PlaceTy, MemPlace, MPlaceTy};
+pub use self::place::{MPlaceTy, MemPlace, Place, PlaceTy};
 
-pub use self::memory::{Memory, MemoryKind, AllocCheck, FnVal};
+pub use self::memory::{AllocCheck, FnVal, Memory, MemoryKind};
 
-pub use self::machine::{Machine, AllocMap, MayLeak, StackPopInfo};
+pub use self::machine::{AllocMap, Machine, MayLeak, StackPopInfo};
 
-pub use self::operand::{ScalarMaybeUndef, Immediate, ImmTy, Operand, OpTy};
+pub use self::operand::{ImmTy, Immediate, OpTy, Operand, ScalarMaybeUndef};
 
-pub use self::visitor::{ValueVisitor, MutValueVisitor};
+pub use self::visitor::{MutValueVisitor, ValueVisitor};
 
 pub use self::validity::RefTracking;
 

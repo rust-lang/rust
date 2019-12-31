@@ -1,5 +1,5 @@
+use super::{LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
 use std::collections::BTreeMap;
-use super::{LldFlavor, TargetOptions, PanicStrategy, LinkerFlavor};
 
 pub fn options() -> TargetOptions {
     let mut lld_args = Vec::new();
@@ -140,6 +140,9 @@ pub fn options() -> TargetOptions {
         has_elf_tls: true,
         tls_model: "local-exec".to_string(),
 
-        .. Default::default()
+        // gdb scripts don't work on wasm blobs
+        emit_debug_gdb_scripts: false,
+
+        ..Default::default()
     }
 }

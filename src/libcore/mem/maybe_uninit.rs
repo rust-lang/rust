@@ -1,3 +1,5 @@
+use crate::any::type_name;
+use crate::fmt;
 use crate::intrinsics;
 use crate::mem::ManuallyDrop;
 
@@ -232,6 +234,13 @@ impl<T: Copy> Clone for MaybeUninit<T> {
     }
 }
 
+#[stable(feature = "maybe_uninit_debug", since = "1.41.0")]
+impl<T> fmt::Debug for MaybeUninit<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad(type_name::<Self>())
+    }
+}
+
 impl<T> MaybeUninit<T> {
     /// Creates a new `MaybeUninit<T>` initialized with the given value.
     /// It is safe to call [`assume_init`] on the return value of this function.
@@ -241,6 +250,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: #method.assume_init
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
     #[inline(always)]
     pub const fn new(val: T) -> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
@@ -255,8 +265,9 @@ impl<T> MaybeUninit<T> {
     ///
     /// [type]: union.MaybeUninit.html
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
     #[inline(always)]
-    #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "maybe_uninit_uninit")]
+    #[rustc_diagnostic_item = "maybe_uninit_uninit"]
     pub const fn uninit() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
@@ -290,17 +301,18 @@ impl<T> MaybeUninit<T> {
     /// let mut buf: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
     /// let data = read(&mut buf);
     /// ```
-    #[unstable(feature = "maybe_uninit_uninit_array", issue = "0")]
+    #[unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
     #[inline(always)]
     pub fn uninit_array<const LEN: usize>() -> [Self; LEN] {
-        unsafe {
-            MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init()
-        }
+        unsafe { MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init() }
     }
 
     /// A promotable constant, equivalent to `uninit()`.
-    #[unstable(feature = "internal_uninit_const", issue = "0",
-        reason = "hack to work around promotability")]
+    #[unstable(
+        feature = "internal_uninit_const",
+        issue = "none",
+        reason = "hack to work around promotability"
+    )]
     pub const UNINIT: Self = Self::uninit();
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
@@ -340,7 +352,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline]
-    #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "maybe_uninit_zeroed")]
+    #[rustc_diagnostic_item = "maybe_uninit_zeroed"]
     pub fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
         unsafe {
@@ -481,7 +493,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline(always)]
-    #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "assume_init")]
+    #[rustc_diagnostic_item = "assume_init"]
     pub unsafe fn assume_init(self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
         ManuallyDrop::into_inner(self.value)
@@ -738,7 +750,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
     /// really are in an initialized state.
     /// Calling this when the content is not yet fully initialized causes undefined behavior.
-    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
+    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "none")]
     #[inline(always)]
     pub unsafe fn slice_get_ref(slice: &[Self]) -> &[T] {
         &*(slice as *const [Self] as *const [T])
@@ -751,7 +763,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
     /// really are in an initialized state.
     /// Calling this when the content is not yet fully initialized causes undefined behavior.
-    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
+    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "none")]
     #[inline(always)]
     pub unsafe fn slice_get_mut(slice: &mut [Self]) -> &mut [T] {
         &mut *(slice as *mut [Self] as *mut [T])

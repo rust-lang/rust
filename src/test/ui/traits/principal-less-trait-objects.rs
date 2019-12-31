@@ -1,5 +1,5 @@
 // run-pass
-// Check that trait-objects without a principal codegen properly.
+// Check that trait objects without a principal codegen properly.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::mem;
@@ -10,7 +10,7 @@ use std::mem;
 struct SetOnDrop<'a>(&'a AtomicUsize, [u8; 64]);
 impl<'a> Drop for SetOnDrop<'a> {
     fn drop(&mut self) {
-        self.0.store(self.0.load(Ordering::Relaxed)+1, Ordering::Relaxed);
+        self.0.store(self.0.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
     }
 }
 

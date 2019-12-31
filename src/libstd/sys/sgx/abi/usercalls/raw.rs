@@ -3,8 +3,8 @@
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub use fortanix_sgx_abi::*;
 
-use crate::ptr::NonNull;
 use crate::num::NonZeroU64;
+use crate::ptr::NonNull;
 
 #[repr(C)]
 struct UsercallReturn(u64, u64);
@@ -25,9 +25,14 @@ extern "C" {
 /// Panics if `nr` is `0`.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 #[inline]
-pub unsafe fn do_usercall(nr: NonZeroU64, p1: u64, p2: u64, p3: u64, p4: u64, abort: bool)
-    -> (u64, u64)
-{
+pub unsafe fn do_usercall(
+    nr: NonZeroU64,
+    p1: u64,
+    p2: u64,
+    p3: u64,
+    p4: u64,
+    abort: bool,
+) -> (u64, u64) {
     let UsercallReturn(a, b) = usercall(nr, p1, p2, abort as _, p3, p4);
     (a, b)
 }
@@ -109,11 +114,7 @@ define_ra!(<T> *mut T);
 
 impl RegisterArgument for bool {
     fn from_register(a: Register) -> bool {
-        if a != 0 {
-            true
-        } else {
-            false
-        }
+        if a != 0 { true } else { false }
     }
     fn into_register(self) -> Register {
         self as _
@@ -152,16 +153,17 @@ impl<T: RegisterArgument> ReturnValue for T {
 
 impl<T: RegisterArgument, U: RegisterArgument> ReturnValue for (T, U) {
     fn from_registers(_call: &'static str, regs: (Register, Register)) -> Self {
-        (
-            T::from_register(regs.0),
-            U::from_register(regs.1)
-        )
+        (T::from_register(regs.0), U::from_register(regs.1))
     }
 }
 
 macro_rules! return_type_is_abort {
-    (!) => { true };
-    ($r:ty) => { false };
+    (!) => {
+        true
+    };
+    ($r:ty) => {
+        false
+    };
 }
 
 // In this macro: using `$r:tt` because `$r:ty` doesn't match ! in `return_type_is_abort`

@@ -96,7 +96,9 @@ fn test_transmute_copy() {
 
 #[test]
 fn test_transmute() {
-    trait Foo { fn dummy(&self) { } }
+    trait Foo {
+        fn dummy(&self) {}
+    }
     impl Foo for isize {}
 
     let a = box 100isize as Box<dyn Foo>;
@@ -116,13 +118,13 @@ fn test_transmute() {
 fn test_discriminant_send_sync() {
     enum Regular {
         A,
-        B(i32)
+        B(i32),
     }
     enum NotSendSync {
-        A(*const i32)
+        A(*const i32),
     }
 
-    fn is_send_sync<T: Send + Sync>() { }
+    fn is_send_sync<T: Send + Sync>() {}
 
     is_send_sync::<Discriminant<Regular>>();
     is_send_sync::<Discriminant<NotSendSync>>();

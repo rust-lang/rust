@@ -2,13 +2,15 @@ use crate::check::regionck::RegionCtxt;
 
 use crate::hir;
 use crate::hir::def_id::DefId;
+use crate::util::common::ErrorReported;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{InferOk, SuppressRegionErrors};
 use rustc::middle::region;
 use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
+use rustc::ty::error::TypeError;
+use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::{Subst, SubstsRef};
-use rustc::ty::{self, Ty, TyCtxt};
-use crate::util::common::ErrorReported;
+use rustc::ty::{self, Predicate, Ty, TyCtxt};
 
 use syntax_pos::Span;
 
@@ -56,8 +58,10 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            tcx.sess.delay_span_bug(span,
-                &format!("should have been rejected by coherence check: {}", dtor_self_type));
+            tcx.sess.delay_span_bug(
+                span,
+                &format!("should have been rejected by coherence check: {}", dtor_self_type),
+            );
             Err(ErrorReported)
         }
     }
@@ -85,10 +89,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
         let cause = &ObligationCause::misc(drop_impl_span, drop_impl_hir_id);
-        match infcx
-            .at(cause, impl_param_env)
-            .eq(named_type, fresh_impl_self_ty)
-        {
+        match infcx.at(cause, impl_param_env).eq(named_type, fresh_impl_self_ty) {
             Ok(InferOk { obligations, .. }) => {
                 fulfillment_cx.register_predicate_obligations(infcx, obligations);
             }
@@ -99,12 +100,13 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
                     drop_impl_span,
                     E0366,
                     "Implementations of Drop cannot be specialized"
-                ).span_note(
+                )
+                .span_note(
                     item_span,
                     "Use same sequence of generic type and region \
                      parameters that is on the struct/enum definition",
                 )
-                    .emit();
+                .emit();
                 return Err(ErrorReported);
             }
         }
@@ -194,6 +196,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     let assumptions_in_impl_context = generic_assumptions.instantiate(tcx, &self_to_impl_substs);
     let assumptions_in_impl_context = assumptions_in_impl_context.predicates;
 
+    let self_param_env = tcx.param_env(self_type_did);
+
     // An earlier version of this code attempted to do this checking
     // via the traits::fulfill machinery. However, it ran into trouble
     // since the fulfill machinery merely turns outlives-predicates
@@ -207,14 +211,35 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         // to take on a structure that is roughly an alpha-renaming of
         // the generic parameters of the item definition.)
 
-        // This path now just checks *all* predicates via the direct
-        // lookup, rather than using fulfill machinery.
+        // This path now just checks *all* predicates via an instantiation of
+        // the `SimpleEqRelation`, which simply forwards to the `relate` machinery
+        // after taking care of anonymizing late bound regions.
         //
         // However, it may be more efficient in the future to batch
-        // the analysis together via the fulfill , rather than the
-        // repeated `contains` calls.
+        // the analysis together via the fulfill (see comment above regarding
+        // the usage of the fulfill machinery), rather than the
+        // repeated `.iter().any(..)` calls.
 
-        if !assumptions_in_impl_context.contains(&predicate) {
+        // This closure is a more robust way to check `Predicate` equality
+        // than simple `==` checks (which were the previous implementation).
+        // It relies on `ty::relate` for `TraitPredicate` and `ProjectionPredicate`
+        // (which implement the Relate trait), while delegating on simple equality
+        // for the other `Predicate`.
+        // This implementation solves (Issue #59497) and (Issue #58311).
+        // It is unclear to me at the moment whether the approach based on `relate`
+        // could be extended easily also to the other `Predicate`.
+        let predicate_matches_closure = |p: &'_ Predicate<'tcx>| {
+            let mut relator: SimpleEqRelation<'tcx> = SimpleEqRelation::new(tcx, self_param_env);
+            match (predicate, p) {
+                (Predicate::Trait(a), Predicate::Trait(b)) => relator.relate(a, b).is_ok(),
+                (Predicate::Projection(a), Predicate::Projection(b)) => {
+                    relator.relate(a, b).is_ok()
+                }
+                _ => predicate == p,
+            }
+        };
+
+        if !assumptions_in_impl_context.iter().any(predicate_matches_closure) {
             let item_span = tcx.hir().span(self_type_hir_id);
             struct_span_err!(
                 tcx.sess,
@@ -222,12 +247,13 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 E0367,
                 "The requirement `{}` is added only by the Drop impl.",
                 predicate
-            ).span_note(
+            )
+            .span_note(
                 item_span,
                 "The same requirement must be part of \
                  the struct/enum definition",
             )
-                .emit();
+            .emit();
             result = Err(ErrorReported);
         }
     }
@@ -252,4 +278,100 @@ crate fn check_drop_obligations<'a, 'tcx>(
     rcx.fcx.register_infer_ok_obligations(infer_ok);
 
     Ok(())
+}
+
+// This is an implementation of the TypeRelation trait with the
+// aim of simply comparing for equality (without side-effects).
+// It is not intended to be used anywhere else other than here.
+crate struct SimpleEqRelation<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+}
+
+impl<'tcx> SimpleEqRelation<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> SimpleEqRelation<'tcx> {
+        SimpleEqRelation { tcx, param_env }
+    }
+}
+
+impl TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
+
+    fn tag(&self) -> &'static str {
+        "dropck::SimpleEqRelation"
+    }
+
+    fn a_is_expected(&self) -> bool {
+        true
+    }
+
+    fn relate_with_variance<T: Relate<'tcx>>(
+        &mut self,
+        _: ty::Variance,
+        a: &T,
+        b: &T,
+    ) -> RelateResult<'tcx, T> {
+        // Here we ignore variance because we require drop impl's types
+        // to be *exactly* the same as to the ones in the struct definition.
+        self.relate(a, b)
+    }
+
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        debug!("SimpleEqRelation::tys(a={:?}, b={:?})", a, b);
+        ty::relate::super_relate_tys(self, a, b)
+    }
+
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        debug!("SimpleEqRelation::regions(a={:?}, b={:?})", a, b);
+
+        // We can just equate the regions because LBRs have been
+        // already anonymized.
+        if a == b {
+            Ok(a)
+        } else {
+            // I'm not sure is this `TypeError` is the right one, but
+            // it should not matter as it won't be checked (the dropck
+            // will emit its own, more informative and higher-level errors
+            // in case anything goes wrong).
+            Err(TypeError::RegionsPlaceholderMismatch)
+        }
+    }
+
+    fn consts(
+        &mut self,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        debug!("SimpleEqRelation::consts(a={:?}, b={:?})", a, b);
+        ty::relate::super_relate_consts(self, a, b)
+    }
+
+    fn binders<T>(
+        &mut self,
+        a: &ty::Binder<T>,
+        b: &ty::Binder<T>,
+    ) -> RelateResult<'tcx, ty::Binder<T>>
+    where
+        T: Relate<'tcx>,
+    {
+        debug!("SimpleEqRelation::binders({:?}: {:?}", a, b);
+
+        // Anonymizing the LBRs is necessary to solve (Issue #59497).
+        // After we do so, it should be totally fine to skip the binders.
+        let anon_a = self.tcx.anonymize_late_bound_regions(a);
+        let anon_b = self.tcx.anonymize_late_bound_regions(b);
+        self.relate(anon_a.skip_binder(), anon_b.skip_binder())?;
+
+        Ok(a.clone())
+    }
 }

@@ -15,7 +15,7 @@
 
 use core::array;
 
-use crate::alloc::{AllocErr, LayoutErr, CannotReallocInPlace};
+use crate::alloc::{AllocErr, CannotReallocInPlace, LayoutErr};
 use crate::any::TypeId;
 use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
@@ -45,97 +45,6 @@ use crate::string;
 /// [`source`]: trait.Error.html#method.source
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
-    /// **This method is soft-deprecated.**
-    ///
-    /// Although using it won’t cause compilation warning,
-    /// new code should use [`Display`] instead
-    /// and new `impl`s can omit it.
-    ///
-    /// To obtain error description as a string, use `to_string()`.
-    ///
-    /// [`Display`]: ../fmt/trait.Display.html
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// match "xc".parse::<u32>() {
-    ///     Err(e) => {
-    ///         // Print `e` itself, not `e.description()`.
-    ///         println!("Error: {}", e);
-    ///     }
-    ///     _ => println!("No error"),
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn description(&self) -> &str {
-        "description() is deprecated; use Display"
-    }
-
-    /// The lower-level cause of this error, if any.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::error::Error;
-    /// use std::fmt;
-    ///
-    /// #[derive(Debug)]
-    /// struct SuperError {
-    ///     side: SuperErrorSideKick,
-    /// }
-    ///
-    /// impl fmt::Display for SuperError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "SuperError is here!")
-    ///     }
-    /// }
-    ///
-    /// impl Error for SuperError {
-    ///     fn description(&self) -> &str {
-    ///         "I'm the superhero of errors"
-    ///     }
-    ///
-    ///     fn cause(&self) -> Option<&dyn Error> {
-    ///         Some(&self.side)
-    ///     }
-    /// }
-    ///
-    /// #[derive(Debug)]
-    /// struct SuperErrorSideKick;
-    ///
-    /// impl fmt::Display for SuperErrorSideKick {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "SuperErrorSideKick is here!")
-    ///     }
-    /// }
-    ///
-    /// impl Error for SuperErrorSideKick {
-    ///     fn description(&self) -> &str {
-    ///         "I'm SuperError side kick"
-    ///     }
-    /// }
-    ///
-    /// fn get_super_error() -> Result<(), SuperError> {
-    ///     Err(SuperError { side: SuperErrorSideKick })
-    /// }
-    ///
-    /// fn main() {
-    ///     match get_super_error() {
-    ///         Err(e) => {
-    ///             println!("Error: {}", e.description());
-    ///             println!("Caused by: {}", e.cause().unwrap());
-    ///         }
-    ///         _ => println!("No error"),
-    ///     }
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.33.0", reason = "replaced by Error::source, which can support \
-                                                   downcasting")]
-    fn cause(&self) -> Option<&dyn Error> {
-        self.source()
-    }
-
     /// The lower-level source of this error, if any.
     ///
     /// # Examples
@@ -156,10 +65,6 @@ pub trait Error: Debug + Display {
     /// }
     ///
     /// impl Error for SuperError {
-    ///     fn description(&self) -> &str {
-    ///         "I'm the superhero of errors"
-    ///     }
-    ///
     ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
     ///         Some(&self.side)
     ///     }
@@ -174,11 +79,7 @@ pub trait Error: Debug + Display {
     ///     }
     /// }
     ///
-    /// impl Error for SuperErrorSideKick {
-    ///     fn description(&self) -> &str {
-    ///         "I'm SuperError side kick"
-    ///     }
-    /// }
+    /// impl Error for SuperErrorSideKick {}
     ///
     /// fn get_super_error() -> Result<(), SuperError> {
     ///     Err(SuperError { side: SuperErrorSideKick })
@@ -195,18 +96,25 @@ pub trait Error: Debug + Display {
     /// }
     /// ```
     #[stable(feature = "error_source", since = "1.30.0")]
-    fn source(&self) -> Option<&(dyn Error + 'static)> { None }
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
 
     /// Gets the `TypeId` of `self`.
     #[doc(hidden)]
-    #[unstable(feature = "error_type_id",
-               reason = "this is memory-unsafe to override in user code",
-               issue = "60784")]
-    fn type_id(&self, _: private::Internal) -> TypeId where Self: 'static {
+    #[unstable(
+        feature = "error_type_id",
+        reason = "this is memory-unsafe to override in user code",
+        issue = "60784"
+    )]
+    fn type_id(&self, _: private::Internal) -> TypeId
+    where
+        Self: 'static,
+    {
         TypeId::of::<Self>()
     }
 
-    /// Returns a stack backtrace, if available, of where this error ocurred.
+    /// Returns a stack backtrace, if available, of where this error occurred.
     ///
     /// This function allows inspecting the location, in code, of where an error
     /// happened. The returned `Backtrace` contains information about the stack
@@ -218,6 +126,28 @@ pub trait Error: Debug + Display {
     #[unstable(feature = "backtrace", issue = "53487")]
     fn backtrace(&self) -> Option<&Backtrace> {
         None
+    }
+
+    /// ```
+    /// if let Err(e) = "xc".parse::<u32>() {
+    ///     // Print `e` itself, no need for description().
+    ///     eprintln!("Error: {}", e);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.41.0", reason = "use the Display impl or to_string()")]
+    fn description(&self) -> &str {
+        "description() is deprecated; use Display"
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(
+        since = "1.33.0",
+        reason = "replaced by Error::source, which can support downcasting"
+    )]
+    #[allow(missing_docs)]
+    fn cause(&self) -> Option<&dyn Error> {
+        self.source()
     }
 }
 
@@ -251,11 +181,7 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     ///     }
     /// }
     ///
-    /// impl Error for AnError {
-    ///     fn description(&self) -> &str {
-    ///         "Description of an error"
-    ///     }
-    /// }
+    /// impl Error for AnError {}
     ///
     /// let an_error = AnError;
     /// assert!(0 == mem::size_of_val(&an_error));
@@ -290,11 +216,7 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
     ///     }
     /// }
     ///
-    /// impl Error for AnError {
-    ///     fn description(&self) -> &str {
-    ///         "Description of an error"
-    ///     }
-    /// }
+    /// impl Error for AnError {}
     ///
     /// unsafe impl Send for AnError {}
     ///
@@ -332,7 +254,10 @@ impl From<String> for Box<dyn Error + Send + Sync> {
         struct StringError(String);
 
         impl Error for StringError {
-            fn description(&self) -> &str { &self.0 }
+            #[allow(deprecated)]
+            fn description(&self) -> &str {
+                &self.0
+            }
         }
 
         impl Display for StringError {
@@ -466,44 +391,40 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
 }
 
 #[unstable(feature = "never_type", issue = "35121")]
-impl Error for ! {
-    fn description(&self) -> &str { *self }
-}
+impl Error for ! {}
 
-#[unstable(feature = "allocator_api",
-           reason = "the precise API and guarantees it provides may be tweaked.",
-           issue = "32838")]
-impl Error for AllocErr {
-    fn description(&self) -> &str {
-        "memory allocation failed"
-    }
-}
+#[unstable(
+    feature = "allocator_api",
+    reason = "the precise API and guarantees it provides may be tweaked.",
+    issue = "32838"
+)]
+impl Error for AllocErr {}
 
-#[unstable(feature = "allocator_api",
-           reason = "the precise API and guarantees it provides may be tweaked.",
-           issue = "32838")]
-impl Error for LayoutErr {
-    fn description(&self) -> &str {
-        "invalid parameters to Layout::from_size_align"
-    }
-}
+#[unstable(
+    feature = "allocator_api",
+    reason = "the precise API and guarantees it provides may be tweaked.",
+    issue = "32838"
+)]
+impl Error for LayoutErr {}
 
-#[unstable(feature = "allocator_api",
-           reason = "the precise API and guarantees it provides may be tweaked.",
-           issue = "32838")]
-impl Error for CannotReallocInPlace {
-    fn description(&self) -> &str {
-        CannotReallocInPlace::description(self)
-    }
-}
+#[unstable(
+    feature = "allocator_api",
+    reason = "the precise API and guarantees it provides may be tweaked.",
+    issue = "32838"
+)]
+impl Error for CannotReallocInPlace {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
-    fn description(&self) -> &str { "failed to parse bool" }
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "failed to parse bool"
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::Utf8Error {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "invalid utf-8: corrupt contents"
     }
@@ -511,6 +432,7 @@ impl Error for str::Utf8Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseIntError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         self.__description()
     }
@@ -518,6 +440,7 @@ impl Error for num::ParseIntError {
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for num::TryFromIntError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         self.__description()
     }
@@ -525,6 +448,7 @@ impl Error for num::TryFromIntError {
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for array::TryFromSliceError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         self.__description()
     }
@@ -532,6 +456,7 @@ impl Error for array::TryFromSliceError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseFloatError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         self.__description()
     }
@@ -539,6 +464,7 @@ impl Error for num::ParseFloatError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for string::FromUtf8Error {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "invalid utf-8"
     }
@@ -546,6 +472,7 @@ impl Error for string::FromUtf8Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for string::FromUtf16Error {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "invalid utf-16"
     }
@@ -560,6 +487,7 @@ impl Error for string::ParseError {
 
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 impl Error for char::DecodeUtf16Error {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "unpaired surrogate found"
     }
@@ -567,6 +495,7 @@ impl Error for char::DecodeUtf16Error {
 
 #[stable(feature = "box_error", since = "1.8.0")]
 impl<T: Error> Error for Box<T> {
+    #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         Error::description(&**self)
     }
@@ -583,6 +512,7 @@ impl<T: Error> Error for Box<T> {
 
 #[stable(feature = "fmt_error", since = "1.11.0")]
 impl Error for fmt::Error {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "an error occurred when formatting an argument"
     }
@@ -590,6 +520,7 @@ impl Error for fmt::Error {
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Error for cell::BorrowError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "already mutably borrowed"
     }
@@ -597,6 +528,7 @@ impl Error for cell::BorrowError {
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Error for cell::BorrowMutError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "already borrowed"
     }
@@ -604,6 +536,7 @@ impl Error for cell::BorrowMutError {
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for char::CharTryFromError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "converted integer out of range for `char`"
     }
@@ -611,6 +544,7 @@ impl Error for char::CharTryFromError {
 
 #[stable(feature = "char_from_str", since = "1.20.0")]
 impl Error for char::ParseCharError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         self.__description()
     }
@@ -638,9 +572,7 @@ impl dyn Error + 'static {
     #[inline]
     pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
         if self.is::<T>() {
-            unsafe {
-                Some(&*(self as *const dyn Error as *const T))
-            }
+            unsafe { Some(&*(self as *const dyn Error as *const T)) }
         } else {
             None
         }
@@ -652,9 +584,7 @@ impl dyn Error + 'static {
     #[inline]
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
-            unsafe {
-                Some(&mut *(self as *mut dyn Error as *mut T))
-            }
+            unsafe { Some(&mut *(self as *mut dyn Error as *mut T)) }
         } else {
             None
         }
@@ -778,9 +708,7 @@ impl dyn Error {
     #[unstable(feature = "error_iter", issue = "58520")]
     #[inline]
     pub fn chain(&self) -> Chain<'_> {
-        Chain {
-            current: Some(self),
-        }
+        Chain { current: Some(self) }
     }
 }
 
@@ -791,7 +719,7 @@ impl dyn Error {
 ///
 /// [`Error`]: trait.Error.html
 #[unstable(feature = "error_iter", issue = "58520")]
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Chain<'a> {
     current: Option<&'a (dyn Error + 'static)>,
 }
@@ -811,8 +739,7 @@ impl dyn Error + Send {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
     /// Attempts to downcast the box to a concrete type.
-    pub fn downcast<T: Error + 'static>(self: Box<Self>)
-                                        -> Result<Box<T>, Box<dyn Error + Send>> {
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
         let err: Box<dyn Error> = self;
         <dyn Error>::downcast(err).map_err(|s| unsafe {
             // Reapply the `Send` marker.
@@ -825,8 +752,7 @@ impl dyn Error + Send + Sync {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
     /// Attempts to downcast the box to a concrete type.
-    pub fn downcast<T: Error + 'static>(self: Box<Self>)
-                                        -> Result<Box<T>, Box<Self>> {
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<Self>> {
         let err: Box<dyn Error> = self;
         <dyn Error>::downcast(err).map_err(|s| unsafe {
             // Reapply the `Send + Sync` marker.
@@ -856,12 +782,8 @@ mod tests {
         }
     }
 
-    impl Error for A {
-        fn description(&self) -> &str { "A-desc" }
-    }
-    impl Error for B {
-        fn description(&self) -> &str { "A-desc" }
-    }
+    impl Error for A {}
+    impl Error for B {}
 
     #[test]
     fn downcasting() {

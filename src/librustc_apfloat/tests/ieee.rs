@@ -1,9 +1,9 @@
 // ignore-tidy-filelength
 
+use rustc_apfloat::ieee::{Double, Half, Quad, Single, X87DoubleExtended};
+use rustc_apfloat::unpack;
 use rustc_apfloat::{Category, ExpInt, IEK_INF, IEK_NAN, IEK_ZERO};
 use rustc_apfloat::{Float, FloatConvert, ParseError, Round, Status};
-use rustc_apfloat::ieee::{Half, Single, Double, Quad, X87DoubleExtended};
-use rustc_apfloat::unpack;
 
 trait SingleExt {
     fn from_f32(input: f32) -> Self;
@@ -108,18 +108,14 @@ fn next() {
     //                        = -(-largest + inc)
     //                        = largest - inc.
     let test = unpack!(status=, Quad::largest().next_down());
-    let expected = "0x1.fffffffffffffffffffffffffffep+16383"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x1.fffffffffffffffffffffffffffep+16383".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(!test.is_infinite() && !test.is_negative());
     assert!(test.bitwise_eq(expected));
 
     // nextUp(-largest) = -largest + inc.
     let test = unpack!(status=, (-Quad::largest()).next_up());
-    let expected = "-0x1.fffffffffffffffffffffffffffep+16383"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x1.fffffffffffffffffffffffffffep+16383".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.bitwise_eq(expected));
 
@@ -135,9 +131,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_up());
-    let expected = "0x0.0000000000000000000000000002p-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x0.0000000000000000000000000002p-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.bitwise_eq(expected));
 
@@ -166,9 +160,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_down());
-    let expected = "-0x0.0000000000000000000000000002p-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x0.0000000000000000000000000002p-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.bitwise_eq(expected));
 
@@ -233,9 +225,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_up());
-    let expected = "0x1.0000000000000000000000000000p-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x1.0000000000000000000000000000p-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(!test.is_denormal());
     assert!(test.bitwise_eq(expected));
@@ -245,9 +235,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_down());
-    let expected = "-0x1.0000000000000000000000000000p-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x1.0000000000000000000000000000p-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(!test.is_denormal());
     assert!(test.bitwise_eq(expected));
@@ -257,9 +245,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_up());
-    let expected = "-0x0.ffffffffffffffffffffffffffffp-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x0.ffffffffffffffffffffffffffffp-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.is_denormal());
     assert!(test.bitwise_eq(expected));
@@ -269,9 +255,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_down());
-    let expected = "+0x0.ffffffffffffffffffffffffffffp-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "+0x0.ffffffffffffffffffffffffffffp-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.is_denormal());
     assert!(test.bitwise_eq(expected));
@@ -284,17 +268,13 @@ fn next() {
 
     // nextUp(-Normal Binade Boundary) -> -Normal Binade Boundary + 1.
     let test = unpack!(status=, "-0x1p+1".parse::<Quad>().unwrap().next_up());
-    let expected = "-0x1.ffffffffffffffffffffffffffffp+0"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x1.ffffffffffffffffffffffffffffp+0".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.bitwise_eq(expected));
 
     // nextDown(+Normal Binade Boundary) -> +Normal Binade Boundary - 1.
     let test = unpack!(status=, "0x1p+1".parse::<Quad>().unwrap().next_down());
-    let expected = "0x1.ffffffffffffffffffffffffffffp+0"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x1.ffffffffffffffffffffffffffffp+0".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.bitwise_eq(expected));
 
@@ -332,9 +312,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_up());
-    let expected = "-0x0.fffffffffffffffffffffffffffep-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x0.fffffffffffffffffffffffffffep-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.is_denormal());
     assert!(test.is_negative());
@@ -345,9 +323,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_down());
-    let expected = "0x0.fffffffffffffffffffffffffffep-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x0.fffffffffffffffffffffffffffep-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.is_denormal());
     assert!(!test.is_negative());
@@ -358,9 +334,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_up());
-    let expected = "0x1.0000000000000000000000000001p-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x1.0000000000000000000000000001p-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(!test.is_denormal());
     assert!(!test.is_negative());
@@ -371,9 +345,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_down());
-    let expected = "-0x1.0000000000000000000000000001p-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x1.0000000000000000000000000001p-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(!test.is_denormal());
     assert!(test.is_negative());
@@ -390,9 +362,7 @@ fn next() {
 
     // nextUp(-0x1p-16381) -> -0x1.ffffffffffffffffffffffffffffp-16382
     let test = unpack!(status=, "-0x1p-16381".parse::<Quad>().unwrap().next_up());
-    let expected = "-0x1.ffffffffffffffffffffffffffffp-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x1.ffffffffffffffffffffffffffffp-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.bitwise_eq(expected));
 
@@ -417,9 +387,7 @@ fn next() {
 
     // nextDown(0x1p-16381) -> 0x1.ffffffffffffffffffffffffffffp-16382
     let test = unpack!(status=, "0x1p-16381".parse::<Quad>().unwrap().next_down());
-    let expected = "0x1.ffffffffffffffffffffffffffffp-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x1.ffffffffffffffffffffffffffffp-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.bitwise_eq(expected));
 
@@ -439,9 +407,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_up());
-    let expected = "0x0.ffffffffffffffffffffffff000dp-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x0.ffffffffffffffffffffffff000dp-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.is_denormal());
     assert!(!test.is_negative());
@@ -452,9 +418,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_down());
-    let expected = "0x0.ffffffffffffffffffffffff000bp-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x0.ffffffffffffffffffffffff000bp-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.is_denormal());
     assert!(!test.is_negative());
@@ -465,9 +429,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_up());
-    let expected = "-0x0.ffffffffffffffffffffffff000bp-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x0.ffffffffffffffffffffffff000bp-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.is_denormal());
     assert!(test.is_negative());
@@ -478,9 +440,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_down());
-    let expected = "-0x0.ffffffffffffffffffffffff000dp-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x0.ffffffffffffffffffffffff000dp-16382".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(test.is_denormal());
     assert!(test.is_negative());
@@ -491,9 +451,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_up());
-    let expected = "0x1.ffffffffffffffffffffffff000dp-16000"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x1.ffffffffffffffffffffffff000dp-16000".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(!test.is_denormal());
     assert!(!test.is_negative());
@@ -504,9 +462,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_down());
-    let expected = "0x1.ffffffffffffffffffffffff000bp-16000"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x1.ffffffffffffffffffffffff000bp-16000".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(!test.is_denormal());
     assert!(!test.is_negative());
@@ -517,9 +473,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_up());
-    let expected = "-0x1.ffffffffffffffffffffffff000bp-16000"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x1.ffffffffffffffffffffffff000bp-16000".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(!test.is_denormal());
     assert!(test.is_negative());
@@ -530,9 +484,7 @@ fn next() {
         .parse::<Quad>()
         .unwrap()
         .next_down());
-    let expected = "-0x1.ffffffffffffffffffffffff000dp-16000"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x1.ffffffffffffffffffffffff000dp-16000".parse::<Quad>().unwrap();
     assert_eq!(status, Status::OK);
     assert!(!test.is_denormal());
     assert!(test.is_negative());
@@ -668,9 +620,7 @@ fn denormal() {
     {
         assert!(!X87DoubleExtended::from_u128(0).value.is_denormal());
 
-        let mut t = "3.36210314311209350626e-4932"
-            .parse::<X87DoubleExtended>()
-            .unwrap();
+        let mut t = "3.36210314311209350626e-4932".parse::<X87DoubleExtended>().unwrap();
         assert!(!t.is_denormal());
 
         t /= X87DoubleExtended::from_u128(2).value;
@@ -681,9 +631,7 @@ fn denormal() {
     {
         assert!(!Quad::from_u128(0).value.is_denormal());
 
-        let mut t = "3.36210314311209350626267781732175260e-4932"
-            .parse::<Quad>()
-            .unwrap();
+        let mut t = "3.36210314311209350626267781732175260e-4932".parse::<Quad>().unwrap();
         assert!(!t.is_denormal());
 
         t /= Quad::from_u128(2).value;
@@ -707,7 +655,6 @@ fn decimal_strings_without_null_terminators() {
     assert_eq!(val.to_f64(), 0.00);
     let val = "0e+3"[..4].parse::<Double>().unwrap();
     assert_eq!(val.to_f64(), 0.00);
-
 }
 
 #[test]
@@ -755,7 +702,6 @@ fn from_zero_decimal_single_exponent_string() {
     assert_eq!(0.0, "+0e-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0e-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(0.0, "0.e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0.e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0.e1".parse::<Double>().unwrap().to_f64());
@@ -780,7 +726,6 @@ fn from_zero_decimal_single_exponent_string() {
     assert_eq!(0.0, "+.0e-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-.0e-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(0.0, "0.0e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0.0e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0.0e1".parse::<Double>().unwrap().to_f64());
@@ -792,7 +737,6 @@ fn from_zero_decimal_single_exponent_string() {
     assert_eq!(0.0, "0.0e-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0.0e-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0.0e-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(0.0, "000.0000e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+000.0000e+1".parse::<Double>().unwrap().to_f64());
@@ -831,7 +775,6 @@ fn from_zero_hexadecimal_string() {
     assert_eq!(0.0, "+0x0p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0p-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(0.0, "0x0.p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x0.p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0.p1".parse::<Double>().unwrap().to_f64());
@@ -843,7 +786,6 @@ fn from_zero_hexadecimal_string() {
     assert_eq!(0.0, "0x0.p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x0.p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0.p-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(0.0, "0x.0p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x.0p1".parse::<Double>().unwrap().to_f64());
@@ -857,7 +799,6 @@ fn from_zero_hexadecimal_string() {
     assert_eq!(0.0, "+0x.0p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x.0p-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(0.0, "0x0.0p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x0.0p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0.0p1".parse::<Double>().unwrap().to_f64());
@@ -869,7 +810,6 @@ fn from_zero_hexadecimal_string() {
     assert_eq!(0.0, "0x0.0p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x0.0p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0.0p-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(0.0, "0x00000.p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "0x0000.00000p1".parse::<Double>().unwrap().to_f64());
@@ -907,14 +847,8 @@ fn from_decimal_string() {
     assert_eq!(2.05e+2, "002.05000e+2".parse::<Double>().unwrap().to_f64());
     assert_eq!(2.05e-2, "002.05000e-2".parse::<Double>().unwrap().to_f64());
     assert_eq!(2.05e12, "002.05000e12".parse::<Double>().unwrap().to_f64());
-    assert_eq!(
-        2.05e+12,
-        "002.05000e+12".parse::<Double>().unwrap().to_f64()
-    );
-    assert_eq!(
-        2.05e-12,
-        "002.05000e-12".parse::<Double>().unwrap().to_f64()
-    );
+    assert_eq!(2.05e+12, "002.05000e+12".parse::<Double>().unwrap().to_f64());
+    assert_eq!(2.05e-12, "002.05000e-12".parse::<Double>().unwrap().to_f64());
 
     // These are "carefully selected" to overflow the fast log-base
     // calculations in the implementation.
@@ -940,7 +874,6 @@ fn from_hexadecimal_string() {
     assert_eq!(1.0, "+0x1p-0".parse::<Double>().unwrap().to_f64());
     assert_eq!(-1.0, "-0x1p-0".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(2.0, "0x1p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(2.0, "+0x1p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-2.0, "-0x1p1".parse::<Double>().unwrap().to_f64());
@@ -952,7 +885,6 @@ fn from_hexadecimal_string() {
     assert_eq!(0.5, "0x1p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.5, "+0x1p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.5, "-0x1p-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(3.0, "0x1.8p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(3.0, "+0x1.8p1".parse::<Double>().unwrap().to_f64());
@@ -966,25 +898,17 @@ fn from_hexadecimal_string() {
     assert_eq!(0.75, "+0x1.8p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.75, "-0x1.8p-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(8192.0, "0x1000.000p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(8192.0, "+0x1000.000p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-8192.0, "-0x1000.000p1".parse::<Double>().unwrap().to_f64());
 
     assert_eq!(8192.0, "0x1000.000p+1".parse::<Double>().unwrap().to_f64());
     assert_eq!(8192.0, "+0x1000.000p+1".parse::<Double>().unwrap().to_f64());
-    assert_eq!(
-        -8192.0,
-        "-0x1000.000p+1".parse::<Double>().unwrap().to_f64()
-    );
+    assert_eq!(-8192.0, "-0x1000.000p+1".parse::<Double>().unwrap().to_f64());
 
     assert_eq!(2048.0, "0x1000.000p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(2048.0, "+0x1000.000p-1".parse::<Double>().unwrap().to_f64());
-    assert_eq!(
-        -2048.0,
-        "-0x1000.000p-1".parse::<Double>().unwrap().to_f64()
-    );
-
+    assert_eq!(-2048.0, "-0x1000.000p-1".parse::<Double>().unwrap().to_f64());
 
     assert_eq!(8192.0, "0x1000p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(8192.0, "+0x1000p1".parse::<Double>().unwrap().to_f64());
@@ -997,7 +921,6 @@ fn from_hexadecimal_string() {
     assert_eq!(2048.0, "0x1000p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(2048.0, "+0x1000p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-2048.0, "-0x1000p-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(16384.0, "0x10p10".parse::<Double>().unwrap().to_f64());
     assert_eq!(16384.0, "+0x10p10".parse::<Double>().unwrap().to_f64());
@@ -1016,17 +939,11 @@ fn from_hexadecimal_string() {
 
     assert_eq!(
         "0x1p-150".parse::<Double>().unwrap().to_f64(),
-        "+0x800000000000000001.p-221"
-            .parse::<Double>()
-            .unwrap()
-            .to_f64()
+        "+0x800000000000000001.p-221".parse::<Double>().unwrap().to_f64()
     );
     assert_eq!(
         2251799813685248.5,
-        "0x80000000000004000000.010p-28"
-            .parse::<Double>()
-            .unwrap()
-            .to_f64()
+        "0x80000000000004000000.010p-28".parse::<Double>().unwrap().to_f64()
     );
 }
 
@@ -1048,20 +965,11 @@ fn to_string() {
     assert_eq!("0.0101", to_string(1.01E-2, 5, 2));
     assert_eq!("0.0101", to_string(1.01E-2, 4, 2));
     assert_eq!("1.01E-2", to_string(1.01E-2, 5, 1));
-    assert_eq!(
-        "0.78539816339744828",
-        to_string(0.78539816339744830961, 0, 3)
-    );
-    assert_eq!(
-        "4.9406564584124654E-324",
-        to_string(4.9406564584124654e-324, 0, 3)
-    );
+    assert_eq!("0.78539816339744828", to_string(0.78539816339744830961, 0, 3));
+    assert_eq!("4.9406564584124654E-324", to_string(4.9406564584124654e-324, 0, 3));
     assert_eq!("873.18340000000001", to_string(873.1834, 0, 1));
     assert_eq!("8.7318340000000001E+2", to_string(873.1834, 0, 0));
-    assert_eq!(
-        "1.7976931348623157E+308",
-        to_string(1.7976931348623157E+308, 0, 0)
-    );
+    assert_eq!("1.7976931348623157E+308", to_string(1.7976931348623157E+308, 0, 0));
 
     let to_string = |d: f64, precision: usize, width: usize| {
         let x = Double::from_f64(d);
@@ -1079,20 +987,11 @@ fn to_string() {
     assert_eq!("0.0101", to_string(1.01E-2, 5, 2));
     assert_eq!("0.0101", to_string(1.01E-2, 4, 2));
     assert_eq!("1.01000e-02", to_string(1.01E-2, 5, 1));
-    assert_eq!(
-        "0.78539816339744828",
-        to_string(0.78539816339744830961, 0, 3)
-    );
-    assert_eq!(
-        "4.94065645841246540e-324",
-        to_string(4.9406564584124654e-324, 0, 3)
-    );
+    assert_eq!("0.78539816339744828", to_string(0.78539816339744830961, 0, 3));
+    assert_eq!("4.94065645841246540e-324", to_string(4.9406564584124654e-324, 0, 3));
     assert_eq!("873.18340000000001", to_string(873.1834, 0, 1));
     assert_eq!("8.73183400000000010e+02", to_string(873.1834, 0, 0));
-    assert_eq!(
-        "1.79769313486231570e+308",
-        to_string(1.7976931348623157E+308, 0, 0)
-    );
+    assert_eq!("1.79769313486231570e+308", to_string(1.7976931348623157E+308, 0, 0));
 }
 
 #[test]
@@ -1101,71 +1000,43 @@ fn to_integer() {
 
     assert_eq!(
         Status::OK.and(10),
-        "10".parse::<Double>().unwrap().to_u128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "10".parse::<Double>().unwrap().to_u128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(is_exact);
 
     assert_eq!(
         Status::INVALID_OP.and(0),
-        "-10".parse::<Double>().unwrap().to_u128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "-10".parse::<Double>().unwrap().to_u128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 
     assert_eq!(
         Status::INVALID_OP.and(31),
-        "32".parse::<Double>().unwrap().to_u128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "32".parse::<Double>().unwrap().to_u128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 
     assert_eq!(
         Status::INEXACT.and(7),
-        "7.9".parse::<Double>().unwrap().to_u128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "7.9".parse::<Double>().unwrap().to_u128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 
     assert_eq!(
         Status::OK.and(-10),
-        "-10".parse::<Double>().unwrap().to_i128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "-10".parse::<Double>().unwrap().to_i128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(is_exact);
 
     assert_eq!(
         Status::INVALID_OP.and(-16),
-        "-17".parse::<Double>().unwrap().to_i128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "-17".parse::<Double>().unwrap().to_i128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 
     assert_eq!(
         Status::INVALID_OP.and(15),
-        "16".parse::<Double>().unwrap().to_i128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "16".parse::<Double>().unwrap().to_i128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 }
@@ -1173,16 +1044,8 @@ fn to_integer() {
 #[test]
 fn nan() {
     fn nanbits<T: Float>(signaling: bool, negative: bool, fill: u128) -> u128 {
-        let x = if signaling {
-            T::snan(Some(fill))
-        } else {
-            T::qnan(Some(fill))
-        };
-        if negative {
-            (-x).to_bits()
-        } else {
-            x.to_bits()
-        }
+        let x = if signaling { T::snan(Some(fill)) } else { T::qnan(Some(fill)) };
+        if negative { (-x).to_bits() } else { x.to_bits() }
     }
 
     assert_eq!(0x7fc00000, nanbits::<Single>(false, false, 0));
@@ -1197,241 +1060,85 @@ fn nan() {
     assert_eq!(0x7ff8000000000000, nanbits::<Double>(false, false, 0));
     assert_eq!(0xfff8000000000000, nanbits::<Double>(false, true, 0));
     assert_eq!(0x7ff800000000ae72, nanbits::<Double>(false, false, 0xae72));
-    assert_eq!(
-        0x7fffffffffffae72,
-        nanbits::<Double>(false, false, 0xffffffffffffae72)
-    );
+    assert_eq!(0x7fffffffffffae72, nanbits::<Double>(false, false, 0xffffffffffffae72));
     assert_eq!(0x7ff4000000000000, nanbits::<Double>(true, false, 0));
     assert_eq!(0xfff4000000000000, nanbits::<Double>(true, true, 0));
     assert_eq!(0x7ff000000000ae72, nanbits::<Double>(true, false, 0xae72));
-    assert_eq!(
-        0x7ff7ffffffffae72,
-        nanbits::<Double>(true, false, 0xffffffffffffae72)
-    );
+    assert_eq!(0x7ff7ffffffffae72, nanbits::<Double>(true, false, 0xffffffffffffae72));
 }
 
 #[test]
 fn string_decimal_death() {
-    assert_eq!(
-        "".parse::<Double>(),
-        Err(ParseError("Invalid string length"))
-    );
-    assert_eq!(
-        "+".parse::<Double>(),
-        Err(ParseError("String has no digits"))
-    );
-    assert_eq!(
-        "-".parse::<Double>(),
-        Err(ParseError("String has no digits"))
-    );
+    assert_eq!("".parse::<Double>(), Err(ParseError("Invalid string length")));
+    assert_eq!("+".parse::<Double>(), Err(ParseError("String has no digits")));
+    assert_eq!("-".parse::<Double>(), Err(ParseError("String has no digits")));
 
-    assert_eq!(
-        "\0".parse::<Double>(),
-        Err(ParseError("Invalid character in significand"))
-    );
-    assert_eq!(
-        "1\0".parse::<Double>(),
-        Err(ParseError("Invalid character in significand"))
-    );
-    assert_eq!(
-        "1\02".parse::<Double>(),
-        Err(ParseError("Invalid character in significand"))
-    );
-    assert_eq!(
-        "1\02e1".parse::<Double>(),
-        Err(ParseError("Invalid character in significand"))
-    );
-    assert_eq!(
-        "1e\0".parse::<Double>(),
-        Err(ParseError("Invalid character in exponent"))
-    );
-    assert_eq!(
-        "1e1\0".parse::<Double>(),
-        Err(ParseError("Invalid character in exponent"))
-    );
-    assert_eq!(
-        "1e1\02".parse::<Double>(),
-        Err(ParseError("Invalid character in exponent"))
-    );
+    assert_eq!("\0".parse::<Double>(), Err(ParseError("Invalid character in significand")));
+    assert_eq!("1\0".parse::<Double>(), Err(ParseError("Invalid character in significand")));
+    assert_eq!("1\02".parse::<Double>(), Err(ParseError("Invalid character in significand")));
+    assert_eq!("1\02e1".parse::<Double>(), Err(ParseError("Invalid character in significand")));
+    assert_eq!("1e\0".parse::<Double>(), Err(ParseError("Invalid character in exponent")));
+    assert_eq!("1e1\0".parse::<Double>(), Err(ParseError("Invalid character in exponent")));
+    assert_eq!("1e1\02".parse::<Double>(), Err(ParseError("Invalid character in exponent")));
 
-    assert_eq!(
-        "1.0f".parse::<Double>(),
-        Err(ParseError("Invalid character in significand"))
-    );
+    assert_eq!("1.0f".parse::<Double>(), Err(ParseError("Invalid character in significand")));
 
-    assert_eq!(
-        "..".parse::<Double>(),
-        Err(ParseError("String contains multiple dots"))
-    );
-    assert_eq!(
-        "..0".parse::<Double>(),
-        Err(ParseError("String contains multiple dots"))
-    );
-    assert_eq!(
-        "1.0.0".parse::<Double>(),
-        Err(ParseError("String contains multiple dots"))
-    );
+    assert_eq!("..".parse::<Double>(), Err(ParseError("String contains multiple dots")));
+    assert_eq!("..0".parse::<Double>(), Err(ParseError("String contains multiple dots")));
+    assert_eq!("1.0.0".parse::<Double>(), Err(ParseError("String contains multiple dots")));
 }
 
 #[test]
 fn string_decimal_significand_death() {
-    assert_eq!(
-        ".".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+.".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-.".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!(".".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+.".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-.".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
+    assert_eq!("e".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+e".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-e".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
-    assert_eq!(
-        "e".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+e".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-e".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!("e1".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+e1".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-e1".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
-    assert_eq!(
-        "e1".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+e1".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-e1".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!(".e1".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+.e1".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-.e1".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
-    assert_eq!(
-        ".e1".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+.e1".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-.e1".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-
-
-    assert_eq!(
-        ".e".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+.e".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-.e".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!(".e".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+.e".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-.e".parse::<Double>(), Err(ParseError("Significand has no digits")));
 }
 
 #[test]
 fn string_decimal_exponent_death() {
-    assert_eq!(
-        "1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "1.e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+1.e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-1.e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("1.e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+1.e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-1.e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        ".1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+.1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-.1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!(".1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+.1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-.1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "1.1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+1.1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-1.1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("1.1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+1.1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-1.1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
+    assert_eq!("1e+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("1e-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "1e+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "1e-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!(".1e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!(".1e+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!(".1e-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        ".1e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        ".1e+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        ".1e-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-
-    assert_eq!(
-        "1.0e".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "1.0e+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "1.0e-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("1.0e".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("1.0e+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("1.0e-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 }
 
 #[test]
@@ -1440,378 +1147,124 @@ fn string_hexadecimal_death() {
     assert_eq!("+0x".parse::<Double>(), Err(ParseError("Invalid string")));
     assert_eq!("-0x".parse::<Double>(), Err(ParseError("Invalid string")));
 
-    assert_eq!(
-        "0x0".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
-    assert_eq!(
-        "+0x0".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
-    assert_eq!(
-        "-0x0".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
+    assert_eq!("0x0".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
+    assert_eq!("+0x0".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
+    assert_eq!("-0x0".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
 
-    assert_eq!(
-        "0x0.".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
-    assert_eq!(
-        "+0x0.".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
-    assert_eq!(
-        "-0x0.".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
+    assert_eq!("0x0.".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
+    assert_eq!("+0x0.".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
+    assert_eq!("-0x0.".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
 
-    assert_eq!(
-        "0x.0".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
-    assert_eq!(
-        "+0x.0".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
-    assert_eq!(
-        "-0x.0".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
+    assert_eq!("0x.0".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
+    assert_eq!("+0x.0".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
+    assert_eq!("-0x.0".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
 
-    assert_eq!(
-        "0x0.0".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
-    assert_eq!(
-        "+0x0.0".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
-    assert_eq!(
-        "-0x0.0".parse::<Double>(),
-        Err(ParseError("Hex strings require an exponent"))
-    );
+    assert_eq!("0x0.0".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
+    assert_eq!("+0x0.0".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
+    assert_eq!("-0x0.0".parse::<Double>(), Err(ParseError("Hex strings require an exponent")));
 
-    assert_eq!(
-        "0x\0".parse::<Double>(),
-        Err(ParseError("Invalid character in significand"))
-    );
-    assert_eq!(
-        "0x1\0".parse::<Double>(),
-        Err(ParseError("Invalid character in significand"))
-    );
-    assert_eq!(
-        "0x1\02".parse::<Double>(),
-        Err(ParseError("Invalid character in significand"))
-    );
-    assert_eq!(
-        "0x1\02p1".parse::<Double>(),
-        Err(ParseError("Invalid character in significand"))
-    );
-    assert_eq!(
-        "0x1p\0".parse::<Double>(),
-        Err(ParseError("Invalid character in exponent"))
-    );
-    assert_eq!(
-        "0x1p1\0".parse::<Double>(),
-        Err(ParseError("Invalid character in exponent"))
-    );
-    assert_eq!(
-        "0x1p1\02".parse::<Double>(),
-        Err(ParseError("Invalid character in exponent"))
-    );
+    assert_eq!("0x\0".parse::<Double>(), Err(ParseError("Invalid character in significand")));
+    assert_eq!("0x1\0".parse::<Double>(), Err(ParseError("Invalid character in significand")));
+    assert_eq!("0x1\02".parse::<Double>(), Err(ParseError("Invalid character in significand")));
+    assert_eq!("0x1\02p1".parse::<Double>(), Err(ParseError("Invalid character in significand")));
+    assert_eq!("0x1p\0".parse::<Double>(), Err(ParseError("Invalid character in exponent")));
+    assert_eq!("0x1p1\0".parse::<Double>(), Err(ParseError("Invalid character in exponent")));
+    assert_eq!("0x1p1\02".parse::<Double>(), Err(ParseError("Invalid character in exponent")));
 
-    assert_eq!(
-        "0x1p0f".parse::<Double>(),
-        Err(ParseError("Invalid character in exponent"))
-    );
+    assert_eq!("0x1p0f".parse::<Double>(), Err(ParseError("Invalid character in exponent")));
 
-    assert_eq!(
-        "0x..p1".parse::<Double>(),
-        Err(ParseError("String contains multiple dots"))
-    );
-    assert_eq!(
-        "0x..0p1".parse::<Double>(),
-        Err(ParseError("String contains multiple dots"))
-    );
-    assert_eq!(
-        "0x1.0.0p1".parse::<Double>(),
-        Err(ParseError("String contains multiple dots"))
-    );
+    assert_eq!("0x..p1".parse::<Double>(), Err(ParseError("String contains multiple dots")));
+    assert_eq!("0x..0p1".parse::<Double>(), Err(ParseError("String contains multiple dots")));
+    assert_eq!("0x1.0.0p1".parse::<Double>(), Err(ParseError("String contains multiple dots")));
 }
 
 #[test]
 fn string_hexadecimal_significand_death() {
-    assert_eq!(
-        "0x.".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+0x.".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-0x.".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!("0x.".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+0x.".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-0x.".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
-    assert_eq!(
-        "0xp".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+0xp".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-0xp".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!("0xp".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+0xp".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-0xp".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
-    assert_eq!(
-        "0xp+".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+0xp+".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-0xp+".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!("0xp+".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+0xp+".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-0xp+".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
-    assert_eq!(
-        "0xp-".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+0xp-".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-0xp-".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!("0xp-".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+0xp-".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-0xp-".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
+    assert_eq!("0x.p".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+0x.p".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-0x.p".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
-    assert_eq!(
-        "0x.p".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+0x.p".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-0x.p".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!("0x.p+".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+0x.p+".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-0x.p+".parse::<Double>(), Err(ParseError("Significand has no digits")));
 
-    assert_eq!(
-        "0x.p+".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+0x.p+".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-0x.p+".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-
-    assert_eq!(
-        "0x.p-".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "+0x.p-".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
-    assert_eq!(
-        "-0x.p-".parse::<Double>(),
-        Err(ParseError("Significand has no digits"))
-    );
+    assert_eq!("0x.p-".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("+0x.p-".parse::<Double>(), Err(ParseError("Significand has no digits")));
+    assert_eq!("-0x.p-".parse::<Double>(), Err(ParseError("Significand has no digits")));
 }
 
 #[test]
 fn string_hexadecimal_exponent_death() {
-    assert_eq!(
-        "0x1p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x1p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x1p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x1p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x1p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x1p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "0x1p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x1p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x1p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x1p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x1p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x1p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "0x1p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x1p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x1p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x1p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x1p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x1p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
+    assert_eq!("0x1.p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x1.p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x1.p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "0x1.p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x1.p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x1.p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x1.p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x1.p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x1.p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "0x1.p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x1.p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x1.p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x1.p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x1.p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x1.p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "0x1.p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x1.p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x1.p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x.1p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x.1p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x.1p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
+    assert_eq!("0x.1p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x.1p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x.1p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "0x.1p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x.1p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x.1p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x.1p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x.1p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x.1p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "0x.1p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x.1p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x.1p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x1.1p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x1.1p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x1.1p".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-    assert_eq!(
-        "0x.1p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x.1p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x.1p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x1.1p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x1.1p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x1.1p+".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 
-
-    assert_eq!(
-        "0x1.1p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x1.1p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x1.1p".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-
-    assert_eq!(
-        "0x1.1p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x1.1p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x1.1p+".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-
-    assert_eq!(
-        "0x1.1p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "+0x1.1p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
-    assert_eq!(
-        "-0x1.1p-".parse::<Double>(),
-        Err(ParseError("Exponent has no digits"))
-    );
+    assert_eq!("0x1.1p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("+0x1.1p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
+    assert_eq!("-0x1.1p-".parse::<Double>(), Err(ParseError("Exponent has no digits")));
 }
 
 #[test]
 fn exact_inverse() {
     // Trivial operation.
-    assert!(
-        Double::from_f64(2.0)
-            .get_exact_inverse()
-            .unwrap()
-            .bitwise_eq(Double::from_f64(0.5))
-    );
-    assert!(
-        Single::from_f32(2.0)
-            .get_exact_inverse()
-            .unwrap()
-            .bitwise_eq(Single::from_f32(0.5))
-    );
+    assert!(Double::from_f64(2.0).get_exact_inverse().unwrap().bitwise_eq(Double::from_f64(0.5)));
+    assert!(Single::from_f32(2.0).get_exact_inverse().unwrap().bitwise_eq(Single::from_f32(0.5)));
     assert!(
         "2.0"
             .parse::<Quad>()
@@ -1842,62 +1295,28 @@ fn exact_inverse() {
     // Zero
     assert!(Double::from_f64(0.0).get_exact_inverse().is_none());
     // Denormalized float
-    assert!(
-        Single::from_f32(1.40129846e-45)
-            .get_exact_inverse()
-            .is_none()
-    );
+    assert!(Single::from_f32(1.40129846e-45).get_exact_inverse().is_none());
 }
 
 #[test]
 fn round_to_integral() {
     let t = Double::from_f64(-0.5);
     assert_eq!(-0.0, t.round_to_integral(Round::TowardZero).value.to_f64());
-    assert_eq!(
-        -1.0,
-        t.round_to_integral(Round::TowardNegative).value.to_f64()
-    );
-    assert_eq!(
-        -0.0,
-        t.round_to_integral(Round::TowardPositive).value.to_f64()
-    );
-    assert_eq!(
-        -0.0,
-        t.round_to_integral(Round::NearestTiesToEven).value.to_f64()
-    );
+    assert_eq!(-1.0, t.round_to_integral(Round::TowardNegative).value.to_f64());
+    assert_eq!(-0.0, t.round_to_integral(Round::TowardPositive).value.to_f64());
+    assert_eq!(-0.0, t.round_to_integral(Round::NearestTiesToEven).value.to_f64());
 
     let s = Double::from_f64(3.14);
     assert_eq!(3.0, s.round_to_integral(Round::TowardZero).value.to_f64());
-    assert_eq!(
-        3.0,
-        s.round_to_integral(Round::TowardNegative).value.to_f64()
-    );
-    assert_eq!(
-        4.0,
-        s.round_to_integral(Round::TowardPositive).value.to_f64()
-    );
-    assert_eq!(
-        3.0,
-        s.round_to_integral(Round::NearestTiesToEven).value.to_f64()
-    );
+    assert_eq!(3.0, s.round_to_integral(Round::TowardNegative).value.to_f64());
+    assert_eq!(4.0, s.round_to_integral(Round::TowardPositive).value.to_f64());
+    assert_eq!(3.0, s.round_to_integral(Round::NearestTiesToEven).value.to_f64());
 
     let r = Double::largest();
-    assert_eq!(
-        r.to_f64(),
-        r.round_to_integral(Round::TowardZero).value.to_f64()
-    );
-    assert_eq!(
-        r.to_f64(),
-        r.round_to_integral(Round::TowardNegative).value.to_f64()
-    );
-    assert_eq!(
-        r.to_f64(),
-        r.round_to_integral(Round::TowardPositive).value.to_f64()
-    );
-    assert_eq!(
-        r.to_f64(),
-        r.round_to_integral(Round::NearestTiesToEven).value.to_f64()
-    );
+    assert_eq!(r.to_f64(), r.round_to_integral(Round::TowardZero).value.to_f64());
+    assert_eq!(r.to_f64(), r.round_to_integral(Round::TowardNegative).value.to_f64());
+    assert_eq!(r.to_f64(), r.round_to_integral(Round::TowardPositive).value.to_f64());
+    assert_eq!(r.to_f64(), r.round_to_integral(Round::NearestTiesToEven).value.to_f64());
 
     let p = Double::ZERO.round_to_integral(Round::TowardZero).value;
     assert_eq!(0.0, p.to_f64());
@@ -1907,9 +1326,7 @@ fn round_to_integral() {
     assert!(p.to_f64().is_nan());
     let p = Double::INFINITY.round_to_integral(Round::TowardZero).value;
     assert!(p.to_f64().is_infinite() && p.to_f64() > 0.0);
-    let p = (-Double::INFINITY)
-        .round_to_integral(Round::TowardZero)
-        .value;
+    let p = (-Double::INFINITY).round_to_integral(Round::TowardZero).value;
     assert!(p.to_f64().is_infinite() && p.to_f64() < 0.0);
 }
 
@@ -1952,18 +1369,14 @@ fn smallest() {
     assert!(test.bitwise_eq(expected));
 
     let test = Quad::SMALLEST;
-    let expected = "0x0.0000000000000000000000000001p-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "0x0.0000000000000000000000000001p-16382".parse::<Quad>().unwrap();
     assert!(!test.is_negative());
     assert!(test.is_finite_non_zero());
     assert!(test.is_denormal());
     assert!(test.bitwise_eq(expected));
 
     let test = -Quad::SMALLEST;
-    let expected = "-0x0.0000000000000000000000000001p-16382"
-        .parse::<Quad>()
-        .unwrap();
+    let expected = "-0x0.0000000000000000000000000001p-16382".parse::<Quad>().unwrap();
     assert!(test.is_negative());
     assert!(test.is_finite_non_zero());
     assert!(test.is_denormal());
@@ -2034,26 +1447,22 @@ fn zero() {
 
 #[test]
 fn copy_sign() {
-    assert!(Double::from_f64(-42.0).bitwise_eq(
-        Double::from_f64(42.0).copy_sign(
-            Double::from_f64(-1.0),
-        ),
-    ));
-    assert!(Double::from_f64(42.0).bitwise_eq(
-        Double::from_f64(-42.0).copy_sign(
-            Double::from_f64(1.0),
-        ),
-    ));
-    assert!(Double::from_f64(-42.0).bitwise_eq(
-        Double::from_f64(-42.0).copy_sign(
-            Double::from_f64(-1.0),
-        ),
-    ));
-    assert!(Double::from_f64(42.0).bitwise_eq(
-        Double::from_f64(42.0).copy_sign(
-            Double::from_f64(1.0),
-        ),
-    ));
+    assert!(
+        Double::from_f64(-42.0)
+            .bitwise_eq(Double::from_f64(42.0).copy_sign(Double::from_f64(-1.0),),)
+    );
+    assert!(
+        Double::from_f64(42.0)
+            .bitwise_eq(Double::from_f64(-42.0).copy_sign(Double::from_f64(1.0),),)
+    );
+    assert!(
+        Double::from_f64(-42.0)
+            .bitwise_eq(Double::from_f64(-42.0).copy_sign(Double::from_f64(-1.0),),)
+    );
+    assert!(
+        Double::from_f64(42.0)
+            .bitwise_eq(Double::from_f64(42.0).copy_sign(Double::from_f64(1.0),),)
+    );
 }
 
 #[test]
@@ -2232,535 +1641,151 @@ fn add() {
         (p_inf, m_zero, "inf", Status::OK, Category::Infinity),
         (p_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_inf, p_normal_value, "inf", Status::OK, Category::Infinity),
         (p_inf, m_normal_value, "inf", Status::OK, Category::Infinity),
-        (
-            p_inf,
-            p_largest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_largest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_smallest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_smallest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_smallest_normalized,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_smallest_normalized,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        (p_inf, p_largest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_largest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, p_smallest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_smallest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, p_smallest_normalized, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_smallest_normalized, "inf", Status::OK, Category::Infinity),
         (m_inf, p_inf, "nan", Status::INVALID_OP, Category::NaN),
         (m_inf, m_inf, "-inf", Status::OK, Category::Infinity),
         (m_inf, p_zero, "-inf", Status::OK, Category::Infinity),
         (m_inf, m_zero, "-inf", Status::OK, Category::Infinity),
         (m_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_inf,
-            p_normal_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_normal_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_largest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_largest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_smallest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_smallest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_smallest_normalized,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_smallest_normalized,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        // See Note 1.
+        (m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_inf, p_normal_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_normal_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, p_largest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_largest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, p_smallest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_smallest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, p_smallest_normalized, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_smallest_normalized, "-inf", Status::OK, Category::Infinity),
         (p_zero, p_inf, "inf", Status::OK, Category::Infinity),
         (p_zero, m_inf, "-inf", Status::OK, Category::Infinity),
         (p_zero, p_zero, "0x0p+0", Status::OK, Category::Zero),
         (p_zero, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (p_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_zero,
-            p_normal_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            m_normal_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            p_largest_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            m_largest_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            p_smallest_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            m_smallest_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            p_smallest_normalized,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            m_smallest_normalized,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_zero, p_normal_value, "0x1p+0", Status::OK, Category::Normal),
+        (p_zero, m_normal_value, "-0x1p+0", Status::OK, Category::Normal),
+        (p_zero, p_largest_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_zero, m_largest_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_zero, p_smallest_value, "0x1p-149", Status::OK, Category::Normal),
+        (p_zero, m_smallest_value, "-0x1p-149", Status::OK, Category::Normal),
+        (p_zero, p_smallest_normalized, "0x1p-126", Status::OK, Category::Normal),
+        (p_zero, m_smallest_normalized, "-0x1p-126", Status::OK, Category::Normal),
         (m_zero, p_inf, "inf", Status::OK, Category::Infinity),
         (m_zero, m_inf, "-inf", Status::OK, Category::Infinity),
         (m_zero, p_zero, "0x0p+0", Status::OK, Category::Zero),
         (m_zero, m_zero, "-0x0p+0", Status::OK, Category::Zero),
         (m_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_zero,
-            p_normal_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            m_normal_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            p_largest_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            m_largest_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            p_smallest_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            m_smallest_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            p_smallest_normalized,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            m_smallest_normalized,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_zero, p_normal_value, "0x1p+0", Status::OK, Category::Normal),
+        (m_zero, m_normal_value, "-0x1p+0", Status::OK, Category::Normal),
+        (m_zero, p_largest_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_zero, m_largest_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_zero, p_smallest_value, "0x1p-149", Status::OK, Category::Normal),
+        (m_zero, m_smallest_value, "-0x1p-149", Status::OK, Category::Normal),
+        (m_zero, p_smallest_normalized, "0x1p-126", Status::OK, Category::Normal),
+        (m_zero, m_smallest_normalized, "-0x1p-126", Status::OK, Category::Normal),
         (qnan, p_inf, "nan", Status::OK, Category::NaN),
         (qnan, m_inf, "nan", Status::OK, Category::NaN),
         (qnan, p_zero, "nan", Status::OK, Category::NaN),
         (qnan, m_zero, "nan", Status::OK, Category::NaN),
         (qnan, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (qnan, p_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, m_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, p_largest_value, "nan", Status::OK, Category::NaN),
         (qnan, m_largest_value, "nan", Status::OK, Category::NaN),
         (qnan, p_smallest_value, "nan", Status::OK, Category::NaN),
         (qnan, m_smallest_value, "nan", Status::OK, Category::NaN),
-        (
-            qnan,
-            p_smallest_normalized,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
-        (
-            qnan,
-            m_smallest_normalized,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        (qnan, p_smallest_normalized, "nan", Status::OK, Category::NaN),
+        (qnan, m_smallest_normalized, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, snan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, snan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_normal_value, p_inf, "inf", Status::OK, Category::Infinity),
-        (
-            p_normal_value,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_normal_value,
-            p_zero,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_zero,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
+        (p_normal_value, m_inf, "-inf", Status::OK, Category::Infinity),
+        (p_normal_value, p_zero, "0x1p+0", Status::OK, Category::Normal),
+        (p_normal_value, m_zero, "0x1p+0", Status::OK, Category::Normal),
         (p_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_normal_value,
-            p_normal_value,
-            "0x1p+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_normal_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_normal_value,
-            p_largest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_largest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_smallest_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_smallest_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_smallest_normalized,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_smallest_normalized,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_normal_value, p_normal_value, "0x1p+1", Status::OK, Category::Normal),
+        (p_normal_value, m_normal_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_normal_value, p_largest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_normal_value, m_largest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_normal_value, p_smallest_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (p_normal_value, m_smallest_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (p_normal_value, p_smallest_normalized, "0x1p+0", Status::INEXACT, Category::Normal),
+        (p_normal_value, m_smallest_normalized, "0x1p+0", Status::INEXACT, Category::Normal),
         (m_normal_value, p_inf, "inf", Status::OK, Category::Infinity),
-        (
-            m_normal_value,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_normal_value,
-            p_zero,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_zero,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
+        (m_normal_value, m_inf, "-inf", Status::OK, Category::Infinity),
+        (m_normal_value, p_zero, "-0x1p+0", Status::OK, Category::Normal),
+        (m_normal_value, m_zero, "-0x1p+0", Status::OK, Category::Normal),
         (m_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_normal_value,
-            p_normal_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_normal_value,
-            m_normal_value,
-            "-0x1p+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_largest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_largest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_smallest_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_smallest_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_smallest_normalized,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_smallest_normalized,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            p_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            p_zero,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_zero,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_normal_value, p_normal_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_normal_value, m_normal_value, "-0x1p+1", Status::OK, Category::Normal),
+        (m_normal_value, p_largest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_normal_value, m_largest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_normal_value, p_smallest_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (m_normal_value, m_smallest_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (m_normal_value, p_smallest_normalized, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (m_normal_value, m_smallest_normalized, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (p_largest_value, p_inf, "inf", Status::OK, Category::Infinity),
+        (p_largest_value, m_inf, "-inf", Status::OK, Category::Infinity),
+        (p_largest_value, p_zero, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_largest_value, m_zero, "0x1.fffffep+127", Status::OK, Category::Normal),
         (p_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_largest_value,
-            p_normal_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_normal_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            p_largest_value,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            m_largest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_largest_value,
-            p_smallest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_smallest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_largest_value, p_normal_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_largest_value, m_normal_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_largest_value, p_largest_value, "inf", overflow_status, Category::Infinity),
+        (p_largest_value, m_largest_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_largest_value, p_smallest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_largest_value, m_smallest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
         (
             p_largest_value,
             p_smallest_normalized,
@@ -2775,81 +1800,21 @@ fn add() {
             Status::INEXACT,
             Category::Normal,
         ),
-        (
-            m_largest_value,
-            p_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            p_zero,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_zero,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
+        (m_largest_value, p_inf, "inf", Status::OK, Category::Infinity),
+        (m_largest_value, m_inf, "-inf", Status::OK, Category::Infinity),
+        (m_largest_value, p_zero, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_largest_value, m_zero, "-0x1.fffffep+127", Status::OK, Category::Normal),
         (m_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_largest_value,
-            p_normal_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_normal_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            p_largest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_largest_value,
-            m_largest_value,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            p_smallest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_smallest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_largest_value, p_normal_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_largest_value, m_normal_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_largest_value, p_largest_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_largest_value, m_largest_value, "-inf", overflow_status, Category::Infinity),
+        (m_largest_value, p_smallest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_largest_value, m_smallest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
         (
             m_largest_value,
             p_smallest_normalized,
@@ -2864,237 +1829,51 @@ fn add() {
             Status::INEXACT,
             Category::Normal,
         ),
-        (
-            p_smallest_value,
-            p_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_value,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_value,
-            p_zero,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_zero,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
+        (p_smallest_value, p_inf, "inf", Status::OK, Category::Infinity),
+        (p_smallest_value, m_inf, "-inf", Status::OK, Category::Infinity),
+        (p_smallest_value, p_zero, "0x1p-149", Status::OK, Category::Normal),
+        (p_smallest_value, m_zero, "0x1p-149", Status::OK, Category::Normal),
         (p_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_smallest_value,
-            p_normal_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_normal_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_largest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_largest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_smallest_value,
-            "0x1p-148",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_smallest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            p_smallest_normalized,
-            "0x1.000002p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_smallest_normalized,
-            "-0x1.fffffcp-127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_value,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_value,
-            p_zero,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_zero,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_smallest_value, p_normal_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (p_smallest_value, m_normal_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (p_smallest_value, p_largest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_smallest_value, m_largest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_smallest_value, p_smallest_value, "0x1p-148", Status::OK, Category::Normal),
+        (p_smallest_value, m_smallest_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_value, p_smallest_normalized, "0x1.000002p-126", Status::OK, Category::Normal),
+        (p_smallest_value, m_smallest_normalized, "-0x1.fffffcp-127", Status::OK, Category::Normal),
+        (m_smallest_value, p_inf, "inf", Status::OK, Category::Infinity),
+        (m_smallest_value, m_inf, "-inf", Status::OK, Category::Infinity),
+        (m_smallest_value, p_zero, "-0x1p-149", Status::OK, Category::Normal),
+        (m_smallest_value, m_zero, "-0x1p-149", Status::OK, Category::Normal),
         (m_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_smallest_value,
-            p_normal_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_normal_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_largest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_largest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_smallest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            m_smallest_value,
-            "-0x1p-148",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_smallest_normalized,
-            "0x1.fffffcp-127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_smallest_normalized,
-            "-0x1.000002p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            p_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_normalized,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_normalized,
-            p_zero,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_zero,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            qnan,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        // See Note 1.
+        (m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_smallest_value, p_normal_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (m_smallest_value, m_normal_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (m_smallest_value, p_largest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_smallest_value, m_largest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_smallest_value, p_smallest_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_value, m_smallest_value, "-0x1p-148", Status::OK, Category::Normal),
+        (m_smallest_value, p_smallest_normalized, "0x1.fffffcp-127", Status::OK, Category::Normal),
+        (m_smallest_value, m_smallest_normalized, "-0x1.000002p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, p_inf, "inf", Status::OK, Category::Infinity),
+        (p_smallest_normalized, m_inf, "-inf", Status::OK, Category::Infinity),
+        (p_smallest_normalized, p_zero, "0x1p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_zero, "0x1p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_smallest_normalized,
-            p_normal_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_normal_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_smallest_normalized, p_normal_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (p_smallest_normalized, m_normal_value, "-0x1p+0", Status::INEXACT, Category::Normal),
         (
             p_smallest_normalized,
             p_largest_value,
@@ -3109,87 +1888,21 @@ fn add() {
             Status::INEXACT,
             Category::Normal,
         ),
-        (
-            p_smallest_normalized,
-            p_smallest_value,
-            "0x1.000002p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_smallest_value,
-            "0x1.fffffcp-127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            p_smallest_normalized,
-            "0x1p-125",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_smallest_normalized,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            p_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_normalized,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_normalized,
-            p_zero,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_zero,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            qnan,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        (p_smallest_normalized, p_smallest_value, "0x1.000002p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_smallest_value, "0x1.fffffcp-127", Status::OK, Category::Normal),
+        (p_smallest_normalized, p_smallest_normalized, "0x1p-125", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_smallest_normalized, "0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_normalized, p_inf, "inf", Status::OK, Category::Infinity),
+        (m_smallest_normalized, m_inf, "-inf", Status::OK, Category::Infinity),
+        (m_smallest_normalized, p_zero, "-0x1p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_zero, "-0x1p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_smallest_normalized,
-            p_normal_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_normal_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_smallest_normalized, p_normal_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (m_smallest_normalized, m_normal_value, "-0x1p+0", Status::INEXACT, Category::Normal),
         (
             m_smallest_normalized,
             p_largest_value,
@@ -3204,34 +1917,10 @@ fn add() {
             Status::INEXACT,
             Category::Normal,
         ),
-        (
-            m_smallest_normalized,
-            p_smallest_value,
-            "-0x1.fffffcp-127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_smallest_value,
-            "-0x1.000002p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            p_smallest_normalized,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            m_smallest_normalized,
-            "-0x1p-125",
-            Status::OK,
-            Category::Normal,
-        ),
+        (m_smallest_normalized, p_smallest_value, "-0x1.fffffcp-127", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_smallest_value, "-0x1.000002p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, p_smallest_normalized, "0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_normalized, m_smallest_normalized, "-0x1p-125", Status::OK, Category::Normal),
     ];
 
     for &(x, y, e_result, e_status, e_category) in &special_cases[..] {
@@ -3275,535 +1964,151 @@ fn subtract() {
         (p_inf, m_zero, "inf", Status::OK, Category::Infinity),
         (p_inf, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_inf, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_inf, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_inf, p_normal_value, "inf", Status::OK, Category::Infinity),
         (p_inf, m_normal_value, "inf", Status::OK, Category::Infinity),
-        (
-            p_inf,
-            p_largest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_largest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_smallest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_smallest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_smallest_normalized,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_smallest_normalized,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        (p_inf, p_largest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_largest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, p_smallest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_smallest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, p_smallest_normalized, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_smallest_normalized, "inf", Status::OK, Category::Infinity),
         (m_inf, p_inf, "-inf", Status::OK, Category::Infinity),
         (m_inf, m_inf, "nan", Status::INVALID_OP, Category::NaN),
         (m_inf, p_zero, "-inf", Status::OK, Category::Infinity),
         (m_inf, m_zero, "-inf", Status::OK, Category::Infinity),
         (m_inf, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_inf, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_inf,
-            p_normal_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_normal_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_largest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_largest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_smallest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_smallest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_smallest_normalized,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_smallest_normalized,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        // See Note 1.
+        (m_inf, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_inf, p_normal_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_normal_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, p_largest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_largest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, p_smallest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_smallest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, p_smallest_normalized, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_smallest_normalized, "-inf", Status::OK, Category::Infinity),
         (p_zero, p_inf, "-inf", Status::OK, Category::Infinity),
         (p_zero, m_inf, "inf", Status::OK, Category::Infinity),
         (p_zero, p_zero, "0x0p+0", Status::OK, Category::Zero),
         (p_zero, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (p_zero, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_zero, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_zero,
-            p_normal_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            m_normal_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            p_largest_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            m_largest_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            p_smallest_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            m_smallest_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            p_smallest_normalized,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_zero,
-            m_smallest_normalized,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_zero, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_zero, p_normal_value, "-0x1p+0", Status::OK, Category::Normal),
+        (p_zero, m_normal_value, "0x1p+0", Status::OK, Category::Normal),
+        (p_zero, p_largest_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_zero, m_largest_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_zero, p_smallest_value, "-0x1p-149", Status::OK, Category::Normal),
+        (p_zero, m_smallest_value, "0x1p-149", Status::OK, Category::Normal),
+        (p_zero, p_smallest_normalized, "-0x1p-126", Status::OK, Category::Normal),
+        (p_zero, m_smallest_normalized, "0x1p-126", Status::OK, Category::Normal),
         (m_zero, p_inf, "-inf", Status::OK, Category::Infinity),
         (m_zero, m_inf, "inf", Status::OK, Category::Infinity),
         (m_zero, p_zero, "-0x0p+0", Status::OK, Category::Zero),
         (m_zero, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (m_zero, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_zero, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_zero,
-            p_normal_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            m_normal_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            p_largest_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            m_largest_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            p_smallest_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            m_smallest_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            p_smallest_normalized,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_zero,
-            m_smallest_normalized,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_zero, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_zero, p_normal_value, "-0x1p+0", Status::OK, Category::Normal),
+        (m_zero, m_normal_value, "0x1p+0", Status::OK, Category::Normal),
+        (m_zero, p_largest_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_zero, m_largest_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_zero, p_smallest_value, "-0x1p-149", Status::OK, Category::Normal),
+        (m_zero, m_smallest_value, "0x1p-149", Status::OK, Category::Normal),
+        (m_zero, p_smallest_normalized, "-0x1p-126", Status::OK, Category::Normal),
+        (m_zero, m_smallest_normalized, "0x1p-126", Status::OK, Category::Normal),
         (qnan, p_inf, "nan", Status::OK, Category::NaN),
         (qnan, m_inf, "nan", Status::OK, Category::NaN),
         (qnan, p_zero, "nan", Status::OK, Category::NaN),
         (qnan, m_zero, "nan", Status::OK, Category::NaN),
         (qnan, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (qnan, p_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, m_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, p_largest_value, "nan", Status::OK, Category::NaN),
         (qnan, m_largest_value, "nan", Status::OK, Category::NaN),
         (qnan, p_smallest_value, "nan", Status::OK, Category::NaN),
         (qnan, m_smallest_value, "nan", Status::OK, Category::NaN),
-        (
-            qnan,
-            p_smallest_normalized,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
-        (
-            qnan,
-            m_smallest_normalized,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        (qnan, p_smallest_normalized, "nan", Status::OK, Category::NaN),
+        (qnan, m_smallest_normalized, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, snan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_normal_value,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        // See Note 1.
+        (snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, snan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_normal_value, p_inf, "-inf", Status::OK, Category::Infinity),
         (p_normal_value, m_inf, "inf", Status::OK, Category::Infinity),
-        (
-            p_normal_value,
-            p_zero,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_zero,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
+        (p_normal_value, p_zero, "0x1p+0", Status::OK, Category::Normal),
+        (p_normal_value, m_zero, "0x1p+0", Status::OK, Category::Normal),
         (p_normal_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_normal_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_normal_value,
-            p_normal_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_normal_value,
-            m_normal_value,
-            "0x1p+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_largest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_largest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_smallest_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_smallest_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_smallest_normalized,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_smallest_normalized,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        // See Note 1.
+        (p_normal_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_normal_value, p_normal_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_normal_value, m_normal_value, "0x1p+1", Status::OK, Category::Normal),
+        (p_normal_value, p_largest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_normal_value, m_largest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_normal_value, p_smallest_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (p_normal_value, m_smallest_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (p_normal_value, p_smallest_normalized, "0x1p+0", Status::INEXACT, Category::Normal),
+        (p_normal_value, m_smallest_normalized, "0x1p+0", Status::INEXACT, Category::Normal),
+        (m_normal_value, p_inf, "-inf", Status::OK, Category::Infinity),
         (m_normal_value, m_inf, "inf", Status::OK, Category::Infinity),
-        (
-            m_normal_value,
-            p_zero,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_zero,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
+        (m_normal_value, p_zero, "-0x1p+0", Status::OK, Category::Normal),
+        (m_normal_value, m_zero, "-0x1p+0", Status::OK, Category::Normal),
         (m_normal_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_normal_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_normal_value,
-            p_normal_value,
-            "-0x1p+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_normal_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_normal_value,
-            p_largest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_largest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_smallest_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_smallest_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_smallest_normalized,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_smallest_normalized,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            m_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            p_zero,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_zero,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_normal_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_normal_value, p_normal_value, "-0x1p+1", Status::OK, Category::Normal),
+        (m_normal_value, m_normal_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_normal_value, p_largest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_normal_value, m_largest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_normal_value, p_smallest_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (m_normal_value, m_smallest_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (m_normal_value, p_smallest_normalized, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (m_normal_value, m_smallest_normalized, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (p_largest_value, p_inf, "-inf", Status::OK, Category::Infinity),
+        (p_largest_value, m_inf, "inf", Status::OK, Category::Infinity),
+        (p_largest_value, p_zero, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_largest_value, m_zero, "0x1.fffffep+127", Status::OK, Category::Normal),
         (p_largest_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_largest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_largest_value,
-            p_normal_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_normal_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            p_largest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_largest_value,
-            m_largest_value,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            p_smallest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_smallest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_largest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_largest_value, p_normal_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_largest_value, m_normal_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_largest_value, p_largest_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_largest_value, m_largest_value, "inf", overflow_status, Category::Infinity),
+        (p_largest_value, p_smallest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_largest_value, m_smallest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
         (
             p_largest_value,
             p_smallest_normalized,
@@ -3818,81 +2123,21 @@ fn subtract() {
             Status::INEXACT,
             Category::Normal,
         ),
-        (
-            m_largest_value,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            m_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            p_zero,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_zero,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
+        (m_largest_value, p_inf, "-inf", Status::OK, Category::Infinity),
+        (m_largest_value, m_inf, "inf", Status::OK, Category::Infinity),
+        (m_largest_value, p_zero, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_largest_value, m_zero, "-0x1.fffffep+127", Status::OK, Category::Normal),
         (m_largest_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_largest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_largest_value,
-            p_normal_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_normal_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            p_largest_value,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            m_largest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_largest_value,
-            p_smallest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_smallest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_largest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_largest_value, p_normal_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_largest_value, m_normal_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_largest_value, p_largest_value, "-inf", overflow_status, Category::Infinity),
+        (m_largest_value, m_largest_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_largest_value, p_smallest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_largest_value, m_smallest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
         (
             m_largest_value,
             p_smallest_normalized,
@@ -3907,237 +2152,51 @@ fn subtract() {
             Status::INEXACT,
             Category::Normal,
         ),
-        (
-            p_smallest_value,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_value,
-            m_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_value,
-            p_zero,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_zero,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
+        (p_smallest_value, p_inf, "-inf", Status::OK, Category::Infinity),
+        (p_smallest_value, m_inf, "inf", Status::OK, Category::Infinity),
+        (p_smallest_value, p_zero, "0x1p-149", Status::OK, Category::Normal),
+        (p_smallest_value, m_zero, "0x1p-149", Status::OK, Category::Normal),
         (p_smallest_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_smallest_value,
-            p_normal_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_normal_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_largest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_largest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_smallest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            m_smallest_value,
-            "0x1p-148",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_smallest_normalized,
-            "-0x1.fffffcp-127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_smallest_normalized,
-            "0x1.000002p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_value,
-            m_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_value,
-            p_zero,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_zero,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_smallest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_smallest_value, p_normal_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (p_smallest_value, m_normal_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (p_smallest_value, p_largest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_smallest_value, m_largest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (p_smallest_value, p_smallest_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_value, m_smallest_value, "0x1p-148", Status::OK, Category::Normal),
+        (p_smallest_value, p_smallest_normalized, "-0x1.fffffcp-127", Status::OK, Category::Normal),
+        (p_smallest_value, m_smallest_normalized, "0x1.000002p-126", Status::OK, Category::Normal),
+        (m_smallest_value, p_inf, "-inf", Status::OK, Category::Infinity),
+        (m_smallest_value, m_inf, "inf", Status::OK, Category::Infinity),
+        (m_smallest_value, p_zero, "-0x1p-149", Status::OK, Category::Normal),
+        (m_smallest_value, m_zero, "-0x1p-149", Status::OK, Category::Normal),
         (m_smallest_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_smallest_value,
-            p_normal_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_normal_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_largest_value,
-            "-0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_largest_value,
-            "0x1.fffffep+127",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_smallest_value,
-            "-0x1p-148",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_smallest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            p_smallest_normalized,
-            "-0x1.000002p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_smallest_normalized,
-            "0x1.fffffcp-127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_normalized,
-            m_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_normalized,
-            p_zero,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_zero,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            qnan,
-            "-nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        // See Note 1.
+        (m_smallest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_smallest_value, p_normal_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (m_smallest_value, m_normal_value, "0x1p+0", Status::INEXACT, Category::Normal),
+        (m_smallest_value, p_largest_value, "-0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_smallest_value, m_largest_value, "0x1.fffffep+127", Status::INEXACT, Category::Normal),
+        (m_smallest_value, p_smallest_value, "-0x1p-148", Status::OK, Category::Normal),
+        (m_smallest_value, m_smallest_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_value, p_smallest_normalized, "-0x1.000002p-126", Status::OK, Category::Normal),
+        (m_smallest_value, m_smallest_normalized, "0x1.fffffcp-127", Status::OK, Category::Normal),
+        (p_smallest_normalized, p_inf, "-inf", Status::OK, Category::Infinity),
+        (p_smallest_normalized, m_inf, "inf", Status::OK, Category::Infinity),
+        (p_smallest_normalized, p_zero, "0x1p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_zero, "0x1p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_normalized, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_smallest_normalized,
-            p_normal_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_normal_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_smallest_normalized, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_smallest_normalized, p_normal_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (p_smallest_normalized, m_normal_value, "0x1p+0", Status::INEXACT, Category::Normal),
         (
             p_smallest_normalized,
             p_largest_value,
@@ -4152,87 +2211,21 @@ fn subtract() {
             Status::INEXACT,
             Category::Normal,
         ),
-        (
-            p_smallest_normalized,
-            p_smallest_value,
-            "0x1.fffffcp-127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_smallest_value,
-            "0x1.000002p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            p_smallest_normalized,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            m_smallest_normalized,
-            "0x1p-125",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_normalized,
-            m_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_normalized,
-            p_zero,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_zero,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            qnan,
-            "-nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        (p_smallest_normalized, p_smallest_value, "0x1.fffffcp-127", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_smallest_value, "0x1.000002p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, p_smallest_normalized, "0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_normalized, m_smallest_normalized, "0x1p-125", Status::OK, Category::Normal),
+        (m_smallest_normalized, p_inf, "-inf", Status::OK, Category::Infinity),
+        (m_smallest_normalized, m_inf, "inf", Status::OK, Category::Infinity),
+        (m_smallest_normalized, p_zero, "-0x1p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_zero, "-0x1p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_normalized, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_smallest_normalized,
-            p_normal_value,
-            "-0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_normal_value,
-            "0x1p+0",
-            Status::INEXACT,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_smallest_normalized, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_smallest_normalized, p_normal_value, "-0x1p+0", Status::INEXACT, Category::Normal),
+        (m_smallest_normalized, m_normal_value, "0x1p+0", Status::INEXACT, Category::Normal),
         (
             m_smallest_normalized,
             p_largest_value,
@@ -4247,34 +2240,10 @@ fn subtract() {
             Status::INEXACT,
             Category::Normal,
         ),
-        (
-            m_smallest_normalized,
-            p_smallest_value,
-            "-0x1.000002p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_smallest_value,
-            "-0x1.fffffcp-127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            p_smallest_normalized,
-            "-0x1p-125",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_smallest_normalized,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        (m_smallest_normalized, p_smallest_value, "-0x1.000002p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_smallest_value, "-0x1.fffffcp-127", Status::OK, Category::Normal),
+        (m_smallest_normalized, p_smallest_normalized, "-0x1p-125", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_smallest_normalized, "0x0p+0", Status::OK, Category::Zero),
     ];
 
     for &(x, y, e_result, e_status, e_category) in &special_cases[..] {
@@ -4319,982 +2288,238 @@ fn multiply() {
         (p_inf, m_zero, "nan", Status::INVALID_OP, Category::NaN),
         (p_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_inf, p_normal_value, "inf", Status::OK, Category::Infinity),
-        (
-            p_inf,
-            m_normal_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_largest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_largest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_smallest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_smallest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_smallest_normalized,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_smallest_normalized,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        (p_inf, m_normal_value, "-inf", Status::OK, Category::Infinity),
+        (p_inf, p_largest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_largest_value, "-inf", Status::OK, Category::Infinity),
+        (p_inf, p_smallest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_smallest_value, "-inf", Status::OK, Category::Infinity),
+        (p_inf, p_smallest_normalized, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_smallest_normalized, "-inf", Status::OK, Category::Infinity),
         (m_inf, p_inf, "-inf", Status::OK, Category::Infinity),
         (m_inf, m_inf, "inf", Status::OK, Category::Infinity),
         (m_inf, p_zero, "nan", Status::INVALID_OP, Category::NaN),
         (m_inf, m_zero, "nan", Status::INVALID_OP, Category::NaN),
         (m_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_inf,
-            p_normal_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        // See Note 1.
+        (m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_inf, p_normal_value, "-inf", Status::OK, Category::Infinity),
         (m_inf, m_normal_value, "inf", Status::OK, Category::Infinity),
-        (
-            m_inf,
-            p_largest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_largest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_smallest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_smallest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_smallest_normalized,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_smallest_normalized,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        (m_inf, p_largest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_largest_value, "inf", Status::OK, Category::Infinity),
+        (m_inf, p_smallest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_smallest_value, "inf", Status::OK, Category::Infinity),
+        (m_inf, p_smallest_normalized, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_smallest_normalized, "inf", Status::OK, Category::Infinity),
         (p_zero, p_inf, "nan", Status::INVALID_OP, Category::NaN),
         (p_zero, m_inf, "nan", Status::INVALID_OP, Category::NaN),
         (p_zero, p_zero, "0x0p+0", Status::OK, Category::Zero),
         (p_zero, m_zero, "-0x0p+0", Status::OK, Category::Zero),
         (p_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_zero, p_normal_value, "0x0p+0", Status::OK, Category::Zero),
-        (
-            p_zero,
-            m_normal_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            p_largest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            m_largest_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            p_smallest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            m_smallest_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            p_smallest_normalized,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            m_smallest_normalized,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        (p_zero, m_normal_value, "-0x0p+0", Status::OK, Category::Zero),
+        (p_zero, p_largest_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_zero, m_largest_value, "-0x0p+0", Status::OK, Category::Zero),
+        (p_zero, p_smallest_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_zero, m_smallest_value, "-0x0p+0", Status::OK, Category::Zero),
+        (p_zero, p_smallest_normalized, "0x0p+0", Status::OK, Category::Zero),
+        (p_zero, m_smallest_normalized, "-0x0p+0", Status::OK, Category::Zero),
         (m_zero, p_inf, "nan", Status::INVALID_OP, Category::NaN),
         (m_zero, m_inf, "nan", Status::INVALID_OP, Category::NaN),
         (m_zero, p_zero, "-0x0p+0", Status::OK, Category::Zero),
         (m_zero, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (m_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_zero,
-            p_normal_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        // See Note 1.
+        (m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_zero, p_normal_value, "-0x0p+0", Status::OK, Category::Zero),
         (m_zero, m_normal_value, "0x0p+0", Status::OK, Category::Zero),
-        (
-            m_zero,
-            p_largest_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            m_largest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            p_smallest_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            m_smallest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            p_smallest_normalized,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            m_smallest_normalized,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        (m_zero, p_largest_value, "-0x0p+0", Status::OK, Category::Zero),
+        (m_zero, m_largest_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_zero, p_smallest_value, "-0x0p+0", Status::OK, Category::Zero),
+        (m_zero, m_smallest_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_zero, p_smallest_normalized, "-0x0p+0", Status::OK, Category::Zero),
+        (m_zero, m_smallest_normalized, "0x0p+0", Status::OK, Category::Zero),
         (qnan, p_inf, "nan", Status::OK, Category::NaN),
         (qnan, m_inf, "nan", Status::OK, Category::NaN),
         (qnan, p_zero, "nan", Status::OK, Category::NaN),
         (qnan, m_zero, "nan", Status::OK, Category::NaN),
         (qnan, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (qnan, p_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, m_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, p_largest_value, "nan", Status::OK, Category::NaN),
         (qnan, m_largest_value, "nan", Status::OK, Category::NaN),
         (qnan, p_smallest_value, "nan", Status::OK, Category::NaN),
         (qnan, m_smallest_value, "nan", Status::OK, Category::NaN),
-        (
-            qnan,
-            p_smallest_normalized,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
-        (
-            qnan,
-            m_smallest_normalized,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        (qnan, p_smallest_normalized, "nan", Status::OK, Category::NaN),
+        (qnan, m_smallest_normalized, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, snan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, snan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_normal_value, p_inf, "inf", Status::OK, Category::Infinity),
-        (
-            p_normal_value,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        (p_normal_value, m_inf, "-inf", Status::OK, Category::Infinity),
         (p_normal_value, p_zero, "0x0p+0", Status::OK, Category::Zero),
-        (
-            p_normal_value,
-            m_zero,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        (p_normal_value, m_zero, "-0x0p+0", Status::OK, Category::Zero),
         (p_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_normal_value,
-            p_normal_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_normal_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_largest_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_largest_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_smallest_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_smallest_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_smallest_normalized,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_smallest_normalized,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        // See Note 1.
+        (p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_normal_value, p_normal_value, "0x1p+0", Status::OK, Category::Normal),
+        (p_normal_value, m_normal_value, "-0x1p+0", Status::OK, Category::Normal),
+        (p_normal_value, p_largest_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_normal_value, m_largest_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_normal_value, p_smallest_value, "0x1p-149", Status::OK, Category::Normal),
+        (p_normal_value, m_smallest_value, "-0x1p-149", Status::OK, Category::Normal),
+        (p_normal_value, p_smallest_normalized, "0x1p-126", Status::OK, Category::Normal),
+        (p_normal_value, m_smallest_normalized, "-0x1p-126", Status::OK, Category::Normal),
+        (m_normal_value, p_inf, "-inf", Status::OK, Category::Infinity),
         (m_normal_value, m_inf, "inf", Status::OK, Category::Infinity),
-        (
-            m_normal_value,
-            p_zero,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        (m_normal_value, p_zero, "-0x0p+0", Status::OK, Category::Zero),
         (m_normal_value, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (m_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_normal_value,
-            p_normal_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_normal_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_largest_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_largest_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_smallest_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_smallest_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_smallest_normalized,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_smallest_normalized,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            p_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            p_zero,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_largest_value,
-            m_zero,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        // See Note 1.
+        (m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_normal_value, p_normal_value, "-0x1p+0", Status::OK, Category::Normal),
+        (m_normal_value, m_normal_value, "0x1p+0", Status::OK, Category::Normal),
+        (m_normal_value, p_largest_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_normal_value, m_largest_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_normal_value, p_smallest_value, "-0x1p-149", Status::OK, Category::Normal),
+        (m_normal_value, m_smallest_value, "0x1p-149", Status::OK, Category::Normal),
+        (m_normal_value, p_smallest_normalized, "-0x1p-126", Status::OK, Category::Normal),
+        (m_normal_value, m_smallest_normalized, "0x1p-126", Status::OK, Category::Normal),
+        (p_largest_value, p_inf, "inf", Status::OK, Category::Infinity),
+        (p_largest_value, m_inf, "-inf", Status::OK, Category::Infinity),
+        (p_largest_value, p_zero, "0x0p+0", Status::OK, Category::Zero),
+        (p_largest_value, m_zero, "-0x0p+0", Status::OK, Category::Zero),
         (p_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_largest_value,
-            p_normal_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_normal_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            p_largest_value,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            m_largest_value,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            p_smallest_value,
-            "0x1.fffffep-22",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_smallest_value,
-            "-0x1.fffffep-22",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            p_smallest_normalized,
-            "0x1.fffffep+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_smallest_normalized,
-            "-0x1.fffffep+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            m_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            p_zero,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_largest_value,
-            m_zero,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        // See Note 1.
+        (p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_largest_value, p_normal_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_largest_value, m_normal_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_largest_value, p_largest_value, "inf", overflow_status, Category::Infinity),
+        (p_largest_value, m_largest_value, "-inf", overflow_status, Category::Infinity),
+        (p_largest_value, p_smallest_value, "0x1.fffffep-22", Status::OK, Category::Normal),
+        (p_largest_value, m_smallest_value, "-0x1.fffffep-22", Status::OK, Category::Normal),
+        (p_largest_value, p_smallest_normalized, "0x1.fffffep+1", Status::OK, Category::Normal),
+        (p_largest_value, m_smallest_normalized, "-0x1.fffffep+1", Status::OK, Category::Normal),
+        (m_largest_value, p_inf, "-inf", Status::OK, Category::Infinity),
+        (m_largest_value, m_inf, "inf", Status::OK, Category::Infinity),
+        (m_largest_value, p_zero, "-0x0p+0", Status::OK, Category::Zero),
+        (m_largest_value, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (m_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_largest_value,
-            p_normal_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_normal_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            p_largest_value,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            m_largest_value,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            p_smallest_value,
-            "-0x1.fffffep-22",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_smallest_value,
-            "0x1.fffffep-22",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            p_smallest_normalized,
-            "-0x1.fffffep+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_smallest_normalized,
-            "0x1.fffffep+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_value,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_value,
-            p_zero,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            m_zero,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        // See Note 1.
+        (m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_largest_value, p_normal_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_largest_value, m_normal_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_largest_value, p_largest_value, "-inf", overflow_status, Category::Infinity),
+        (m_largest_value, m_largest_value, "inf", overflow_status, Category::Infinity),
+        (m_largest_value, p_smallest_value, "-0x1.fffffep-22", Status::OK, Category::Normal),
+        (m_largest_value, m_smallest_value, "0x1.fffffep-22", Status::OK, Category::Normal),
+        (m_largest_value, p_smallest_normalized, "-0x1.fffffep+1", Status::OK, Category::Normal),
+        (m_largest_value, m_smallest_normalized, "0x1.fffffep+1", Status::OK, Category::Normal),
+        (p_smallest_value, p_inf, "inf", Status::OK, Category::Infinity),
+        (p_smallest_value, m_inf, "-inf", Status::OK, Category::Infinity),
+        (p_smallest_value, p_zero, "0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_value, m_zero, "-0x0p+0", Status::OK, Category::Zero),
         (p_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_smallest_value,
-            p_normal_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_normal_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_largest_value,
-            "0x1.fffffep-22",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_largest_value,
-            "-0x1.fffffep-22",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_smallest_value,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            m_smallest_value,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            p_smallest_normalized,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            m_smallest_normalized,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_value,
-            m_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_value,
-            p_zero,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            m_zero,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        // See Note 1.
+        (p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_smallest_value, p_normal_value, "0x1p-149", Status::OK, Category::Normal),
+        (p_smallest_value, m_normal_value, "-0x1p-149", Status::OK, Category::Normal),
+        (p_smallest_value, p_largest_value, "0x1.fffffep-22", Status::OK, Category::Normal),
+        (p_smallest_value, m_largest_value, "-0x1.fffffep-22", Status::OK, Category::Normal),
+        (p_smallest_value, p_smallest_value, "0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_value, m_smallest_value, "-0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_value, p_smallest_normalized, "0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_value, m_smallest_normalized, "-0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_value, p_inf, "-inf", Status::OK, Category::Infinity),
+        (m_smallest_value, m_inf, "inf", Status::OK, Category::Infinity),
+        (m_smallest_value, p_zero, "-0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_value, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (m_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_smallest_value,
-            p_normal_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_normal_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_largest_value,
-            "-0x1.fffffep-22",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_largest_value,
-            "0x1.fffffep-22",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_smallest_value,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            m_smallest_value,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            p_smallest_normalized,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            m_smallest_normalized,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            p_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_normalized,
-            m_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_normalized,
-            p_zero,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            m_zero,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            qnan,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        // See Note 1.
+        (m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_smallest_value, p_normal_value, "-0x1p-149", Status::OK, Category::Normal),
+        (m_smallest_value, m_normal_value, "0x1p-149", Status::OK, Category::Normal),
+        (m_smallest_value, p_largest_value, "-0x1.fffffep-22", Status::OK, Category::Normal),
+        (m_smallest_value, m_largest_value, "0x1.fffffep-22", Status::OK, Category::Normal),
+        (m_smallest_value, p_smallest_value, "-0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_value, m_smallest_value, "0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_value, p_smallest_normalized, "-0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_value, m_smallest_normalized, "0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_normalized, p_inf, "inf", Status::OK, Category::Infinity),
+        (p_smallest_normalized, m_inf, "-inf", Status::OK, Category::Infinity),
+        (p_smallest_normalized, p_zero, "0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_normalized, m_zero, "-0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_normalized, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_smallest_normalized,
-            p_normal_value,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_normal_value,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            p_largest_value,
-            "0x1.fffffep+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_largest_value,
-            "-0x1.fffffep+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            p_smallest_value,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            m_smallest_value,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            p_smallest_normalized,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            m_smallest_normalized,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            p_inf,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_normalized,
-            m_inf,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_normalized,
-            p_zero,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            m_zero,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            qnan,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        // See Note 1.
+        (p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_smallest_normalized, p_normal_value, "0x1p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_normal_value, "-0x1p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, p_largest_value, "0x1.fffffep+1", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_largest_value, "-0x1.fffffep+1", Status::OK, Category::Normal),
+        (p_smallest_normalized, p_smallest_value, "0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_normalized, m_smallest_value, "-0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_normalized, p_smallest_normalized, "0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_normalized, m_smallest_normalized, "-0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_normalized, p_inf, "-inf", Status::OK, Category::Infinity),
+        (m_smallest_normalized, m_inf, "inf", Status::OK, Category::Infinity),
+        (m_smallest_normalized, p_zero, "-0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_normalized, m_zero, "0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_normalized, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_smallest_normalized,
-            p_normal_value,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_normal_value,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            p_largest_value,
-            "-0x1.fffffep+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_largest_value,
-            "0x1.fffffep+1",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            p_smallest_value,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            m_smallest_value,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            p_smallest_normalized,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            m_smallest_normalized,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
+        // See Note 1.
+        (m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_smallest_normalized, p_normal_value, "-0x1p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_normal_value, "0x1p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, p_largest_value, "-0x1.fffffep+1", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_largest_value, "0x1.fffffep+1", Status::OK, Category::Normal),
+        (m_smallest_normalized, p_smallest_value, "-0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_normalized, m_smallest_value, "0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_normalized, p_smallest_normalized, "-0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_normalized, m_smallest_normalized, "0x0p+0", underflow_status, Category::Zero),
     ];
 
     for &(x, y, e_result, e_status, e_category) in &special_cases[..] {
@@ -5339,970 +2564,238 @@ fn divide() {
         (p_inf, m_zero, "-inf", Status::OK, Category::Infinity),
         (p_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_inf, p_normal_value, "inf", Status::OK, Category::Infinity),
-        (
-            p_inf,
-            m_normal_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_largest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_largest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_smallest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_smallest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            p_smallest_normalized,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            p_inf,
-            m_smallest_normalized,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        (p_inf, m_normal_value, "-inf", Status::OK, Category::Infinity),
+        (p_inf, p_largest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_largest_value, "-inf", Status::OK, Category::Infinity),
+        (p_inf, p_smallest_value, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_smallest_value, "-inf", Status::OK, Category::Infinity),
+        (p_inf, p_smallest_normalized, "inf", Status::OK, Category::Infinity),
+        (p_inf, m_smallest_normalized, "-inf", Status::OK, Category::Infinity),
         (m_inf, p_inf, "nan", Status::INVALID_OP, Category::NaN),
         (m_inf, m_inf, "nan", Status::INVALID_OP, Category::NaN),
         (m_inf, p_zero, "-inf", Status::OK, Category::Infinity),
         (m_inf, m_zero, "inf", Status::OK, Category::Infinity),
         (m_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_inf,
-            p_normal_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        // See Note 1.
+        (m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_inf, p_normal_value, "-inf", Status::OK, Category::Infinity),
         (m_inf, m_normal_value, "inf", Status::OK, Category::Infinity),
-        (
-            m_inf,
-            p_largest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_largest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_smallest_value,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_smallest_value,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            p_smallest_normalized,
-            "-inf",
-            Status::OK,
-            Category::Infinity,
-        ),
-        (
-            m_inf,
-            m_smallest_normalized,
-            "inf",
-            Status::OK,
-            Category::Infinity,
-        ),
+        (m_inf, p_largest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_largest_value, "inf", Status::OK, Category::Infinity),
+        (m_inf, p_smallest_value, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_smallest_value, "inf", Status::OK, Category::Infinity),
+        (m_inf, p_smallest_normalized, "-inf", Status::OK, Category::Infinity),
+        (m_inf, m_smallest_normalized, "inf", Status::OK, Category::Infinity),
         (p_zero, p_inf, "0x0p+0", Status::OK, Category::Zero),
         (p_zero, m_inf, "-0x0p+0", Status::OK, Category::Zero),
         (p_zero, p_zero, "nan", Status::INVALID_OP, Category::NaN),
         (p_zero, m_zero, "nan", Status::INVALID_OP, Category::NaN),
         (p_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_zero, p_normal_value, "0x0p+0", Status::OK, Category::Zero),
-        (
-            p_zero,
-            m_normal_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            p_largest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            m_largest_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            p_smallest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            m_smallest_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            p_smallest_normalized,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_zero,
-            m_smallest_normalized,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        (p_zero, m_normal_value, "-0x0p+0", Status::OK, Category::Zero),
+        (p_zero, p_largest_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_zero, m_largest_value, "-0x0p+0", Status::OK, Category::Zero),
+        (p_zero, p_smallest_value, "0x0p+0", Status::OK, Category::Zero),
+        (p_zero, m_smallest_value, "-0x0p+0", Status::OK, Category::Zero),
+        (p_zero, p_smallest_normalized, "0x0p+0", Status::OK, Category::Zero),
+        (p_zero, m_smallest_normalized, "-0x0p+0", Status::OK, Category::Zero),
         (m_zero, p_inf, "-0x0p+0", Status::OK, Category::Zero),
         (m_zero, m_inf, "0x0p+0", Status::OK, Category::Zero),
         (m_zero, p_zero, "nan", Status::INVALID_OP, Category::NaN),
         (m_zero, m_zero, "nan", Status::INVALID_OP, Category::NaN),
         (m_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_zero,
-            p_normal_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        // See Note 1.
+        (m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_zero, p_normal_value, "-0x0p+0", Status::OK, Category::Zero),
         (m_zero, m_normal_value, "0x0p+0", Status::OK, Category::Zero),
-        (
-            m_zero,
-            p_largest_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            m_largest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            p_smallest_value,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            m_smallest_value,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            p_smallest_normalized,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_zero,
-            m_smallest_normalized,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        (m_zero, p_largest_value, "-0x0p+0", Status::OK, Category::Zero),
+        (m_zero, m_largest_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_zero, p_smallest_value, "-0x0p+0", Status::OK, Category::Zero),
+        (m_zero, m_smallest_value, "0x0p+0", Status::OK, Category::Zero),
+        (m_zero, p_smallest_normalized, "-0x0p+0", Status::OK, Category::Zero),
+        (m_zero, m_smallest_normalized, "0x0p+0", Status::OK, Category::Zero),
         (qnan, p_inf, "nan", Status::OK, Category::NaN),
         (qnan, m_inf, "nan", Status::OK, Category::NaN),
         (qnan, p_zero, "nan", Status::OK, Category::NaN),
         (qnan, m_zero, "nan", Status::OK, Category::NaN),
         (qnan, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (qnan, p_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, m_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, p_largest_value, "nan", Status::OK, Category::NaN),
         (qnan, m_largest_value, "nan", Status::OK, Category::NaN),
         (qnan, p_smallest_value, "nan", Status::OK, Category::NaN),
         (qnan, m_smallest_value, "nan", Status::OK, Category::NaN),
-        (
-            qnan,
-            p_smallest_normalized,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
-        (
-            qnan,
-            m_smallest_normalized,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        (qnan, p_smallest_normalized, "nan", Status::OK, Category::NaN),
+        (qnan, m_smallest_normalized, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, snan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, snan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_normal_value, p_inf, "0x0p+0", Status::OK, Category::Zero),
         (p_normal_value, m_inf, "-0x0p+0", Status::OK, Category::Zero),
-        (
-            p_normal_value,
-            p_zero,
-            "inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            p_normal_value,
-            m_zero,
-            "-inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
+        (p_normal_value, p_zero, "inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (p_normal_value, m_zero, "-inf", Status::DIV_BY_ZERO, Category::Infinity),
         (p_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_normal_value,
-            p_normal_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_normal_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_largest_value,
-            "0x1p-128",
-            underflow_status,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_largest_value,
-            "-0x1p-128",
-            underflow_status,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            p_smallest_value,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_normal_value,
-            m_smallest_value,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_normal_value,
-            p_smallest_normalized,
-            "0x1p+126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_normal_value,
-            m_smallest_normalized,
-            "-0x1p+126",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_normal_value, p_normal_value, "0x1p+0", Status::OK, Category::Normal),
+        (p_normal_value, m_normal_value, "-0x1p+0", Status::OK, Category::Normal),
+        (p_normal_value, p_largest_value, "0x1p-128", underflow_status, Category::Normal),
+        (p_normal_value, m_largest_value, "-0x1p-128", underflow_status, Category::Normal),
+        (p_normal_value, p_smallest_value, "inf", overflow_status, Category::Infinity),
+        (p_normal_value, m_smallest_value, "-inf", overflow_status, Category::Infinity),
+        (p_normal_value, p_smallest_normalized, "0x1p+126", Status::OK, Category::Normal),
+        (p_normal_value, m_smallest_normalized, "-0x1p+126", Status::OK, Category::Normal),
         (m_normal_value, p_inf, "-0x0p+0", Status::OK, Category::Zero),
         (m_normal_value, m_inf, "0x0p+0", Status::OK, Category::Zero),
-        (
-            m_normal_value,
-            p_zero,
-            "-inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            m_normal_value,
-            m_zero,
-            "inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
+        (m_normal_value, p_zero, "-inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (m_normal_value, m_zero, "inf", Status::DIV_BY_ZERO, Category::Infinity),
         (m_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_normal_value,
-            p_normal_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_normal_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_largest_value,
-            "-0x1p-128",
-            underflow_status,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_largest_value,
-            "0x1p-128",
-            underflow_status,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            p_smallest_value,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_normal_value,
-            m_smallest_value,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_normal_value,
-            p_smallest_normalized,
-            "-0x1p+126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_normal_value,
-            m_smallest_normalized,
-            "0x1p+126",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_normal_value, p_normal_value, "-0x1p+0", Status::OK, Category::Normal),
+        (m_normal_value, m_normal_value, "0x1p+0", Status::OK, Category::Normal),
+        (m_normal_value, p_largest_value, "-0x1p-128", underflow_status, Category::Normal),
+        (m_normal_value, m_largest_value, "0x1p-128", underflow_status, Category::Normal),
+        (m_normal_value, p_smallest_value, "-inf", overflow_status, Category::Infinity),
+        (m_normal_value, m_smallest_value, "inf", overflow_status, Category::Infinity),
+        (m_normal_value, p_smallest_normalized, "-0x1p+126", Status::OK, Category::Normal),
+        (m_normal_value, m_smallest_normalized, "0x1p+126", Status::OK, Category::Normal),
         (p_largest_value, p_inf, "0x0p+0", Status::OK, Category::Zero),
-        (
-            p_largest_value,
-            m_inf,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_largest_value,
-            p_zero,
-            "inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            m_zero,
-            "-inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
+        (p_largest_value, m_inf, "-0x0p+0", Status::OK, Category::Zero),
+        (p_largest_value, p_zero, "inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (p_largest_value, m_zero, "-inf", Status::DIV_BY_ZERO, Category::Infinity),
         (p_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_largest_value,
-            p_normal_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_normal_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            p_largest_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            m_largest_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_largest_value,
-            p_smallest_value,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            m_smallest_value,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            p_smallest_normalized,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_largest_value,
-            m_smallest_normalized,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            p_inf,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
+        // See Note 1.
+        (p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_largest_value, p_normal_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_largest_value, m_normal_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (p_largest_value, p_largest_value, "0x1p+0", Status::OK, Category::Normal),
+        (p_largest_value, m_largest_value, "-0x1p+0", Status::OK, Category::Normal),
+        (p_largest_value, p_smallest_value, "inf", overflow_status, Category::Infinity),
+        (p_largest_value, m_smallest_value, "-inf", overflow_status, Category::Infinity),
+        (p_largest_value, p_smallest_normalized, "inf", overflow_status, Category::Infinity),
+        (p_largest_value, m_smallest_normalized, "-inf", overflow_status, Category::Infinity),
+        (m_largest_value, p_inf, "-0x0p+0", Status::OK, Category::Zero),
         (m_largest_value, m_inf, "0x0p+0", Status::OK, Category::Zero),
-        (
-            m_largest_value,
-            p_zero,
-            "-inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            m_zero,
-            "inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
+        (m_largest_value, p_zero, "-inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (m_largest_value, m_zero, "inf", Status::DIV_BY_ZERO, Category::Infinity),
         (m_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_largest_value,
-            p_normal_value,
-            "-0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_normal_value,
-            "0x1.fffffep+127",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            p_largest_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            m_largest_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_largest_value,
-            p_smallest_value,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            m_smallest_value,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            p_smallest_normalized,
-            "-inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            m_largest_value,
-            m_smallest_normalized,
-            "inf",
-            overflow_status,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_value,
-            p_inf,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            m_inf,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            p_zero,
-            "inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_value,
-            m_zero,
-            "-inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
+        // See Note 1.
+        (m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_largest_value, p_normal_value, "-0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_largest_value, m_normal_value, "0x1.fffffep+127", Status::OK, Category::Normal),
+        (m_largest_value, p_largest_value, "-0x1p+0", Status::OK, Category::Normal),
+        (m_largest_value, m_largest_value, "0x1p+0", Status::OK, Category::Normal),
+        (m_largest_value, p_smallest_value, "-inf", overflow_status, Category::Infinity),
+        (m_largest_value, m_smallest_value, "inf", overflow_status, Category::Infinity),
+        (m_largest_value, p_smallest_normalized, "-inf", overflow_status, Category::Infinity),
+        (m_largest_value, m_smallest_normalized, "inf", overflow_status, Category::Infinity),
+        (p_smallest_value, p_inf, "0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_value, m_inf, "-0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_value, p_zero, "inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (p_smallest_value, m_zero, "-inf", Status::DIV_BY_ZERO, Category::Infinity),
         (p_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_smallest_value,
-            p_normal_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_normal_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_largest_value,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            m_largest_value,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_value,
-            p_smallest_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_smallest_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            p_smallest_normalized,
-            "0x1p-23",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_value,
-            m_smallest_normalized,
-            "-0x1p-23",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_inf,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            m_inf,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            p_zero,
-            "-inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_value,
-            m_zero,
-            "inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
+        // See Note 1.
+        (p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_smallest_value, p_normal_value, "0x1p-149", Status::OK, Category::Normal),
+        (p_smallest_value, m_normal_value, "-0x1p-149", Status::OK, Category::Normal),
+        (p_smallest_value, p_largest_value, "0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_value, m_largest_value, "-0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_value, p_smallest_value, "0x1p+0", Status::OK, Category::Normal),
+        (p_smallest_value, m_smallest_value, "-0x1p+0", Status::OK, Category::Normal),
+        (p_smallest_value, p_smallest_normalized, "0x1p-23", Status::OK, Category::Normal),
+        (p_smallest_value, m_smallest_normalized, "-0x1p-23", Status::OK, Category::Normal),
+        (m_smallest_value, p_inf, "-0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_value, m_inf, "0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_value, p_zero, "-inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (m_smallest_value, m_zero, "inf", Status::DIV_BY_ZERO, Category::Infinity),
         (m_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_smallest_value,
-            p_normal_value,
-            "-0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_normal_value,
-            "0x1p-149",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_largest_value,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            m_largest_value,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_value,
-            p_smallest_value,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_smallest_value,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            p_smallest_normalized,
-            "-0x1p-23",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_value,
-            m_smallest_normalized,
-            "0x1p-23",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            p_inf,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            m_inf,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            p_zero,
-            "inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_normalized,
-            m_zero,
-            "-inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            p_smallest_normalized,
-            qnan,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        // See Note 1.
+        (m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_smallest_value, p_normal_value, "-0x1p-149", Status::OK, Category::Normal),
+        (m_smallest_value, m_normal_value, "0x1p-149", Status::OK, Category::Normal),
+        (m_smallest_value, p_largest_value, "-0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_value, m_largest_value, "0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_value, p_smallest_value, "-0x1p+0", Status::OK, Category::Normal),
+        (m_smallest_value, m_smallest_value, "0x1p+0", Status::OK, Category::Normal),
+        (m_smallest_value, p_smallest_normalized, "-0x1p-23", Status::OK, Category::Normal),
+        (m_smallest_value, m_smallest_normalized, "0x1p-23", Status::OK, Category::Normal),
+        (p_smallest_normalized, p_inf, "0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_normalized, m_inf, "-0x0p+0", Status::OK, Category::Zero),
+        (p_smallest_normalized, p_zero, "inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (p_smallest_normalized, m_zero, "-inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (p_smallest_normalized, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            p_smallest_normalized,
-            p_normal_value,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_normal_value,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            p_largest_value,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            m_largest_value,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            p_smallest_normalized,
-            p_smallest_value,
-            "0x1p+23",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_smallest_value,
-            "-0x1p+23",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            p_smallest_normalized,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            p_smallest_normalized,
-            m_smallest_normalized,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            p_inf,
-            "-0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            m_inf,
-            "0x0p+0",
-            Status::OK,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            p_zero,
-            "-inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_normalized,
-            m_zero,
-            "inf",
-            Status::DIV_BY_ZERO,
-            Category::Infinity,
-        ),
-        (
-            m_smallest_normalized,
-            qnan,
-            "nan",
-            Status::OK,
-            Category::NaN,
-        ),
+        // See Note 1.
+        (p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (p_smallest_normalized, p_normal_value, "0x1p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_normal_value, "-0x1p-126", Status::OK, Category::Normal),
+        (p_smallest_normalized, p_largest_value, "0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_normalized, m_largest_value, "-0x0p+0", underflow_status, Category::Zero),
+        (p_smallest_normalized, p_smallest_value, "0x1p+23", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_smallest_value, "-0x1p+23", Status::OK, Category::Normal),
+        (p_smallest_normalized, p_smallest_normalized, "0x1p+0", Status::OK, Category::Normal),
+        (p_smallest_normalized, m_smallest_normalized, "-0x1p+0", Status::OK, Category::Normal),
+        (m_smallest_normalized, p_inf, "-0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_normalized, m_inf, "0x0p+0", Status::OK, Category::Zero),
+        (m_smallest_normalized, p_zero, "-inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (m_smallest_normalized, m_zero, "inf", Status::DIV_BY_ZERO, Category::Infinity),
+        (m_smallest_normalized, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
-        (
-            m_smallest_normalized,
-            p_normal_value,
-            "-0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_normal_value,
-            "0x1p-126",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            p_largest_value,
-            "-0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            m_largest_value,
-            "0x0p+0",
-            underflow_status,
-            Category::Zero,
-        ),
-        (
-            m_smallest_normalized,
-            p_smallest_value,
-            "-0x1p+23",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_smallest_value,
-            "0x1p+23",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            p_smallest_normalized,
-            "-0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
-        (
-            m_smallest_normalized,
-            m_smallest_normalized,
-            "0x1p+0",
-            Status::OK,
-            Category::Normal,
-        ),
+        // See Note 1.
+        (m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
+        (m_smallest_normalized, p_normal_value, "-0x1p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_normal_value, "0x1p-126", Status::OK, Category::Normal),
+        (m_smallest_normalized, p_largest_value, "-0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_normalized, m_largest_value, "0x0p+0", underflow_status, Category::Zero),
+        (m_smallest_normalized, p_smallest_value, "-0x1p+23", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_smallest_value, "0x1p+23", Status::OK, Category::Normal),
+        (m_smallest_normalized, p_smallest_normalized, "-0x1p+0", Status::OK, Category::Normal),
+        (m_smallest_normalized, m_smallest_normalized, "0x1p+0", Status::OK, Category::Normal),
     ];
 
     for &(x, y, e_result, e_status, e_category) in &special_cases[..] {
@@ -6358,12 +2851,8 @@ fn abs() {
     assert!(p_largest_value.bitwise_eq(m_largest_value.abs()));
     assert!(p_smallest_value.bitwise_eq(p_smallest_value.abs()));
     assert!(p_smallest_value.bitwise_eq(m_smallest_value.abs()));
-    assert!(p_smallest_normalized.bitwise_eq(
-        p_smallest_normalized.abs(),
-    ));
-    assert!(p_smallest_normalized.bitwise_eq(
-        m_smallest_normalized.abs(),
-    ));
+    assert!(p_smallest_normalized.bitwise_eq(p_smallest_normalized.abs(),));
+    assert!(p_smallest_normalized.bitwise_eq(m_smallest_normalized.abs(),));
 }
 
 #[test]
@@ -6393,31 +2882,15 @@ fn neg() {
 fn ilogb() {
     assert_eq!(-1074, Double::SMALLEST.ilogb());
     assert_eq!(-1074, (-Double::SMALLEST).ilogb());
-    assert_eq!(
-        -1023,
-        "0x1.ffffffffffffep-1024".parse::<Double>().unwrap().ilogb()
-    );
-    assert_eq!(
-        -1023,
-        "0x1.ffffffffffffep-1023".parse::<Double>().unwrap().ilogb()
-    );
-    assert_eq!(
-        -1023,
-        "-0x1.ffffffffffffep-1023"
-            .parse::<Double>()
-            .unwrap()
-            .ilogb()
-    );
+    assert_eq!(-1023, "0x1.ffffffffffffep-1024".parse::<Double>().unwrap().ilogb());
+    assert_eq!(-1023, "0x1.ffffffffffffep-1023".parse::<Double>().unwrap().ilogb());
+    assert_eq!(-1023, "-0x1.ffffffffffffep-1023".parse::<Double>().unwrap().ilogb());
     assert_eq!(-51, "0x1p-51".parse::<Double>().unwrap().ilogb());
-    assert_eq!(
-        -1023,
-        "0x1.c60f120d9f87cp-1023".parse::<Double>().unwrap().ilogb()
-    );
+    assert_eq!(-1023, "0x1.c60f120d9f87cp-1023".parse::<Double>().unwrap().ilogb());
     assert_eq!(-2, "0x0.ffffp-1".parse::<Double>().unwrap().ilogb());
     assert_eq!(-1023, "0x1.fffep-1023".parse::<Double>().unwrap().ilogb());
     assert_eq!(1023, Double::largest().ilogb());
     assert_eq!(1023, (-Double::largest()).ilogb());
-
 
     assert_eq!(0, "0x1p+0".parse::<Single>().unwrap().ilogb());
     assert_eq!(0, "-0x1p+0".parse::<Single>().unwrap().ilogb());
@@ -6442,15 +2915,24 @@ fn ilogb() {
 
 #[test]
 fn scalbn() {
-    assert!("0x1p+0".parse::<Single>().unwrap().bitwise_eq(
-        "0x1p+0".parse::<Single>().unwrap().scalbn(0),
-    ));
-    assert!("0x1p+42".parse::<Single>().unwrap().bitwise_eq(
-        "0x1p+0".parse::<Single>().unwrap().scalbn(42),
-    ));
-    assert!("0x1p-42".parse::<Single>().unwrap().bitwise_eq(
-        "0x1p+0".parse::<Single>().unwrap().scalbn(-42),
-    ));
+    assert!(
+        "0x1p+0"
+            .parse::<Single>()
+            .unwrap()
+            .bitwise_eq("0x1p+0".parse::<Single>().unwrap().scalbn(0),)
+    );
+    assert!(
+        "0x1p+42"
+            .parse::<Single>()
+            .unwrap()
+            .bitwise_eq("0x1p+0".parse::<Single>().unwrap().scalbn(42),)
+    );
+    assert!(
+        "0x1p-42"
+            .parse::<Single>()
+            .unwrap()
+            .bitwise_eq("0x1p+0".parse::<Single>().unwrap().scalbn(-42),)
+    );
 
     let p_inf = Single::INFINITY;
     let m_inf = -Single::INFINITY;
@@ -6479,28 +2961,18 @@ fn scalbn() {
     assert!(quiet_payload.is_nan() && !quiet_payload.is_signaling());
     assert_eq!(payload, quiet_payload.to_bits() & ((1 << 51) - 1));
 
-    assert!(p_inf.bitwise_eq(
-        "0x1p+0".parse::<Single>().unwrap().scalbn(128),
-    ));
-    assert!(m_inf.bitwise_eq(
-        "-0x1p+0".parse::<Single>().unwrap().scalbn(128),
-    ));
-    assert!(p_inf.bitwise_eq(
-        "0x1p+127".parse::<Single>().unwrap().scalbn(1),
-    ));
-    assert!(p_zero.bitwise_eq(
-        "0x1p-127".parse::<Single>().unwrap().scalbn(-127),
-    ));
-    assert!(m_zero.bitwise_eq(
-        "-0x1p-127".parse::<Single>().unwrap().scalbn(-127),
-    ));
-    assert!("-0x1p-149".parse::<Single>().unwrap().bitwise_eq(
-        "-0x1p-127".parse::<Single>().unwrap().scalbn(-22),
-    ));
-    assert!(p_zero.bitwise_eq(
-        "0x1p-126".parse::<Single>().unwrap().scalbn(-24),
-    ));
-
+    assert!(p_inf.bitwise_eq("0x1p+0".parse::<Single>().unwrap().scalbn(128),));
+    assert!(m_inf.bitwise_eq("-0x1p+0".parse::<Single>().unwrap().scalbn(128),));
+    assert!(p_inf.bitwise_eq("0x1p+127".parse::<Single>().unwrap().scalbn(1),));
+    assert!(p_zero.bitwise_eq("0x1p-127".parse::<Single>().unwrap().scalbn(-127),));
+    assert!(m_zero.bitwise_eq("-0x1p-127".parse::<Single>().unwrap().scalbn(-127),));
+    assert!(
+        "-0x1p-149"
+            .parse::<Single>()
+            .unwrap()
+            .bitwise_eq("-0x1p-127".parse::<Single>().unwrap().scalbn(-22),)
+    );
+    assert!(p_zero.bitwise_eq("0x1p-126".parse::<Single>().unwrap().scalbn(-24),));
 
     let smallest_f64 = Double::SMALLEST;
     let neg_smallest_f64 = -Double::SMALLEST;
@@ -6511,33 +2983,16 @@ fn scalbn() {
     let largest_denormal_f64 = "0x1.ffffffffffffep-1023".parse::<Double>().unwrap();
     let neg_largest_denormal_f64 = "-0x1.ffffffffffffep-1023".parse::<Double>().unwrap();
 
+    assert!(smallest_f64.bitwise_eq("0x1p-1074".parse::<Double>().unwrap().scalbn(0),));
+    assert!(neg_smallest_f64.bitwise_eq("-0x1p-1074".parse::<Double>().unwrap().scalbn(0),));
 
-    assert!(smallest_f64.bitwise_eq(
-        "0x1p-1074".parse::<Double>().unwrap().scalbn(0),
-    ));
-    assert!(neg_smallest_f64.bitwise_eq(
-        "-0x1p-1074".parse::<Double>().unwrap().scalbn(0),
-    ));
-
-    assert!("0x1p+1023".parse::<Double>().unwrap().bitwise_eq(
-        smallest_f64.scalbn(
-            2097,
-        ),
-    ));
+    assert!("0x1p+1023".parse::<Double>().unwrap().bitwise_eq(smallest_f64.scalbn(2097,),));
 
     assert!(smallest_f64.scalbn(-2097).is_pos_zero());
     assert!(smallest_f64.scalbn(-2098).is_pos_zero());
     assert!(smallest_f64.scalbn(-2099).is_pos_zero());
-    assert!("0x1p+1022".parse::<Double>().unwrap().bitwise_eq(
-        smallest_f64.scalbn(
-            2096,
-        ),
-    ));
-    assert!("0x1p+1023".parse::<Double>().unwrap().bitwise_eq(
-        smallest_f64.scalbn(
-            2097,
-        ),
-    ));
+    assert!("0x1p+1022".parse::<Double>().unwrap().bitwise_eq(smallest_f64.scalbn(2096,),));
+    assert!("0x1p+1023".parse::<Double>().unwrap().bitwise_eq(smallest_f64.scalbn(2097,),));
     assert!(smallest_f64.scalbn(2098).is_infinite());
     assert!(smallest_f64.scalbn(2099).is_infinite());
 
@@ -6545,12 +3000,8 @@ fn scalbn() {
     assert!(smallest_f64.scalbn(-ExpInt::max_value()).is_pos_zero());
     assert!(largest_f64.scalbn(ExpInt::max_value()).is_infinite());
 
-    assert!(largest_denormal_f64.bitwise_eq(
-        largest_denormal_f64.scalbn(0),
-    ));
-    assert!(neg_largest_denormal_f64.bitwise_eq(
-        neg_largest_denormal_f64.scalbn(0),
-    ));
+    assert!(largest_denormal_f64.bitwise_eq(largest_denormal_f64.scalbn(0),));
+    assert!(neg_largest_denormal_f64.bitwise_eq(neg_largest_denormal_f64.scalbn(0),));
 
     assert!(
         "0x1.ffffffffffffep-1022"
@@ -6602,11 +3053,7 @@ fn scalbn() {
             .unwrap()
             .bitwise_eq(largest_denormal_f64.scalbn(2046))
     );
-    assert!("0x1p+974".parse::<Double>().unwrap().bitwise_eq(
-        smallest_f64.scalbn(
-            2048,
-        ),
-    ));
+    assert!("0x1p+974".parse::<Double>().unwrap().bitwise_eq(smallest_f64.scalbn(2048,),));
 
     let random_denormal_f64 = "0x1.c60f120d9f87cp+51".parse::<Double>().unwrap();
     assert!(
@@ -6637,40 +3084,30 @@ fn scalbn() {
     assert!(random_denormal_f64.scalbn(-2097).is_pos_zero());
     assert!(random_denormal_f64.scalbn(-2090).is_pos_zero());
 
+    assert!("-0x1p-1073".parse::<Double>().unwrap().bitwise_eq(neg_largest_f64.scalbn(-2097),));
 
-    assert!("-0x1p-1073".parse::<Double>().unwrap().bitwise_eq(
-        neg_largest_f64.scalbn(-2097),
-    ));
+    assert!("-0x1p-1024".parse::<Double>().unwrap().bitwise_eq(neg_largest_f64.scalbn(-2048),));
 
-    assert!("-0x1p-1024".parse::<Double>().unwrap().bitwise_eq(
-        neg_largest_f64.scalbn(-2048),
-    ));
+    assert!("0x1p-1073".parse::<Double>().unwrap().bitwise_eq(largest_f64.scalbn(-2097,),));
 
-    assert!("0x1p-1073".parse::<Double>().unwrap().bitwise_eq(
-        largest_f64.scalbn(
-            -2097,
-        ),
-    ));
-
-    assert!("0x1p-1074".parse::<Double>().unwrap().bitwise_eq(
-        largest_f64.scalbn(
-            -2098,
-        ),
-    ));
-    assert!("-0x1p-1074".parse::<Double>().unwrap().bitwise_eq(
-        neg_largest_f64.scalbn(-2098),
-    ));
+    assert!("0x1p-1074".parse::<Double>().unwrap().bitwise_eq(largest_f64.scalbn(-2098,),));
+    assert!("-0x1p-1074".parse::<Double>().unwrap().bitwise_eq(neg_largest_f64.scalbn(-2098),));
     assert!(neg_largest_f64.scalbn(-2099).is_neg_zero());
     assert!(largest_f64.scalbn(1).is_infinite());
 
+    assert!(
+        "0x1p+0"
+            .parse::<Double>()
+            .unwrap()
+            .bitwise_eq("0x1p+52".parse::<Double>().unwrap().scalbn(-52),)
+    );
 
-    assert!("0x1p+0".parse::<Double>().unwrap().bitwise_eq(
-        "0x1p+52".parse::<Double>().unwrap().scalbn(-52),
-    ));
-
-    assert!("0x1p-103".parse::<Double>().unwrap().bitwise_eq(
-        "0x1p-51".parse::<Double>().unwrap().scalbn(-52),
-    ));
+    assert!(
+        "0x1p-103"
+            .parse::<Double>()
+            .unwrap()
+            .bitwise_eq("0x1p-51".parse::<Double>().unwrap().scalbn(-52),)
+    );
 }
 
 #[test]
@@ -6711,7 +3148,6 @@ fn frexp() {
     assert_eq!(0, exp);
     assert!(frac.is_neg_zero());
 
-
     let frac = one.frexp(&mut exp);
     assert_eq!(1, exp);
     assert!("0x1p-1".parse::<Double>().unwrap().bitwise_eq(frac));
@@ -6722,22 +3158,11 @@ fn frexp() {
 
     let frac = largest_denormal.frexp(&mut exp);
     assert_eq!(-1022, exp);
-    assert!(
-        "0x1.ffffffffffffep-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
+    assert!("0x1.ffffffffffffep-1".parse::<Double>().unwrap().bitwise_eq(frac));
 
     let frac = neg_largest_denormal.frexp(&mut exp);
     assert_eq!(-1022, exp);
-    assert!(
-        "-0x1.ffffffffffffep-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
-
+    assert!("-0x1.ffffffffffffep-1".parse::<Double>().unwrap().bitwise_eq(frac));
 
     let frac = smallest.frexp(&mut exp);
     assert_eq!(-1073, exp);
@@ -6747,25 +3172,13 @@ fn frexp() {
     assert_eq!(-1073, exp);
     assert!("-0x1p-1".parse::<Double>().unwrap().bitwise_eq(frac));
 
-
     let frac = largest.frexp(&mut exp);
     assert_eq!(1024, exp);
-    assert!(
-        "0x1.fffffffffffffp-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
+    assert!("0x1.fffffffffffffp-1".parse::<Double>().unwrap().bitwise_eq(frac));
 
     let frac = neg_largest.frexp(&mut exp);
     assert_eq!(1024, exp);
-    assert!(
-        "-0x1.fffffffffffffp-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
-
+    assert!("-0x1.fffffffffffffp-1".parse::<Double>().unwrap().bitwise_eq(frac));
 
     let frac = p_inf.frexp(&mut exp);
     assert_eq!(IEK_INF, exp);
@@ -6800,16 +3213,9 @@ fn frexp() {
     assert_eq!(-50, exp);
     assert!("0x1p-1".parse::<Double>().unwrap().bitwise_eq(frac));
 
-    let frac = "0x1.c60f120d9f87cp+51".parse::<Double>().unwrap().frexp(
-        &mut exp,
-    );
+    let frac = "0x1.c60f120d9f87cp+51".parse::<Double>().unwrap().frexp(&mut exp);
     assert_eq!(52, exp);
-    assert!(
-        "0x1.c60f120d9f87cp-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
+    assert!("0x1.c60f120d9f87cp-1".parse::<Double>().unwrap().bitwise_eq(frac));
 }
 
 #[test]

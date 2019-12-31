@@ -1,9 +1,9 @@
 use rustc::util::nodemap::DefIdSet;
 
 use crate::clean;
-use crate::fold::{DocFolder};
 use crate::core::DocContext;
-use crate::passes::{ImplStripper, ImportStripper, Stripper, Pass};
+use crate::fold::DocFolder;
+use crate::passes::{ImplStripper, ImportStripper, Pass, Stripper};
 
 pub const STRIP_PRIVATE: Pass = Pass {
     name: "strip-private",

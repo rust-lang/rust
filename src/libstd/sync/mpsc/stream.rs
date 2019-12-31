@@ -6,10 +6,9 @@
 ///
 /// High level implementation details can be found in the comment of the parent
 /// module.
-
 pub use self::Failure::*;
-pub use self::UpgradeResult::*;
 use self::Message::*;
+pub use self::UpgradeResult::*;
 
 use core::cmp;
 use core::isize;
@@ -19,10 +18,10 @@ use crate::ptr;
 use crate::thread;
 use crate::time::Instant;
 
-use crate::sync::atomic::{AtomicIsize, AtomicUsize, Ordering, AtomicBool};
-use crate::sync::mpsc::Receiver;
+use crate::sync::atomic::{AtomicBool, AtomicIsize, AtomicUsize, Ordering};
 use crate::sync::mpsc::blocking::{self, SignalToken};
 use crate::sync::mpsc::spsc_queue as spsc;
+use crate::sync::mpsc::Receiver;
 
 const DISCONNECTED: isize = isize::MIN;
 #[cfg(test)]
@@ -36,16 +35,15 @@ pub struct Packet<T> {
 }
 
 struct ProducerAddition {
-    cnt: AtomicIsize, // How many items are on this channel
+    cnt: AtomicIsize,     // How many items are on this channel
     to_wake: AtomicUsize, // SignalToken for the blocked thread to wake up
 
     port_dropped: AtomicBool, // flag if the channel has been destroyed.
 }
 
 struct ConsumerAddition {
-    steals: UnsafeCell<isize>,  // How many times has a port received without blocking?
+    steals: UnsafeCell<isize>, // How many times has a port received without blocking?
 }
-
 
 pub enum Failure<T> {
     Empty,
@@ -69,18 +67,18 @@ enum Message<T> {
 impl<T> Packet<T> {
     pub fn new() -> Packet<T> {
         Packet {
-            queue: unsafe { spsc::Queue::with_additions(
-                128,
-                ProducerAddition {
-                    cnt: AtomicIsize::new(0),
-                    to_wake: AtomicUsize::new(0),
+            queue: unsafe {
+                spsc::Queue::with_additions(
+                    128,
+                    ProducerAddition {
+                        cnt: AtomicIsize::new(0),
+                        to_wake: AtomicUsize::new(0),
 
-                    port_dropped: AtomicBool::new(false),
-                },
-                ConsumerAddition {
-                    steals: UnsafeCell::new(0),
-                }
-            )},
+                        port_dropped: AtomicBool::new(false),
+                    },
+                    ConsumerAddition { steals: UnsafeCell::new(0) },
+                )
+            },
         }
     }
 
@@ -88,11 +86,15 @@ impl<T> Packet<T> {
         // If the other port has deterministically gone away, then definitely
         // must return the data back up the stack. Otherwise, the data is
         // considered as being sent.
-        if self.queue.producer_addition().port_dropped.load(Ordering::SeqCst) { return Err(t) }
+        if self.queue.producer_addition().port_dropped.load(Ordering::SeqCst) {
+            return Err(t);
+        }
 
         match self.do_send(Data(t)) {
-            UpSuccess | UpDisconnected => {},
-            UpWoke(token) => { token.signal(); }
+            UpSuccess | UpDisconnected => {}
+            UpWoke(token) => {
+                token.signal();
+            }
         }
         Ok(())
     }
@@ -101,7 +103,7 @@ impl<T> Packet<T> {
         // If the port has gone away, then there's no need to proceed any
         // further.
         if self.queue.producer_addition().port_dropped.load(Ordering::SeqCst) {
-            return UpDisconnected
+            return UpDisconnected;
         }
 
         self.do_send(GoUp(up))
@@ -136,7 +138,10 @@ impl<T> Packet<T> {
 
             // Otherwise we just sent some data on a non-waiting queue, so just
             // make sure the world is sane and carry on!
-            n => { assert!(n >= 0); UpSuccess }
+            n => {
+                assert!(n >= 0);
+                UpSuccess
+            }
         }
     }
 
@@ -166,7 +171,9 @@ impl<T> Packet<T> {
             // data, we successfully sleep
             n => {
                 assert!(n >= 0);
-                if n - steals <= 0 { return Ok(()) }
+                if n - steals <= 0 {
+                    return Ok(());
+                }
             }
         }
 
@@ -199,8 +206,7 @@ impl<T> Packet<T> {
             // Messages which actually popped from the queue shouldn't count as
             // a steal, so offset the decrement here (we already have our
             // "steal" factored into the channel count above).
-            data @ Ok(..) |
-            data @ Err(Upgraded(..)) => unsafe {
+            data @ Ok(..) | data @ Err(Upgraded(..)) => unsafe {
                 *self.queue.consumer_addition().steals.get() -= 1;
                 data
             },
@@ -226,8 +232,10 @@ impl<T> Packet<T> {
                 if *self.queue.consumer_addition().steals.get() > MAX_STEALS {
                     match self.queue.producer_addition().cnt.swap(0, Ordering::SeqCst) {
                         DISCONNECTED => {
-                            self.queue.producer_addition().cnt.store(
-                                DISCONNECTED, Ordering::SeqCst);
+                            self.queue
+                                .producer_addition()
+                                .cnt
+                                .store(DISCONNECTED, Ordering::SeqCst);
                         }
                         n => {
                             let m = cmp::min(n, *self.queue.consumer_addition().steals.get());
@@ -259,13 +267,11 @@ impl<T> Packet<T> {
                     // We can ignore steals because the other end is
                     // disconnected and we'll never need to really factor in our
                     // steals again.
-                    _ => {
-                        match self.queue.pop() {
-                            Some(Data(t)) => Ok(t),
-                            Some(GoUp(up)) => Err(Upgraded(up)),
-                            None => Err(Disconnected),
-                        }
-                    }
+                    _ => match self.queue.pop() {
+                        Some(Data(t)) => Ok(t),
+                        Some(GoUp(up)) => Err(Upgraded(up)),
+                        None => Err(Disconnected),
+                    },
                 }
             }
         }
@@ -275,9 +281,13 @@ impl<T> Packet<T> {
         // Dropping a channel is pretty simple, we just flag it as disconnected
         // and then wakeup a blocker if there is one.
         match self.queue.producer_addition().cnt.swap(DISCONNECTED, Ordering::SeqCst) {
-            -1 => { self.take_to_wake().signal(); }
+            -1 => {
+                self.take_to_wake().signal();
+            }
             DISCONNECTED => {}
-            n => { assert!(n >= 0); }
+            n => {
+                assert!(n >= 0);
+            }
         }
     }
 
@@ -314,10 +324,15 @@ impl<T> Packet<T> {
         let mut steals = unsafe { *self.queue.consumer_addition().steals.get() };
         while {
             let cnt = self.queue.producer_addition().cnt.compare_and_swap(
-                            steals, DISCONNECTED, Ordering::SeqCst);
+                steals,
+                DISCONNECTED,
+                Ordering::SeqCst,
+            );
             cnt != DISCONNECTED && cnt != steals
         } {
-            while let Some(_) = self.queue.pop() { steals += 1; }
+            while let Some(_) = self.queue.pop() {
+                steals += 1;
+            }
         }
 
         // At this point in time, we have gated all future senders from sending,
@@ -338,13 +353,12 @@ impl<T> Packet<T> {
                 self.queue.producer_addition().cnt.store(DISCONNECTED, Ordering::SeqCst);
                 DISCONNECTED
             }
-            n => n
+            n => n,
         }
     }
 
     // Removes a previous thread from being blocked in this port
-    pub fn abort_selection(&self,
-                           was_upgrade: bool) -> Result<bool, Receiver<T>> {
+    pub fn abort_selection(&self, was_upgrade: bool) -> Result<bool, Receiver<T>> {
         // If we're aborting selection after upgrading from a oneshot, then
         // we're guarantee that no one is waiting. The only way that we could
         // have seen the upgrade is if data was actually sent on the channel
@@ -361,7 +375,7 @@ impl<T> Packet<T> {
         if was_upgrade {
             assert_eq!(unsafe { *self.queue.consumer_addition().steals.get() }, 0);
             assert_eq!(self.queue.producer_addition().to_wake.load(Ordering::SeqCst), 0);
-            return Ok(true)
+            return Ok(true);
         }
 
         // We want to make sure that the count on the channel goes non-negative,
@@ -416,12 +430,10 @@ impl<T> Packet<T> {
         // upgraded port.
         if has_data {
             match self.queue.peek() {
-                Some(&mut GoUp(..)) => {
-                    match self.queue.pop() {
-                        Some(GoUp(port)) => Err(port),
-                        _ => unreachable!(),
-                    }
-                }
+                Some(&mut GoUp(..)) => match self.queue.pop() {
+                    Some(GoUp(port)) => Err(port),
+                    _ => unreachable!(),
+                },
                 _ => Ok(true),
             }
         } else {

@@ -172,6 +172,8 @@ docker \
   --env CI \
   --env TF_BUILD \
   --env BUILD_SOURCEBRANCHNAME \
+  --env GITHUB_ACTIONS \
+  --env GITHUB_REF \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env TOOLSTATE_REPO \
   --env TOOLSTATE_PUBLISH \

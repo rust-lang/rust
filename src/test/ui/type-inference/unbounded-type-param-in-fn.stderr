@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/unbounded-type-param-in-fn.rs:6:5
+   |
+LL |     foo();
+   |     ^^^ cannot infer type for type parameter `T` declared on the function `foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

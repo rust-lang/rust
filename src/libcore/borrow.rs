@@ -189,7 +189,7 @@ pub trait Borrow<Borrowed: ?Sized> {
 ///
 /// [`Borrow<T>`]: trait.Borrow.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait BorrowMut<Borrowed: ?Sized> : Borrow<Borrowed> {
+pub trait BorrowMut<Borrowed: ?Sized>: Borrow<Borrowed> {
     /// Mutably borrows from an owned value.
     ///
     /// # Examples
@@ -211,25 +211,35 @@ pub trait BorrowMut<Borrowed: ?Sized> : Borrow<Borrowed> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Borrow<T> for T {
-    fn borrow(&self) -> &T { self }
+    fn borrow(&self) -> &T {
+        self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> BorrowMut<T> for T {
-    fn borrow_mut(&mut self) -> &mut T { self }
+    fn borrow_mut(&mut self) -> &mut T {
+        self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Borrow<T> for &T {
-    fn borrow(&self) -> &T { &**self }
+    fn borrow(&self) -> &T {
+        &**self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Borrow<T> for &mut T {
-    fn borrow(&self) -> &T { &**self }
+    fn borrow(&self) -> &T {
+        &**self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> BorrowMut<T> for &mut T {
-    fn borrow_mut(&mut self) -> &mut T { &mut **self }
+    fn borrow_mut(&mut self) -> &mut T {
+        &mut **self
+    }
 }

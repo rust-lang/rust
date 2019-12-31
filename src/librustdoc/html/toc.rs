@@ -16,7 +16,7 @@ pub struct Toc {
     /// ### A
     /// ## B
     /// ```
-    entries: Vec<TocEntry>
+    entries: Vec<TocEntry>,
 }
 
 impl Toc {
@@ -46,14 +46,13 @@ pub struct TocBuilder {
     /// it is the most recent one).
     ///
     /// We also have `chain[0].level <= top_level.entries[last]`.
-    chain: Vec<TocEntry>
+    chain: Vec<TocEntry>,
 }
 
 impl TocBuilder {
     pub fn new() -> TocBuilder {
         TocBuilder { top_level: Toc { entries: Vec::new() }, chain: Vec::new() }
     }
-
 
     /// Converts into a true `Toc` struct.
     pub fn into_toc(mut self) -> Toc {
@@ -100,14 +99,14 @@ impl TocBuilder {
                         // this is the parent we want, so return it to
                         // its rightful place.
                         self.chain.push(next);
-                        return
+                        return;
                     } else {
                         this = Some(next);
                     }
                 }
                 None => {
                     this.map(|e| self.top_level.entries.push(e));
-                    return
+                    return;
                 }
             }
         }
@@ -152,7 +151,7 @@ impl TocBuilder {
             name,
             sec_number,
             id,
-            children: Toc { entries: Vec::new() }
+            children: Toc { entries: Vec::new() },
         });
 
         // get the thing we just pushed, so we can borrow the string
@@ -167,9 +166,12 @@ impl Toc {
         v.push_str("<ul>");
         for entry in &self.entries {
             // recursively format this table of contents
-            v.push_str(&format!("\n<li><a href=\"#{id}\">{num} {name}</a>",
-                   id = entry.id,
-                   num = entry.sec_number, name = entry.name));
+            v.push_str(&format!(
+                "\n<li><a href=\"#{id}\">{num} {name}</a>",
+                id = entry.id,
+                num = entry.sec_number,
+                name = entry.name
+            ));
             entry.children.print_inner(&mut *v);
             v.push_str("</li>");
         }

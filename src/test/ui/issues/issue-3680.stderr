@@ -6,8 +6,8 @@ LL |     match None {
 LL |         Err(_) => ()
    |         ^^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
    |
-   = note: expected type `std::option::Option<_>`
-              found type `std::result::Result<_, _>`
+   = note: expected enum `std::option::Option<_>`
+              found enum `std::result::Result<_, _>`
 
 error: aborting due to previous error
 

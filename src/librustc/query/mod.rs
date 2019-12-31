@@ -1,18 +1,17 @@
-use crate::ty::query::QueryDescription;
-use crate::ty::query::queries;
-use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use crate::ty::subst::SubstsRef;
-use crate::dep_graph::{RecoverKey,DepKind, DepNode, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, RecoverKey, SerializedDepNodeIndex};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::traits;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal,
-    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
-    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
-    CanonicalTypeOpNormalizeGoal,
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
+use crate::ty::query::queries;
+use crate::ty::query::QueryDescription;
+use crate::ty::subst::SubstsRef;
+use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 
 use std::borrow::Cow;
 use syntax_pos::symbol::Symbol;
@@ -29,6 +28,12 @@ use syntax_pos::symbol::Symbol;
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
+    Other {
+        query trigger_delay_span_bug(key: DefId) -> () {
+            desc { "trigger a delay span bug" }
+        }
+    }
+
     Other {
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
@@ -91,53 +96,63 @@ rustc_queries! {
         }
 
         /// Maps DefId's that have an associated `mir::Body` to the result
-        /// of the MIR qualify_consts pass. The actual meaning of
-        /// the value isn't known except to the pass itself.
-        query mir_const_qualif(key: DefId) -> u8 {
+        /// of the MIR const-checking pass. This is the set of qualifs in
+        /// the final value of a `const`.
+        query mir_const_qualif(key: DefId) -> mir::ConstQualifs {
             desc { |tcx| "const checking `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
 
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
-        query mir_built(_: DefId) -> &'tcx Steal<mir::Body<'tcx>> {}
+        query mir_built(_: DefId) -> &'tcx Steal<mir::BodyAndCache<'tcx>> {}
 
         /// Fetch the MIR for a given `DefId` up till the point where it is
         /// ready for const evaluation.
         ///
         /// See the README for the `mir` module for details.
-        query mir_const(_: DefId) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_const(_: DefId) -> &'tcx Steal<mir::BodyAndCache<'tcx>> {
             no_hash
         }
 
         query mir_validated(_: DefId) ->
             (
-                &'tcx Steal<mir::Body<'tcx>>,
-                &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
+                &'tcx Steal<mir::BodyAndCache<'tcx>>,
+                &'tcx Steal<IndexVec<mir::Promoted, mir::BodyAndCache<'tcx>>>
             ) {
             no_hash
         }
 
         /// MIR after our optimization passes have run. This is MIR that is ready
         /// for codegen. This is also the only query that can fetch non-local MIR, at present.
-        query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
+        query optimized_mir(key: DefId) -> &'tcx mir::BodyAndCache<'tcx> {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
-                let mir: Option<crate::mir::Body<'tcx>> = tcx.queries.on_disk_cache
-                                                            .try_load_query_result(tcx, id);
-                mir.map(|x| &*tcx.arena.alloc(x))
+                let mir: Option<crate::mir::BodyAndCache<'tcx>>
+                    = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);
+                mir.map(|x| {
+                    let cache = tcx.arena.alloc(x);
+                    cache.ensure_predecessors();
+                    &*cache
+                })
             }
         }
 
-        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
+        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::BodyAndCache<'tcx>> {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
                 let promoted: Option<
                     rustc_index::vec::IndexVec<
                         crate::mir::Promoted,
-                        crate::mir::Body<'tcx>
+                        crate::mir::BodyAndCache<'tcx>
                     >> = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);
-                promoted.map(|p| &*tcx.arena.alloc(p))
+                promoted.map(|p| {
+                    let cache = tcx.arena.alloc(p);
+                    for body in cache.iter_mut() {
+                        body.ensure_predecessors();
+                    }
+                    &*cache
+                })
             }
         }
     }
@@ -383,6 +398,16 @@ rustc_queries! {
                 typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
             }
         }
+        query diagnostic_only_typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
+            cache_on_disk_if { key.is_local() }
+            load_cached(tcx, id) {
+                let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
+                    .queries.on_disk_cache
+                    .try_load_query_result(tcx, id);
+
+                typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
+            }
+        }
     }
 
     Other {
@@ -432,7 +457,8 @@ rustc_queries! {
         ///
         /// **Do not use this** outside const eval. Const eval uses this to break query cycles
         /// during validation. Please add a comment to every use site explaining why using
-        /// `const_eval` isn't sufficient.
+        /// `const_eval_validated` isn't sufficient. The returned constant also isn't in a suitable
+        /// form to be used outside of const eval.
         query const_eval_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalRawResult<'tcx> {
             no_force
@@ -444,7 +470,13 @@ rustc_queries! {
 
         /// Results of evaluating const items or constants embedded in
         /// other items (such as enum variant explicit discriminants).
-        query const_eval(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+        ///
+        /// In contrast to `const_eval_raw` this performs some validation on the constant, and
+        /// returns a proper constant that is usable by the rest of the compiler.
+        ///
+        /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
+        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_promoted`.
+        query const_eval_validated(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx> {
             no_force
             desc { |tcx|
@@ -488,7 +520,7 @@ rustc_queries! {
     }
 
     Other {
-        query reachable_set(_: CrateNum) -> ReachableSet {
+        query reachable_set(_: CrateNum) -> Lrc<HirIdSet> {
             desc { "reachability" }
         }
 
@@ -496,7 +528,7 @@ rustc_queries! {
         /// in the case of closures, this will be redirected to the enclosing function.
         query region_scope_tree(_: DefId) -> &'tcx region::ScopeTree {}
 
-        query mir_shims(key: ty::InstanceDef<'tcx>) -> &'tcx mir::Body<'tcx> {
+        query mir_shims(key: ty::InstanceDef<'tcx>) -> &'tcx mir::BodyAndCache<'tcx> {
             no_force
             desc { |tcx| "generating MIR shim for `{}`", tcx.def_path_str(key.def_id()) }
         }
@@ -517,6 +549,7 @@ rustc_queries! {
             eval_always
         }
         query lookup_stability(_: DefId) -> Option<&'tcx attr::Stability> {}
+        query lookup_const_stability(_: DefId) -> Option<&'tcx attr::ConstStability> {}
         query lookup_deprecation_entry(_: DefId) -> Option<DeprecationEntry> {}
         query item_attrs(_: DefId) -> Lrc<[ast::Attribute]> {}
     }
@@ -1124,7 +1157,7 @@ rustc_queries! {
             desc { |tcx| "estimating size for `{}`", tcx.def_path_str(def.def_id()) }
         }
 
-        query features_query(_: CrateNum) -> &'tcx feature_gate::Features {
+        query features_query(_: CrateNum) -> &'tcx rustc_feature::Features {
             eval_always
             desc { "looking up enabled feature gates" }
         }

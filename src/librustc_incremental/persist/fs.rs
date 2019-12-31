@@ -103,19 +103,19 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
-use rustc::session::{Session, CrateDisambiguator};
-use rustc_fs_util::{link_or_copy, LinkOrCopy};
-use rustc_data_structures::{flock, base_n};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc::session::{CrateDisambiguator, Session};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::{base_n, flock};
+use rustc_fs_util::{link_or_copy, LinkOrCopy};
 
 use std::fs as std_fs;
 use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::time::{UNIX_EPOCH, SystemTime, Duration};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use rand::{RngCore, thread_rng};
+use rand::{thread_rng, RngCore};
 
 #[cfg(test)]
 mod tests;
@@ -152,17 +152,16 @@ pub fn lock_file_path(session_dir: &Path) -> PathBuf {
     let directory_name = session_dir.file_name().unwrap().to_string_lossy();
     assert_no_characters_lost(&directory_name);
 
-    let dash_indices: Vec<_> = directory_name.match_indices("-")
-                                             .map(|(idx, _)| idx)
-                                             .collect();
+    let dash_indices: Vec<_> = directory_name.match_indices("-").map(|(idx, _)| idx).collect();
     if dash_indices.len() != 3 {
-        bug!("Encountered incremental compilation session directory with \
+        bug!(
+            "Encountered incremental compilation session directory with \
               malformed name: {}",
-             session_dir.display())
+            session_dir.display()
+        )
     }
 
-    crate_dir.join(&directory_name[0 .. dash_indices[2]])
-             .with_extension(&LOCK_FILE_EXT[1..])
+    crate_dir.join(&directory_name[0..dash_indices[2]]).with_extension(&LOCK_FILE_EXT[1..])
 }
 
 pub fn in_incr_comp_dir_sess(sess: &Session, file_name: &str) -> PathBuf {
@@ -182,11 +181,13 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// a dep-graph and work products from a previous session.
 /// If the call fails, the fn may leave behind an invalid session directory.
 /// The garbage collection will take care of it.
-pub fn prepare_session_directory(sess: &Session,
-                                 crate_name: &str,
-                                 crate_disambiguator: CrateDisambiguator) {
+pub fn prepare_session_directory(
+    sess: &Session,
+    crate_name: &str,
+    crate_disambiguator: CrateDisambiguator,
+) {
     if sess.opts.incremental.is_none() {
-        return
+        return;
     }
 
     debug!("prepare_session_directory");
@@ -195,7 +196,7 @@ pub fn prepare_session_directory(sess: &Session,
     let crate_dir = crate_path(sess, crate_name, crate_disambiguator);
     debug!("crate-dir: {}", crate_dir.display());
     if create_dir(sess, &crate_dir, "crate").is_err() {
-        return
+        return;
     }
 
     // Hack: canonicalize the path *after creating the directory*
@@ -205,9 +206,12 @@ pub fn prepare_session_directory(sess: &Session,
     let crate_dir = match crate_dir.canonicalize() {
         Ok(v) => v,
         Err(err) => {
-            sess.err(&format!("incremental compilation: error canonicalizing path `{}`: {}",
-                              crate_dir.display(), err));
-            return
+            sess.err(&format!(
+                "incremental compilation: error canonicalizing path `{}`: {}",
+                crate_dir.display(),
+                err
+            ));
+            return;
         }
     };
 
@@ -230,51 +234,47 @@ pub fn prepare_session_directory(sess: &Session,
         // Now that we have the lock, we can actually create the session
         // directory
         if create_dir(sess, &session_dir, "session").is_err() {
-            return
+            return;
         }
 
         // Find a suitable source directory to copy from. Ignore those that we
         // have already tried before.
-        let source_directory = find_source_directory(&crate_dir,
-                                                     &source_directories_already_tried);
+        let source_directory = find_source_directory(&crate_dir, &source_directories_already_tried);
 
         let source_directory = if let Some(dir) = source_directory {
             dir
         } else {
             // There's nowhere to copy from, we're done
-            debug!("no source directory found. Continuing with empty session \
-                    directory.");
+            debug!(
+                "no source directory found. Continuing with empty session \
+                    directory."
+            );
 
             sess.init_incr_comp_session(session_dir, directory_lock, false);
-            return
+            return;
         };
 
-        debug!("attempting to copy data from source: {}",
-               source_directory.display());
-
-
+        debug!("attempting to copy data from source: {}", source_directory.display());
 
         // Try copying over all files from the source directory
-        if let Ok(allows_links) = copy_files(sess,
-                                             &session_dir,
-                                             &source_directory) {
-            debug!("successfully copied data from: {}",
-                   source_directory.display());
+        if let Ok(allows_links) = copy_files(sess, &session_dir, &source_directory) {
+            debug!("successfully copied data from: {}", source_directory.display());
 
             if !allows_links {
-                sess.warn(&format!("Hard linking files in the incremental \
+                sess.warn(&format!(
+                    "Hard linking files in the incremental \
                                         compilation cache failed. Copying files \
                                         instead. Consider moving the cache \
                                         directory to a file system which supports \
                                         hard linking in session dir `{}`",
-                                        session_dir.display())
-                    );
+                    session_dir.display()
+                ));
             }
 
             sess.init_incr_comp_session(session_dir, directory_lock, true);
-            return
+            return;
         } else {
-             debug!("copying failed - trying next directory");
+            debug!("copying failed - trying next directory");
 
             // Something went wrong while trying to copy/link files from the
             // source directory. Try again with a different one.
@@ -283,10 +283,12 @@ pub fn prepare_session_directory(sess: &Session,
             // Try to remove the session directory we just allocated. We don't
             // know if there's any garbage in it from the failed copy action.
             if let Err(err) = safe_remove_dir_all(&session_dir) {
-                sess.warn(&format!("Failed to delete partly initialized \
+                sess.warn(&format!(
+                    "Failed to delete partly initialized \
                                     session dir `{}`: {}",
-                                   session_dir.display(),
-                                   err));
+                    session_dir.display(),
+                    err
+                ));
             }
 
             delete_session_dir_lock_file(sess, &lock_file_path);
@@ -294,7 +296,6 @@ pub fn prepare_session_directory(sess: &Session,
         }
     }
 }
-
 
 /// This function finalizes and thus 'publishes' the session directory by
 /// renaming it to `s-{timestamp}-{svh}` and releasing the file lock.
@@ -311,14 +312,18 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
         // If there have been any errors during compilation, we don't want to
         // publish this session directory. Rather, we'll just delete it.
 
-        debug!("finalize_session_directory() - invalidating session directory: {}",
-                incr_comp_session_dir.display());
+        debug!(
+            "finalize_session_directory() - invalidating session directory: {}",
+            incr_comp_session_dir.display()
+        );
 
         if let Err(err) = safe_remove_dir_all(&*incr_comp_session_dir) {
-            sess.warn(&format!("Error deleting incremental compilation \
+            sess.warn(&format!(
+                "Error deleting incremental compilation \
                                 session directory `{}`: {}",
-                               incr_comp_session_dir.display(),
-                               err));
+                incr_comp_session_dir.display(),
+                err
+            ));
         }
 
         let lock_file_path = lock_file_path(&*incr_comp_session_dir);
@@ -326,27 +331,24 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
         sess.mark_incr_comp_session_as_invalid();
     }
 
-    debug!("finalize_session_directory() - session directory: {}",
-            incr_comp_session_dir.display());
+    debug!("finalize_session_directory() - session directory: {}", incr_comp_session_dir.display());
 
-    let old_sub_dir_name = incr_comp_session_dir.file_name()
-                                                .unwrap()
-                                                .to_string_lossy();
+    let old_sub_dir_name = incr_comp_session_dir.file_name().unwrap().to_string_lossy();
     assert_no_characters_lost(&old_sub_dir_name);
 
     // Keep the 's-{timestamp}-{random-number}' prefix, but replace the
     // '-working' part with the SVH of the crate
-    let dash_indices: Vec<_> = old_sub_dir_name.match_indices("-")
-                                               .map(|(idx, _)| idx)
-                                               .collect();
+    let dash_indices: Vec<_> = old_sub_dir_name.match_indices("-").map(|(idx, _)| idx).collect();
     if dash_indices.len() != 3 {
-        bug!("Encountered incremental compilation session directory with \
+        bug!(
+            "Encountered incremental compilation session directory with \
               malformed name: {}",
-             incr_comp_session_dir.display())
+            incr_comp_session_dir.display()
+        )
     }
 
     // State: "s-{timestamp}-{random-number}-"
-    let mut new_sub_dir_name = String::from(&old_sub_dir_name[..= dash_indices[2]]);
+    let mut new_sub_dir_name = String::from(&old_sub_dir_name[..=dash_indices[2]]);
 
     // Append the svh
     base_n::push_str(svh.as_u64() as u128, INT_ENCODE_BASE, &mut new_sub_dir_name);
@@ -364,10 +366,12 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
         }
         Err(e) => {
             // Warn about the error. However, no need to abort compilation now.
-            sess.warn(&format!("Error finalizing incremental compilation \
+            sess.warn(&format!(
+                "Error finalizing incremental compilation \
                                session directory `{}`: {}",
-                               incr_comp_session_dir.display(),
-                               e));
+                incr_comp_session_dir.display(),
+                e
+            ));
 
             debug!("finalize_session_directory() - error, marking as invalid");
             // Drop the file lock, so we can garage collect
@@ -387,26 +391,26 @@ pub fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
     Ok(())
 }
 
-fn copy_files(sess: &Session,
-              target_dir: &Path,
-              source_dir: &Path)
-              -> Result<bool, ()> {
+fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bool, ()> {
     // We acquire a shared lock on the lock file of the directory, so that
     // nobody deletes it out from under us while we are reading from it.
     let lock_file_path = lock_file_path(source_dir);
-    let _lock = if let Ok(lock) = flock::Lock::new(&lock_file_path,
-                                                   false,   // don't wait,
-                                                   false,   // don't create
-                                                   false) { // not exclusive
+    let _lock = if let Ok(lock) = flock::Lock::new(
+        &lock_file_path,
+        false, // don't wait,
+        false, // don't create
+        false,
+    ) {
+        // not exclusive
         lock
     } else {
         // Could not acquire the lock, don't try to copy from here
-        return Err(())
+        return Err(());
     };
 
     let source_dir_iterator = match source_dir.read_dir() {
         Ok(it) => it,
-        Err(_) => return Err(())
+        Err(_) => return Err(()),
     };
 
     let mut files_linked = 0;
@@ -422,26 +426,26 @@ fn copy_files(sess: &Session,
 
                 debug!("copying into session dir: {}", source_path.display());
                 match link_or_copy(source_path, target_file_path) {
-                    Ok(LinkOrCopy::Link) => {
-                        files_linked += 1
-                    }
-                    Ok(LinkOrCopy::Copy) => {
-                        files_copied += 1
-                    }
-                    Err(_) => return Err(())
+                    Ok(LinkOrCopy::Link) => files_linked += 1,
+                    Ok(LinkOrCopy::Copy) => files_copied += 1,
+                    Err(_) => return Err(()),
                 }
             }
-            Err(_) => {
-                return Err(())
-            }
+            Err(_) => return Err(()),
         }
     }
 
     if sess.opts.debugging_opts.incremental_info {
-        println!("[incremental] session directory: \
-                  {} files hard-linked", files_linked);
-        println!("[incremental] session directory: \
-                 {} files copied", files_copied);
+        println!(
+            "[incremental] session directory: \
+                  {} files hard-linked",
+            files_linked
+        );
+        println!(
+            "[incremental] session directory: \
+                 {} files copied",
+            files_copied
+        );
     }
 
     Ok(files_linked > 0 || files_copied == 0)
@@ -455,100 +459,111 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     let random_number = thread_rng().next_u32();
     debug!("generate_session_dir_path: random_number = {}", random_number);
 
-    let directory_name = format!("s-{}-{}-working",
-                                  timestamp,
-                                  base_n::encode(random_number as u128,
-                                                 INT_ENCODE_BASE));
+    let directory_name = format!(
+        "s-{}-{}-working",
+        timestamp,
+        base_n::encode(random_number as u128, INT_ENCODE_BASE)
+    );
     debug!("generate_session_dir_path: directory_name = {}", directory_name);
     let directory_path = crate_dir.join(directory_name);
     debug!("generate_session_dir_path: directory_path = {}", directory_path.display());
     directory_path
 }
 
-fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(),()> {
+fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ()> {
     match std_fs::create_dir_all(path) {
         Ok(()) => {
             debug!("{} directory created successfully", dir_tag);
             Ok(())
         }
         Err(err) => {
-            sess.err(&format!("Could not create incremental compilation {} \
+            sess.err(&format!(
+                "Could not create incremental compilation {} \
                                directory `{}`: {}",
-                              dir_tag,
-                              path.display(),
-                              err));
+                dir_tag,
+                path.display(),
+                err
+            ));
             Err(())
         }
     }
 }
 
 /// Allocate the lock-file and lock it.
-fn lock_directory(sess: &Session,
-                  session_dir: &Path)
-                  -> Result<(flock::Lock, PathBuf), ()> {
+fn lock_directory(sess: &Session, session_dir: &Path) -> Result<(flock::Lock, PathBuf), ()> {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
-    match flock::Lock::new(&lock_file_path,
-                           false, // don't wait
-                           true,  // create the lock file
-                           true) { // the lock should be exclusive
+    match flock::Lock::new(
+        &lock_file_path,
+        false, // don't wait
+        true,  // create the lock file
+        true,
+    ) {
+        // the lock should be exclusive
         Ok(lock) => Ok((lock, lock_file_path)),
         Err(err) => {
-            sess.err(&format!("incremental compilation: could not create \
-                               session directory lock file: {}", err));
+            sess.err(&format!(
+                "incremental compilation: could not create \
+                               session directory lock file: {}",
+                err
+            ));
             Err(())
         }
     }
 }
 
-fn delete_session_dir_lock_file(sess: &Session,
-                                lock_file_path: &Path) {
+fn delete_session_dir_lock_file(sess: &Session, lock_file_path: &Path) {
     if let Err(err) = safe_remove_file(&lock_file_path) {
-        sess.warn(&format!("Error deleting lock file for incremental \
+        sess.warn(&format!(
+            "Error deleting lock file for incremental \
                             compilation session directory `{}`: {}",
-                           lock_file_path.display(),
-                           err));
+            lock_file_path.display(),
+            err
+        ));
     }
 }
 
 /// Finds the most recent published session directory that is not in the
 /// ignore-list.
-fn find_source_directory(crate_dir: &Path,
-                         source_directories_already_tried: &FxHashSet<PathBuf>)
-                         -> Option<PathBuf> {
-    let iter = crate_dir.read_dir()
-                        .unwrap() // FIXME
-                        .filter_map(|e| e.ok().map(|e| e.path()));
+fn find_source_directory(
+    crate_dir: &Path,
+    source_directories_already_tried: &FxHashSet<PathBuf>,
+) -> Option<PathBuf> {
+    let iter = crate_dir
+        .read_dir()
+        .unwrap() // FIXME
+        .filter_map(|e| e.ok().map(|e| e.path()));
 
     find_source_directory_in_iter(iter, source_directories_already_tried)
 }
 
-fn find_source_directory_in_iter<I>(iter: I,
-                                    source_directories_already_tried: &FxHashSet<PathBuf>)
-                                    -> Option<PathBuf>
-    where I: Iterator<Item=PathBuf>
+fn find_source_directory_in_iter<I>(
+    iter: I,
+    source_directories_already_tried: &FxHashSet<PathBuf>,
+) -> Option<PathBuf>
+where
+    I: Iterator<Item = PathBuf>,
 {
     let mut best_candidate = (UNIX_EPOCH, None);
 
     for session_dir in iter {
-        debug!("find_source_directory_in_iter - inspecting `{}`",
-               session_dir.display());
+        debug!("find_source_directory_in_iter - inspecting `{}`", session_dir.display());
 
         let directory_name = session_dir.file_name().unwrap().to_string_lossy();
         assert_no_characters_lost(&directory_name);
 
-        if source_directories_already_tried.contains(&session_dir) ||
-           !is_session_directory(&directory_name) ||
-           !is_finalized(&directory_name) {
+        if source_directories_already_tried.contains(&session_dir)
+            || !is_session_directory(&directory_name)
+            || !is_finalized(&directory_name)
+        {
             debug!("find_source_directory_in_iter - ignoring");
-            continue
+            continue;
         }
 
-        let timestamp = extract_timestamp_from_session_dir(&directory_name)
-            .unwrap_or_else(|_| {
-                bug!("unexpected incr-comp session dir: {}", session_dir.display())
-            });
+        let timestamp = extract_timestamp_from_session_dir(&directory_name).unwrap_or_else(|_| {
+            bug!("unexpected incr-comp session dir: {}", session_dir.display())
+        });
 
         if timestamp > best_candidate.0 {
             best_candidate = (timestamp, Some(session_dir.clone()));
@@ -563,34 +578,29 @@ fn is_finalized(directory_name: &str) -> bool {
 }
 
 fn is_session_directory(directory_name: &str) -> bool {
-    directory_name.starts_with("s-") &&
-    !directory_name.ends_with(LOCK_FILE_EXT)
+    directory_name.starts_with("s-") && !directory_name.ends_with(LOCK_FILE_EXT)
 }
 
 fn is_session_directory_lock_file(file_name: &str) -> bool {
     file_name.starts_with("s-") && file_name.ends_with(LOCK_FILE_EXT)
 }
 
-fn extract_timestamp_from_session_dir(directory_name: &str)
-                                      -> Result<SystemTime, ()> {
+fn extract_timestamp_from_session_dir(directory_name: &str) -> Result<SystemTime, ()> {
     if !is_session_directory(directory_name) {
-        return Err(())
+        return Err(());
     }
 
-    let dash_indices: Vec<_> = directory_name.match_indices("-")
-                                             .map(|(idx, _)| idx)
-                                             .collect();
+    let dash_indices: Vec<_> = directory_name.match_indices("-").map(|(idx, _)| idx).collect();
     if dash_indices.len() != 3 {
-        return Err(())
+        return Err(());
     }
 
-    string_to_timestamp(&directory_name[dash_indices[0]+1 .. dash_indices[1]])
+    string_to_timestamp(&directory_name[dash_indices[0] + 1..dash_indices[1]])
 }
 
 fn timestamp_to_string(timestamp: SystemTime) -> String {
     let duration = timestamp.duration_since(UNIX_EPOCH).unwrap();
-    let micros = duration.as_secs() * 1_000_000 +
-                (duration.subsec_nanos() as u64) / 1000;
+    let micros = duration.as_secs() * 1_000_000 + (duration.subsec_nanos() as u64) / 1000;
     base_n::encode(micros as u128, INT_ENCODE_BASE)
 }
 
@@ -598,28 +608,29 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     let micros_since_unix_epoch = u64::from_str_radix(s, INT_ENCODE_BASE as u32);
 
     if micros_since_unix_epoch.is_err() {
-        return Err(())
+        return Err(());
     }
 
     let micros_since_unix_epoch = micros_since_unix_epoch.unwrap();
 
-    let duration = Duration::new(micros_since_unix_epoch / 1_000_000,
-                                 1000 * (micros_since_unix_epoch % 1_000_000) as u32);
+    let duration = Duration::new(
+        micros_since_unix_epoch / 1_000_000,
+        1000 * (micros_since_unix_epoch % 1_000_000) as u32,
+    );
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session,
-              crate_name: &str,
-              crate_disambiguator: CrateDisambiguator)
-              -> PathBuf {
-
+fn crate_path(
+    sess: &Session,
+    crate_name: &str,
+    crate_disambiguator: CrateDisambiguator,
+) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
     // The full crate disambiguator is really long. 64 bits of it should be
     // sufficient.
     let crate_disambiguator = crate_disambiguator.to_fingerprint().to_smaller_hash();
-    let crate_disambiguator = base_n::encode(crate_disambiguator as u128,
-                                             INT_ENCODE_BASE);
+    let crate_disambiguator = base_n::encode(crate_disambiguator as u128, INT_ENCODE_BASE);
 
     let crate_name = format!("{}-{}", crate_name, crate_disambiguator);
     incr_dir.join(crate_name)
@@ -639,12 +650,16 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     debug!("garbage_collect_session_directories() - begin");
 
     let session_directory = sess.incr_comp_session_dir();
-    debug!("garbage_collect_session_directories() - session directory: {}",
-        session_directory.display());
+    debug!(
+        "garbage_collect_session_directories() - session directory: {}",
+        session_directory.display()
+    );
 
     let crate_directory = session_directory.parent().unwrap();
-    debug!("garbage_collect_session_directories() - crate directory: {}",
-        crate_directory.display());
+    debug!(
+        "garbage_collect_session_directories() - crate directory: {}",
+        crate_directory.display()
+    );
 
     // First do a pass over the crate directory, collecting lock files and
     // session directories
@@ -656,7 +671,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
             Ok(dir_entry) => dir_entry,
             _ => {
                 // Ignore any errors
-                continue
+                continue;
             }
         };
 
@@ -675,19 +690,18 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     }
 
     // Now map from lock files to session directories
-    let lock_file_to_session_dir: FxHashMap<String, Option<String>> =
-        lock_files.into_iter()
-                  .map(|lock_file_name| {
-                        assert!(lock_file_name.ends_with(LOCK_FILE_EXT));
-                        let dir_prefix_end = lock_file_name.len() - LOCK_FILE_EXT.len();
-                        let session_dir = {
-                            let dir_prefix = &lock_file_name[0 .. dir_prefix_end];
-                            session_directories.iter()
-                                               .find(|dir_name| dir_name.starts_with(dir_prefix))
-                        };
-                        (lock_file_name, session_dir.map(String::clone))
-                    })
-                  .collect();
+    let lock_file_to_session_dir: FxHashMap<String, Option<String>> = lock_files
+        .into_iter()
+        .map(|lock_file_name| {
+            assert!(lock_file_name.ends_with(LOCK_FILE_EXT));
+            let dir_prefix_end = lock_file_name.len() - LOCK_FILE_EXT.len();
+            let session_dir = {
+                let dir_prefix = &lock_file_name[0..dir_prefix_end];
+                session_directories.iter().find(|dir_name| dir_name.starts_with(dir_prefix))
+            };
+            (lock_file_name, session_dir.map(String::clone))
+        })
+        .collect();
 
     // Delete all lock files, that don't have an associated directory. They must
     // be some kind of leftover
@@ -696,44 +710,51 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
             let timestamp = match extract_timestamp_from_session_dir(lock_file_name) {
                 Ok(timestamp) => timestamp,
                 Err(()) => {
-                    debug!("found lock-file with malformed timestamp: {}",
-                        crate_directory.join(&lock_file_name).display());
+                    debug!(
+                        "found lock-file with malformed timestamp: {}",
+                        crate_directory.join(&lock_file_name).display()
+                    );
                     // Ignore it
-                    continue
+                    continue;
                 }
             };
 
             let lock_file_path = crate_directory.join(&**lock_file_name);
 
             if is_old_enough_to_be_collected(timestamp) {
-                debug!("garbage_collect_session_directories() - deleting \
-                        garbage lock file: {}", lock_file_path.display());
+                debug!(
+                    "garbage_collect_session_directories() - deleting \
+                        garbage lock file: {}",
+                    lock_file_path.display()
+                );
                 delete_session_dir_lock_file(sess, &lock_file_path);
             } else {
-                debug!("garbage_collect_session_directories() - lock file with \
+                debug!(
+                    "garbage_collect_session_directories() - lock file with \
                         no session dir not old enough to be collected: {}",
-                       lock_file_path.display());
+                    lock_file_path.display()
+                );
             }
         }
     }
 
     // Filter out `None` directories
-    let lock_file_to_session_dir: FxHashMap<String, String> =
-        lock_file_to_session_dir.into_iter()
-                                .filter_map(|(lock_file_name, directory_name)| {
-                                    directory_name.map(|n| (lock_file_name, n))
-                                })
-                                .collect();
+    let lock_file_to_session_dir: FxHashMap<String, String> = lock_file_to_session_dir
+        .into_iter()
+        .filter_map(|(lock_file_name, directory_name)| directory_name.map(|n| (lock_file_name, n)))
+        .collect();
 
     // Delete all session directories that don't have a lock file.
     for directory_name in session_directories {
         if !lock_file_to_session_dir.values().any(|dir| *dir == directory_name) {
             let path = crate_directory.join(directory_name);
             if let Err(err) = safe_remove_dir_all(&path) {
-                sess.warn(&format!("Failed to garbage collect invalid incremental \
+                sess.warn(&format!(
+                    "Failed to garbage collect invalid incremental \
                                     compilation session directory `{}`: {}",
-                                    path.display(),
-                                    err));
+                    path.display(),
+                    err
+                ));
             }
         }
     }
@@ -743,39 +764,52 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     let mut definitely_delete = vec![];
 
     for (lock_file_name, directory_name) in &lock_file_to_session_dir {
-        debug!("garbage_collect_session_directories() - inspecting: {}",
-                directory_name);
+        debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
 
         let timestamp = match extract_timestamp_from_session_dir(directory_name) {
             Ok(timestamp) => timestamp,
             Err(()) => {
-                debug!("found session-dir with malformed timestamp: {}",
-                        crate_directory.join(directory_name).display());
+                debug!(
+                    "found session-dir with malformed timestamp: {}",
+                    crate_directory.join(directory_name).display()
+                );
                 // Ignore it
-                continue
+                continue;
             }
         };
 
         if is_finalized(directory_name) {
             let lock_file_path = crate_directory.join(lock_file_name);
-            match flock::Lock::new(&lock_file_path,
-                                   false,  // don't wait
-                                   false,  // don't create the lock-file
-                                   true) { // get an exclusive lock
+            match flock::Lock::new(
+                &lock_file_path,
+                false, // don't wait
+                false, // don't create the lock-file
+                true,
+            ) {
+                // get an exclusive lock
                 Ok(lock) => {
-                    debug!("garbage_collect_session_directories() - \
-                            successfully acquired lock");
-                    debug!("garbage_collect_session_directories() - adding \
-                            deletion candidate: {}", directory_name);
+                    debug!(
+                        "garbage_collect_session_directories() - \
+                            successfully acquired lock"
+                    );
+                    debug!(
+                        "garbage_collect_session_directories() - adding \
+                            deletion candidate: {}",
+                        directory_name
+                    );
 
                     // Note that we are holding on to the lock
-                    deletion_candidates.push((timestamp,
-                                              crate_directory.join(directory_name),
-                                              Some(lock)));
+                    deletion_candidates.push((
+                        timestamp,
+                        crate_directory.join(directory_name),
+                        Some(lock),
+                    ));
                 }
                 Err(_) => {
-                    debug!("garbage_collect_session_directories() - \
-                            not collecting, still in use");
+                    debug!(
+                        "garbage_collect_session_directories() - \
+                            not collecting, still in use"
+                    );
                 }
             }
         } else if is_old_enough_to_be_collected(timestamp) {
@@ -791,43 +825,51 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
             // means that the owning process is still alive and we
             // leave this directory alone.
             let lock_file_path = crate_directory.join(lock_file_name);
-            match flock::Lock::new(&lock_file_path,
-                                   false,  // don't wait
-                                   false,  // don't create the lock-file
-                                   true) { // get an exclusive lock
+            match flock::Lock::new(
+                &lock_file_path,
+                false, // don't wait
+                false, // don't create the lock-file
+                true,
+            ) {
+                // get an exclusive lock
                 Ok(lock) => {
-                    debug!("garbage_collect_session_directories() - \
-                            successfully acquired lock");
+                    debug!(
+                        "garbage_collect_session_directories() - \
+                            successfully acquired lock"
+                    );
 
                     // Note that we are holding on to the lock
-                    definitely_delete.push((crate_directory.join(directory_name),
-                                            Some(lock)));
+                    definitely_delete.push((crate_directory.join(directory_name), Some(lock)));
                 }
                 Err(_) => {
-                    debug!("garbage_collect_session_directories() - \
-                            not collecting, still in use");
+                    debug!(
+                        "garbage_collect_session_directories() - \
+                            not collecting, still in use"
+                    );
                 }
             }
         } else {
-            debug!("garbage_collect_session_directories() - not finalized, not \
-                    old enough");
+            debug!(
+                "garbage_collect_session_directories() - not finalized, not \
+                    old enough"
+            );
         }
     }
 
     // Delete all but the most recent of the candidates
     for (path, lock) in all_except_most_recent(deletion_candidates) {
-        debug!("garbage_collect_session_directories() - deleting `{}`",
-                path.display());
+        debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
         if let Err(err) = safe_remove_dir_all(&path) {
-            sess.warn(&format!("Failed to garbage collect finalized incremental \
+            sess.warn(&format!(
+                "Failed to garbage collect finalized incremental \
                                 compilation session directory `{}`: {}",
-                               path.display(),
-                               err));
+                path.display(),
+                err
+            ));
         } else {
             delete_session_dir_lock_file(sess, &lock_file_path(&path));
         }
-
 
         // Let's make it explicit that the file lock is released at this point,
         // or rather, that we held on to it until here
@@ -835,14 +877,15 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     }
 
     for (path, lock) in definitely_delete {
-        debug!("garbage_collect_session_directories() - deleting `{}`",
-                path.display());
+        debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
         if let Err(err) = safe_remove_dir_all(&path) {
-            sess.warn(&format!("Failed to garbage collect incremental \
+            sess.warn(&format!(
+                "Failed to garbage collect incremental \
                                 compilation session directory `{}`: {}",
-                               path.display(),
-                               err));
+                path.display(),
+                err
+            ));
         } else {
             delete_session_dir_lock_file(sess, &lock_file_path(&path));
         }
@@ -855,17 +898,17 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     Ok(())
 }
 
-fn all_except_most_recent(deletion_candidates: Vec<(SystemTime, PathBuf, Option<flock::Lock>)>)
-                          -> FxHashMap<PathBuf, Option<flock::Lock>> {
-    let most_recent = deletion_candidates.iter()
-                                         .map(|&(timestamp, ..)| timestamp)
-                                         .max();
+fn all_except_most_recent(
+    deletion_candidates: Vec<(SystemTime, PathBuf, Option<flock::Lock>)>,
+) -> FxHashMap<PathBuf, Option<flock::Lock>> {
+    let most_recent = deletion_candidates.iter().map(|&(timestamp, ..)| timestamp).max();
 
     if let Some(most_recent) = most_recent {
-        deletion_candidates.into_iter()
-                           .filter(|&(timestamp, ..)| timestamp != most_recent)
-                           .map(|(_, path, lock)| (path, lock))
-                           .collect()
+        deletion_candidates
+            .into_iter()
+            .filter(|&(timestamp, ..)| timestamp != most_recent)
+            .map(|(_, path, lock)| (path, lock))
+            .collect()
     } else {
         FxHashMap::default()
     }

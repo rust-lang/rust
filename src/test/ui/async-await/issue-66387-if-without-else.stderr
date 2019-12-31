@@ -4,10 +4,8 @@ error[E0317]: if may be missing an else clause
 LL | /     if true {
 LL | |         return 0;
 LL | |     }
-   | |_____^ expected (), found i32
+   | |_____^ expected `()`, found `i32`
    |
-   = note: expected type `()`
-              found type `i32`
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 

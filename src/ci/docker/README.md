@@ -16,6 +16,13 @@ for example:
 
 Images will output artifacts in an `obj` dir at the root of a repository.
 
+**NOTE**: Re-using the same `obj` dir with different docker images with
+the same target triple (e.g. `dist-x86_64-linux` and `dist-various-1`)
+may result in strange linker errors, due shared library versions differing between platforms.
+
+If you encounter any issues when using multiple Docker images, try deleting your `obj` directory
+before running your command.
+
 ## Filesystem layout
 
 - Each directory, excluding `scripts` and `disabled`, corresponds to a docker image

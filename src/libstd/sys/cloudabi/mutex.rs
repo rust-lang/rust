@@ -56,7 +56,7 @@ impl ReentrantMutex {
     pub unsafe fn uninitialized() -> ReentrantMutex {
         ReentrantMutex {
             lock: UnsafeCell::new(MaybeUninit::uninit()),
-            recursion: UnsafeCell::new(MaybeUninit::uninit())
+            recursion: UnsafeCell::new(MaybeUninit::uninit()),
         }
     }
 

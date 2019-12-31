@@ -1,6 +1,7 @@
 use crate::os::unix::prelude::*;
 
-use crate::ffi::{OsString, OsStr, CString};
+use crate::collections::BTreeMap;
+use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::ptr;
@@ -8,15 +9,11 @@ use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys_common::process::CommandEnv;
-use crate::collections::BTreeMap;
 
 #[cfg(not(target_os = "fuchsia"))]
-use {
-    crate::ffi::CStr,
-    crate::sys::fs::OpenOptions,
-};
+use crate::sys::fs::OpenOptions;
 
-use libc::{c_int, gid_t, uid_t, c_char, EXIT_SUCCESS, EXIT_FAILURE};
+use libc::{c_char, c_int, gid_t, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
@@ -135,8 +132,8 @@ impl Command {
         let program = os2c(program, &mut saw_nul);
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
+            args: vec![program.clone()],
             program,
-            args: Vec::new(),
             env: Default::default(),
             cwd: None,
             uid: None,
@@ -149,11 +146,19 @@ impl Command {
         }
     }
 
+    pub fn set_arg_0(&mut self, arg: &OsStr) {
+        // Set a new arg0
+        let arg = os2c(arg, &mut self.saw_nul);
+        debug_assert!(self.argv.0.len() > 1);
+        self.argv.0[0] = arg.as_ptr();
+        self.args[0] = arg;
+    }
+
     pub fn arg(&mut self, arg: &OsStr) {
         // Overwrite the trailing NULL pointer in `argv` and then add a new null
         // pointer.
         let arg = os2c(arg, &mut self.saw_nul);
-        self.argv.0[self.args.len() + 1] = arg.as_ptr();
+        self.argv.0[self.args.len()] = arg.as_ptr();
         self.argv.0.push(ptr::null());
 
         // Also make sure we keep track of the owned value to schedule a
@@ -178,6 +183,10 @@ impl Command {
         &self.argv.0
     }
 
+    pub fn get_program(&self) -> &CStr {
+        &*self.program
+    }
+
     #[allow(dead_code)]
     pub fn get_cwd(&self) -> &Option<CString> {
         &self.cwd
@@ -195,10 +204,7 @@ impl Command {
         &mut self.closures
     }
 
-    pub unsafe fn pre_exec(
-        &mut self,
-        f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>,
-    ) {
+    pub unsafe fn pre_exec(&mut self, f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
         self.closures.push(f);
     }
 
@@ -227,26 +233,21 @@ impl Command {
         self.env.have_changed_path()
     }
 
-    pub fn setup_io(&self, default: Stdio, needs_stdin: bool)
-                -> io::Result<(StdioPipes, ChildPipes)> {
+    pub fn setup_io(
+        &self,
+        default: Stdio,
+        needs_stdin: bool,
+    ) -> io::Result<(StdioPipes, ChildPipes)> {
         let null = Stdio::Null;
-        let default_stdin = if needs_stdin {&default} else {&null};
+        let default_stdin = if needs_stdin { &default } else { &null };
         let stdin = self.stdin.as_ref().unwrap_or(default_stdin);
         let stdout = self.stdout.as_ref().unwrap_or(&default);
         let stderr = self.stderr.as_ref().unwrap_or(&default);
         let (their_stdin, our_stdin) = stdin.to_child_stdio(true)?;
         let (their_stdout, our_stdout) = stdout.to_child_stdio(false)?;
         let (their_stderr, our_stderr) = stderr.to_child_stdio(false)?;
-        let ours = StdioPipes {
-            stdin: our_stdin,
-            stdout: our_stdout,
-            stderr: our_stderr,
-        };
-        let theirs = ChildPipes {
-            stdin: their_stdin,
-            stdout: their_stdout,
-            stderr: their_stderr,
-        };
+        let ours = StdioPipes { stdin: our_stdin, stdout: our_stdout, stderr: our_stderr };
+        let theirs = ChildPipes { stdin: their_stdin, stdout: their_stdout, stderr: their_stderr };
         Ok((ours, theirs))
     }
 }
@@ -261,21 +262,21 @@ fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
 // Helper type to manage ownership of the strings within a C-style array.
 pub struct CStringArray {
     items: Vec<CString>,
-    ptrs: Vec<*const c_char>
+    ptrs: Vec<*const c_char>,
 }
 
 impl CStringArray {
     pub fn with_capacity(capacity: usize) -> Self {
         let mut result = CStringArray {
             items: Vec::with_capacity(capacity),
-            ptrs: Vec::with_capacity(capacity+1)
+            ptrs: Vec::with_capacity(capacity + 1),
         };
         result.ptrs.push(ptr::null());
         result
     }
     pub fn push(&mut self, item: CString) {
         let l = self.ptrs.len();
-        self.ptrs[l-1] = item.as_ptr();
+        self.ptrs[l - 1] = item.as_ptr();
         self.ptrs.push(ptr::null());
         self.items.push(item);
     }
@@ -306,12 +307,9 @@ fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStr
 }
 
 impl Stdio {
-    pub fn to_child_stdio(&self, readable: bool)
-                      -> io::Result<(ChildStdio, Option<AnonPipe>)> {
+    pub fn to_child_stdio(&self, readable: bool) -> io::Result<(ChildStdio, Option<AnonPipe>)> {
         match *self {
-            Stdio::Inherit => {
-                Ok((ChildStdio::Inherit, None))
-            },
+            Stdio::Inherit => Ok((ChildStdio::Inherit, None)),
 
             // Make sure that the source descriptors are not an stdio
             // descriptor, otherwise the order which we set the child's
@@ -330,11 +328,7 @@ impl Stdio {
 
             Stdio::MakePipe => {
                 let (reader, writer) = pipe::anon_pipe()?;
-                let (ours, theirs) = if readable {
-                    (writer, reader)
-                } else {
-                    (reader, writer)
-                };
+                let (ours, theirs) = if readable { (writer, reader) } else { (reader, writer) };
                 Ok((ChildStdio::Owned(theirs.into_fd()), Some(ours)))
             }
 
@@ -343,17 +337,13 @@ impl Stdio {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
                 opts.write(!readable);
-                let path = unsafe {
-                    CStr::from_ptr(DEV_NULL.as_ptr() as *const _)
-                };
+                let path = unsafe { CStr::from_ptr(DEV_NULL.as_ptr() as *const _) };
                 let fd = File::open_c(&path, &opts)?;
                 Ok((ChildStdio::Owned(fd.into_fd()), None))
             }
 
             #[cfg(target_os = "fuchsia")]
-            Stdio::Null => {
-                Ok((ChildStdio::Null, None))
-            }
+            Stdio::Null => Ok((ChildStdio::Null, None)),
         }
     }
 }
@@ -385,8 +375,12 @@ impl ChildStdio {
 
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.program)?;
-        for arg in &self.args {
+        if self.program != self.args[0] {
+            write!(f, "[{:?}] ", self.program)?;
+        }
+        write!(f, "{:?}", self.args[0])?;
+
+        for arg in &self.args[1..] {
             write!(f, " {:?}", arg)?;
         }
         Ok(())
@@ -421,7 +415,7 @@ mod tests {
                 Ok(t) => t,
                 Err(e) => panic!("received error for `{}`: {}", stringify!($e), e),
             }
-        }
+        };
     }
 
     // See #14232 for more information, but it appears that signal delivery to a
@@ -452,8 +446,7 @@ mod tests {
             let stdin_write = pipes.stdin.take().unwrap();
             let stdout_read = pipes.stdout.take().unwrap();
 
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, old_set.as_ptr(),
-                                         ptr::null_mut())));
+            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, old_set.as_ptr(), ptr::null_mut())));
 
             t!(cvt(libc::kill(cat.id() as libc::pid_t, libc::SIGINT)));
             // We need to wait until SIGINT is definitely delivered. The

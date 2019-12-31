@@ -4,10 +4,14 @@ use crate::marker::PhantomData;
 use crate::vec;
 
 /// One-time global initialization.
-pub unsafe fn init(argc: isize, argv: *const *const u8) { imp::init(argc, argv) }
+pub unsafe fn init(argc: isize, argv: *const *const u8) {
+    imp::init(argc, argv)
+}
 
 /// One-time global cleanup.
-pub unsafe fn cleanup() { imp::cleanup() }
+pub unsafe fn cleanup() {
+    imp::cleanup()
+}
 
 /// Returns the command line arguments
 pub fn args() -> Args {
@@ -27,24 +31,32 @@ impl Args {
 
 impl Iterator for Args {
     type Item = OsString;
-    fn next(&mut self) -> Option<OsString> { self.iter.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    fn next(&mut self) -> Option<OsString> {
+        self.iter.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
 }
 
 impl ExactSizeIterator for Args {
-    fn len(&self) -> usize { self.iter.len() }
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
 }
 
 impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> { self.iter.next_back() }
+    fn next_back(&mut self) -> Option<OsString> {
+        self.iter.next_back()
+    }
 }
 
 mod imp {
-    use crate::ptr;
+    use super::Args;
     use crate::ffi::{CStr, OsString};
     use crate::marker::PhantomData;
+    use crate::ptr;
     use libc;
-    use super::Args;
 
     use crate::sys_common::mutex::Mutex;
 
@@ -65,21 +77,20 @@ mod imp {
     }
 
     pub fn args() -> Args {
-        Args {
-            iter: clone().into_iter(),
-            _dont_send_or_sync_me: PhantomData
-        }
+        Args { iter: clone().into_iter(), _dont_send_or_sync_me: PhantomData }
     }
 
     fn clone() -> Vec<OsString> {
         unsafe {
             let _guard = LOCK.lock();
-            let ret = (0..ARGC).map(|i| {
-                let cstr = CStr::from_ptr(*ARGV.offset(i) as *const libc::c_char);
-                use crate::sys::vxworks::ext::ffi::OsStringExt;
-                OsStringExt::from_vec(cstr.to_bytes().to_vec())
-            }).collect();
-            return ret
+            let ret = (0..ARGC)
+                .map(|i| {
+                    let cstr = CStr::from_ptr(*ARGV.offset(i) as *const libc::c_char);
+                    use crate::sys::vxworks::ext::ffi::OsStringExt;
+                    OsStringExt::from_vec(cstr.to_bytes().to_vec())
+                })
+                .collect();
+            return ret;
         }
     }
 }

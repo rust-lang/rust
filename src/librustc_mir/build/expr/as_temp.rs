@@ -1,11 +1,12 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::scope::DropKind;
+use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::hir;
 use rustc::middle::region;
 use rustc::mir::*;
+use syntax_pos::symbol::sym;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
@@ -39,12 +40,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
-        if let ExprKind::Scope {
-            region_scope,
-            lint_level,
-            value,
-        } = expr.kind
-        {
+        if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             return this.in_scope((region_scope, source_info), lint_level, |this| {
                 this.as_temp(block, temp_lifetime, value, mutability)
             });
@@ -63,6 +59,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Some(tail_info) = this.block_context.currently_in_block_tail() {
                 local_decl = local_decl.block_tail(tail_info);
             }
+            if let ExprKind::StaticRef { def_id, .. } = expr.kind {
+                let is_thread_local = this.hir.tcx().has_attr(def_id, sym::thread_local);
+                local_decl.local_info = LocalInfo::StaticRef { def_id, is_thread_local };
+            }
             this.local_decls.push(local_decl)
         };
         let temp_place = &Place::from(temp);
@@ -70,20 +70,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match expr.kind {
             // Don't bother with StorageLive and Dead for these temporaries,
             // they are never assigned.
-            ExprKind::Break { .. } |
-            ExprKind::Continue { .. } |
-            ExprKind::Return { .. } => (),
-            ExprKind::Block {
-                body: hir::Block { expr: None, targeted_by_break: false, .. }
-            } if expr_ty.is_never() => (),
+            ExprKind::Break { .. } | ExprKind::Continue { .. } | ExprKind::Return { .. } => (),
+            ExprKind::Block { body: hir::Block { expr: None, targeted_by_break: false, .. } }
+                if expr_ty.is_never() =>
+            {
+                ()
+            }
             _ => {
-                this.cfg.push(
-                    block,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::StorageLive(temp),
-                    },
-                );
+                this.cfg
+                    .push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
 
                 // In constants, `temp_lifetime` is `None` for temporaries that
                 // live for the `'static` lifetime. Thus we do not drop these
@@ -99,12 +94,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // `bar(&foo())` or anything within a block will keep the
                 // regular drops just like runtime code.
                 if let Some(temp_lifetime) = temp_lifetime {
-                    this.schedule_drop(
-                        expr_span,
-                        temp_lifetime,
-                        temp,
-                        DropKind::Storage,
-                    );
+                    this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Storage);
                 }
             }
         }
@@ -112,12 +102,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         unpack!(block = this.into(temp_place, block, expr));
 
         if let Some(temp_lifetime) = temp_lifetime {
-            this.schedule_drop(
-                expr_span,
-                temp_lifetime,
-                temp,
-                DropKind::Value,
-            );
+            this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Value);
         }
 
         block.and(temp)

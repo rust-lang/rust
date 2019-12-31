@@ -14,15 +14,10 @@ fn test_name_key() {
 
 #[test]
 fn test_name_sorting() {
-    let names = ["Apple",
-                 "Banana",
-                 "Fruit", "Fruit0", "Fruit00",
-                 "Fruit1", "Fruit01",
-                 "Fruit2", "Fruit02",
-                 "Fruit20",
-                 "Fruit30x",
-                 "Fruit100",
-                 "Pear"];
+    let names = [
+        "Apple", "Banana", "Fruit", "Fruit0", "Fruit00", "Fruit1", "Fruit01", "Fruit2", "Fruit02",
+        "Fruit20", "Fruit30x", "Fruit100", "Pear",
+    ];
     let mut sorted = names.to_owned();
     sorted.sort_by_key(|&s| name_key(s));
     assert_eq!(names, sorted);

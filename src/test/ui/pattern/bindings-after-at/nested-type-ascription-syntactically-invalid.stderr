@@ -1,0 +1,26 @@
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `@`
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:19:15
+   |
+LL |     let a: u8 @ b = 0;
+   |               ^ expected one of 7 possible tokens
+
+error: expected one of `)`, `,`, `@`, or `|`, found `:`
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:25:15
+   |
+LL |     let a @ (b: u8);
+   |               ^ expected one of `)`, `,`, `@`, or `|`
+
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `)`
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:25:19
+   |
+LL |     let a @ (b: u8);
+   |                   ^ expected one of 7 possible tokens
+
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `@`
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:32:15
+   |
+LL |     let a: T1 @ Outer(b: T2);
+   |               ^ expected one of 7 possible tokens
+
+error: aborting due to 4 previous errors
+

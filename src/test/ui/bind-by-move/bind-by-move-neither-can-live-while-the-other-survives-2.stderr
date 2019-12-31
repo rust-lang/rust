@@ -4,7 +4,7 @@ error[E0009]: cannot bind by-move and by-ref in the same pattern
 LL |         Some((ref _y, _z)) => { },
    |               ------  ^^ by-move pattern here
    |               |
-   |               both by-ref and by-move used
+   |               by-ref pattern here
 
 error: aborting due to previous error
 

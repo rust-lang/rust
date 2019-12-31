@@ -122,8 +122,7 @@ pub fn insert_outlives_predicate<'tcx>(
             if !is_free_region(tcx, r) {
                 return;
             }
-            required_predicates.entry(ty::OutlivesPredicate(kind, outlived_region))
-                .or_insert(span);
+            required_predicates.entry(ty::OutlivesPredicate(kind, outlived_region)).or_insert(span);
         }
 
         GenericArgKind::Const(_) => {
@@ -151,11 +150,7 @@ fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
         //     struct Foo<'a, T> {
         //         field: &'static T, // this would generate a ReStatic
         //     }
-        RegionKind::ReStatic => {
-            tcx.sess
-               .features_untracked()
-               .infer_static_outlives_requirements
-        }
+        RegionKind::ReStatic => tcx.sess.features_untracked().infer_static_outlives_requirements,
 
         // Late-bound regions can appear in `fn` types:
         //

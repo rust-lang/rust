@@ -1,10 +1,10 @@
 use super::*;
 
-use syntax_pos::DUMMY_SP;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::symbol::Symbol;
 use syntax::with_default_globals;
+use syntax_pos::DUMMY_SP;
 
 fn word_cfg(s: &str) -> Cfg {
     Cfg::Cfg(Symbol::intern(s), None)
@@ -94,24 +94,30 @@ fn test_cfg_and() {
         assert_eq!(x, Cfg::All(vec![word_cfg("test3"), word_cfg("test4"), word_cfg("test5")]));
 
         x &= Cfg::All(vec![word_cfg("test6"), word_cfg("test7")]);
-        assert_eq!(x, Cfg::All(vec![
-            word_cfg("test3"),
-            word_cfg("test4"),
-            word_cfg("test5"),
-            word_cfg("test6"),
-            word_cfg("test7"),
-        ]));
+        assert_eq!(
+            x,
+            Cfg::All(vec![
+                word_cfg("test3"),
+                word_cfg("test4"),
+                word_cfg("test5"),
+                word_cfg("test6"),
+                word_cfg("test7"),
+            ])
+        );
 
         let mut y = Cfg::Any(vec![word_cfg("a"), word_cfg("b")]);
         y &= x;
-        assert_eq!(y, Cfg::All(vec![
-            word_cfg("test3"),
-            word_cfg("test4"),
-            word_cfg("test5"),
-            word_cfg("test6"),
-            word_cfg("test7"),
-            Cfg::Any(vec![word_cfg("a"), word_cfg("b")]),
-        ]));
+        assert_eq!(
+            y,
+            Cfg::All(vec![
+                word_cfg("test3"),
+                word_cfg("test4"),
+                word_cfg("test5"),
+                word_cfg("test6"),
+                word_cfg("test7"),
+                Cfg::Any(vec![word_cfg("a"), word_cfg("b")]),
+            ])
+        );
 
         assert_eq!(
             word_cfg("a") & word_cfg("b") & word_cfg("c"),
@@ -146,24 +152,30 @@ fn test_cfg_or() {
         assert_eq!(x, Cfg::Any(vec![word_cfg("test3"), word_cfg("test4"), word_cfg("test5")]));
 
         x |= Cfg::Any(vec![word_cfg("test6"), word_cfg("test7")]);
-        assert_eq!(x, Cfg::Any(vec![
-            word_cfg("test3"),
-            word_cfg("test4"),
-            word_cfg("test5"),
-            word_cfg("test6"),
-            word_cfg("test7"),
-        ]));
+        assert_eq!(
+            x,
+            Cfg::Any(vec![
+                word_cfg("test3"),
+                word_cfg("test4"),
+                word_cfg("test5"),
+                word_cfg("test6"),
+                word_cfg("test7"),
+            ])
+        );
 
         let mut y = Cfg::All(vec![word_cfg("a"), word_cfg("b")]);
         y |= x;
-        assert_eq!(y, Cfg::Any(vec![
-            word_cfg("test3"),
-            word_cfg("test4"),
-            word_cfg("test5"),
-            word_cfg("test6"),
-            word_cfg("test7"),
-            Cfg::All(vec![word_cfg("a"), word_cfg("b")]),
-        ]));
+        assert_eq!(
+            y,
+            Cfg::Any(vec![
+                word_cfg("test3"),
+                word_cfg("test4"),
+                word_cfg("test5"),
+                word_cfg("test6"),
+                word_cfg("test7"),
+                Cfg::All(vec![word_cfg("a"), word_cfg("b")]),
+            ])
+        );
 
         assert_eq!(
             word_cfg("a") | word_cfg("b") | word_cfg("c"),
@@ -178,11 +190,8 @@ fn test_parse_ok() {
         let mi = dummy_meta_item_word("all");
         assert_eq!(Cfg::parse(&mi), Ok(word_cfg("all")));
 
-        let mi = attr::mk_name_value_item_str(
-            Ident::from_str("all"),
-            Symbol::intern("done"),
-            DUMMY_SP,
-        );
+        let mi =
+            attr::mk_name_value_item_str(Ident::from_str("all"), Symbol::intern("done"), DUMMY_SP);
         assert_eq!(Cfg::parse(&mi), Ok(name_value_cfg("all", "done")));
 
         let mi = dummy_meta_item_list!(all, [a, b]);
@@ -194,12 +203,13 @@ fn test_parse_ok() {
         let mi = dummy_meta_item_list!(not, [a]);
         assert_eq!(Cfg::parse(&mi), Ok(!word_cfg("a")));
 
-        let mi = dummy_meta_item_list!(not, [
-            dummy_meta_item_list!(any, [
-                dummy_meta_item_word("a"),
-                dummy_meta_item_list!(all, [b, c]),
-            ]),
-        ]);
+        let mi = dummy_meta_item_list!(
+            not,
+            [dummy_meta_item_list!(
+                any,
+                [dummy_meta_item_word("a"), dummy_meta_item_list!(all, [b, c]),]
+            ),]
+        );
         assert_eq!(Cfg::parse(&mi), Ok(!(word_cfg("a") | (word_cfg("b") & word_cfg("c")))));
 
         let mi = dummy_meta_item_list!(all, [a, b, c]);
@@ -210,11 +220,7 @@ fn test_parse_ok() {
 #[test]
 fn test_parse_err() {
     with_default_globals(|| {
-        let mi = attr::mk_name_value_item(
-            Ident::from_str("foo"),
-            LitKind::Bool(false),
-            DUMMY_SP,
-        );
+        let mi = attr::mk_name_value_item(Ident::from_str("foo"), LitKind::Bool(false), DUMMY_SP);
         assert!(Cfg::parse(&mi).is_err());
 
         let mi = dummy_meta_item_list!(not, [a, b]);
@@ -226,21 +232,19 @@ fn test_parse_err() {
         let mi = dummy_meta_item_list!(foo, []);
         assert!(Cfg::parse(&mi).is_err());
 
-        let mi = dummy_meta_item_list!(all, [
-            dummy_meta_item_list!(foo, []),
-            dummy_meta_item_word("b"),
-        ]);
+        let mi = dummy_meta_item_list!(
+            all,
+            [dummy_meta_item_list!(foo, []), dummy_meta_item_word("b"),]
+        );
         assert!(Cfg::parse(&mi).is_err());
 
-        let mi = dummy_meta_item_list!(any, [
-            dummy_meta_item_word("a"),
-            dummy_meta_item_list!(foo, []),
-        ]);
+        let mi = dummy_meta_item_list!(
+            any,
+            [dummy_meta_item_word("a"), dummy_meta_item_list!(foo, []),]
+        );
         assert!(Cfg::parse(&mi).is_err());
 
-        let mi = dummy_meta_item_list!(not, [
-            dummy_meta_item_list!(foo, []),
-        ]);
+        let mi = dummy_meta_item_list!(not, [dummy_meta_item_list!(foo, []),]);
         assert!(Cfg::parse(&mi).is_err());
     })
 }
@@ -248,57 +252,35 @@ fn test_parse_err() {
 #[test]
 fn test_render_short_html() {
     with_default_globals(|| {
-        assert_eq!(
-            word_cfg("unix").render_short_html(),
-            "Unix"
-        );
-        assert_eq!(
-            name_value_cfg("target_os", "macos").render_short_html(),
-            "macOS"
-        );
-        assert_eq!(
-            name_value_cfg("target_pointer_width", "16").render_short_html(),
-            "16-bit"
-        );
-        assert_eq!(
-            name_value_cfg("target_endian", "little").render_short_html(),
-            "Little-endian"
-        );
-        assert_eq!(
-            (!word_cfg("windows")).render_short_html(),
-            "Non-Windows"
-        );
+        assert_eq!(word_cfg("unix").render_short_html(), "Unix");
+        assert_eq!(name_value_cfg("target_os", "macos").render_short_html(), "macOS");
+        assert_eq!(name_value_cfg("target_pointer_width", "16").render_short_html(), "16-bit");
+        assert_eq!(name_value_cfg("target_endian", "little").render_short_html(), "Little-endian");
+        assert_eq!((!word_cfg("windows")).render_short_html(), "Non-Windows");
         assert_eq!(
             (word_cfg("unix") & word_cfg("windows")).render_short_html(),
             "Unix and Windows"
         );
+        assert_eq!((word_cfg("unix") | word_cfg("windows")).render_short_html(), "Unix or Windows");
         assert_eq!(
-            (word_cfg("unix") | word_cfg("windows")).render_short_html(),
-            "Unix or Windows"
-        );
-        assert_eq!(
-            (
-                word_cfg("unix") & word_cfg("windows") & word_cfg("debug_assertions")
-            ).render_short_html(),
+            (word_cfg("unix") & word_cfg("windows") & word_cfg("debug_assertions"))
+                .render_short_html(),
             "Unix and Windows and debug-assertions enabled"
         );
         assert_eq!(
-            (
-                word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions")
-            ).render_short_html(),
+            (word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions"))
+                .render_short_html(),
             "Unix or Windows or debug-assertions enabled"
         );
         assert_eq!(
-            (
-                !(word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions"))
-            ).render_short_html(),
+            (!(word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions")))
+                .render_short_html(),
             "Neither Unix nor Windows nor debug-assertions enabled"
         );
         assert_eq!(
-            (
-                (word_cfg("unix") & name_value_cfg("target_arch", "x86_64")) |
-                (word_cfg("windows") & name_value_cfg("target_pointer_width", "64"))
-            ).render_short_html(),
+            ((word_cfg("unix") & name_value_cfg("target_arch", "x86_64"))
+                | (word_cfg("windows") & name_value_cfg("target_pointer_width", "64")))
+            .render_short_html(),
             "Unix and x86-64, or Windows and 64-bit"
         );
         assert_eq!(
@@ -306,9 +288,8 @@ fn test_render_short_html() {
             "Not (Unix and Windows)"
         );
         assert_eq!(
-            (
-                (word_cfg("debug_assertions") | word_cfg("windows")) & word_cfg("unix")
-            ).render_short_html(),
+            ((word_cfg("debug_assertions") | word_cfg("windows")) & word_cfg("unix"))
+                .render_short_html(),
             "(Debug-assertions enabled or Windows) and Unix"
         );
         assert_eq!(
@@ -316,10 +297,8 @@ fn test_render_short_html() {
             "<code>sse2</code>"
         );
         assert_eq!(
-            (
-                name_value_cfg("target_arch", "x86_64") &
-                name_value_cfg("target_feature", "sse2")
-            ).render_short_html(),
+            (name_value_cfg("target_arch", "x86_64") & name_value_cfg("target_feature", "sse2"))
+                .render_short_html(),
             "x86-64 and <code>sse2</code>"
         );
     })
@@ -357,31 +336,27 @@ fn test_render_long_html() {
             "This is supported on <strong>Unix or Windows</strong> only."
         );
         assert_eq!(
-            (
-                word_cfg("unix") & word_cfg("windows") & word_cfg("debug_assertions")
-            ).render_long_html(),
+            (word_cfg("unix") & word_cfg("windows") & word_cfg("debug_assertions"))
+                .render_long_html(),
             "This is supported on <strong>Unix and Windows and debug-assertions enabled\
                 </strong> only."
         );
         assert_eq!(
-            (
-                word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions")
-            ).render_long_html(),
+            (word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions"))
+                .render_long_html(),
             "This is supported on <strong>Unix or Windows or debug-assertions enabled\
                 </strong> only."
         );
         assert_eq!(
-            (
-                !(word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions"))
-            ).render_long_html(),
+            (!(word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions")))
+                .render_long_html(),
             "This is supported on <strong>neither Unix nor Windows nor debug-assertions \
                 enabled</strong>."
         );
         assert_eq!(
-            (
-                (word_cfg("unix") & name_value_cfg("target_arch", "x86_64")) |
-                (word_cfg("windows") & name_value_cfg("target_pointer_width", "64"))
-            ).render_long_html(),
+            ((word_cfg("unix") & name_value_cfg("target_arch", "x86_64"))
+                | (word_cfg("windows") & name_value_cfg("target_pointer_width", "64")))
+            .render_long_html(),
             "This is supported on <strong>Unix and x86-64, or Windows and 64-bit</strong> \
                 only."
         );
@@ -390,9 +365,8 @@ fn test_render_long_html() {
             "This is supported on <strong>not (Unix and Windows)</strong>."
         );
         assert_eq!(
-            (
-                (word_cfg("debug_assertions") | word_cfg("windows")) & word_cfg("unix")
-            ).render_long_html(),
+            ((word_cfg("debug_assertions") | word_cfg("windows")) & word_cfg("unix"))
+                .render_long_html(),
             "This is supported on <strong>(debug-assertions enabled or Windows) and Unix\
             </strong> only."
         );
@@ -401,10 +375,8 @@ fn test_render_long_html() {
             "This is supported with <strong>target feature <code>sse2</code></strong> only."
         );
         assert_eq!(
-            (
-                name_value_cfg("target_arch", "x86_64") &
-                name_value_cfg("target_feature", "sse2")
-            ).render_long_html(),
+            (name_value_cfg("target_arch", "x86_64") & name_value_cfg("target_feature", "sse2"))
+                .render_long_html(),
             "This is supported on <strong>x86-64 and target feature \
             <code>sse2</code></strong> only."
         );

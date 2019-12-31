@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/missing-type-parameter.rs:4:5
    |
 LL |     foo();
-   |     ^^^ cannot infer type for `X`
+   |     ^^^ cannot infer type for type parameter `X` declared on the function `foo`
 
 error: aborting due to previous error
 

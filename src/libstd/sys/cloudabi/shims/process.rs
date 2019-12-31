@@ -32,9 +32,7 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(_program: &OsStr) -> Command {
-        Command {
-            env: Default::default(),
-        }
+        Command { env: Default::default() }
     }
 
     pub fn arg(&mut self, _arg: &OsStr) {}

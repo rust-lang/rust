@@ -1,6 +1,6 @@
 // check-fail
 
-#![feature(track_caller)] //~ WARN the feature `track_caller` is incomplete
+#![feature(track_caller)]
 
 trait Trait {
     fn unwrap(&self);

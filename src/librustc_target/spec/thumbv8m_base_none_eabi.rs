@@ -20,7 +20,7 @@ pub fn target() -> TargetResult {
             // with +strict-align.
             features: "+strict-align".to_string(),
             max_atomic_width: Some(32),
-            .. super::thumb_base::opts()
+            ..super::thumb_base::opts()
         },
     })
 }

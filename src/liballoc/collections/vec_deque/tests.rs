@@ -3,7 +3,7 @@ use super::*;
 use ::test;
 
 #[bench]
-#[cfg(not(miri))] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
 fn bench_push_back_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::with_capacity(101);
     b.iter(|| {
@@ -16,7 +16,7 @@ fn bench_push_back_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg(not(miri))] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
 fn bench_push_front_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::with_capacity(101);
     b.iter(|| {
@@ -29,7 +29,7 @@ fn bench_push_front_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg(not(miri))] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
 fn bench_pop_back_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::<i32>::with_capacity(101);
 
@@ -43,7 +43,7 @@ fn bench_pop_back_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg(not(miri))] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
 fn bench_pop_front_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::<i32>::with_capacity(101);
 
@@ -66,11 +66,8 @@ fn test_swap_front_back_remove() {
         let final_len = usable_cap / 2;
 
         for len in 0..final_len {
-            let expected: VecDeque<_> = if back {
-                (0..len).collect()
-            } else {
-                (0..len).rev().collect()
-            };
+            let expected: VecDeque<_> =
+                if back { (0..len).collect() } else { (0..len).rev().collect() };
             for tail_pos in 0..usable_cap {
                 tester.tail = tail_pos;
                 tester.head = tail_pos;
@@ -110,7 +107,6 @@ fn test_insert() {
     // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
     // this test isn't covering what it wants to
     let cap = tester.capacity();
-
 
     // len is the length *after* insertion
     for len in 1..cap {
@@ -198,9 +194,7 @@ fn test_drain() {
                     assert!(tester.head < tester.cap());
 
                     // We should see the correct values in the VecDeque
-                    let expected: VecDeque<_> = (0..drain_start)
-                        .chain(drain_end..len)
-                        .collect();
+                    let expected: VecDeque<_> = (0..drain_start).chain(drain_end..len).collect();
                     assert_eq!(expected, tester);
                 }
             }

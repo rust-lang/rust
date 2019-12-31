@@ -4,10 +4,10 @@
 #![feature(staged_api)]
 #[macro_use] extern crate unstable_macros;
 
-#[unstable(feature = "local_unstable", issue = "0")]
+#[unstable(feature = "local_unstable", issue = "none")]
 macro_rules! local_unstable { () => () }
 
-#[unstable(feature = "local_unstable", issue = "0")]
+#[unstable(feature = "local_unstable", issue = "none")]
 macro local_unstable_modern() {}
 
 #[stable(feature = "deprecated_macros", since = "1.0.0")]

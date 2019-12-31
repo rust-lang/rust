@@ -78,7 +78,7 @@ impl Condvar {
         // `false` as we weren't actually notified.
         let ret = wasm32::i32_atomic_wait(self.ptr(), ticket, nanos as i64) != 2;
         mutex.lock();
-        return ret
+        return ret;
     }
 
     #[inline]
@@ -89,6 +89,6 @@ impl Condvar {
     #[inline]
     fn ptr(&self) -> *mut i32 {
         assert_eq!(mem::size_of::<usize>(), mem::size_of::<i32>());
-        &self.cnt as *const AtomicUsize as *mut i32
+        self.cnt.as_mut_ptr() as *mut i32
     }
 }

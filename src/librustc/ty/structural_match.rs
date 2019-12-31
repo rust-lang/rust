@@ -1,14 +1,14 @@
 use crate::hir;
 use rustc::infer::InferCtxt;
-use rustc::traits::{self, ConstPatternStructural, TraitEngine};
 use rustc::traits::ObligationCause;
+use rustc::traits::{self, ConstPatternStructural, TraitEngine};
 
-use rustc_data_structures::fx::{FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 
 use syntax_pos::Span;
 
-use crate::ty::{self, AdtDef, Ty, TyCtxt};
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
+use crate::ty::{self, AdtDef, Ty, TyCtxt};
 
 #[derive(Debug)]
 pub enum NonStructuralMatchTy<'tcx> {
@@ -62,24 +62,34 @@ pub fn search_for_structural_match_violation<'tcx>(
 ///
 /// Note that this does *not* recursively check if the substructure of `adt_ty`
 /// implements the traits.
-pub fn type_marked_structural(id: hir::HirId,
-                              span: Span,
-                              infcx: &InferCtxt<'_, 'tcx>,
-                              adt_ty: Ty<'tcx>)
-                              -> bool
-{
+pub fn type_marked_structural(
+    id: hir::HirId,
+    span: Span,
+    infcx: &InferCtxt<'_, 'tcx>,
+    adt_ty: Ty<'tcx>,
+) -> bool {
     let mut fulfillment_cx = traits::FulfillmentContext::new();
     let cause = ObligationCause::new(span, id, ConstPatternStructural);
     // require `#[derive(PartialEq)]`
     let structural_peq_def_id = infcx.tcx.lang_items().structural_peq_trait().unwrap();
     fulfillment_cx.register_bound(
-        infcx, ty::ParamEnv::empty(), adt_ty, structural_peq_def_id, cause);
+        infcx,
+        ty::ParamEnv::empty(),
+        adt_ty,
+        structural_peq_def_id,
+        cause,
+    );
     // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
     // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
     let cause = ObligationCause::new(span, id, ConstPatternStructural);
     let structural_teq_def_id = infcx.tcx.lang_items().structural_teq_trait().unwrap();
     fulfillment_cx.register_bound(
-        infcx, ty::ParamEnv::empty(), adt_ty, structural_teq_def_id, cause);
+        infcx,
+        ty::ParamEnv::empty(),
+        adt_ty,
+        structural_teq_def_id,
+        cause,
+    );
 
     // We deliberately skip *reporting* fulfillment errors (via
     // `report_fulfillment_errors`), for two reasons:
@@ -156,9 +166,9 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 // (But still tell caller to continue search.)
                 return false;
             }
-            ty::Array(_, n) if {
-                n.try_eval_usize(self.tcx(), ty::ParamEnv::reveal_all()) == Some(0)
-            } => {
+            ty::Array(_, n)
+                if { n.try_eval_usize(self.tcx(), ty::ParamEnv::reveal_all()) == Some(0) } =>
+            {
                 // rust-lang/rust#62336: ignore type of contents
                 // for empty array.
                 return false;

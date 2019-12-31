@@ -16,4 +16,15 @@ async fn suggest_await_in_async_fn() {
     //~| SUGGESTION x.await
 }
 
+async fn dummy() {}
+
+#[allow(unused)]
+async fn suggest_await_in_async_fn_return() {
+    dummy().await;
+    //~^ ERROR mismatched types [E0308]
+    //~| HELP try adding a semicolon
+    //~| HELP consider using `.await` here
+    //~| SUGGESTION dummy().await
+}
+
 fn main() {}

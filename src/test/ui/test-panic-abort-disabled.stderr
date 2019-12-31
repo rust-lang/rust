@@ -1,4 +1,4 @@
-error: building tests with panic=abort is not yet supported
+error: building tests with panic=abort is not supported without `-Zpanic_abort_tests`
 
 error: aborting due to previous error
 

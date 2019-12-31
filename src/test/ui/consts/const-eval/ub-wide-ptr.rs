@@ -2,7 +2,6 @@
 #![allow(unused)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
 
-// normalize-stderr-test "alignment \d+" -> "alignment N"
 // normalize-stderr-test "offset \d+" -> "offset N"
 // normalize-stderr-test "allocation \d+" -> "allocation N"
 // normalize-stderr-test "size \d+" -> "size N"
@@ -149,11 +148,23 @@ const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = &unsafe { BoolTransmute { val: 3 }
 //~^ ERROR it is undefined behavior to use this value
 
 // # raw trait object
-const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 0 } }.rust};
+const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 0 } }.raw_rust};
 //~^ ERROR it is undefined behavior to use this value
 const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.raw_rust};
 //~^ ERROR it is undefined behavior to use this value
 const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = &unsafe { BoolTransmute { val: 3 }.bl } as *const _; // ok because raw
 
+// Const eval fails for these, so they need to be statics to error.
+static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
+    DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 0 } }.rust
+    //~^ ERROR could not evaluate static initializer
+};
+static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
+    DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust
+    //~^ ERROR could not evaluate static initializer
+};
+
 fn main() {
+    let _ = RAW_TRAIT_OBJ_VTABLE_NULL;
+    let _ = RAW_TRAIT_OBJ_VTABLE_INVALID;
 }

@@ -1,7 +1,7 @@
 use crate::arch::wasm32;
 use crate::cell::UnsafeCell;
 use crate::mem;
-use crate::sync::atomic::{AtomicUsize, AtomicU32, Ordering::SeqCst};
+use crate::sync::atomic::{AtomicU32, AtomicUsize, Ordering::SeqCst};
 use crate::sys::thread;
 
 pub struct Mutex {
@@ -56,7 +56,7 @@ impl Mutex {
     #[inline]
     fn ptr(&self) -> *mut i32 {
         assert_eq!(mem::size_of::<usize>(), mem::size_of::<i32>());
-        &self.locked as *const AtomicUsize as *mut isize as *mut i32
+        self.locked.as_mut_ptr() as *mut i32
     }
 }
 
@@ -81,10 +81,7 @@ unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
     pub unsafe fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex {
-            owner: AtomicU32::new(0),
-            recursions: UnsafeCell::new(0),
-        }
+        ReentrantMutex { owner: AtomicU32::new(0), recursions: UnsafeCell::new(0) }
     }
 
     pub unsafe fn init(&mut self) {
@@ -145,6 +142,6 @@ impl ReentrantMutex {
 
     #[inline]
     fn ptr(&self) -> *mut i32 {
-        &self.owner as *const AtomicU32 as *mut i32
+        self.owner.as_mut_ptr() as *mut i32
     }
 }

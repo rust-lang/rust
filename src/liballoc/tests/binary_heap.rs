@@ -1,5 +1,5 @@
-use std::collections::BinaryHeap;
 use std::collections::binary_heap::{Drain, PeekMut};
+use std::collections::BinaryHeap;
 use std::iter::TrustedLen;
 
 #[test]
@@ -347,12 +347,12 @@ fn assert_covariance() {
 // Destructors must be called exactly once per element.
 // FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(any(miri, target_os = "emscripten")))] // Miri does not support catching panics
+#[cfg(not(target_os = "emscripten"))]
 fn panic_safe() {
+    use rand::{seq::SliceRandom, thread_rng};
     use std::cmp;
     use std::panic::{self, AssertUnwindSafe};
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use rand::{thread_rng, seq::SliceRandom};
 
     static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -376,7 +376,10 @@ fn panic_safe() {
     }
     let mut rng = thread_rng();
     const DATASZ: usize = 32;
+    #[cfg(not(miri))] // Miri is too slow
     const NTEST: usize = 10;
+    #[cfg(miri)]
+    const NTEST: usize = 1;
 
     // don't use 0 in the data -- we want to catch the zeroed-out case.
     let data = (1..=DATASZ).collect::<Vec<_>>();
@@ -386,10 +389,8 @@ fn panic_safe() {
         for i in 1..=DATASZ {
             DROP_COUNTER.store(0, Ordering::SeqCst);
 
-            let mut panic_ords: Vec<_> = data.iter()
-                                             .filter(|&&x| x != i)
-                                             .map(|&x| PanicOrd(x, false))
-                                             .collect();
+            let mut panic_ords: Vec<_> =
+                data.iter().filter(|&&x| x != i).map(|&x| PanicOrd(x, false)).collect();
             let panic_item = PanicOrd(i, true);
 
             // heapify the sane items

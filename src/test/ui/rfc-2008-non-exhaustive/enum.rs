@@ -1,7 +1,14 @@
 // aux-build:enums.rs
 extern crate enums;
 
-use enums::NonExhaustiveEnum;
+use enums::{EmptyNonExhaustiveEnum, NonExhaustiveEnum};
+
+fn empty(x: EmptyNonExhaustiveEnum) {
+    match x {} //~ ERROR type `enums::EmptyNonExhaustiveEnum` is non-empty
+    match x {
+        _ => {}, // ok
+    }
+}
 
 fn main() {
     let enum_unit = NonExhaustiveEnum::Unit;
@@ -12,6 +19,9 @@ fn main() {
         NonExhaustiveEnum::Tuple(_) => "second",
         NonExhaustiveEnum::Struct { .. } => "third"
     };
+
+    match enum_unit {};
+    //~^ ERROR non-exhaustive patterns: `_` not covered [E0004]
 
     // Everything below this is expected to compile successfully.
 

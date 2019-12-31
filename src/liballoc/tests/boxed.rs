@@ -1,5 +1,5 @@
-use std::ptr::NonNull;
 use std::mem::MaybeUninit;
+use std::ptr::NonNull;
 
 #[test]
 fn unitialized_zero_size_box() {

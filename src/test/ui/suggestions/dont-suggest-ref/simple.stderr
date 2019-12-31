@@ -337,14 +337,7 @@ LL |         &mut Either::One(_t) => (),
 LL |         &mut Either::Two(_t) => (),
    |                          -- ...and here
    |
-note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/simple.rs:221:26
-   |
-LL |         &mut Either::One(_t) => (),
-   |                          ^^
-...
-LL |         &mut Either::Two(_t) => (),
-   |                          ^^
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 help: consider removing the `&mut`
    |
 LL |         Either::One(_t) => (),
@@ -470,13 +463,7 @@ LL |         (&mut Either::One(_t),) => (),
 LL |         (&mut Either::Two(_t),) => (),
    |                           -- ...and here
    |
-note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/simple.rs:280:27
-   |
-LL |         (&mut Either::One(_t),) => (),
-   |                           ^^
-LL |         (&mut Either::Two(_t),) => (),
-   |                           ^^
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/simple.rs:288:18

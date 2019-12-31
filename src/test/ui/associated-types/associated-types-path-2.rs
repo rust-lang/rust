@@ -18,7 +18,7 @@ pub fn f2<T: Foo>(a: T) -> T::A {
 pub fn f1_int_int() {
     f1(2i32, 4i32);
     //~^ ERROR mismatched types
-    //~| expected u32, found i32
+    //~| expected `u32`, found `i32`
 }
 
 pub fn f1_int_uint() {
@@ -40,7 +40,7 @@ pub fn f1_uint_int() {
 pub fn f2_int() {
     let _: i32 = f2(2i32);
     //~^ ERROR mismatched types
-    //~| expected i32, found u32
+    //~| expected `i32`, found `u32`
 }
 
 pub fn main() { }

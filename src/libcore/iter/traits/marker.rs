@@ -38,7 +38,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 /// [`usize::MAX`]: ../../std/usize/constant.MAX.html
 /// [`.size_hint`]: ../../std/iter/trait.Iterator.html#method.size_hint
 #[unstable(feature = "trusted_len", issue = "37572")]
-pub unsafe trait TrustedLen : Iterator {}
+pub unsafe trait TrustedLen: Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}

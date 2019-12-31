@@ -2,11 +2,11 @@ error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:48
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                          -                     ^^^^^^^^ returning this value requires that `'_` must outlive `'static`
+   |                          -                     ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
    |                          |
-   |                          lifetime `'_` defined here
+   |                          let's call the lifetime of this reference `'1`
    |
-help: to allow this `impl Trait` to capture borrowed data with lifetime `'_`, add `'_` as a constraint
+help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a constraint
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
    |                                     ^^^^^^^^^^^^^^^

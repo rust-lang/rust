@@ -38,10 +38,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
             self.param_env,
         );
         if !value.has_projections() {
-            return Ok(Normalized {
-                value: value.clone(),
-                obligations: vec![],
-            });
+            return Ok(Normalized { value: value.clone(), obligations: vec![] });
         }
 
         let mut normalizer = QueryNormalizer {
@@ -57,16 +54,13 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
         if normalizer.error {
             Err(NoSolution)
         } else {
-            Ok(Normalized {
-                value: value1,
-                obligations: normalizer.obligations,
-            })
+            Ok(Normalized { value: value1, obligations: normalizer.obligations })
         }
     }
 }
 
 /// Result from the `normalize_projection_ty` query.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
 pub struct NormalizationResult<'tcx> {
     /// Result of normalization.
     pub normalized_ty: Ty<'tcx>,
@@ -146,8 +140,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
                 // so we cannot canonicalize it.
-                let c_data = self.infcx.canonicalize_hr_query_hack(
-                    &self.param_env.and(*data), &mut orig_values);
+                let c_data = self
+                    .infcx
+                    .canonicalize_hr_query_hack(&self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 match tcx.normalize_projection_ty(c_data) {
@@ -162,8 +157,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                             self.cause,
                             self.param_env,
                             &orig_values,
-                            &result)
-                        {
+                            &result,
+                        ) {
                             Ok(InferOk { value: result, obligations }) => {
                                 debug!("QueryNormalizer: result = {:#?}", result);
                                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
@@ -193,20 +188,3 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         constant.eval(self.infcx.tcx, self.param_env)
     }
 }
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for NormalizationResult<'tcx> {
-        normalized_ty
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for NormalizationResult<'a> {
-        type Lifted = NormalizationResult<'tcx>;
-        normalized_ty
-    }
-}
-
-impl_stable_hash_for!(struct NormalizationResult<'tcx> {
-    normalized_ty
-});

@@ -9,21 +9,23 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
     let cfg = &mut cc::Build::new();
 
-    let mut profile_sources = vec!["GCDAProfiling.c",
-                                   "InstrProfiling.c",
-                                   "InstrProfilingBuffer.c",
-                                   "InstrProfilingFile.c",
-                                   "InstrProfilingMerge.c",
-                                   "InstrProfilingMergeFile.c",
-                                   "InstrProfilingNameVar.c",
-                                   "InstrProfilingPlatformDarwin.c",
-                                   "InstrProfilingPlatformLinux.c",
-                                   "InstrProfilingPlatformOther.c",
-                                   "InstrProfilingPlatformWindows.c",
-                                   "InstrProfilingRuntime.cc",
-                                   "InstrProfilingUtil.c",
-                                   "InstrProfilingValue.c",
-                                   "InstrProfilingWriter.c"];
+    let mut profile_sources = vec![
+        "GCDAProfiling.c",
+        "InstrProfiling.c",
+        "InstrProfilingBuffer.c",
+        "InstrProfilingFile.c",
+        "InstrProfilingMerge.c",
+        "InstrProfilingMergeFile.c",
+        "InstrProfilingNameVar.c",
+        "InstrProfilingPlatformDarwin.c",
+        "InstrProfilingPlatformLinux.c",
+        "InstrProfilingPlatformOther.c",
+        "InstrProfilingPlatformWindows.c",
+        "InstrProfilingRuntime.cc",
+        "InstrProfilingUtil.c",
+        "InstrProfilingValue.c",
+        "InstrProfilingWriter.c",
+    ];
 
     if target.contains("msvc") {
         // Don't pull in extra libraries on MSVC
@@ -56,9 +58,10 @@ fn main() {
 
     // This should be a pretty good heuristic for when to set
     // COMPILER_RT_HAS_ATOMICS
-    if env::var_os("CARGO_CFG_TARGET_HAS_ATOMIC").map(|features| {
-        features.to_string_lossy().to_lowercase().contains("cas")
-    }).unwrap_or(false) {
+    if env::var_os("CARGO_CFG_TARGET_HAS_ATOMIC")
+        .map(|features| features.to_string_lossy().to_lowercase().contains("cas"))
+        .unwrap_or(false)
+    {
         cfg.define("COMPILER_RT_HAS_ATOMICS", Some("1"));
     }
 

@@ -1,4 +1,4 @@
-use crate::stable_hasher::{StableHasher, HashStable};
+use crate::stable_hasher::{HashStable, StableHasher};
 
 /// A vector type optimized for cases where this size is usually 0 (cf. `SmallVector`).
 /// The `Option<Box<..>>` wrapping allows us to represent a zero sized vector with `None`,
@@ -14,11 +14,7 @@ impl<T> ThinVec<T> {
 
 impl<T> From<Vec<T>> for ThinVec<T> {
     fn from(vec: Vec<T>) -> Self {
-        if vec.is_empty() {
-            ThinVec(None)
-        } else {
-            ThinVec(Some(Box::new(vec)))
-        }
+        if vec.is_empty() { ThinVec(None) } else { ThinVec(Some(Box::new(vec))) }
     }
 }
 

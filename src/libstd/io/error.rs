@@ -1,8 +1,8 @@
+use crate::convert::From;
 use crate::error;
 use crate::fmt;
 use crate::result;
 use crate::sys;
-use crate::convert::From;
 
 /// A specialized [`Result`](../result/enum.Result.html) type for I/O
 /// operations.
@@ -73,7 +73,7 @@ enum Repr {
 #[derive(Debug)]
 struct Custom {
     kind: ErrorKind,
-    error: Box<dyn error::Error+Send+Sync>,
+    error: Box<dyn error::Error + Send + Sync>,
 }
 
 /// A list specifying general categories of I/O error.
@@ -220,9 +220,7 @@ impl From<ErrorKind> for Error {
     /// [`Error`]: ../../std/io/struct.Error.html
     #[inline]
     fn from(kind: ErrorKind) -> Error {
-        Error {
-            repr: Repr::Simple(kind)
-        }
+        Error { repr: Repr::Simple(kind) }
     }
 }
 
@@ -247,18 +245,14 @@ impl Error {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
-        where E: Into<Box<dyn error::Error+Send+Sync>>
+    where
+        E: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Self::_new(kind, error.into())
     }
 
-    fn _new(kind: ErrorKind, error: Box<dyn error::Error+Send+Sync>) -> Error {
-        Error {
-            repr: Repr::Custom(Box::new(Custom {
-                kind,
-                error,
-            }))
-        }
+    fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
+        Error { repr: Repr::Custom(Box::new(Custom { kind, error })) }
     }
 
     /// Returns an error representing the last OS error which occurred.
@@ -370,7 +364,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
-    pub fn get_ref(&self) -> Option<&(dyn error::Error+Send+Sync+'static)> {
+    pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
@@ -408,9 +402,7 @@ impl Error {
     ///     }
     /// }
     ///
-    /// impl error::Error for MyError {
-    ///     fn description(&self) -> &str { &self.v }
-    /// }
+    /// impl error::Error for MyError {}
     ///
     /// impl Display for MyError {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -441,7 +433,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
-    pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error+Send+Sync+'static)> {
+    pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
@@ -475,11 +467,11 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
-    pub fn into_inner(self) -> Option<Box<dyn error::Error+Send+Sync>> {
+    pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
-            Repr::Custom(c) => Some(c.error)
+            Repr::Custom(c) => Some(c.error),
         }
     }
 
@@ -514,11 +506,12 @@ impl Error {
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Repr::Os(code) =>
-                fmt.debug_struct("Os")
-                    .field("code", &code)
-                    .field("kind", &sys::decode_error_kind(code))
-                    .field("message", &sys::os::error_string(code)).finish(),
+            Repr::Os(code) => fmt
+                .debug_struct("Os")
+                .field("code", &code)
+                .field("kind", &sys::decode_error_kind(code))
+                .field("message", &sys::os::error_string(code))
+                .finish(),
             Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
             Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
         }
@@ -541,6 +534,7 @@ impl fmt::Display for Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl error::Error for Error {
+    #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         match self.repr {
             Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
@@ -567,17 +561,17 @@ impl error::Error for Error {
 }
 
 fn _assert_error_is_sync_send() {
-    fn _is_sync_send<T: Sync+Send>() {}
+    fn _is_sync_send<T: Sync + Send>() {}
     _is_sync_send::<Error>();
 }
 
 #[cfg(test)]
 mod test {
-    use super::{Error, ErrorKind, Repr, Custom};
+    use super::{Custom, Error, ErrorKind, Repr};
     use crate::error;
     use crate::fmt;
-    use crate::sys::os::error_string;
     use crate::sys::decode_error_kind;
+    use crate::sys::os::error_string;
 
     #[test]
     fn test_debug_error() {
@@ -587,20 +581,18 @@ mod test {
         let err = Error {
             repr: Repr::Custom(box Custom {
                 kind: ErrorKind::InvalidInput,
-                error: box Error {
-                    repr: super::Repr::Os(code)
-                },
-            })
+                error: box Error { repr: super::Repr::Os(code) },
+            }),
         };
         let expected = format!(
             "Custom {{ \
-                kind: InvalidInput, \
-                error: Os {{ \
-                    code: {:?}, \
-                    kind: {:?}, \
-                    message: {:?} \
-                }} \
-            }}",
+             kind: InvalidInput, \
+             error: Os {{ \
+             code: {:?}, \
+             kind: {:?}, \
+             message: {:?} \
+             }} \
+             }}",
             code, kind, msg
         );
         assert_eq!(format!("{:?}", err), expected);
@@ -612,22 +604,18 @@ mod test {
         struct TestError;
 
         impl fmt::Display for TestError {
-            fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-                Ok(())
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("asdf")
             }
         }
 
-        impl error::Error for TestError {
-            fn description(&self) -> &str {
-                "asdf"
-            }
-        }
+        impl error::Error for TestError {}
 
         // we have to call all of these UFCS style right now since method
         // resolution won't implicitly drop the Send+Sync bounds
         let mut err = Error::new(ErrorKind::Other, TestError);
         assert!(err.get_ref().unwrap().is::<TestError>());
-        assert_eq!("asdf", err.get_ref().unwrap().description());
+        assert_eq!("asdf", err.get_ref().unwrap().to_string());
         assert!(err.get_mut().unwrap().is::<TestError>());
         let extracted = err.into_inner().unwrap();
         extracted.downcast::<TestError>().unwrap();

@@ -1,6 +1,6 @@
-use std::str::FromStr;
-use std::num::ParseIntError;
 use std::fmt;
+use std::num::ParseIntError;
+use std::str::FromStr;
 
 #[cfg(test)]
 mod tests;
@@ -34,10 +34,7 @@ impl FromStr for Version {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut iter = s.split('.').map(|part| Ok(part.parse()?));
 
-        let mut part = || {
-            iter.next()
-                .unwrap_or(Err(ParseVersionError::WrongNumberOfParts))
-        };
+        let mut part = || iter.next().unwrap_or(Err(ParseVersionError::WrongNumberOfParts));
 
         let parts = [part()?, part()?, part()?];
 

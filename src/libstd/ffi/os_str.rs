@@ -1,13 +1,13 @@
 use crate::borrow::{Borrow, Cow};
-use crate::fmt;
-use crate::ops;
 use crate::cmp;
+use crate::fmt;
 use crate::hash::{Hash, Hasher};
+use crate::ops;
 use crate::rc::Rc;
 use crate::sync::Arc;
 
 use crate::sys::os_str::{Buf, Slice};
-use crate::sys_common::{AsInner, IntoInner, FromInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// A type that can represent owned, mutable platform-native strings, but is
 /// cheaply inter-convertible with Rust strings.
@@ -78,7 +78,7 @@ use crate::sys_common::{AsInner, IntoInner, FromInner};
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
-    inner: Buf
+    inner: Buf,
 }
 
 /// Borrowed reference to an OS string (see [`OsString`]).
@@ -104,7 +104,7 @@ pub struct OsString {
 // Anyway, `OsStr` representation and layout are considered implementation detail, are
 // not documented and must not be relied upon.
 pub struct OsStr {
-    inner: Slice
+    inner: Slice,
 }
 
 impl OsString {
@@ -157,7 +157,7 @@ impl OsString {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_string(self) -> Result<String, OsString> {
-        self.inner.into_string().map_err(|buf| OsString { inner: buf} )
+        self.inner.into_string().map_err(|buf| OsString { inner: buf })
     }
 
     /// Extends the string with the given [`&OsStr`] slice.
@@ -201,9 +201,7 @@ impl OsString {
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn with_capacity(capacity: usize) -> OsString {
-        OsString {
-            inner: Buf::with_capacity(capacity)
-        }
+        OsString { inner: Buf::with_capacity(capacity) }
     }
 
     /// Truncates the `OsString` to zero length.
@@ -327,7 +325,7 @@ impl OsString {
     /// assert!(s.capacity() >= 3);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
     }
@@ -452,13 +450,21 @@ impl PartialOrd for OsString {
         (&**self).partial_cmp(&**other)
     }
     #[inline]
-    fn lt(&self, other: &OsString) -> bool { &**self < &**other }
+    fn lt(&self, other: &OsString) -> bool {
+        &**self < &**other
+    }
     #[inline]
-    fn le(&self, other: &OsString) -> bool { &**self <= &**other }
+    fn le(&self, other: &OsString) -> bool {
+        &**self <= &**other
+    }
     #[inline]
-    fn gt(&self, other: &OsString) -> bool { &**self > &**other }
+    fn gt(&self, other: &OsString) -> bool {
+        &**self > &**other
+    }
     #[inline]
-    fn ge(&self, other: &OsString) -> bool { &**self >= &**other }
+    fn ge(&self, other: &OsString) -> bool {
+        &**self >= &**other
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -495,11 +501,13 @@ impl OsStr {
     ///
     /// let os_str = OsStr::new("foo");
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &OsStr {
         s.as_ref()
     }
 
+    #[inline]
     fn from_inner(inner: &Slice) -> &OsStr {
         unsafe { &*(inner as *const Slice as *const OsStr) }
     }
@@ -658,6 +666,7 @@ impl OsStr {
     ///
     /// Note: it is *crucial* that this API is private, to avoid
     /// revealing the internal, platform-specific encodings.
+    #[inline]
     fn bytes(&self) -> &[u8] {
         unsafe { &*(&self.inner as *const _ as *const [u8]) }
     }
@@ -797,6 +806,7 @@ impl Default for &OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for OsStr {
+    #[inline]
     fn eq(&self, other: &OsStr) -> bool {
         self.bytes().eq(other.bytes())
     }
@@ -804,6 +814,7 @@ impl PartialEq for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<str> for OsStr {
+    #[inline]
     fn eq(&self, other: &str) -> bool {
         *self == *OsStr::new(other)
     }
@@ -811,6 +822,7 @@ impl PartialEq<str> for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<OsStr> for str {
+    #[inline]
     fn eq(&self, other: &OsStr) -> bool {
         *other == *OsStr::new(self)
     }
@@ -826,13 +838,21 @@ impl PartialOrd for OsStr {
         self.bytes().partial_cmp(other.bytes())
     }
     #[inline]
-    fn lt(&self, other: &OsStr) -> bool { self.bytes().lt(other.bytes()) }
+    fn lt(&self, other: &OsStr) -> bool {
+        self.bytes().lt(other.bytes())
+    }
     #[inline]
-    fn le(&self, other: &OsStr) -> bool { self.bytes().le(other.bytes()) }
+    fn le(&self, other: &OsStr) -> bool {
+        self.bytes().le(other.bytes())
+    }
     #[inline]
-    fn gt(&self, other: &OsStr) -> bool { self.bytes().gt(other.bytes()) }
+    fn gt(&self, other: &OsStr) -> bool {
+        self.bytes().gt(other.bytes())
+    }
     #[inline]
-    fn ge(&self, other: &OsStr) -> bool { self.bytes().ge(other.bytes()) }
+    fn ge(&self, other: &OsStr) -> bool {
+        self.bytes().ge(other.bytes())
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -849,7 +869,9 @@ impl PartialOrd<str> for OsStr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for OsStr {
     #[inline]
-    fn cmp(&self, other: &OsStr) -> cmp::Ordering { self.bytes().cmp(other.bytes()) }
+    fn cmp(&self, other: &OsStr) -> cmp::Ordering {
+        self.bytes().cmp(other.bytes())
+    }
 }
 
 macro_rules! impl_cmp {
@@ -857,13 +879,17 @@ macro_rules! impl_cmp {
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
             #[inline]
-            fn eq(&self, other: &$rhs) -> bool { <OsStr as PartialEq>::eq(self, other) }
+            fn eq(&self, other: &$rhs) -> bool {
+                <OsStr as PartialEq>::eq(self, other)
+            }
         }
 
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
         impl<'a, 'b> PartialEq<$lhs> for $rhs {
             #[inline]
-            fn eq(&self, other: &$lhs) -> bool { <OsStr as PartialEq>::eq(self, other) }
+            fn eq(&self, other: &$lhs) -> bool {
+                <OsStr as PartialEq>::eq(self, other)
+            }
         }
 
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
@@ -881,7 +907,7 @@ macro_rules! impl_cmp {
                 <OsStr as PartialOrd>::partial_cmp(self, other)
             }
         }
-    }
+    };
 }
 
 impl_cmp!(OsString, OsStr);
@@ -913,7 +939,9 @@ impl OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<OsStr> for OsString {
-    fn borrow(&self) -> &OsStr { &self[..] }
+    fn borrow(&self) -> &OsStr {
+        &self[..]
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -944,6 +972,7 @@ impl AsRef<OsStr> for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for str {
+    #[inline]
     fn as_ref(&self) -> &OsStr {
         OsStr::from_inner(Slice::from_str(self))
     }
@@ -951,6 +980,7 @@ impl AsRef<OsStr> for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for String {
+    #[inline]
     fn as_ref(&self) -> &OsStr {
         (&**self).as_ref()
     }

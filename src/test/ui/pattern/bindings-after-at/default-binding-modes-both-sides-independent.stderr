@@ -1,0 +1,41 @@
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/default-binding-modes-both-sides-independent.rs:27:17
+   |
+LL |     let ref a @ b = NotCopy;
+   |         --------^
+   |         |       |
+   |         |       by-move pattern here
+   |         by-ref pattern here
+
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/default-binding-modes-both-sides-independent.rs:28:21
+   |
+LL |     let ref mut a @ b = NotCopy;
+   |         ------------^
+   |         |           |
+   |         |           by-move pattern here
+   |         by-ref pattern here
+
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/default-binding-modes-both-sides-independent.rs:30:20
+   |
+LL |         Ok(ref a @ b) | Err(ref a @ b) => {}
+   |            --------^        --------^
+   |            |       |        |       |
+   |            |       |        |       by-move pattern here
+   |            |       |        by-ref pattern here
+   |            |       by-move pattern here
+   |            by-ref pattern here
+
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/default-binding-modes-both-sides-independent.rs:34:17
+   |
+LL |         ref a @ b => {}
+   |         --------^
+   |         |       |
+   |         |       by-move pattern here
+   |         by-ref pattern here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0009`.

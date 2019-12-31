@@ -1,6 +1,6 @@
-use crate::ops::{Mul, Add};
-use crate::num::Wrapping;
 use crate::iter;
+use crate::num::Wrapping;
+use crate::ops::{Add, Mul};
 
 /// Trait to represent types that can be created by summing up an iterator.
 ///
@@ -17,7 +17,7 @@ pub trait Sum<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
     /// "summing up" the items.
     #[stable(feature = "iter_arith_traits", since = "1.12.0")]
-    fn sum<I: Iterator<Item=A>>(iter: I) -> Self;
+    fn sum<I: Iterator<Item = A>>(iter: I) -> Self;
 }
 
 /// Trait to represent types that can be created by multiplying elements of an
@@ -36,7 +36,7 @@ pub trait Product<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
     /// multiplying the items.
     #[stable(feature = "iter_arith_traits", since = "1.12.0")]
-    fn product<I: Iterator<Item=A>>(iter: I) -> Self;
+    fn product<I: Iterator<Item = A>>(iter: I) -> Self;
 }
 
 // N.B., explicitly use Add and Mul here to inherit overflow checks
@@ -115,9 +115,10 @@ macro_rules! float_sum_product {
 integer_sum_product! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 float_sum_product! { f32 f64 }
 
-#[stable(feature = "iter_arith_traits_result", since="1.16.0")]
+#[stable(feature = "iter_arith_traits_result", since = "1.16.0")]
 impl<T, U, E> Sum<Result<U, E>> for Result<T, E>
-    where T: Sum<U>,
+where
+    T: Sum<U>,
 {
     /// Takes each element in the `Iterator`: if it is an `Err`, no further
     /// elements are taken, and the `Err` is returned. Should no `Err` occur,
@@ -137,21 +138,24 @@ impl<T, U, E> Sum<Result<U, E>> for Result<T, E>
     /// assert_eq!(res, Ok(3));
     /// ```
     fn sum<I>(iter: I) -> Result<T, E>
-        where I: Iterator<Item = Result<U, E>>,
+    where
+        I: Iterator<Item = Result<U, E>>,
     {
         iter::process_results(iter, |i| i.sum())
     }
 }
 
-#[stable(feature = "iter_arith_traits_result", since="1.16.0")]
+#[stable(feature = "iter_arith_traits_result", since = "1.16.0")]
 impl<T, U, E> Product<Result<U, E>> for Result<T, E>
-    where T: Product<U>,
+where
+    T: Product<U>,
 {
     /// Takes each element in the `Iterator`: if it is an `Err`, no further
     /// elements are taken, and the `Err` is returned. Should no `Err` occur,
     /// the product of all elements is returned.
     fn product<I>(iter: I) -> Result<T, E>
-        where I: Iterator<Item = Result<U, E>>,
+    where
+        I: Iterator<Item = Result<U, E>>,
     {
         iter::process_results(iter, |i| i.product())
     }

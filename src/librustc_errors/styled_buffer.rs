@@ -10,10 +10,7 @@ pub struct StyledBuffer {
 
 impl StyledBuffer {
     pub fn new() -> StyledBuffer {
-        StyledBuffer {
-            text: vec![],
-            styles: vec![],
-        }
+        StyledBuffer { text: vec![], styles: vec![] }
     }
 
     fn replace_tabs(&mut self) {
@@ -51,10 +48,7 @@ impl StyledBuffer {
             for (&c, &s) in row.iter().zip(row_style) {
                 if s != current_style {
                     if !current_text.is_empty() {
-                        styled_vec.push(StyledString {
-                            text: current_text,
-                            style: current_style,
-                        });
+                        styled_vec.push(StyledString { text: current_text, style: current_style });
                     }
                     current_style = s;
                     current_text = String::new();
@@ -62,10 +56,7 @@ impl StyledBuffer {
                 current_text.push(c);
             }
             if !current_text.is_empty() {
-                styled_vec.push(StyledString {
-                    text: current_text,
-                    style: current_style,
-                });
+                styled_vec.push(StyledString { text: current_text, style: current_style });
             }
 
             // We're done with the row, push and keep going
@@ -135,12 +126,14 @@ impl StyledBuffer {
         self.text.len()
     }
 
-    pub fn set_style_range(&mut self,
-                           line: usize,
-                           col_start: usize,
-                           col_end: usize,
-                           style: Style,
-                           overwrite: bool) {
+    pub fn set_style_range(
+        &mut self,
+        line: usize,
+        col_start: usize,
+        col_end: usize,
+        style: Style,
+        overwrite: bool,
+    ) {
         for col in col_start..col_end {
             self.set_style(line, col, style, overwrite);
         }

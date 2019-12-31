@@ -8,6 +8,8 @@ LL |     fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
 LL |         let ref mut x = self.0;
 LL |         x
    |         ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to previous error
 

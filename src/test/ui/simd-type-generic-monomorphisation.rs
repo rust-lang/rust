@@ -1,3 +1,5 @@
+// build-fail
+
 #![feature(repr_simd, platform_intrinsics)]
 
 // error-pattern:monomorphising SIMD type `Simd2<X>` with a non-machine element type `X`

@@ -8,10 +8,9 @@ error[E0308]: mismatched types
   --> $DIR/recover-tuple.rs:6:20
    |
 LL |     let y: usize = "";
-   |                    ^^ expected usize, found reference
-   |
-   = note: expected type `usize`
-              found type `&'static str`
+   |            -----   ^^ expected `usize`, found `&str`
+   |            |
+   |            expected due to this
 
 error: aborting due to 2 previous errors
 

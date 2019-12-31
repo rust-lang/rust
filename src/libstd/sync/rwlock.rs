@@ -25,7 +25,7 @@ use crate::sys_common::rwlock as sys;
 /// The type parameter `T` represents the data that this lock protects. It is
 /// required that `T` satisfies [`Send`] to be shared across threads and
 /// [`Sync`] to allow concurrent access through readers. The RAII guards
-/// returned from the locking methods implement [`Deref`][] (and [`DerefMut`]
+/// returned from the locking methods implement [`Deref`] (and [`DerefMut`]
 /// for the `write` methods) to allow access to the content of the lock.
 ///
 /// # Poisoning
@@ -87,7 +87,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
-    __lock: &'a RwLock<T>,
+    lock: &'a RwLock<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -108,8 +108,8 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
-    __lock: &'a RwLock<T>,
-    __poison: poison::Guard,
+    lock: &'a RwLock<T>,
+    poison: poison::Guard,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -360,7 +360,10 @@ impl<T: ?Sized> RwLock<T> {
     /// assert_eq!(lock.into_inner().unwrap(), "modified");
     /// ```
     #[stable(feature = "rwlock_into_inner", since = "1.6.0")]
-    pub fn into_inner(self) -> LockResult<T> where T: Sized {
+    pub fn into_inner(self) -> LockResult<T>
+    where
+        T: Sized,
+    {
         // We know statically that there are no outstanding references to
         // `self` so there's no need to lock the inner lock.
         //
@@ -426,7 +429,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
             Ok(guard) => f.debug_struct("RwLock").field("data", &&*guard).finish(),
             Err(TryLockError::Poisoned(err)) => {
                 f.debug_struct("RwLock").field("data", &&**err.get_ref()).finish()
-            },
+            }
             Err(TryLockError::WouldBlock) => {
                 struct LockedPlaceholder;
                 impl fmt::Debug for LockedPlaceholder {
@@ -461,24 +464,16 @@ impl<T> From<T> for RwLock<T> {
 }
 
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
-    unsafe fn new(lock: &'rwlock RwLock<T>)
-                  -> LockResult<RwLockReadGuard<'rwlock, T>> {
-        poison::map_result(lock.poison.borrow(), |_| {
-            RwLockReadGuard {
-                __lock: lock,
-            }
-        })
+    unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockReadGuard<'rwlock, T>> {
+        poison::map_result(lock.poison.borrow(), |_| RwLockReadGuard { lock: lock })
     }
 }
 
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
-    unsafe fn new(lock: &'rwlock RwLock<T>)
-                  -> LockResult<RwLockWriteGuard<'rwlock, T>> {
-        poison::map_result(lock.poison.borrow(), |guard| {
-            RwLockWriteGuard {
-                __lock: lock,
-                __poison: guard,
-            }
+    unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockWriteGuard<'rwlock, T>> {
+        poison::map_result(lock.poison.borrow(), |guard| RwLockWriteGuard {
+            lock: lock,
+            poison: guard,
         })
     }
 }
@@ -486,9 +481,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug> fmt::Debug for RwLockReadGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RwLockReadGuard")
-            .field("lock", &self.__lock)
-            .finish()
+        f.debug_struct("RwLockReadGuard").field("lock", &self.lock).finish()
     }
 }
 
@@ -502,9 +495,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'_, T> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RwLockWriteGuard")
-            .field("lock", &self.__lock)
-            .finish()
+        f.debug_struct("RwLockWriteGuard").field("lock", &self.lock).finish()
     }
 }
 
@@ -520,7 +511,7 @@ impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.__lock.data.get() }
+        unsafe { &*self.lock.data.get() }
     }
 }
 
@@ -529,39 +520,43 @@ impl<T: ?Sized> Deref for RwLockWriteGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.__lock.data.get() }
+        unsafe { &*self.lock.data.get() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for RwLockWriteGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.__lock.data.get() }
+        unsafe { &mut *self.lock.data.get() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
     fn drop(&mut self) {
-        unsafe { self.__lock.inner.read_unlock(); }
+        unsafe {
+            self.lock.inner.read_unlock();
+        }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
     fn drop(&mut self) {
-        self.__lock.poison.done(&self.__poison);
-        unsafe { self.__lock.inner.write_unlock(); }
+        self.lock.poison.done(&self.poison);
+        unsafe {
+            self.lock.inner.write_unlock();
+        }
     }
 }
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use rand::{self, Rng};
-    use crate::sync::mpsc::channel;
-    use crate::thread;
-    use crate::sync::{Arc, RwLock, TryLockError};
     use crate::sync::atomic::{AtomicUsize, Ordering};
+    use crate::sync::mpsc::channel;
+    use crate::sync::{Arc, RwLock, TryLockError};
+    use crate::thread;
+    use rand::{self, Rng};
 
     #[derive(Eq, PartialEq, Debug)]
     struct NonCopy(i32);
@@ -609,7 +604,8 @@ mod tests {
         let _: Result<(), _> = thread::spawn(move || {
             let _lock = arc2.write().unwrap();
             panic!();
-        }).join();
+        })
+        .join();
         assert!(arc.read().is_err());
     }
 
@@ -621,7 +617,8 @@ mod tests {
         let _: Result<(), _> = thread::spawn(move || {
             let _lock = arc2.write().unwrap();
             panic!();
-        }).join();
+        })
+        .join();
         assert!(arc.write().is_err());
         assert!(arc.is_poisoned());
     }
@@ -633,7 +630,8 @@ mod tests {
         let _: Result<(), _> = thread::spawn(move || {
             let _lock = arc2.read().unwrap();
             panic!();
-        }).join();
+        })
+        .join();
         let lock = arc.read().unwrap();
         assert_eq!(*lock, 1);
     }
@@ -644,7 +642,8 @@ mod tests {
         let _: Result<(), _> = thread::spawn(move || {
             let _lock = arc2.read().unwrap();
             panic!()
-        }).join();
+        })
+        .join();
         let lock = arc.write().unwrap();
         assert_eq!(*lock, 1);
     }
@@ -703,7 +702,8 @@ mod tests {
             }
             let _u = Unwinder { i: arc2 };
             panic!();
-        }).join();
+        })
+        .join();
         let lock = arc.read().unwrap();
         assert_eq!(*lock, 2);
     }
@@ -766,7 +766,8 @@ mod tests {
         let _ = thread::spawn(move || {
             let _lock = m2.write().unwrap();
             panic!("test panic in inner thread to poison RwLock");
-        }).join();
+        })
+        .join();
 
         assert!(m.is_poisoned());
         match Arc::try_unwrap(m).unwrap().into_inner() {
@@ -789,7 +790,8 @@ mod tests {
         let _ = thread::spawn(move || {
             let _lock = m2.write().unwrap();
             panic!("test panic in inner thread to poison RwLock");
-        }).join();
+        })
+        .join();
 
         assert!(m.is_poisoned());
         match Arc::try_unwrap(m).unwrap().get_mut() {

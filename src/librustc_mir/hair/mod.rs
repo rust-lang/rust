@@ -4,31 +4,31 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
+use self::cx::Cx;
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::Canonical;
 use rustc::middle::region;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, UserType};
-use rustc::ty::adjustment::{PointerCast};
+use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
+use rustc::ty::adjustment::PointerCast;
 use rustc::ty::layout::VariantIdx;
-use rustc::hir;
+use rustc::ty::subst::SubstsRef;
+use rustc::ty::{AdtDef, Const, Ty, UpvarSubsts, UserType};
 use syntax_pos::Span;
-use self::cx::Cx;
 
-pub mod cx;
 mod constant;
+pub mod cx;
 
 pub mod pattern;
-pub use self::pattern::{BindingMode, Pat, PatKind, PatRange, FieldPat};
 pub(crate) use self::pattern::PatTyProj;
+pub use self::pattern::{BindingMode, FieldPat, Pat, PatKind, PatRange};
 
 mod util;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {
     Inherited,
-    Explicit(hir::HirId)
+    Explicit(hir::HirId),
 }
 
 #[derive(Clone, Debug)]
@@ -47,7 +47,7 @@ pub enum BlockSafety {
     Safe,
     ExplicitUnsafe(hir::HirId),
     PushUnsafe,
-    PopUnsafe
+    PopUnsafe,
 }
 
 #[derive(Clone, Debug)]
@@ -92,6 +92,10 @@ pub enum StmtKind<'tcx> {
         lint_level: LintLevel,
     },
 }
+
+// `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Expr<'_>, 168);
 
 /// The Hair trait implementor lowers their expressions (`&'tcx H::Expr`)
 /// into instances of this `Expr` enum. This lowering can be done
@@ -154,7 +158,7 @@ pub enum ExprKind<'tcx> {
         lhs: ExprRef<'tcx>,
         rhs: ExprRef<'tcx>,
     }, // NOT overloaded!
-       // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
+    // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
     Unary {
         op: UnOp,
         arg: ExprRef<'tcx>,
@@ -180,7 +184,7 @@ pub enum ExprKind<'tcx> {
         arms: Vec<Arm<'tcx>>,
     },
     Block {
-        body: &'tcx hir::Block,
+        body: &'tcx hir::Block<'tcx>,
     },
     Assign {
         lhs: ExprRef<'tcx>,
@@ -204,11 +208,13 @@ pub enum ExprKind<'tcx> {
     },
     /// first argument, used for self in a closure
     SelfRef,
-    StaticRef {
-        id: DefId,
-    },
     Borrow {
         borrow_kind: BorrowKind,
+        arg: ExprRef<'tcx>,
+    },
+    /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
+    AddressOf {
+        mutability: hir::Mutability,
         arg: ExprRef<'tcx>,
     },
     Break {
@@ -241,7 +247,7 @@ pub enum ExprKind<'tcx> {
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
 
         fields: Vec<FieldExprRef<'tcx>>,
-        base: Option<FruInfo<'tcx>>
+        base: Option<FruInfo<'tcx>>,
     },
     PlaceTypeAscription {
         source: ExprRef<'tcx>,
@@ -263,10 +269,18 @@ pub enum ExprKind<'tcx> {
         literal: &'tcx Const<'tcx>,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
+    /// A literal containing the address of a `static`.
+    ///
+    /// This is only distinguished from `Literal` so that we can register some
+    /// info for diagnostics.
+    StaticRef {
+        literal: &'tcx Const<'tcx>,
+        def_id: DefId,
+    },
     InlineAsm {
-        asm: &'tcx hir::InlineAsm,
+        asm: &'tcx hir::InlineAsmInner,
         outputs: Vec<ExprRef<'tcx>>,
-        inputs: Vec<ExprRef<'tcx>>
+        inputs: Vec<ExprRef<'tcx>>,
     },
     Yield {
         value: ExprRef<'tcx>,
@@ -275,7 +289,7 @@ pub enum ExprKind<'tcx> {
 
 #[derive(Clone, Debug)]
 pub enum ExprRef<'tcx> {
-    Hair(&'tcx hir::Expr),
+    Hair(&'tcx hir::Expr<'tcx>),
     Mirror(Box<Expr<'tcx>>),
 }
 
@@ -288,7 +302,7 @@ pub struct FieldExprRef<'tcx> {
 #[derive(Clone, Debug)]
 pub struct FruInfo<'tcx> {
     pub base: ExprRef<'tcx>,
-    pub field_types: Vec<Ty<'tcx>>
+    pub field_types: Vec<Ty<'tcx>>,
 }
 
 #[derive(Clone, Debug)]

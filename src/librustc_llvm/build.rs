@@ -1,6 +1,6 @@
-use std::process::Command;
 use std::env;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use build_helper::output;
 
@@ -24,22 +24,16 @@ fn main() {
     build_helper::restore_library_path();
 
     let target = env::var("TARGET").expect("TARGET was not set");
-    let llvm_config = env::var_os("LLVM_CONFIG")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            if let Some(dir) = env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
-                let to_test = dir.parent()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
-                    .join(&target)
-                    .join("llvm/bin/llvm-config");
-                if Command::new(&to_test).output().is_ok() {
-                    return to_test;
-                }
+    let llvm_config = env::var_os("LLVM_CONFIG").map(PathBuf::from).unwrap_or_else(|| {
+        if let Some(dir) = env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
+            let to_test =
+                dir.parent().unwrap().parent().unwrap().join(&target).join("llvm/bin/llvm-config");
+            if Command::new(&to_test).output().is_ok() {
+                return to_test;
             }
-            PathBuf::from("llvm-config")
-        });
+        }
+        PathBuf::from("llvm-config")
+    });
 
     println!("cargo:rerun-if-changed={}", llvm_config.display());
     println!("cargo:rerun-if-env-changed=LLVM_CONFIG");
@@ -69,34 +63,38 @@ fn main() {
     let host = env::var("HOST").expect("HOST was not set");
     let is_crossed = target != host;
 
-    let mut optional_components =
-        vec!["x86", "arm", "aarch64", "amdgpu", "mips", "powerpc",
-             "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx",
-             "hexagon"];
+    let mut optional_components = vec![
+        "x86",
+        "arm",
+        "aarch64",
+        "amdgpu",
+        "mips",
+        "powerpc",
+        "systemz",
+        "jsbackend",
+        "webassembly",
+        "msp430",
+        "sparc",
+        "nvptx",
+        "hexagon",
+    ];
 
     let mut version_cmd = Command::new(&llvm_config);
     version_cmd.arg("--version");
     let version_output = output(&mut version_cmd);
-    let mut parts = version_output.split('.').take(2)
-        .filter_map(|s| s.parse::<u32>().ok());
-    let (major, _minor) =
-        if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
-            (major, minor)
-        } else {
-            (6, 0)
-        };
+    let mut parts = version_output.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
+    let (major, _minor) = if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
+        (major, minor)
+    } else {
+        (6, 0)
+    };
 
     if major > 6 {
         optional_components.push("riscv");
     }
 
-    let required_components = &["ipo",
-                                "bitreader",
-                                "bitwriter",
-                                "linker",
-                                "asmparser",
-                                "lto",
-                                "instrumentation"];
+    let required_components =
+        &["ipo", "bitreader", "bitwriter", "linker", "asmparser", "lto", "instrumentation"];
 
     let components = output(Command::new(&llvm_config).arg("--components"));
     let mut components = components.split_whitespace().collect::<Vec<_>>();
@@ -157,12 +155,12 @@ fn main() {
 
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
     cfg.file("../rustllvm/PassWrapper.cpp")
-       .file("../rustllvm/RustWrapper.cpp")
-       .file("../rustllvm/ArchiveWrapper.cpp")
-       .file("../rustllvm/Linker.cpp")
-       .cpp(true)
-       .cpp_link_stdlib(None) // we handle this below
-       .compile("rustllvm");
+        .file("../rustllvm/RustWrapper.cpp")
+        .file("../rustllvm/ArchiveWrapper.cpp")
+        .file("../rustllvm/Linker.cpp")
+        .cpp(true)
+        .cpp_link_stdlib(None) // we handle this below
+        .compile("rustllvm");
 
     let (llvm_kind, llvm_link_arg) = detect_llvm_link();
 
@@ -204,11 +202,7 @@ fn main() {
             continue;
         }
 
-        let kind = if name.starts_with("LLVM") {
-            llvm_kind
-        } else {
-            "dylib"
-        };
+        let kind = if name.starts_with("LLVM") { llvm_kind } else { "dylib" };
         println!("cargo:rustc-link-lib={}={}", kind, name);
     }
 
@@ -225,8 +219,7 @@ fn main() {
             println!("cargo:rustc-link-search=native={}", &lib[9..]);
         } else if is_crossed {
             if lib.starts_with("-L") {
-                println!("cargo:rustc-link-search=native={}",
-                         lib[2..].replace(&host, &target));
+                println!("cargo:rustc-link-search=native={}", lib[2..].replace(&host, &target));
             }
         } else if lib.starts_with("-l") {
             println!("cargo:rustc-link-lib={}", &lib[2..]);
@@ -254,11 +247,7 @@ fn main() {
     let llvm_use_libcxx = env::var_os("LLVM_USE_LIBCXX");
 
     let stdcppname = if target.contains("openbsd") {
-        if target.contains("sparc64") {
-            "estdc++"
-        } else {
-            "c++"
-        }
+        if target.contains("sparc64") { "estdc++" } else { "c++" }
     } else if target.contains("freebsd") {
         "c++"
     } else if target.contains("darwin") {
@@ -277,8 +266,7 @@ fn main() {
         if let Some(s) = llvm_static_stdcpp {
             assert!(!cxxflags.contains("stdlib=libc++"));
             let path = PathBuf::from(s);
-            println!("cargo:rustc-link-search=native={}",
-                     path.parent().unwrap().display());
+            println!("cargo:rustc-link-search=native={}", path.parent().unwrap().display());
             if target.contains("windows") {
                 println!("cargo:rustc-link-lib=static-nobundle={}", stdcppname);
             } else {

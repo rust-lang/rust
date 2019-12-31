@@ -3,10 +3,10 @@
 //! or explicit bounds. In that case, we track the bounds using the `TransitiveRelation` type,
 //! and use that to decide when one free region outlives another, and so forth.
 
-use crate::infer::outlives::free_region_map::{FreeRegionMap, FreeRegionRelations};
 use crate::hir::def_id::DefId;
+use crate::infer::outlives::free_region_map::{FreeRegionMap, FreeRegionRelations};
 use crate::middle::region;
-use crate::ty::{self, TyCtxt, Region};
+use crate::ty::{self, Region, TyCtxt};
 
 /// Combines a `region::ScopeTree` (which governs relationships between
 /// scopes) and a `FreeRegionMap` (which governs relationships between
@@ -35,28 +35,23 @@ impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
         region_scope_tree: &'a region::ScopeTree,
         free_regions: &'a FreeRegionMap<'tcx>,
     ) -> Self {
-        Self {
-            tcx,
-            context,
-            region_scope_tree,
-            free_regions,
-        }
+        Self { tcx, context, region_scope_tree, free_regions }
     }
 
     /// Determines whether one region is a subregion of another. This is intended to run *after
     /// inference* and sadly the logic is somewhat duplicated with the code in infer.rs.
-    pub fn is_subregion_of(&self,
-                           sub_region: ty::Region<'tcx>,
-                           super_region: ty::Region<'tcx>)
-                           -> bool {
+    pub fn is_subregion_of(
+        &self,
+        sub_region: ty::Region<'tcx>,
+        super_region: ty::Region<'tcx>,
+    ) -> bool {
         let result = sub_region == super_region || {
             match (sub_region, super_region) {
-                (ty::ReEmpty, _) |
-                (_, ty::ReStatic) =>
-                    true,
+                (ty::ReEmpty, _) | (_, ty::ReStatic) => true,
 
-                (ty::ReScope(sub_scope), ty::ReScope(super_scope)) =>
-                    self.region_scope_tree.is_subscope_of(*sub_scope, *super_scope),
+                (ty::ReScope(sub_scope), ty::ReScope(super_scope)) => {
+                    self.region_scope_tree.is_subscope_of(*sub_scope, *super_scope)
+                }
 
                 (ty::ReScope(sub_scope), ty::ReEarlyBound(ref br)) => {
                     let fr_scope = self.region_scope_tree.early_free_scope(self.tcx, br);
@@ -68,19 +63,21 @@ impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
                     self.region_scope_tree.is_subscope_of(*sub_scope, fr_scope)
                 }
 
-                (ty::ReEarlyBound(_), ty::ReEarlyBound(_)) |
-                (ty::ReFree(_), ty::ReEarlyBound(_)) |
-                (ty::ReEarlyBound(_), ty::ReFree(_)) |
-                (ty::ReFree(_), ty::ReFree(_)) =>
-                    self.free_regions.sub_free_regions(sub_region, super_region),
+                (ty::ReEarlyBound(_), ty::ReEarlyBound(_))
+                | (ty::ReFree(_), ty::ReEarlyBound(_))
+                | (ty::ReEarlyBound(_), ty::ReFree(_))
+                | (ty::ReFree(_), ty::ReFree(_)) => {
+                    self.free_regions.sub_free_regions(sub_region, super_region)
+                }
 
-                _ =>
-                    false,
+                _ => false,
             }
         };
         let result = result || self.is_static(super_region);
-        debug!("is_subregion_of(sub_region={:?}, super_region={:?}) = {:?}",
-               sub_region, super_region, result);
+        debug!(
+            "is_subregion_of(sub_region={:?}, super_region={:?}) = {:?}",
+            sub_region, super_region, result
+        );
         result
     }
 
@@ -93,14 +90,11 @@ impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
                 let re_static = self.tcx.mk_region(ty::ReStatic);
                 self.free_regions.sub_free_regions(&re_static, &super_region)
             }
-            _ => false
+            _ => false,
         }
     }
 
-    pub fn lub_free_regions(&self,
-                            r_a: Region<'tcx>,
-                            r_b: Region<'tcx>)
-                            -> Region<'tcx> {
+    pub fn lub_free_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> Region<'tcx> {
         self.free_regions.lub_free_regions(self.tcx, r_a, r_b)
     }
 }

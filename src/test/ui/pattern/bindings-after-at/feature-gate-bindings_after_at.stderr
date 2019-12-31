@@ -1,0 +1,12 @@
+error[E0658]: pattern bindings after an `@` are unstable
+  --> $DIR/feature-gate-bindings_after_at.rs:2:13
+   |
+LL |     let x @ y = 0;
+   |             ^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65490
+   = help: add `#![feature(bindings_after_at)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

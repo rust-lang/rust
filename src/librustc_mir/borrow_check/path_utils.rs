@@ -1,9 +1,9 @@
-use crate::borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseActivation};
+use crate::borrow_check::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 use crate::borrow_check::places_conflict;
 use crate::borrow_check::AccessDepth;
 use crate::dataflow::indexes::BorrowIndex;
-use rustc::mir::{BasicBlock, Location, Body, Place, PlaceBase};
 use rustc::mir::BorrowKind;
+use rustc::mir::{BasicBlock, Body, Location, Place, PlaceBase};
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::graph::dominators::Dominators;
 
@@ -71,7 +71,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
 pub(super) fn is_active<'tcx>(
     dominators: &Dominators<BasicBlock>,
     borrow_data: &BorrowData<'tcx>,
-    location: Location
+    location: Location,
 ) -> bool {
     debug!("is_active(borrow_data={:?}, location={:?})", borrow_data, location);
 
@@ -131,7 +131,7 @@ pub(super) fn is_active<'tcx>(
 }
 
 /// Determines if a given borrow is borrowing local data
-/// This is called for all Yield statements on movable generators
+/// This is called for all Yield expressions on movable generators
 pub(super) fn borrow_of_local_data(place: &Place<'_>) -> bool {
     match place.base {
         PlaceBase::Static(_) => false,

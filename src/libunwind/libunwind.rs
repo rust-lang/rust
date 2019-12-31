@@ -21,8 +21,8 @@ pub use _Unwind_Reason_Code::*;
 pub type _Unwind_Exception_Class = u64;
 pub type _Unwind_Word = uintptr_t;
 pub type _Unwind_Ptr = uintptr_t;
-pub type _Unwind_Trace_Fn = extern "C" fn(ctx: *mut _Unwind_Context, arg: *mut c_void)
-                                          -> _Unwind_Reason_Code;
+pub type _Unwind_Trace_Fn =
+    extern "C" fn(ctx: *mut _Unwind_Context, arg: *mut c_void) -> _Unwind_Reason_Code;
 #[cfg(target_arch = "x86")]
 pub const unwinder_private_data_size: usize = 5;
 
@@ -68,11 +68,12 @@ pub struct _Unwind_Exception {
 
 pub enum _Unwind_Context {}
 
-pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reason_Code,
-                                                      exception: *mut _Unwind_Exception);
-#[cfg_attr(all(feature = "llvm-libunwind",
-               any(target_os = "fuchsia", target_os = "linux")),
-           link(name = "unwind", kind = "static"))]
+pub type _Unwind_Exception_Cleanup_Fn =
+    extern "C" fn(unwind_code: _Unwind_Reason_Code, exception: *mut _Unwind_Exception);
+#[cfg_attr(
+    all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+    link(name = "unwind", kind = "static")
+)]
 extern "C" {
     #[unwind(allowed)]
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;

@@ -4,7 +4,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc_index::vec::IndexVec;
 use smallvec::{smallvec, SmallVec};
 
-use std::collections::hash_map::Entry;
+use std::convert::TryInto;
 use std::mem;
 
 use super::abs_domain::Lift;
@@ -17,12 +17,13 @@ use super::{
 struct MoveDataBuilder<'a, 'tcx> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
     errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
 }
 
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
-    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
         let mut init_path_map = IndexVec::new();
@@ -30,6 +31,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         MoveDataBuilder {
             body,
             tcx,
+            param_env,
             errors: Vec::new(),
             data: MoveData {
                 moves: IndexVec::new(),
@@ -101,6 +103,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
         };
 
+        // The move path index of the first union that we find. Once this is
+        // some we stop creating child move paths, since moves from unions
+        // move the whole thing.
+        // We continue looking for other move errors though so that moving
+        // from `*(u.f: &_)` isn't allowed.
+        let mut union_path = None;
+
         for (i, elem) in place.projection.iter().enumerate() {
             let proj_base = &place.projection[..i];
             let body = self.builder.body;
@@ -108,7 +117,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let place_ty = Place::ty_from(&place.base, proj_base, body, tcx).ty;
             match place_ty.kind {
                 ty::Ref(..) | ty::RawPtr(..) => {
-                    let proj = &place.projection[..i+1];
+                    let proj = &place.projection[..i + 1];
                     return Err(MoveError::cannot_move_out_of(
                         self.loc,
                         BorrowedContent {
@@ -125,9 +134,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         InteriorOfTypeWithDestructor { container_ty: place_ty },
                     ));
                 }
-                // move out of union - always move the entire union
                 ty::Adt(adt, _) if adt.is_union() => {
-                    return Err(MoveError::UnionMove { path: base });
+                    union_path.get_or_insert(base);
                 }
                 ty::Slice(_) => {
                     return Err(MoveError::cannot_move_out_of(
@@ -148,40 +156,48 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                             InteriorOfSliceOrArray { ty: place_ty, is_index: true },
                         ));
                     }
-                    _ => {
-                        // FIXME: still badly broken
-                    }
+                    _ => {}
                 },
                 _ => {}
             };
 
-            let proj = &place.projection[..i+1];
-            base = match self
-                .builder
-                .data
-                .rev_lookup
-                .projections
-                .entry((base, elem.lift()))
-                {
-                    Entry::Occupied(ent) => *ent.get(),
-                    Entry::Vacant(ent) => {
-                        let path = MoveDataBuilder::new_move_path(
-                            &mut self.builder.data.move_paths,
-                            &mut self.builder.data.path_map,
-                            &mut self.builder.data.init_path_map,
-                            Some(base),
-                            Place {
-                                base: place.base.clone(),
-                                projection: tcx.intern_place_elems(proj),
-                            },
-                        );
-                        ent.insert(path);
-                        path
-                    }
-                };
+            if union_path.is_none() {
+                base = self.add_move_path(base, elem, |tcx| Place {
+                    base: place.base.clone(),
+                    projection: tcx.intern_place_elems(&place.projection[..i + 1]),
+                });
+            }
         }
 
-        Ok(base)
+        if let Some(base) = union_path {
+            // Move out of union - always move the entire union.
+            Err(MoveError::UnionMove { path: base })
+        } else {
+            Ok(base)
+        }
+    }
+
+    fn add_move_path(
+        &mut self,
+        base: MovePathIndex,
+        elem: &PlaceElem<'tcx>,
+        mk_place: impl FnOnce(TyCtxt<'tcx>) -> Place<'tcx>,
+    ) -> MovePathIndex {
+        let MoveDataBuilder {
+            data: MoveData { rev_lookup, move_paths, path_map, init_path_map, .. },
+            tcx,
+            ..
+        } = self.builder;
+        *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
+            let path = MoveDataBuilder::new_move_path(
+                move_paths,
+                path_map,
+                init_path_map,
+                Some(base),
+                mk_place(*tcx),
+            );
+            path
+        })
     }
 
     fn create_move_path(&mut self, place: &Place<'tcx>) {
@@ -214,8 +230,9 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
 pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
-    let mut builder = MoveDataBuilder::new(body, tcx);
+    let mut builder = MoveDataBuilder::new(body, tcx, param_env);
 
     builder.gather_args();
 
@@ -268,7 +285,7 @@ struct Gatherer<'b, 'a, 'tcx> {
 impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match stmt.kind {
-            StatementKind::Assign(box(ref place, ref rval)) => {
+            StatementKind::Assign(box (ref place, ref rval)) => {
                 self.create_move_path(place);
                 if let RvalueInitializationState::Shallow = rval.initialization_state() {
                     // Box starts out uninitialized - need to create a separate
@@ -327,6 +344,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 }
             }
             Rvalue::Ref(..)
+            | Rvalue::AddressOf(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
             | Rvalue::NullaryOp(NullOp::SizeOf, _)
@@ -411,20 +429,61 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_move(&mut self, place: &Place<'tcx>) {
         debug!("gather_move({:?}, {:?})", self.loc, place);
 
-        let path = match self.move_path_for(place) {
-            Ok(path) | Err(MoveError::UnionMove { path }) => path,
-            Err(error @ MoveError::IllegalMove { .. }) => {
-                self.builder.errors.push((place.clone(), error));
-                return;
+        if let [ref base @ .., ProjectionElem::Subslice { from, to, from_end: false }] =
+            **place.projection
+        {
+            // Split `Subslice` patterns into the corresponding list of
+            // `ConstIndex` patterns. This is done to ensure that all move paths
+            // are disjoint, which is expected by drop elaboration.
+            let base_place = Place {
+                base: place.base.clone(),
+                projection: self.builder.tcx.intern_place_elems(base),
+            };
+            let base_path = match self.move_path_for(&base_place) {
+                Ok(path) => path,
+                Err(MoveError::UnionMove { path }) => {
+                    self.record_move(place, path);
+                    return;
+                }
+                Err(error @ MoveError::IllegalMove { .. }) => {
+                    self.builder.errors.push((base_place, error));
+                    return;
+                }
+            };
+            let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
+            let len: u32 = match base_ty.kind {
+                ty::Array(_, size) => {
+                    let length = size.eval_usize(self.builder.tcx, self.builder.param_env);
+                    length
+                        .try_into()
+                        .expect("slice pattern of array with more than u32::MAX elements")
+                }
+                _ => bug!("from_end: false slice pattern of non-array type"),
+            };
+            for offset in from..to {
+                let elem =
+                    ProjectionElem::ConstantIndex { offset, min_length: len, from_end: false };
+                let path = self.add_move_path(base_path, &elem, |tcx| {
+                    tcx.mk_place_elem(base_place.clone(), elem)
+                });
+                self.record_move(place, path);
             }
-        };
-        let move_out = self.builder.data.moves.push(MoveOut { path: path, source: self.loc });
+        } else {
+            match self.move_path_for(place) {
+                Ok(path) | Err(MoveError::UnionMove { path }) => self.record_move(place, path),
+                Err(error @ MoveError::IllegalMove { .. }) => {
+                    self.builder.errors.push((place.clone(), error));
+                }
+            };
+        }
+    }
 
+    fn record_move(&mut self, place: &Place<'tcx>, path: MovePathIndex) {
+        let move_out = self.builder.data.moves.push(MoveOut { path: path, source: self.loc });
         debug!(
             "gather_move({:?}, {:?}): adding move {:?} of {:?}",
             self.loc, place, move_out, path
         );
-
         self.builder.data.path_map[path].push(move_out);
         self.builder.data.loc_map[self.loc].push(move_out);
     }

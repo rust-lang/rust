@@ -40,7 +40,6 @@ impl Category {
             | ExprKind::Index { .. }
             | ExprKind::SelfRef
             | ExprKind::VarRef { .. }
-            | ExprKind::StaticRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => Some(Category::Place),
 
@@ -50,6 +49,7 @@ impl Category {
             | ExprKind::Use { .. }
             | ExprKind::Adt { .. }
             | ExprKind::Borrow { .. }
+            | ExprKind::AddressOf { .. }
             | ExprKind::Call { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
 
             ExprKind::Array { .. }
@@ -66,7 +66,7 @@ impl Category {
             | ExprKind::Yield { .. }
             | ExprKind::InlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
-            ExprKind::Literal { .. } => Some(Category::Constant),
+            ExprKind::Literal { .. } | ExprKind::StaticRef { .. } => Some(Category::Constant),
 
             ExprKind::Loop { .. }
             | ExprKind::Block { .. }

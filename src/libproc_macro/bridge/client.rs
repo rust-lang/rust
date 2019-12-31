@@ -393,17 +393,13 @@ impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
         ) -> Buffer<u8> {
             run_client(bridge, |input| f(crate::TokenStream(input)).0)
         }
-        Client {
-            get_handle_counters: HandleCounters::get,
-            run,
-            f,
-        }
+        Client { get_handle_counters: HandleCounters::get, run, f }
     }
 }
 
 impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
     pub const fn expand2(
-        f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream
+        f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
         extern "C" fn run(
             bridge: Bridge<'_>,
@@ -413,11 +409,7 @@ impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
                 f(crate::TokenStream(input), crate::TokenStream(input2)).0
             })
         }
-        Client {
-            get_handle_counters: HandleCounters::get,
-            run,
-            f,
-        }
+        Client { get_handle_counters: HandleCounters::get, run, f }
     }
 }
 
@@ -446,7 +438,7 @@ impl ProcMacro {
         match self {
             ProcMacro::CustomDerive { trait_name, .. } => trait_name,
             ProcMacro::Attr { name, .. } => name,
-            ProcMacro::Bang { name, ..} => name
+            ProcMacro::Bang { name, .. } => name,
         }
     }
 
@@ -455,30 +447,20 @@ impl ProcMacro {
         attributes: &'static [&'static str],
         expand: fn(crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
-        ProcMacro::CustomDerive {
-            trait_name,
-            attributes,
-            client: Client::expand1(expand),
-        }
+        ProcMacro::CustomDerive { trait_name, attributes, client: Client::expand1(expand) }
     }
 
     pub const fn attr(
         name: &'static str,
         expand: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
-        ProcMacro::Attr {
-            name,
-            client: Client::expand2(expand),
-        }
+        ProcMacro::Attr { name, client: Client::expand2(expand) }
     }
 
     pub const fn bang(
         name: &'static str,
-        expand: fn(crate::TokenStream) -> crate::TokenStream
+        expand: fn(crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
-        ProcMacro::Bang {
-            name,
-            client: Client::expand1(expand),
-        }
+        ProcMacro::Bang { name, client: Client::expand1(expand) }
     }
 }

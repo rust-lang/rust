@@ -1,13 +1,13 @@
 #![unstable(feature = "humans",
             reason = "who ever let humans program computers,
             we're apparently really bad at it",
-            issue = "0")]
+            issue = "none")]
 
-#![feature(rustc_const_unstable, const_fn)]
+#![feature(const_fn)]
 #![feature(staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature="foo")]
+#[rustc_const_unstable(feature="foo", issue = "none")]
 const fn foo() -> u32 { 42 }
 
 fn meh() -> u32 { 42 }

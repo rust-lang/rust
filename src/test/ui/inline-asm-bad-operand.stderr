@@ -1,41 +1,41 @@
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/inline-asm-bad-operand.rs:21:24
+  --> $DIR/inline-asm-bad-operand.rs:22:24
    |
 LL |         asm!("" :: "r"(""));
    |                        ^^
 
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/inline-asm-bad-operand.rs:26:32
+  --> $DIR/inline-asm-bad-operand.rs:27:32
    |
 LL |         asm!("ret" : : "{rdi}"(target));
    |                                ^^^^^^
 
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/inline-asm-bad-operand.rs:33:29
+  --> $DIR/inline-asm-bad-operand.rs:34:29
    |
 LL |     unsafe { asm!("" :: "i"(hello)) };
    |                             ^^^^^
 
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/inline-asm-bad-operand.rs:41:38
+  --> $DIR/inline-asm-bad-operand.rs:42:38
    |
 LL |         asm!("movups $1, %xmm0"::"m"(arr));
    |                                      ^^^
 
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/inline-asm-bad-operand.rs:48:32
+  --> $DIR/inline-asm-bad-operand.rs:49:32
    |
 LL |         asm!("mov sp, $0"::"r"(addr));
    |                                ^^^^
 
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/inline-asm-bad-operand.rs:55:32
+  --> $DIR/inline-asm-bad-operand.rs:56:32
    |
 LL |         asm!("mov sp, $0"::"r"(addr),
    |                                ^^^^
 
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/inline-asm-bad-operand.rs:56:32
+  --> $DIR/inline-asm-bad-operand.rs:57:32
    |
 LL | ...                   "r"("hello e0669"));
    |                           ^^^^^^^^^^^^^

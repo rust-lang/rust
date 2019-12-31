@@ -82,25 +82,23 @@ fn main() {
 //         _10 = move _8;
 //         Retag(_10);
 //         ...
-//         _13 = &mut (*_10);
-//         Retag(_13);
-//         _12 = move _13 as *mut i32 (Misc);
+//         _12 = &raw mut (*_10);
 //         Retag([raw] _12);
 //         ...
-//         _16 = move _17(move _18) -> bb5;
+//         _15 = move _16(move _17) -> bb5;
 //     }
 //
 //     bb5: {
-//         Retag(_16);
+//         Retag(_15);
 //         ...
-//         _20 = const Test::foo_shr(move _21, move _23) -> [return: bb6, unwind: bb7];
+//         _19 = const Test::foo_shr(move _20, move _22) -> [return: bb6, unwind: bb7];
 //     }
 //
 //     ...
 // }
 // END rustc.main.EraseRegions.after.mir
 // START rustc.main-{{closure}}.EraseRegions.after.mir
-// fn main::{{closure}}#0(_1: &[closure@HirId { owner: DefIndex(13), local_id: 72 }], _2: &i32) -> &i32 {
+// fn main::{{closure}}#0(_1: &[closure@main::{{closure}}#0], _2: &i32) -> &i32 {
 //     ...
 //     bb0: {
 //         Retag([fn entry] _1);

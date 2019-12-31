@@ -1,8 +1,6 @@
 //! Panic support in the standard library.
 
-#![unstable(feature = "core_panic_info",
-            reason = "newly available in libcore",
-            issue = "44489")]
+#![stable(feature = "core_panic_info", since = "1.41.0")]
 
 use crate::any::Any;
 use crate::fmt;
@@ -39,10 +37,12 @@ pub struct PanicInfo<'a> {
 }
 
 impl<'a> PanicInfo<'a> {
-    #![unstable(feature = "panic_internals",
-                reason = "internal details of the implementation of the `panic!` \
-                          and related macros",
-                issue = "0")]
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
+                         and related macros",
+        issue = "none"
+    )]
     #[doc(hidden)]
     #[inline]
     pub fn internal_constructor(
@@ -50,13 +50,15 @@ impl<'a> PanicInfo<'a> {
         location: &'a Location<'a>,
     ) -> Self {
         struct NoPayload;
-        PanicInfo {
-            location,
-            message,
-            payload: &NoPayload,
-        }
+        PanicInfo { location, message, payload: &NoPayload }
     }
 
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
+                         and related macros",
+        issue = "none"
+    )]
     #[doc(hidden)]
     #[inline]
     pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
@@ -90,7 +92,7 @@ impl<'a> PanicInfo<'a> {
     /// returns that message ready to be used for example with [`fmt::write`]
     ///
     /// [`fmt::write`]: ../fmt/fn.write.html
-    #[unstable(feature = "panic_info_message", issue = "44489")]
+    #[unstable(feature = "panic_info_message", issue = "66745")]
     pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
         self.message
     }
@@ -177,10 +179,67 @@ pub struct Location<'a> {
 }
 
 impl<'a> Location<'a> {
-    #![unstable(feature = "panic_internals",
-                reason = "internal details of the implementation of the `panic!` \
+    /// Returns the source location of the caller of this function. If that function's caller is
+    /// annotated then its call location will be returned, and so on up the stack to the first call
+    /// within a non-tracked function body.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(track_caller)]
+    /// use core::panic::Location;
+    ///
+    /// /// Returns the [`Location`] at which it is called.
+    /// #[track_caller]
+    /// fn get_caller_location() -> &'static Location<'static> {
+    ///     Location::caller()
+    /// }
+    ///
+    /// /// Returns a [`Location`] from within this function's definition.
+    /// fn get_just_one_location() -> &'static Location<'static> {
+    ///     get_caller_location()
+    /// }
+    ///
+    /// let fixed_location = get_just_one_location();
+    /// assert_eq!(fixed_location.file(), file!());
+    /// assert_eq!(fixed_location.line(), 15);
+    /// assert_eq!(fixed_location.column(), 5);
+    ///
+    /// // running the same untracked function in a different location gives us the same result
+    /// let second_fixed_location = get_just_one_location();
+    /// assert_eq!(fixed_location.file(), second_fixed_location.file());
+    /// assert_eq!(fixed_location.line(), second_fixed_location.line());
+    /// assert_eq!(fixed_location.column(), second_fixed_location.column());
+    ///
+    /// let this_location = get_caller_location();
+    /// assert_eq!(this_location.file(), file!());
+    /// assert_eq!(this_location.line(), 29);
+    /// assert_eq!(this_location.column(), 21);
+    ///
+    /// // running the tracked function in a different location produces a different value
+    /// let another_location = get_caller_location();
+    /// assert_eq!(this_location.file(), another_location.file());
+    /// assert_ne!(this_location.line(), another_location.line());
+    /// assert_ne!(this_location.column(), another_location.column());
+    /// ```
+    #[unstable(
+        feature = "track_caller",
+        reason = "uses #[track_caller] which is not yet stable",
+        issue = "47809"
+    )]
+    #[track_caller]
+    pub const fn caller() -> &'static Location<'static> {
+        crate::intrinsics::caller_location()
+    }
+}
+
+impl<'a> Location<'a> {
+    #![unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
                           and related macros",
-                issue = "0")]
+        issue = "none"
+    )]
     #[doc(hidden)]
     pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
         Location { file, line, col }
@@ -263,9 +322,19 @@ impl fmt::Display for Location<'_> {
 /// An internal trait used by libstd to pass data from libstd to `panic_unwind`
 /// and other panic runtimes. Not intended to be stabilized any time soon, do
 /// not use.
-#[unstable(feature = "std_internals", issue = "0")]
+#[unstable(feature = "std_internals", issue = "none")]
 #[doc(hidden)]
 pub unsafe trait BoxMeUp {
-    fn box_me_up(&mut self) -> *mut (dyn Any + Send);
+    /// Take full ownership of the contents.
+    /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in libcore.
+    ///
+    /// After this method got called, only some dummy default value is left in `self`.
+    /// Calling this method twice, or calling `get` after calling this method, is an error.
+    ///
+    /// The argument is borrowed because the panic runtime (`__rust_start_panic`) only
+    /// gets a borrowed `dyn BoxMeUp`.
+    fn take_box(&mut self) -> *mut (dyn Any + Send);
+
+    /// Just borrow the contents.
     fn get(&mut self) -> &(dyn Any + Send);
 }

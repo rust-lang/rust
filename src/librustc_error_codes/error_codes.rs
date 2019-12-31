@@ -7,8 +7,7 @@
 // Error messages' format must follow the RFC 1567 available here:
 // https://github.com/rust-lang/rfcs/pull/1567
 
-crate::register_diagnostics! {
-
+register_diagnostics! {
 E0001: include_str!("./error_codes/E0001.md"),
 E0002: include_str!("./error_codes/E0002.md"),
 E0004: include_str!("./error_codes/E0004.md"),
@@ -19,7 +18,6 @@ E0010: include_str!("./error_codes/E0010.md"),
 E0013: include_str!("./error_codes/E0013.md"),
 E0014: include_str!("./error_codes/E0014.md"),
 E0015: include_str!("./error_codes/E0015.md"),
-E0017: include_str!("./error_codes/E0017.md"),
 E0019: include_str!("./error_codes/E0019.md"),
 E0023: include_str!("./error_codes/E0023.md"),
 E0025: include_str!("./error_codes/E0025.md"),
@@ -108,6 +106,7 @@ E0199: include_str!("./error_codes/E0199.md"),
 E0200: include_str!("./error_codes/E0200.md"),
 E0201: include_str!("./error_codes/E0201.md"),
 E0202: include_str!("./error_codes/E0202.md"),
+E0203: include_str!("./error_codes/E0203.md"),
 E0204: include_str!("./error_codes/E0204.md"),
 E0205: include_str!("./error_codes/E0205.md"),
 E0206: include_str!("./error_codes/E0206.md"),
@@ -117,6 +116,7 @@ E0211: include_str!("./error_codes/E0211.md"),
 E0214: include_str!("./error_codes/E0214.md"),
 E0220: include_str!("./error_codes/E0220.md"),
 E0221: include_str!("./error_codes/E0221.md"),
+E0222: include_str!("./error_codes/E0222.md"),
 E0223: include_str!("./error_codes/E0223.md"),
 E0225: include_str!("./error_codes/E0225.md"),
 E0229: include_str!("./error_codes/E0229.md"),
@@ -238,6 +238,7 @@ E0463: include_str!("./error_codes/E0463.md"),
 E0466: include_str!("./error_codes/E0466.md"),
 E0468: include_str!("./error_codes/E0468.md"),
 E0469: include_str!("./error_codes/E0469.md"),
+E0477: include_str!("./error_codes/E0477.md"),
 E0478: include_str!("./error_codes/E0478.md"),
 E0491: include_str!("./error_codes/E0491.md"),
 E0492: include_str!("./error_codes/E0492.md"),
@@ -319,6 +320,7 @@ E0590: include_str!("./error_codes/E0590.md"),
 E0591: include_str!("./error_codes/E0591.md"),
 E0592: include_str!("./error_codes/E0592.md"),
 E0593: include_str!("./error_codes/E0593.md"),
+E0594: include_str!("./error_codes/E0594.md"),
 E0595: include_str!("./error_codes/E0595.md"),
 E0596: include_str!("./error_codes/E0596.md"),
 E0597: include_str!("./error_codes/E0597.md"),
@@ -346,11 +348,14 @@ E0622: include_str!("./error_codes/E0622.md"),
 E0623: include_str!("./error_codes/E0623.md"),
 E0624: include_str!("./error_codes/E0624.md"),
 E0626: include_str!("./error_codes/E0626.md"),
+E0627: include_str!("./error_codes/E0627.md"),
+E0631: include_str!("./error_codes/E0631.md"),
 E0633: include_str!("./error_codes/E0633.md"),
 E0635: include_str!("./error_codes/E0635.md"),
 E0636: include_str!("./error_codes/E0636.md"),
 E0638: include_str!("./error_codes/E0638.md"),
 E0639: include_str!("./error_codes/E0639.md"),
+E0641: include_str!("./error_codes/E0641.md"),
 E0642: include_str!("./error_codes/E0642.md"),
 E0643: include_str!("./error_codes/E0643.md"),
 E0644: include_str!("./error_codes/E0644.md"),
@@ -382,6 +387,7 @@ E0700: include_str!("./error_codes/E0700.md"),
 E0701: include_str!("./error_codes/E0701.md"),
 E0704: include_str!("./error_codes/E0704.md"),
 E0705: include_str!("./error_codes/E0705.md"),
+E0706: include_str!("./error_codes/E0706.md"),
 E0712: include_str!("./error_codes/E0712.md"),
 E0713: include_str!("./error_codes/E0713.md"),
 E0714: include_str!("./error_codes/E0714.md"),
@@ -407,6 +413,7 @@ E0741: include_str!("./error_codes/E0741.md"),
 E0742: include_str!("./error_codes/E0742.md"),
 E0743: include_str!("./error_codes/E0743.md"),
 E0744: include_str!("./error_codes/E0744.md"),
+E0745: include_str!("./error_codes/E0745.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -443,8 +450,6 @@ E0744: include_str!("./error_codes/E0744.md"),
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
 //  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
-    E0203, // type parameter has more than one relaxed default bound,
-           // and only one is supported
     E0208,
 //  E0209, // builtin traits can only be implemented on structs or enums
     E0212, // cannot extract an associated type from a higher-ranked trait bound
@@ -454,8 +459,6 @@ E0744: include_str!("./error_codes/E0744.md"),
 //  E0217, // ambiguous associated type, defined in multiple supertraits
 //  E0218, // no associated type defined
 //  E0219, // associated type defined in higher-ranked supertrait
-//  E0222, // Error code E0045 (variadic function must have C or cdecl calling
-           // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
@@ -529,7 +532,6 @@ E0744: include_str!("./error_codes/E0744.md"),
     E0474, // captured variable `..` does not outlive the enclosing closure
     E0475, // index of slice outside its lifetime
     E0476, // lifetime of the source pointer does not outlive lifetime bound...
-    E0477, // the type `..` does not fulfill the required lifetime...
     E0479, // the type `..` (provided as the value of a type parameter) is...
     E0480, // lifetime of method receiver does not outlive the method call
     E0481, // lifetime of function argument does not outlive the function call
@@ -567,25 +569,21 @@ E0744: include_str!("./error_codes/E0744.md"),
 //  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
 //  E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
-    E0594, // cannot assign to {}
 //  E0598, // lifetime of {} is too short to guarantee its contents can be...
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0625, // thread-local statics cannot be accessed at compile-time
-    E0627, // yield statement outside of generator literal
     E0628, // generators cannot have explicit parameters
     E0629, // missing 'feature' (rustc_const_unstable)
     // rustc_const_unstable attribute must be paired with stable/unstable
     // attribute
     E0630,
-    E0631, // type mismatch in closure arguments
     E0632, // cannot provide explicit generic arguments when `impl Trait` is
            // used in argument position
     E0634, // type has conflicting packed representaton hints
     E0637, // "'_" is not a valid lifetime bound
     E0640, // infer outlives requirements
-    E0641, // cannot cast to/from a pointer with an unknown kind
 //  E0645, // trait aliases not finished
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0667, // `impl Trait` in projections
@@ -596,7 +594,6 @@ E0744: include_str!("./error_codes/E0744.md"),
     E0696, // `continue` pointing to a labeled block
 //  E0702, // replaced with a generic attribute input check
     E0703, // invalid ABI
-    E0706, // `async fn` in trait
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
     E0708, // `async` non-`move` closures with parameters are not currently
            // supported

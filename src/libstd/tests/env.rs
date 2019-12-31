@@ -1,13 +1,12 @@
 use std::env::*;
-use std::ffi::{OsString, OsStr};
+use std::ffi::{OsStr, OsString};
 
-use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 
 fn make_rand_name() -> OsString {
     let rng = thread_rng();
-    let n = format!("TEST{}", rng.sample_iter(&Alphanumeric).take(10)
-                                 .collect::<String>());
+    let n = format!("TEST{}", rng.sample_iter(&Alphanumeric).take(10).collect::<String>());
     let n = OsString::from(n);
     assert!(var_os(&n).is_none());
     n
@@ -73,11 +72,7 @@ fn test_env_set_var() {
 
     let mut e = vars_os();
     set_var(&n, "VALUE");
-    assert!(!e.any(|(k, v)| {
-        &*k == &*n && &*v == "VALUE"
-    }));
+    assert!(!e.any(|(k, v)| { &*k == &*n && &*v == "VALUE" }));
 
-    assert!(vars_os().any(|(k, v)| {
-        &*k == &*n && &*v == "VALUE"
-    }));
+    assert!(vars_os().any(|(k, v)| { &*k == &*n && &*v == "VALUE" }));
 }

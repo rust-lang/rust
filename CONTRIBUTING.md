@@ -150,13 +150,13 @@ All pull requests are reviewed by another person. We have a bot,
 request.
 
 If you want to request that a specific person reviews your pull request,
-you can add an `r?` to the message. For example, [Steve][steveklabnik] usually reviews
+you can add an `r?` to the pull request description. For example, [Steve][steveklabnik] usually reviews
 documentation changes. So if you were to make a documentation change, add
 
     r? @steveklabnik
 
-to the end of the message, and @rust-highfive will assign [@steveklabnik][steveklabnik] instead
-of a random person. This is entirely optional.
+to the end of the pull request description, and [@rust-highfive][rust-highfive] will assign
+[@steveklabnik][steveklabnik] instead of a random person. This is entirely optional.
 
 After someone has reviewed your pull request, they will leave an annotation
 on the pull request with an `r+`. It will look something like this:
@@ -367,7 +367,7 @@ labels to triage issues:
   to fix the issue.
 
 * The dark blue **final-comment-period** label marks bugs that are using the
-  RFC signoff functionality of [rfcbot][rfcbot] and are currently in the final
+  RFC signoff functionality of [rfcbot] and are currently in the final
   comment period.
 
 * Red, **I**-prefixed labels indicate the **importance** of the issue. The
@@ -385,7 +385,7 @@ labels to triage issues:
   label.
 
 * The gray **proposed-final-comment-period** label marks bugs that are using
-  the RFC signoff functionality of [rfcbot][rfcbot] and are currently awaiting
+  the RFC signoff functionality of [rfcbot] and are currently awaiting
   signoff of all team members in order to enter the final comment period.
 
 * Pink, **regression**-prefixed labels track regressions from stable to the

@@ -12,8 +12,8 @@
 #![stable(feature = "core_ascii", since = "1.26.0")]
 
 use crate::fmt;
-use crate::ops::Range;
 use crate::iter::FusedIterator;
+use crate::ops::Range;
 use crate::str::from_utf8_unchecked;
 
 /// An iterator over the escaped version of a byte.
@@ -100,7 +100,7 @@ pub fn escape_default(c: u8) -> EscapeDefault {
         b'\\' => ([b'\\', b'\\', 0, 0], 2),
         b'\'' => ([b'\\', b'\'', 0, 0], 2),
         b'"' => ([b'\\', b'"', 0, 0], 2),
-        b'\x20' ..= b'\x7e' => ([c, 0, 0, 0], 1),
+        b'\x20'..=b'\x7e' => ([c, 0, 0, 0], 1),
         _ => ([b'\\', b'x', hexify(c >> 4), hexify(c & 0xf)], 4),
     };
 
@@ -108,7 +108,7 @@ pub fn escape_default(c: u8) -> EscapeDefault {
 
     fn hexify(b: u8) -> u8 {
         match b {
-            0 ..= 9 => b'0' + b,
+            0..=9 => b'0' + b,
             _ => b'a' + b - 10,
         }
     }
@@ -117,9 +117,15 @@ pub fn escape_default(c: u8) -> EscapeDefault {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeDefault {
     type Item = u8;
-    fn next(&mut self) -> Option<u8> { self.range.next().map(|i| self.data[i]) }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
-    fn last(mut self) -> Option<u8> { self.next_back() }
+    fn next(&mut self) -> Option<u8> {
+        self.range.next().map(|i| self.data[i])
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
+    fn last(mut self) -> Option<u8> {
+        self.next_back()
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl DoubleEndedIterator for EscapeDefault {

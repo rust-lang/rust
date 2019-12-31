@@ -11,4 +11,5 @@ fn main() {
     //~| ERROR `for` is not allowed in a `const`
     //~| ERROR references in constants may only refer to immutable values
     //~| ERROR evaluation of constant value failed
+    //~| ERROR constant contains unimplemented expression type
 }

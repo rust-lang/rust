@@ -46,7 +46,8 @@ impl<K, V> Eq for StableMap<K, V>
 where
     K: Eq + Hash,
     V: Eq,
-{}
+{
+}
 
 impl<K, V> StableMap<K, V>
 where

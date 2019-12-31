@@ -4,8 +4,8 @@ use crate::fold::{self, DocFolder};
 use crate::passes::Pass;
 
 use syntax::attr;
-use syntax_pos::FileName;
 use syntax::symbol::sym;
+use syntax_pos::FileName;
 
 use std::collections::BTreeMap;
 use std::ops;
@@ -53,10 +53,7 @@ impl ops::Sub for ItemCount {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
-        ItemCount {
-            total: self.total - rhs.total,
-            with_docs: self.with_docs - rhs.with_docs,
-        }
+        ItemCount { total: self.total - rhs.total, with_docs: self.with_docs - rhs.with_docs }
     }
 }
 
@@ -81,13 +78,17 @@ impl CoverageCalculator {
         }
 
         fn print_table_record(name: &str, count: ItemCount, percentage: f64) {
-            println!("| {:<35} | {:>10} | {:>10} | {:>9.1}% |",
-                     name, count.with_docs, count.total, percentage);
+            println!(
+                "| {:<35} | {:>10} | {:>10} | {:>9.1}% |",
+                name, count.with_docs, count.total, percentage
+            );
         }
 
         print_table_line();
-        println!("| {:<35} | {:>10} | {:>10} | {:>10} |",
-                 "File", "Documented", "Total", "Percentage");
+        println!(
+            "| {:<35} | {:>10} | {:>10} | {:>10} |",
+            "File", "Documented", "Total", "Percentage"
+        );
         print_table_line();
 
         for (file, &count) in &self.items {
@@ -97,7 +98,7 @@ impl CoverageCalculator {
                 // FIXME(misdreavus): this needs to count graphemes, and probably also track
                 // double-wide characters...
                 if name.len() > 35 {
-                    name = "...".to_string() + &name[name.len()-32..];
+                    name = "...".to_string() + &name[name.len() - 32..];
                 }
 
                 print_table_record(&name, count, percentage);
@@ -133,7 +134,8 @@ impl fold::DocFolder for CoverageCalculator {
             }
             clean::ImplItem(ref impl_)
                 if attr::contains_name(&i.attrs.other_attrs, sym::automatically_derived)
-                    || impl_.synthetic || impl_.blanket_impl.is_some() =>
+                    || impl_.synthetic
+                    || impl_.blanket_impl.is_some() =>
             {
                 // built-in derives get the `#[automatically_derived]` attribute, and
                 // synthetic/blanket impls are made up by rustdoc and can't be documented
@@ -142,8 +144,12 @@ impl fold::DocFolder for CoverageCalculator {
             }
             clean::ImplItem(ref impl_) => {
                 if let Some(ref tr) = impl_.trait_ {
-                    debug!("impl {:#} for {:#} in {}",
-                        tr.print(), impl_.for_.print(), i.source.filename);
+                    debug!(
+                        "impl {:#} for {:#} in {}",
+                        tr.print(),
+                        impl_.for_.print(),
+                        i.source.filename
+                    );
 
                     // don't count trait impls, the missing-docs lint doesn't so we shouldn't
                     // either
@@ -157,9 +163,7 @@ impl fold::DocFolder for CoverageCalculator {
             }
             _ => {
                 debug!("counting {:?} {:?} in {}", i.type_(), i.name, i.source.filename);
-                self.items.entry(i.source.filename.clone())
-                          .or_default()
-                          .count_item(has_docs);
+                self.items.entry(i.source.filename.clone()).or_default().count_item(has_docs);
             }
         }
 

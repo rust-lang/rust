@@ -1,0 +1,17 @@
+error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
+  --> $DIR/issue-65673.rs:9:5
+   |
+LL |     type Ctx;
+   |          --- associated type defined here
+...
+LL | impl<T> WithType for T {
+   | ---------------------- in this `impl` item
+LL |     type Ctx = dyn Alias<T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `(dyn Trait + 'static)`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for `std::vec::Vec<T>`
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:24:17
    |
 LL |     let mut x = Vec::new();
-   |         -----   ^^^^^^^^ cannot infer type for `T`
+   |         -----   ^^^^^^^^ cannot infer type for type parameter `T`
    |         |
    |         consider giving `x` the explicit type `std::vec::Vec<T>`, where the type parameter `T` is specified
 
@@ -10,7 +10,9 @@ error[E0308]: mismatched types
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:33:20
    |
 LL |     let y: usize = x.foo();
-   |                    ^^^^^^^ expected usize, found isize
+   |            -----   ^^^^^^^ expected `usize`, found `isize`
+   |            |
+   |            expected due to this
    |
 help: you can convert an `isize` to `usize` and panic if the converted value wouldn't fit
    |

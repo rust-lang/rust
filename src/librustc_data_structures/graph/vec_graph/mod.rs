@@ -1,5 +1,5 @@
+use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithNumNodes, WithSuccessors};
 use rustc_index::vec::{Idx, IndexVec};
-use crate::graph::{DirectedGraph, WithNumNodes, WithNumEdges, WithSuccessors, GraphSuccessors};
 
 #[cfg(test)]
 mod tests;
@@ -18,10 +18,7 @@ pub struct VecGraph<N: Idx> {
 }
 
 impl<N: Idx> VecGraph<N> {
-    pub fn new(
-        num_nodes: usize,
-        mut edge_pairs: Vec<(N, N)>,
-    ) -> Self {
+    pub fn new(num_nodes: usize, mut edge_pairs: Vec<(N, N)>) -> Self {
         // Sort the edges by the source -- this is important.
         edge_pairs.sort();
 
@@ -104,10 +101,7 @@ impl<N: Idx> GraphSuccessors<'graph> for VecGraph<N> {
 }
 
 impl<N: Idx> WithSuccessors for VecGraph<N> {
-    fn successors<'graph>(
-        &'graph self,
-        node: N
-    ) -> <Self as GraphSuccessors<'graph>>::Iter {
+    fn successors<'graph>(&'graph self, node: N) -> <Self as GraphSuccessors<'graph>>::Iter {
         self.successors(node).iter().cloned()
     }
 }

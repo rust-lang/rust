@@ -1,26 +1,23 @@
 //! Module providing interface for running tests in the console.
 
 use std::fs::File;
-use std::io::prelude::Write;
 use std::io;
+use std::io::prelude::Write;
 
 use term;
 
 use super::{
     bench::fmt_bench_samples,
     cli::TestOpts,
-    event::{TestEvent, CompletedTest},
+    event::{CompletedTest, TestEvent},
+    filter_tests,
     formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter},
-    helpers::{
-        concurrency::get_concurrency,
-        metrics::MetricMap,
-    },
-    types::{TestDesc, TestDescAndFn, NamePadding},
+    helpers::{concurrency::get_concurrency, metrics::MetricMap},
     options::{Options, OutputFormat},
+    run_tests,
     test_result::TestResult,
     time::TestExecTime,
-    run_tests,
-    filter_tests,
+    types::{NamePadding, TestDesc, TestDescAndFn},
 };
 
 /// Generic wrapper over stdout.
@@ -85,10 +82,7 @@ impl ConsoleTestState {
         })
     }
 
-    pub fn write_log<F, S>(
-        &mut self,
-        msg: F,
-    ) -> io::Result<()>
+    pub fn write_log<F, S>(&mut self, msg: F) -> io::Result<()>
     where
         S: AsRef<str>,
         F: FnOnce() -> S,
@@ -99,27 +93,31 @@ impl ConsoleTestState {
                 let msg = msg();
                 let msg = msg.as_ref();
                 o.write_all(msg.as_bytes())
-            },
+            }
         }
     }
 
-    pub fn write_log_result(&mut self,test: &TestDesc,
+    pub fn write_log_result(
+        &mut self,
+        test: &TestDesc,
         result: &TestResult,
         exec_time: Option<&TestExecTime>,
     ) -> io::Result<()> {
-        self.write_log(|| format!(
-            "{} {}",
-            match *result {
-                TestResult::TrOk => "ok".to_owned(),
-                TestResult::TrFailed => "failed".to_owned(),
-                TestResult::TrFailedMsg(ref msg) => format!("failed: {}", msg),
-                TestResult::TrIgnored => "ignored".to_owned(),
-                TestResult::TrAllowedFail => "failed (allowed)".to_owned(),
-                TestResult::TrBench(ref bs) => fmt_bench_samples(bs),
-                TestResult::TrTimedFail => "failed (time limit exceeded)".to_owned(),
-            },
-            test.name,
-        ))?;
+        self.write_log(|| {
+            format!(
+                "{} {}",
+                match *result {
+                    TestResult::TrOk => "ok".to_owned(),
+                    TestResult::TrFailed => "failed".to_owned(),
+                    TestResult::TrFailedMsg(ref msg) => format!("failed: {}", msg),
+                    TestResult::TrIgnored => "ignored".to_owned(),
+                    TestResult::TrAllowedFail => "failed (allowed)".to_owned(),
+                    TestResult::TrBench(ref bs) => fmt_bench_samples(bs),
+                    TestResult::TrTimedFail => "failed (time limit exceeded)".to_owned(),
+                },
+                test.name,
+            )
+        })?;
         if let Some(exec_time) = exec_time {
             self.write_log(|| format!(" <{}>", exec_time))?;
         }
@@ -147,10 +145,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     for test in filter_tests(&opts, tests) {
         use crate::TestFn::*;
 
-        let TestDescAndFn {
-            desc: TestDesc { name, .. },
-            testfn,
-        } = test;
+        let TestDescAndFn { desc: TestDesc { name, .. }, testfn } = test;
 
         let fntype = match testfn {
             StaticTestFn(..) | DynTestFn(..) => {
@@ -179,12 +174,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
             writeln!(output, "")?;
         }
 
-        writeln!(
-            output,
-            "{}, {}",
-            plural(ntest, "test"),
-            plural(nbench, "benchmark")
-        )?;
+        writeln!(output, "{}, {}", plural(ntest, "test"), plural(nbench, "benchmark"))?;
     }
 
     Ok(())
@@ -282,12 +272,9 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             is_multithreaded,
             opts.time_options,
         )),
-        OutputFormat::Terse => Box::new(TerseFormatter::new(
-            output,
-            opts.use_color(),
-            max_name_len,
-            is_multithreaded,
-        )),
+        OutputFormat::Terse => {
+            Box::new(TerseFormatter::new(output, opts.use_color(), max_name_len, is_multithreaded))
+        }
         OutputFormat::Json => Box::new(JsonFormatter::new(output)),
     };
     let mut st = ConsoleTestState::new(opts)?;

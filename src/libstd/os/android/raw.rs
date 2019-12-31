@@ -1,11 +1,13 @@
 //! Android-specific raw type definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
-#![rustc_deprecated(since = "1.8.0",
-                    reason = "these type aliases are no longer supported by \
-                              the standard library, the `libc` crate on \
-                              crates.io should be used instead for the correct \
-                              definitions")]
+#![rustc_deprecated(
+    since = "1.8.0",
+    reason = "these type aliases are no longer supported by \
+              the standard library, the `libc` crate on \
+              crates.io should be used instead for the correct \
+              definitions"
+)]
 #![allow(deprecated)]
 
 use crate::os::raw::c_long;
@@ -15,12 +17,12 @@ pub type pthread_t = c_long;
 
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
-pub use self::arch::{dev_t, mode_t, blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
+pub use self::arch::{blkcnt_t, blksize_t, dev_t, ino_t, mode_t, nlink_t, off_t, stat, time_t};
 
 #[cfg(any(target_arch = "arm", target_arch = "x86"))]
 mod arch {
-    use crate::os::raw::{c_uint, c_uchar, c_ulonglong, c_longlong, c_ulong};
-    use crate::os::unix::raw::{uid_t, gid_t};
+    use crate::os::raw::{c_longlong, c_uchar, c_uint, c_ulong, c_ulonglong};
+    use crate::os::unix::raw::{gid_t, uid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;
@@ -83,14 +85,12 @@ mod arch {
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_ino: c_ulonglong,
     }
-
 }
-
 
 #[cfg(target_arch = "aarch64")]
 mod arch {
     use crate::os::raw::{c_uchar, c_ulong};
-    use crate::os::unix::raw::{uid_t, gid_t};
+    use crate::os::unix::raw::{gid_t, uid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;
@@ -157,8 +157,8 @@ mod arch {
 
 #[cfg(target_arch = "x86_64")]
 mod arch {
-    use crate::os::raw::{c_uint, c_long, c_ulong};
-    use crate::os::unix::raw::{uid_t, gid_t};
+    use crate::os::raw::{c_long, c_uint, c_ulong};
+    use crate::os::unix::raw::{gid_t, uid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;

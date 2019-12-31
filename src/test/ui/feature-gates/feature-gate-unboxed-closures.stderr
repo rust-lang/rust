@@ -7,11 +7,11 @@ LL |     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/feature-gate-unboxed-closures.rs:5:6
    |
 LL | impl FnOnce<(u32, u32)> for Test {
-   |      ^^^^^^^^^^^^^^^^^^
+   |      ^^^^^^^^^^^^^^^^^^ help: use parenthetical notation instead: `FnOnce(u32, u32) -> ()`
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable

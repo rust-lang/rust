@@ -24,3 +24,4 @@ LL |     apply(&mut 3, takes_imm);
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0631`.

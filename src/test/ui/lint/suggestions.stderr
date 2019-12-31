@@ -77,9 +77,7 @@ warning: the `warp_factor:` in this pattern is redundant
   --> $DIR/suggestions.rs:61:23
    |
 LL |             Equinox { warp_factor: warp_factor } => {}
-   |                       ------------^^^^^^^^^^^^
-   |                       |
-   |                       help: remove this
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^ help: use shorthand field pattern: `warp_factor`
    |
    = note: `#[warn(non_shorthand_field_patterns)]` on by default
 

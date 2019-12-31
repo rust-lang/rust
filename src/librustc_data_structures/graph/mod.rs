@@ -26,10 +26,7 @@ pub trait WithSuccessors: DirectedGraph
 where
     Self: for<'graph> GraphSuccessors<'graph, Item = <Self as DirectedGraph>::Node>,
 {
-    fn successors(
-        &self,
-        node: Self::Node,
-    ) -> <Self as GraphSuccessors<'_>>::Iter;
+    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter;
 
     fn depth_first_search(&self, from: Self::Node) -> iterate::DepthFirstSearch<'_, Self>
     where
@@ -49,10 +46,7 @@ pub trait WithPredecessors: DirectedGraph
 where
     Self: for<'graph> GraphPredecessors<'graph, Item = <Self as DirectedGraph>::Node>,
 {
-    fn predecessors(
-        &self,
-        node: Self::Node,
-    ) -> <Self as GraphPredecessors<'_>>::Iter;
+    fn predecessors(&self, node: Self::Node) -> <Self as GraphPredecessors<'_>>::Iter;
 }
 
 #[allow(unused_lifetimes)]
@@ -71,14 +65,13 @@ pub trait ControlFlowGraph:
     // convenient trait
 }
 
-impl<T> ControlFlowGraph for T
-where
+impl<T> ControlFlowGraph for T where
     T: DirectedGraph
         + WithStartNode
         + WithPredecessors
         + WithStartNode
         + WithSuccessors
-        + WithNumNodes,
+        + WithNumNodes
 {
 }
 

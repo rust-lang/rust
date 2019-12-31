@@ -7,16 +7,11 @@ LL |         continue;
 error[E0696]: `continue` pointing to a labeled block
   --> $DIR/label_break_value_continue.rs:14:9
    |
-LL |         continue 'b;
-   |         ^^^^^^^^^^^ labeled blocks cannot be `continue`'d
-   |
-note: labeled block the continue points to
-  --> $DIR/label_break_value_continue.rs:13:5
-   |
 LL | /     'b: {
 LL | |         continue 'b;
+   | |         ^^^^^^^^^^^ labeled blocks cannot be `continue`'d
 LL | |     }
-   | |_____^
+   | |_____- labeled block the `continue` points to
 
 error[E0695]: unlabeled `continue` inside of a labeled block
   --> $DIR/label_break_value_continue.rs:22:13

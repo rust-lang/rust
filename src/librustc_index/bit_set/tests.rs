@@ -25,10 +25,7 @@ fn bitset_iter_works() {
     bitset.insert(65);
     bitset.insert(66);
     bitset.insert(99);
-    assert_eq!(
-        bitset.iter().collect::<Vec<_>>(),
-        [1, 10, 19, 62, 63, 64, 65, 66, 99]
-    );
+    assert_eq!(bitset.iter().collect::<Vec<_>>(), [1, 10, 19, 62, 63, 64, 65, 66, 99]);
 }
 
 #[test]
@@ -100,14 +97,14 @@ fn hybrid_bitset() {
         assert!(dense256.contains(i));
     }
 
-    assert!(sparse038.superset(&sparse038));    // sparse + sparse (self)
-    assert!(sparse01358.superset(&sparse038));  // sparse + sparse
-    assert!(dense10.superset(&sparse038));      // dense + sparse
-    assert!(dense10.superset(&dense10));        // dense + dense (self)
-    assert!(dense256.superset(&dense10));       // dense + dense
+    assert!(sparse038.superset(&sparse038)); // sparse + sparse (self)
+    assert!(sparse01358.superset(&sparse038)); // sparse + sparse
+    assert!(dense10.superset(&sparse038)); // dense + sparse
+    assert!(dense10.superset(&dense10)); // dense + dense (self)
+    assert!(dense256.superset(&dense10)); // dense + dense
 
     let mut hybrid = sparse038;
-    assert!(!sparse01358.union(&hybrid));       // no change
+    assert!(!sparse01358.union(&hybrid)); // no change
     assert!(hybrid.union(&sparse01358));
     assert!(hybrid.superset(&sparse01358) && sparse01358.superset(&hybrid));
     assert!(!dense10.union(&sparse01358));
@@ -320,13 +317,13 @@ fn union_hybrid_sparse_full_to_dense(b: &mut Bencher) {
 /// Merge dense hybrid set into full hybrid set with indices over the whole domain.
 #[bench]
 fn union_hybrid_sparse_domain_to_dense(b: &mut Bencher) {
-    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX*64);
+    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX * 64);
     for i in 0..10 {
         assert!(pre_dense.insert(i));
     }
-    let mut pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX*64);
+    let mut pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX * 64);
     for i in 0..SPARSE_MAX {
-        assert!(pre_sparse.insert(i*64));
+        assert!(pre_sparse.insert(i * 64));
     }
     b.iter(|| {
         let dense = pre_dense.clone();

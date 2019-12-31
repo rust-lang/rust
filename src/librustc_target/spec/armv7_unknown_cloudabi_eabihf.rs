@@ -19,9 +19,6 @@ pub fn target() -> TargetResult {
         target_env: String::new(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
-        options: TargetOptions {
-            target_mcount: "\u{1}mcount".to_string(),
-            .. base
-        },
+        options: TargetOptions { target_mcount: "\u{1}mcount".to_string(), ..base },
     })
 }

@@ -2,21 +2,35 @@
 
 use crate::io::ErrorKind;
 
-#[cfg(any(doc, target_os = "linux"))] pub use crate::os::linux as platform;
+#[cfg(any(doc, target_os = "linux"))]
+pub use crate::os::linux as platform;
 
-#[cfg(all(not(doc), target_os = "android"))]   pub use crate::os::android as platform;
-#[cfg(all(not(doc), target_os = "dragonfly"))] pub use crate::os::dragonfly as platform;
-#[cfg(all(not(doc), target_os = "freebsd"))]   pub use crate::os::freebsd as platform;
-#[cfg(all(not(doc), target_os = "haiku"))]     pub use crate::os::haiku as platform;
-#[cfg(all(not(doc), target_os = "ios"))]       pub use crate::os::ios as platform;
-#[cfg(all(not(doc), target_os = "macos"))]     pub use crate::os::macos as platform;
-#[cfg(all(not(doc), target_os = "netbsd"))]    pub use crate::os::netbsd as platform;
-#[cfg(all(not(doc), target_os = "openbsd"))]   pub use crate::os::openbsd as platform;
-#[cfg(all(not(doc), target_os = "solaris"))]   pub use crate::os::solaris as platform;
-#[cfg(all(not(doc), target_os = "emscripten"))] pub use crate::os::emscripten as platform;
-#[cfg(all(not(doc), target_os = "fuchsia"))]   pub use crate::os::fuchsia as platform;
-#[cfg(all(not(doc), target_os = "l4re"))]      pub use crate::os::linux as platform;
-#[cfg(all(not(doc), target_os = "redox"))]      pub use crate::os::redox as platform;
+#[cfg(all(not(doc), target_os = "android"))]
+pub use crate::os::android as platform;
+#[cfg(all(not(doc), target_os = "dragonfly"))]
+pub use crate::os::dragonfly as platform;
+#[cfg(all(not(doc), target_os = "emscripten"))]
+pub use crate::os::emscripten as platform;
+#[cfg(all(not(doc), target_os = "freebsd"))]
+pub use crate::os::freebsd as platform;
+#[cfg(all(not(doc), target_os = "fuchsia"))]
+pub use crate::os::fuchsia as platform;
+#[cfg(all(not(doc), target_os = "haiku"))]
+pub use crate::os::haiku as platform;
+#[cfg(all(not(doc), target_os = "ios"))]
+pub use crate::os::ios as platform;
+#[cfg(all(not(doc), target_os = "l4re"))]
+pub use crate::os::linux as platform;
+#[cfg(all(not(doc), target_os = "macos"))]
+pub use crate::os::macos as platform;
+#[cfg(all(not(doc), target_os = "netbsd"))]
+pub use crate::os::netbsd as platform;
+#[cfg(all(not(doc), target_os = "openbsd"))]
+pub use crate::os::openbsd as platform;
+#[cfg(all(not(doc), target_os = "redox"))]
+pub use crate::os::redox as platform;
+#[cfg(all(not(doc), target_os = "solaris"))]
+pub use crate::os::solaris as platform;
 
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;
@@ -25,8 +39,8 @@ pub use libc::strlen;
 pub mod weak;
 
 pub mod alloc;
-pub mod args;
 pub mod android;
+pub mod args;
 pub mod cmath;
 pub mod condvar;
 pub mod env;
@@ -34,13 +48,13 @@ pub mod ext;
 pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
-pub mod memchr;
 pub mod io;
+#[cfg(target_os = "l4re")]
+mod l4re;
+pub mod memchr;
 pub mod mutex;
 #[cfg(not(target_os = "l4re"))]
 pub mod net;
-#[cfg(target_os = "l4re")]
-mod l4re;
 #[cfg(target_os = "l4re")]
 pub use self::l4re::net;
 pub mod os;
@@ -50,10 +64,10 @@ pub mod process;
 pub mod rand;
 pub mod rwlock;
 pub mod stack_overflow;
+pub mod stdio;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
-pub mod stdio;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
@@ -102,8 +116,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
         // clause
-        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
-            ErrorKind::WouldBlock,
+        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK => ErrorKind::WouldBlock,
 
         _ => ErrorKind::Other,
     }
@@ -125,16 +138,13 @@ macro_rules! impl_is_minus_one {
 impl_is_minus_one! { i8 i16 i32 i64 isize }
 
 pub fn cvt<T: IsMinusOne>(t: T) -> crate::io::Result<T> {
-    if t.is_minus_one() {
-        Err(crate::io::Error::last_os_error())
-    } else {
-        Ok(t)
-    }
+    if t.is_minus_one() { Err(crate::io::Error::last_os_error()) } else { Ok(t) }
 }
 
 pub fn cvt_r<T, F>(mut f: F) -> crate::io::Result<T>
-    where T: IsMinusOne,
-          F: FnMut() -> T
+where
+    T: IsMinusOne,
+    F: FnMut() -> T,
 {
     loop {
         match cvt(f()) {

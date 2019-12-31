@@ -15,19 +15,13 @@ LL |     let foo: i32::from_be(num);
    |                   only `Fn` traits may use parentheses
    |                   help: use angle brackets instead: `from_be<num>`
 
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/let-binding-init-expr-as-ty.rs:2:27
-   |
-LL |     let foo: i32::from_be(num);
-   |                           ^^^ type argument not allowed
-
 error[E0223]: ambiguous associated type
   --> $DIR/let-binding-init-expr-as-ty.rs:2:14
    |
 LL |     let foo: i32::from_be(num);
    |              ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<i32 as Trait>::from_be`
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0109, E0214, E0223, E0573.
-For more information about an error, try `rustc --explain E0109`.
+Some errors have detailed explanations: E0214, E0223, E0573.
+For more information about an error, try `rustc --explain E0214`.

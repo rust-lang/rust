@@ -5,10 +5,10 @@ LL |     fn foo(x: u16);
    |               --- type in trait
 ...
 LL |     fn foo(x: i16) { }
-   |               ^^^ expected u16, found i16
+   |               ^^^ expected `u16`, found `i16`
    |
-   = note: expected type `fn(u16)`
-              found type `fn(i16)`
+   = note: expected fn pointer `fn(u16)`
+              found fn pointer `fn(i16)`
 
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/trait-impl-fn-incompatibility.rs:12:28
@@ -19,8 +19,8 @@ LL |     fn bar(&mut self, bar: &mut Bar);
 LL |     fn bar(&mut self, bar: &Bar) { }
    |                            ^^^^ types differ in mutability
    |
-   = note: expected type `fn(&mut Bar, &mut Bar)`
-              found type `fn(&mut Bar, &Bar)`
+   = note: expected fn pointer `fn(&mut Bar, &mut Bar)`
+              found fn pointer `fn(&mut Bar, &Bar)`
 help: consider change the type to match the mutability in trait
    |
 LL |     fn bar(&mut self, bar: &mut Bar) { }

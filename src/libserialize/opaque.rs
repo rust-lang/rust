@@ -31,14 +31,14 @@ macro_rules! write_uleb128 {
     ($enc:expr, $value:expr, $fun:ident) => {{
         leb128::$fun(&mut $enc.data, $value);
         Ok(())
-    }}
+    }};
 }
 
 macro_rules! write_sleb128 {
     ($enc:expr, $value:expr) => {{
         write_signed_leb128(&mut $enc.data, $value as i128);
         Ok(())
-    }}
+    }};
 }
 
 impl serialize::Encoder for Encoder {
@@ -113,11 +113,7 @@ impl serialize::Encoder for Encoder {
 
     #[inline]
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
-        self.emit_u8(if v {
-            1
-        } else {
-            0
-        })
+        self.emit_u8(if v { 1 } else { 0 })
     }
 
     #[inline]
@@ -164,10 +160,7 @@ pub struct Decoder<'a> {
 impl<'a> Decoder<'a> {
     #[inline]
     pub fn new(data: &'a [u8], position: usize) -> Decoder<'a> {
-        Decoder {
-            data,
-            position,
-        }
+        Decoder { data, position }
     }
 
     #[inline]
@@ -199,21 +192,20 @@ impl<'a> Decoder<'a> {
 }
 
 macro_rules! read_uleb128 {
-    ($dec:expr, $t:ty, $fun:ident) => ({
-        let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position ..]);
+    ($dec:expr, $t:ty, $fun:ident) => {{
+        let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position..]);
         $dec.position += bytes_read;
         Ok(value)
-    })
+    }};
 }
 
 macro_rules! read_sleb128 {
-    ($dec:expr, $t:ty) => ({
+    ($dec:expr, $t:ty) => {{
         let (value, bytes_read) = read_signed_leb128($dec.data, $dec.position);
         $dec.position += bytes_read;
         Ok(value as $t)
-    })
+    }};
 }
-
 
 impl<'a> serialize::Decoder for Decoder<'a> {
     type Error = String;

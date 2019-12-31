@@ -4,11 +4,8 @@ error[E0308]: mismatched types
 LL |     foo(x.clone());
    |         ^^^^^^^^^
    |         |
-   |         expected &str, found struct `std::string::String`
+   |         expected `&str`, found struct `std::string::String`
    |         help: consider borrowing here: `&x`
-   |
-   = note: expected type `&str`
-              found type `std::string::String`
 
 error: aborting due to previous error
 

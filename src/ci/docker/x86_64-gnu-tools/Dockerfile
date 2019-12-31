@@ -17,9 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-COPY x86_64-gnu-tools/checkregression.py /tmp/
 COPY x86_64-gnu-tools/checktools.sh /tmp/
-COPY x86_64-gnu-tools/repo.sh /tmp/
 
 # Run rustbook with `linkcheck` feature enabled
 ENV CHECK_LINKS 1
@@ -27,4 +25,4 @@ ENV CHECK_LINKS 1
 ENV RUST_CONFIGURE_ARGS \
   --build=x86_64-unknown-linux-gnu \
   --save-toolstates=/tmp/toolstate/toolstates.json
-ENV SCRIPT /tmp/checktools.sh ../x.py /tmp/toolstate/toolstates.json linux
+ENV SCRIPT /tmp/checktools.sh ../x.py

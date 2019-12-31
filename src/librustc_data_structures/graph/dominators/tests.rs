@@ -17,9 +17,10 @@ fn diamond() {
 #[test]
 fn paper() {
     // example from the paper:
-    let graph = TestGraph::new(6,
-                               &[(6, 5), (6, 4), (5, 1), (4, 2), (4, 3), (1, 2), (2, 3), (3, 2),
-                                 (2, 1)]);
+    let graph = TestGraph::new(
+        6,
+        &[(6, 5), (6, 4), (5, 1), (4, 2), (4, 3), (1, 2), (2, 3), (3, 2), (2, 1)],
+    );
 
     let dominators = dominators(&graph);
     let immediate_dominators = &dominators.immediate_dominators;

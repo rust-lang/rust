@@ -7,8 +7,8 @@ LL | #[stable(feature = "foo", since = "1.29.0")]
 error[E0711]: feature `foo` is declared unstable, but was previously declared stable
   --> $DIR/stability-attribute-consistency.rs:12:1
    |
-LL | #[unstable(feature = "foo", issue = "0")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[unstable(feature = "foo", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

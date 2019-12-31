@@ -1,4 +1,4 @@
-pub use self::process_common::{Command, ExitStatus, ExitCode, Stdio, StdioPipes};
+pub use self::process_common::{Command, ExitCode, ExitStatus, Stdio, StdioPipes};
 pub use self::process_inner::Process;
 pub use crate::ffi::OsString as EnvKey;
 

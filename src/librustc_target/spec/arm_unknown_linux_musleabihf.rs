@@ -24,7 +24,7 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             abi_blacklist: super::arm_base::abi_blacklist(),
             target_mcount: "\u{1}mcount".to_string(),
-            .. base
+            ..base
         },
     })
 }

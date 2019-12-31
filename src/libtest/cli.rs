@@ -1,18 +1,19 @@
 //! Module converting command-line arguments into test configuration.
 
+use getopts;
 use std::env;
 use std::path::PathBuf;
-use getopts;
 
-use super::options::{RunIgnored, ColorConfig, OutputFormat, Options};
-use super::time::TestTimeOptions;
 use super::helpers::isatty;
+use super::options::{ColorConfig, Options, OutputFormat, RunIgnored};
+use super::time::TestTimeOptions;
 
 #[derive(Debug)]
 pub struct TestOpts {
     pub list: bool,
     pub filter: Option<String>,
     pub filter_exact: bool,
+    pub force_run_in_process: bool,
     pub exclude_should_panic: bool,
     pub run_ignored: RunIgnored,
     pub run_tests: bool,
@@ -46,6 +47,7 @@ fn optgroups() -> getopts::Options {
     let mut opts = getopts::Options::new();
     opts.optflag("", "include-ignored", "Run ignored and not ignored tests")
         .optflag("", "ignored", "Run only ignored tests")
+        .optflag("", "force-run-in-process", "Forces tests to run in-process when panic=abort")
         .optflag("", "exclude-should-panic", "Excludes tests marked as should_panic")
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
@@ -84,11 +86,7 @@ fn optgroups() -> getopts::Options {
             "Display one character per test instead of one line. \
              Alias to --format=terse",
         )
-        .optflag(
-            "",
-            "exact",
-            "Exactly match filters rather than by substring",
-        )
+        .optflag("", "exact", "Exactly match filters rather than by substring")
         .optopt(
             "",
             "color",
@@ -107,11 +105,7 @@ fn optgroups() -> getopts::Options {
             json   = Output a json document",
             "pretty|terse|json",
         )
-        .optflag(
-            "",
-            "show-output",
-            "Show captured stdout of successful tests"
-        )
+        .optflag("", "show-output", "Show captured stdout of successful tests")
         .optopt(
             "Z",
             "",
@@ -133,7 +127,7 @@ fn optgroups() -> getopts::Options {
             Expected format of environment variable is `VARIABLE=WARN_TIME,CRITICAL_TIME`.
 
             Not available for --format=terse",
-            "plain|colored"
+            "plain|colored",
         )
         .optflag(
             "",
@@ -147,7 +141,7 @@ fn optgroups() -> getopts::Options {
             Expected format of environment variable is `VARIABLE=WARN_TIME,CRITICAL_TIME`.
 
             `CRITICAL_TIME` here means the limit that should not be exceeded by test.
-            "
+            ",
         );
     opts
 }
@@ -233,6 +227,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let allow_unstable = get_allow_unstable(&matches)?;
 
     // Unstable flags
+    let force_run_in_process = unstable_optflag!(matches, allow_unstable, "force-run-in-process");
     let exclude_should_panic = unstable_optflag!(matches, allow_unstable, "exclude-should-panic");
     let include_ignored = unstable_optflag!(matches, allow_unstable, "include-ignored");
     let time_options = get_time_options(&matches, allow_unstable)?;
@@ -259,6 +254,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         list,
         filter,
         filter_exact: exact,
+        force_run_in_process,
         exclude_should_panic,
         run_ignored,
         run_tests,
@@ -289,8 +285,8 @@ fn is_nightly() -> bool {
 // Gets the CLI options assotiated with `report-time` feature.
 fn get_time_options(
     matches: &getopts::Matches,
-    allow_unstable: bool)
--> OptPartRes<Option<TestTimeOptions>> {
+    allow_unstable: bool,
+) -> OptPartRes<Option<TestTimeOptions>> {
     let report_time = unstable_optflag!(matches, allow_unstable, "report-time");
     let colored_opt_str = matches.opt_str("report-time");
     let mut report_time_colored = report_time && colored_opt_str == Some("colored".into());
@@ -332,7 +328,7 @@ fn get_test_threads(matches: &getopts::Matches) -> OptPartRes<Option<usize>> {
 fn get_format(
     matches: &getopts::Matches,
     quiet: bool,
-    allow_unstable: bool
+    allow_unstable: bool,
 ) -> OptPartRes<OutputFormat> {
     let format = match matches.opt_str("format").as_ref().map(|s| &**s) {
         None if quiet => OutputFormat::Terse,
@@ -340,9 +336,7 @@ fn get_format(
         Some("terse") => OutputFormat::Terse,
         Some("json") => {
             if !allow_unstable {
-                return Err(
-                    "The \"json\" format is only accepted on the nightly compiler".into(),
-                );
+                return Err("The \"json\" format is only accepted on the nightly compiler".into());
             }
             OutputFormat::Json
         }
@@ -392,9 +386,7 @@ fn get_nocapture(matches: &getopts::Matches) -> OptPartRes<bool> {
 fn get_run_ignored(matches: &getopts::Matches, include_ignored: bool) -> OptPartRes<RunIgnored> {
     let run_ignored = match (include_ignored, matches.opt_present("ignored")) {
         (true, true) => {
-            return Err(
-                "the options --include-ignored and --ignored are mutually exclusive".into(),
-            );
+            return Err("the options --include-ignored and --ignored are mutually exclusive".into());
         }
         (true, false) => RunIgnored::Yes,
         (false, true) => RunIgnored::Only,
@@ -405,11 +397,7 @@ fn get_run_ignored(matches: &getopts::Matches, include_ignored: bool) -> OptPart
 }
 
 fn get_filter(matches: &getopts::Matches) -> OptPartRes<Option<String>> {
-    let filter = if !matches.free.is_empty() {
-        Some(matches.free[0].clone())
-    } else {
-        None
-    };
+    let filter = if !matches.free.is_empty() { Some(matches.free[0].clone()) } else { None };
 
     Ok(filter)
 }
@@ -419,9 +407,7 @@ fn get_allow_unstable(matches: &getopts::Matches) -> OptPartRes<bool> {
 
     if let Some(opt) = matches.opt_str("Z") {
         if !is_nightly() {
-            return Err(
-                "the option `Z` is only accepted on the nightly compiler".into(),
-            );
+            return Err("the option `Z` is only accepted on the nightly compiler".into());
         }
 
         match &*opt {

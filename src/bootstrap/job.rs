@@ -29,11 +29,11 @@
 
 #![allow(nonstandard_style, dead_code)]
 
+use crate::Build;
 use std::env;
 use std::io;
 use std::mem;
 use std::ptr;
-use crate::Build;
 
 type HANDLE = *mut u8;
 type BOOL = i32;
@@ -61,21 +61,23 @@ extern "system" {
     fn CreateJobObjectW(lpJobAttributes: *mut u8, lpName: *const u8) -> HANDLE;
     fn CloseHandle(hObject: HANDLE) -> BOOL;
     fn GetCurrentProcess() -> HANDLE;
-    fn OpenProcess(dwDesiredAccess: DWORD,
-                   bInheritHandle: BOOL,
-                   dwProcessId: DWORD) -> HANDLE;
-    fn DuplicateHandle(hSourceProcessHandle: HANDLE,
-                       hSourceHandle: HANDLE,
-                       hTargetProcessHandle: HANDLE,
-                       lpTargetHandle: LPHANDLE,
-                       dwDesiredAccess: DWORD,
-                       bInheritHandle: BOOL,
-                       dwOptions: DWORD) -> BOOL;
+    fn OpenProcess(dwDesiredAccess: DWORD, bInheritHandle: BOOL, dwProcessId: DWORD) -> HANDLE;
+    fn DuplicateHandle(
+        hSourceProcessHandle: HANDLE,
+        hSourceHandle: HANDLE,
+        hTargetProcessHandle: HANDLE,
+        lpTargetHandle: LPHANDLE,
+        dwDesiredAccess: DWORD,
+        bInheritHandle: BOOL,
+        dwOptions: DWORD,
+    ) -> BOOL;
     fn AssignProcessToJobObject(hJob: HANDLE, hProcess: HANDLE) -> BOOL;
-    fn SetInformationJobObject(hJob: HANDLE,
-                               JobObjectInformationClass: JOBOBJECTINFOCLASS,
-                               lpJobObjectInformation: LPVOID,
-                               cbJobObjectInformationLength: DWORD) -> BOOL;
+    fn SetInformationJobObject(
+        hJob: HANDLE,
+        JobObjectInformationClass: JOBOBJECTINFOCLASS,
+        lpJobObjectInformation: LPVOID,
+        cbJobObjectInformationLength: DWORD,
+    ) -> BOOL;
     fn SetErrorMode(mode: UINT) -> UINT;
 }
 
@@ -132,10 +134,12 @@ pub unsafe fn setup(build: &mut Build) {
         info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PRIORITY_CLASS;
         info.BasicLimitInformation.PriorityClass = BELOW_NORMAL_PRIORITY_CLASS;
     }
-    let r = SetInformationJobObject(job,
-                                    JobObjectExtendedLimitInformation,
-                                    &mut info as *mut _ as LPVOID,
-                                    mem::size_of_val(&info) as DWORD);
+    let r = SetInformationJobObject(
+        job,
+        JobObjectExtendedLimitInformation,
+        &mut info as *mut _ as LPVOID,
+        mem::size_of_val(&info) as DWORD,
+    );
     assert!(r != 0, "{}", io::Error::last_os_error());
 
     // Assign our process to this job object. Note that if this fails, one very
@@ -150,7 +154,7 @@ pub unsafe fn setup(build: &mut Build) {
     let r = AssignProcessToJobObject(job, GetCurrentProcess());
     if r == 0 {
         CloseHandle(job);
-        return
+        return;
     }
 
     // If we've got a parent process (e.g., the python script that called us)
@@ -169,9 +173,15 @@ pub unsafe fn setup(build: &mut Build) {
     let parent = OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid.parse().unwrap());
     assert!(!parent.is_null(), "{}", io::Error::last_os_error());
     let mut parent_handle = ptr::null_mut();
-    let r = DuplicateHandle(GetCurrentProcess(), job,
-                            parent, &mut parent_handle,
-                            0, FALSE, DUPLICATE_SAME_ACCESS);
+    let r = DuplicateHandle(
+        GetCurrentProcess(),
+        job,
+        parent,
+        &mut parent_handle,
+        0,
+        FALSE,
+        DUPLICATE_SAME_ACCESS,
+    );
 
     // If this failed, well at least we tried! An example of DuplicateHandle
     // failing in the past has been when the wrong python2 package spawned this

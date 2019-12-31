@@ -1,13 +1,11 @@
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::sym;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
-    let mut collector = Collector {
-        args: Vec::new(),
-    };
+    let mut collector = Collector { args: Vec::new() };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 
     for attr in tcx.hir().krate().attrs.iter() {
@@ -26,15 +24,13 @@ struct Collector {
 }
 
 impl<'tcx> ItemLikeVisitor<'tcx> for Collector {
-    fn visit_item(&mut self, it: &'tcx hir::Item) {
+    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         let fm = match it.kind {
             hir::ItemKind::ForeignMod(ref fm) => fm,
             _ => return,
         };
-        if fm.abi == Abi::Rust ||
-            fm.abi == Abi::RustIntrinsic ||
-            fm.abi == Abi::PlatformIntrinsic {
-            return
+        if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
+            return;
         }
 
         // First, add all of the custom #[link_args] attributes
@@ -45,8 +41,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector {
         }
     }
 
-    fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem) {}
-    fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem) {}
+    fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'tcx>) {}
+    fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem<'tcx>) {}
 }
 
 impl Collector {

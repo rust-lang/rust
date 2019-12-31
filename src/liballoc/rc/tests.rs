@@ -2,11 +2,11 @@ use super::*;
 
 use std::boxed::Box;
 use std::cell::RefCell;
-use std::option::Option::{self, None, Some};
-use std::result::Result::{Err, Ok};
-use std::mem::drop;
 use std::clone::Clone;
 use std::convert::{From, TryInto};
+use std::mem::drop;
+use std::option::Option::{self, None, Some};
+use std::result::Result::{Err, Ok};
 
 #[test]
 fn test_clone() {
@@ -114,28 +114,28 @@ fn test_weak_count() {
 
 #[test]
 fn weak_counts() {
-    assert_eq!(Weak::weak_count(&Weak::<u64>::new()), None);
+    assert_eq!(Weak::weak_count(&Weak::<u64>::new()), 0);
     assert_eq!(Weak::strong_count(&Weak::<u64>::new()), 0);
 
     let a = Rc::new(0);
     let w = Rc::downgrade(&a);
     assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), Some(1));
+    assert_eq!(Weak::weak_count(&w), 1);
     let w2 = w.clone();
     assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), Some(2));
+    assert_eq!(Weak::weak_count(&w), 2);
     assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), Some(2));
+    assert_eq!(Weak::weak_count(&w2), 2);
     drop(w);
     assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), Some(1));
+    assert_eq!(Weak::weak_count(&w2), 1);
     let a2 = a.clone();
     assert_eq!(Weak::strong_count(&w2), 2);
-    assert_eq!(Weak::weak_count(&w2), Some(1));
+    assert_eq!(Weak::weak_count(&w2), 1);
     drop(a2);
     drop(a);
     assert_eq!(Weak::strong_count(&w2), 0);
-    assert_eq!(Weak::weak_count(&w2), Some(1));
+    assert_eq!(Weak::weak_count(&w2), 0);
     drop(w2);
 }
 
@@ -341,11 +341,8 @@ fn test_clone_from_slice_panic() {
         }
     }
 
-    let s: &[Fail] = &[
-        Fail(0, "foo".to_string()),
-        Fail(1, "bar".to_string()),
-        Fail(2, "baz".to_string()),
-    ];
+    let s: &[Fail] =
+        &[Fail(0, "foo".to_string()), Fail(1, "bar".to_string()), Fail(2, "baz".to_string())];
 
     // Should panic, but not cause memory corruption
     let _r: Rc<[Fail]> = Rc::from(s);

@@ -5,9 +5,6 @@ LL | fn main() { let x: A = A::A(0); match x { B::B(y) => { } } }
    |                                       -   ^^^^^^^ expected enum `A`, found enum `B`
    |                                       |
    |                                       this match expression has type `A`
-   |
-   = note: expected type `A`
-              found type `B`
 
 error: aborting due to previous error
 

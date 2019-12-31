@@ -1,3 +1,5 @@
+// build-fail
+
 #![feature(linkage)]
 
 mod dep1 {

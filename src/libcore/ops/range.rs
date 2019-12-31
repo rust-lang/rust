@@ -333,6 +333,11 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 #[derive(Clone)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
+    // Note that the fields here are not public to allow changing the
+    // representation in the future; in particular, while we could plausibly
+    // expose start/end, modifying them without changing (future/current)
+    // private fields may lead to incorrect behavior, so we don't want to
+    // support that mode.
     pub(crate) start: Idx,
     pub(crate) end: Idx,
     pub(crate) is_empty: Option<bool>,
@@ -398,12 +403,9 @@ impl<Idx> RangeInclusive<Idx> {
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     #[rustc_promotable]
+    #[rustc_const_stable(feature = "const_range_new", since = "1.32.0")]
     pub const fn new(start: Idx, end: Idx) -> Self {
-        Self {
-            start,
-            end,
-            is_empty: None,
-        }
+        Self { start, end, is_empty: None }
     }
 
     /// Returns the lower bound of the range (inclusive).
@@ -425,6 +427,7 @@ impl<Idx> RangeInclusive<Idx> {
     /// assert_eq!((3..=5).start(), &3);
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
+    #[rustc_const_stable(feature = "const_inclusive_range_methods", since = "1.32.0")]
     #[inline]
     pub const fn start(&self) -> &Idx {
         &self.start
@@ -449,6 +452,7 @@ impl<Idx> RangeInclusive<Idx> {
     /// assert_eq!((3..=5).end(), &5);
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
+    #[rustc_const_stable(feature = "const_inclusive_range_methods", since = "1.32.0")]
     #[inline]
     pub const fn end(&self) -> &Idx {
         &self.end

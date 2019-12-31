@@ -6,9 +6,8 @@ use std::cell::Cell;
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
 
-use syntax::symbol::{Symbol, sym};
-use rustc_macros::HashStable;
 use crate::session::Session;
+use syntax::symbol::{sym, Symbol};
 
 #[cfg(test)]
 mod tests;
@@ -16,10 +15,7 @@ mod tests;
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
-// Useful type to use with `Result<>` indicate that an error has already
-// been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct ErrorReported;
+pub use errors::ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
 
@@ -43,16 +39,20 @@ pub fn set_time_depth(depth: usize) {
     TIME_DEPTH.with(|slot| slot.set(depth));
 }
 
-pub fn time<T, F>(sess: &Session, what: &str, f: F) -> T where
+pub fn time<T, F>(sess: &Session, what: &str, f: F) -> T
+where
     F: FnOnce() -> T,
 {
     time_ext(sess.time_passes(), what, f)
 }
 
-pub fn time_ext<T, F>(do_it: bool, what: &str, f: F) -> T where
+pub fn time_ext<T, F>(do_it: bool, what: &str, f: F) -> T
+where
     F: FnOnce() -> T,
 {
-    if !do_it { return f(); }
+    if !do_it {
+        return f();
+    }
 
     let old = TIME_DEPTH.with(|slot| {
         let r = slot.get();
@@ -73,7 +73,7 @@ pub fn time_ext<T, F>(do_it: bool, what: &str, f: F) -> T where
 
 pub fn print_time_passes_entry(do_it: bool, what: &str, dur: Duration) {
     if !do_it {
-        return
+        return;
     }
 
     let indentation = TIME_DEPTH.with(|slot| slot.get());
@@ -85,22 +85,16 @@ pub fn print_time_passes_entry(do_it: bool, what: &str, dur: Duration) {
         }
         None => String::new(),
     };
-    println!("{}time: {}{}\t{}",
-             "  ".repeat(indentation),
-             duration_to_secs_str(dur),
-             mem_string,
-             what);
+    println!(
+        "{}time: {}{}\t{}",
+        "  ".repeat(indentation),
+        duration_to_secs_str(dur),
+        mem_string,
+        what
+    );
 }
 
-// Hack up our own formatting for the duration to make it easier for scripts
-// to parse (always use the same number of decimal places and the same unit).
-pub fn duration_to_secs_str(dur: Duration) -> String {
-    const NANOS_PER_SEC: f64 = 1_000_000_000.0;
-    let secs = dur.as_secs() as f64 +
-               dur.subsec_nanos() as f64 / NANOS_PER_SEC;
-
-    format!("{:.3}", secs)
-}
+pub use rustc_session::utils::duration_to_secs_str;
 
 pub fn to_readable_str(mut val: usize) -> String {
     let mut groups = vec![];
@@ -122,7 +116,8 @@ pub fn to_readable_str(mut val: usize) -> String {
     groups.join("_")
 }
 
-pub fn record_time<T, F>(accu: &Lock<Duration>, f: F) -> T where
+pub fn record_time<T, F>(accu: &Lock<Duration>, f: F) -> T
+where
     F: FnOnce() -> T,
 {
     let start = Instant::now();
@@ -171,9 +166,11 @@ fn get_resident() -> Option<usize> {
     #[link(name = "psapi")]
     extern "system" {
         fn GetCurrentProcess() -> HANDLE;
-        fn GetProcessMemoryInfo(Process: HANDLE,
-                                ppsmemCounters: PPROCESS_MEMORY_COUNTERS,
-                                cb: DWORD) -> BOOL;
+        fn GetProcessMemoryInfo(
+            Process: HANDLE,
+            ppsmemCounters: PPROCESS_MEMORY_COUNTERS,
+            cb: DWORD,
+        ) -> BOOL;
     }
     let mut pmc: PROCESS_MEMORY_COUNTERS = unsafe { mem::zeroed() };
     pmc.cb = mem::size_of_val(&pmc) as DWORD;
@@ -183,7 +180,8 @@ fn get_resident() -> Option<usize> {
     }
 }
 
-pub fn indent<R, F>(op: F) -> R where
+pub fn indent<R, F>(op: F) -> R
+where
     R: Debug,
     F: FnOnce() -> R,
 {
@@ -200,7 +198,9 @@ pub struct Indenter {
 }
 
 impl Drop for Indenter {
-    fn drop(&mut self) { debug!("<<"); }
+    fn drop(&mut self) {
+        debug!("<<");
+    }
 }
 
 pub fn indenter() -> Indenter {

@@ -1,3 +1,5 @@
+// build-fail
+
 //
 #![crate_type="rlib"]
 #![allow(warnings)]

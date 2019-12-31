@@ -1,23 +1,31 @@
 //! Haiku-specific raw type definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
-
 #![allow(deprecated)]
 
-use crate::os::raw::{c_long};
-use crate::os::unix::raw::{uid_t, gid_t};
+use crate::os::raw::c_long;
+use crate::os::unix::raw::{gid_t, uid_t};
 
 // Use the direct definition of usize, instead of uintptr_t like in libc
-#[stable(feature = "pthread_t", since = "1.8.0")] pub type pthread_t = usize;
+#[stable(feature = "pthread_t", since = "1.8.0")]
+pub type pthread_t = usize;
 
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i64;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = i32;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = i32;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type ino_t = i64;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = u32;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type nlink_t = i32;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type off_t = i64;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type blkcnt_t = i64;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type blksize_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type dev_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type ino_t = i64;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type mode_t = u32;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type nlink_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type off_t = i64;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type time_t = i32;
 
 #[repr(C)]
 #[derive(Clone)]

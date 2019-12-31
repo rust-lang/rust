@@ -1,10 +1,10 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
-use std::fmt;
 use crate::traits::query::Fallible;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
+use std::fmt;
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
 pub struct Normalize<T> {
     pub value: T,
 }
@@ -25,11 +25,7 @@ where
     type QueryResponse = T;
 
     fn try_fast_path(_tcx: TyCtxt<'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
-        if !key.value.value.has_projections() {
-            Some(key.value.value)
-        } else {
-            None
-        }
+        if !key.value.value.has_projections() { Some(key.value.value) } else { None }
     }
 
     fn perform_query(
@@ -80,24 +76,5 @@ impl Normalizable<'tcx> for ty::FnSig<'tcx> {
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self>> {
         tcx.type_op_normalize_fn_sig(canonicalized)
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, T> TypeFoldable<'tcx> for Normalize<T> {
-        value,
-    } where T: TypeFoldable<'tcx>,
-}
-
-BraceStructLiftImpl! {
-    impl<'tcx, T> Lift<'tcx> for Normalize<T> {
-        type Lifted = Normalize<T::Lifted>;
-        value,
-    } where T: Lift<'tcx>,
-}
-
-impl_stable_hash_for! {
-    impl<T> for struct Normalize<T> {
-        value
     }
 }

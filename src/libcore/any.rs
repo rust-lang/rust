@@ -68,12 +68,22 @@ use crate::intrinsics;
 // Any trait
 ///////////////////////////////////////////////////////////////////////////////
 
-/// A type to emulate dynamic typing.
+/// A trait to emulate dynamic typing.
 ///
 /// Most types implement `Any`. However, any type which contains a non-`'static` reference does not.
 /// See the [module-level documentation][mod] for more details.
 ///
 /// [mod]: index.html
+// This trait is not unsafe, though we rely on the specifics of it's sole impl's
+// `type_id` function in unsafe code (e.g., `downcast`). Normally, that would be
+// a problem, but because the only impl of `Any` is a blanket implementation, no
+// other code can implement `Any`.
+//
+// We could plausibly make this trait unsafe -- it would not cause breakage,
+// since we control all the implementations -- but we choose not to as that's
+// both not really necessary and may confuse users about the distinction of
+// unsafe traits and unsafe methods (i.e., `type_id` would still be safe to call,
+// but we would likely want to indicate as such in documentation).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Any: 'static {
     /// Gets the `TypeId` of `self`.
@@ -95,8 +105,10 @@ pub trait Any: 'static {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: 'static + ?Sized > Any for T {
-    fn type_id(&self) -> TypeId { TypeId::of::<T>() }
+impl<T: 'static + ?Sized> Any for T {
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<T>()
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -183,9 +195,7 @@ impl dyn Any {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
             // SAFETY: just checked whether we are pointing to the correct type
-            unsafe {
-                Some(&*(self as *const dyn Any as *const T))
-            }
+            unsafe { Some(&*(self as *const dyn Any as *const T)) }
         } else {
             None
         }
@@ -219,16 +229,14 @@ impl dyn Any {
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
             // SAFETY: just checked whether we are pointing to the correct type
-            unsafe {
-                Some(&mut *(self as *mut dyn Any as *mut T))
-            }
+            unsafe { Some(&mut *(self as *mut dyn Any as *mut T)) }
         } else {
             None
         }
     }
 }
 
-impl dyn Any+Send {
+impl dyn Any + Send {
     /// Forwards to the method defined on the type `Any`.
     ///
     /// # Examples
@@ -306,7 +314,7 @@ impl dyn Any+Send {
     }
 }
 
-impl dyn Any+Send+Sync {
+impl dyn Any + Send + Sync {
     /// Forwards to the method defined on the type `Any`.
     ///
     /// # Examples
@@ -423,15 +431,9 @@ impl TypeId {
     /// assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature="const_type_id")]
+    #[rustc_const_unstable(feature = "const_type_id", issue = "41875")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        TypeId {
-            #[cfg(bootstrap)]
-            // SAFETY: going away soon
-            t: unsafe { intrinsics::type_id::<T>() },
-            #[cfg(not(bootstrap))]
-            t: intrinsics::type_id::<T>(),
-        }
+        TypeId { t: intrinsics::type_id::<T>() }
     }
 }
 
@@ -452,7 +454,7 @@ impl TypeId {
 /// The current implementation uses the same infrastructure as compiler
 /// diagnostics and debuginfo, but this is not guaranteed.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// assert_eq!(
@@ -461,7 +463,45 @@ impl TypeId {
 /// );
 /// ```
 #[stable(feature = "type_name", since = "1.38.0")]
-#[rustc_const_unstable(feature = "const_type_name")]
+#[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name<T: ?Sized>() -> &'static str {
     intrinsics::type_name::<T>()
+}
+
+/// Returns the name of the type of the pointed-to value as a string slice.
+/// This is the same as `type_name::<T>()`, but can be used where the type of a
+/// variable is not easily available.
+///
+/// # Note
+///
+/// This is intended for diagnostic use. The exact contents and format of the
+/// string are not specified, other than being a best-effort description of the
+/// type. For example, `type_name_of::<Option<String>>(None)` could return
+/// `"Option<String>"` or `"std::option::Option<std::string::String>"`, but not
+/// `"foobar"`. In addition, the output may change between versions of the
+/// compiler.
+///
+/// The type name should not be considered a unique identifier of a type;
+/// multiple types may share the same type name.
+///
+/// The current implementation uses the same infrastructure as compiler
+/// diagnostics and debuginfo, but this is not guaranteed.
+///
+/// # Examples
+///
+/// Prints the default integer and float types.
+///
+/// ```rust
+/// #![feature(type_name_of_val)]
+/// use std::any::type_name_of_val;
+///
+/// let x = 1;
+/// println!("{}", type_name_of_val(&x));
+/// let y = 1.0;
+/// println!("{}", type_name_of_val(&y));
+/// ```
+#[unstable(feature = "type_name_of_val", issue = "66359")]
+#[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
+pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
+    type_name::<T>()
 }

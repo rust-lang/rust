@@ -1,7 +1,7 @@
 use crate::fx::FxHashMap;
 use std::cmp::max;
-use std::slice;
 use std::iter;
+use std::slice;
 
 use super::*;
 
@@ -51,9 +51,7 @@ impl WithNumNodes for TestGraph {
 }
 
 impl WithPredecessors for TestGraph {
-    fn predecessors(&self,
-                    node: usize)
-                    -> <Self as GraphPredecessors<'_>>::Iter {
+    fn predecessors(&self, node: usize) -> <Self as GraphPredecessors<'_>>::Iter {
         self.predecessors[&node].iter().cloned()
     }
 }

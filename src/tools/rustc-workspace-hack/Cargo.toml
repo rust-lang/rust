@@ -62,7 +62,8 @@ curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optiona
 crossbeam-utils = { version = "0.6.5", features = ["nightly"] }
 serde = { version = "1.0.82", features = ['derive'] }
 serde_json = { version = "1.0.31", features = ["raw_value"] }
-smallvec = { version = "0.6", features = ['union', 'may_dangle'] }
+smallvec-0_6 = { package = "smallvec", version = "0.6", features = ['union', 'may_dangle'] }
+smallvec = { version = "1.0", features = ['union', 'may_dangle'] }
 url = { version = "2.0", features = ['serde'] }
 syn = { version = "0.15", features = ['full'] }
 

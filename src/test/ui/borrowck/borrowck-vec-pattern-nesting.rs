@@ -75,12 +75,12 @@ fn e() {
     match vec {
         //~^ ERROR cannot move out
         //~| NOTE cannot move out
+        //~| NOTE move occurs because these variables have types
         &mut [_a, _b, _c] => {}
         //~^ NOTE data moved here
         //~| NOTE and here
         //~| NOTE and here
         //~| HELP consider removing the `&mut`
-        //~| NOTE move occurs because these variables have types
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out

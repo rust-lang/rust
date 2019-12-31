@@ -128,50 +128,50 @@ mod this_crate {
     #[stable(feature = "rust1", since = "1.0.0")]
     struct Stable {
         inherit: u8,
-        #[unstable(feature = "unstable_test_feature", issue = "0")]
+        #[unstable(feature = "unstable_test_feature", issue = "none")]
         override1: u8,
         #[rustc_deprecated(since = "1.0.0", reason = "text")]
-        #[unstable(feature = "unstable_test_feature", issue = "0")]
+        #[unstable(feature = "unstable_test_feature", issue = "none")]
         override2: u8,
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     struct Stable2(u8,
                    #[stable(feature = "rust1", since = "1.0.0")] u8,
-                   #[unstable(feature = "unstable_test_feature", issue = "0")]
+                   #[unstable(feature = "unstable_test_feature", issue = "none")]
                    #[rustc_deprecated(since = "1.0.0", reason = "text")] u8);
 
-    #[unstable(feature = "unstable_test_feature", issue = "0")]
+    #[unstable(feature = "unstable_test_feature", issue = "none")]
     struct Unstable {
         inherit: u8,
         #[stable(feature = "rust1", since = "1.0.0")]
         override1: u8,
         #[rustc_deprecated(since = "1.0.0", reason = "text")]
-        #[unstable(feature = "unstable_test_feature", issue = "0")]
+        #[unstable(feature = "unstable_test_feature", issue = "none")]
         override2: u8,
     }
 
-    #[unstable(feature = "unstable_test_feature", issue = "0")]
+    #[unstable(feature = "unstable_test_feature", issue = "none")]
     struct Unstable2(u8,
                      #[stable(feature = "rust1", since = "1.0.0")] u8,
-                     #[unstable(feature = "unstable_test_feature", issue = "0")]
+                     #[unstable(feature = "unstable_test_feature", issue = "none")]
                      #[rustc_deprecated(since = "1.0.0", reason = "text")] u8);
 
-    #[unstable(feature = "unstable_test_feature", issue = "0")]
+    #[unstable(feature = "unstable_test_feature", issue = "none")]
     #[rustc_deprecated(since = "1.0.0", reason = "text")]
     struct Deprecated {
         inherit: u8,
         #[stable(feature = "rust1", since = "1.0.0")]
         override1: u8,
-        #[unstable(feature = "unstable_test_feature", issue = "0")]
+        #[unstable(feature = "unstable_test_feature", issue = "none")]
         override2: u8,
     }
 
-    #[unstable(feature = "unstable_test_feature", issue = "0")]
+    #[unstable(feature = "unstable_test_feature", issue = "none")]
     #[rustc_deprecated(since = "1.0.0", reason = "text")]
     struct Deprecated2(u8,
                        #[stable(feature = "rust1", since = "1.0.0")] u8,
-                       #[unstable(feature = "unstable_test_feature", issue = "0")] u8);
+                       #[unstable(feature = "unstable_test_feature", issue = "none")] u8);
 
     pub fn foo() {
         let x = Stable {

@@ -4,8 +4,8 @@ error[E0580]: main function has wrong type
 LL | fn main(foo: S) {
    | ^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-   = note: expected type `fn()`
-              found type `fn(S)`
+   = note: expected fn pointer `fn()`
+              found fn pointer `fn(S)`
 
 error: aborting due to previous error
 

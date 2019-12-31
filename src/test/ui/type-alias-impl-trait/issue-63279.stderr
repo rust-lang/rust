@@ -2,10 +2,10 @@ error[E0271]: type mismatch resolving `<[closure@$DIR/issue-63279.rs:6:5: 6:28] 
   --> $DIR/issue-63279.rs:3:1
    |
 LL | type Closure = impl FnOnce();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected opaque type, found ()
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected opaque type, found `()`
    |
-   = note: expected type `Closure`
-              found type `()`
+   = note: expected opaque type `Closure`
+                found unit type `()`
    = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error

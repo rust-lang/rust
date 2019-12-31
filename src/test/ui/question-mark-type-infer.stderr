@@ -1,8 +1,13 @@
-error[E0284]: type annotations needed: cannot resolve `<_ as std::ops::Try>::Ok == _`
-  --> $DIR/question-mark-type-infer.rs:12:5
+error[E0284]: type annotations needed
+  --> $DIR/question-mark-type-infer.rs:12:21
    |
 LL |     l.iter().map(f).collect()?
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^
+   |                     |
+   |                     cannot infer type
+   |                     help: consider specifying the type argument in the method call: `collect::<B>`
+   |
+   = note: cannot resolve `<_ as std::ops::Try>::Ok == _`
 
 error: aborting due to previous error
 

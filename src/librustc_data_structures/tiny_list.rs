@@ -16,41 +16,29 @@ mod tests;
 
 #[derive(Clone)]
 pub struct TinyList<T: PartialEq> {
-    head: Option<Element<T>>
+    head: Option<Element<T>>,
 }
 
 impl<T: PartialEq> TinyList<T> {
     #[inline]
     pub fn new() -> TinyList<T> {
-        TinyList {
-            head: None
-        }
+        TinyList { head: None }
     }
 
     #[inline]
     pub fn new_single(data: T) -> TinyList<T> {
-        TinyList {
-            head: Some(Element {
-                data,
-                next: None,
-            })
-        }
+        TinyList { head: Some(Element { data, next: None }) }
     }
 
     #[inline]
     pub fn insert(&mut self, data: T) {
-        self.head = Some(Element {
-            data,
-            next: self.head.take().map(Box::new)
-        });
+        self.head = Some(Element { data, next: self.head.take().map(Box::new) });
     }
 
     #[inline]
     pub fn remove(&mut self, data: &T) -> bool {
         self.head = match self.head {
-            Some(ref mut head) if head.data == *data => {
-                head.next.take().map(|x| *x)
-            }
+            Some(ref mut head) if head.data == *data => head.next.take().map(|x| *x),
             Some(ref mut head) => return head.remove_next(data),
             None => return false,
         };
@@ -88,12 +76,16 @@ struct Element<T: PartialEq> {
 
 impl<T: PartialEq> Element<T> {
     fn remove_next(&mut self, data: &T) -> bool {
-        let new_next = match self.next {
-            Some(ref mut next) if next.data == *data => next.next.take(),
-            Some(ref mut next) => return next.remove_next(data),
-            None => return false,
-        };
-        self.next = new_next;
-        true
+        let mut n = self;
+        loop {
+            match n.next {
+                Some(ref mut next) if next.data == *data => {
+                    n.next = next.next.take();
+                    return true;
+                }
+                Some(ref mut next) => n = next,
+                None => return false,
+            }
+        }
     }
 }

@@ -1,7 +1,7 @@
 extern crate test;
-use test::Bencher;
 use super::TypedArena;
 use std::cell::Cell;
+use test::Bencher;
 
 #[allow(dead_code)]
 #[derive(Debug, Eq, PartialEq)]
@@ -53,9 +53,7 @@ fn test_arena_alloc_nested() {
 
     let arena = Wrap(TypedArena::default());
 
-    let result = arena.alloc_outer(|| Outer {
-        inner: arena.alloc_inner(|| Inner { value: 10 }),
-    });
+    let result = arena.alloc_outer(|| Outer { inner: arena.alloc_inner(|| Inner { value: 10 }) });
 
     assert_eq!(result.inner.value, 10);
 }
@@ -91,10 +89,7 @@ struct Noncopy {
 pub fn test_noncopy() {
     let arena = TypedArena::default();
     for _ in 0..100000 {
-        arena.alloc(Noncopy {
-            string: "hello world".to_string(),
-            array: vec![1, 2, 3, 4, 5],
-        });
+        arena.alloc(Noncopy { string: "hello world".to_string(), array: vec![1, 2, 3, 4, 5] });
     }
 }
 
@@ -195,19 +190,14 @@ fn test_typed_arena_drop_small_count() {
 pub fn bench_noncopy(b: &mut Bencher) {
     let arena = TypedArena::default();
     b.iter(|| {
-        arena.alloc(Noncopy {
-            string: "hello world".to_string(),
-            array: vec![1, 2, 3, 4, 5],
-        })
+        arena.alloc(Noncopy { string: "hello world".to_string(), array: vec![1, 2, 3, 4, 5] })
     })
 }
 
 #[bench]
 pub fn bench_noncopy_nonarena(b: &mut Bencher) {
     b.iter(|| {
-        let _: Box<_> = Box::new(Noncopy {
-            string: "hello world".to_string(),
-            array: vec![1, 2, 3, 4, 5],
-        });
+        let _: Box<_> =
+            Box::new(Noncopy { string: "hello world".to_string(), array: vec![1, 2, 3, 4, 5] });
     })
 }

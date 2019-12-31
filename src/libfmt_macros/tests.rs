@@ -58,27 +58,15 @@ fn invalid06() {
 
 #[test]
 fn format_nothing() {
-    same("{}",
-         &[NextArgument(Argument {
-               position: ArgumentImplicitlyIs(0),
-               format: fmtdflt(),
-           })]);
+    same("{}", &[NextArgument(Argument { position: ArgumentImplicitlyIs(0), format: fmtdflt() })]);
 }
 #[test]
 fn format_position() {
-    same("{3}",
-         &[NextArgument(Argument {
-               position: ArgumentIs(3),
-               format: fmtdflt(),
-           })]);
+    same("{3}", &[NextArgument(Argument { position: ArgumentIs(3), format: fmtdflt() })]);
 }
 #[test]
 fn format_position_nothing_else() {
-    same("{3:}",
-         &[NextArgument(Argument {
-               position: ArgumentIs(3),
-               format: fmtdflt(),
-           })]);
+    same("{3:}", &[NextArgument(Argument { position: ArgumentIs(3), format: fmtdflt() })]);
 }
 #[test]
 fn format_type() {
@@ -97,7 +85,8 @@ fn format_type() {
                 ty: "x",
                 ty_span: None,
             },
-        })]);
+        })],
+    );
 }
 #[test]
 fn format_align_fill() {
@@ -116,7 +105,8 @@ fn format_align_fill() {
                 ty: "",
                 ty_span: None,
             },
-        })]);
+        })],
+    );
     same(
         "{3:0<}",
         &[NextArgument(Argument {
@@ -132,7 +122,8 @@ fn format_align_fill() {
                 ty: "",
                 ty_span: None,
             },
-        })]);
+        })],
+    );
     same(
         "{3:*<abcd}",
         &[NextArgument(Argument {
@@ -148,92 +139,98 @@ fn format_align_fill() {
                 ty: "abcd",
                 ty_span: Some(InnerSpan::new(6, 10)),
             },
-        })]);
+        })],
+    );
 }
 #[test]
 fn format_counts() {
-    use syntax_pos::{GLOBALS, Globals, edition};
+    use syntax_pos::{edition, Globals, GLOBALS};
     GLOBALS.set(&Globals::new(edition::DEFAULT_EDITION), || {
-    same(
-        "{:10x}",
-        &[NextArgument(Argument {
-            position: ArgumentImplicitlyIs(0),
-            format: FormatSpec {
-                fill: None,
-                align: AlignUnknown,
-                flags: 0,
-                precision: CountImplied,
-                width: CountIs(10),
-                precision_span: None,
-                width_span: None,
-                ty: "x",
-                ty_span: None,
-            },
-        })]);
-    same(
-        "{:10$.10x}",
-        &[NextArgument(Argument {
-            position: ArgumentImplicitlyIs(0),
-            format: FormatSpec {
-                fill: None,
-                align: AlignUnknown,
-                flags: 0,
-                precision: CountIs(10),
-                width: CountIsParam(10),
-                precision_span: None,
-                width_span: Some(InnerSpan::new(3, 6)),
-                ty: "x",
-                ty_span: None,
-            },
-        })]);
-    same(
-        "{:.*x}",
-        &[NextArgument(Argument {
-            position: ArgumentImplicitlyIs(1),
-            format: FormatSpec {
-                fill: None,
-                align: AlignUnknown,
-                flags: 0,
-                precision: CountIsParam(0),
-                width: CountImplied,
-                precision_span: Some(InnerSpan::new(3, 5)),
-                width_span: None,
-                ty: "x",
-                ty_span: None,
-            },
-        })]);
-    same(
-        "{:.10$x}",
-        &[NextArgument(Argument {
-            position: ArgumentImplicitlyIs(0),
-            format: FormatSpec {
-                fill: None,
-                align: AlignUnknown,
-                flags: 0,
-                precision: CountIsParam(10),
-                width: CountImplied,
-                precision_span: Some(InnerSpan::new(3, 7)),
-                width_span: None,
-                ty: "x",
-                ty_span: None,
-            },
-        })]);
-    same(
-        "{:a$.b$?}",
-        &[NextArgument(Argument {
-            position: ArgumentImplicitlyIs(0),
-            format: FormatSpec {
-                fill: None,
-                align: AlignUnknown,
-                flags: 0,
-                precision: CountIsName(Symbol::intern("b")),
-                width: CountIsName(Symbol::intern("a")),
-                precision_span: None,
-                width_span: None,
-                ty: "?",
-                ty_span: None,
-            },
-        })]);
+        same(
+            "{:10x}",
+            &[NextArgument(Argument {
+                position: ArgumentImplicitlyIs(0),
+                format: FormatSpec {
+                    fill: None,
+                    align: AlignUnknown,
+                    flags: 0,
+                    precision: CountImplied,
+                    width: CountIs(10),
+                    precision_span: None,
+                    width_span: None,
+                    ty: "x",
+                    ty_span: None,
+                },
+            })],
+        );
+        same(
+            "{:10$.10x}",
+            &[NextArgument(Argument {
+                position: ArgumentImplicitlyIs(0),
+                format: FormatSpec {
+                    fill: None,
+                    align: AlignUnknown,
+                    flags: 0,
+                    precision: CountIs(10),
+                    width: CountIsParam(10),
+                    precision_span: None,
+                    width_span: Some(InnerSpan::new(3, 6)),
+                    ty: "x",
+                    ty_span: None,
+                },
+            })],
+        );
+        same(
+            "{:.*x}",
+            &[NextArgument(Argument {
+                position: ArgumentImplicitlyIs(1),
+                format: FormatSpec {
+                    fill: None,
+                    align: AlignUnknown,
+                    flags: 0,
+                    precision: CountIsParam(0),
+                    width: CountImplied,
+                    precision_span: Some(InnerSpan::new(3, 5)),
+                    width_span: None,
+                    ty: "x",
+                    ty_span: None,
+                },
+            })],
+        );
+        same(
+            "{:.10$x}",
+            &[NextArgument(Argument {
+                position: ArgumentImplicitlyIs(0),
+                format: FormatSpec {
+                    fill: None,
+                    align: AlignUnknown,
+                    flags: 0,
+                    precision: CountIsParam(10),
+                    width: CountImplied,
+                    precision_span: Some(InnerSpan::new(3, 7)),
+                    width_span: None,
+                    ty: "x",
+                    ty_span: None,
+                },
+            })],
+        );
+        same(
+            "{:a$.b$?}",
+            &[NextArgument(Argument {
+                position: ArgumentImplicitlyIs(0),
+                format: FormatSpec {
+                    fill: None,
+                    align: AlignUnknown,
+                    flags: 0,
+                    precision: CountIsName(Symbol::intern("b")),
+                    width: CountIsName(Symbol::intern("a")),
+                    precision_span: None,
+                    width_span: None,
+                    ty: "?",
+                    ty_span: None,
+                },
+            })],
+        );
     });
 }
 #[test]
@@ -253,7 +250,8 @@ fn format_flags() {
                 ty: "",
                 ty_span: None,
             },
-        })]);
+        })],
+    );
     same(
         "{:+#}",
         &[NextArgument(Argument {
@@ -269,7 +267,8 @@ fn format_flags() {
                 ty: "",
                 ty_span: None,
             },
-        })]);
+        })],
+    );
 }
 #[test]
 fn format_mixture() {

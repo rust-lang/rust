@@ -32,7 +32,7 @@ pub fn target() -> TargetResult {
     // Backgound and Problem:
     //   If we use i686-unknown-windows, the LLVM IA32 MSVC generates compiler intrinsic
     //   _alldiv, _aulldiv, _allrem, _aullrem, _allmul, which will cause undefined symbol.
-    //   A real issue is __aulldiv() is refered by __udivdi3() - udivmod_inner!(), from
+    //   A real issue is __aulldiv() is referred by __udivdi3() - udivmod_inner!(), from
     //   https://github.com/rust-lang-nursery/compiler-builtins.
     //   As result, rust-lld generates link error finally.
     // Root-cause:

@@ -22,13 +22,13 @@
 //!   constituents)
 
 use crate::infer::InferCtxt;
+use crate::infer::{ConstVarValue, ConstVariableValue};
 use crate::traits::DomainGoal;
 use crate::ty::error::TypeError;
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::GenericArg;
-use crate::ty::{self, Ty, TyCtxt, InferConst};
-use crate::infer::{ConstVariableValue, ConstVarValue};
+use crate::ty::{self, InferConst, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Debug;
 
@@ -144,13 +144,7 @@ where
         delegate: D,
         ambient_variance: ty::Variance,
     ) -> Self {
-        Self {
-            infcx,
-            delegate,
-            ambient_variance,
-            a_scopes: vec![],
-            b_scopes: vec![],
-        }
+        Self { infcx, delegate, ambient_variance, a_scopes: vec![], b_scopes: vec![] }
     }
 
     fn ambient_covariance(&self) -> bool {
@@ -286,10 +280,7 @@ where
             }
 
             _ => {
-                let projection = ty::ProjectionPredicate {
-                    projection_ty,
-                    ty: value_ty,
-                };
+                let projection = ty::ProjectionPredicate { projection_ty, ty: value_ty };
                 self.delegate
                     .push_domain_goal(DomainGoal::Holds(WhereClause::ProjectionEq(projection)));
                 value_ty
@@ -331,10 +322,7 @@ where
         match value_ty.kind {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
-                self.infcx
-                    .type_variables
-                    .borrow_mut()
-                    .equate(vid, value_vid);
+                self.infcx.type_variables.borrow_mut().equate(vid, value_vid);
                 return Ok(value_ty);
             }
 
@@ -355,10 +343,7 @@ where
             assert!(!generalized_ty.has_infer_types());
         }
 
-        self.infcx
-            .type_variables
-            .borrow_mut()
-            .instantiate(vid, generalized_ty);
+        self.infcx.type_variables.borrow_mut().instantiate(vid, generalized_ty);
 
         // The generalized values we extract from `canonical_var_values` have
         // been fully instantiated and hence the set of scopes we have
@@ -503,7 +488,9 @@ where
     }
 
     // FIXME(oli-obk): not sure how to get the correct ParamEnv
-    fn param_env(&self) -> ty::ParamEnv<'tcx> { ty::ParamEnv::empty() }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        ty::ParamEnv::empty()
+    }
 
     fn tag(&self) -> &'static str {
         "nll::subtype"
@@ -519,18 +506,12 @@ where
         a: &T,
         b: &T,
     ) -> RelateResult<'tcx, T> {
-        debug!(
-            "relate_with_variance(variance={:?}, a={:?}, b={:?})",
-            variance, a, b
-        );
+        debug!("relate_with_variance(variance={:?}, a={:?}, b={:?})", variance, a, b);
 
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
 
-        debug!(
-            "relate_with_variance: ambient_variance = {:?}",
-            self.ambient_variance
-        );
+        debug!("relate_with_variance: ambient_variance = {:?}", self.ambient_variance);
 
         let r = self.relate(a, b)?;
 
@@ -573,10 +554,7 @@ where
             }
 
             _ => {
-                debug!(
-                    "tys(a={:?}, b={:?}, variance={:?})",
-                    a, b, self.ambient_variance
-                );
+                debug!("tys(a={:?}, b={:?}, variance={:?})", a, b, self.ambient_variance);
 
                 // Will also handle unification of `IntVar` and `FloatVar`.
                 self.infcx.super_combine_tys(self, a, b)
@@ -589,10 +567,7 @@ where
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!(
-            "regions(a={:?}, b={:?}, variance={:?})",
-            a, b, self.ambient_variance
-        );
+        debug!("regions(a={:?}, b={:?}, variance={:?})", a, b, self.ambient_variance);
 
         let v_a = self.replace_bound_region(a, ty::INNERMOST, &self.a_scopes);
         let v_b = self.replace_bound_region(b, ty::INNERMOST, &self.b_scopes);
@@ -630,7 +605,7 @@ where
                 bug!("unexpected inference var {:?}", b)
             }
             // FIXME(invariance): see the related FIXME above.
-            _ => self.infcx.super_combine_consts(self, a, b)
+            _ => self.infcx.super_combine_consts(self, a, b),
         }
     }
 
@@ -661,10 +636,7 @@ where
         // - Instantiate binders on `b` universally, yielding a universe U1.
         // - Instantiate binders on `a` existentially in U1.
 
-        debug!(
-            "binders({:?}: {:?}, ambient_variance={:?})",
-            a, b, self.ambient_variance
-        );
+        debug!("binders({:?}: {:?}, ambient_variance={:?})", a, b, self.ambient_variance);
 
         if self.ambient_covariance() {
             // Covariance, so we want `for<..> A <: for<..> B` --
@@ -767,18 +739,11 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-        let ScopeInstantiator {
-            bound_region_scope,
-            next_region,
-            ..
-        } = self;
+        let ScopeInstantiator { bound_region_scope, next_region, .. } = self;
 
         match r {
             ty::ReLateBound(debruijn, br) if *debruijn == self.target_index => {
-                bound_region_scope
-                    .map
-                    .entry(*br)
-                    .or_insert_with(|| next_region(*br));
+                bound_region_scope.map.entry(*br).or_insert_with(|| next_region(*br));
             }
 
             _ => {}
@@ -841,7 +806,9 @@ where
     }
 
     // FIXME(oli-obk): not sure how to get the correct ParamEnv
-    fn param_env(&self) -> ty::ParamEnv<'tcx> { ty::ParamEnv::empty() }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        ty::ParamEnv::empty()
+    }
 
     fn tag(&self) -> &'static str {
         "nll::generalizer"
@@ -888,10 +855,7 @@ where
             ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
                 if D::forbid_inference_vars() =>
             {
-                bug!(
-                    "unexpected inference variable encountered in NLL generalization: {:?}",
-                    a
-                );
+                bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }
 
             ty::Infer(ty::TyVar(vid)) => {
@@ -909,9 +873,7 @@ where
                             drop(variables);
                             self.relate(&u, &u)
                         }
-                        TypeVariableValue::Unknown {
-                            universe: _universe,
-                        } => {
+                        TypeVariableValue::Unknown { universe: _universe } => {
                             if self.ambient_variance == ty::Bivariant {
                                 // FIXME: we may need a WF predicate (related to #54105).
                             }
@@ -924,10 +886,7 @@ where
                             let new_var_id = variables.new_var(self.universe, false, origin);
 
                             let u = self.tcx().mk_ty_var(new_var_id);
-                            debug!(
-                                "generalize: replacing original vid={:?} with new={:?}",
-                                vid, u
-                            );
+                            debug!("generalize: replacing original vid={:?} with new={:?}", vid, u);
                             return Ok(u);
                         }
                     }
@@ -999,10 +958,7 @@ where
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         match a.val {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
-                bug!(
-                    "unexpected inference variable encountered in NLL generalization: {:?}",
-                    a
-                );
+                bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut variable_table = self.infcx.const_unification_table.borrow_mut();

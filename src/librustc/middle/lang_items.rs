@@ -9,19 +9,19 @@
 
 pub use self::LangItem::*;
 
-use crate::hir::def_id::DefId;
 use crate::hir::check_attr::Target;
-use crate::ty::{self, TyCtxt};
-use crate::middle::weak_lang_items;
+use crate::hir::def_id::DefId;
 use crate::middle::cstore::ExternCrate;
+use crate::middle::weak_lang_items;
+use crate::ty::{self, TyCtxt};
 use crate::util::nodemap::FxHashMap;
 
-use syntax::ast;
-use syntax::symbol::{Symbol, sym};
-use syntax_pos::Span;
-use rustc_macros::HashStable;
-use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir;
+use crate::hir::itemlikevisit::ItemLikeVisitor;
+use rustc_macros::HashStable;
+use syntax::ast;
+use syntax::symbol::{sym, Symbol};
+use syntax_pos::Span;
 
 use rustc_error_codes::*;
 
@@ -113,7 +113,7 @@ struct LanguageItemCollector<'tcx> {
 }
 
 impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let Some((value, span)) = extract(&item.attrs) {
             let actual_target = Target::from_item(item);
             match self.item_refs.get(&*value.as_str()).cloned() {
@@ -151,11 +151,11 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
         // At present, lang items are always items, not trait items.
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
         // At present, lang items are always items, not impl items.
     }
 }
@@ -358,7 +358,6 @@ language_item_table! {
     // Don't be fooled by the naming here: this lang item denotes `PartialEq`, not `Eq`.
     EqTraitLangItem,             "eq",                 eq_trait,                Target::Trait;
     PartialOrdTraitLangItem,     "partial_ord",        partial_ord_trait,       Target::Trait;
-    OrdTraitLangItem,            "ord",                ord_trait,               Target::Trait;
 
     // A number of panic-related lang items. The `panic` item corresponds to
     // divide-by-zero and various panic cases with `match`. The

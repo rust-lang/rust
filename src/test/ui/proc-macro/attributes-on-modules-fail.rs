@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate test_macros;
 
-#[identity_attr] //~ ERROR custom attributes cannot be applied to modules
+#[identity_attr]
 mod m {
     pub struct X;
 
@@ -19,10 +19,27 @@ mod n {}
 #[empty_attr]
 mod module; //~ ERROR non-inline modules in proc macro input are unstable
 
-#[empty_attr] //~ ERROR custom attributes cannot be applied to modules
+#[empty_attr]
 mod outer {
     mod inner; //~ ERROR non-inline modules in proc macro input are unstable
 
+    mod inner_inline {} // OK
+}
+
+#[derive(Empty)]
+struct S {
+    field: [u8; {
+        #[path = "outer/inner.rs"]
+        mod inner; //~ ERROR non-inline modules in proc macro input are unstable
+        mod inner_inline {} // OK
+        0
+    }]
+}
+
+#[identity_attr]
+fn f() {
+    #[path = "outer/inner.rs"]
+    mod inner; //~ ERROR non-inline modules in proc macro input are unstable
     mod inner_inline {} // OK
 }
 

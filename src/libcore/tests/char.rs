@@ -1,6 +1,6 @@
-use std::{char,str};
 use std::convert::TryFrom;
 use std::str::FromStr;
+use std::{char, str};
 
 #[test]
 fn test_convert() {
@@ -143,13 +143,13 @@ fn test_is_control() {
 
 #[test]
 fn test_is_numeric() {
-   assert!('2'.is_numeric());
-   assert!('7'.is_numeric());
-   assert!('¾'.is_numeric());
-   assert!(!'c'.is_numeric());
-   assert!(!'i'.is_numeric());
-   assert!(!'z'.is_numeric());
-   assert!(!'Q'.is_numeric());
+    assert!('2'.is_numeric());
+    assert!('7'.is_numeric());
+    assert!('¾'.is_numeric());
+    assert!(!'c'.is_numeric());
+    assert!(!'i'.is_numeric());
+    assert!(!'z'.is_numeric());
+    assert!(!'Q'.is_numeric());
 }
 
 #[test]
@@ -176,9 +176,9 @@ fn test_escape_debug() {
     assert_eq!(string('\u{ff}'), "\u{ff}");
     assert_eq!(string('\u{11b}'), "\u{11b}");
     assert_eq!(string('\u{1d4b6}'), "\u{1d4b6}");
-    assert_eq!(string('\u{301}'), "\\u{301}");     // combining character
-    assert_eq!(string('\u{200b}'),"\\u{200b}");      // zero width space
-    assert_eq!(string('\u{e000}'), "\\u{e000}");     // private use 1
+    assert_eq!(string('\u{301}'), "\\u{301}"); // combining character
+    assert_eq!(string('\u{200b}'), "\\u{200b}"); // zero width space
+    assert_eq!(string('\u{e000}'), "\\u{e000}"); // private use 1
     assert_eq!(string('\u{100000}'), "\\u{100000}"); // private use 2
 }
 
@@ -272,8 +272,8 @@ fn test_len_utf16() {
 fn test_decode_utf16() {
     fn check(s: &[u16], expected: &[Result<char, u16>]) {
         let v = char::decode_utf16(s.iter().cloned())
-                     .map(|r| r.map_err(|e| e.unpaired_surrogate()))
-                     .collect::<Vec<_>>();
+            .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+            .collect::<Vec<_>>();
         assert_eq!(v, expected);
     }
     check(&[0xD800, 0x41, 0x42], &[Err(0xD800), Ok('A'), Ok('B')]);

@@ -1,0 +1,60 @@
+error: lifetime may not live long enough
+  --> $DIR/closure-substs.rs:8:16
+   |
+LL | fn foo<'a>() {
+   |        -- lifetime `'a` defined here
+...
+LL |         return x;
+   |                ^ returning this value requires that `'a` must outlive `'static`
+   |
+   = help: consider replacing `'a` with `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/closure-substs.rs:15:16
+   |
+LL |     |x: &i32| -> &'static i32 {
+   |         - let's call the lifetime of this reference `'1`
+LL |         return x;
+   |                ^ returning this value requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/closure-substs.rs:15:16
+   |
+LL |     |x: &i32| -> &'static i32 {
+   |         -        ------------ return type of closure is &'2 i32
+   |         |
+   |         let's call the lifetime of this reference `'1`
+LL |         return x;
+   |                ^ returning this value requires that `'1` must outlive `'2`
+
+error: lifetime may not live long enough
+  --> $DIR/closure-substs.rs:22:9
+   |
+LL | fn bar<'a>() {
+   |        -- lifetime `'a` defined here
+...
+LL |         b(x);
+   |         ^^^^ argument requires that `'a` must outlive `'static`
+   |
+   = help: consider replacing `'a` with `'static`
+
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/closure-substs.rs:29:9
+   |
+LL |     |x: &i32, b: fn(&'static i32)| {
+   |      - `x` is a reference that is only valid in the closure body
+LL |         b(x);
+   |         ^^^^ `x` escapes the closure body here
+
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/closure-substs.rs:29:9
+   |
+LL |     |x: &i32, b: fn(&'static i32)| {
+   |      -        - `b` is declared here, outside of the closure body
+   |      |
+   |      `x` is a reference that is only valid in the closure body
+LL |         b(x);
+   |         ^^^^ `x` escapes the closure body here
+
+error: aborting due to 6 previous errors
+

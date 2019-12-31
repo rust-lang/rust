@@ -1,20 +1,20 @@
 #![allow(non_snake_case)]
 
-pub use self::IntPredicate::*;
-pub use self::RealPredicate::*;
 pub use self::AtomicRmwBinOp::*;
-pub use self::MetadataType::*;
-pub use self::CodeGenOptSize::*;
 pub use self::CallConv::*;
+pub use self::CodeGenOptSize::*;
+pub use self::IntPredicate::*;
 pub use self::Linkage::*;
+pub use self::MetadataType::*;
+pub use self::RealPredicate::*;
 
+use libc::c_uint;
+use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_llvm::RustString;
+use std::cell::RefCell;
+use std::ffi::CStr;
 use std::str::FromStr;
 use std::string::FromUtf8Error;
-use std::slice;
-use std::ffi::CStr;
-use std::cell::RefCell;
-use libc::{c_uint, c_char, size_t};
-use rustc_data_structures::small_c_str::SmallCStr;
 
 pub mod archive_ro;
 pub mod diagnostic;
@@ -31,15 +31,9 @@ impl LLVMRustResult {
     }
 }
 
-pub fn AddFunctionAttrStringValue(llfn: &'a Value,
-                                  idx: AttributePlace,
-                                  attr: &CStr,
-                                  value: &CStr) {
+pub fn AddFunctionAttrStringValue(llfn: &'a Value, idx: AttributePlace, attr: &CStr, value: &CStr) {
     unsafe {
-        LLVMRustAddFunctionAttrStringValue(llfn,
-                                           idx.as_uint(),
-                                           attr.as_ptr(),
-                                           value.as_ptr())
+        LLVMRustAddFunctionAttrStringValue(llfn, idx.as_uint(), attr.as_ptr(), value.as_ptr())
     }
 }
 
@@ -81,21 +75,6 @@ impl FromStr for ArchiveKind {
     }
 }
 
-#[repr(C)]
-pub struct RustString {
-    bytes: RefCell<Vec<u8>>,
-}
-
-/// Appending to a Rust string -- used by RawRustStringOstream.
-#[no_mangle]
-pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: &RustString,
-                                                 ptr: *const c_char,
-                                                 size: size_t) {
-    let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
-
-    sr.bytes.borrow_mut().extend_from_slice(slice);
-}
-
 pub fn SetInstructionCallConv(instr: &'a Value, cc: CallConv) {
     unsafe {
         LLVMSetInstructionCallConv(instr, cc as c_uint);
@@ -115,7 +94,8 @@ pub fn SetFunctionCallConv(fn_: &'a Value, cc: CallConv) {
 // For more details on COMDAT sections see e.g., http://www.airs.com/blog/archives/52
 pub fn SetUniqueComdat(llmod: &Module, val: &'a Value) {
     unsafe {
-        LLVMRustSetComdat(llmod, val, LLVMGetValueName(val));
+        let name = get_value_name(val);
+        LLVMRustSetComdat(llmod, val, name.as_ptr().cast(), name.len());
     }
 }
 
@@ -211,24 +191,42 @@ pub fn mk_section_iter(llof: &'a ffi::ObjectFile) -> SectionIter<'a> {
 /// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
 pub fn get_param(llfn: &'a Value, index: c_uint) -> &'a Value {
     unsafe {
-        assert!(index < LLVMCountParams(llfn),
-            "out of bounds argument access: {} out of {} arguments", index, LLVMCountParams(llfn));
+        assert!(
+            index < LLVMCountParams(llfn),
+            "out of bounds argument access: {} out of {} arguments",
+            index,
+            LLVMCountParams(llfn)
+        );
         LLVMGetParam(llfn, index)
     }
 }
 
+/// Safe wrapper for `LLVMGetValueName2` into a byte slice
+pub fn get_value_name(value: &'a Value) -> &'a [u8] {
+    unsafe {
+        let mut len = 0;
+        let data = LLVMGetValueName2(value, &mut len);
+        std::slice::from_raw_parts(data.cast(), len)
+    }
+}
+
+/// Safe wrapper for `LLVMSetValueName2` from a byte slice
+pub fn set_value_name(value: &Value, name: &[u8]) {
+    unsafe {
+        let data = name.as_ptr().cast();
+        LLVMSetValueName2(value, data, name.len());
+    }
+}
+
 pub fn build_string(f: impl FnOnce(&RustString)) -> Result<String, FromUtf8Error> {
-    let sr = RustString {
-        bytes: RefCell::new(Vec::new()),
-    };
+    let sr = RustString { bytes: RefCell::new(Vec::new()) };
     f(&sr);
     String::from_utf8(sr.bytes.into_inner())
 }
 
 pub fn twine_to_string(tr: &Twine) -> String {
     unsafe {
-        build_string(|s| LLVMRustWriteTwineToString(tr, s))
-            .expect("got a non-UTF8 Twine from LLVM")
+        build_string(|s| LLVMRustWriteTwineToString(tr, s)).expect("got a non-UTF8 Twine from LLVM")
     }
 }
 

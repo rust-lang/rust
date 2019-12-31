@@ -8,6 +8,8 @@ LL | fn use_<'short,'long>(c: Foo<'short>,
 ...
 LL |     let _: Foo<'long> = c;
    |            ^^^^^^^^^^ type annotation requires that `'short` must outlive `'long`
+   |
+   = help: consider adding the following bound: `'short: 'long`
 
 error: aborting due to previous error
 

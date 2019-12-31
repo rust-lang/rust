@@ -3,9 +3,9 @@ pub const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 #[cfg(test)]
 #[allow(dead_code)] // not used on emscripten
 pub mod test {
-    use crate::path::{Path, PathBuf};
     use crate::env;
     use crate::fs;
+    use crate::path::{Path, PathBuf};
     use rand::RngCore;
 
     pub struct TempDir(PathBuf);

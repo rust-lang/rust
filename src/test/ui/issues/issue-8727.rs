@@ -1,6 +1,8 @@
 // Verify the compiler fails with an error on infinite function
 // recursions.
 
+// build-fail
+
 fn generic<T>() {
     generic::<Option<T>>();
 }

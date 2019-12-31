@@ -33,19 +33,16 @@ impl<'mir, 'tcx> IndirectlyMutableLocals<'mir, 'tcx> {
         &self,
         trans: &'a mut GenKillSet<Local>,
     ) -> TransferFunction<'a, 'mir, 'tcx> {
-        TransferFunction {
-            body: self.body,
-            tcx: self.tcx,
-            param_env: self.param_env,
-            trans
-        }
+        TransferFunction { body: self.body, tcx: self.tcx, param_env: self.param_env, trans }
     }
 }
 
 impl<'mir, 'tcx> dataflow::BitDenotation<'tcx> for IndirectlyMutableLocals<'mir, 'tcx> {
     type Idx = Local;
 
-    fn name() -> &'static str { "mut_borrowed_locals" }
+    fn name() -> &'static str {
+        "mut_borrowed_locals"
+    }
 
     fn bits_per_block(&self) -> usize {
         self.body.local_decls.len()
@@ -55,20 +52,12 @@ impl<'mir, 'tcx> dataflow::BitDenotation<'tcx> for IndirectlyMutableLocals<'mir,
         // Nothing is borrowed on function entry
     }
 
-    fn statement_effect(
-        &self,
-        trans: &mut GenKillSet<Local>,
-        loc: Location,
-    ) {
+    fn statement_effect(&self, trans: &mut GenKillSet<Local>, loc: Location) {
         let stmt = &self.body[loc.block].statements[loc.statement_index];
         self.transfer_function(trans).visit_statement(stmt, loc);
     }
 
-    fn terminator_effect(
-        &self,
-        trans: &mut GenKillSet<Local>,
-        loc: Location,
-    ) {
+    fn terminator_effect(&self, trans: &mut GenKillSet<Local>, loc: Location) {
         let terminator = self.body[loc.block].terminator();
         self.transfer_function(trans).visit_terminator(terminator, loc);
     }
@@ -107,28 +96,25 @@ impl<'tcx> TransferFunction<'_, '_, 'tcx> {
         match kind {
             mir::BorrowKind::Mut { .. } => true,
 
-            | mir::BorrowKind::Shared
-            | mir::BorrowKind::Shallow
-            | mir::BorrowKind::Unique
-            => !borrowed_place
-                .ty(self.body, self.tcx)
-                .ty
-                .is_freeze(self.tcx, self.param_env, DUMMY_SP),
+            mir::BorrowKind::Shared | mir::BorrowKind::Shallow | mir::BorrowKind::Unique => {
+                !borrowed_place.ty(self.body, self.tcx).ty.is_freeze(
+                    self.tcx,
+                    self.param_env,
+                    DUMMY_SP,
+                )
+            }
         }
     }
 }
 
 impl<'tcx> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx> {
-    fn visit_rvalue(
-        &mut self,
-        rvalue: &mir::Rvalue<'tcx>,
-        location: Location,
-    ) {
+    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
         if let mir::Rvalue::Ref(_, kind, ref borrowed_place) = *rvalue {
             if self.borrow_allows_mutation(kind, borrowed_place) {
                 match borrowed_place.base {
-                    mir::PlaceBase::Local(borrowed_local) if !borrowed_place.is_indirect()
-                        => self.trans.gen(borrowed_local),
+                    mir::PlaceBase::Local(borrowed_local) if !borrowed_place.is_indirect() => {
+                        self.trans.gen(borrowed_local)
+                    }
 
                     _ => (),
                 }
@@ -138,7 +124,6 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx> {
         self.super_rvalue(rvalue, location);
     }
 
-
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         // This method purposely does nothing except call `super_terminator`. It exists solely to
         // document the subtleties around drop terminators.
@@ -146,7 +131,7 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx> {
         self.super_terminator(terminator, location);
 
         if let mir::TerminatorKind::Drop { location: _, .. }
-             | mir::TerminatorKind::DropAndReplace { location: _, .. } = &terminator.kind
+        | mir::TerminatorKind::DropAndReplace { location: _, .. } = &terminator.kind
         {
             // Although drop terminators mutably borrow the location being dropped, that borrow
             // cannot live beyond the drop terminator because the dropped location is invalidated.

@@ -1,3 +1,4 @@
+// build-fail
 // ignore-tidy-linelength
 // revisions: legacy v0
 //[legacy]compile-flags: -Z symbol-mangling-version=legacy

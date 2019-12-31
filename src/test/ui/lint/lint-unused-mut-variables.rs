@@ -3,7 +3,7 @@
 // Exercise the unused_mut attribute in some positive and negative cases
 
 #![deny(unused_mut)]
-#![feature(async_closure)]
+#![feature(async_closure, raw_ref_op)]
 
 async fn baz_async(
     mut a: i32,
@@ -177,6 +177,12 @@ fn main() {
     // leading underscore should avoid the warning, just like the
     // unused variable lint.
     let mut _allowed = 1;
+
+    let mut raw_address_of_mut = 1; // OK
+    let mut_ptr = &raw mut raw_address_of_mut;
+
+    let mut raw_address_of_const = 1; //~ ERROR: variable does not need to be mutable
+    let const_ptr = &raw const raw_address_of_const;
 }
 
 fn callback<F>(f: F) where F: FnOnce() {}

@@ -2,10 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/const.rs:14:9
    |
 LL |         FOO => {},
-   |         ^^^ expected &Foo, found struct `Foo`
-   |
-   = note: expected type `&Foo`
-              found type `Foo`
+   |         ^^^ expected `&Foo`, found struct `Foo`
 
 error: aborting due to previous error
 

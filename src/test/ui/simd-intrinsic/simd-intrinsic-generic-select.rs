@@ -1,3 +1,5 @@
+// build-fail
+
 // Test that the simd_select intrinsic produces ok-ish error
 // messages when misused.
 
