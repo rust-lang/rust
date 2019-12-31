@@ -16,25 +16,25 @@ export interface CargoFeatures {
 }
 
 export class Config {
-    public highlightingOn = true;
-    public rainbowHighlightingOn = false;
-    public enableEnhancedTyping = true;
-    public raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
-    public lruCapacity: null | number = null;
-    public displayInlayHints = true;
-    public maxInlayHintLength: null | number = null;
-    public excludeGlobs = [];
-    public useClientWatching = true;
-    public featureFlags = {};
+    highlightingOn = true;
+    rainbowHighlightingOn = false;
+    enableEnhancedTyping = true;
+    raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
+    lruCapacity: null | number = null;
+    displayInlayHints = true;
+    maxInlayHintLength: null | number = null;
+    excludeGlobs = [];
+    useClientWatching = true;
+    featureFlags = {};
     // for internal use
-    public withSysroot: null | boolean = null;
-    public cargoWatchOptions: CargoWatchOptions = {
+    withSysroot: null | boolean = null;
+    cargoWatchOptions: CargoWatchOptions = {
         enable: true,
         arguments: [],
         command: '',
         allTargets: true,
     };
-    public cargoFeatures: CargoFeatures = {
+    cargoFeatures: CargoFeatures = {
         noDefaultFeatures: false,
         allFeatures: true,
         features: [],
@@ -50,7 +50,7 @@ export class Config {
         this.userConfigChanged();
     }
 
-    public userConfigChanged() {
+    userConfigChanged() {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
 
         let requireReloadMessage = null;
