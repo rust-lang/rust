@@ -1266,20 +1266,34 @@ extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Src, unsigned SrcAlign,
                                             LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(10, 0)
+  return wrap(unwrap(B)->CreateMemCpy(
+      unwrap(Dst), MaybeAlign(DstAlign),
+      unwrap(Src), MaybeAlign(SrcAlign),
+      unwrap(Size), IsVolatile));
+#else
   return wrap(unwrap(B)->CreateMemCpy(
       unwrap(Dst), DstAlign,
       unwrap(Src), SrcAlign,
       unwrap(Size), IsVolatile));
+#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemMove(LLVMBuilderRef B,
                                              LLVMValueRef Dst, unsigned DstAlign,
                                              LLVMValueRef Src, unsigned SrcAlign,
                                              LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(10, 0)
+  return wrap(unwrap(B)->CreateMemMove(
+      unwrap(Dst), MaybeAlign(DstAlign),
+      unwrap(Src), MaybeAlign(SrcAlign),
+      unwrap(Size), IsVolatile));
+#else
   return wrap(unwrap(B)->CreateMemMove(
       unwrap(Dst), DstAlign,
       unwrap(Src), SrcAlign,
       unwrap(Size), IsVolatile));
+#endif
 }
 
 extern "C" LLVMValueRef
