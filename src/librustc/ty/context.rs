@@ -211,7 +211,7 @@ fn validate_hir_id_for_typeck_tables(
             ty::tls::with(|tcx| {
                 bug!(
                     "node {} with HirId::owner {:?} cannot be placed in \
-                        TypeckTables with local_id_root {:?}",
+                     TypeckTables with local_id_root {:?}",
                     tcx.hir().node_to_string(hir_id),
                     DefId::local(hir_id.owner),
                     local_id_root
@@ -2553,7 +2553,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: S,
-        msg: &str,
+        msg: impl std::fmt::Display,
     ) {
         self.struct_span_lint_hir(lint, hir_id, span.into(), msg).emit()
     }
@@ -2563,7 +2563,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: S,
-        msg: &str,
+        msg: impl std::fmt::Display,
         note: &str,
     ) {
         let mut err = self.struct_span_lint_hir(lint, hir_id, span.into(), msg);
@@ -2576,7 +2576,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         id: hir::HirId,
         span: S,
-        msg: &str,
+        msg: impl std::fmt::Display,
         note: &str,
     ) {
         let mut err = self.struct_span_lint_hir(lint, id, span.into(), msg);
@@ -2629,7 +2629,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: S,
-        msg: &str,
+        msg: impl std::fmt::Display,
     ) -> DiagnosticBuilder<'tcx> {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
@@ -2639,7 +2639,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         id: HirId,
-        msg: &str,
+        msg: impl std::fmt::Display,
     ) -> DiagnosticBuilder<'tcx> {
         let (level, src) = self.lint_level_at_node(lint, id);
         lint::struct_lint_level(self.sess, lint, level, src, None, msg)

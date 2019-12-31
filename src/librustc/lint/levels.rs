@@ -471,7 +471,7 @@ impl<'a> LintLevelsBuilder<'a> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        msg: &str,
+        msg: impl std::fmt::Display,
     ) -> DiagnosticBuilder<'a> {
         let (level, src) = self.sets.get_lint_level(lint, self.cur, None, self.sess);
         lint::struct_lint_level(self.sess, lint, level, src, span, msg)

@@ -109,8 +109,11 @@ impl BoxPointers {
     fn check_heap_type(&self, cx: &LateContext<'_, '_>, span: Span, ty: Ty<'_>) {
         for leaf_ty in ty.walk() {
             if leaf_ty.is_box() {
-                let m = format!("type uses owned (Box type) pointers: {}", ty);
-                cx.span_lint(BOX_POINTERS, span, &m);
+                cx.span_lint(
+                    BOX_POINTERS,
+                    span,
+                    format_args!("type uses owned (Box type) pointers: {}", ty),
+                );
             }
         }
     }
@@ -235,8 +238,8 @@ impl EarlyLintPass for UnsafeCode {
                 cx,
                 attr.span,
                 "`allow_internal_unsafe` allows defining \
-                                               macros using unsafe without triggering \
-                                               the `unsafe_code` lint at their call site",
+                 macros using unsafe without triggering \
+                 the `unsafe_code` lint at their call site",
             );
         }
     }
@@ -379,7 +382,7 @@ impl MissingDoc {
             cx.span_lint(
                 MISSING_DOCS,
                 cx.tcx.sess.source_map().def_span(sp),
-                &format!("missing documentation for {}", desc),
+                format_args!("missing documentation for {}", desc),
             );
         }
     }
@@ -563,7 +566,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
                 MISSING_COPY_IMPLEMENTATIONS,
                 item.span,
                 "type could implement `Copy`; consider adding `impl \
-                          Copy`",
+                 Copy`",
             )
         }
     }
@@ -617,7 +620,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
                 MISSING_DEBUG_IMPLEMENTATIONS,
                 item.span,
                 "type does not implement `fmt::Debug`; consider adding `#[derive(Debug)]` \
-                          or a manual implementation",
+                 or a manual implementation",
             )
         }
     }
@@ -663,7 +666,7 @@ impl EarlyLintPass for AnonymousParameters {
                                 .span_suggestion(
                                     arg.pat.span,
                                     "Try naming the parameter or explicitly \
-                                    ignoring it",
+                                     ignoring it",
                                     format!("_: {}", ty_snip),
                                     appl,
                                 )
@@ -783,7 +786,7 @@ impl UnusedDocComment {
                 if is_macro_expansion {
                     err.help(
                         "to document an item produced by a macro, \
-                              the macro must produce the documentation as part of its expansion",
+                         the macro must produce the documentation as part of its expansion",
                     );
                 }
 
@@ -1249,7 +1252,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
                         span,
                         &format!(
                             "{} bound {} does not depend on any type \
-                                or lifetime parameters",
+                             or lifetime parameters",
                             predicate_kind_name, predicate
                         ),
                     );
@@ -1473,7 +1476,7 @@ impl KeywordIdents {
         let mut lint = cx.struct_span_lint(
             KEYWORD_IDENTS,
             ident.span,
-            &format!("`{}` is a keyword in the {} edition", ident, next_edition),
+            format_args!("`{}` is a keyword in the {} edition", ident, next_edition),
         );
         lint.span_suggestion(
             ident.span,
@@ -2033,7 +2036,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 err.span_label(
                     expr.span,
                     "help: use `MaybeUninit<T>` instead, \
-                    and only call `assume_init` after initialization is done",
+                     and only call `assume_init` after initialization is done",
                 );
                 if let Some(span) = span {
                     err.span_note(span, &msg);

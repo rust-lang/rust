@@ -437,14 +437,27 @@ pub fn struct_lint_level<'a>(
     level: Level,
     src: LintSource,
     span: Option<MultiSpan>,
-    msg: &str,
+    msg: impl std::fmt::Display,
+) -> DiagnosticBuilder<'a> {
+    struct_lint_level_(sess, lint, level, src, span, &msg)
+}
+
+fn struct_lint_level_<'a>(
+    sess: &'a Session,
+    lint: &'static Lint,
+    level: Level,
+    src: LintSource,
+    span: Option<MultiSpan>,
+    msg: &dyn std::fmt::Display,
 ) -> DiagnosticBuilder<'a> {
     let mut err = match (level, span) {
         (Level::Allow, _) => return sess.diagnostic().struct_dummy(),
-        (Level::Warn, Some(span)) => sess.struct_span_warn(span, msg),
-        (Level::Warn, None) => sess.struct_warn(msg),
-        (Level::Deny, Some(span)) | (Level::Forbid, Some(span)) => sess.struct_span_err(span, msg),
-        (Level::Deny, None) | (Level::Forbid, None) => sess.struct_err(msg),
+        (Level::Warn, Some(span)) => sess.struct_span_warn(span, &msg.to_string()),
+        (Level::Warn, None) => sess.struct_warn(&msg.to_string()),
+        (Level::Deny, Some(span)) | (Level::Forbid, Some(span)) => {
+            sess.struct_span_err(span, &msg.to_string())
+        }
+        (Level::Deny, None) | (Level::Forbid, None) => sess.struct_err(&msg.to_string()),
     };
 
     // Check for future incompatibility lints and issue a stronger warning.
@@ -536,7 +549,7 @@ pub fn struct_lint_level<'a>(
 
     if let Some(future_incompatible) = future_incompatible {
         const STANDARD_MESSAGE: &str = "this was previously accepted by the compiler but is being phased out; \
-             it will become a hard error";
+                                        it will become a hard error";
 
         let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
             "once this method is added to the standard library, \

@@ -497,8 +497,13 @@ pub trait LintContext: Sized {
     fn sess(&self) -> &Session;
     fn lints(&self) -> &LintStore;
 
-    fn lookup_and_emit<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: Option<S>, msg: &str) {
-        self.lookup(lint, span, msg).emit();
+    fn lookup_and_emit<S: Into<MultiSpan>>(
+        &self,
+        lint: &'static Lint,
+        span: Option<S>,
+        msg: impl std::fmt::Display,
+    ) {
+        self.lookup(lint, span, &msg).emit();
     }
 
     fn lookup_and_emit_with_diagnostics<S: Into<MultiSpan>>(
@@ -508,7 +513,7 @@ pub trait LintContext: Sized {
         msg: &str,
         diagnostic: BuiltinLintDiagnostics,
     ) {
-        let mut db = self.lookup(lint, span, msg);
+        let mut db = self.lookup(lint, span, &msg);
         diagnostic.run(self.sess(), &mut db);
         db.emit();
     }
@@ -517,11 +522,16 @@ pub trait LintContext: Sized {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: &str,
+        msg: impl std::fmt::Display,
     ) -> DiagnosticBuilder<'_>;
 
     /// Emit a lint at the appropriate level, for a particular span.
-    fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
+    fn span_lint<S: Into<MultiSpan>>(
+        &self,
+        lint: &'static Lint,
+        span: S,
+        msg: impl std::fmt::Display,
+    ) {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
@@ -529,9 +539,9 @@ pub trait LintContext: Sized {
         &self,
         lint: &'static Lint,
         span: S,
-        msg: &str,
+        msg: impl std::fmt::Display,
     ) -> DiagnosticBuilder<'_> {
-        self.lookup(lint, Some(span), msg)
+        self.lookup(lint, Some(span), &msg)
     }
 
     /// Emit a lint and note at the appropriate level, for a particular span.
@@ -543,7 +553,7 @@ pub trait LintContext: Sized {
         note_span: Span,
         note: &str,
     ) {
-        let mut err = self.lookup(lint, Some(span), msg);
+        let mut err = self.lookup(lint, Some(span), &msg);
         if note_span == span {
             err.note(note);
         } else {
@@ -554,7 +564,7 @@ pub trait LintContext: Sized {
 
     /// Emit a lint and help at the appropriate level, for a particular span.
     fn span_lint_help(&self, lint: &'static Lint, span: Span, msg: &str, help: &str) {
-        let mut err = self.lookup(lint, Some(span), msg);
+        let mut err = self.lookup(lint, Some(span), &msg);
         self.span_lint(lint, span, msg);
         err.span_help(span, help);
         err.emit();
@@ -646,7 +656,7 @@ impl LintContext for LateContext<'_, '_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: &str,
+        msg: impl std::fmt::Display,
     ) -> DiagnosticBuilder<'_> {
         let hir_id = self.last_node_with_lint_attrs;
 
@@ -673,7 +683,7 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: &str,
+        msg: impl std::fmt::Display,
     ) -> DiagnosticBuilder<'_> {
         self.builder.struct_lint(lint, span.map(|s| s.into()), msg)
     }
