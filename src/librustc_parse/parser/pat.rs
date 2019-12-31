@@ -673,7 +673,7 @@ impl<'a> Parser<'a> {
         let expected = expected.unwrap_or("pattern");
         let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
-        let mut err = self.fatal(&msg);
+        let mut err = self.struct_span_err(self.token.span, &msg);
         err.span_label(self.token.span, format!("expected {}", expected));
 
         let sp = self.sess.source_map().start_point(self.token.span);
@@ -807,12 +807,8 @@ impl<'a> Parser<'a> {
     /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
     fn parse_pat_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
         if qself.is_some() {
-            let msg = "unexpected `{` after qualified path";
-            let mut err = self.fatal(msg);
-            err.span_label(self.token.span, msg);
-            return Err(err);
+            return self.error_qpath_before_pat(&path, "{");
         }
-
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
             e.emit();
@@ -826,13 +822,20 @@ impl<'a> Parser<'a> {
     /// Parse tuple struct or tuple variant pattern (e.g. `Foo(...)` or `Foo::Bar(...)`).
     fn parse_pat_tuple_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
         if qself.is_some() {
-            let msg = "unexpected `(` after qualified path";
-            let mut err = self.fatal(msg);
-            err.span_label(self.token.span, msg);
-            return Err(err);
+            return self.error_qpath_before_pat(&path, "(");
         }
         let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner())?;
         Ok(PatKind::TupleStruct(path, fields))
+    }
+
+    /// Error when there's a qualified path, e.g. `<Foo as Bar>::Baz`
+    /// as the path of e.g., a tuple or record struct pattern.
+    fn error_qpath_before_pat(&mut self, path: &Path, token: &str) -> PResult<'a, PatKind> {
+        let msg = &format!("unexpected `{}` after qualified path", token);
+        let mut err = self.struct_span_err(self.token.span, msg);
+        err.span_label(self.token.span, msg);
+        err.span_label(path.span, "the qualified path");
+        Err(err)
     }
 
     /// Parses the fields of a struct-like pattern.
@@ -877,7 +880,8 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 let token_str = super::token_descr(&self.token);
-                let mut err = self.fatal(&format!("expected `}}`, found {}", token_str));
+                let msg = &format!("expected `}}`, found {}", token_str);
+                let mut err = self.struct_span_err(self.token.span, msg);
 
                 err.span_label(self.token.span, "expected `}`");
                 let mut comma_sp = None;
