@@ -20,6 +20,7 @@ rustc_parse = { path = "../librustc_parse" }
 syntax_pos = { path = "../librustc_span", package = "rustc_span" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc = { path = "../librustc" }
+rustc_ast_lowering = { path = "../librustc_ast_lowering" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_traits = { path = "../librustc_traits" }
 rustc_data_structures = { path = "../librustc_data_structures" }
