@@ -36,7 +36,7 @@ interface InlayHint {
 
 const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
     after: {
-        color: new vscode.ThemeColor('rust-analyzer.inlayHint'),
+        color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
     },
 });
 
