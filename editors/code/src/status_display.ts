@@ -36,13 +36,9 @@ class StatusDisplay implements vscode.Disposable {
             this.timer ||
             setInterval(() => {
                 if (this.packageName) {
-                    this.statusBarItem!.text = `cargo ${this.command} [${
-                        this.packageName
-                        }] ${this.frame()}`;
+                    this.statusBarItem!.text = `${this.frame()} cargo ${this.command} [${this.packageName}]`;
                 } else {
-                    this.statusBarItem!.text = `cargo ${
-                        this.command
-                        } ${this.frame()}`;
+                    this.statusBarItem!.text = `${this.frame()} cargo ${this.command}`;
                 }
             }, 300);
 

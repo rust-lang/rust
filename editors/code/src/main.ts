@@ -11,17 +11,6 @@ let ctx!: Ctx;
 export async function activate(context: vscode.ExtensionContext) {
     ctx = new Ctx(context);
 
-    // Note: we try to start the server before we register various commands, so
-    // that it registers its `onDidChangeDocument` handler before us.
-    //
-    // This a horribly, horribly wrong way to deal with this problem.
-    try {
-        await ctx.restartServer();
-    } catch (e) {
-        vscode.window.showErrorMessage(e.message);
-    }
-
-
     // Commands which invokes manually via command pallet, shortcut, etc.
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
@@ -42,7 +31,17 @@ export async function activate(context: vscode.ExtensionContext) {
         ctx.overrideCommand('type', commands.onEnter);
     }
     activateStatusDisplay(ctx);
+
     activateHighlighting(ctx);
+    // Note: we try to start the server before we activate type hints so that it
+    // registers its `onDidChangeDocument` handler before us.
+    //
+    // This a horribly, horribly wrong way to deal with this problem.
+    try {
+        await ctx.restartServer();
+    } catch (e) {
+        vscode.window.showErrorMessage(e.message);
+    }
     activateInlayHints(ctx);
 }
 
