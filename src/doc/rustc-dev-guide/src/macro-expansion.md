@@ -1,6 +1,6 @@
 # Macro expansion
 
-> `libsyntax`, `librustc_expand`, and `libsyntax_ext` are all undergoing
+> `libsyntax`, `librustc_expand`, and `librustc_builtin_macros` are all undergoing
 > refactoring, so some of the links in this chapter may be broken.
 
 Macro expansion happens during parsing. `rustc` has two parsers, in fact: the
@@ -10,7 +10,7 @@ before name resolution, macros are expanded using these portions of the code.
 The macro parser, in turn, may call the normal Rust parser when it needs to
 bind a metavariable (e.g.  `$my_expr`) while parsing the contents of a macro
 invocation. The code for macro expansion is in
-[`src/libsyntax_expand/mbe/`][code_dir]. This chapter aims to explain how macro
+[`src/librustc_expand/mbe/`][code_dir]. This chapter aims to explain how macro
 expansion works.
 
 ### Example
@@ -64,7 +64,7 @@ invocations. Interestingly, both are done by the macro parser.
 Basically, the macro parser is like an NFA-based regex parser. It uses an
 algorithm similar in spirit to the [Earley parsing
 algorithm](https://en.wikipedia.org/wiki/Earley_parser). The macro parser is
-defined in [`src/libsyntax_expand/mbe/macro_parser.rs`][code_mp].
+defined in [`src/librustc_expand/mbe/macro_parser.rs`][code_mp].
 
 The interface of the macro parser is as follows (this is slightly simplified):
 
@@ -113,7 +113,7 @@ normal Rust parser.
 As mentioned above, both definitions and invocations of macros are parsed using
 the macro parser. This is extremely non-intuitive and self-referential. The code
 to parse macro _definitions_ is in
-[`src/libsyntax_expand/mbe/macro_rules.rs`][code_mr]. It defines the pattern for
+[`src/librustc_expand/mbe/macro_rules.rs`][code_mr]. It defines the pattern for
 matching for a macro definition as `$( $lhs:tt => $rhs:tt );+`. In other words,
 a `macro_rules` definition should have in its body at least one occurrence of a
 token tree followed by `=>` followed by another token tree. When the compiler
@@ -142,7 +142,7 @@ the parse is ambiguous, while if there are no matches at all, there is a syntax
 error.
 
 For more information about the macro parser's implementation, see the comments
-in [`src/libsyntax_expand/mbe/macro_parser.rs`][code_mp].
+in [`src/librustc_expand/mbe/macro_parser.rs`][code_mp].
 
 ### Hygiene
 
@@ -208,10 +208,10 @@ TODO
 TODO: maybe something about macros 2.0?
 
 
-[code_dir]: https://github.com/rust-lang/rust/tree/master/src/libsyntax_expand/mbe
-[code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_expand/mbe/macro_parser
-[code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_expand/mbe/macro_rules
-[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_expand/mbe/macro_parser/fn.parse.html
+[code_dir]: https://github.com/rust-lang/rust/tree/master/src/librustc_expand/mbe
+[code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser
+[code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_rules
+[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/fn.parse.html
 [parsing]: ./the-parser.html
 
 
@@ -356,11 +356,11 @@ Vadim Petrochenkov: Here's some preliminary data I prepared.
 
 Vadim Petrochenkov: Below I'll assume #62771 and #62086 has landed.
 
-Vadim Petrochenkov: Where to find the code: libsyntax_pos/hygiene.rs -
+Vadim Petrochenkov: Where to find the code: librustc_span/hygiene.rs -
 structures related to hygiene and expansion that are kept in global data (can
-be accessed from any Ident without any context) libsyntax_pos/lib.rs - some
+be accessed from any Ident without any context) librustc_span/lib.rs - some
 secondary methods like macro backtrace using primary methods from hygiene.rs
-libsyntax_ext - implementations of built-in macros (including macro attributes
+librustc_builtin_macros - implementations of built-in macros (including macro attributes
 and derives) and some other early code generation facilities like injection of
 standard library imports or generation of test harness.  libsyntax/config.rs -
 implementation of cfg/cfg_attr (they treated specially from other macros),
@@ -375,8 +375,8 @@ AST libsyntax/ext/placeholder.rs - the part of expand.rs responsible for
 "integrating the results back into AST" basicallly, "placeholder" is a
 temporary AST node replaced with macro expansion result nodes
 libsyntax/ext/builer.rs - helper functions for building AST for built-in macros
-in libsyntax_ext (and user-defined syntactic plugins previously), can probably
-be moved into libsyntax_ext these days libsyntax/ext/proc_macro.rs +
+in librustc_builtin_macros (and user-defined syntactic plugins previously), can probably
+be moved into librustc_builtin_macros these days libsyntax/ext/proc_macro.rs +
 libsyntax/ext/proc_macro_server.rs - interfaces between the compiler and the
 stable proc_macro library, converting tokens and token streams between the two
 representations and sending them through C ABI libsyntax/ext/tt -

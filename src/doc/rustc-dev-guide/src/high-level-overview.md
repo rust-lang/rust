@@ -36,7 +36,7 @@ rustc_codegen  rustc_borrowck   ...  rustc_metadata
                     syntax
                     /    \
                   /       \
-           syntax_pos  syntax_ext
+           rustc_span  rustc_builtin_macros
 ```
 
 The `rustc_driver` crate, at the top of this lattice, is effectively
