@@ -1,0 +1,52 @@
+error: unused variable: `j`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:15:16
+   |
+LL |         A { i, j } | B { i, j } => {
+   |                ^            ^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:4:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
+help: try ignoring the field
+   |
+LL |         A { i, j: _ } | B { i, j: _ } => {
+   |                ^^^^            ^^^^
+
+error: unused variable: `j`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:25:16
+   |
+LL |         A { i, ref j } | B { i, ref j } => {
+   |                ^^^^^            ^^^^^
+   |
+help: try ignoring the field
+   |
+LL |         A { i, j: _ } | B { i, j: _ } => {
+   |                ^^^^            ^^^^
+
+error: unused variable: `j`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:35:21
+   |
+LL |         Some(A { i, j } | B { i, j }) => {
+   |                     ^            ^
+   |
+help: try ignoring the field
+   |
+LL |         Some(A { i, j: _ } | B { i, j: _ }) => {
+   |                     ^^^^            ^^^^
+
+error: unused variable: `j`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:47:21
+   |
+LL |         Some(A { i, ref j } | B { i, ref j }) => {
+   |                     ^^^^^            ^^^^^
+   |
+help: try ignoring the field
+   |
+LL |         Some(A { i, j: _ } | B { i, j: _ }) => {
+   |                     ^^^^            ^^^^
+
+error: aborting due to 5 previous errors
+
