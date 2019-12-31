@@ -2580,7 +2580,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
-            | ObligationCauseCode::MatchExpressionArmPattern { .. }
+            | ObligationCauseCode::Pattern { .. }
             | ObligationCauseCode::IfExpression { .. }
             | ObligationCauseCode::IfExpressionWithNoElse
             | ObligationCauseCode::MainFunctionType

@@ -44,7 +44,9 @@ error[E0308]: mismatched types
   --> $DIR/destructure-trait-ref.rs:42:13
    |
 LL |     let box box x = box 1isize as Box<dyn T>;
-   |             ^^^^^ expected trait `T`, found struct `std::boxed::Box`
+   |             ^^^^^   ------------------------ this expression has type `std::boxed::Box<dyn T>`
+   |             |
+   |             expected trait `T`, found struct `std::boxed::Box`
    |
    = note: expected trait object `dyn T`
                     found struct `std::boxed::Box<_>`

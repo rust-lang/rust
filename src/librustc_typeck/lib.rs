@@ -65,6 +65,7 @@ This API is completely unstable and subject to change.
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(slice_patterns)]
+#![feature(try_blocks)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
 
