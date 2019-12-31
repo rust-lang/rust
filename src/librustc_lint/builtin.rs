@@ -841,7 +841,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
         match it.kind {
             hir::ItemKind::Fn(.., ref generics, _) => {
                 if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
-                    for param in &generics.params {
+                    for param in generics.params {
                         match param.kind {
                             GenericParamKind::Lifetime { .. } => {}
                             GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
@@ -1663,7 +1663,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
             let mut bound_count = 0;
             let mut lint_spans = Vec::new();
 
-            for param in &hir_generics.params {
+            for param in hir_generics.params {
                 let has_lifetime_bounds = param.bounds.iter().any(|bound| {
                     if let hir::GenericBound::Outlives(_) = bound { true } else { false }
                 });

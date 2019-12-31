@@ -10,7 +10,6 @@ use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
 
 use crate::hir;
-use crate::hir::HirVec;
 use crate::hir::{GenericArg, GenericParam, GenericParamKind};
 use crate::hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 
@@ -2097,7 +2096,7 @@ impl<'a> State<'a> {
             self.print_generic_params(generic_params);
         }
         let generics = hir::Generics {
-            params: HirVec::new(),
+            params: &[],
             where_clause: hir::WhereClause { predicates: &[], span: syntax_pos::DUMMY_SP },
             span: syntax_pos::DUMMY_SP,
         };

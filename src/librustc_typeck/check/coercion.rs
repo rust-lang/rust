@@ -54,7 +54,6 @@ use crate::check::{FnCtxt, Needs};
 use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::hir::ptr::P;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::{Coercion, InferOk, InferResult};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
@@ -1372,12 +1371,6 @@ pub trait AsCoercionSite {
 }
 
 impl AsCoercionSite for hir::Expr<'_> {
-    fn as_coercion_site(&self) -> &hir::Expr<'_> {
-        self
-    }
-}
-
-impl AsCoercionSite for P<hir::Expr<'_>> {
     fn as_coercion_site(&self) -> &hir::Expr<'_> {
         self
     }

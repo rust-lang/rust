@@ -464,7 +464,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         hir::Arm {
             hir_id: self.next_id(),
-            attrs: self.lower_attrs_arena(&arm.attrs),
+            attrs: self.lower_attrs(&arm.attrs),
             pat: self.lower_pat(&arm.pat),
             guard: match arm.guard {
                 Some(ref x) => Some(hir::Guard::If(self.lower_expr(x))),
@@ -827,7 +827,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let is_unit = fields.is_empty();
         let struct_path = [sym::ops, path];
         let struct_path = self.std_path(span, &struct_path, None, is_unit);
-        let struct_path = hir::QPath::Resolved(None, self.arena.alloc(struct_path));
+        let struct_path = hir::QPath::Resolved(None, struct_path);
 
         if is_unit {
             hir::ExprKind::Path(struct_path)
@@ -1336,7 +1336,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assoc_fn_name: &str,
         args: &'hir [hir::Expr<'hir>],
     ) -> hir::ExprKind<'hir> {
-        let ty_path = self.arena.alloc(self.std_path(span, ty_path_components, None, false));
+        let ty_path = self.std_path(span, ty_path_components, None, false);
         let ty =
             self.arena.alloc(self.ty_path(ty_path_id, span, hir::QPath::Resolved(None, ty_path)));
         let fn_seg = self.arena.alloc(hir::PathSegment::from_ident(Ident::from_str(assoc_fn_name)));
@@ -1354,11 +1354,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
         let path = self.std_path(span, components, params, true);
-        self.expr(
-            span,
-            hir::ExprKind::Path(hir::QPath::Resolved(None, self.arena.alloc(path))),
-            attrs,
-        )
+        self.expr(span, hir::ExprKind::Path(hir::QPath::Resolved(None, path)), attrs)
     }
 
     pub(super) fn expr_ident(

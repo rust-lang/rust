@@ -1132,7 +1132,7 @@ fn create_mono_items_for_default_impls<'tcx>(
 ) {
     match item.kind {
         hir::ItemKind::Impl(_, _, _, ref generics, .., ref impl_item_refs) => {
-            for param in &generics.params {
+            for param in generics.params {
                 match param.kind {
                     hir::GenericParamKind::Lifetime { .. } => {}
                     hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => {

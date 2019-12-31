@@ -230,7 +230,7 @@ pub struct Macro<'hir> {
     pub def_id: hir::def_id::DefId,
     pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
-    pub matchers: hir::HirVec<Span>,
+    pub matchers: Vec<Span>,
     pub imported_from: Option<Name>,
 }
 

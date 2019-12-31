@@ -12,7 +12,6 @@ pub mod utils;
 use rustc::hir;
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
-use rustc::hir::ptr::P;
 use rustc::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc::middle::lang_items;
 use rustc::middle::resolve_lifetime as rl;
@@ -74,12 +73,6 @@ impl<T: Clean<U>, U> Clean<U> for &T {
     }
 }
 
-impl<T: Clean<U>, U> Clean<U> for P<T> {
-    fn clean(&self, cx: &DocContext<'_>) -> U {
-        (**self).clean(cx)
-    }
-}
-
 impl<T: Clean<U>, U> Clean<U> for Rc<T> {
     fn clean(&self, cx: &DocContext<'_>) -> U {
         (**self).clean(cx)
@@ -98,12 +91,6 @@ where
 {
     fn clean(&self, cx: &DocContext<'_>) -> U {
         self.skip_binder().clean(cx)
-    }
-}
-
-impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
-    fn clean(&self, cx: &DocContext<'_>) -> Vec<U> {
-        self.iter().map(|x| x.clean(cx)).collect()
     }
 }
 

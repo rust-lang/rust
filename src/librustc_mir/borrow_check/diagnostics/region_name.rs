@@ -619,7 +619,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         args: &'hir hir::GenericArgs<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<&'hir hir::Lifetime> {
-        for (kind, hir_arg) in substs.iter().zip(&args.args) {
+        for (kind, hir_arg) in substs.iter().zip(args.args) {
             match (kind.unpack(), hir_arg) {
                 (GenericArgKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
                     if r.to_region_vid() == needle_fr {

@@ -657,7 +657,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let mut elision = None;
                 let mut lifetimes = FxHashMap::default();
                 let mut non_lifetime_count = 0;
-                for param in &generics.params {
+                for param in generics.params {
                     match param.kind {
                         GenericParamKind::Lifetime { .. } => {
                             let (name, reg) = Region::early(&self.tcx.hir(), &mut index, &param);
@@ -899,7 +899,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
         check_mixed_explicit_and_in_band_defs(self.tcx, &generics.params);
-        for param in &generics.params {
+        for param in generics.params {
             match param.kind {
                 GenericParamKind::Lifetime { .. } => {}
                 GenericParamKind::Type { ref default, .. } => {
@@ -1996,7 +1996,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         debug!("visit_segment_args: object_lifetime_defaults={:?}", object_lifetime_defaults);
 
         let mut i = 0;
-        for arg in &generic_args.args {
+        for arg in generic_args.args {
             match arg {
                 GenericArg::Lifetime(_) => {}
                 GenericArg::Type(ty) => {
@@ -2789,7 +2789,7 @@ fn insert_late_bound_lifetimes(
     let mut appears_in_where_clause = AllCollector::default();
     appears_in_where_clause.visit_generics(generics);
 
-    for param in &generics.params {
+    for param in generics.params {
         if let hir::GenericParamKind::Lifetime { .. } = param.kind {
             if !param.bounds.is_empty() {
                 // `'a: 'b` means both `'a` and `'b` are referenced
@@ -2809,7 +2809,7 @@ fn insert_late_bound_lifetimes(
     // - appear in the inputs
     // - do not appear in the where-clauses
     // - are not implicitly captured by `impl Trait`
-    for param in &generics.params {
+    for param in generics.params {
         match param.kind {
             hir::GenericParamKind::Lifetime { .. } => { /* fall through */ }
 

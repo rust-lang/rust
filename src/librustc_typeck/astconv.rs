@@ -5,8 +5,7 @@
 use crate::hir::def::{CtorOf, DefKind, Res};
 use crate::hir::def_id::DefId;
 use crate::hir::print;
-use crate::hir::ptr::P;
-use crate::hir::{self, ExprKind, GenericArg, GenericArgs, HirVec};
+use crate::hir::{self, ExprKind, GenericArg, GenericArgs};
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
@@ -255,8 +254,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         seg: &hir::PathSegment<'_>,
         is_method_call: bool,
     ) -> bool {
-        let empty_args =
-            P(hir::GenericArgs { args: HirVec::new(), bindings: &[], parenthesized: false });
+        let empty_args = hir::GenericArgs::none();
         let suppress_mismatch = Self::check_impl_trait(tcx, seg, &def);
         Self::check_generic_arg_count(
             tcx,
@@ -2278,7 +2276,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut has_err = false;
         for segment in segments {
             let (mut err_for_lt, mut err_for_ty, mut err_for_ct) = (false, false, false);
-            for arg in &segment.generic_args().args {
+            for arg in segment.generic_args().args {
                 let (span, kind) = match arg {
                     hir::GenericArg::Lifetime(lt) => {
                         if err_for_lt {

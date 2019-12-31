@@ -1569,7 +1569,7 @@ impl EncodeContext<'tcx> {
     }
 
     fn encode_info_for_generics(&mut self, generics: &hir::Generics<'tcx>) {
-        for param in &generics.params {
+        for param in generics.params {
             let def_id = self.tcx.hir().local_def_id(param.hir_id);
             match param.kind {
                 GenericParamKind::Lifetime { .. } => continue,
