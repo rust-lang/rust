@@ -18,14 +18,14 @@ static KEYS_LOCK: Mutex = Mutex::new();
 static mut LOCALS: *mut BTreeMap<Key, *mut u8> = ptr::null_mut();
 
 unsafe fn keys() -> &'static mut BTreeMap<Key, Option<Dtor>> {
-    if KEYS == ptr::null_mut() {
+    if KEYS.is_null() {
         KEYS = Box::into_raw(Box::new(BTreeMap::new()));
     }
     &mut *KEYS
 }
 
 unsafe fn locals() -> &'static mut BTreeMap<Key, *mut u8> {
-    if LOCALS == ptr::null_mut() {
+    if LOCALS.is_null() {
         LOCALS = Box::into_raw(Box::new(BTreeMap::new()));
     }
     &mut *LOCALS

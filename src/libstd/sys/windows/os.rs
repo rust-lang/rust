@@ -43,7 +43,7 @@ pub fn error_string(mut errnum: i32) -> String {
             ];
             module = c::GetModuleHandleW(NTDLL_DLL.as_ptr());
 
-            if module != ptr::null_mut() {
+            if !module.is_null() {
                 errnum ^= c::FACILITY_NT_BIT as i32;
                 flags = c::FORMAT_MESSAGE_FROM_HMODULE;
             }
