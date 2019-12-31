@@ -533,6 +533,18 @@ enum class LLVMRustFileType {
   ObjectFile,
 };
 
+#if LLVM_VERSION_GE(10, 0)
+static CodeGenFileType fromRust(LLVMRustFileType Type) {
+  switch (Type) {
+  case LLVMRustFileType::AssemblyFile:
+    return CGFT_AssemblyFile;
+  case LLVMRustFileType::ObjectFile:
+    return CGFT_ObjectFile;
+  default:
+    report_fatal_error("Bad FileType.");
+  }
+}
+#else
 static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
   switch (Type) {
   case LLVMRustFileType::AssemblyFile:
@@ -543,6 +555,7 @@ static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
     report_fatal_error("Bad FileType.");
   }
 }
+#endif
 
 extern "C" LLVMRustResult
 LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
