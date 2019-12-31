@@ -1,5 +1,7 @@
 // compile-flags: -O
 // ignore-debug: the debug assertions get in the way
+// Ignored due to a codegen regression in LLVM 10, see https://bugs.llvm.org/show_bug.cgi?id=44461.
+// ignore-llvm-version: 10.0
 
 #![crate_type = "lib"]
 
