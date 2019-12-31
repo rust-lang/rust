@@ -10,28 +10,26 @@ import { Ctx } from './ctx';
 export function activateHighlighting(ctx: Ctx) {
     const highlighter = new Highlighter(ctx);
 
-    ctx.client.onReady().then(() => {
-        ctx.client.onNotification(
-            'rust-analyzer/publishDecorations',
-            (params: PublishDecorationsParams) => {
-                if (!ctx.config.highlightingOn) return;
+    ctx.onNotification(
+        'rust-analyzer/publishDecorations',
+        (params: PublishDecorationsParams) => {
+            if (!ctx.config.highlightingOn) return;
 
-                const targetEditor = vscode.window.visibleTextEditors.find(
-                    editor => {
-                        const unescapedUri = unescape(
-                            editor.document.uri.toString(),
-                        );
-                        // Unescaped URI looks like:
-                        // file:///c:/Workspace/ra-test/src/main.rs
-                        return unescapedUri === params.uri;
-                    },
-                );
-                if (!targetEditor) return;
+            const targetEditor = vscode.window.visibleTextEditors.find(
+                editor => {
+                    const unescapedUri = unescape(
+                        editor.document.uri.toString(),
+                    );
+                    // Unescaped URI looks like:
+                    // file:///c:/Workspace/ra-test/src/main.rs
+                    return unescapedUri === params.uri;
+                },
+            );
+            if (!targetEditor) return;
 
-                highlighter.setHighlights(targetEditor, params.decorations);
-            },
-        );
-    });
+            highlighter.setHighlights(targetEditor, params.decorations);
+        },
+    );
 
     vscode.workspace.onDidChangeConfiguration(
         _ => highlighter.removeHighlights(),

@@ -84,6 +84,11 @@ export class Ctx {
         }
         throw 'unreachable';
     }
+
+    onNotification(method: string, handler: lc.GenericNotificationHandler) {
+        this.client.onReady()
+            .then(() => this.client.onNotification(method, handler))
+    }
 }
 
 export type Cmd = (...args: any[]) => any;

@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
-import { StatusDisplay } from './status_display';
+import { activateStatusDisplay } from './status_display';
 import { Server } from './server';
 import { Ctx } from './ctx';
 import { activateHighlighting } from './highlighting';
@@ -32,18 +31,7 @@ export async function activate(context: vscode.ExtensionContext) {
         ctx.overrideCommand('type', commands.onEnter);
     }
 
-    const watchStatus = new StatusDisplay(ctx.config.cargoWatchOptions.command);
-    ctx.pushCleanup(watchStatus);
-
-    // Notifications are events triggered by the language server
-    const allNotifications: [string, lc.GenericNotificationHandler][] = [
-        [
-            '$/progress',
-            params => watchStatus.handleProgressNotification(params),
-        ],
-    ];
-
-    const startServer = () => Server.start(allNotifications);
+    const startServer = () => Server.start();
     const reloadCommand = () => reloadServer(startServer);
 
     vscode.commands.registerCommand('rust-analyzer.reload', reloadCommand);
@@ -55,6 +43,7 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(e.message);
     }
 
+    activateStatusDisplay(ctx);
     activateHighlighting(ctx);
 
     if (ctx.config.displayInlayHints) {

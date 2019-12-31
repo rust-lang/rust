@@ -15,9 +15,7 @@ export class Server {
     public static config = new Config();
     public static client: lc.LanguageClient;
 
-    public static async start(
-        notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>,
-    ) {
+    public static async start() {
         // '.' Is the fallback if no folder is open
         // TODO?: Workspace folders support Uri's (eg: file://test.txt). It might be a good idea to test if the uri points to a file.
         let folder: string = '.';
@@ -92,11 +90,6 @@ export class Server {
             },
         };
         Server.client.registerProposedFeatures();
-        Server.client.onReady().then(() => {
-            for (const [type, handler] of notificationHandlers) {
-                Server.client.onNotification(type, handler);
-            }
-        });
         Server.client.start();
     }
 }

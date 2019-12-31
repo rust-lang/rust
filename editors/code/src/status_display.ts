@@ -1,8 +1,16 @@
 import * as vscode from 'vscode';
 
+import { Ctx } from './ctx';
+
 const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
-export class StatusDisplay implements vscode.Disposable {
+export function activateStatusDisplay(ctx: Ctx) {
+    const statusDisplay = new StatusDisplay(ctx.config.cargoWatchOptions.command);
+    ctx.pushCleanup(statusDisplay);
+    ctx.onNotification('$/progress', params => statusDisplay.handleProgressNotification(params));
+}
+
+class StatusDisplay implements vscode.Disposable {
     packageName?: string;
 
     private i = 0;
