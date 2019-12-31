@@ -458,21 +458,33 @@ impl<'tcx> CPlace<'tcx> {
             CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
         };
 
+        match self.layout().abi {
+            // FIXME make Abi::Vector work too
+            Abi::Scalar(_) => {
+                let val = from.load_scalar(fx);
+                to_ptr.store(fx, val, MemFlags::new());
+                return;
+            }
+            Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
+                let (value, extra) = from.load_scalar_pair(fx);
+                let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                to_ptr.store(fx, value, MemFlags::new());
+                to_ptr.offset(fx, b_offset).store(fx, extra, MemFlags::new());
+                return;
+            }
+            _ => {}
+        }
+
         match from.0 {
             CValueInner::ByVal(val) => {
                 to_ptr.store(fx, val, MemFlags::new());
             }
-            CValueInner::ByValPair(value, extra) => match dst_layout.abi {
-                Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
-                    let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                    to_ptr.store(fx, value, MemFlags::new());
-                    to_ptr.offset(fx, b_offset).store(fx, extra, MemFlags::new());
-                }
-                _ => bug!(
+            CValueInner::ByValPair(value, extra) => {
+                bug!(
                     "Non ScalarPair abi {:?} for ByValPair CValue",
                     dst_layout.abi
-                ),
-            },
+                );
+            }
             CValueInner::ByRef(from_ptr) => {
                 let from_addr = from_ptr.get_addr(fx);
                 let to_addr = to_ptr.get_addr(fx);
