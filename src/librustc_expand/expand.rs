@@ -606,21 +606,26 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtensionKind) -> AstFragment {
-        if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
-            let expn_data = self.cx.current_expansion.id.expn_data();
-            let suggested_limit = self.cx.ecfg.recursion_limit * 2;
-            let mut err = self.cx.struct_span_err(
+    fn error_recursion_limit_reached(&mut self) {
+        let expn_data = self.cx.current_expansion.id.expn_data();
+        let suggested_limit = self.cx.ecfg.recursion_limit * 2;
+        self.cx
+            .struct_span_err(
                 expn_data.call_site,
                 &format!("recursion limit reached while expanding `{}`", expn_data.kind.descr()),
-            );
-            err.help(&format!(
+            )
+            .help(&format!(
                 "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",
                 suggested_limit, self.cx.ecfg.crate_name,
-            ));
-            err.emit();
-            self.cx.trace_macros_diag();
-            FatalError.raise();
+            ))
+            .emit();
+        self.cx.trace_macros_diag();
+        FatalError.raise();
+    }
+
+    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtensionKind) -> AstFragment {
+        if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
+            self.error_recursion_limit_reached();
         }
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
