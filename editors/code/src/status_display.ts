@@ -7,7 +7,9 @@ const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '
 export function activateStatusDisplay(ctx: Ctx) {
     const statusDisplay = new StatusDisplay(ctx.config.cargoWatchOptions.command);
     ctx.pushCleanup(statusDisplay);
-    ctx.onNotification('$/progress', params => statusDisplay.handleProgressNotification(params));
+    ctx.onDidRestart(client => {
+        client.onNotification('$/progress', params => statusDisplay.handleProgressNotification(params));
+    })
 }
 
 class StatusDisplay implements vscode.Disposable {

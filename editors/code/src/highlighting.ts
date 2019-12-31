@@ -5,31 +5,32 @@ const seedrandom = seedrandom_; // https://github.com/jvandemo/generator-angular
 
 import { ColorTheme, TextMateRuleSettings } from './color_theme';
 
-import { Ctx } from './ctx';
+import { Ctx, sendRequestWithRetry } from './ctx';
 
 export function activateHighlighting(ctx: Ctx) {
     const highlighter = new Highlighter(ctx);
+    ctx.onDidRestart(client => {
+        client.onNotification(
+            'rust-analyzer/publishDecorations',
+            (params: PublishDecorationsParams) => {
+                if (!ctx.config.highlightingOn) return;
 
-    ctx.onNotification(
-        'rust-analyzer/publishDecorations',
-        (params: PublishDecorationsParams) => {
-            if (!ctx.config.highlightingOn) return;
+                const targetEditor = vscode.window.visibleTextEditors.find(
+                    editor => {
+                        const unescapedUri = unescape(
+                            editor.document.uri.toString(),
+                        );
+                        // Unescaped URI looks like:
+                        // file:///c:/Workspace/ra-test/src/main.rs
+                        return unescapedUri === params.uri;
+                    },
+                );
+                if (!targetEditor) return;
 
-            const targetEditor = vscode.window.visibleTextEditors.find(
-                editor => {
-                    const unescapedUri = unescape(
-                        editor.document.uri.toString(),
-                    );
-                    // Unescaped URI looks like:
-                    // file:///c:/Workspace/ra-test/src/main.rs
-                    return unescapedUri === params.uri;
-                },
-            );
-            if (!targetEditor) return;
-
-            highlighter.setHighlights(targetEditor, params.decorations);
-        },
-    );
+                highlighter.setHighlights(targetEditor, params.decorations);
+            },
+        );
+    })
 
     vscode.workspace.onDidChangeConfiguration(
         _ => highlighter.removeHighlights(),
@@ -40,11 +41,14 @@ export function activateHighlighting(ctx: Ctx) {
         async (editor: vscode.TextEditor | undefined) => {
             if (!editor || editor.document.languageId !== 'rust') return;
             if (!ctx.config.highlightingOn) return;
+            let client = ctx.client;
+            if (!client) return;
 
             const params: lc.TextDocumentIdentifier = {
                 uri: editor.document.uri.toString(),
             };
-            const decorations = await ctx.sendRequestWithRetry<Decoration[]>(
+            const decorations = await sendRequestWithRetry<Decoration[]>(
+                client,
                 'rust-analyzer/decorationsRequest',
                 params,
             );
@@ -103,6 +107,8 @@ class Highlighter {
     }
 
     public setHighlights(editor: vscode.TextEditor, highlights: Decoration[]) {
+        let client = this.ctx.client;
+        if (!client) return;
         // Initialize decorations if necessary
         //
         // Note: decoration objects need to be kept around so we can dispose them
@@ -135,13 +141,13 @@ class Highlighter {
                 colorfulIdents
                     .get(d.bindingHash)![0]
                     .push(
-                        this.ctx.client.protocol2CodeConverter.asRange(d.range),
+                        client.protocol2CodeConverter.asRange(d.range),
                     );
             } else {
                 byTag
                     .get(d.tag)!
                     .push(
-                        this.ctx.client.protocol2CodeConverter.asRange(d.range),
+                        client.protocol2CodeConverter.asRange(d.range),
                     );
             }
         }

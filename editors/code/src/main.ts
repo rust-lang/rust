@@ -3,7 +3,6 @@ import * as vscode from 'vscode';
 import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
 import { activateStatusDisplay } from './status_display';
-import { Server } from './server';
 import { Ctx } from './ctx';
 import { activateHighlighting } from './highlighting';
 
@@ -21,6 +20,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
+    ctx.registerCommand('reload', commands.reload);
 
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);
@@ -30,38 +30,17 @@ export async function activate(context: vscode.ExtensionContext) {
     if (ctx.config.enableEnhancedTyping) {
         ctx.overrideCommand('type', commands.onEnter);
     }
-
-    const startServer = () => Server.start(ctx.config);
-    const reloadCommand = () => reloadServer(startServer);
-
-    vscode.commands.registerCommand('rust-analyzer.reload', reloadCommand);
-
+    activateStatusDisplay(ctx);
+    activateHighlighting(ctx);
+    activateInlayHints(ctx);
     // Start the language server, finally!
     try {
-        await startServer();
+        await ctx.restartServer();
     } catch (e) {
         vscode.window.showErrorMessage(e.message);
     }
-
-    activateStatusDisplay(ctx);
-    activateHighlighting(ctx);
-
-    if (ctx.config.displayInlayHints) {
-        activateInlayHints(ctx);
-    }
 }
 
-export function deactivate(): Thenable<void> {
-    if (!Server.client) {
-        return Promise.resolve();
-    }
-    return Server.client.stop();
-}
-
-async function reloadServer(startServer: () => Promise<void>) {
-    if (Server.client != null) {
-        vscode.window.showInformationMessage('Reloading rust-analyzer...');
-        await Server.client.stop();
-        await startServer();
-    }
+export async function deactivate() {
+    await ctx?.client?.stop();
 }

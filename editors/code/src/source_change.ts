@@ -10,7 +10,10 @@ export interface SourceChange {
 }
 
 export async function applySourceChange(ctx: Ctx, change: SourceChange) {
-    const wsEdit = ctx.client.protocol2CodeConverter.asWorkspaceEdit(
+    const client = ctx.client;
+    if (!client) return
+
+    const wsEdit = client.protocol2CodeConverter.asWorkspaceEdit(
         change.workspaceEdit,
     );
     let created;
@@ -32,10 +35,10 @@ export async function applySourceChange(ctx: Ctx, change: SourceChange) {
         const doc = await vscode.workspace.openTextDocument(toOpenUri);
         await vscode.window.showTextDocument(doc);
     } else if (toReveal) {
-        const uri = ctx.client.protocol2CodeConverter.asUri(
+        const uri = client.protocol2CodeConverter.asUri(
             toReveal.textDocument.uri,
         );
-        const position = ctx.client.protocol2CodeConverter.asPosition(
+        const position = client.protocol2CodeConverter.asPosition(
             toReveal.position,
         );
         const editor = vscode.window.activeTextEditor;

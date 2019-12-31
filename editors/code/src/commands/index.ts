@@ -15,24 +15,34 @@ import { run, runSingle } from './runnables';
 
 function collectGarbage(ctx: Ctx): Cmd {
     return async () => {
-        ctx.client.sendRequest<null>('rust-analyzer/collectGarbage', null);
+        ctx.client?.sendRequest<null>('rust-analyzer/collectGarbage', null);
     };
 }
 
 function showReferences(ctx: Ctx): Cmd {
     return (uri: string, position: lc.Position, locations: lc.Location[]) => {
-        vscode.commands.executeCommand(
-            'editor.action.showReferences',
-            vscode.Uri.parse(uri),
-            ctx.client.protocol2CodeConverter.asPosition(position),
-            locations.map(ctx.client.protocol2CodeConverter.asLocation),
-        );
+        let client = ctx.client;
+        if (client) {
+            vscode.commands.executeCommand(
+                'editor.action.showReferences',
+                vscode.Uri.parse(uri),
+                client.protocol2CodeConverter.asPosition(position),
+                locations.map(client.protocol2CodeConverter.asLocation),
+            );
+        }
     };
 }
 
 function applySourceChange(ctx: Ctx): Cmd {
     return async (change: sourceChange.SourceChange) => {
         sourceChange.applySourceChange(ctx, change);
+    }
+}
+
+function reload(ctx: Ctx): Cmd {
+    return async () => {
+        vscode.window.showInformationMessage('Reloading rust-analyzer...');
+        await ctx.restartServer();
     }
 }
 
@@ -49,4 +59,5 @@ export {
     runSingle,
     showReferences,
     applySourceChange,
+    reload
 };

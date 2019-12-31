@@ -49,9 +49,10 @@ class TextDocumentContentProvider
         _uri: vscode.Uri,
     ): vscode.ProviderResult<string> {
         const editor = vscode.window.activeTextEditor;
-        if (editor == null) return '';
+        const client = this.ctx.client
+        if (!editor || !client) return '';
 
-        return this.ctx.client.sendRequest<string>(
+        return client.sendRequest<string>(
             'rust-analyzer/analyzerStatus',
             null,
         );
