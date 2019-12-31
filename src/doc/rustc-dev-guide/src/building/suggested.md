@@ -74,5 +74,15 @@ This is specified in the `target` section of `config.toml`:
 llvm-config = "/path/to/llvm/llvm-7.0.1/bin/llvm-config"
 ```
 
-On my system, this path is `/usr/bin/llvm-config-7`, but this probably varies
-by installation.
+We have observed the following paths before, which may be different from your system:
+
+- `/usr/bin/llvm-config-8`
+- `/usr/lib/llvm-8/bin/llvm-config`
+
+Note that you need to have the LLVM `FileCheck` tool installed, which is used
+for codegen tests. This tool is normally built with LLVM, but if you use your
+own preinstalled LLVM, you will need to provide `FileCheck` in some other way.
+On Debian-based systems, you can install the `llvm-N-tools` package (where `N`
+is the LLVM version number, e.g. `llvm-8-tools`).  Alternately, you can specify
+the path to `FileCheck` with the `llvm-filecheck` config item in `config.toml`
+or you can disable codegen test with the `codegen-tests` item in `config.toml`.
