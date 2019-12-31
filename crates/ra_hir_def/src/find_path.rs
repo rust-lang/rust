@@ -11,6 +11,10 @@ use hir_expand::name::Name;
 
 const MAX_PATH_LEN: usize = 15;
 
+// FIXME: handle local items
+
+/// Find a path that can be used to refer to a certain item. This can depend on
+/// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     find_path_inner(db, item, from, MAX_PATH_LEN)
 }
@@ -42,6 +46,11 @@ fn find_path_inner(
         }))
     {
         return Some(ModPath::from_simple_segments(PathKind::Crate, Vec::new()));
+    }
+
+    // - if the item is the module we're in, use `self`
+    if item == ItemInNs::Types(from.into()) {
+        return Some(ModPath::from_simple_segments(PathKind::Super(0), Vec::new()));
     }
 
     // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
@@ -269,6 +278,17 @@ mod tests {
             <|>
         "#;
         check_found_path(code, "super::S");
+    }
+
+    #[test]
+    fn self_module() {
+        let code = r#"
+            //- /main.rs
+            mod foo;
+            //- /foo.rs
+            <|>
+        "#;
+        check_found_path(code, "self");
     }
 
     #[test]
