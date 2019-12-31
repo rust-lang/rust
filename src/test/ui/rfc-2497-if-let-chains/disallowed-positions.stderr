@@ -630,7 +630,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:67:12
    |
 LL |     if let Range { start: _, end: _ } = true..true && false {}
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |            |
    |            expected `bool`, found struct `std::ops::Range`
    |
@@ -650,7 +650,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:71:12
    |
 LL |     if let Range { start: _, end: _ } = true..true || false {}
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |            |
    |            expected `bool`, found struct `std::ops::Range`
    |
@@ -697,7 +697,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:86:12
    |
 LL |     if let Range { start: true, end } = t..&&false {}
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this match expression has type `bool`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `&&bool`
    |            |
    |            expected `bool`, found struct `std::ops::Range`
    |
@@ -818,7 +818,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:131:15
    |
 LL |     while let Range { start: _, end: _ } = true..true && false {}
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |               |
    |               expected `bool`, found struct `std::ops::Range`
    |
@@ -838,7 +838,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:135:15
    |
 LL |     while let Range { start: _, end: _ } = true..true || false {}
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |               |
    |               expected `bool`, found struct `std::ops::Range`
    |
@@ -885,7 +885,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:150:15
    |
 LL |     while let Range { start: true, end } = t..&&false {}
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this match expression has type `bool`
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `&&bool`
    |               |
    |               expected `bool`, found struct `std::ops::Range`
    |
@@ -961,7 +961,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:198:10
    |
 LL |     (let Range { start: _, end: _ } = true..true || false);
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |          |
    |          expected `bool`, found struct `std::ops::Range`
    |

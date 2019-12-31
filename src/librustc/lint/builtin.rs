@@ -523,7 +523,7 @@ pub enum BuiltinLintDiagnostics {
     DeprecatedMacro(Option<Symbol>, Span),
 }
 
-pub(crate) fn add_elided_lifetime_in_path_suggestion(
+pub fn add_elided_lifetime_in_path_suggestion(
     sess: &Session,
     db: &mut DiagnosticBuilder<'_>,
     n: usize,

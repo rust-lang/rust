@@ -11,7 +11,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_match(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        discrim: &'tcx hir::Expr<'tcx>,
+        scrut: &'tcx hir::Expr<'tcx>,
         arms: &'tcx [hir::Arm<'tcx>],
         expected: Expectation<'tcx>,
         match_src: hir::MatchSource,
@@ -27,7 +27,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Type check the descriminant and get its type.
-        let discrim_ty = if force_scrutinee_bool {
+        let scrut_ty = if force_scrutinee_bool {
             // Here we want to ensure:
             //
             // 1. That default match bindings are *not* accepted in the condition of an
@@ -36,9 +36,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 2. By expecting `bool` for `expr` we get nice diagnostics for e.g. `if x = y { .. }`.
             //
             // FIXME(60707): Consider removing hack with principled solution.
-            self.check_expr_has_type_or_error(discrim, self.tcx.types.bool, |_| {})
+            self.check_expr_has_type_or_error(scrut, self.tcx.types.bool, |_| {})
         } else {
-            self.demand_discriminant_type(arms, discrim)
+            self.demand_scrutinee_type(arms, scrut)
         };
 
         // If there are no arms, that is a diverging match; a special case.
@@ -51,7 +51,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Otherwise, we have to union together the types that the
         // arms produce and so forth.
-        let discrim_diverges = self.diverges.get();
+        let scrut_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
         // rust-lang/rust#55810: Typecheck patterns first (via eager
@@ -61,7 +61,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .map(|arm| {
                 let mut all_pats_diverge = Diverges::WarnedAlways;
                 self.diverges.set(Diverges::Maybe);
-                self.check_pat_top(&arm.pat, discrim_ty, Some(discrim.span));
+                self.check_pat_top(&arm.pat, scrut_ty, Some(scrut.span), true);
                 all_pats_diverge &= self.diverges.get();
 
                 // As discussed with @eddyb, this is for disabling unreachable_code
@@ -157,7 +157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             source: match_src,
                             prior_arms: other_arms.clone(),
                             last_ty: prior_arm_ty.unwrap(),
-                            discrim_hir_id: discrim.hir_id,
+                            scrut_hir_id: scrut.hir_id,
                         }),
                     ),
                 };
@@ -186,8 +186,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
         }
 
-        // We won't diverge unless the discriminant or all arms diverge.
-        self.diverges.set(discrim_diverges | all_arms_diverge);
+        // We won't diverge unless the scrutinee or all arms diverge.
+        self.diverges.set(scrut_diverges | all_arms_diverge);
 
         coercion.complete(self)
     }
@@ -388,14 +388,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    fn demand_discriminant_type(
+    fn demand_scrutinee_type(
         &self,
         arms: &'tcx [hir::Arm<'tcx>],
-        discrim: &'tcx hir::Expr<'tcx>,
+        scrut: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         // Not entirely obvious: if matches may create ref bindings, we want to
-        // use the *precise* type of the discriminant, *not* some supertype, as
-        // the "discriminant type" (issue #23116).
+        // use the *precise* type of the scrutinee, *not* some supertype, as
+        // the "scrutinee type" (issue #23116).
         //
         // arielb1 [writes here in this comment thread][c] that there
         // is certainly *some* potential danger, e.g., for an example
@@ -454,17 +454,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
         if let Some(m) = contains_ref_bindings {
-            self.check_expr_with_needs(discrim, Needs::maybe_mut_place(m))
+            self.check_expr_with_needs(scrut, Needs::maybe_mut_place(m))
         } else {
             // ...but otherwise we want to use any supertype of the
-            // discriminant. This is sort of a workaround, see note (*) in
+            // scrutinee. This is sort of a workaround, see note (*) in
             // `check_pat` for some details.
-            let discrim_ty = self.next_ty_var(TypeVariableOrigin {
+            let scrut_ty = self.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::TypeInference,
-                span: discrim.span,
+                span: scrut.span,
             });
-            self.check_expr_has_type_or_error(discrim, discrim_ty, |_| {});
-            discrim_ty
+            self.check_expr_has_type_or_error(scrut, scrut_ty, |_| {});
+            scrut_ty
         }
     }
 }

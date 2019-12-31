@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/issue-67037-pat-tup-scrut-ty-diff-less-fields.rs:19:9
    |
 LL |     let P() = U {};
-   |         ^^^ expected struct `U`, found struct `P`
+   |         ^^^   ---- this expression has type `U`
+   |         |
+   |         expected struct `U`, found struct `P`
    |
    = note: expected struct `U`
               found struct `P<_>`

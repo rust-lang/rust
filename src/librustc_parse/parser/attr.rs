@@ -46,7 +46,8 @@ impl<'a> Parser<'a> {
                 token::DocComment(s) => {
                     let attr = self.mk_doc_comment(s);
                     if attr.style != ast::AttrStyle::Outer {
-                        let mut err = self.fatal("expected outer doc comment");
+                        let span = self.token.span;
+                        let mut err = self.struct_span_err(span, "expected outer doc comment");
                         err.note(
                             "inner doc comments like this (starting with \
                                   `//!` or `/*!`) can only appear before items",
@@ -133,7 +134,7 @@ impl<'a> Parser<'a> {
                             "previous outer attribute"
                         };
 
-                        let mut diagnostic = self.diagnostic().struct_span_err(attr_sp, reason);
+                        let mut diagnostic = self.struct_span_err(attr_sp, reason);
 
                         if let Some(prev_attr_sp) = prev_attr_sp {
                             diagnostic
@@ -156,7 +157,8 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let token_str = pprust::token_to_string(&self.token);
-                return Err(self.fatal(&format!("expected `#`, found `{}`", token_str)));
+                let msg = &format!("expected `#`, found `{}`", token_str);
+                return Err(self.struct_span_err(self.token.span, msg));
             }
         };
 
@@ -231,8 +233,7 @@ impl<'a> Parser<'a> {
 
         if !lit.kind.is_unsuffixed() {
             let msg = "suffixed literals are not allowed in attributes";
-            self.diagnostic()
-                .struct_span_err(lit.span, msg)
+            self.struct_span_err(lit.span, msg)
                 .help(
                     "instead of using a suffixed literal \
                                     (1u8, 1.0f32, etc.), use an unsuffixed version \
@@ -332,6 +333,6 @@ impl<'a> Parser<'a> {
 
         let found = pprust::token_to_string(&self.token);
         let msg = format!("expected unsuffixed literal or identifier, found `{}`", found);
-        Err(self.diagnostic().struct_span_err(self.token.span, &msg))
+        Err(self.struct_span_err(self.token.span, &msg))
     }
 }

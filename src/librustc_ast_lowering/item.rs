@@ -1,28 +1,25 @@
-use super::AnonymousLifetimeMode;
-use super::ImplTraitContext;
-use super::ImplTraitPosition;
-use super::ImplTraitTypeIdVisitor;
-use super::LoweringContext;
-use super::ParamMode;
+use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
+use super::{ImplTraitContext, ImplTraitPosition, ImplTraitTypeIdVisitor};
 
-use crate::arena::Arena;
-use crate::hir;
-use crate::hir::def::{DefKind, Res};
-use crate::hir::def_id::DefId;
-use crate::util::nodemap::NodeMap;
-
+use rustc::arena::Arena;
+use rustc::bug;
+use rustc::hir;
+use rustc::hir::def::{DefKind, Res};
+use rustc::hir::def_id::DefId;
+use rustc::util::nodemap::NodeMap;
+use rustc_error_codes::*;
+use rustc_span::source_map::{respan, DesugaringKind};
+use rustc_span::symbol::{kw, sym};
+use rustc_span::Span;
 use rustc_target::spec::abi;
-
-use smallvec::SmallVec;
-use std::collections::BTreeSet;
 use syntax::ast::*;
 use syntax::attr;
-use syntax::source_map::{respan, DesugaringKind};
-use syntax::symbol::{kw, sym};
+use syntax::struct_span_err;
 use syntax::visit::{self, Visitor};
-use syntax_pos::Span;
 
-use rustc_error_codes::*;
+use log::debug;
+use smallvec::{smallvec, SmallVec};
+use std::collections::BTreeSet;
 
 pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
     pub(super) lctx: &'a mut LoweringContext<'lowering, 'hir>,
@@ -1429,7 +1426,7 @@ pub(super) struct GenericsCtor<'hir> {
     span: Span,
 }
 
-impl GenericsCtor<'hir> {
+impl<'hir> GenericsCtor<'hir> {
     pub(super) fn into_generics(self, arena: &'hir Arena<'hir>) -> hir::Generics<'hir> {
         hir::Generics {
             params: arena.alloc_from_iter(self.params),

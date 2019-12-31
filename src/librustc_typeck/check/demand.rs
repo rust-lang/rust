@@ -1,13 +1,13 @@
 use crate::check::FnCtxt;
 use rustc::infer::InferOk;
-use rustc::traits::{self, ObligationCause, ObligationCauseCode};
+use rustc::traits::{self, ObligationCause};
 
 use errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::{self, is_range_literal, print, Node};
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
-use syntax::symbol::sym;
 use syntax::util::parser::PREC_POSTFIX;
+use syntax_pos::symbol::sym;
 use syntax_pos::Span;
 
 use super::method::probe;
@@ -77,35 +77,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(e) => Some(self.report_mismatched_types(cause, expected, actual, e)),
         }
-    }
-
-    pub fn demand_eqtype_pat_diag(
-        &self,
-        cause_span: Span,
-        expected: Ty<'tcx>,
-        actual: Ty<'tcx>,
-        match_expr_span: Option<Span>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
-        let cause = if let Some(span) = match_expr_span {
-            self.cause(
-                cause_span,
-                ObligationCauseCode::MatchExpressionArmPattern { span, ty: expected },
-            )
-        } else {
-            self.misc(cause_span)
-        };
-        self.demand_eqtype_with_origin(&cause, expected, actual)
-    }
-
-    pub fn demand_eqtype_pat(
-        &self,
-        cause_span: Span,
-        expected: Ty<'tcx>,
-        actual: Ty<'tcx>,
-        match_expr_span: Option<Span>,
-    ) {
-        self.demand_eqtype_pat_diag(cause_span, expected, actual, match_expr_span)
-            .map(|mut err| err.emit());
     }
 
     pub fn demand_coerce(

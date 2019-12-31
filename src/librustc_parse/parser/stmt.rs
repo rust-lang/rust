@@ -193,7 +193,8 @@ impl<'a> Parser<'a> {
             if self.prev_token_kind == PrevTokenKind::DocComment {
                 self.span_fatal_err(self.prev_span, Error::UselessDocComment).emit();
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                self.span_err(self.token.span, "expected statement after outer attribute");
+                self.struct_span_err(self.token.span, "expected statement after outer attribute")
+                    .emit();
             }
         }
     }
@@ -324,7 +325,7 @@ impl<'a> Parser<'a> {
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
         let sp = self.token.span;
         let tok = super::token_descr(&self.token);
-        let mut e = self.span_fatal(sp, &format!("expected `{{`, found {}", tok));
+        let mut e = self.struct_span_err(sp, &format!("expected `{{`, found {}", tok));
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
 
         // Check to see if the user has written something like
@@ -397,10 +398,7 @@ impl<'a> Parser<'a> {
                     self.maybe_annotate_with_ascription(&mut err, false);
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
-                    Some(self.mk_stmt(
-                        self.token.span,
-                        StmtKind::Expr(self.mk_expr_err(self.token.span)),
-                    ))
+                    Some(self.mk_stmt_err(self.token.span))
                 }
                 Ok(stmt) => stmt,
             };
@@ -477,5 +475,13 @@ impl<'a> Parser<'a> {
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
         Stmt { id: DUMMY_NODE_ID, kind, span }
+    }
+
+    fn mk_stmt_err(&self, span: Span) -> Stmt {
+        self.mk_stmt(span, StmtKind::Expr(self.mk_expr_err(span)))
+    }
+
+    pub(super) fn mk_block_err(&self, span: Span) -> P<Block> {
+        self.mk_block(vec![self.mk_stmt_err(span)], BlockCheckMode::Default, span)
     }
 }

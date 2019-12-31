@@ -157,28 +157,12 @@ crate enum ConsumeClosingDelim {
 }
 
 impl<'a> Parser<'a> {
-    pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
-        self.span_fatal(self.token.span, m)
-    }
-
-    crate fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
-        self.sess.span_diagnostic.struct_span_fatal(sp, m)
-    }
-
     pub(super) fn span_fatal_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
         err: Error,
     ) -> DiagnosticBuilder<'a> {
         err.span_err(sp, self.diagnostic())
-    }
-
-    pub(super) fn bug(&self, m: &str) -> ! {
-        self.sess.span_diagnostic.span_bug(self.token.span, m)
-    }
-
-    pub(super) fn span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) {
-        self.sess.span_diagnostic.span_err(sp, m)
     }
 
     pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
@@ -298,7 +282,7 @@ impl<'a> Parser<'a> {
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
-        let mut err = self.fatal(&msg_exp);
+        let mut err = self.struct_span_err(self.token.span, &msg_exp);
         let sp = if self.token == token::Eof {
             // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_span
@@ -502,18 +486,17 @@ impl<'a> Parser<'a> {
             let span = lo.until(self.token.span);
 
             let total_num_of_gt = number_of_gt + number_of_shr * 2;
-            self.diagnostic()
-                .struct_span_err(
-                    span,
-                    &format!("unmatched angle bracket{}", pluralize!(total_num_of_gt)),
-                )
-                .span_suggestion(
-                    span,
-                    &format!("remove extra angle bracket{}", pluralize!(total_num_of_gt)),
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.struct_span_err(
+                span,
+                &format!("unmatched angle bracket{}", pluralize!(total_num_of_gt)),
+            )
+            .span_suggestion(
+                span,
+                &format!("remove extra angle bracket{}", pluralize!(total_num_of_gt)),
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
         }
     }
 
@@ -762,8 +745,7 @@ impl<'a> Parser<'a> {
         path.span = ty_span.to(self.prev_span);
 
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
-        self.diagnostic()
-            .struct_span_err(path.span, "missing angle brackets in associated item path")
+        self.struct_span_err(path.span, "missing angle brackets in associated item path")
             .span_suggestion(
                 // This is a best-effort recovery.
                 path.span,
@@ -1271,7 +1253,8 @@ impl<'a> Parser<'a> {
 
     pub(super) fn expected_semi_or_open_brace<T>(&mut self) -> PResult<'a, T> {
         let token_str = super::token_descr(&self.token);
-        let mut err = self.fatal(&format!("expected `;` or `{{`, found {}", token_str));
+        let msg = &format!("expected `;` or `{{`, found {}", token_str);
+        let mut err = self.struct_span_err(self.token.span, msg);
         err.span_label(self.token.span, "expected `;` or `{`");
         Err(err)
     }

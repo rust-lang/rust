@@ -1,5 +1,6 @@
 use crate::base::ExtCtxt;
 
+use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use syntax::ast;
 use syntax::print::pprust;
@@ -327,6 +328,7 @@ impl Ident {
         }
     }
     fn new(sym: Symbol, is_raw: bool, span: Span) -> Ident {
+        let sym = nfc_normalize(&sym.as_str());
         let string = sym.as_str();
         if !Self::is_valid(&string) {
             panic!("`{:?}` is not a valid identifier", string)

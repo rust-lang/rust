@@ -2,7 +2,9 @@ error: unexpected `(` after qualified path
   --> $DIR/paren-after-qualified-path-in-match.rs:3:27
    |
 LL |         <T as Trait>::Type(2) => (),
-   |                           ^ unexpected `(` after qualified path
+   |         ------------------^ unexpected `(` after qualified path
+   |         |
+   |         the qualified path
 
 error: aborting due to previous error
 

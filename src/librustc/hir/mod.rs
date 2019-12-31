@@ -39,7 +39,6 @@ pub mod def;
 pub mod def_id;
 pub mod intravisit;
 pub mod itemlikevisit;
-pub mod lowering;
 pub mod map;
 pub mod pat_util;
 pub mod print;
@@ -599,7 +598,7 @@ pub enum SyntheticTyParamKind {
 pub struct WhereClause<'hir> {
     pub predicates: &'hir [WherePredicate<'hir>],
     // Only valid if predicates isn't empty.
-    span: Span,
+    pub span: Span,
 }
 
 impl WhereClause<'_> {

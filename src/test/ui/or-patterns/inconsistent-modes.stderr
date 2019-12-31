@@ -60,7 +60,9 @@ error[E0308]: mismatched types
   --> $DIR/inconsistent-modes.rs:13:25
    |
 LL |     let Ok(ref a) | Err(ref mut a): Result<&u8, &mut u8> = Ok(&0);
-   |                         ^^^^^^^^^ types differ in mutability
+   |                         ^^^^^^^^^   -------------------- expected due to this
+   |                         |
+   |                         types differ in mutability
    |
    = note: expected type `&&u8`
               found type `&mut &mut u8`
@@ -69,7 +71,9 @@ error[E0308]: mismatched types
   --> $DIR/inconsistent-modes.rs:16:31
    |
 LL |     let Ok((ref a, b)) | Err((ref mut a, ref b)) = Ok((0, &0));
-   |                               ^^^^^^^^^ types differ in mutability
+   |                               ^^^^^^^^^            ----------- this expression has type `std::result::Result<({integer}, &{integer}), (_, _)>`
+   |                               |
+   |                               types differ in mutability
    |
    = note: expected type `&{integer}`
               found type `&mut _`

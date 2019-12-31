@@ -93,7 +93,7 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtPath, |path| {
             if style == PathStyle::Mod && path.segments.iter().any(|segment| segment.args.is_some())
             {
-                self.diagnostic().span_err(path.span, "unexpected generic arguments in path");
+                self.struct_span_err(path.span, "unexpected generic arguments in path").emit();
             }
             path
         });
@@ -325,24 +325,23 @@ impl<'a> Parser<'a> {
 
                 // Make a span over ${unmatched angle bracket count} characters.
                 let span = lo.with_hi(lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count));
-                self.diagnostic()
-                    .struct_span_err(
-                        span,
-                        &format!(
-                            "unmatched angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                    )
-                    .span_suggestion(
-                        span,
-                        &format!(
-                            "remove extra angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.struct_span_err(
+                    span,
+                    &format!(
+                        "unmatched angle bracket{}",
+                        pluralize!(snapshot.unmatched_angle_bracket_count)
+                    ),
+                )
+                .span_suggestion(
+                    span,
+                    &format!(
+                        "remove extra angle bracket{}",
+                        pluralize!(snapshot.unmatched_angle_bracket_count)
+                    ),
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
 
                 // Try again without unmatched angle bracket characters.
                 self.parse_generic_args()
@@ -407,9 +406,11 @@ impl<'a> Parser<'a> {
                     if self.token.is_bool_lit() {
                         self.parse_literal_maybe_minus()?
                     } else {
-                        return Err(
-                            self.fatal("identifiers may currently not be used for const generics")
-                        );
+                        let span = self.token.span;
+                        let msg = "identifiers may currently not be used for const generics";
+                        self.struct_span_err(span, msg).emit();
+                        let block = self.mk_block_err(span);
+                        self.mk_expr(span, ast::ExprKind::Block(block, None), ast::AttrVec::new())
                     }
                 } else {
                     self.parse_literal_maybe_minus()?

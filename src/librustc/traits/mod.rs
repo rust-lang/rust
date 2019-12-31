@@ -249,10 +249,14 @@ pub enum ObligationCauseCode<'tcx> {
     /// Computing common supertype in the arms of a match expression
     MatchExpressionArm(Box<MatchExpressionArmCause<'tcx>>),
 
-    /// Computing common supertype in the pattern guard for the arms of a match expression
-    MatchExpressionArmPattern {
-        span: Span,
-        ty: Ty<'tcx>,
+    /// Type error arising from type checking a pattern against an expected type.
+    Pattern {
+        /// The span of the scrutinee or type expression which caused the `root_ty` type.
+        span: Option<Span>,
+        /// The root expected type induced by a scrutinee or type expression.
+        root_ty: Ty<'tcx>,
+        /// Whether the `Span` came from an expression or a type expression.
+        origin_expr: bool,
     },
 
     /// Constants in patterns must have `Structural` type.
@@ -311,7 +315,7 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
     pub last_ty: Ty<'tcx>,
-    pub discrim_hir_id: hir::HirId,
+    pub scrut_hir_id: hir::HirId,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
