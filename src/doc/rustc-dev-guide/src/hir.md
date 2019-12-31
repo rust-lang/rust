@@ -102,6 +102,12 @@ sorts of identifiers in active use:
 [`BodyId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.BodyId.html
 [`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/struct.NodeId.html
 
+We also have an internal map to go from `DefId` to what’s called "Def path". "Def path" is like a
+module path but a bit more rich. For example, it may be `crate::foo::MyStruct` that identifies
+this definition uniquely. It’s a bit different than a module path because it might include a type
+parameter `T`, which you can't write in normal rust, like `crate::foo::MyStruct::T`. These are used
+in incremental compilation.
+
 ### The HIR Map
 
 Most of the time when you are working with the HIR, you will do so via
