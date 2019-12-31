@@ -1383,17 +1383,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     _ => unreachable!(),
                 })
             }
-            ast::ItemKind::Mod(ast::Mod { inner, .. }) if item.ident != Ident::invalid() => {
+            ast::ItemKind::Mod(ast::Mod { inner, inline, .. })
+                if item.ident != Ident::invalid() =>
+            {
                 let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
                 let mut module = (*self.cx.current_expansion.module).clone();
                 module.mod_path.push(item.ident);
 
-                // Detect if this is an inline module (`mod m { ... }` as opposed to `mod m;`).
-                // In the non-inline case, `inner` is never the dummy span (cf. `parse_item_mod`).
-                // Thus, if `inner` is the dummy span, we know the module is inline.
-                let inline_module = item.span.contains(inner) || inner.is_dummy();
-
-                if inline_module {
+                if inline {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, sym::path) {
                         self.cx.current_expansion.directory_ownership =
                             DirectoryOwnership::Owned { relative: None };
