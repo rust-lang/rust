@@ -12,10 +12,10 @@ function expandPathResolving(path: string) {
 }
 
 export class Server {
-    public static config = new Config();
+    static config: Config;
     public static client: lc.LanguageClient;
 
-    public static async start() {
+    public static async start(config: Config) {
         // '.' Is the fallback if no folder is open
         // TODO?: Workspace folders support Uri's (eg: file://test.txt). It might be a good idea to test if the uri points to a file.
         let folder: string = '.';
@@ -23,6 +23,7 @@ export class Server {
             folder = workspace.workspaceFolders[0].uri.fsPath.toString();
         }
 
+        this.config = config;
         const command = expandPathResolving(this.config.raLspServerPath);
         const run: lc.Executable = {
             command,

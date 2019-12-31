@@ -31,7 +31,7 @@ export async function activate(context: vscode.ExtensionContext) {
         ctx.overrideCommand('type', commands.onEnter);
     }
 
-    const startServer = () => Server.start();
+    const startServer = () => Server.start(ctx.config);
     const reloadCommand = () => reloadServer(startServer);
 
     vscode.commands.registerCommand('rust-analyzer.reload', reloadCommand);
