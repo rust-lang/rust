@@ -38,14 +38,18 @@ pub mod thread;
 pub mod thread_local;
 pub mod time;
 cfg_if::cfg_if! {
-    if #[cfg(not(target_vendor = "uwp"))] {
-        pub mod stdio;
-        pub mod stack_overflow;
-    } else {
+    if #[cfg(target_vendor = "uwp")] {
         pub mod stdio_uwp;
         pub mod stack_overflow_uwp;
         pub use self::stdio_uwp as stdio;
         pub use self::stack_overflow_uwp as stack_overflow;
+    } else if #[cfg(target_vendor = "games")] {
+        pub mod stdio_uwp;
+        pub mod stack_overflow;
+        pub use self::stdio_uwp as stdio;
+    } else {
+        pub mod stdio;
+        pub mod stack_overflow;
     }
 }
 

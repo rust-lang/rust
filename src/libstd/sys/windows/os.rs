@@ -284,7 +284,7 @@ pub fn temp_dir() -> PathBuf {
     super::fill_utf16_buf(|buf, sz| unsafe { c::GetTempPathW(sz, buf) }, super::os2path).unwrap()
 }
 
-#[cfg(not(target_vendor = "uwp"))]
+#[cfg(not(any(target_vendor = "uwp", target_vendor = "games")))]
 fn home_dir_crt() -> Option<PathBuf> {
     unsafe {
         use crate::sys::handle::Handle;
@@ -309,7 +309,7 @@ fn home_dir_crt() -> Option<PathBuf> {
     }
 }
 
-#[cfg(target_vendor = "uwp")]
+#[cfg(any(target_vendor = "uwp", target_vendor = "games"))]
 fn home_dir_crt() -> Option<PathBuf> {
     None
 }

@@ -2,7 +2,7 @@ use crate::io;
 use crate::mem;
 use crate::sys::c;
 
-#[cfg(not(target_vendor = "uwp"))]
+#[cfg(not(any(target_vendor = "uwp", target_vendor = "games")))]
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut v = (0, 0);
     let ret =
@@ -13,7 +13,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     v
 }
 
-#[cfg(target_vendor = "uwp")]
+#[cfg(any(target_vendor = "uwp", target_vendor = "games"))]
 pub fn hashmap_random_keys() -> (u64, u64) {
     use crate::ptr;
 

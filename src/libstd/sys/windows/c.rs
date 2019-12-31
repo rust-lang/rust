@@ -151,9 +151,6 @@ pub const IO_REPARSE_TAG_MOUNT_POINT: DWORD = 0xa0000003;
 pub const SYMLINK_FLAG_RELATIVE: DWORD = 0x00000001;
 pub const FSCTL_SET_REPARSE_POINT: DWORD = 0x900a4;
 
-pub const SYMBOLIC_LINK_FLAG_DIRECTORY: DWORD = 0x1;
-pub const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE: DWORD = 0x2;
-
 // Note that these are not actually HANDLEs, just values to pass to GetStdHandle
 pub const STD_INPUT_HANDLE: DWORD = -10i32 as DWORD;
 pub const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
@@ -638,6 +635,34 @@ if #[cfg(not(target_vendor = "uwp"))] {
     pub type PVECTORED_EXCEPTION_HANDLER = extern "system"
             fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
 
+    pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
+
+    extern "system" {
+        pub fn SetHandleInformation(hObject: HANDLE,
+                                    dwMask: DWORD,
+                                    dwFlags: DWORD) -> BOOL;
+        pub fn AddVectoredExceptionHandler(FirstHandler: ULONG,
+                                           VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
+                                           -> LPVOID;
+        pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
+                               lpTargetFileName: LPCWSTR,
+                               lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
+                               -> BOOL;
+    }
+}
+}
+
+// Functions forbidden when targeting the Games API partition
+cfg_if::cfg_if! {
+if #[cfg(not(target_vendor = "games"))] {
+    pub const SYMBOLIC_LINK_FLAG_DIRECTORY: DWORD = 0x1;
+    pub const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE: DWORD = 0x2;
+}
+}
+
+// Functions forbidden when targeting UWP or the Games API partition
+cfg_if::cfg_if! {
+if #[cfg(not(any(target_vendor = "uwp", target_vendor = "games")))] {
     #[repr(C)]
     #[derive(Copy, Clone)]
     pub struct CONSOLE_READCONSOLE_CONTROL {
@@ -666,8 +691,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
     pub type LPBY_HANDLE_FILE_INFORMATION = *mut BY_HANDLE_FILE_INFORMATION;
     pub type LPCVOID = *const c_void;
 
-    pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
-
     pub const TOKEN_READ: DWORD = 0x20008;
 
     extern "system" {
@@ -688,33 +711,24 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
         pub fn GetConsoleMode(hConsoleHandle: HANDLE,
                               lpMode: LPDWORD) -> BOOL;
-        // Allowed but unused by UWP
+        // Allowed but unused by UWP and Games
         pub fn OpenProcessToken(ProcessHandle: HANDLE,
                                 DesiredAccess: DWORD,
                                 TokenHandle: *mut HANDLE) -> BOOL;
         pub fn GetUserProfileDirectoryW(hToken: HANDLE,
                                         lpProfileDir: LPWSTR,
                                         lpcchSize: *mut DWORD) -> BOOL;
+        // Allowed but unused by Games
         pub fn GetFileInformationByHandle(hFile: HANDLE,
                             lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
                             -> BOOL;
-        pub fn SetHandleInformation(hObject: HANDLE,
-                                    dwMask: DWORD,
-                                    dwFlags: DWORD) -> BOOL;
-        pub fn AddVectoredExceptionHandler(FirstHandler: ULONG,
-                                           VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
-                                           -> LPVOID;
-        pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
-                               lpTargetFileName: LPCWSTR,
-                               lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
-                               -> BOOL;
     }
 }
 }
 
-// UWP specific functions & types
+// UWP and Games specific functions & types
 cfg_if::cfg_if! {
-if #[cfg(target_vendor = "uwp")] {
+if #[cfg(any(target_vendor = "uwp", target_vendor = "games"))] {
     pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
     #[repr(C)]
@@ -732,7 +746,7 @@ if #[cfg(target_vendor = "uwp")] {
                                             lpFileInformation: LPVOID,
                                             dwBufferSize: DWORD) -> BOOL;
         pub fn BCryptGenRandom(hAlgorithm: LPVOID, pBuffer: *mut u8,
-                               cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
+                                cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
     }
 }
 }
@@ -1019,6 +1033,7 @@ extern "system" {
 compat_fn! {
     kernel32:
 
+    #[cfg(not(target_vendor = "games"))]
     pub fn CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
                                _lpTargetFileName: LPCWSTR,
                                _dwFlags: DWORD) -> BOOLEAN {

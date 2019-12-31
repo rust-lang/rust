@@ -174,8 +174,10 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
     // UWP apps have API restrictions enforced during Store submissions.
     // To comply with the Windows App Certification Kit,
     // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
+    // Similarly, apps targeting the Games API partition need to link to the OneCore versions of
+    // the runtime to ensure they don't use functions that are unavailable in that partition.
     let t = &sess.target.target;
-    if flavor == LinkerFlavor::Msvc && t.target_vendor == "uwp" {
+    if flavor == LinkerFlavor::Msvc && (t.target_vendor == "uwp" || t.target_vendor == "games") {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().skip(4).next() {
@@ -187,7 +189,19 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
                 };
                 if let Some(ref a) = arch {
                     let mut arg = OsString::from("/LIBPATH:");
-                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a.to_string()));
+                    if t.target_vendor == "uwp" {
+                        arg.push(format!(
+                            "{}\\lib\\{}\\store",
+                            root_lib_path.display(),
+                            a.to_string()
+                        ));
+                    } else {
+                        arg.push(format!(
+                            "{}\\lib\\onecore\\{}",
+                            root_lib_path.display(),
+                            a.to_string()
+                        ));
+                    }
                     cmd.arg(&arg);
                 } else {
                     warn!("arch is not supported");

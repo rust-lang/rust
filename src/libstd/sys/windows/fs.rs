@@ -322,7 +322,7 @@ impl File {
         Ok(())
     }
 
-    #[cfg(not(target_vendor = "uwp"))]
+    #[cfg(not(any(target_vendor = "uwp", target_vendor = "games")))]
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         unsafe {
             let mut info: c::BY_HANDLE_FILE_INFORMATION = mem::zeroed();
@@ -350,7 +350,7 @@ impl File {
         }
     }
 
-    #[cfg(target_vendor = "uwp")]
+    #[cfg(any(target_vendor = "uwp", target_vendor = "games"))]
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         unsafe {
             let mut info: c::FILE_BASIC_INFO = mem::zeroed();
@@ -753,6 +753,7 @@ pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
     symlink_inner(src, dst, false)
 }
 
+#[cfg(not(target_vendor = "games"))]
 pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
     let src = to_u16s(src)?;
     let dst = to_u16s(dst)?;
@@ -778,6 +779,14 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(target_vendor = "games")]
+pub fn symlink_inner(_: &Path, _: &Path, _: bool) -> io::Result<()> {
+    return Err(io::Error::new(
+        io::ErrorKind::Other,
+        "symbolic links are not supported on the Games API partition",
+    ));
 }
 
 #[cfg(not(target_vendor = "uwp"))]
