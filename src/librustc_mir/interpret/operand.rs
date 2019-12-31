@@ -542,7 +542,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // happening.
                 // FIXME(oli-obk): eliminate all the `const_eval_raw` usages when we get rid of
                 // `StaticKind` once and for all.
-                return self.const_eval(GlobalId { instance, promoted: None });
+                // FIXME the following line should have been:
+                // return self.const_eval(GlobalId { instance, promoted });
+                // but since the addition of Promoteds being Constants is causing const validation
+                // cycles. Promoteds being Constants exercise const validation more often and it
+                // may have made show up a pre-existing bug.
+                return Ok(OpTy::from(self.const_eval_raw(GlobalId { instance, promoted })?));
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)
