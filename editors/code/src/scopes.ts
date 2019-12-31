@@ -42,18 +42,20 @@ export function load() {
     }
 }
 
-function filterThemeExtensions(extension: vscode.Extension<any>): boolean {
-    return (
-        extension.extensionKind === vscode.ExtensionKind.UI &&
-        extension.packageJSON.contributes &&
-        extension.packageJSON.contributes.themes
-    );
-}
+
 
 // Find current theme on disk
 function loadThemeNamed(themeName: string) {
+    function isTheme(extension: vscode.Extension<any>): boolean {
+        return (
+            extension.extensionKind === vscode.ExtensionKind.UI &&
+            extension.packageJSON.contributes &&
+            extension.packageJSON.contributes.themes
+        );
+    }
+
     const themePaths = vscode.extensions.all
-        .filter(filterThemeExtensions)
+        .filter(isTheme)
         .reduce((list, extension) => {
             return extension.packageJSON.contributes.themes
                 .filter(
