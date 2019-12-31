@@ -1,8 +1,8 @@
 // macOS needs FS access for its HashMap:
 // compile-flags: -Zmiri-disable-isolation
 
-use std::collections::{self, HashMap};
-use std::hash::{BuildHasherDefault, BuildHasher};
+use std::collections::HashMap;
+use std::hash::BuildHasher;
 
 fn test_map<S: BuildHasher>(mut map: HashMap<i32, i32, S>) {
     map.insert(0, 0);
