@@ -21,7 +21,7 @@
 #![feature(trusted_len)]
 
 use back::write::{create_informational_target_machine, create_target_machine};
-use syntax_pos::symbol::Symbol;
+use rustc_span::symbol::Symbol;
 
 pub use llvm_util::target_features;
 use rustc::dep_graph::WorkProduct;

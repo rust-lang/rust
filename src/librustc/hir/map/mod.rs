@@ -16,11 +16,11 @@ use crate::util::nodemap::FxHashMap;
 
 use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;
+use rustc_span::hygiene::MacroKind;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::source_map::Spanned;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::{Span, DUMMY_SP};
 
 pub mod blocks;
 mod collector;

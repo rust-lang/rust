@@ -9,8 +9,8 @@ use syntax::symbol::Symbol;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 
+use rustc_span::{self, Pos, Span};
 use smallvec::SmallVec;
-use syntax_pos::{self, Pos, Span};
 
 use rustc_data_structures::sync::Lrc;
 

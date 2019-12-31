@@ -4,7 +4,7 @@ use crate::hir::def_id::DefId;
 use crate::mir;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::{self, TyCtxt};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts

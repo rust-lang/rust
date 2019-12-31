@@ -11,17 +11,17 @@
 
 use rustc::ty::tls;
 use rustc_errors::{Diagnostic, TRACK_DIAGNOSTICS};
+use rustc_span;
 use std::fmt;
-use syntax_pos;
 
 /// This is a callback from libsyntax as it cannot access the implicit state
 /// in librustc otherwise.
-fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     tls::with_opt(|tcx| {
         if let Some(tcx) = tcx {
             write!(f, "{}", tcx.sess.source_map().span_to_string(span))
         } else {
-            syntax_pos::default_span_debug(span, f)
+            rustc_span::default_span_debug(span, f)
         }
     })
 }
@@ -43,6 +43,6 @@ fn track_diagnostic(diagnostic: &Diagnostic) {
 /// Sets up the callbacks in prior crates which we want to refer to the
 /// TyCtxt in.
 pub fn setup_callbacks() {
-    syntax_pos::SPAN_DEBUG.swap(&(span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+    rustc_span::SPAN_DEBUG.swap(&(span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     TRACK_DIAGNOSTICS.swap(&(track_diagnostic as fn(&_)));
 }

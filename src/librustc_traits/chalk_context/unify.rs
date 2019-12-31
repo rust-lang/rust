@@ -3,7 +3,7 @@ use rustc::infer::{InferCtxt, RegionVariableOrigin};
 use rustc::traits::{DomainGoal, Environment, Goal, InEnvironment};
 use rustc::ty;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
-use syntax_pos::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 crate struct UnificationResult<'tcx> {
     crate goals: Vec<InEnvironment<'tcx, Goal<'tcx>>>,

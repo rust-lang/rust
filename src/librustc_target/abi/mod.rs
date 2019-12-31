@@ -7,7 +7,7 @@ use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable_Generic;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 pub mod call;
 

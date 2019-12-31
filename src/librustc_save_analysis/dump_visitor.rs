@@ -23,6 +23,7 @@ use rustc_data_structures::fx::FxHashSet;
 use std::env;
 use std::path::Path;
 
+use rustc_span::*;
 use syntax::ast::{self, Attribute, NodeId, PatKind};
 use syntax::print::pprust::{bounds_to_string, generic_params_to_string, ty_to_string};
 use syntax::ptr::P;
@@ -30,7 +31,6 @@ use syntax::source_map::{respan, DUMMY_SP};
 use syntax::token;
 use syntax::visit::{self, Visitor};
 use syntax::walk_list;
-use syntax_pos::*;
 
 use crate::dumper::{Access, Dumper};
 use crate::sig;

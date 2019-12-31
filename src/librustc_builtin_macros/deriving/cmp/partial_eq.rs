@@ -3,10 +3,10 @@ use crate::deriving::generic::*;
 use crate::deriving::{path_local, path_std};
 
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_span::Span;
 use syntax::ast::{BinOpKind, Expr, MetaItem};
 use syntax::ptr::P;
 use syntax::symbol::sym;
-use syntax_pos::Span;
 
 pub fn expand_deriving_partial_eq(
     cx: &mut ExtCtxt<'_>,

@@ -13,13 +13,13 @@ use crate::util::nodemap::NodeMap;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_index::vec::IndexVec;
+use rustc_span::hygiene::ExpnId;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 use std::borrow::Borrow;
 use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
-use syntax_pos::hygiene::ExpnId;
-use syntax_pos::symbol::{sym, Symbol};
-use syntax_pos::Span;
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`

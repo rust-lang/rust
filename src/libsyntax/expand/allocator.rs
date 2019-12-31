@@ -1,6 +1,6 @@
 use crate::{ast, attr, visit};
-use syntax_pos::symbol::{sym, Symbol};
-use syntax_pos::Span;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 
 #[derive(Clone, Copy)]
 pub enum AllocatorKind {

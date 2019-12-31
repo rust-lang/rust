@@ -18,6 +18,6 @@ rustc_lexer = { path = "../librustc_lexer" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_error_codes = { path = "../librustc_error_codes" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-syntax_pos = { path = "../librustc_span", package = "rustc_span" }
+rustc_span = { path = "../librustc_span" }
 syntax = { path = "../libsyntax" }
 unicode-normalization = "0.1.11"

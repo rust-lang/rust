@@ -21,7 +21,7 @@ use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use crate::GLOBALS;
 
 use log::debug;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use std::iter;
 use std::ops::DerefMut;

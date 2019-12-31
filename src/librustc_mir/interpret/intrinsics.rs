@@ -12,8 +12,8 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::TyCtxt;
-use syntax_pos::symbol::{sym, Symbol};
-use syntax_pos::Span;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 
 use super::{ImmTy, InterpCx, Machine, OpTy, PlaceTy};
 

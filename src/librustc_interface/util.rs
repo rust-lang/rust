@@ -14,6 +14,7 @@ use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_resolve::{self, Resolver};
+use rustc_span::edition::Edition;
 use smallvec::SmallVec;
 use std::env;
 use std::io::{self, Write};
@@ -30,7 +31,6 @@ use syntax::source_map::{FileLoader, RealFileLoader, SourceMap};
 use syntax::symbol::{sym, Symbol};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{self, ast, attr};
-use syntax_pos::edition::Edition;
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -186,14 +186,14 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
     syntax::with_globals(edition, || {
         syntax::GLOBALS.with(|syntax_globals| {
-            syntax_pos::GLOBALS.with(|syntax_pos_globals| {
+            rustc_span::GLOBALS.with(|rustc_span_globals| {
                 // The main handler runs for each Rayon worker thread and sets up
-                // the thread local rustc uses. syntax_globals and syntax_pos_globals are
+                // the thread local rustc uses. syntax_globals and rustc_span_globals are
                 // captured and set on the new threads. ty::tls::with_thread_locals sets up
                 // thread local callbacks from libsyntax
                 let main_handler = move |thread: ThreadBuilder| {
                     syntax::GLOBALS.set(syntax_globals, || {
-                        syntax_pos::GLOBALS.set(syntax_pos_globals, || {
+                        rustc_span::GLOBALS.set(rustc_span_globals, || {
                             if let Some(stderr) = stderr {
                                 io::set_panic(Some(box Sink(stderr.clone())));
                             }
@@ -718,7 +718,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 stmts: s.into_iter().collect(),
                 rules,
                 id: resolver.next_node_id(),
-                span: syntax_pos::DUMMY_SP,
+                span: rustc_span::DUMMY_SP,
             }
         }
 
@@ -726,14 +726,14 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             let expr = P(ast::Expr {
                 id: resolver.next_node_id(),
                 kind: ast::ExprKind::Block(P(b), None),
-                span: syntax_pos::DUMMY_SP,
+                span: rustc_span::DUMMY_SP,
                 attrs: AttrVec::new(),
             });
 
             ast::Stmt {
                 id: resolver.next_node_id(),
                 kind: ast::StmtKind::Expr(expr),
-                span: syntax_pos::DUMMY_SP,
+                span: rustc_span::DUMMY_SP,
             }
         }
 
@@ -741,13 +741,13 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
         let loop_expr = P(ast::Expr {
             kind: ast::ExprKind::Loop(P(empty_block), None),
             id: self.resolver.next_node_id(),
-            span: syntax_pos::DUMMY_SP,
+            span: rustc_span::DUMMY_SP,
             attrs: AttrVec::new(),
         });
 
         let loop_stmt = ast::Stmt {
             id: self.resolver.next_node_id(),
-            span: syntax_pos::DUMMY_SP,
+            span: rustc_span::DUMMY_SP,
             kind: ast::StmtKind::Expr(loop_expr),
         };
 

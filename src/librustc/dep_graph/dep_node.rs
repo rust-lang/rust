@@ -65,9 +65,9 @@ use crate::traits::query::{
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_span::symbol::Symbol;
 use std::fmt;
 use std::hash::Hash;
-use syntax_pos::symbol::Symbol;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
 // is repeated (i.e., which sub-expression of the macro we are in) but don't need

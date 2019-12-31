@@ -1,7 +1,7 @@
 use crate::mir::*;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{CanonicalUserTypeAnnotation, Ty};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 // # The MIR Visitor
 //

@@ -13,7 +13,7 @@ use errors::DiagnosticBuilder;
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use rustc_error_codes::*;
 

@@ -31,7 +31,7 @@ use rustc::ty::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_error_codes::*;
 use rustc_index::vec::{Idx, IndexVec};
-use syntax_pos::{Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;

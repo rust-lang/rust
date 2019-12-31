@@ -20,12 +20,12 @@ use rustc_data_structures::fx::{FxHashMap, FxHasher};
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_span::Span;
 use std::collections::hash_map::Entry;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ptr;
 use syntax::source_map::DUMMY_SP;
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

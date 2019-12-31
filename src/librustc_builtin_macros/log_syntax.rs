@@ -1,11 +1,11 @@
 use rustc_expand::base;
+use rustc_span;
 use syntax::print;
 use syntax::tokenstream::TokenStream;
-use syntax_pos;
 
 pub fn expand_log_syntax<'cx>(
     _cx: &'cx mut base::ExtCtxt<'_>,
-    sp: syntax_pos::Span,
+    sp: rustc_span::Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     println!("{}", print::pprust::tts_to_string(tts));

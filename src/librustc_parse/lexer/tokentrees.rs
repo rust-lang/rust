@@ -2,6 +2,7 @@ use super::{StringReader, UnmatchedBrace};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
+use rustc_span::Span;
 use syntax::print::pprust::token_to_string;
 use syntax::token::{self, Token};
 use syntax::tokenstream::{
@@ -9,7 +10,6 @@ use syntax::tokenstream::{
     IsJoint::{self, *},
     TokenStream, TokenTree, TreeAndJoint,
 };
-use syntax_pos::Span;
 
 impl<'a> StringReader<'a> {
     crate fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {

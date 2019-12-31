@@ -14,7 +14,7 @@ use rustc::ty::adjustment::PointerCast;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{AdtDef, Const, Ty, UpvarSubsts, UserType};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 mod constant;
 pub mod cx;

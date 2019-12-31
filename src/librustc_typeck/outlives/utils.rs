@@ -1,9 +1,9 @@
 use rustc::ty::outlives::Component;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, Region, RegionKind, Ty, TyCtxt};
+use rustc_span::Span;
 use smallvec::smallvec;
 use std::collections::BTreeMap;
-use syntax_pos::Span;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.

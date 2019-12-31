@@ -5,7 +5,7 @@ use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::ty::{self, DefIdTree, Region, Ty};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 // The struct contains the information about the anonymous region
 // we are searching for.

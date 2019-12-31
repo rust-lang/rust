@@ -6,8 +6,8 @@ use rustc::ty::layout::{LayoutOf, Size};
 use rustc::ty::TyCtxt;
 use rustc_index::vec::IndexVec;
 
+use rustc_span::{BytePos, Span};
 use syntax::symbol::kw;
-use syntax_pos::{BytePos, Span};
 
 use super::OperandValue;
 use super::{FunctionCx, LocalRef};
@@ -65,7 +65,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occur
             // at the level above that.
-            let span = syntax_pos::hygiene::walk_chain(source_info.span, self.mir.span.ctxt());
+            let span = rustc_span::hygiene::walk_chain(source_info.span, self.mir.span.ctxt());
             let scope = self.scope_metadata_for_loc(source_info.scope, span.lo());
             // Use span of the outermost expansion site, while keeping the original lexical scope.
             (scope, span)

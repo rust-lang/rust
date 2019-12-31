@@ -14,7 +14,7 @@ use rustc::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use syntax_pos::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,

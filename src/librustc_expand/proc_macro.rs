@@ -8,7 +8,7 @@ use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
 
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::{Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 
 const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
 

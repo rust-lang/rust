@@ -26,8 +26,8 @@ use syntax::util::map_in_place::MapInPlace;
 use syntax::visit::{self, Visitor};
 
 use errors::{Applicability, FatalError, PResult};
+use rustc_span::{FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::{FileName, Span, DUMMY_SP};
 
 use rustc_data_structures::sync::Lrc;
 use std::io::ErrorKind;

@@ -12,7 +12,7 @@ use syntax::ast::{LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use syntax::sess::ParseSess;
 use syntax::symbol::{sym, Symbol};
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use crate::html::escape::Escape;
 

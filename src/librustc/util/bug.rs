@@ -1,8 +1,8 @@
 // These functions are used by macro expansion for bug! and span_bug!
 
 use crate::ty::tls;
+use rustc_span::{MultiSpan, Span};
 use std::fmt;
-use syntax_pos::{MultiSpan, Span};
 
 #[cold]
 #[inline(never)]

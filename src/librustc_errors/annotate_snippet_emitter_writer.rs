@@ -12,8 +12,8 @@ use annotate_snippets::display_list::DisplayList;
 use annotate_snippets::formatter::DisplayListFormatter;
 use annotate_snippets::snippet::*;
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::source_map::SourceMap;
-use syntax_pos::{Loc, MultiSpan, SourceFile};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{Loc, MultiSpan, SourceFile};
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitterWriter {

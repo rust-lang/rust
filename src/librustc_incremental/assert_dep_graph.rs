@@ -42,11 +42,11 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
+use rustc_span::Span;
 use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use syntax::{ast, symbol::sym};
-use syntax_pos::Span;
 
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {

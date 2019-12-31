@@ -23,12 +23,12 @@ use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
 use rustc_data_structures::ptr_key::PtrKey;
 
+use rustc_span::hygiene::ExpnId;
+use rustc_span::{MultiSpan, Span};
 use syntax::ast::{Ident, Name, NodeId};
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{struct_span_err, unwrap_or};
-use syntax_pos::hygiene::ExpnId;
-use syntax_pos::{MultiSpan, Span};
 
 use rustc_error_codes::*;
 

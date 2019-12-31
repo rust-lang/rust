@@ -144,7 +144,7 @@ fn format_align_fill() {
 }
 #[test]
 fn format_counts() {
-    use syntax_pos::{edition, Globals, GLOBALS};
+    use rustc_span::{edition, Globals, GLOBALS};
     GLOBALS.set(&Globals::new(edition::DEFAULT_EDITION), || {
         same(
             "{:10x}",

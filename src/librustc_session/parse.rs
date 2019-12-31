@@ -10,10 +10,10 @@ use rustc_errors::{
     emitter::SilentEmitter, Applicability, ColorConfig, DiagnosticBuilder, Handler,
 };
 use rustc_feature::UnstableFeatures;
-use syntax_pos::edition::Edition;
-use syntax_pos::hygiene::ExpnId;
-use syntax_pos::source_map::{FilePathMapping, SourceMap};
-use syntax_pos::{MultiSpan, Span, Symbol};
+use rustc_span::edition::Edition;
+use rustc_span::hygiene::ExpnId;
+use rustc_span::source_map::{FilePathMapping, SourceMap};
+use rustc_span::{MultiSpan, Span, Symbol};
 
 use std::path::PathBuf;
 use std::str;

@@ -12,9 +12,9 @@ use crate::lint::builtin::UNUSED_ATTRIBUTES;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 
+use rustc_span::Span;
 use std::fmt::{self, Display};
 use syntax::{attr, symbol::sym};
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

@@ -15,9 +15,9 @@ use rustc_target::spec::{Target, TargetTriple};
 
 use crate::parse::CrateConfig;
 use rustc_feature::UnstableFeatures;
-use syntax_pos::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST};
-use syntax_pos::source_map::{FileName, FilePathMapping};
-use syntax_pos::symbol::{sym, Symbol};
+use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST};
+use rustc_span::source_map::{FileName, FilePathMapping};
+use rustc_span::symbol::{sym, Symbol};
 
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, FatalError, Handler};
@@ -1966,12 +1966,12 @@ crate mod dep_tracking {
     use crate::lint;
     use crate::utils::NativeLibraryKind;
     use rustc_feature::UnstableFeatures;
+    use rustc_span::edition::Edition;
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
     use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
     use std::hash::Hash;
     use std::path::PathBuf;
-    use syntax_pos::edition::Edition;
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);

@@ -17,7 +17,7 @@ use crate::visit::{self, FnKind, Visitor};
 use errors::{Applicability, DiagnosticBuilder, Handler};
 use log::debug;
 use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{MultiSpan, Span, DUMMY_SP};
 
 use rustc_error_codes::*;
 

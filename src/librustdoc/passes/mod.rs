@@ -5,9 +5,9 @@ use rustc::hir::def_id::DefId;
 use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
+use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use std::mem;
 use std::ops::Range;
-use syntax_pos::{InnerSpan, Span, DUMMY_SP};
 
 use crate::clean::{self, GetDefId, Item};
 use crate::core::DocContext;

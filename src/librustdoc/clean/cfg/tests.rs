@@ -1,10 +1,10 @@
 use super::*;
 
+use rustc_span::DUMMY_SP;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::symbol::Symbol;
 use syntax::with_default_globals;
-use syntax_pos::DUMMY_SP;
 
 fn word_cfg(s: &str) -> Cfg {
     Cfg::Cfg(Symbol::intern(s), None)

@@ -1,8 +1,8 @@
 pub use self::Level::*;
 use crate::node_id::NodeId;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use syntax_pos::edition::Edition;
-use syntax_pos::{sym, MultiSpan, Symbol};
+use rustc_span::edition::Edition;
+use rustc_span::{sym, MultiSpan, Symbol};
 
 /// Setting for how to handle a lint.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]

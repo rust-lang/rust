@@ -43,8 +43,8 @@ use rustc::util::nodemap::FxHashMap;
 use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
 use rustc_index::vec::Idx;
 use rustc_session::cgu_reuse_tracker::CguReuse;
+use rustc_span::Span;
 use syntax::attr;
-use syntax_pos::Span;
 
 use std::cmp;
 use std::ops::{Deref, DerefMut};

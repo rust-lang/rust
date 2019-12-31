@@ -5,6 +5,9 @@ use crate::maybe_whole;
 
 use rustc_error_codes::*;
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult, StashKey};
+use rustc_span::source_map::{self, respan, Span};
+use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::BytePos;
 use syntax::ast::{self, AttrKind, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
 use syntax::ast::{AssocItem, AssocItemKind, Item, ItemKind, UseTree, UseTreeKind};
 use syntax::ast::{BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter, Param, SelfKind};
@@ -16,9 +19,6 @@ use syntax::ptr::P;
 use syntax::struct_span_err;
 use syntax::token;
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
-use syntax_pos::source_map::{self, respan, Span};
-use syntax_pos::symbol::{kw, sym, Symbol};
-use syntax_pos::BytePos;
 
 use log::debug;
 use std::mem;

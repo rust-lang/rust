@@ -41,8 +41,8 @@ use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintAr
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 
+use rustc_span::Span;
 use syntax::ast;
-use syntax_pos::Span;
 
 use lint::LintId;
 

@@ -21,12 +21,12 @@ use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, AdtKind, Lift, Ty, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::{kw, sym};
+use rustc_span::{self, Pos};
 use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::symbol::{kw, sym};
-use syntax_pos::{self, Pos};
 
 use std::collections::hash_map::Entry;
 use std::default::Default;
@@ -1903,7 +1903,7 @@ impl Clean<VariantKind> for hir::VariantData<'_> {
     }
 }
 
-impl Clean<Span> for syntax_pos::Span {
+impl Clean<Span> for rustc_span::Span {
     fn clean(&self, cx: &DocContext<'_>) -> Span {
         if self.is_dummy() {
             return Span::empty();

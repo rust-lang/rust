@@ -9,8 +9,8 @@ use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc::ty::{self, TraitRef, Ty, TyCtxt};
 use rustc::ty::{ToPredicate, TypeFoldable};
 
+use rustc_span::Span;
 use syntax::ast::Ident;
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

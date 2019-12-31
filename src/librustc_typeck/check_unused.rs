@@ -2,8 +2,8 @@ use crate::lint;
 use rustc::ty::TyCtxt;
 
 use errors::Applicability;
+use rustc_span::Span;
 use syntax::ast;
-use syntax_pos::Span;
 
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};

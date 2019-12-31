@@ -14,5 +14,5 @@ log = "0.4"
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
-syntax_pos = { path = "../librustc_span", package = "rustc_span" }
+rustc_span = { path = "../librustc_span" }
 rustc_index = { path = "../librustc_index" }

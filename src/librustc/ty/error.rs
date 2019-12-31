@@ -3,10 +3,10 @@ use crate::hir::def_id::DefId;
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
 
 use errors::{Applicability, DiagnosticBuilder};
+use rustc_span::Span;
 use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::errors::pluralize;
-use syntax_pos::Span;
 
 use std::borrow::Cow;
 use std::fmt;

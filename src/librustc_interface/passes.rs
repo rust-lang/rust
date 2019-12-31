@@ -33,6 +33,7 @@ use rustc_passes::{self, ast_validation, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
+use rustc_span::FileName;
 use rustc_traits;
 use rustc_typeck as typeck;
 use syntax::early_buffered_lints::BufferedEarlyLint;
@@ -40,7 +41,6 @@ use syntax::mut_visit::MutVisitor;
 use syntax::symbol::Symbol;
 use syntax::util::node_count::NodeCounter;
 use syntax::{self, ast, visit};
-use syntax_pos::FileName;
 
 use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
@@ -470,7 +470,7 @@ pub fn lower_to_hir<'res, 'tcx>(
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !sess.opts.debugging_opts.keep_hygiene_data {
-        syntax_pos::hygiene::clear_syntax_context_map();
+        rustc_span::hygiene::clear_syntax_context_map();
     }
 
     Ok(hir_forest)

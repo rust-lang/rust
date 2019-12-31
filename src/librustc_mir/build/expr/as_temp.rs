@@ -6,7 +6,7 @@ use crate::hair::*;
 use rustc::hir;
 use rustc::middle::region;
 use rustc::mir::*;
-use syntax_pos::symbol::sym;
+use rustc_span::symbol::sym;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building

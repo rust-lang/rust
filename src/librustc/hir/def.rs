@@ -6,10 +6,10 @@ use crate::ty;
 use crate::util::nodemap::DefIdMap;
 
 use rustc_macros::HashStable;
+use rustc_span::hygiene::MacroKind;
+use rustc_span::Span;
 use syntax::ast;
 use syntax::ast::NodeId;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::Span;
 
 use std::fmt::Debug;
 

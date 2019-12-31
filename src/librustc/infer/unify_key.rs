@@ -1,8 +1,8 @@
 use crate::ty::{self, FloatVarValue, InferConst, IntVarValue, Ty, TyCtxt};
 use rustc_data_structures::unify::InPlace;
 use rustc_data_structures::unify::{EqUnifyValue, NoError, UnificationTable, UnifyKey, UnifyValue};
+use rustc_span::{Span, DUMMY_SP};
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, DUMMY_SP};
 
 use std::cell::RefMut;
 use std::cmp;

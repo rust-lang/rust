@@ -5,6 +5,8 @@ use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use rustc_errors::{Applicability, PResult};
+use rustc_span::source_map::{self, Span};
+use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 use syntax::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, DUMMY_NODE_ID};
 use syntax::ast::{
@@ -17,8 +19,6 @@ use syntax::token::{self, Token, TokenKind};
 use syntax::util::classify;
 use syntax::util::literal::LitError;
 use syntax::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
-use syntax_pos::source_map::{self, Span};
-use syntax_pos::symbol::{kw, sym, Symbol};
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of

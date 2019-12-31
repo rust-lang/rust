@@ -15,7 +15,7 @@ use rustc::infer::InferCtxt;
 use rustc::ty::{self, adjustment, TyCtxt};
 
 use crate::mem_categorization as mc;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait

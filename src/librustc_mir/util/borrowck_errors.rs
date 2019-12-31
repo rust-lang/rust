@@ -1,6 +1,6 @@
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
-use syntax_pos::{MultiSpan, Span};
+use rustc_span::{MultiSpan, Span};
 
 use rustc_error_codes::*;
 

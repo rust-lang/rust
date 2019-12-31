@@ -67,9 +67,9 @@ use crate::ty::{
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_error_codes::*;
+use rustc_span::{Pos, Span};
 use rustc_target::spec::abi;
 use std::{cmp, fmt};
-use syntax_pos::{Pos, Span};
 
 mod note;
 

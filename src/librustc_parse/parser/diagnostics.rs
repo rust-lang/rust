@@ -3,6 +3,8 @@ use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType
 use rustc_data_structures::fx::FxHashSet;
 use rustc_error_codes::*;
 use rustc_errors::{self, pluralize, Applicability, DiagnosticBuilder, Handler, PResult};
+use rustc_span::symbol::kw;
+use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 use syntax::ast::{
     self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, Param,
 };
@@ -12,8 +14,6 @@ use syntax::ptr::P;
 use syntax::struct_span_err;
 use syntax::token::{self, token_can_begin_expr, TokenKind};
 use syntax::util::parser::AssocOp;
-use syntax_pos::symbol::kw;
-use syntax_pos::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use log::{debug, trace};
 use std::mem;

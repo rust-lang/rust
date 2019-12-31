@@ -35,6 +35,9 @@ use rustc_macros::HashStable;
 
 use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
 use rustc_serialize::{self, Encodable, Encoder};
+use rustc_span::hygiene::ExpnId;
+use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::Span;
 use rustc_target::abi::Align;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
@@ -46,9 +49,6 @@ use std::slice;
 use std::{mem, ptr};
 use syntax::ast::{self, Ident, Name, NodeId};
 use syntax::attr;
-use syntax_pos::hygiene::ExpnId;
-use syntax_pos::symbol::{kw, sym, Symbol};
-use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

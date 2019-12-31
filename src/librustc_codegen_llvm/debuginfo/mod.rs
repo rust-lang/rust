@@ -37,10 +37,10 @@ use std::ffi::CString;
 
 use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
 use rustc_codegen_ssa::traits::*;
+use rustc_span::{self, BytePos, Pos, Span};
 use smallvec::SmallVec;
 use syntax::ast;
 use syntax::symbol::Symbol;
-use syntax_pos::{self, BytePos, Pos, Span};
 
 mod create_scope_map;
 pub mod gdb;
@@ -387,7 +387,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             signature.push(if fn_abi.ret.is_ignore() {
                 None
             } else {
-                Some(type_metadata(cx, fn_abi.ret.layout.ty, syntax_pos::DUMMY_SP))
+                Some(type_metadata(cx, fn_abi.ret.layout.ty, rustc_span::DUMMY_SP))
             });
 
             // Arguments types
@@ -412,14 +412,14 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         }
                         _ => t,
                     };
-                    Some(type_metadata(cx, t, syntax_pos::DUMMY_SP))
+                    Some(type_metadata(cx, t, rustc_span::DUMMY_SP))
                 }));
             } else {
                 signature.extend(
                     fn_abi
                         .args
                         .iter()
-                        .map(|arg| Some(type_metadata(cx, arg.layout.ty, syntax_pos::DUMMY_SP))),
+                        .map(|arg| Some(type_metadata(cx, arg.layout.ty, rustc_span::DUMMY_SP))),
                 );
             }
 
@@ -462,7 +462,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             let actual_type =
                                 cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                             let actual_type_metadata =
-                                type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
+                                type_metadata(cx, actual_type, rustc_span::DUMMY_SP);
                             let name = SmallCStr::new(&name.as_str());
                             Some(unsafe {
                                 Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
@@ -515,7 +515,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     // so avoid methods on other types (e.g., `<*mut T>::null`).
                     match impl_self_ty.kind {
                         ty::Adt(def, ..) if !def.is_box() => {
-                            Some(type_metadata(cx, impl_self_ty, syntax_pos::DUMMY_SP))
+                            Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
                         }
                         _ => None,
                     }
@@ -549,7 +549,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn extend_scope_to_file(
         &self,
         scope_metadata: &'ll DIScope,
-        file: &syntax_pos::SourceFile,
+        file: &rustc_span::SourceFile,
         defining_crate: CrateNum,
     ) -> &'ll DILexicalBlock {
         metadata::extend_scope_to_file(&self, scope_metadata, file, defining_crate)

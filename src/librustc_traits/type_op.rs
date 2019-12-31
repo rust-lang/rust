@@ -15,8 +15,8 @@ use rustc::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
 use rustc::ty::{
     FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
 };
+use rustc_span::DUMMY_SP;
 use std::fmt;
-use syntax_pos::DUMMY_SP;
 
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {

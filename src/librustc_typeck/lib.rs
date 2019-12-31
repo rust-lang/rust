@@ -106,8 +106,8 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util;
 use rustc::util::common::ErrorReported;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use syntax_pos::{Span, DUMMY_SP};
 use util::common::time;
 
 use rustc_error_codes::*;

@@ -4,7 +4,7 @@ use crate::ast;
 use crate::sess::ParseSess;
 use crate::source_map::SourceMap;
 
-use syntax_pos::{BytePos, CharPos, FileName, Pos};
+use rustc_span::{BytePos, CharPos, FileName, Pos};
 
 use std::usize;
 

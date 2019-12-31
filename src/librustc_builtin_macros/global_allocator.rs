@@ -1,12 +1,12 @@
 use crate::util::check_builtin_macro_attribute;
 
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_span::Span;
 use syntax::ast::{self, Attribute, Expr, FnHeader, FnSig, Generics, Ident, Param};
 use syntax::ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafety};
 use syntax::expand::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
-use syntax_pos::Span;
 
 pub fn expand(
     ecx: &mut ExtCtxt<'_>,

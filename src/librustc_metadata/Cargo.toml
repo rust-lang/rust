@@ -24,5 +24,5 @@ stable_deref_trait = "1.0.0"
 syntax = { path = "../libsyntax" }
 rustc_expand = { path = "../librustc_expand" }
 rustc_parse = { path = "../librustc_parse" }
-syntax_pos = { path = "../librustc_span", package = "rustc_span" }
+rustc_span = { path = "../librustc_span" }
 rustc_error_codes = { path = "../librustc_error_codes" }

@@ -24,7 +24,7 @@ use std::iter;
 use std::str;
 use std::string;
 
-use syntax_pos::{InnerSpan, Symbol};
+use rustc_span::{InnerSpan, Symbol};
 
 #[derive(Copy, Clone)]
 struct InnerOffset(usize);

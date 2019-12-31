@@ -4,7 +4,7 @@ use rustc::hir::{self, Node};
 use rustc::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use super::explicit::ExplicitPredicatesMap;
 use super::utils::*;

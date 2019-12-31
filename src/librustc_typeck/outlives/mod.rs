@@ -4,8 +4,8 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, CratePredicatesMap, TyCtxt};
+use rustc_span::Span;
 use syntax::symbol::sym;
-use syntax_pos::Span;
 
 mod explicit;
 mod implicit_infer;

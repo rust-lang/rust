@@ -5,6 +5,7 @@ use rustc::util::common::ErrorReported;
 use rustc_data_structures::sync::Lrc;
 use rustc_feature::UnstableFeatures;
 use rustc_interface::interface;
+use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::TargetTriple;
 use std::env;
 use std::io::{self, Write};
@@ -17,7 +18,6 @@ use syntax::edition::Edition;
 use syntax::source_map::SourceMap;
 use syntax::symbol::sym;
 use syntax::with_globals;
-use syntax_pos::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use tempfile::Builder as TempFileBuilder;
 use testing;
 

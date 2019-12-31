@@ -26,6 +26,7 @@ use smallvec::SmallVec;
 use std::any::Any;
 use std::sync::Arc;
 
+use rustc_span::{FileName, Span};
 use syntax::ast;
 use syntax::attr;
 use syntax::expand::allocator::AllocatorKind;
@@ -34,7 +35,6 @@ use syntax::source_map;
 use syntax::source_map::Spanned;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::DelimSpan;
-use syntax_pos::{FileName, Span};
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,

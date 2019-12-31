@@ -15,7 +15,7 @@ punycode = "0.4.0"
 rustc-demangle = "0.1.16"
 
 syntax = { path = "../libsyntax" }
-syntax_pos = { path = "../librustc_span", package = "rustc_span" }
+rustc_span = { path = "../librustc_span" }
 rustc = { path = "../librustc" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }

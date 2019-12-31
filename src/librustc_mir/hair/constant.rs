@@ -1,7 +1,7 @@
 use rustc::mir::interpret::{ConstValue, Scalar};
 use rustc::ty::{self, layout::Size, ParamEnv, Ty, TyCtxt};
+use rustc_span::symbol::Symbol;
 use syntax::ast;
-use syntax_pos::symbol::Symbol;
 
 #[derive(PartialEq)]
 crate enum LitToConstError {

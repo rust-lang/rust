@@ -8,8 +8,8 @@ use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc_span::Span;
 use syntax::ast::Ident;
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

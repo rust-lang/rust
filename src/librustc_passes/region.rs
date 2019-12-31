@@ -17,8 +17,8 @@ use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
 
 use rustc_index::vec::Idx;
+use rustc_span::Span;
 use syntax::source_map;
-use syntax_pos::Span;
 
 use std::mem;
 

@@ -21,7 +21,7 @@ use ast::AttrId;
 pub use errors;
 use rustc_data_structures::sync::Lock;
 use rustc_index::bit_set::GrowableBitSet;
-use syntax_pos::edition::Edition;
+use rustc_span::edition::Edition;
 
 #[macro_export]
 macro_rules! unwrap_or {
@@ -36,7 +36,7 @@ macro_rules! unwrap_or {
 pub struct Globals {
     used_attrs: Lock<GrowableBitSet<AttrId>>,
     known_attrs: Lock<GrowableBitSet<AttrId>>,
-    syntax_pos_globals: syntax_pos::Globals,
+    rustc_span_globals: rustc_span::Globals,
 }
 
 impl Globals {
@@ -46,7 +46,7 @@ impl Globals {
             // initiate the vectors with 0 bits. We'll grow them as necessary.
             used_attrs: Lock::new(GrowableBitSet::new_empty()),
             known_attrs: Lock::new(GrowableBitSet::new_empty()),
-            syntax_pos_globals: syntax_pos::Globals::new(edition),
+            rustc_span_globals: rustc_span::Globals::new(edition),
         }
     }
 }
@@ -56,7 +56,7 @@ where
     F: FnOnce() -> R,
 {
     let globals = Globals::new(edition);
-    GLOBALS.set(&globals, || syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f))
+    GLOBALS.set(&globals, || rustc_span::GLOBALS.set(&globals.rustc_span_globals, f))
 }
 
 pub fn with_default_globals<F, R>(f: F) -> R
@@ -87,7 +87,7 @@ pub mod util {
 pub mod ast;
 pub mod attr;
 pub mod expand;
-pub use syntax_pos::source_map;
+pub use rustc_span::source_map;
 pub mod entry;
 pub mod feature_gate {
     mod check;
@@ -97,8 +97,8 @@ pub mod mut_visit;
 pub mod ptr;
 pub mod show_span;
 pub use rustc_session::parse as sess;
-pub use syntax_pos::edition;
-pub use syntax_pos::symbol;
+pub use rustc_span::edition;
+pub use rustc_span::symbol;
 pub mod token;
 pub mod tokenstream;
 pub mod visit;
@@ -114,4 +114,4 @@ pub mod early_buffered_lints;
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc.
-pub trait HashStableContext: syntax_pos::HashStableContext {}
+pub trait HashStableContext: rustc_span::HashStableContext {}

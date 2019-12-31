@@ -1,6 +1,6 @@
 use errors::DiagnosticBuilder;
+use rustc_span::Span;
 use smallvec::SmallVec;
-use syntax_pos::Span;
 
 use crate::hir;
 use crate::hir::def_id::DefId;

@@ -5,7 +5,7 @@ use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::ObligationCauseCode;
 use rustc::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
 use rustc::ty::Ty;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_match(

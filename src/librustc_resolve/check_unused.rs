@@ -31,9 +31,9 @@ use errors::pluralize;
 use rustc::util::nodemap::NodeMap;
 use rustc::{lint, ty};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use syntax::ast;
 use syntax::visit::{self, Visitor};
-use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
 struct UnusedImport<'a> {
     use_tree: &'a ast::UseTree,

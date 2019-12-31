@@ -86,8 +86,8 @@ use syntax::token::{self, DocComment, Nonterminal, Token};
 use syntax::tokenstream::TokenStream;
 
 use errors::{FatalError, PResult};
+use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -270,7 +270,7 @@ crate enum ParseResult<T> {
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
     Failure(Token, &'static str),
     /// Fatal error (malformed macro?). Abort compilation.
-    Error(syntax_pos::Span, String),
+    Error(rustc_span::Span, String),
 }
 
 /// A `ParseResult` where the `Success` variant contains a mapping of `Ident`s to `NamedMatch`es.
@@ -369,7 +369,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
         m: &TokenTree,
         res: &mut I,
         ret_val: &mut FxHashMap<Ident, NamedMatch>,
-    ) -> Result<(), (syntax_pos::Span, String)> {
+    ) -> Result<(), (rustc_span::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {

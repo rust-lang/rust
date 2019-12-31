@@ -266,7 +266,7 @@ where
     ) -> Ty<'tcx> {
         use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
         use crate::traits::WhereClause;
-        use syntax_pos::DUMMY_SP;
+        use rustc_span::DUMMY_SP;
 
         match value_ty.kind {
             ty::Projection(other_projection_ty) => {

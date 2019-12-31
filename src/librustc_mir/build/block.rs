@@ -4,7 +4,7 @@ use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
 use rustc::hir;
 use rustc::mir::*;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn ast_block(

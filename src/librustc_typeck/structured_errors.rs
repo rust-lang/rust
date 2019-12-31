@@ -1,7 +1,7 @@
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::session::Session;
 use rustc::ty::{Ty, TypeFoldable};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use rustc_error_codes::*;
 

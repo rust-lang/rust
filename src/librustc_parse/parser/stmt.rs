@@ -7,14 +7,14 @@ use crate::maybe_whole;
 use crate::DirectoryOwnership;
 
 use rustc_errors::{Applicability, PResult};
+use rustc_span::source_map::{respan, Span};
+use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast;
 use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle, VisibilityKind};
 use syntax::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
 use syntax::ptr::P;
 use syntax::token;
 use syntax::util::classify;
-use syntax_pos::source_map::{respan, Span};
-use syntax_pos::symbol::{kw, sym, Symbol};
 
 use std::mem;
 

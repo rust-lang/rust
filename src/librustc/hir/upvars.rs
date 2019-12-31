@@ -6,7 +6,7 @@ use crate::hir::{self, HirId};
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.upvars = |tcx, def_id| {

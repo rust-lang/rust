@@ -11,7 +11,7 @@ use log::debug;
 use rustc_codegen_ssa::traits::*;
 
 use libc::c_uint;
-use syntax_pos::{Pos, Span};
+use rustc_span::{Pos, Span};
 
 /// Sets the current debug location at the beginning of the span.
 ///

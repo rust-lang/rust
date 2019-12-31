@@ -4,7 +4,7 @@ use std::iter::once;
 use std::ops::Range;
 
 use rustc_lexer::unescape::{EscapeError, Mode};
-use syntax_pos::{BytePos, Span};
+use rustc_span::{BytePos, Span};
 
 use syntax::errors::{Applicability, Handler};
 

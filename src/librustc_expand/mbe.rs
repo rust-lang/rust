@@ -13,7 +13,7 @@ use syntax::ast;
 use syntax::token::{self, Token, TokenKind};
 use syntax::tokenstream::DelimSpan;
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use rustc_data_structures::sync::Lrc;
 

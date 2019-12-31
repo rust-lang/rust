@@ -9,7 +9,7 @@
 
 // FIXME: spec the JSON output properly.
 
-use syntax_pos::source_map::{FilePathMapping, SourceMap};
+use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
@@ -17,11 +17,11 @@ use crate::{Applicability, DiagnosticId};
 use crate::{CodeSuggestion, SubDiagnostic};
 
 use rustc_data_structures::sync::Lrc;
+use rustc_span::{MacroBacktrace, MultiSpan, Span, SpanLabel};
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::vec;
-use syntax_pos::{MacroBacktrace, MultiSpan, Span, SpanLabel};
 
 use rustc_serialize::json::{as_json, as_pretty_json};
 
@@ -378,7 +378,7 @@ impl DiagnosticSpan {
 
 impl DiagnosticSpanLine {
     fn line_from_source_file(
-        fm: &syntax_pos::SourceFile,
+        fm: &rustc_span::SourceFile,
         index: usize,
         h_start: usize,
         h_end: usize,

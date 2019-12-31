@@ -4,11 +4,11 @@ use crate::parse_in;
 
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_span::{sym, Symbol};
 use syntax::ast::{self, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
 use syntax::early_buffered_lints::ILL_FORMED_ATTRIBUTE_INPUT;
 use syntax::sess::ParseSess;
 use syntax::tokenstream::DelimSpan;
-use syntax_pos::{sym, Symbol};
 
 pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() {

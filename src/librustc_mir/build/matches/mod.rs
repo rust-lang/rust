@@ -17,9 +17,9 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
+use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 use syntax::ast::Name;
-use syntax_pos::Span;
 
 // helper functions, broken out by category:
 mod simplify;

@@ -32,11 +32,11 @@ use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
+use rustc_span::hygiene::MacroKind;
+use rustc_span::Span;
 use syntax::ast;
 use syntax::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use syntax::symbol::Symbol;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::Span;
 
 pub use crate::lint::context::{
     check_ast_crate, check_crate, late_lint_mod, BufferedEarlyLint, CheckLintNameResult,

@@ -8,8 +8,8 @@ use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Decoder, Encodable, Encoder};
+use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
-use syntax_pos::{Span, DUMMY_SP};
 
 use core::intrinsics;
 use std::cmp::Ordering;

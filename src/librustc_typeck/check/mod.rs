@@ -118,6 +118,8 @@ use rustc::ty::{
     ToPredicate, Ty, TyCtxt, UserType,
 };
 use rustc_index::vec::Idx;
+use rustc_span::hygiene::DesugaringKind;
+use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
@@ -125,8 +127,6 @@ use syntax::feature_gate::feature_err;
 use syntax::source_map::{original_sp, DUMMY_SP};
 use syntax::symbol::{kw, sym, Ident};
 use syntax::util::parser::ExprPrecedence;
-use syntax_pos::hygiene::DesugaringKind;
-use syntax_pos::{self, BytePos, MultiSpan, Span};
 
 use rustc_error_codes::*;
 
@@ -3354,7 +3354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         debug!("fallback_if_possible: defaulting `{:?}` to `{:?}`", ty, fallback);
-        self.demand_eqtype(syntax_pos::DUMMY_SP, ty, fallback);
+        self.demand_eqtype(rustc_span::DUMMY_SP, ty, fallback);
         true
     }
 
@@ -4414,7 +4414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// if false { return 0i32; } else { 1u32 }
     /// //                               ^^^^ point at this instead of the whole `if` expression
     /// ```
-    fn get_expr_coercion_span(&self, expr: &hir::Expr<'_>) -> syntax_pos::Span {
+    fn get_expr_coercion_span(&self, expr: &hir::Expr<'_>) -> rustc_span::Span {
         if let hir::ExprKind::Match(_, arms, _) = &expr.kind {
             let arm_spans: Vec<Span> = arms
                 .iter()

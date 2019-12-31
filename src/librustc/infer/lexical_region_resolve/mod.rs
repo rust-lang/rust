@@ -21,8 +21,8 @@ use rustc_data_structures::graph::implementation::{
 };
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::Span;
 use std::fmt;
-use syntax_pos::Span;
 
 mod graphviz;
 

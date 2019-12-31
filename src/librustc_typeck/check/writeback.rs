@@ -14,8 +14,8 @@ use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
+use rustc_span::Span;
 use syntax::symbol::sym;
-use syntax_pos::Span;
 
 use std::mem;
 

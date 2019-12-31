@@ -10,13 +10,13 @@
 use errors::DiagnosticBuilder;
 
 use rustc_expand::base::{self, *};
+use rustc_span::Span;
 use smallvec::smallvec;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::source_map::respan;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
-use syntax_pos::Span;
 
 pub fn expand_global_asm<'cx>(
     cx: &'cx mut ExtCtxt<'_>,

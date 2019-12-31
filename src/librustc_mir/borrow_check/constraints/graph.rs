@@ -2,7 +2,7 @@ use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph;
 use rustc_index::vec::IndexVec;
-use syntax_pos::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use crate::borrow_check::{
     constraints::OutlivesConstraintIndex,

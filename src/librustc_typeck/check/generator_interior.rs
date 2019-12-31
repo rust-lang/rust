@@ -11,7 +11,7 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::{self, Expr, ExprKind, Pat, PatKind};
 use rustc::middle::region::{self, YieldData};
 use rustc::ty::{self, Ty};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -30,7 +30,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
         expr: Option<&'tcx Expr<'tcx>>,
         source_span: Span,
     ) {
-        use syntax_pos::DUMMY_SP;
+        use rustc_span::DUMMY_SP;
 
         debug!(
             "generator_interior: attempting to record type {:?} {:?} {:?} {:?}",

@@ -8,7 +8,7 @@ use rustc::middle::region;
 use rustc::mir::interpret::PanicInfo::BoundsCheck;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use rustc_index::vec::Idx;
 

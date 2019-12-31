@@ -16,7 +16,7 @@ use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use crate::borrow_check::{
     constraints::{

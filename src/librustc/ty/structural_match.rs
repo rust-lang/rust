@@ -5,7 +5,7 @@ use rustc::traits::{self, ConstPatternStructural, TraitEngine};
 
 use rustc_data_structures::fx::FxHashSet;
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::{self, AdtDef, Ty, TyCtxt};

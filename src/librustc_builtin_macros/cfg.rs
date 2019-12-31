@@ -4,11 +4,11 @@
 use errors::DiagnosticBuilder;
 
 use rustc_expand::base::{self, *};
+use rustc_span::Span;
 use syntax::ast;
 use syntax::attr;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
-use syntax_pos::Span;
 
 pub fn expand_cfg(
     cx: &mut ExtCtxt<'_>,

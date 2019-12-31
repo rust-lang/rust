@@ -8,7 +8,7 @@ use syntax::symbol::kw;
 use syntax::token::{self, Token};
 use syntax::tokenstream;
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use rustc_data_structures::sync::Lrc;
 

@@ -35,9 +35,9 @@ use rustc_codegen_ssa::back::write::submit_codegened_module_to_llvm;
 use rustc_codegen_ssa::traits::*;
 
 use rustc::hir::CodegenFnAttrs;
+use rustc_span::symbol::Symbol;
 use std::ffi::CString;
 use std::time::Instant;
-use syntax_pos::symbol::Symbol;
 
 use crate::value::Value;
 

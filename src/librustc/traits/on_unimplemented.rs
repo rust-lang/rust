@@ -5,10 +5,10 @@ use crate::ty::{self, GenericParamDefKind, TyCtxt};
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 
+use rustc_span::Span;
 use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;
 use syntax::symbol::{kw, sym, Symbol};
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

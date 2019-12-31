@@ -14,12 +14,12 @@ use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::HirIdMap;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 use std::u32;
 use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::kw;
-use syntax_pos::Span;
 
 use super::lints;
 

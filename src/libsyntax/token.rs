@@ -9,8 +9,8 @@ use crate::ptr::P;
 use crate::symbol::kw;
 use crate::tokenstream::TokenTree;
 
-use syntax_pos::symbol::Symbol;
-use syntax_pos::{self, Span, DUMMY_SP};
+use rustc_span::symbol::Symbol;
+use rustc_span::{self, Span, DUMMY_SP};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;

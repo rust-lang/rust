@@ -6,7 +6,7 @@ use syntax::ptr::P;
 use syntax::source_map::{respan, Spanned};
 use syntax::symbol::{kw, sym, Symbol};
 
-use syntax_pos::{Pos, Span};
+use rustc_span::{Pos, Span};
 
 impl<'a> ExtCtxt<'a> {
     pub fn path(&self, span: Span, strs: Vec<ast::Ident>) -> ast::Path {

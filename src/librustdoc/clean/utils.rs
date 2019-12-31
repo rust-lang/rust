@@ -16,9 +16,9 @@ use rustc::mir::interpret::{sign_extend, ConstValue, Scalar};
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::{self, DefIdTree, Ty};
 use rustc::util::nodemap::FxHashSet;
+use rustc_span;
+use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
-use syntax_pos;
-use syntax_pos::symbol::{kw, sym, Symbol};
 
 pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
@@ -399,7 +399,7 @@ pub trait ToSource {
     fn to_src(&self, cx: &DocContext<'_>) -> String;
 }
 
-impl ToSource for syntax_pos::Span {
+impl ToSource for rustc_span::Span {
     fn to_src(&self, cx: &DocContext<'_>) -> String {
         debug!("converting span {:?} to snippet", self.clean(cx));
         let sn = match cx.sess().source_map().span_to_snippet(*self) {

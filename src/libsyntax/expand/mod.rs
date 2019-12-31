@@ -1,7 +1,7 @@
 //! Definitions shared by macros / syntax extensions and e.g. librustc.
 
 use crate::ast::Attribute;
-use syntax_pos::symbol::sym;
+use rustc_span::symbol::sym;
 
 pub mod allocator;
 

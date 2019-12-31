@@ -65,12 +65,12 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut};
+use rustc_span;
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 use syntax::feature_gate;
 use syntax::symbol::sym;
-use syntax_pos;
 
 use rustc_error_codes::*;
 
@@ -826,7 +826,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::can({:?} -> {:?})", source, target);
 
-        let cause = self.cause(syntax_pos::DUMMY_SP, ObligationCauseCode::ExprAssignable);
+        let cause = self.cause(rustc_span::DUMMY_SP, ObligationCauseCode::ExprAssignable);
         // We don't ever need two-phase here since we throw out the result of the coercion
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
         self.probe(|_| coerce.coerce(source, target)).is_ok()

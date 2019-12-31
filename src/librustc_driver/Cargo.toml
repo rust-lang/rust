@@ -31,7 +31,7 @@ rustc_interface = { path = "../librustc_interface" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_resolve = { path = "../librustc_resolve" }
 syntax = { path = "../libsyntax" }
-syntax_pos = { path = "../librustc_span", package = "rustc_span" }
+rustc_span = { path = "../librustc_span" }
 
 [features]
 llvm = ['rustc_interface/llvm']

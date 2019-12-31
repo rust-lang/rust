@@ -1,10 +1,10 @@
 use rustc_expand::base::{self, *};
+use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::token::{self, Token};
 use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax_pos::symbol::Symbol;
-use syntax_pos::Span;
 
 pub fn expand_concat_idents<'cx>(
     cx: &'cx mut ExtCtxt<'_>,

@@ -17,7 +17,7 @@ use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use rustc_error_codes::*;
 

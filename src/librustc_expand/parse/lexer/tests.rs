@@ -1,12 +1,12 @@
 use rustc_data_structures::sync::Lrc;
 use rustc_parse::lexer::StringReader;
+use rustc_span::symbol::Symbol;
+use rustc_span::{BytePos, Span};
 use syntax::sess::ParseSess;
 use syntax::source_map::{FilePathMapping, SourceMap};
 use syntax::token::{self, Token, TokenKind};
 use syntax::util::comments::is_doc_comment;
 use syntax::with_default_globals;
-use syntax_pos::symbol::Symbol;
-use syntax_pos::{BytePos, Span};
 
 use errors::{emitter::EmitterWriter, Handler};
 use std::io;

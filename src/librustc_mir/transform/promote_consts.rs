@@ -19,9 +19,9 @@ use rustc::mir::*;
 use rustc::ty::cast::CastTy;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, List, TyCtxt, TypeFoldable};
+use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::LitKind;
 use syntax::symbol::sym;
-use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::spec::abi::Abi;

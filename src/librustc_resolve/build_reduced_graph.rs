@@ -31,6 +31,8 @@ use errors::Applicability;
 
 use rustc_expand::base::SyntaxExtension;
 use rustc_expand::expand::AstFragment;
+use rustc_span::hygiene::{ExpnId, MacroKind};
+use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use syntax::ast::{Ident, Name};
@@ -40,8 +42,6 @@ use syntax::span_err;
 use syntax::symbol::{kw, sym};
 use syntax::token::{self, Token};
 use syntax::visit::{self, Visitor};
-use syntax_pos::hygiene::{ExpnId, MacroKind};
-use syntax_pos::{Span, DUMMY_SP};
 
 use log::debug;
 

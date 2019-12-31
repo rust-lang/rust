@@ -4,8 +4,8 @@
 
 use log::debug;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_span::Span;
 use std::sync::{Arc, Mutex};
-use syntax_pos::Span;
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum CguReuse {

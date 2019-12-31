@@ -57,7 +57,7 @@ use rustc::ty::adjustment;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use rustc_data_structures::fx::FxIndexMap;
 
