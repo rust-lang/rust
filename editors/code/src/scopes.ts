@@ -3,28 +3,14 @@ import * as jsonc from 'jsonc-parser';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-export interface TextMateRule {
-    scope: string | string[];
-    settings: TextMateRuleSettings;
-}
-
 export interface TextMateRuleSettings {
-    foreground: string | undefined;
-    background: string | undefined;
-    fontStyle: string | undefined;
-}
-
-// Current theme colors
-const rules = new Map<string, TextMateRuleSettings>();
-
-export function find(scope: string): TextMateRuleSettings | undefined {
-    return rules.get(scope);
+    foreground?: string;
+    background?: string;
+    fontStyle?: string;
 }
 
 // Load all textmate scopes in the currently active theme
-export function load() {
-    // Remove any previous theme
-    rules.clear();
+export function loadThemeColors(): Map<string, TextMateRuleSettings> {
     // Find out current color theme
     const themeName = vscode.workspace
         .getConfiguration('workbench')
@@ -32,115 +18,91 @@ export function load() {
 
     if (typeof themeName !== 'string') {
         // console.warn('workbench.colorTheme is', themeName)
-        return;
+        return new Map();
     }
-    // Try to load colors from that theme
+    return loadThemeNamed(themeName);
+}
+
+function loadThemeNamed(themeName: string): Map<string, TextMateRuleSettings> {
+    function isTheme(extension: vscode.Extension<any>): boolean {
+        return (
+            extension.extensionKind === vscode.ExtensionKind.UI &&
+            extension.packageJSON.contributes &&
+            extension.packageJSON.contributes.themes
+        );
+    }
+
+    let themePaths = vscode.extensions.all
+        .filter(isTheme)
+        .flatMap(ext => {
+            return ext.packageJSON.contributes.themes
+                .filter((it: any) => (it.id || it.label) === themeName)
+                .map((it: any) => path.join(ext.extensionPath, it.path));
+        })
+
+    const res = new Map();
+    for (const themePath of themePaths) {
+        mergeInto(res, loadThemeFile(themePath))
+    }
+
+    const customizations: any = vscode.workspace.getConfiguration('editor').get('tokenColorCustomizations');
+    mergeInto(res, loadColors(customizations?.textMateRules ?? []))
+
+    return res;
+}
+
+function loadThemeFile(themePath: string): Map<string, TextMateRuleSettings> {
+    let text;
     try {
-        loadThemeNamed(themeName);
-    } catch (e) {
-        // console.warn('failed to load theme', themeName, e)
+        text = fs.readFileSync(themePath, 'utf8')
+    } catch {
+        return new Map();
     }
+    const obj = jsonc.parse(text);
+    const tokenColors = obj?.tokenColors ?? [];
+    const res = loadColors(tokenColors);
+
+    for (const include in obj?.include ?? []) {
+        const includePath = path.join(path.dirname(themePath), include);
+        const tmp = loadThemeFile(includePath);
+        mergeInto(res, tmp);
+    }
+
+    return res;
 }
 
-function filterThemeExtensions(extension: vscode.Extension<any>): boolean {
-    return (
-        extension.extensionKind === vscode.ExtensionKind.UI &&
-        extension.packageJSON.contributes &&
-        extension.packageJSON.contributes.themes
-    );
+interface TextMateRule {
+    scope: string | string[];
+    settings: TextMateRuleSettings;
 }
 
-// Find current theme on disk
-function loadThemeNamed(themeName: string) {
-    const themePaths = vscode.extensions.all
-        .filter(filterThemeExtensions)
-        .reduce((list, extension) => {
-            return extension.packageJSON.contributes.themes
-                .filter(
-                    (element: any) =>
-                        (element.id || element.label) === themeName,
-                )
-                .map((element: any) =>
-                    path.join(extension.extensionPath, element.path),
-                )
-                .concat(list);
-        }, Array<string>());
-
-    themePaths.forEach(loadThemeFile);
-
-    const tokenColorCustomizations: [any] = [
-        vscode.workspace
-            .getConfiguration('editor')
-            .get('tokenColorCustomizations'),
-    ];
-
-    tokenColorCustomizations
-        .filter(custom => custom && custom.textMateRules)
-        .map(custom => custom.textMateRules)
-        .forEach(loadColors);
-}
-
-function loadThemeFile(themePath: string) {
-    const themeContent = [themePath]
-        .filter(isFile)
-        .map(readFileText)
-        .map(parseJSON)
-        .filter(theme => theme);
-
-    themeContent
-        .filter(theme => theme.tokenColors)
-        .map(theme => theme.tokenColors)
-        .forEach(loadColors);
-
-    themeContent
-        .filter(theme => theme.include)
-        .map(theme => path.join(path.dirname(themePath), theme.include))
-        .forEach(loadThemeFile);
+function loadColors(textMateRules: TextMateRule[]): Map<string, TextMateRuleSettings> {
+    const res = new Map();
+    for (const rule of textMateRules) {
+        const scopes = typeof rule.scope === 'string'
+            ? [rule.scope]
+            : rule.scope;
+        for (const scope of scopes) {
+            res.set(scope, rule.settings)
+        }
+    }
+    return res
 }
 
 function mergeRuleSettings(
     defaultSetting: TextMateRuleSettings | undefined,
     override: TextMateRuleSettings,
 ): TextMateRuleSettings {
-    if (defaultSetting === undefined) {
-        return override;
+    return {
+        foreground: defaultSetting?.foreground ?? override.foreground,
+        background: defaultSetting?.background ?? override.background,
+        fontStyle: defaultSetting?.fontStyle ?? override.fontStyle,
     }
-    const mergedRule = defaultSetting;
-
-    mergedRule.background = override.background || defaultSetting.background;
-    mergedRule.foreground = override.foreground || defaultSetting.foreground;
-    mergedRule.fontStyle = override.fontStyle || defaultSetting.foreground;
-
-    return mergedRule;
 }
 
-function updateRules(
-    scope: string,
-    updatedSettings: TextMateRuleSettings,
-): void {
-    [rules.get(scope)]
-        .map(settings => mergeRuleSettings(settings, updatedSettings))
-        .forEach(settings => rules.set(scope, settings));
-}
-
-function loadColors(textMateRules: TextMateRule[]): void {
-    textMateRules.forEach(rule => {
-        if (typeof rule.scope === 'string') {
-            updateRules(rule.scope, rule.settings);
-        } else if (rule.scope instanceof Array) {
-            rule.scope.forEach(scope => updateRules(scope, rule.settings));
-        }
-    });
-}
-
-function isFile(filePath: string): boolean {
-    return [filePath].map(fs.statSync).every(stat => stat.isFile());
-}
-
-function readFileText(filePath: string): string {
-    return fs.readFileSync(filePath, 'utf8');
-}
-
-function parseJSON(content: string): any {
-    return jsonc.parse(content);
+function mergeInto(dst: Map<string, TextMateRuleSettings>, addition: Map<string, TextMateRuleSettings>) {
+    addition.forEach((value, key) => {
+        const merged = mergeRuleSettings(dst.get(key), value)
+        dst.set(key, merged)
+    })
 }
