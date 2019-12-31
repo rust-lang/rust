@@ -1345,10 +1345,11 @@ impl<'a> Parser<'a> {
             body
         } else {
             let token_str = super::token_descr(&self.token);
-            let mut err = self.fatal(&format!(
+            let msg = &format!(
                 "expected `where`, `{{`, `(`, or `;` after struct name, found {}",
                 token_str
-            ));
+            );
+            let mut err = self.struct_span_err(self.token.span, msg);
             err.span_label(self.token.span, "expected `where`, `{`, `(`, or `;` after struct name");
             return Err(err);
         };
@@ -1371,8 +1372,8 @@ impl<'a> Parser<'a> {
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
-            let mut err = self
-                .fatal(&format!("expected `where` or `{{` after union name, found {}", token_str));
+            let msg = &format!("expected `where` or `{{` after union name, found {}", token_str);
+            let mut err = self.struct_span_err(self.token.span, msg);
             err.span_label(self.token.span, "expected `where` or `{` after union name");
             return Err(err);
         };
@@ -1408,10 +1409,8 @@ impl<'a> Parser<'a> {
             self.eat(&token::CloseDelim(token::Brace));
         } else {
             let token_str = super::token_descr(&self.token);
-            let mut err = self.fatal(&format!(
-                "expected `where`, or `{{` after struct name, found {}",
-                token_str
-            ));
+            let msg = &format!("expected `where`, or `{{` after struct name, found {}", token_str);
+            let mut err = self.struct_span_err(self.token.span, msg);
             err.span_label(self.token.span, "expected `where`, or `{` after struct name");
             return Err(err);
         }
