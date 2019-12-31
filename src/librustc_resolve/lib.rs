@@ -30,6 +30,7 @@ use rustc::lint;
 use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::session::Session;
 use rustc::span_bug;
+use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
 
@@ -74,6 +75,7 @@ mod def_collector;
 mod diagnostics;
 mod imports;
 mod late;
+mod lifetimes;
 mod macros;
 
 enum Weak {
@@ -3088,4 +3090,8 @@ impl CrateLint {
             | CrateLint::QPathTrait { qpath_id: id, .. } => Some(id),
         }
     }
+}
+
+pub fn provide(providers: &mut Providers<'_>) {
+    lifetimes::provide(providers);
 }
