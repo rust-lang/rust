@@ -113,7 +113,7 @@ fn extend_tokens_from_range(
 ) -> Option<TextRange> {
     let analyzer = hir::SourceAnalyzer::new(db, root.clone(), None);
     let expansion = analyzer.expand(db, root.with_value(&macro_call))?;
-    
+
     // compute original mapped token range
     let range = macro_call
         .syntax()
