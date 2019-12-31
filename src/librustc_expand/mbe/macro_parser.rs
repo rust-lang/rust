@@ -890,12 +890,12 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
     Ok(match name {
         sym::item => match p.parse_item()? {
             Some(i) => token::NtItem(i),
-            None => return Err(p.fatal("expected an item keyword")),
+            None => return Err(p.struct_span_err(p.token.span, "expected an item keyword")),
         },
         sym::block => token::NtBlock(p.parse_block()?),
         sym::stmt => match p.parse_stmt()? {
             Some(s) => token::NtStmt(s),
-            None => return Err(p.fatal("expected a statement")),
+            None => return Err(p.struct_span_err(p.token.span, "expected a statement")),
         },
         sym::pat => token::NtPat(p.parse_pat(None)?),
         sym::expr => token::NtExpr(p.parse_expr()?),
@@ -909,7 +909,8 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
                 token::NtIdent(Ident::new(name, span), is_raw)
             } else {
                 let token_str = pprust::token_to_string(&p.token);
-                return Err(p.fatal(&format!("expected ident, found {}", &token_str)));
+                let msg = &format!("expected ident, found {}", &token_str);
+                return Err(p.struct_span_err(p.token.span, msg));
             }
         }
         sym::path => token::NtPath(p.parse_path(PathStyle::Type)?),
@@ -920,7 +921,8 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
                 token::NtLifetime(p.expect_lifetime().ident)
             } else {
                 let token_str = pprust::token_to_string(&p.token);
-                return Err(p.fatal(&format!("expected a lifetime, found `{}`", &token_str)));
+                let msg = &format!("expected a lifetime, found `{}`", &token_str);
+                return Err(p.struct_span_err(p.token.span, msg));
             }
         }
         // this is not supposed to happen, since it has been checked

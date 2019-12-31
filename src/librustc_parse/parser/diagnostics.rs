@@ -157,10 +157,6 @@ crate enum ConsumeClosingDelim {
 }
 
 impl<'a> Parser<'a> {
-    pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
-        self.sess.span_diagnostic.struct_span_fatal(self.token.span, m)
-    }
-
     pub(super) fn span_fatal_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -290,7 +286,7 @@ impl<'a> Parser<'a> {
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
-        let mut err = self.fatal(&msg_exp);
+        let mut err = self.struct_span_err(self.token.span, &msg_exp);
         let sp = if self.token == token::Eof {
             // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_span
@@ -1261,7 +1257,8 @@ impl<'a> Parser<'a> {
 
     pub(super) fn expected_semi_or_open_brace<T>(&mut self) -> PResult<'a, T> {
         let token_str = super::token_descr(&self.token);
-        let mut err = self.fatal(&format!("expected `;` or `{{`, found {}", token_str));
+        let msg = &format!("expected `;` or `{{`, found {}", token_str);
+        let mut err = self.struct_span_err(self.token.span, msg);
         err.span_label(self.token.span, "expected `;` or `{`");
         Err(err)
     }
