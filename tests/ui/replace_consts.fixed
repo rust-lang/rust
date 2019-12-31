@@ -75,6 +75,12 @@ fn good() {
     { let foo = u32::max_value(); };
     { let foo = u64::max_value(); };
     { let foo = u128::max_value(); };
+
+    let _ = match 42 {
+        std::i8::MIN => -1,
+        1..=std::i8::MAX => 1,
+        _ => 0
+    };
 }
 
 fn main() {

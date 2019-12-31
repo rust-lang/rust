@@ -1,8 +1,8 @@
 use crate::utils::{match_def_path, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
+use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
@@ -34,11 +34,26 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ReplaceConsts => [REPLACE_CONSTS]);
 
+fn in_pattern(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+    let map = &cx.tcx.hir();
+    let parent_id = map.get_parent_node(expr.hir_id);
+
+    if let Some(node) = map.find(parent_id) {
+        if let Node::Pat(_) = node {
+            return true;
+        }
+    }
+
+    false
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let hir::ExprKind::Path(ref qp) = expr.kind;
+            if let ExprKind::Path(ref qp) = expr.kind;
             if let Res::Def(DefKind::Const, def_id) = cx.tables.qpath_res(qp, expr.hir_id);
+            // Do not lint within patterns as function calls are disallowed in them
+            if !in_pattern(cx, expr);
             then {
                 for &(ref const_path, repl_snip) in &REPLACEMENTS {
                     if match_def_path(cx, def_id, const_path) {
