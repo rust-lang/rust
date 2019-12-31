@@ -1003,11 +1003,19 @@ inline section_iterator *unwrap(LLVMSectionIteratorRef SI) {
 
 extern "C" size_t LLVMRustGetSectionName(LLVMSectionIteratorRef SI,
                                          const char **Ptr) {
+#if LLVM_VERSION_GE(10, 0)
+  auto NameOrErr = (*unwrap(SI))->getName();
+  if (!NameOrErr)
+    report_fatal_error(NameOrErr.takeError());
+  *Ptr = NameOrErr->data();
+  return NameOrErr->size();
+#else
   StringRef Ret;
   if (std::error_code EC = (*unwrap(SI))->getName(Ret))
     report_fatal_error(EC.message());
   *Ptr = Ret.data();
   return Ret.size();
+#endif
 }
 
 // LLVMArrayType function does not support 64-bit ElementCount
