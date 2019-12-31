@@ -382,30 +382,10 @@ fn temporal_order(ctx: &Context, src: Inst, dest: Inst) -> TemporalOrder {
     debug_assert_ne!(src, dest);
 
     if ctx.domtree.dominates(src, dest, &ctx.func.layout) {
-        return TemporalOrder::DefinitivelyBefore;
+        TemporalOrder::DefinitivelyBefore
     } else if ctx.domtree.dominates(src, dest, &ctx.func.layout) {
-        return TemporalOrder::NeverBefore;
+        TemporalOrder::NeverBefore
+    } else {
+        TemporalOrder::MaybeBefore
     }
-
-    let src_ebb = ctx.func.layout.inst_ebb(src).unwrap();
-    let dest_ebb = ctx.func.layout.inst_ebb(dest).unwrap();
-
-    // FIXME O(stack_load count * ebb count)
-    // FIXME reuse memory allocations
-    let mut visited = EntitySet::new();
-    let mut todo = EntitySet::new();
-    todo.insert(dest_ebb);
-    while let Some(ebb) = todo.pop() {
-        if visited.contains(ebb) {
-            continue;
-        }
-        visited.insert(ebb);
-        if ebb == src_ebb {
-            return TemporalOrder::MaybeBefore;
-        }
-        for bb in ctx.cfg.pred_iter(ebb) {
-            todo.insert(bb.ebb);
-        }
-    }
-    TemporalOrder::NeverBefore
 }
