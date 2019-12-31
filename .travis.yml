@@ -82,22 +82,22 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=hyperium/hyper
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    - env: INTEGRATION=bluss/rust-itertools
+    - env: INTEGRATION=rust-itertools/itertools
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     # FIXME: rustc ICE on `serde_test_suite`
     # - env: INTEGRATION=serde-rs/serde
     #   if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    - env: INTEGRATION=rust-lang-nursery/stdsimd
+    - env: INTEGRATION=rust-lang/stdarch
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-random/rand
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    - env: INTEGRATION=rust-lang-nursery/futures-rs
+    - env: INTEGRATION=rust-lang/futures-rs
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=Marwes/combine
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/failure
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    - env: INTEGRATION=rust-lang-nursery/log
+    - env: INTEGRATION=rust-lang/log
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=chronotope/chrono
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
