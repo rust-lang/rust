@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
             // Remember for each inherent implementation encoutered its span and generics
             // but filter out implementations that have generic params (type or lifetime)
             // or are derived from a macro
-            if !in_macro(item.span) && generics.params.len() == 0 {
+            if !in_macro(item.span) && generics.params.is_empty() {
                 self.impls.insert(item.hir_id.owner_def_id(), item.span);
             }
         }
