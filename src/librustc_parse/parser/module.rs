@@ -81,7 +81,8 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(&items) {
-                let mut err = self.fatal(&format!("expected item, found {}", token_str));
+                let msg = &format!("expected item, found {}", token_str);
+                let mut err = self.struct_span_err(self.token.span, msg);
                 err.span_label(self.token.span, "expected item");
                 return Err(err);
             }
