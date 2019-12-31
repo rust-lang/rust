@@ -398,10 +398,7 @@ impl<'a> Parser<'a> {
                     self.maybe_annotate_with_ascription(&mut err, false);
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
-                    Some(self.mk_stmt(
-                        self.token.span,
-                        StmtKind::Expr(self.mk_expr_err(self.token.span)),
-                    ))
+                    Some(self.mk_stmt_err(self.token.span))
                 }
                 Ok(stmt) => stmt,
             };
@@ -478,5 +475,13 @@ impl<'a> Parser<'a> {
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
         Stmt { id: DUMMY_NODE_ID, kind, span }
+    }
+
+    fn mk_stmt_err(&self, span: Span) -> Stmt {
+        self.mk_stmt(span, StmtKind::Expr(self.mk_expr_err(span)))
+    }
+
+    pub(super) fn mk_block_err(&self, span: Span) -> P<Block> {
+        self.mk_block(vec![self.mk_stmt_err(span)], BlockCheckMode::Default, span)
     }
 }

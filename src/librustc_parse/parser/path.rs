@@ -406,9 +406,11 @@ impl<'a> Parser<'a> {
                     if self.token.is_bool_lit() {
                         self.parse_literal_maybe_minus()?
                     } else {
-                        return Err(
-                            self.fatal("identifiers may currently not be used for const generics")
-                        );
+                        let span = self.token.span;
+                        let msg = "identifiers may currently not be used for const generics";
+                        self.struct_span_err(span, msg).emit();
+                        let block = self.mk_block_err(span);
+                        self.mk_expr(span, ast::ExprKind::Block(block, None), ast::AttrVec::new())
                     }
                 } else {
                     self.parse_literal_maybe_minus()?

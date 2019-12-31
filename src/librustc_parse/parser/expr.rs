@@ -1450,9 +1450,7 @@ impl<'a> Parser<'a> {
         self.struct_span_err(sp, "missing condition for `if` expression")
             .span_label(sp, "expected if condition here")
             .emit();
-        let expr = self.mk_expr_err(span);
-        let stmt = self.mk_stmt(span, ast::StmtKind::Expr(expr));
-        self.mk_block(vec![stmt], BlockCheckMode::Default, span)
+        self.mk_block_err(span)
     }
 
     /// Parses the condition of a `if` or `while` expression.
