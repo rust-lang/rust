@@ -70,7 +70,7 @@ export class Ctx {
         await this.client.onReady();
         for (const delay of [2, 4, 6, 8, 10, null]) {
             try {
-                return await this.client.sendRequest(method, param, token);
+                return await (token ? this.client.sendRequest(method, param, token) : this.client.sendRequest(method, param));
             } catch (e) {
                 if (
                     e.code === lc.ErrorCodes.ContentModified &&
