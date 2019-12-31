@@ -1,7 +1,7 @@
 #![warn(clippy::use_self)]
 
 #[macro_use]
-#[path = "auxiliary/use_self_macro.rs"]
+#[path = "../auxiliary/use_self_macro.rs"]
 mod use_self_macro;
 
 struct Foo {
