@@ -102,8 +102,88 @@ pub struct ItemCtxt<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
+#[derive(Default)]
+crate struct PlaceholderHirTyCollector(crate Vec<Span>);
+
+impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+        NestedVisitorMap::None
+    }
+    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
+        if let hir::TyKind::Infer = t.kind {
+            self.0.push(t.span);
+        }
+        hir::intravisit::walk_ty(self, t)
+    }
+}
+
 struct CollectItemTypesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+}
+
+/// If there are any placeholder types (`_`), emit an error explaining that this is not allowed
+/// and suggest adding type parameters in the appropriate place, taking into consideration any and
+/// all already existing generic type parameters to avoid suggesting a name that is already in use.
+crate fn placeholder_type_error(
+    tcx: TyCtxt<'tcx>,
+    ident_span: Span,
+    generics: &[hir::GenericParam<'_>],
+    placeholder_types: Vec<Span>,
+    suggest: bool,
+) {
+    if placeholder_types.is_empty() {
+        return;
+    }
+    // This is the whitelist of possible parameter names that we might suggest.
+    let possible_names = ["T", "K", "L", "A", "B", "C"];
+    let used_names = generics
+        .iter()
+        .filter_map(|p| match p.name {
+            hir::ParamName::Plain(ident) => Some(ident.name),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    let type_name = possible_names
+        .iter()
+        .find(|n| !used_names.contains(&Symbol::intern(n)))
+        .unwrap_or(&"ParamName");
+
+    let mut sugg: Vec<_> =
+        placeholder_types.iter().map(|sp| (*sp, type_name.to_string())).collect();
+    if generics.is_empty() {
+        sugg.push((ident_span.shrink_to_hi(), format!("<{}>", type_name)));
+    } else {
+        sugg.push((
+            generics.iter().last().unwrap().span.shrink_to_hi(),
+            format!(", {}", type_name),
+        ));
+    }
+    let mut err = bad_placeholder_type(tcx, placeholder_types);
+    if suggest {
+        err.multipart_suggestion(
+            "use type parameters instead",
+            sugg,
+            Applicability::HasPlaceholders,
+        );
+    }
+    err.emit();
+}
+
+fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
+    let (generics, suggest) = match &item.kind {
+        hir::ItemKind::Union(_, generics)
+        | hir::ItemKind::Enum(_, generics)
+        | hir::ItemKind::Struct(_, generics) => (&generics.params[..], true),
+        hir::ItemKind::TyAlias(_, generics) => (&generics.params[..], false),
+        // `static`, `fn` and `const` are handled elsewhere to suggest appropriate type.
+        _ => return,
+    };
+
+    let mut visitor = PlaceholderHirTyCollector::default();
+    visitor.visit_item(item);
+
+    placeholder_type_error(tcx, item.ident.span, generics, visitor.0, suggest);
 }
 
 impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
@@ -113,6 +193,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         convert_item(self.tcx, item.hir_id);
+        reject_placeholder_type_signatures_in_item(self.tcx, item);
         intravisit::walk_item(self, item);
     }
 
@@ -157,15 +238,21 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Utility types and common code for the above passes.
 
-fn bad_placeholder_type(tcx: TyCtxt<'tcx>, span: Span) -> errors::DiagnosticBuilder<'tcx> {
-    let mut diag = struct_span_err!(
+fn bad_placeholder_type(
+    tcx: TyCtxt<'tcx>,
+    mut spans: Vec<Span>,
+) -> errors::DiagnosticBuilder<'tcx> {
+    spans.sort();
+    let mut err = struct_span_err!(
         tcx.sess,
-        span,
+        spans.clone(),
         E0121,
         "the type placeholder `_` is not allowed within types on item signatures",
     );
-    diag.span_label(span, "not allowed in type signatures");
-    diag
+    for span in spans {
+        err.span_label(span, "not allowed in type signatures");
+    }
+    err
 }
 
 impl ItemCtxt<'tcx> {
@@ -195,9 +282,12 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         None
     }
 
-    fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        bad_placeholder_type(self.tcx(), span).emit();
+    fn allow_ty_infer(&self) -> bool {
+        false
+    }
 
+    fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
+        self.tcx().sess.delay_span_bug(span, "bad placeholder type");
         self.tcx().types.err
     }
 
@@ -207,7 +297,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
-        bad_placeholder_type(self.tcx(), span).emit();
+        bad_placeholder_type(self.tcx(), vec![span]).emit();
 
         self.tcx().consts.err
     }
@@ -1132,7 +1222,7 @@ fn infer_placeholder_type(
     span: Span,
     item_ident: Ident,
 ) -> Ty<'_> {
-    let ty = tcx.typeck_tables_of(def_id).node_type(body_id.hir_id);
+    let ty = tcx.diagnostic_only_typeck_tables_of(def_id).node_type(body_id.hir_id);
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
@@ -1152,7 +1242,7 @@ fn infer_placeholder_type(
             .emit();
         }
         None => {
-            let mut diag = bad_placeholder_type(tcx, span);
+            let mut diag = bad_placeholder_type(tcx, vec![span]);
             if ty != tcx.types.err {
                 diag.span_suggestion(
                     span,
@@ -1183,7 +1273,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             TraitItemKind::Const(ref ty, body_id) => body_id
                 .and_then(|body_id| {
-                    if let hir::TyKind::Infer = ty.kind {
+                    if is_suggestable_infer_ty(ty) {
                         Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
                     } else {
                         None
@@ -1202,7 +1292,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 tcx.mk_fn_def(def_id, substs)
             }
             ImplItemKind::Const(ref ty, body_id) => {
-                if let hir::TyKind::Infer = ty.kind {
+                if is_suggestable_infer_ty(ty) {
                     infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                 } else {
                     icx.to_ty(ty)
@@ -1227,7 +1317,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::Item(item) => {
             match item.kind {
                 ItemKind::Static(ref ty, .., body_id) | ItemKind::Const(ref ty, body_id) => {
-                    if let hir::TyKind::Infer = ty.kind {
+                    if is_suggestable_infer_ty(ty) {
                         infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                     } else {
                         icx.to_ty(ty)
@@ -1699,9 +1789,20 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 }
 
+/// Whether `ty` is a type with `_` placeholders that can be infered. Used in diagnostics only to
+/// use inference to provide suggestions for the appropriate type if possible.
+fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
+    match &ty.kind {
+        hir::TyKind::Infer => true,
+        hir::TyKind::Slice(ty) | hir::TyKind::Array(ty, _) => is_suggestable_infer_ty(ty),
+        hir::TyKind::Tup(tys) => tys.iter().any(|ty| is_suggestable_infer_ty(ty)),
+        _ => false,
+    }
+}
+
 pub fn get_infer_ret_ty(output: &'hir hir::FunctionRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
     if let hir::FunctionRetTy::Return(ref ty) = output {
-        if let hir::TyKind::Infer = ty.kind {
+        if is_suggestable_infer_ty(ty) {
             return Some(&**ty);
         }
     }
@@ -1719,19 +1820,23 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Method(sig, TraitMethod::Provided(_)),
+            ident,
+            generics,
             ..
         })
-        | ImplItem(hir::ImplItem { kind: ImplItemKind::Method(sig, _), .. })
-        | Item(hir::Item { kind: ItemKind::Fn(sig, _, _), .. }) => {
+        | ImplItem(hir::ImplItem { kind: ImplItemKind::Method(sig, _), ident, generics, .. })
+        | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), ident, .. }) => {
             match get_infer_ret_ty(&sig.decl.output) {
                 Some(ty) => {
                     let fn_sig = tcx.typeck_tables_of(def_id).liberated_fn_sigs()[hir_id];
-                    let mut diag = bad_placeholder_type(tcx, ty.span);
+                    let mut visitor = PlaceholderHirTyCollector::default();
+                    visitor.visit_ty(ty);
+                    let mut diag = bad_placeholder_type(tcx, visitor.0);
                     let ret_ty = fn_sig.output();
                     if ret_ty != tcx.types.err {
                         diag.span_suggestion(
                             ty.span,
-                            "replace `_` with the correct return type",
+                            "replace with the correct return type",
                             ret_ty.to_string(),
                             Applicability::MaybeIncorrect,
                         );
@@ -1739,14 +1844,30 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     diag.emit();
                     ty::Binder::bind(fn_sig)
                 }
-                None => AstConv::ty_of_fn(&icx, sig.header.unsafety, sig.header.abi, &sig.decl),
+                None => AstConv::ty_of_fn(
+                    &icx,
+                    sig.header.unsafety,
+                    sig.header.abi,
+                    &sig.decl,
+                    &generics.params[..],
+                    Some(ident.span),
+                ),
             }
         }
 
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Method(FnSig { header, decl }, _),
+            ident,
+            generics,
             ..
-        }) => AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl),
+        }) => AstConv::ty_of_fn(
+            &icx,
+            header.unsafety,
+            header.abi,
+            decl,
+            &generics.params[..],
+            Some(ident.span),
+        ),
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(ref fn_decl, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
@@ -2351,7 +2472,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     } else {
         hir::Unsafety::Unsafe
     };
-    let fty = AstConv::ty_of_fn(&ItemCtxt::new(tcx, def_id), unsafety, abi, decl);
+    let fty = AstConv::ty_of_fn(&ItemCtxt::new(tcx, def_id), unsafety, abi, decl, &[], None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw

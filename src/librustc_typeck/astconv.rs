@@ -2,8 +2,10 @@
 //! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
 //! instance of `AstConv`.
 
+use crate::collect::PlaceholderHirTyCollector;
 use crate::hir::def::{CtorOf, DefKind, Res};
 use crate::hir::def_id::DefId;
+use crate::hir::intravisit::Visitor;
 use crate::hir::print;
 use crate::hir::{self, ExprKind, GenericArg, GenericArgs};
 use crate::lint;
@@ -64,6 +66,9 @@ pub trait AstConv<'tcx> {
 
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
+
+    /// Returns `true` if `_` is allowed in type signatures in the current context.
+    fn allow_ty_infer(&self) -> bool;
 
     /// Returns the const to use when a const is omitted.
     fn ct_infer(
@@ -2591,7 +2596,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::BareFn(ref bf) => {
                 require_c_abi_if_c_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-                tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl))
+                tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl, &[], None))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
@@ -2756,14 +2761,24 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         unsafety: hir::Unsafety,
         abi: abi::Abi,
         decl: &hir::FnDecl<'_>,
+        generic_params: &[hir::GenericParam<'_>],
+        ident_span: Option<Span>,
     ) -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
 
         let tcx = self.tcx();
-        let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
 
+        // We proactively collect all the infered type params to emit a single error per fn def.
+        let mut visitor = PlaceholderHirTyCollector::default();
+        for ty in decl.inputs {
+            visitor.visit_ty(ty);
+        }
+        let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
         let output_ty = match decl.output {
-            hir::Return(ref output) => self.ast_ty_to_ty(output),
+            hir::Return(ref output) => {
+                visitor.visit_ty(output);
+                self.ast_ty_to_ty(output)
+            }
             hir::DefaultReturn(..) => tcx.mk_unit(),
         };
 
@@ -2771,6 +2786,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let bare_fn_ty =
             ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi));
+
+        if !self.allow_ty_infer() {
+            // We always collect the spans for placeholder types when evaluating `fn`s, but we
+            // only want to emit an error complaining about them if infer types (`_`) are not
+            // allowed. `allow_ty_infer` gates this behavior.
+            crate::collect::placeholder_type_error(
+                tcx,
+                ident_span.unwrap_or(DUMMY_SP),
+                generic_params,
+                visitor.0,
+                ident_span.is_some(),
+            );
+        }
 
         // Find any late-bound regions declared in return type that do
         // not appear in the arguments. These are not well-formed.

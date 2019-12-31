@@ -398,6 +398,16 @@ rustc_queries! {
                 typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
             }
         }
+        query diagnostic_only_typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
+            cache_on_disk_if { key.is_local() }
+            load_cached(tcx, id) {
+                let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
+                    .queries.on_disk_cache
+                    .try_load_query_result(tcx, id);
+
+                typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
+            }
+        }
     }
 
     Other {
