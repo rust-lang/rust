@@ -52,14 +52,15 @@ class TextDocumentContentProvider
 
     async provideTextDocumentContent(_uri: vscode.Uri): Promise<string> {
         const editor = vscode.window.activeTextEditor;
-        if (editor == null) return '';
+        const client = this.ctx.client
+        if (!editor || !client) return '';
 
         const position = editor.selection.active;
         const request: lc.TextDocumentPositionParams = {
             textDocument: { uri: editor.document.uri.toString() },
             position,
         };
-        const expanded = await this.ctx.client.sendRequest<ExpandedMacro>(
+        const expanded = await client.sendRequest<ExpandedMacro>(
             'rust-analyzer/expandMacro',
             request,
         );

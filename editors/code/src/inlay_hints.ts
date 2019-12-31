@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
-import { Ctx } from './ctx';
+import { Ctx, sendRequestWithRetry } from './ctx';
 
 export function activateInlayHints(ctx: Ctx) {
     const hintsUpdater = new HintsUpdater(ctx);
@@ -19,9 +19,7 @@ export function activateInlayHints(ctx: Ctx) {
         hintsUpdater.setEnabled(ctx.config.displayInlayHints);
     }, ctx.subscriptions);
 
-    // XXX: don't await here;
-    // Who knows what happens if an exception is thrown here...
-    hintsUpdater.refresh();
+    ctx.onDidRestart(_ => hintsUpdater.setEnabled(ctx.config.displayInlayHints))
 }
 
 interface InlayHintsParams {
@@ -97,6 +95,8 @@ class HintsUpdater {
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
+        let client = this.ctx.client;
+        if (!client) return null
         const request: InlayHintsParams = {
             textDocument: { uri: documentUri },
         };
@@ -105,7 +105,8 @@ class HintsUpdater {
         if (prev) prev.cancel();
         this.pending.set(documentUri, tokenSource);
         try {
-            return await this.ctx.sendRequestWithRetry<InlayHint[] | null>(
+            return await sendRequestWithRetry<InlayHint[] | null>(
+                client,
                 'rust-analyzer/inlayHints',
                 request,
                 tokenSource.token,

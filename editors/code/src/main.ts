@@ -1,10 +1,8 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
-import { StatusDisplay } from './status_display';
-import { Server } from './server';
+import { activateStatusDisplay } from './status_display';
 import { Ctx } from './ctx';
 import { activateHighlighting } from './highlighting';
 
@@ -12,6 +10,17 @@ let ctx!: Ctx;
 
 export async function activate(context: vscode.ExtensionContext) {
     ctx = new Ctx(context);
+
+    // Note: we try to start the server before we register various commands, so
+    // that it registers its `onDidChangeDocument` handler before us.
+    //
+    // This a horribly, horribly wrong way to deal with this problem.
+    try {
+        await ctx.restartServer();
+    } catch (e) {
+        vscode.window.showErrorMessage(e.message);
+    }
+
 
     // Commands which invokes manually via command pallet, shortcut, etc.
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
@@ -22,6 +31,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
+    ctx.registerCommand('reload', commands.reload);
 
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);
@@ -31,48 +41,11 @@ export async function activate(context: vscode.ExtensionContext) {
     if (ctx.config.enableEnhancedTyping) {
         ctx.overrideCommand('type', commands.onEnter);
     }
-
-    const watchStatus = new StatusDisplay(ctx.config.cargoWatchOptions.command);
-    ctx.pushCleanup(watchStatus);
-
-    // Notifications are events triggered by the language server
-    const allNotifications: [string, lc.GenericNotificationHandler][] = [
-        [
-            '$/progress',
-            params => watchStatus.handleProgressNotification(params),
-        ],
-    ];
-
-    const startServer = () => Server.start(allNotifications);
-    const reloadCommand = () => reloadServer(startServer);
-
-    vscode.commands.registerCommand('rust-analyzer.reload', reloadCommand);
-
-    // Start the language server, finally!
-    try {
-        await startServer();
-    } catch (e) {
-        vscode.window.showErrorMessage(e.message);
-    }
-
+    activateStatusDisplay(ctx);
     activateHighlighting(ctx);
-
-    if (ctx.config.displayInlayHints) {
-        activateInlayHints(ctx);
-    }
+    activateInlayHints(ctx);
 }
 
-export function deactivate(): Thenable<void> {
-    if (!Server.client) {
-        return Promise.resolve();
-    }
-    return Server.client.stop();
-}
-
-async function reloadServer(startServer: () => Promise<void>) {
-    if (Server.client != null) {
-        vscode.window.showInformationMessage('Reloading rust-analyzer...');
-        await Server.client.stop();
-        await startServer();
-    }
+export async function deactivate() {
+    await ctx?.client?.stop();
 }
