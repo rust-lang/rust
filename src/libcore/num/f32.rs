@@ -62,7 +62,7 @@ pub const NAN: f32 = 0.0_f32 / 0.0_f32;
 /// Infinity (∞).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f32 = 1.0_f32 / 0.0_f32;
-/// Negative infinity (-∞).
+/// Negative infinity (−∞).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 

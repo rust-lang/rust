@@ -593,6 +593,12 @@ impl Options {
     }
 }
 
+impl DebuggingOptions {
+    pub fn ui_testing(&self) -> bool {
+        self.ui_testing.unwrap_or(false)
+    }
+}
+
 // The type of entry function, so users can have their own entry functions
 #[derive(Copy, Clone, PartialEq, Hash, Debug)]
 pub enum EntryFnType {
