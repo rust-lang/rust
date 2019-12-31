@@ -962,6 +962,15 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
         ExportedGUIDs.insert(GUID);
     }
   }
+#if LLVM_VERSION_GE(10, 0)
+  auto isExported = [&](StringRef ModuleIdentifier, ValueInfo VI) {
+    const auto &ExportList = Ret->ExportLists.find(ModuleIdentifier);
+    return (ExportList != Ret->ExportLists.end() &&
+      ExportList->second.count(VI)) ||
+      ExportedGUIDs.count(VI.getGUID());
+  };
+  thinLTOInternalizeAndPromoteInIndex(Ret->Index, isExported, isPrevailing);
+#else
   auto isExported = [&](StringRef ModuleIdentifier, GlobalValue::GUID GUID) {
     const auto &ExportList = Ret->ExportLists.find(ModuleIdentifier);
     return (ExportList != Ret->ExportLists.end() &&
@@ -969,6 +978,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
       ExportedGUIDs.count(GUID);
   };
   thinLTOInternalizeAndPromoteInIndex(Ret->Index, isExported);
+#endif
 
   return Ret.release();
 }
