@@ -411,6 +411,11 @@ impl Resolver {
         })
     }
 
+    pub fn module_id(&self) -> Option<ModuleId> {
+        let (def_map, local_id) = self.module()?;
+        Some(ModuleId { krate: def_map.krate, local_id })
+    }
+
     pub fn krate(&self) -> Option<CrateId> {
         self.module().map(|t| t.0.krate)
     }

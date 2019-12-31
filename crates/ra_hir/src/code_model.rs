@@ -227,6 +227,19 @@ impl Module {
     pub(crate) fn with_module_id(self, module_id: LocalModuleId) -> Module {
         Module::new(self.krate(), module_id)
     }
+
+    pub fn find_path(
+        self,
+        db: &impl DefDatabase,
+        item: ModuleDef,
+    ) -> Option<hir_def::path::ModPath> {
+        // FIXME expose namespace choice
+        hir_def::find_path::find_path(
+            db,
+            hir_def::item_scope::ItemInNs::Types(item.into()),
+            self.into(),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

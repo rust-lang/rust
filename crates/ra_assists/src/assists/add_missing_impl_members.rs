@@ -139,6 +139,12 @@ fn add_missing_impl_members_inner(
 
     ctx.add_assist(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
+        let module = hir::SourceAnalyzer::new(
+            db,
+            hir::InFile::new(file_id.into(), impl_node.syntax()),
+            None,
+        )
+        .module();
         let substs = get_syntactic_substs(impl_node).unwrap_or_default();
         let generic_def: hir::GenericDef = trait_.into();
         let substs_by_param: HashMap<_, _> = generic_def
@@ -150,6 +156,10 @@ fn add_missing_impl_members_inner(
             .collect();
         let items = missing_items
             .into_iter()
+            .map(|it| match module {
+                Some(module) => qualify_paths(db, hir::InFile::new(file_id.into(), it), module),
+                None => it,
+            })
             .map(|it| {
                 substitute_type_params(db, hir::InFile::new(file_id.into(), it), &substs_by_param)
             })
@@ -224,6 +234,41 @@ fn substitute_type_params<N: AstNode>(
         node.value
     } else {
         edit::replace_descendants(&node.value, type_param_replacements.into_iter())
+    }
+}
+
+use hir::PathResolution;
+
+// TODO handle partial paths, with generic args
+// TODO handle value ns?
+
+fn qualify_paths<N: AstNode>(db: &impl HirDatabase, node: hir::InFile<N>, from: hir::Module) -> N {
+    let path_replacements = node
+        .value
+        .syntax()
+        .descendants()
+        .filter_map(ast::Path::cast)
+        .filter_map(|p| {
+            let analyzer = hir::SourceAnalyzer::new(db, node.with_value(p.syntax()), None);
+            let resolution = analyzer.resolve_path(db, &p)?;
+            match resolution {
+                PathResolution::Def(def) => {
+                    let found_path = from.find_path(db, def)?;
+                    Some((p, found_path.to_ast()))
+                }
+                PathResolution::Local(_)
+                | PathResolution::TypeParam(_)
+                | PathResolution::SelfType(_) => None,
+                PathResolution::Macro(_) => None,
+                PathResolution::AssocItem(_) => None,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if path_replacements.is_empty() {
+        node.value
+    } else {
+        edit::replace_descendants(&node.value, path_replacements.into_iter())
     }
 }
 
@@ -406,14 +451,14 @@ impl Foo for S {
             add_missing_impl_members,
             "
 mod foo {
-    struct Bar;
+    pub struct Bar;
     trait Foo { fn foo(&self, bar: Bar); }
 }
 struct S;
 impl foo::Foo for S { <|> }",
             "
 mod foo {
-    struct Bar;
+    pub struct Bar;
     trait Foo { fn foo(&self, bar: Bar); }
 }
 struct S;
