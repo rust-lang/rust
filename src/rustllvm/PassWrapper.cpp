@@ -863,7 +863,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
                           int num_modules,
                           const char **preserved_symbols,
                           int num_symbols) {
+#if LLVM_VERSION_GE(10, 0)
+  auto Ret = std::make_unique<LLVMRustThinLTOData>();
+#else
   auto Ret = llvm::make_unique<LLVMRustThinLTOData>();
+#endif
 
   // Load each module's summary and merge it into one combined index
   for (int i = 0; i < num_modules; i++) {
@@ -1095,7 +1099,11 @@ struct LLVMRustThinLTOBuffer {
 
 extern "C" LLVMRustThinLTOBuffer*
 LLVMRustThinLTOBufferCreate(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(10, 0)
+  auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
+#else
   auto Ret = llvm::make_unique<LLVMRustThinLTOBuffer>();
+#endif
   {
     raw_string_ostream OS(Ret->data);
     {
