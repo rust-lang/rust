@@ -36,13 +36,13 @@ extern crate rustc_parse;
 #[allow(unused_extern_crates)]
 extern crate rustc_session;
 #[allow(unused_extern_crates)]
+extern crate rustc_span;
+#[allow(unused_extern_crates)]
 extern crate rustc_target;
 #[allow(unused_extern_crates)]
 extern crate rustc_typeck;
 #[allow(unused_extern_crates)]
 extern crate syntax;
-#[allow(unused_extern_crates)]
-extern crate syntax_pos;
 
 use rustc::lint::{self, LintId};
 use rustc::session::Session;

@@ -17,12 +17,12 @@ use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
+use rustc_span::{BytePos, Symbol};
 use rustc_typeck::expr_use_visitor::*;
 use std::iter::{once, Iterator};
 use std::mem;
 use syntax::ast;
 use syntax::source_map::Span;
-use syntax_pos::{BytePos, Symbol};
 
 use crate::utils::paths;
 use crate::utils::{

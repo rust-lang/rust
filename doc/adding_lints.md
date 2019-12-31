@@ -432,12 +432,12 @@ don't hesitate to ask on Discord, IRC or in the issue/PR.
 [diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/diagnostics.rs
 [utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/mod.rs
 [ident]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/symbol/struct.Ident.html
-[span]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_pos/struct.Span.html
+[span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 [applicability]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
 [if_chain]: https://docs.rs/if_chain/*/if_chain/
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/sty/index.html
 [ast]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/index.html
-[from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_pos/struct.Span.html#method.from_expansion
+[from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/fn.in_external_macro.html
 [play]: https://play.rust-lang.org
 [author_example]: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=f093b986e80ad62f3b67a1f24f5e66e2

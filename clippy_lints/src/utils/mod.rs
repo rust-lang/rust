@@ -40,12 +40,12 @@ use rustc::ty::{
     Binder, Ty, TyCtxt,
 };
 use rustc_errors::Applicability;
+use rustc_span::hygiene::ExpnKind;
 use smallvec::SmallVec;
 use syntax::ast::{self, Attribute, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol::{kw, Symbol};
-use syntax_pos::hygiene::ExpnKind;
 
 use crate::consts::{constant, Constant};
 use crate::reexport::*;

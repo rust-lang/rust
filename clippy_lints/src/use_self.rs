@@ -9,7 +9,7 @@ use rustc::ty;
 use rustc::ty::{DefIdTree, Ty};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
-use syntax_pos::symbol::kw;
+use rustc_span::symbol::kw;
 
 use crate::utils::{differing_macro_contexts, span_lint_and_sugg};
 

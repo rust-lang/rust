@@ -11,8 +11,8 @@ use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc::ty::adjustment::Adjust;
 use rustc::ty::{Ty, TypeFlags};
 use rustc_session::declare_tool_lint;
+use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
-use syntax_pos::{InnerSpan, Span, DUMMY_SP};
 
 use crate::utils::{in_constant, is_copy, qpath_res, span_lint_and_then};
 

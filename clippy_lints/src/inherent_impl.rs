@@ -6,7 +6,7 @@ use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::declare_tool_lint;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for multiple inherent implementations of a struct

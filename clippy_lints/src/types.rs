@@ -14,13 +14,13 @@ use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc::{declare_lint_pass, impl_lint_pass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
 use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::Span;
 use syntax::symbol::{sym, Symbol};
-use syntax_pos::hygiene::{ExpnKind, MacroKind};
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
@@ -668,7 +668,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
 }
 
 fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
-    use syntax_pos::hygiene::DesugaringKind;
+    use rustc_span::hygiene::DesugaringKind;
     if let ExprKind::Call(ref callee, _) = expr.kind {
         callee.span.is_desugaring(DesugaringKind::QuestionMark)
     } else {
@@ -2045,7 +2045,7 @@ declare_lint_pass!(ImplicitHasher => [IMPLICIT_HASHER]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
     #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
-        use syntax_pos::BytePos;
+        use rustc_span::BytePos;
 
         fn suggestion<'a, 'tcx>(
             cx: &LateContext<'a, 'tcx>,
