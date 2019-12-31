@@ -330,7 +330,7 @@ enum WarningType {
 }
 
 impl WarningType {
-    fn display(&self, suggested_format: String, cx: &EarlyContext<'_>, span: syntax_pos::Span) {
+    fn display(&self, suggested_format: String, cx: &EarlyContext<'_>, span: rustc_span::Span) {
         match self {
             Self::MistypedLiteralSuffix => span_lint_and_sugg(
                 cx,
@@ -450,7 +450,7 @@ impl LiteralDigitGrouping {
     // Returns `false` if the check fails
     fn check_for_mistyped_suffix(
         cx: &EarlyContext<'_>,
-        span: syntax_pos::Span,
+        span: rustc_span::Span,
         num_lit: &mut NumericLiteral<'_>,
     ) -> bool {
         if num_lit.suffix.is_some() {

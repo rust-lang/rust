@@ -6,7 +6,7 @@ use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::declare_tool_lint;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for multiple inherent implementations of a struct
@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
             // Remember for each inherent implementation encoutered its span and generics
             // but filter out implementations that have generic params (type or lifetime)
             // or are derived from a macro
-            if !in_macro(item.span) && generics.params.len() == 0 {
+            if !in_macro(item.span) && generics.params.is_empty() {
                 self.impls.insert(item.hir_id.owner_def_id(), item.span);
             }
         }

@@ -6,7 +6,7 @@ use rustc::hir::{BorrowKind, Expr, ExprKind, Mutability, StmtKind, UnOp};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, ty};
 use rustc_session::declare_tool_lint;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for function/method calls with a mutable

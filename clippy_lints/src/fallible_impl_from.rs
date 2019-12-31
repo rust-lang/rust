@@ -6,7 +6,7 @@ use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
 use rustc_session::declare_tool_lint;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`

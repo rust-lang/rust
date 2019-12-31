@@ -9,12 +9,12 @@ use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::sync::Lrc;
+use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{FloatTy, LitKind};
-use syntax_pos::symbol::Symbol;
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]

@@ -12,9 +12,9 @@ use rustc::session::config::Config as SessionConfig;
 use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::Span;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
-use syntax_pos::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for functions taking arguments by reference, where

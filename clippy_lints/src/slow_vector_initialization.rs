@@ -7,8 +7,8 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::symbol::Symbol;
 use syntax::ast::LitKind;
-use syntax_pos::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks slow zero-filled vector initialization

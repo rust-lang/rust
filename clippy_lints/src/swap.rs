@@ -11,7 +11,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
-use syntax_pos::Symbol;
+use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual swapping.

@@ -14,12 +14,12 @@ use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::expr_use_visitor as euv;
 use std::borrow::Cow;
 use syntax::ast::Attribute;
 use syntax::errors::DiagnosticBuilder;
-use syntax_pos::{Span, Symbol};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for functions taking arguments by value, but not

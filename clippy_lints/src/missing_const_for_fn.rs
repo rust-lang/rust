@@ -6,8 +6,8 @@ use rustc::hir::{Body, Constness, FnDecl, HirId};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
 use rustc_session::declare_tool_lint;
+use rustc_span::Span;
 use rustc_typeck::hir_ty_to_ty;
-use syntax_pos::Span;
 
 declare_clippy_lint! {
     /// **What it does:**

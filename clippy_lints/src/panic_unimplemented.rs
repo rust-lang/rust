@@ -4,8 +4,8 @@ use rustc::declare_lint_pass;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
+use rustc_span::Span;
 use syntax::ast::LitKind;
-use syntax_pos::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for missing parameters in `panic!`.

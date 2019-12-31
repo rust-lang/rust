@@ -5,8 +5,8 @@ use rustc::hir::{self, *};
 use rustc::lint::LateContext;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_span::symbol::Symbol;
 use syntax::source_map::Span;
-use syntax_pos::symbol::Symbol;
 
 use super::OPTION_MAP_UNWRAP_OR;
 

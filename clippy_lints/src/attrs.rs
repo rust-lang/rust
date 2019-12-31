@@ -15,11 +15,11 @@ use rustc::lint::{
 use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::symbol::Symbol;
 use semver::Version;
 use syntax::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use syntax::source_map::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for items annotated with `#[inline(always)]`,
