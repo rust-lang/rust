@@ -623,6 +623,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         FatalError.raise();
     }
 
+    /// A macro's expansion does not fit in this fragment kind.
+    /// For example, a non-type macro in a type position.
+    fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::Mac, span: Span) {
+        let msg = format!(
+            "non-{kind} macro in {kind} position: {path}",
+            kind = kind.name(),
+            path = pprust::path_to_string(&mac.path),
+        );
+        self.cx.span_err(span, &msg);
+        self.cx.trace_macros_diag();
+    }
+
     fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtensionKind) -> AstFragment {
         if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
             self.error_recursion_limit_reached();
@@ -643,13 +655,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
-                        let msg = format!(
-                            "non-{kind} macro in {kind} position: {path}",
-                            kind = fragment_kind.name(),
-                            path = pprust::path_to_string(&mac.path),
-                        );
-                        self.cx.span_err(span, &msg);
-                        self.cx.trace_macros_diag();
+                        self.error_wrong_fragment_kind(fragment_kind, &mac, span);
                         fragment_kind.dummy(span)
                     };
                     self.cx.current_expansion.prior_type_ascription = prev;
