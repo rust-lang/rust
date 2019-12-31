@@ -639,8 +639,18 @@ fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath<'_>, to_ref_ty: Ty<'_
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment
 fn is_layout_incompatible<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
-    let from_ty_layout = cx.tcx.layout_of(ty::ParamEnv::empty().and(from));
-    let to_ty_layout = cx.tcx.layout_of(ty::ParamEnv::empty().and(to));
+    let empty_param_env = ty::ParamEnv::empty();
+    // check if `from` and `to` are normalizable to avoid ICE (#4968)
+    let is_normalizable = cx.tcx.infer_ctxt().enter(|infcx| {
+        let cause = rustc::traits::ObligationCause::dummy();
+        infcx.at(&cause, empty_param_env).normalize(&from).is_ok()
+            && infcx.at(&cause, empty_param_env).normalize(&to).is_ok()
+    });
+    if !is_normalizable {
+        return false;
+    }
+    let from_ty_layout = cx.tcx.layout_of(empty_param_env.and(from));
+    let to_ty_layout = cx.tcx.layout_of(empty_param_env.and(to));
     if let (Ok(from_layout), Ok(to_layout)) = (from_ty_layout, to_ty_layout) {
         from_layout.size != to_layout.size || from_layout.align != to_layout.align || from_layout.abi != to_layout.abi
     } else {
