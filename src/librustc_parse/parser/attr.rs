@@ -46,7 +46,8 @@ impl<'a> Parser<'a> {
                 token::DocComment(s) => {
                     let attr = self.mk_doc_comment(s);
                     if attr.style != ast::AttrStyle::Outer {
-                        let mut err = self.fatal("expected outer doc comment");
+                        let span = self.token.span;
+                        let mut err = self.struct_span_err(span, "expected outer doc comment");
                         err.note(
                             "inner doc comments like this (starting with \
                                   `//!` or `/*!`) can only appear before items",
@@ -156,7 +157,8 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let token_str = pprust::token_to_string(&self.token);
-                return Err(self.fatal(&format!("expected `#`, found `{}`", token_str)));
+                let msg = &format!("expected `#`, found `{}`", token_str);
+                return Err(self.struct_span_err(self.token.span, msg));
             }
         };
 
