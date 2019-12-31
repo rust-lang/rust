@@ -6,21 +6,21 @@ import { Ctx, Cmd } from '../ctx';
 export function matchingBrace(ctx: Ctx): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
-        if (!editor) {
-            return;
-        }
+        const client = ctx.client;
+        if (!editor || !client) return;
+
         const request: FindMatchingBraceParams = {
             textDocument: { uri: editor.document.uri.toString() },
             offsets: editor.selections.map(s =>
-                ctx.client.code2ProtocolConverter.asPosition(s.active),
+                client.code2ProtocolConverter.asPosition(s.active),
             ),
         };
-        const response = await ctx.client.sendRequest<lc.Position[]>(
+        const response = await client.sendRequest<lc.Position[]>(
             'rust-analyzer/findMatchingBrace',
             request,
         );
         editor.selections = editor.selections.map((sel, idx) => {
-            const active = ctx.client.protocol2CodeConverter.asPosition(
+            const active = client.protocol2CodeConverter.asPosition(
                 response[idx],
             );
             const anchor = sel.isEmpty ? active : sel.anchor;

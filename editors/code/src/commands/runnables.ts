@@ -8,18 +8,19 @@ export function run(ctx: Ctx): Cmd {
 
     return async () => {
         const editor = ctx.activeRustEditor;
-        if (!editor) return;
+        const client = ctx.client;
+        if (!editor || !client) return;
 
         const textDocument: lc.TextDocumentIdentifier = {
             uri: editor.document.uri.toString(),
         };
         const params: RunnablesParams = {
             textDocument,
-            position: ctx.client.code2ProtocolConverter.asPosition(
+            position: client.code2ProtocolConverter.asPosition(
                 editor.selection.active,
             ),
         };
-        const runnables = await ctx.client.sendRequest<Runnable[]>(
+        const runnables = await client.sendRequest<Runnable[]>(
             'rust-analyzer/runnables',
             params,
         );

@@ -76,7 +76,8 @@ class TextDocumentContentProvider
 
     provideTextDocumentContent(uri: vscode.Uri): vscode.ProviderResult<string> {
         const editor = vscode.window.activeTextEditor;
-        if (editor == null) return '';
+        const client = this.ctx.client
+        if (!editor || !client) return '';
 
         let range: lc.Range | undefined;
 
@@ -84,16 +85,14 @@ class TextDocumentContentProvider
         if (uri.query === 'range=true') {
             range = editor.selection.isEmpty
                 ? undefined
-                : this.ctx.client.code2ProtocolConverter.asRange(
-                    editor.selection,
-                );
+                : client.code2ProtocolConverter.asRange(editor.selection);
         }
 
         const request: SyntaxTreeParams = {
             textDocument: { uri: editor.document.uri.toString() },
             range,
         };
-        return this.ctx.client.sendRequest<string>(
+        return client.sendRequest<string>(
             'rust-analyzer/syntaxTree',
             request,
         );
