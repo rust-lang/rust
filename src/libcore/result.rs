@@ -278,9 +278,10 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.is_ok(), false);
     /// ```
     #[must_use = "if you intended to assert that this is ok, consider `.unwrap()` instead"]
+    #[rustc_const_unstable(feature = "const_result", issue = "67520")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_ok(&self) -> bool {
+    pub const fn is_ok(&self) -> bool {
         match *self {
             Ok(_) => true,
             Err(_) => false,
@@ -303,9 +304,10 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.is_err(), true);
     /// ```
     #[must_use = "if you intended to assert that this is err, consider `.unwrap_err()` instead"]
+    #[rustc_const_unstable(feature = "const_result", issue = "67520")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_err(&self) -> bool {
+    pub const fn is_err(&self) -> bool {
         !self.is_ok()
     }
 
@@ -446,8 +448,9 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.as_ref(), Err(&"Error"));
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result", issue = "67520")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_ref(&self) -> Result<&T, &E> {
+    pub const fn as_ref(&self) -> Result<&T, &E> {
         match *self {
             Ok(ref x) => Ok(x),
             Err(ref x) => Err(x),
