@@ -1383,11 +1383,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     _ => unreachable!(),
                 })
             }
-            ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
-                if item.ident == Ident::invalid() {
-                    return noop_flat_map_item(item, self);
-                }
-
+            ast::ItemKind::Mod(ast::Mod { inner, .. }) if item.ident != Ident::invalid() => {
                 let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
                 let mut module = (*self.cx.current_expansion.module).clone();
                 module.mod_path.push(item.ident);
