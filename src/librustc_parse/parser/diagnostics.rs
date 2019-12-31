@@ -165,10 +165,6 @@ impl<'a> Parser<'a> {
         err.span_err(sp, self.diagnostic())
     }
 
-    pub(super) fn bug(&self, m: &str) -> ! {
-        self.sess.span_diagnostic.span_bug(self.token.span, m)
-    }
-
     pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }

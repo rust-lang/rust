@@ -884,7 +884,8 @@ impl<'a> Parser<'a> {
     pub fn bump(&mut self) {
         if self.prev_token_kind == PrevTokenKind::Eof {
             // Bumping after EOF is a bad sign, usually an infinite loop.
-            self.bug("attempted to bump the parser past EOF (may be stuck in a loop)");
+            let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
+            self.span_bug(self.token.span, msg);
         }
 
         self.prev_span = self.meta_var_span.take().unwrap_or(self.token.span);

@@ -283,7 +283,7 @@ impl<'a> Parser<'a> {
                     self.mk_expr(span, aopexpr, AttrVec::new())
                 }
                 AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotEq => {
-                    self.bug("AssocOp should have been handled by special case")
+                    self.span_bug(span, "AssocOp should have been handled by special case")
                 }
             };
 
