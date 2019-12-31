@@ -82,9 +82,9 @@ function loadThemeNamed(themeName: string) {
 
 function loadThemeFile(themePath: string) {
     const themeContent = [themePath]
-        .filter(isFile)
-        .map(readFileText)
-        .map(parseJSON)
+        .filter(it => fs.statSync(it).isFile())
+        .map(it => fs.readFileSync(it, 'utf8'))
+        .map(it => jsonc.parse(it))
         .filter(theme => theme);
 
     themeContent
@@ -131,16 +131,4 @@ function loadColors(textMateRules: TextMateRule[]): void {
             rule.scope.forEach(scope => updateRules(scope, rule.settings));
         }
     });
-}
-
-function isFile(filePath: string): boolean {
-    return [filePath].map(fs.statSync).every(stat => stat.isFile());
-}
-
-function readFileText(filePath: string): string {
-    return fs.readFileSync(filePath, 'utf8');
-}
-
-function parseJSON(content: string): any {
-    return jsonc.parse(content);
 }
