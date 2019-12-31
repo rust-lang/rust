@@ -1041,13 +1041,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
-    fn classify_item<T>(
+    fn classify_item(
         &mut self,
-        item: &mut T,
-    ) -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)
-    where
-        T: HasAttrs,
-    {
+        item: &mut impl HasAttrs,
+    ) -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool) {
         let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
 
         item.visit_attrs(|mut attrs| {
@@ -1061,9 +1058,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// Alternative to `classify_item()` that ignores `#[derive]` so invocations fallthrough
     /// to the unused-attributes lint (making it an error on statements and expressions
     /// is a breaking change)
-    fn classify_nonitem<T: HasAttrs>(
+    fn classify_nonitem(
         &mut self,
-        nonitem: &mut T,
+        nonitem: &mut impl HasAttrs,
     ) -> (Option<ast::Attribute>, /* after_derive */ bool) {
         let (mut attr, mut after_derive) = (None, false);
 
