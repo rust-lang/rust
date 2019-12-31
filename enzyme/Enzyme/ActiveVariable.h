@@ -109,7 +109,7 @@ public:
     }
 };
     
-static inline std::string str(DataType&& dt) {
+static inline std::string to_string(const DataType dt) {
     std::string res = to_string(dt.typeEnum);
     if (dt.typeEnum == IntType::Float) {
         if (dt.type->isHalfTy()) {
@@ -133,7 +133,7 @@ static inline std::string str(DataType&& dt) {
 
 llvm::Type* isKnownFloatTBAA(llvm::Instruction* inst);
 
-IntType isIntASecretFloat(const std::map<llvm::Argument*, DataType> typeInfo, llvm::Value* val, IntType defaultType=IntType::Unknown);
+DataType isIntASecretFloat(const std::map<llvm::Argument*, DataType> typeInfo, llvm::Value* val, IntType defaultType=IntType::Unknown, bool errIfNotFound=false);
 
 //! return the secret float type of val if found, otherwise nullptr
 //!   if onlyFirst is set, consider only the first element of the pointer val (e.g. if we have {int, double, double}, consider only the int)

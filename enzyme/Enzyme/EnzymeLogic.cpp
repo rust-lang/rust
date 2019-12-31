@@ -992,6 +992,8 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                         if (pt->getElementType()->isIntOrIntVectorTy()) {
                             dt = isIntPointerASecretFloat(typeInfo, gutils->getOriginal(op->getArgOperand(argnum)), /*onlyFirst*/false, /*errifnotfound*/false);
                         }
+                    } else if (arg.getType()->isIntOrIntVectorTy()) {
+                        dt = isIntASecretFloat(typeInfo, gutils->getOriginal(op->getArgOperand(argnum)), IntType::Unknown, /*errifnotfound*/false);
                     }
                     nextTypeInfo.insert(std::pair<Argument*, DataType>(&arg, dt));
                     argnum++;
@@ -2048,6 +2050,8 @@ void handleGradientCallInst(const std::map<Argument*, DataType> typeInfo, BasicB
             if (pt->getElementType()->isIntOrIntVectorTy()) {
                 dt = isIntPointerASecretFloat(typeInfo, gutils->getOriginal(op->getArgOperand(argnum)), /*onlyFirst*/false, /*errifnotfound*/false);
             }
+        } else if (arg.getType()->isIntOrIntVectorTy()) {
+            dt = isIntASecretFloat(typeInfo, gutils->getOriginal(op->getArgOperand(argnum)), IntType::Unknown, /*errifnotfound*/false);
         }
         nextTypeInfo.insert(std::pair<Argument*, DataType>(&arg, dt));
         argnum++;
@@ -3246,7 +3250,7 @@ realcall:
           }
       }
 
-      if (op_type->isFPOrFPVectorTy() || (op_type->isIntOrIntVectorTy() && isIntASecretFloat(typeInfo, op_orig) == IntType::Float)) {
+      if (op_type->isFPOrFPVectorTy() || (op_type->isIntOrIntVectorTy() && isIntASecretFloat(typeInfo, op_orig).isFloat() )) {
         auto prediff = diffe(inst);
         setDiffe(inst, Constant::getNullValue(op_type));
         //llvm::errs() << "  + doing load propagation: op_orig:" << *op_orig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";

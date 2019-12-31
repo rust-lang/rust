@@ -257,11 +257,12 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
                         if (fast_tracking) return true;
                         break;
                 }
-            } else {
-                llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
-                for(auto &pair : typeInfo) {
-                    llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
-                }
+            } else if (trace.size() == 0) {
+                //llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
+                //for(auto &pair : typeInfo) {
+                //    llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
+                //}
+                //assert(0 && "no arg for tracking");
             }
         }
     }
@@ -504,6 +505,34 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
     assert(v);
     assert(v->getType());
     assert(v->getType()->isIntOrIntVectorTy());
+        
+    if (auto arg = dyn_cast<Argument>(v)) {
+        auto fd = typeInfo.find(arg);
+        if (fd != typeInfo.end()) {
+            switch(fd->second.typeEnum) {
+                case IntType::Unknown:
+                    break;
+                case IntType::Float:
+                    floatingUse = fd->second.type;
+                    if (fast_tracking) return true;
+                    break;
+                case IntType::Integer:
+                    intUse = true;
+                    if (fast_tracking) return true;
+                    break;
+                case IntType::Pointer:
+                    pointerUse = true;
+                    if (fast_tracking) return true;
+                    break;
+            }
+        } else if (trace.size() == 0) {
+            //llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
+            //for(auto &pair : typeInfo) {
+            //    llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
+            //}
+            //assert(0 && "no arg for tracking");
+        }
+    }
 
     if (isa<UndefValue>(v)) {
         intUse = true;
@@ -958,7 +987,7 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
     return false;
 }
 
-IntType isIntASecretFloat(const std::map<Argument*, DataType> typeInfo, Value* val, IntType defaultType) {
+DataType isIntASecretFloat(const std::map<Argument*, DataType> typeInfo, Value* val, IntType defaultType, bool errIfNotFound) {
     //llvm::errs() << "starting isint a secretfloat for " << *val << "\n";
 
     assert(val->getType()->isIntOrIntVectorTy());
@@ -1006,11 +1035,13 @@ IntType isIntASecretFloat(const std::map<Argument*, DataType> typeInfo, Value* v
         //llvm::errs() << "predefault val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
 
         if (!intUse && pointerUse && !floatingUse) { return IntType::Pointer; }
-        if (!intUse && !pointerUse && floatingUse) { return IntType::Float; }
+        if (!intUse && !pointerUse && floatingUse) { return DataType(floatingUse); }
         if (intUse && !pointerUse && !floatingUse) { return IntType::Integer; }
         
 
         if (defaultType != IntType::Unknown) return defaultType;
+
+        if (!errIfNotFound) return IntType::Unknown;
 
         if(auto inst = dyn_cast<Instruction>(val)) {
             llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
@@ -1427,7 +1458,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
     bool containsPointer = true;
     if (inst->getType()->isFPOrFPVectorTy()) containsPointer = false;
     // TODO propagate typeInfo here so can do more aggressive constant analysis rather than using empty map {}
-    if (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat({}, inst, /*default*/IntType::Pointer) != IntType::Pointer) containsPointer = false;
+    if (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat({}, inst, /*default*/IntType::Pointer).typeEnum != IntType::Pointer) containsPointer = false;
 
     if (containsPointer) {
 
