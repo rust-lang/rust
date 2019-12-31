@@ -376,8 +376,6 @@ pub struct TestProps {
     pub fail_mode: Option<FailMode>,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
-    // Do not pass `-Z ui-testing` to UI tests
-    pub disable_ui_testing_normalization: bool,
     // customized normalization rules
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
@@ -422,7 +420,6 @@ impl TestProps {
             fail_mode: None,
             ignore_pass: false,
             check_test_line_numbers_match: false,
-            disable_ui_testing_normalization: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
             failure_status: -1,
@@ -567,11 +564,6 @@ impl TestProps {
 
             if !self.ignore_pass {
                 self.ignore_pass = config.parse_ignore_pass(ln);
-            }
-
-            if !self.disable_ui_testing_normalization {
-                self.disable_ui_testing_normalization =
-                    config.parse_disable_ui_testing_normalization(ln);
             }
 
             if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
@@ -824,10 +816,6 @@ impl Config {
             Some(code) => code.trim().parse::<i32>().ok(),
             _ => None,
         }
-    }
-
-    fn parse_disable_ui_testing_normalization(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "disable-ui-testing-normalization")
     }
 
     fn parse_check_test_line_numbers_match(&self, line: &str) -> bool {
