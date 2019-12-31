@@ -312,7 +312,7 @@
         ],
         "colors": [
             {
-                "id": "rust-analyzer.inlayHint",
+                "id": "rust_analyzer.inlayHint",
                 "description": "Color for inlay hints",
                 "defaults": {
                     "dark": "#A0A0A0F0",
