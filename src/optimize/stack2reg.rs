@@ -3,7 +3,7 @@ use std::ops::Not;
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
 use cranelift_codegen::entity::EntitySet;
-use cranelift_codegen::ir::{InstructionData, Opcode, ProgramOrder, ValueDef};
+use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 use cranelift_codegen::ir::immediates::Offset32;
 
 use crate::prelude::*;
@@ -168,9 +168,6 @@ pub(super) fn optimize_function<T: std::fmt::Debug>(
         }
 
         for load in users.stack_load.clone().into_iter() {
-            let loaded_value = opt_ctx.ctx.func.dfg.inst_results(load)[0];
-            let loaded_type = opt_ctx.ctx.func.dfg.value_type(loaded_value);
-
             let potential_stores = users.potential_stores_for_load(&opt_ctx.ctx, load);
 
             #[cfg(debug_assertions)]
