@@ -4,10 +4,11 @@ import { Server } from './server';
 import { Config } from './config';
 
 export class Ctx {
-    readonly config = new Config();
+    readonly config: Config;
     private extCtx: vscode.ExtensionContext;
 
     constructor(extCtx: vscode.ExtensionContext) {
+        this.config = new Config(extCtx)
         this.extCtx = extCtx;
     }
 

@@ -43,14 +43,12 @@ export class Config {
     private prevEnhancedTyping: null | boolean = null;
     private prevCargoFeatures: null | CargoFeatures = null;
 
-    constructor() {
-        vscode.workspace.onDidChangeConfiguration(_ =>
-            this.userConfigChanged(),
-        );
-        this.userConfigChanged();
+    constructor(ctx: vscode.ExtensionContext) {
+        vscode.workspace.onDidChangeConfiguration(_ => this.refresh(), ctx.subscriptions);
+        this.refresh();
     }
 
-    userConfigChanged() {
+    private refresh() {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
 
         let requireReloadMessage = null;
