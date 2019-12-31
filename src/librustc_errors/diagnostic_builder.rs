@@ -385,3 +385,22 @@ impl<'a> Drop for DiagnosticBuilder<'a> {
         }
     }
 }
+
+#[macro_export]
+macro_rules! struct_span_err {
+    ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
+        $session.struct_span_err_with_code(
+            $span,
+            &format!($($message)*),
+            $crate::error_code!($code),
+        )
+    })
+}
+
+#[macro_export]
+macro_rules! error_code {
+    ($code:ident) => {{
+        let _ = $code;
+        $crate::DiagnosticId::Error(stringify!($code).to_owned())
+    }};
+}

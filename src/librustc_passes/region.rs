@@ -17,6 +17,7 @@ use rustc_hir::{Arm, Block, Expr, Local, Node, Pat, PatKind, Stmt};
 use rustc_index::vec::Idx;
 use rustc_span::source_map;
 use rustc_span::Span;
+use syntax::walk_list;
 
 use std::mem;
 

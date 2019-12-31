@@ -4,6 +4,7 @@
 // and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
+use errors::struct_span_err;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::middle::lib_features::LibFeatures;
 use rustc::ty::query::Providers;

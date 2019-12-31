@@ -1,6 +1,7 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs, PlaceOp};
 
+use errors::struct_span_err;
 use rustc::infer::{InferCtxt, InferOk};
 use rustc::session::DiagnosticMessageId;
 use rustc::traits::{self, TraitEngine};

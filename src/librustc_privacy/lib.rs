@@ -3,9 +3,6 @@
 #![feature(nll)]
 #![recursion_limit = "256"]
 
-#[macro_use]
-extern crate syntax;
-
 use rustc::bug;
 use rustc::hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc::lint;
@@ -15,6 +12,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};

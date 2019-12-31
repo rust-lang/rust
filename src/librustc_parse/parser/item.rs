@@ -4,7 +4,7 @@ use super::{FollowedByType, Parser, PathStyle};
 use crate::maybe_whole;
 
 use rustc_error_codes::*;
-use rustc_errors::{Applicability, DiagnosticBuilder, PResult, StashKey};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult, StashKey};
 use rustc_span::source_map::{self, respan, Span};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::BytePos;
@@ -16,7 +16,6 @@ use syntax::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant,
 use syntax::ast::{FnHeader, ForeignItem, ForeignItemKind, Mutability, Visibility, VisibilityKind};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::struct_span_err;
 use syntax::token;
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
 

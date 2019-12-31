@@ -1,6 +1,7 @@
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
+use errors::{struct_span_err, DiagnosticBuilder};
 use rustc::infer::opaque_types::may_define_opaque_type;
 use rustc::middle::lang_items;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
@@ -9,8 +10,6 @@ use rustc::ty::{self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, Typ
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
-
-use errors::DiagnosticBuilder;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;
@@ -113,13 +112,14 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
                 ty::ImplPolarity::Negative => {
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
                     if trait_ref.is_some() && !is_auto {
-                        span_err!(
+                        struct_span_err!(
                             tcx.sess,
                             item.span,
                             E0192,
                             "negative impls are only allowed for \
                                    auto traits (e.g., `Send` and `Sync`)"
                         )
+                        .emit()
                     }
                 }
                 ty::ImplPolarity::Reservation => {

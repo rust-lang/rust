@@ -21,8 +21,6 @@
 extern crate log;
 #[macro_use]
 extern crate rustc;
-#[macro_use]
-extern crate syntax;
 
 use rustc::dep_graph::WorkProduct;
 use rustc::middle::cstore::{CrateSource, LibSource, NativeLibrary};

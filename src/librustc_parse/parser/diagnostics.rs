@@ -2,7 +2,8 @@ use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_error_codes::*;
-use rustc_errors::{self, pluralize, Applicability, DiagnosticBuilder, Handler, PResult};
+use rustc_errors::{pluralize, struct_span_err};
+use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::symbol::kw;
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 use syntax::ast::{
@@ -11,7 +12,6 @@ use syntax::ast::{
 use syntax::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::struct_span_err;
 use syntax::token::{self, token_can_begin_expr, TokenKind};
 use syntax::util::parser::AssocOp;
 

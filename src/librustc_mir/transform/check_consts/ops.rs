@@ -2,6 +2,7 @@
 
 use rustc::session::config::nightly_options;
 use rustc::ty::TyCtxt;
+use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -115,12 +116,7 @@ impl NonConstOp for FnCallUnstable {
             &format!("`{}` is not yet stable as a const fn", item.tcx.def_path_str(def_id)),
         );
         if nightly_options::is_nightly_build() {
-            help!(
-                &mut err,
-                "add `#![feature({})]` to the \
-                   crate attributes to enable",
-                feature
-            );
+            err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feature));
         }
         err.emit();
     }
@@ -197,13 +193,14 @@ impl NonConstOp for Loop {
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        span_err!(
+        struct_span_err!(
             item.tcx.sess,
             span,
             E0492,
             "cannot borrow a constant which may contain \
             interior mutability, create a static instead"
-        );
+        )
+        .emit();
     }
 }
 
@@ -375,13 +372,14 @@ impl NonConstOp for ThreadLocalAccess {
     const IS_SUPPORTED_IN_MIRI: bool = false;
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        span_err!(
+        struct_span_err!(
             item.tcx.sess,
             span,
             E0625,
             "thread-local statics cannot be \
             accessed at compile-time"
-        );
+        )
+        .emit();
     }
 }
 

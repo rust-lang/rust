@@ -4,7 +4,7 @@
 use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
 use crate::namespace::Namespace;
-use errors::{pluralize, Applicability, DiagnosticBuilder};
+use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::hir::intravisit;
 use rustc::hir::map as hir_map;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -193,21 +193,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let item_span =
                             self.tcx.sess.source_map().def_span(self.tcx.def_span(item.def_id));
                         let idx = if sources.len() > 1 {
-                            span_note!(
-                                err,
-                                item_span,
+                            let msg = &format!(
                                 "candidate #{} is defined in the trait `{}`",
                                 idx + 1,
                                 self.tcx.def_path_str(trait_did)
                             );
+                            err.span_note(item_span, msg);
                             Some(idx + 1)
                         } else {
-                            span_note!(
-                                err,
-                                item_span,
+                            let msg = &format!(
                                 "the candidate is defined in the trait `{}`",
                                 self.tcx.def_path_str(trait_did)
                             );
+                            err.span_note(item_span, msg);
                             None
                         };
                         let path = self.tcx.def_path_str(trait_did);

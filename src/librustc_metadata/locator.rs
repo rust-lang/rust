@@ -215,6 +215,7 @@
 use crate::creader::Library;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
+use errors::{struct_span_err, DiagnosticBuilder};
 use rustc::middle::cstore::{CrateSource, MetadataLoader};
 use rustc::session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
 use rustc::session::search_paths::PathKind;
@@ -222,13 +223,9 @@ use rustc::session::{config, CrateDisambiguator, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
-
-use errors::DiagnosticBuilder;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
-use syntax::struct_span_err;
-use syntax::{span_err, span_fatal};
 
 use std::cmp;
 use std::fmt;
@@ -1038,28 +1035,28 @@ pub fn find_plugin_registrar(
     };
 
     if target_only {
-        // Need to abort before syntax expansion.
         let message = format!(
-            "plugin `{}` is not available for triple `{}` \
-                                (only found {})",
+            "plugin `{}` is not available for triple `{}` (only found {})",
             name,
             config::host_triple(),
             sess.opts.target_triple
         );
-        span_fatal!(sess, span, E0456, "{}", &message);
+        struct_span_err!(sess, span, E0456, "{}", &message).emit();
+        return None;
     }
 
     match library.source.dylib {
         Some(dylib) => Some((dylib.0, library.metadata.get_root().disambiguator())),
         None => {
-            span_err!(
+            struct_span_err!(
                 sess,
                 span,
                 E0457,
                 "plugin `{}` only found in rlib format, but must be available \
                         in dylib format",
                 name
-            );
+            )
+            .emit();
             // No need to abort because the loading code will just ignore this
             // empty dylib.
             None

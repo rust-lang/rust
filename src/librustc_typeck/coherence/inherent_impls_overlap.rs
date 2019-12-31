@@ -1,4 +1,5 @@
 use crate::namespace::Namespace;
+use errors::struct_span_err;
 use rustc::traits::{self, IntercrateMode};
 use rustc::ty::TyCtxt;
 use rustc_hir as hir;

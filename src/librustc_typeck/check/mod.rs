@@ -90,7 +90,7 @@ pub mod writeback;
 use crate::astconv::{AstConv, PathSeg};
 use crate::middle::lang_items;
 use crate::namespace::Namespace;
-use errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -156,6 +156,17 @@ use self::compare_method::{compare_const_impl, compare_impl_method, compare_ty_i
 use self::method::{MethodCallee, SelfSource};
 pub use self::Expectation::*;
 use self::TupleArgumentsFlag::*;
+
+#[macro_export]
+macro_rules! type_error_struct {
+    ($session:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
+        if $typ.references_error() {
+            $session.diagnostic().struct_dummy()
+        } else {
+            errors::struct_span_err!($session, $span, $code, $($message)*)
+        }
+    })
+}
 
 /// The type of a local binding, including the revealed type for anon types.
 #[derive(Copy, Clone, Debug)]
@@ -2091,7 +2102,7 @@ fn check_impl_items_against_trait<'tcx>(
 
     if !invalidated_items.is_empty() {
         let invalidator = overridden_associated_type.unwrap();
-        span_err!(
+        struct_span_err!(
             tcx.sess,
             invalidator.span,
             E0399,
@@ -2099,6 +2110,7 @@ fn check_impl_items_against_trait<'tcx>(
             invalidator.ident,
             invalidated_items.iter().map(|name| name.to_string()).collect::<Vec<_>>().join("`, `")
         )
+        .emit();
     }
 }
 
@@ -2241,7 +2253,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
         if def.is_struct() {
             let fields = &def.non_enum_variant().fields;
             if fields.is_empty() {
-                span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty");
+                struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
                 return;
             }
             let e = fields[0].ty(tcx, substs);
@@ -2255,12 +2267,13 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
                 ty::Param(_) => { /* struct<T>(T, T, T, T) is ok */ }
                 _ if e.is_machine() => { /* struct(u8, u8, u8, u8) is ok */ }
                 _ => {
-                    span_err!(
+                    struct_span_err!(
                         tcx.sess,
                         sp,
                         E0077,
                         "SIMD vector element type should be machine type"
-                    );
+                    )
+                    .emit();
                     return;
                 }
             }
@@ -2545,14 +2558,15 @@ pub fn check_enum<'tcx>(
 }
 
 fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span, qpath: &QPath<'_>) {
-    span_err!(
+    struct_span_err!(
         tcx.sess,
         span,
         E0533,
         "expected unit struct, unit variant or constant, found {} `{}`",
         res.descr(),
         hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false))
-    );
+    )
+    .emit();
 }
 
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
@@ -3762,13 +3776,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     arg_types.iter().map(|k| k.expect_ty()).collect()
                 }
                 _ => {
-                    span_err!(
+                    struct_span_err!(
                         tcx.sess,
                         sp,
                         E0059,
                         "cannot use call notation; the first type parameter \
                          for the function trait is neither a tuple nor unit"
-                    );
+                    )
+                    .emit();
                     expected_arg_tys = vec![];
                     self.err_args(args.len())
                 }

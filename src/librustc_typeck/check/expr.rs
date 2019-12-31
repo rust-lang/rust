@@ -14,9 +14,10 @@ use crate::check::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExp
 use crate::check::FnCtxt;
 use crate::check::Needs;
 use crate::check::TupleArgumentsFlag::DontTupleArguments;
+use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 
-use errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::middle::lang_items;
@@ -1108,13 +1109,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Prohibit struct expressions when non-exhaustive flag is set.
         let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");
         if !adt.did.is_local() && variant.is_field_list_non_exhaustive() {
-            span_err!(
+            struct_span_err!(
                 self.tcx.sess,
                 expr.span,
                 E0639,
                 "cannot create non-exhaustive {} using struct expression",
                 adt.variant_descr()
-            );
+            )
+            .emit();
         }
 
         let error_happened = self.check_expr_struct_fields(
@@ -1152,12 +1154,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .insert(expr.hir_id, fru_field_types);
                     }
                     _ => {
-                        span_err!(
+                        struct_span_err!(
                             self.tcx.sess,
                             base_expr.span,
                             E0436,
                             "functional record update syntax requires a struct"
-                        );
+                        )
+                        .emit();
                     }
                 }
             }

@@ -68,7 +68,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use errors::{struct_span_err, Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_error_codes::*;
 use rustc_span::{Pos, Span};
 use rustc_target::spec::abi;

@@ -7,6 +7,7 @@
 
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::hir::HirId;
+use errors::struct_span_err;
 use rustc::traits;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};

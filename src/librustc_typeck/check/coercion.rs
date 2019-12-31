@@ -51,7 +51,7 @@
 //! we may want to adjust precisely when coercions occur.
 
 use crate::check::{FnCtxt, Needs};
-use errors::DiagnosticBuilder;
+use errors::{struct_span_err, DiagnosticBuilder};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::{Coercion, InferOk, InferResult};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};

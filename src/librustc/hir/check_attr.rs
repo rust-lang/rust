@@ -8,6 +8,8 @@ use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::lint::builtin::UNUSED_ATTRIBUTES;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+
+use errors::struct_span_err;
 use rustc_error_codes::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -430,21 +432,27 @@ impl CheckAttrVisitor<'tcx> {
         // Error on repr(transparent, <anything else>).
         if is_transparent && hints.len() > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
-            span_err!(
+            struct_span_err!(
                 self.tcx.sess,
                 hint_spans,
                 E0692,
                 "transparent {} cannot have other repr hints",
                 target
-            );
+            )
+            .emit();
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
             || (is_simd && is_c)
             || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item)))
         {
-            let hint_spans: Vec<_> = hint_spans.collect();
-            span_warn!(self.tcx.sess, hint_spans, E0566, "conflicting representation hints");
+            struct_span_err!(
+                self.tcx.sess,
+                hint_spans.collect::<Vec<Span>>(),
+                E0566,
+                "conflicting representation hints",
+            )
+            .emit();
         }
     }
 

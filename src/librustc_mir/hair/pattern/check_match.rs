@@ -10,7 +10,7 @@ use rustc::session::Session;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_error_codes::*;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
@@ -116,7 +116,7 @@ impl PatCtxt<'_, '_> {
     }
 
     fn span_e0158(&self, span: Span, text: &str) {
-        span_err!(self.tcx.sess, span, E0158, "{}", text)
+        struct_span_err!(self.tcx.sess, span, E0158, "{}", text).emit();
     }
 }
 
@@ -291,24 +291,26 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                             variant.ident == ident && variant.ctor_kind == CtorKind::Const
                         })
                     {
-                        // FIXME(Centril): Should be a lint?
                         let ty_path = cx.tcx.def_path_str(edef.did);
-                        let mut err = struct_span_warn!(
-                            cx.tcx.sess,
-                            p.span,
-                            E0170,
-                            "pattern binding `{}` is named the same as one \
-                             of the variants of the type `{}`",
-                            ident,
-                            ty_path
-                        );
-                        err.span_suggestion(
-                            p.span,
-                            "to match on the variant, qualify the path",
-                            format!("{}::{}", ty_path, ident),
-                            Applicability::MachineApplicable,
-                        );
-                        err.emit();
+                        cx.tcx
+                            .struct_span_lint_hir(
+                                lint::builtin::BINDINGS_WITH_VARIANT_NAME,
+                                p.hir_id,
+                                p.span,
+                                &format!(
+                                    "pattern binding `{}` is named the same as one \
+                                    of the variants of the type `{}`",
+                                    ident, ty_path
+                                ),
+                            )
+                            .code(error_code!(E0170))
+                            .span_suggestion(
+                                p.span,
+                                "to match on the variant, qualify the path",
+                                format!("{}::{}", ty_path, ident),
+                                Applicability::MachineApplicable,
+                            )
+                            .emit();
                     }
                 }
             }

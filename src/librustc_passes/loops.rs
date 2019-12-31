@@ -2,7 +2,7 @@ use Context::*;
 
 use rustc::session::Session;
 
-use errors::Applicability;
+use errors::{struct_span_err, Applicability};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
 use rustc::ty::query::Providers;
@@ -11,7 +11,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Destination, Movability, Node};
 use rustc_span::Span;
-use syntax::struct_span_err;
 
 use rustc_error_codes::*;
 

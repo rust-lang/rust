@@ -73,7 +73,7 @@ fn collect_item(
                 )),
             };
             if let Some(span) = tcx.hir().span_if_local(original_def_id) {
-                span_note!(&mut err, span, "first defined here.");
+                err.span_note(span, "first defined here.");
             } else {
                 err.note(&format!(
                     "first defined in crate `{}`.",

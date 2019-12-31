@@ -1,6 +1,7 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
+use errors::struct_span_err;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::lint;
 use rustc::middle::privacy::AccessLevels;

@@ -11,6 +11,7 @@ use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
+use errors::DiagnosticId;
 use log::debug;
 use rustc::{bug, lint, span_bug};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -304,32 +305,21 @@ impl<'a> PathSource<'a> {
         }
     }
 
-    fn error_code(self, has_unexpected_resolution: bool) -> &'static str {
-        syntax::diagnostic_used!(E0404);
-        syntax::diagnostic_used!(E0405);
-        syntax::diagnostic_used!(E0412);
-        syntax::diagnostic_used!(E0422);
-        syntax::diagnostic_used!(E0423);
-        syntax::diagnostic_used!(E0425);
-        syntax::diagnostic_used!(E0531);
-        syntax::diagnostic_used!(E0532);
-        syntax::diagnostic_used!(E0573);
-        syntax::diagnostic_used!(E0574);
-        syntax::diagnostic_used!(E0575);
-        syntax::diagnostic_used!(E0576);
+    fn error_code(self, has_unexpected_resolution: bool) -> DiagnosticId {
+        use errors::error_code;
         match (self, has_unexpected_resolution) {
-            (PathSource::Trait(_), true) => "E0404",
-            (PathSource::Trait(_), false) => "E0405",
-            (PathSource::Type, true) => "E0573",
-            (PathSource::Type, false) => "E0412",
-            (PathSource::Struct, true) => "E0574",
-            (PathSource::Struct, false) => "E0422",
-            (PathSource::Expr(..), true) => "E0423",
-            (PathSource::Expr(..), false) => "E0425",
-            (PathSource::Pat, true) | (PathSource::TupleStruct, true) => "E0532",
-            (PathSource::Pat, false) | (PathSource::TupleStruct, false) => "E0531",
-            (PathSource::TraitItem(..), true) => "E0575",
-            (PathSource::TraitItem(..), false) => "E0576",
+            (PathSource::Trait(_), true) => error_code!(E0404),
+            (PathSource::Trait(_), false) => error_code!(E0405),
+            (PathSource::Type, true) => error_code!(E0573),
+            (PathSource::Type, false) => error_code!(E0412),
+            (PathSource::Struct, true) => error_code!(E0574),
+            (PathSource::Struct, false) => error_code!(E0422),
+            (PathSource::Expr(..), true) => error_code!(E0423),
+            (PathSource::Expr(..), false) => error_code!(E0425),
+            (PathSource::Pat, true) | (PathSource::TupleStruct, true) => error_code!(E0532),
+            (PathSource::Pat, false) | (PathSource::TupleStruct, false) => error_code!(E0531),
+            (PathSource::TraitItem(..), true) => error_code!(E0575),
+            (PathSource::TraitItem(..), false) => error_code!(E0576),
         }
     }
 }

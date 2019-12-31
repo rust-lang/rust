@@ -2,16 +2,15 @@
 //! intrinsics that the compiler exposes.
 
 use crate::require_same_types;
+
+use errors::struct_span_err;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
-
+use rustc_error_codes::*;
+use rustc_hir as hir;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
-
-use rustc_hir as hir;
-
-use rustc_error_codes::*;
 
 use std::iter;
 
@@ -413,19 +412,20 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
                 (2, params, param(1))
             }
             Err(_) => {
-                span_err!(
+                struct_span_err!(
                     tcx.sess,
                     it.span,
                     E0439,
                     "invalid `simd_shuffle`, needs length: `{}`",
                     name
-                );
+                )
+                .emit();
                 return;
             }
         },
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{}`", name);
-            tcx.sess.span_err(it.span, &msg);
+            tcx.sess.struct_span_err(it.span, &msg).emit();
             return;
         }
     };

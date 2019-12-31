@@ -20,6 +20,7 @@ use crate::constrained_generic_params as cgp;
 use crate::lint;
 use crate::middle::resolve_lifetime as rl;
 use crate::middle::weak_lang_items;
+use errors::{struct_span_err, Applicability, StashKey};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::mir::mono::Linkage;
@@ -44,8 +45,6 @@ use syntax::ast;
 use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 use syntax::feature_gate;
-
-use errors::{Applicability, StashKey};
 
 use rustc_error_codes::*;
 
@@ -320,13 +319,14 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
             self.tcx().mk_projection(item_def_id, item_substs)
         } else {
             // There are no late-bound regions; we can just ignore the binder.
-            span_err!(
+            struct_span_err!(
                 self.tcx().sess,
                 span,
                 E0212,
                 "cannot extract an associated type from a higher-ranked trait bound \
                  in this context"
-            );
+            )
+            .emit();
             self.tcx().types.err
         }
     }
@@ -861,17 +861,14 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
 
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
-        let mut err = tcx.sess.struct_span_err(
-            item.span,
-            "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
+        tcx.sess
+            .struct_span_err(
+                item.span,
+                "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
              which traits can use parenthetical notation",
-        );
-        help!(
-            &mut err,
-            "add `#![feature(unboxed_closures)]` to \
-             the crate attributes to use it"
-        );
-        err.emit();
+            )
+            .help("add `#![feature(unboxed_closures)]` to the crate attributes to use it")
+            .emit();
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
@@ -1206,12 +1203,13 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
 }
 
 fn report_assoc_ty_on_inherent_impl(tcx: TyCtxt<'_>, span: Span) {
-    span_err!(
+    struct_span_err!(
         tcx.sess,
         span,
         E0202,
         "associated types are not yet supported in inherent impls (see #8995)"
-    );
+    )
+    .emit();
 }
 
 fn infer_placeholder_type(
@@ -2767,14 +2765,26 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 mark_used(attr);
                 inline_span = Some(attr.span);
                 if items.len() != 1 {
-                    span_err!(tcx.sess.diagnostic(), attr.span, E0534, "expected one argument");
+                    struct_span_err!(
+                        tcx.sess.diagnostic(),
+                        attr.span,
+                        E0534,
+                        "expected one argument"
+                    )
+                    .emit();
                     InlineAttr::None
                 } else if list_contains_name(&items[..], sym::always) {
                     InlineAttr::Always
                 } else if list_contains_name(&items[..], sym::never) {
                     InlineAttr::Never
                 } else {
-                    span_err!(tcx.sess.diagnostic(), items[0].span(), E0535, "invalid argument");
+                    struct_span_err!(
+                        tcx.sess.diagnostic(),
+                        items[0].span(),
+                        E0535,
+                        "invalid argument"
+                    )
+                    .emit();
 
                     InlineAttr::None
                 }
@@ -2788,7 +2798,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         if !attr.has_name(sym::optimize) {
             return ia;
         }
-        let err = |sp, s| span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s);
+        let err = |sp, s| struct_span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s).emit();
         match attr.meta().map(|i| i.kind) {
             Some(MetaItemKind::Word) => {
                 err(attr.span, "expected one argument");

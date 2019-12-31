@@ -20,7 +20,7 @@ pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::hir::exports::ExportMap;
 use rustc::hir::map::Definitions;
 use rustc::lint;
@@ -49,8 +49,8 @@ use syntax::ast::{Crate, CRATE_NODE_ID};
 use syntax::ast::{ItemKind, Path};
 use syntax::attr;
 use syntax::print::pprust;
+use syntax::unwrap_or;
 use syntax::visit::{self, Visitor};
-use syntax::{struct_span_err, unwrap_or};
 
 use log::debug;
 use std::cell::{Cell, RefCell};
