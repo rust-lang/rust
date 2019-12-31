@@ -226,9 +226,9 @@ void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
 }
 
 
-bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/);
+bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/);
         
-bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool onlyFirst, std::vector<int> indices = {}) {
+bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool onlyFirst, std::vector<int> indices = {}) {
     auto idx = std::tuple<const std::vector<CallInst*>, Value*>(trace, v);
     if (seen.find(idx) != seen.end()) return false;
     seen.insert(idx);
@@ -236,6 +236,35 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
     assert(v->getType()->isPointerTy());
     
     Type* et = cast<PointerType>(v->getType())->getElementType();
+
+    if (!onlyFirst) {
+        if (auto arg = dyn_cast<Argument>(v)) {
+            auto fd = typeInfo.find(arg);
+            if (fd != typeInfo.end()) {
+                switch(fd->second.typeEnum) {
+                    case IntType::Unknown:
+                        break;
+                    case IntType::Float:
+                        floatingUse = fd->second.type;
+                        if (fast_tracking) return true;
+                        break;
+                    case IntType::Integer:
+                        intUse = true;
+                        if (fast_tracking) return true;
+                        break;
+                    case IntType::Pointer:
+                        pointerUse = true;
+                        if (fast_tracking) return true;
+                        break;
+                }
+            } else {
+                llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
+                for(auto &pair : typeInfo) {
+                    llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
+                }
+            }
+        }
+    }
 
     /*
     llvm::errs() << "  tract pointer of saw " << *v << " et:" << *et << "\n";
@@ -254,7 +283,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
             
     if (auto phi = dyn_cast<PHINode>(v)) {
         for(auto &a : phi->incoming_values()) {
-            if (trackPointer(trace, a.get(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+            if (trackPointer(typeInfo, trace, a.get(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
                 if (fast_tracking) return true;
             }
         }
@@ -265,7 +294,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
         //only propagate type information if it is safe to do so (e.g. we either look at any memory inside of [thus not onlyFirst], or we don't have any indexing inside of [thus indices.size() == 0])
         if (!onlyFirst || indices.size() == 0) {
             if (ci->getSrcTy()->isPointerTy()) {
-                if (trackPointer(trace, ci->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, {})) {
+                if (trackPointer(typeInfo, trace, ci->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, {})) {
                     if (fast_tracking) return true;
                 }
             } else {
@@ -280,7 +309,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
                     if (use2 == ci) continue;
 
                     if (auto ci2 = dyn_cast<CastInst>(use2)) {
-                        if (trackPointer(trace, ci2, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, {})) {
+                        if (trackPointer(typeInfo, trace, ci2, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, {})) {
                             if (fast_tracking) return true;
                         }
                         
@@ -303,7 +332,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
             }
         }
         idnext.insert(idnext.end(), indices.begin(), indices.end());
-        if (trackPointer(trace, gep->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
+        if (trackPointer(typeInfo, trace, gep->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
             if (fast_tracking) return true;
         }
     }
@@ -316,7 +345,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
                 //only propagate type information if it is safe to do so (e.g. we either look at any memory inside of [thus not onlyFirst], or we don't have any indexing inside of [thus indices.size() == 0])
                 if (!onlyFirst || indices.size() == 0) {
                     if (ci->getDestTy()->isPointerTy()) {
-                        if (trackPointer(trace, ci, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
+                        if (trackPointer(typeInfo, trace, ci, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
                             if (fast_tracking) return true;
                         }
                     } else {
@@ -352,7 +381,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
                     idnext.push_back(indices[vcnt]);
                 }
 
-                if (trackPointer(trace, gep, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
+                if (trackPointer(typeInfo, trace, gep, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
                     if (fast_tracking) return true;
                 }
             }
@@ -363,12 +392,12 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
                     //If memcpy / memmove of pointer, we can propagate type information from src to dst and vice versa
                     if (ci->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {
                         if (call->getArgOperand(0) == v) {
-                            if (trackPointer(trace, call->getArgOperand(1), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                            if (trackPointer(typeInfo, trace, call->getArgOperand(1), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
                                 if (fast_tracking) return true;
                             }
                         }
                         if (call->getArgOperand(1) == v) {
-                            if (trackPointer(trace, call->getArgOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                            if (trackPointer(typeInfo, trace, call->getArgOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
                                 if (fast_tracking) return true;
                             }
                         }
@@ -383,7 +412,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
                         for(size_t i=0; i<call->getNumArgOperands(); i++) {
                             if (call->getArgOperand(i) == v) {
                                 //TODO consider allowing return to be ignored as an unknown use below, so long as we also then look at use of call value itself
-                                if(trackPointer(newtrace, a, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                                if(trackPointer(typeInfo, newtrace, a, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
                                     if (fast_tracking) return true;
                                 }
                             }
@@ -403,7 +432,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
             if (auto li = dyn_cast<LoadInst>(use)) {
                 bool unknownuse;
                 if (li->getType()->isIntOrIntVectorTy())
-                if (trackInt(trace, li, intseen, seen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknownuse*/false)) {
+                if (trackInt(typeInfo, trace, li, intseen, seen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknownuse*/false)) {
                     if (fast_tracking) return true; 
                 }
             }
@@ -452,7 +481,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
                         continue;
                     }
                     bool unknownuse;
-                    if (trackInt(trace, si->getValueOperand(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknownuse*/false)) {
+                    if (trackInt(typeInfo, trace, si->getValueOperand(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknownuse*/false)) {
                         if (fast_tracking) return true; 
                     }
                 }
@@ -462,7 +491,7 @@ bool trackPointer(const std::vector<CallInst*> trace, Value* v, std::map<std::tu
     return false;
 }
 
-bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
+bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
     auto idx = std::tuple<const std::vector<CallInst*>, Value*, bool>(trace, v, shouldConsiderUnknownUse);
     if (intseen.find(idx) != intseen.end()) {
         if (intseen[idx] == IntType::Integer) {
@@ -541,7 +570,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
             if (ci->getDestTy()->isIntOrIntVectorTy()) {
               if (cast<IntegerType>(ci->getDestTy()->getScalarType())->getBitWidth() < 8) continue;
 
-              if (trackInt(trace, ci, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
+              if (trackInt(typeInfo, trace, ci, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
                 if (fast_tracking) return true;
               }
               continue;
@@ -553,15 +582,22 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
         if (auto bi = dyn_cast<BinaryOperator>(use)) {
             //And's should not have their int uses propagated to v (e.g. if ptr & 1 is used somewhere as an integer/index into an array, this does not mean that ptr is an integer)
             if (bi->getOpcode() == BinaryOperator::And) continue;
+            if (bi->getOpcode() == BinaryOperator::Or) continue;
 
-            if (trackInt(trace, bi, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
-                if (fast_tracking) return true;
+            if (trackInt(typeInfo, trace, bi, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
+                if (fast_tracking) {
+                    //if (floatingUse)
+                    //llvm::errs() << "use predefault val:" << *v << " use: " << *bi << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
+                    //else
+                    //llvm::errs() << "use predefault val:" << *v << " use: " << *bi << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
+                    return true;
+                }
             }
             continue;
         }
 
         if (auto pn = dyn_cast<PHINode>(use)) {
-            if (trackInt(trace, pn, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
+            if (trackInt(typeInfo, trace, pn, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
                 if (fast_tracking) return true;
             }
             continue;
@@ -569,7 +605,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
         
         if (auto seli = dyn_cast<SelectInst>(use)) {
             assert(seli->getCondition() != v);
-            if (trackInt(trace, seli, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldconsiderUnknownUse=*/false, sawReturn)) {
+            if (trackInt(typeInfo, trace, seli, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldconsiderUnknownUse=*/false, sawReturn)) {
                 //llvm::errs() << "find select use of " << *v << " in " << *seli << " intUse: " << intUse << "\n";
                 if (fast_tracking) return true;
             }
@@ -623,7 +659,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
                     for(size_t i=0; i<call->getNumArgOperands(); i++) {
                         if (call->getArgOperand(i) == v) {
                             //TODO consider allowing return to be ignored as an unknown use below, so long as we also then look at use of call value itself
-                            if(trackInt(trace, a, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, &shouldHandleReturn)) {
+                            if(trackInt(typeInfo, trace, a, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, &shouldHandleReturn)) {
                                 if (fast_tracking) return true;
                             }
                         }
@@ -631,7 +667,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
                     }
 
                     if (shouldHandleReturn) {
-                        if(trackInt(trace, call, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, sawReturn)) {
+                        if(trackInt(typeInfo, trace, call, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, sawReturn)) {
                             if (fast_tracking) return true;
                         }
                     }
@@ -685,7 +721,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
                 if (fast_tracking) return true;
             }
 
-            if (trackPointer(trace, si->getPointerOperand(), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, true, {})) {
+            if (trackPointer(typeInfo, trace, si->getPointerOperand(), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, true, {})) {
                 if (fast_tracking) return true;
             }
 
@@ -698,7 +734,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
                             break;
                         }
                     } else if (auto li = dyn_cast<LoadInst>(user)) {
-                        if (trackInt(trace, li, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
+                        if (trackInt(typeInfo, trace, li, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, false, sawReturn)) {
                             if (fast_tracking) return true;
                         } 
                     } else baduse = true;
@@ -746,7 +782,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
             floatingUse = t;
             if (fast_tracking) return true;
         }
-        if (trackPointer(trace, li->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, true, {})) {
+        if (trackPointer(typeInfo, trace, li->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, true, {})) {
             if (fast_tracking) return true;
         }
     }
@@ -771,7 +807,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
         }
         if (ci->getSrcTy()->isIntOrIntVectorTy()) {
           bool fakeunknownuse = false;
-          if (trackInt(trace, ci->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
+          if (trackInt(typeInfo, trace, ci->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
             if (fast_tracking) return true;
           }
         }
@@ -779,10 +815,10 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
     
     if (auto seli = dyn_cast<SelectInst>(v)) {
           bool fakeunknownuse = false;
-          if (trackInt(trace, seli->getOperand(1), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
+          if (trackInt(typeInfo, trace, seli->getOperand(1), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
             if (fast_tracking) return true;
           }
-          if (trackInt(trace, seli->getOperand(2), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
+          if (trackInt(typeInfo, trace, seli->getOperand(2), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
             if (fast_tracking) return true;
           }
     }
@@ -795,15 +831,17 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
         SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
         bool fakeunknownuse0 = false;
         
-        if (trackInt(trace, bi->getOperand(0), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
+        if (trackInt(typeInfo, trace, bi->getOperand(0), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
             if (fast_tracking) return true;
         }
 
         if (intUse0) {
-            if (trackInt(trace, bi->getOperand(1), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse1, fakeunknownuse0, true) && (floatingUse || pointerUse)) {
+            if (trackInt(typeInfo, trace, bi->getOperand(1), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse1, fakeunknownuse0, true) && (floatingUse || pointerUse)) {
                 if (fast_tracking) return true;
             }
         }
+        
+        llvm::errs() << " considering binary operator " << *bi << " iu0: " << intUse0 << " iu1: " << intUse1 << "\n";
         
         if (intUse0 && intUse1) {
             intUse = true;
@@ -834,7 +872,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
 
             bool intUse0 = false;
             bool fakeunknownuse0 = false;
-            if ( trackInt(trace, cast<Value>(&val), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
+            if ( trackInt(typeInfo, trace, cast<Value>(&val), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
                 intseen.insert(intseen0.begin(), intseen0.end());
                 ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
                 typeseen.insert(typeseen0.begin(), typeseen0.end());
@@ -873,7 +911,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
                     auto rv = ri->getReturnValue();
                     bool intUse0 = false;
                     bool fakeunknownuse0 = false;
-                    if ( trackInt(newtrace, rv, intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
+                    if ( trackInt(typeInfo, newtrace, rv, intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
                         intseen.insert(intseen0.begin(), intseen0.end());
                         ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
                         typeseen.insert(typeseen0.begin(), typeseen0.end());
@@ -920,7 +958,7 @@ bool trackInt(const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<
     return false;
 }
 
-IntType isIntASecretFloat(Value* val, IntType defaultType) {
+IntType isIntASecretFloat(const std::map<Argument*, DataType> typeInfo, Value* val, IntType defaultType) {
     //llvm::errs() << "starting isint a secretfloat for " << *val << "\n";
 
     assert(val->getType()->isIntOrIntVectorTy());
@@ -953,7 +991,7 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
         std::vector<CallInst*> trace;
 
         bool fakeunknownuse = false;
-        trackInt(trace, val, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse, /*shouldConsiderUnknownUse*/true);
+        trackInt(typeInfo, trace, val, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse, /*shouldConsiderUnknownUse*/true);
         
         /*
         if (floatingUse)
@@ -961,10 +999,16 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
         else
         llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
         */
+        
+        //if (floatingUse)
+        //llvm::errs() << "predefault val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
+        //else
+        //llvm::errs() << "predefault val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
 
         if (!intUse && pointerUse && !floatingUse) { return IntType::Pointer; }
         if (!intUse && !pointerUse && floatingUse) { return IntType::Float; }
         if (intUse && !pointerUse && !floatingUse) { return IntType::Integer; }
+        
 
         if (defaultType != IntType::Unknown) return defaultType;
 
@@ -986,7 +1030,7 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
 }
 
 //! return the secret float type if found, otherwise nullptr
-Type* isIntPointerASecretFloat(Value* val, bool onlyFirst) {
+DataType isIntPointerASecretFloat(const std::map<Argument*, DataType> typeInfo, Value* val, bool onlyFirst, bool errIfNotFound) {
     assert(val->getType()->isPointerTy());
     assert(cast<PointerType>(val->getType())->getElementType()->isIntOrIntVectorTy());
 
@@ -1008,27 +1052,30 @@ Type* isIntPointerASecretFloat(Value* val, bool onlyFirst) {
     std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen;
     std::vector<CallInst*> trace;
 
-    trackPointer(trace, val, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst);
+    trackPointer(typeInfo, trace, val, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst);
 
-    if (pointerUse && (floatingUse == nullptr) && !intUse) return nullptr; 
+    if (pointerUse && (floatingUse == nullptr) && !intUse) return IntType::Pointer; 
     if (!pointerUse && (floatingUse != nullptr) && !intUse) return floatingUse;
-    if (!pointerUse && (floatingUse == nullptr) && intUse) return nullptr; 
+    if (!pointerUse && (floatingUse == nullptr) && intUse) return IntType::Integer; 
 
-    if (auto inst = dyn_cast<Instruction>(val)) {
-        llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
-        llvm::errs() << *inst->getParent()->getParent() << "\n";
-    }
+    if (errIfNotFound) {
+        if (auto inst = dyn_cast<Instruction>(val)) {
+            llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
+            llvm::errs() << *inst->getParent()->getParent() << "\n";
+        }
 
-    if(auto arg = dyn_cast<Argument>(val)) {
-        llvm::errs() << *arg->getParent()->getParent() << "\n";
-        llvm::errs() << *arg->getParent() << "\n";
+        if(auto arg = dyn_cast<Argument>(val)) {
+            llvm::errs() << *arg->getParent()->getParent() << "\n";
+            llvm::errs() << *arg->getParent() << "\n";
+        }
+            
+        if (floatingUse)
+        llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
+        else
+        llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
+        assert(0 && "ambiguous unsure what type of ptr or not");
     }
-        
-    if (floatingUse)
-    llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
-    else
-    llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
-    assert(0 && "ambiguous unsure what type of ptr or not");
+    return IntType::Unknown;
 }
 
 cl::opt<bool> ipoconst(
@@ -1263,13 +1310,21 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
     }
 
     //! This instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
-    if (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer)==IntType::Integer) {
-        //! The instruction itself is constant if it does not modify memory (otherwise causing active memory to flow)
-        if (!inst->mayReadOrWriteMemory()) {
-            if (printconst)
-                llvm::errs() << " constant instruction from known integral " << *inst << "\n";
-            constants.insert(inst);
-            return true;
+    if (inst->getType()->isIntOrIntVectorTy()) {
+        //TODO propagate interprocedural type info here instead of using empty map {}
+        //  This does not affect correctness, but can do better constant analysis if we have
+        if (isIntASecretFloat({}, inst, /*default*/IntType::Pointer)==IntType::Integer) {
+            //! The instruction itself is constant if it does not modify memory (otherwise causing active memory to flow)
+            if (!inst->mayReadOrWriteMemory()) {
+                if (printconst)
+                    llvm::errs() << " constant instruction from known integral " << *inst << "\n";
+                constants.insert(inst);
+                return true;
+            }
+        } else {
+            if (printconst) {
+                llvm::errs() << " could not deduce if constant instruction from integral " << *inst << " " << to_string(isIntASecretFloat({}, inst, IntType::Pointer)) << "\n";
+            }
         }
     }
 
@@ -1371,7 +1426,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
     //   * integers that we know are not pointers
     bool containsPointer = true;
     if (inst->getType()->isFPOrFPVectorTy()) containsPointer = false;
-    if (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer) != IntType::Pointer) containsPointer = false;
+    // TODO propagate typeInfo here so can do more aggressive constant analysis rather than using empty map {}
+    if (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat({}, inst, /*default*/IntType::Pointer) != IntType::Pointer) containsPointer = false;
 
     if (containsPointer) {
 
@@ -1620,7 +1676,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 	}
     }
 
-	if (!(inst->getType()->isPointerTy() || (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer)==IntType::Pointer) ) && ( !inst->mayWriteToMemory() || isa<BinaryOperator>(inst) ) && (directions & DOWN) && (retvals.find(inst) == retvals.end()) ) { 
+    //TODO use typeInfo for more aggressive activity analysis
+	if (!(inst->getType()->isPointerTy() || (inst->getType()->isIntOrIntVectorTy() && isIntASecretFloat({}, inst, /*default*/IntType::Pointer)==IntType::Pointer) ) && ( !inst->mayWriteToMemory() || isa<BinaryOperator>(inst) ) && (directions & DOWN) && (retvals.find(inst) == retvals.end()) ) { 
 		//Proceed assuming this is constant, can we prove this should be constant otherwise
 		SmallPtrSet<Value*, 20> constants2;
 		constants2.insert(constants.begin(), constants.end());
@@ -1773,7 +1830,8 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
     }
     
     //! This instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
-    if (val->getType()->isIntOrIntVectorTy() && isIntASecretFloat(val, /*default*/IntType::Pointer)==IntType::Integer) {
+    //TODO use typeInfo for more aggressive activity analysis
+    if (val->getType()->isIntOrIntVectorTy() && isIntASecretFloat({}, val, /*default*/IntType::Pointer)==IntType::Integer) {
 		if (printconst)
 			llvm::errs() << " Value const as integral " << (int)directions << " " << *val << "\n";
         constantvals.insert(val);

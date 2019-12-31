@@ -323,12 +323,14 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       //  However, in the absence of a way to pass tape data from an indirect augmented (and also since we dont presently allow indirect augmented calls), topLevel MUST be true
       //  otherwise subcalls will not be able to lookup the augmenteddata/subdata (triggering an assertion failure, among much worse)
       std::map<Argument*, bool> uncacheable_args;
+      std::map<Argument*, DataType> type_args;
       //conservatively assume that we can only cache existing floating types (i.e. that all args are uncacheable)
       for(auto &a : fn->args()) {
           uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
+          type_args.insert(std::pair<Argument*, DataType>(&a, DataType(IntType::Unknown)));
       }
-      auto& augdata = CreateAugmentedPrimal(fn, AA, /*constant_args*/{}, TLI, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/!fn->getReturnType()->isEmptyTy() && !fn->getReturnType()->isVoidTy(), uncacheable_args, /*forceAnonymousTape*/true);
-      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
+      auto& augdata = CreateAugmentedPrimal(fn, AA, /*constant_args*/{}, TLI, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/!fn->getReturnType()->isEmptyTy() && !fn->getReturnType()->isVoidTy(), type_args, uncacheable_args, /*forceAnonymousTape*/true);
+      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), type_args, uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
       auto cdata = ConstantStruct::get(StructType::get(newf->getContext(), {augdata.fn->getType(), newf->getType()}), {augdata.fn, newf});
       std::string globalname = ("_enzyme_" + fn->getName() + "'").str();
       auto GV = newf->getParent()->getNamedValue(globalname);
@@ -417,6 +419,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
         dumpSet(this->originalInstructions);
         llvm::errs() << *arg->getParent() << "\n";
         llvm::errs() << " binary operator for ip has both operands as constant values " << *arg << "\n";
+        assert(0 && "binary bothops");
       }
 
       //if (isa<ConstantInt>(arg->getOperand(0))) {
