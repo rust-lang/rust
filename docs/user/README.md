@@ -88,16 +88,9 @@ host.
 ### Settings
 
 * `rust-analyzer.highlightingOn`: enables experimental syntax highlighting.
-* `rust-analyzer.scopeMappings` -- a scheme backed JSON object to tweak Rust Analyzer scopes to TextMate scopes.
-   ```jsonc
-    {
-        //Will autocomplete keys to available RA scopes. 
-        "keyword.unsafe": ["keyword", "keyword.control"],
-        //Values are string | TextMateScope | [string | TextMateScope]
-        "variable.mut": "variable"
-    }
-   ```
-* `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts
+  Colors can be configured via `editor.tokenColorCustomizations`.
+  As an example, [Pale Fire](https://github.com/matklad/pale-fire/) color scheme tweaks rust colors.
+* `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts.
   `Enter` key to make it easier to continue comments. Note that it may conflict with VIM emulation plugin.
 * `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
