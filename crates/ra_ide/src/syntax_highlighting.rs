@@ -20,13 +20,13 @@ pub mod tags {
     pub(crate) const FIELD: &str = "field";
     pub(crate) const FUNCTION: &str = "function";
     pub(crate) const MODULE: &str = "module";
-    pub(crate) const TYPE: &str = "type";
     pub(crate) const CONSTANT: &str = "constant";
     pub(crate) const MACRO: &str = "macro";
+
     pub(crate) const VARIABLE: &str = "variable";
     pub(crate) const VARIABLE_MUT: &str = "variable.mut";
-    pub(crate) const TEXT: &str = "text";
 
+    pub(crate) const TYPE: &str = "type";
     pub(crate) const TYPE_BUILTIN: &str = "type.builtin";
     pub(crate) const TYPE_SELF: &str = "type.self";
     pub(crate) const TYPE_PARAM: &str = "type.param";
@@ -35,13 +35,14 @@ pub mod tags {
     pub(crate) const LITERAL_BYTE: &str = "literal.byte";
     pub(crate) const LITERAL_NUMERIC: &str = "literal.numeric";
     pub(crate) const LITERAL_CHAR: &str = "literal.char";
+
     pub(crate) const LITERAL_COMMENT: &str = "comment";
     pub(crate) const LITERAL_STRING: &str = "string";
     pub(crate) const LITERAL_ATTRIBUTE: &str = "attribute";
 
+    pub(crate) const KEYWORD: &str = "keyword";
     pub(crate) const KEYWORD_UNSAFE: &str = "keyword.unsafe";
     pub(crate) const KEYWORD_CONTROL: &str = "keyword.control";
-    pub(crate) const KEYWORD: &str = "keyword";
 }
 
 #[derive(Debug)]
@@ -109,15 +110,21 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
                 let name_kind =
                     classify_name_ref(db, InFile::new(file_id.into(), &name_ref)).map(|d| d.kind);
+                match name_kind {
+                    Some(name_kind) => {
+                        if let Local(local) = &name_kind {
+                            if let Some(name) = local.name(db) {
+                                let shadow_count =
+                                    bindings_shadow_count.entry(name.clone()).or_default();
+                                binding_hash =
+                                    Some(calc_binding_hash(file_id, &name, *shadow_count))
+                            }
+                        };
 
-                if let Some(Local(local)) = &name_kind {
-                    if let Some(name) = local.name(db) {
-                        let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-                        binding_hash = Some(calc_binding_hash(file_id, &name, *shadow_count))
+                        highlight_name(db, name_kind)
                     }
-                };
-
-                name_kind.map_or(tags::TEXT, |it| highlight_name(db, it))
+                    _ => continue,
+                }
             }
             NAME => {
                 let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();

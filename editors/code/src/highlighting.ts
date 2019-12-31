@@ -3,8 +3,7 @@ import * as lc from 'vscode-languageclient';
 import * as seedrandom_ from 'seedrandom';
 const seedrandom = seedrandom_; // https://github.com/jvandemo/generator-angular2-library/issues/221#issuecomment-355945207
 
-import { loadThemeColors, TextMateRuleSettings } from './load_theme_colors';
-import * as scopesMapper from './scopes_mapper';
+import { ColorTheme, TextMateRuleSettings } from './color_theme';
 
 import { Ctx } from './ctx';
 
@@ -168,69 +167,16 @@ class Highlighter {
     }
 }
 
-function initDecorations(): Map<
-    string,
-    vscode.TextEditorDecorationType
-> {
-    const themeColors = loadThemeColors();
-
-    const decoration = (
-        tag: string,
-        textDecoration?: string,
-    ): [string, vscode.TextEditorDecorationType] => {
-        const rule = scopesMapper.toRule(tag, it => themeColors.get(it));
-
-        if (rule) {
-            const decor = createDecorationFromTextmate(rule);
-            return [tag, decor];
-        } else {
-            const fallBackTag = 'ralsp.' + tag;
-            // console.log(' ');
-            // console.log('Missing theme for: <"' + tag + '"> for following mapped scopes:');
-            // console.log(scopesMapper.find(tag));
-            // console.log('Falling back to values defined in: ' + fallBackTag);
-            // console.log(' ');
-            const color = new vscode.ThemeColor(fallBackTag);
-            const decor = vscode.window.createTextEditorDecorationType({
-                color,
-                textDecoration,
-            });
-            return [tag, decor];
-        }
-    };
-
-    const decorations: Iterable<[
-        string,
-        vscode.TextEditorDecorationType,
-    ]> = [
-            decoration('comment'),
-            decoration('string'),
-            decoration('keyword'),
-            decoration('keyword.control'),
-            decoration('keyword.unsafe'),
-            decoration('function'),
-            decoration('parameter'),
-            decoration('constant'),
-            decoration('type.builtin'),
-            decoration('type.generic'),
-            decoration('type.lifetime'),
-            decoration('type.param'),
-            decoration('type.self'),
-            decoration('type'),
-            decoration('text'),
-            decoration('attribute'),
-            decoration('literal'),
-            decoration('literal.numeric'),
-            decoration('literal.char'),
-            decoration('literal.byte'),
-            decoration('macro'),
-            decoration('variable'),
-            decoration('variable.mut', 'underline'),
-            decoration('field'),
-            decoration('module'),
-        ];
-
-    return new Map<string, vscode.TextEditorDecorationType>(decorations);
+function initDecorations(): Map<string, vscode.TextEditorDecorationType> {
+    const theme = ColorTheme.load();
+    const res = new Map()
+    TAG_TO_SCOPES.forEach((scopes, tag) => {
+        if (!scopes) throw `unmapped tag: ${tag}`
+        let rule = theme.lookup(scopes)
+        const decor = createDecorationFromTextmate(rule);
+        res.set(tag, decor)
+    })
+    return res;
 }
 
 function createDecorationFromTextmate(
@@ -267,3 +213,33 @@ function createDecorationFromTextmate(
     }
     return vscode.window.createTextEditorDecorationType(decorationOptions);
 }
+
+// sync with tags from `syntax_highlighting.rs`.
+const TAG_TO_SCOPES = new Map<string, string[]>([
+    ["field", ["entity.name.field"]],
+    ["function", ["entity.name.function"]],
+    ["module", ["entity.name.module"]],
+    ["constant", ["entity.name.constant"]],
+    ["macro", ["entity.name.macro"]],
+
+    ["variable", ["variable"]],
+    ["variable.mut", ["variable", "meta.mutable"]],
+
+    ["type", ["entity.name.type"]],
+    ["type.builtin", ["entity.name.type", "support.type.primitive"]],
+    ["type.self", ["entity.name.type.parameter.self"]],
+    ["type.param", ["entity.name.type.parameter"]],
+    ["type.lifetime", ["entity.name.type.lifetime"]],
+
+    ["literal.byte", ["constant.character.byte"]],
+    ["literal.char", ["constant.character"]],
+    ["literal.numeric", ["constant.numeric"]],
+
+    ["comment", ["comment"]],
+    ["string", ["string.quoted"]],
+    ["attribute", ["meta.attribute"]],
+
+    ["keyword", ["keyword"]],
+    ["keyword.unsafe", ["keyword.other.unsafe"]],
+    ["keyword.control", ["keyword.control"]],
+]);
