@@ -3,7 +3,7 @@ import * as lc from 'vscode-languageclient';
 import * as seedrandom_ from 'seedrandom';
 const seedrandom = seedrandom_; // https://github.com/jvandemo/generator-angular2-library/issues/221#issuecomment-355945207
 
-import { loadThemeColors, TextMateRuleSettings } from './scopes';
+import { loadThemeColors, TextMateRuleSettings } from './load_theme_colors';
 import * as scopesMapper from './scopes_mapper';
 
 import { Ctx } from './ctx';

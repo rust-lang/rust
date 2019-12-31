@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { TextMateRuleSettings } from './scopes';
+import { TextMateRuleSettings } from './load_theme_colors';
 
 let mappings = new Map<string, string[]>();
 
