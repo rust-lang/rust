@@ -776,7 +776,6 @@ impl Step for Assemble {
         let bindir = sysroot.join("bin");
         t!(fs::create_dir_all(&bindir));
         let compiler = builder.rustc(target_compiler);
-        let _ = fs::remove_file(&compiler);
         builder.copy(&rustc, &compiler);
 
         target_compiler
