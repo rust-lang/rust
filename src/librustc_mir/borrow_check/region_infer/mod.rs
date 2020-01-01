@@ -846,6 +846,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Type-test failed. Report the error.
             let erased_generic_kind = infcx.tcx.erase_regions(&type_test.generic_kind);
+
+            // Skip duplicate-ish errors.
             if deduplicate_errors.insert((
                 erased_generic_kind,
                 type_test.lower_bound,
@@ -1850,8 +1852,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_values.contains(r_scc, upper)
     }
 
-    crate fn universal_regions(&self) -> Rc<UniversalRegions<'tcx>> {
-        self.universal_regions.clone()
+    crate fn universal_regions(&self) -> &UniversalRegions<'tcx> {
+        self.universal_regions.as_ref()
     }
 
     /// Tries to find the best constraint to blame for the fact that

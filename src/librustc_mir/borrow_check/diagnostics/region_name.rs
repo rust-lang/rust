@@ -123,9 +123,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///
     /// This is _not_ idempotent. Call `give_region_a_name` when possible.
     fn synthesize_region_name(&self) -> Symbol {
-        let mut counter = self.next_region_name.try_borrow_mut().unwrap();
-        let c = *counter;
-        *counter += 1;
+        let c = self.next_region_name.replace_with(|counter| *counter + 1);
         Symbol::intern(&format!("'{:?}", c))
     }
 

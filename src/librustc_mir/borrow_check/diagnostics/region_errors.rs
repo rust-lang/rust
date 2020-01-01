@@ -138,8 +138,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let DefiningTy::Closure(def_id, substs) =
                     self.regioncx.universal_regions().defining_ty
                 {
-                    let closure_kind_ty = substs.as_closure().kind_ty(def_id, self.infcx.tcx);
-                    return Some(ty::ClosureKind::FnMut) == closure_kind_ty.to_opt_closure_kind();
+                    return substs.as_closure().kind(def_id, self.infcx.tcx)
+                        == ty::ClosureKind::FnMut;
                 }
             }
         }
@@ -160,7 +160,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     // Try to convert the lower-bound region into something named we can print for the user.
                     let lower_bound_region = self.to_error_region(type_test.lower_bound);
 
-                    // Skip duplicate-ish errors.
                     let type_test_span = type_test.locations.span(&self.body);
 
                     if let Some(lower_bound_region) = lower_bound_region {
@@ -236,7 +235,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
                     if is_reported {
-                        self.report_error(
+                        self.report_region_error(
                             longer_fr,
                             fr_origin,
                             shorter_fr,
@@ -270,21 +269,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// ```
     ///
     /// Here we would be invoked with `fr = 'a` and `outlived_fr = `'b`.
-    pub(in crate::borrow_check) fn report_error(
+    pub(in crate::borrow_check) fn report_region_error(
         &mut self,
         fr: RegionVid,
         fr_origin: NLLRegionVariableOrigin,
         outlived_fr: RegionVid,
         outlives_suggestion: &mut OutlivesSuggestionBuilder,
     ) {
-        debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
+        debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
         let (category, _, span) =
             self.regioncx.best_blame_constraint(&self.body, fr, fr_origin, |r| {
                 self.regioncx.provides_universal_region(r, fr, outlived_fr)
             });
 
-        debug!("report_error: category={:?} {:?}", category, span);
+        debug!("report_region_error: category={:?} {:?}", category, span);
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let tables = self.infcx.tcx.typeck_tables_of(self.mir_def_id);
@@ -301,7 +300,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         );
 
         debug!(
-            "report_error: fr_is_local={:?} outlived_fr_is_local={:?} category={:?}",
+            "report_region_error: fr_is_local={:?} outlived_fr_is_local={:?} category={:?}",
             fr_is_local, outlived_fr_is_local, category
         );
 
