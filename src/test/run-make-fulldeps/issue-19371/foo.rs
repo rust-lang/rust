@@ -3,13 +3,13 @@
 extern crate rustc;
 extern crate rustc_interface;
 extern crate rustc_driver;
-extern crate syntax;
+extern crate rustc_span;
 
 use rustc::session::DiagnosticOutput;
 use rustc::session::config::{Input, Options,
                              OutputType, OutputTypes};
 use rustc_interface::interface;
-use syntax::source_map::FileName;
+use rustc_span::source_map::FileName;
 
 use std::path::PathBuf;
 
