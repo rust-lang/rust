@@ -2,6 +2,7 @@
 #![deny(warnings)]
 
 extern crate env_logger;
+extern crate rustc_span;
 extern crate syntax;
 
 use std::cell::RefCell;
@@ -13,7 +14,7 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
-use syntax::edition::DEFAULT_EDITION;
+use rustc_span::edition::DEFAULT_EDITION;
 
 use rustdoc::html::markdown::{ErrorCodes, IdMap, Markdown, Playground};
 

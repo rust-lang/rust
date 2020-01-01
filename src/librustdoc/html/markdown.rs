@@ -5,9 +5,9 @@
 //! ```
 //! #![feature(rustc_private)]
 //!
-//! extern crate syntax;
+//! extern crate rustc_span;
 //!
-//! use syntax::edition::Edition;
+//! use rustc_span::edition::Edition;
 //! use rustdoc::html::markdown::{IdMap, Markdown, ErrorCodes};
 //!
 //! let s = "My *markdown* _text_";
@@ -20,6 +20,7 @@
 #![allow(non_camel_case_types)]
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_span::edition::Edition;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -27,7 +28,6 @@ use std::default::Default;
 use std::fmt::Write;
 use std::ops::Range;
 use std::str;
-use syntax::edition::Edition;
 
 use crate::html::highlight;
 use crate::html::toc::TocBuilder;
