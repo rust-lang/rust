@@ -187,15 +187,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let msg = msg.description();
                 let msg = this.allocate_str(msg, MiriMemoryKind::Env.into());
 
-                // Second arg: Caller location.
-                let location = this.alloc_caller_location_for_span(span);
-
                 // Call the lang item.
                 let panic = this.tcx.lang_items().panic_fn().unwrap();
                 let panic = ty::Instance::mono(this.tcx.tcx, panic);
                 this.call_function(
                     panic,
-                    &[msg.to_ref(), location.ptr.into()],
+                    &[msg.to_ref()],
                     None,
                     StackPopCleanup::Goto { ret: None, unwind },
                 )?;
