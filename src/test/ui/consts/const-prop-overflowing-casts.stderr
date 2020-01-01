@@ -1,0 +1,22 @@
+error: truncating cast: the value 2147483648 requires 32 bits but the target type is only 16 bits
+  --> $DIR/const-prop-overflowing-casts.rs:6:13
+   |
+LL |     let _ = (1u32 << 31) as u16;
+   |             ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: truncating cast: the value 32768 requires 16 bits but the target type is only 8 bits
+  --> $DIR/const-prop-overflowing-casts.rs:7:13
+   |
+LL |     let _ = (1u16 << 15) as u8;
+   |             ^^^^^^^^^^^^^^^^^^
+
+error: truncating cast: the value 65535 requires 16 bits but the target type is only 8 bits
+  --> $DIR/const-prop-overflowing-casts.rs:8:13
+   |
+LL |     let _ = (!0u16) as u8;
+   |             ^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
