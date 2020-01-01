@@ -233,7 +233,6 @@ pub struct Formatter<'a> {
     precision: Option<usize>,
 
     buf: &'a mut (dyn Write + 'a),
-    args: &'a [ArgumentV1<'a>],
 }
 
 // NB. Argument is essentially an optimized partially applied formatting function,
@@ -1041,7 +1040,6 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
         buf: output,
         align: rt::v1::Alignment::Unknown,
         fill: ' ',
-        args: args.args,
     };
 
     let mut idx = 0;
@@ -1060,7 +1058,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
             // a string piece.
             for (arg, piece) in fmt.iter().zip(args.pieces.iter()) {
                 formatter.buf.write_str(*piece)?;
-                run(&mut formatter, arg)?;
+                run(&mut formatter, arg, &args.args)?;
                 idx += 1;
             }
         }
@@ -1074,25 +1072,24 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
-fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument) -> Result {
-    // Fill in the format parameters into the formatter
+fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
     fmt.fill = arg.format.fill;
     fmt.align = arg.format.align;
     fmt.flags = arg.format.flags;
-    fmt.width = getcount(&fmt.args, &arg.format.width);
-    fmt.precision = getcount(&fmt.args, &arg.format.precision);
+    fmt.width = getcount(args, &arg.format.width);
+    fmt.precision = getcount(args, &arg.format.precision);
 
     // Extract the correct argument
     let value = {
         #[cfg(bootstrap)]
         {
             match arg.position {
-                rt::v1::Position::At(i) => fmt.args[i],
+                rt::v1::Position::At(i) => args[i],
             }
         }
         #[cfg(not(bootstrap))]
         {
-            fmt.args[arg.position]
+            args[arg.position]
         }
     };
 
@@ -1145,10 +1142,6 @@ impl<'a> Formatter<'a> {
             align: self.align,
             width: self.width,
             precision: self.precision,
-
-            // These only exist in the struct for the `run` method,
-            // which won’t be used together with this method.
-            args: self.args,
         }
     }
 
