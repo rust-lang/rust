@@ -5,11 +5,9 @@
 pub mod check_attr;
 pub mod exports;
 pub mod map;
-pub mod upvars;
 
 use crate::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers<'_>) {
     map::provide(providers);
-    upvars::provide(providers);
 }

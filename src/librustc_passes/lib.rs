@@ -31,6 +31,7 @@ pub mod loops;
 mod reachable;
 mod region;
 pub mod stability;
+mod upvars;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_attr::provide(providers);
@@ -44,4 +45,5 @@ pub fn provide(providers: &mut Providers<'_>) {
     reachable::provide(providers);
     region::provide(providers);
     stability::provide(providers);
+    upvars::provide(providers);
 }
