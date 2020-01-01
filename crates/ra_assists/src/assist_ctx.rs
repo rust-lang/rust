@@ -14,7 +14,7 @@ use crate::{AssistAction, AssistId, AssistLabel};
 #[derive(Clone, Debug)]
 pub(crate) enum Assist {
     Unresolved { label: AssistLabel },
-    Resolved { label: AssistLabel, action: AssistAction },
+    Resolved { label: AssistLabel, action: AssistAction, alternative_actions: Vec<AssistAction> },
 }
 
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
@@ -81,18 +81,43 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         self,
         id: AssistId,
         label: impl Into<String>,
-        f: impl FnOnce(&mut AssistBuilder),
+        f: impl FnOnce(&mut ActionBuilder),
     ) -> Option<Assist> {
         let label = AssistLabel { label: label.into(), id };
         assert!(label.label.chars().nth(0).unwrap().is_uppercase());
 
         let assist = if self.should_compute_edit {
             let action = {
-                let mut edit = AssistBuilder::default();
+                let mut edit = ActionBuilder::default();
                 f(&mut edit);
                 edit.build()
             };
-            Assist::Resolved { label, action }
+            Assist::Resolved { label, action, alternative_actions: Vec::default() }
+        } else {
+            Assist::Unresolved { label }
+        };
+
+        Some(assist)
+    }
+
+    #[allow(dead_code)] // will be used for auto import assist with multiple actions
+    pub(crate) fn add_assist_group(
+        self,
+        id: AssistId,
+        label: impl Into<String>,
+        f: impl FnOnce() -> (ActionBuilder, Vec<ActionBuilder>),
+    ) -> Option<Assist> {
+        let label = AssistLabel { label: label.into(), id };
+        let assist = if self.should_compute_edit {
+            let (action, alternative_actions) = f();
+            Assist::Resolved {
+                label,
+                action: action.build(),
+                alternative_actions: alternative_actions
+                    .into_iter()
+                    .map(ActionBuilder::build)
+                    .collect(),
+            }
         } else {
             Assist::Unresolved { label }
         };
@@ -128,13 +153,20 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
 }
 
 #[derive(Default)]
-pub(crate) struct AssistBuilder {
+pub(crate) struct ActionBuilder {
     edit: TextEditBuilder,
     cursor_position: Option<TextUnit>,
     target: Option<TextRange>,
+    label: Option<String>,
 }
 
-impl AssistBuilder {
+impl ActionBuilder {
+    #[allow(dead_code)]
+    /// Adds a custom label to the action, if it needs to be different from the assist label
+    pub fn label(&mut self, label: impl Into<String>) {
+        self.label = Some(label.into())
+    }
+
     /// Replaces specified `range` of text with a given string.
     pub(crate) fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
@@ -193,6 +225,7 @@ impl AssistBuilder {
             edit: self.edit.finish(),
             cursor_position: self.cursor_position,
             target: self.target,
+            label: self.label,
         }
     }
 }

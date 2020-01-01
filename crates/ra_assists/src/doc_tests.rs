@@ -15,16 +15,16 @@ fn check(assist_id: &str, before: &str, after: &str) {
     let (db, file_id) = TestDB::with_single_file(&before);
     let frange = FileRange { file_id, range: selection.into() };
 
-    let (_assist_id, action) = crate::assists(&db, frange)
+    let (_assist_id, action, _) = crate::assists(&db, frange)
         .into_iter()
-        .find(|(id, _)| id.id.0 == assist_id)
+        .find(|(id, _, _)| id.id.0 == assist_id)
         .unwrap_or_else(|| {
             panic!(
                 "\n\nAssist is not applicable: {}\nAvailable assists: {}",
                 assist_id,
                 crate::assists(&db, frange)
                     .into_iter()
-                    .map(|(id, _)| id.id.0)
+                    .map(|(id, _, _)| id.id.0)
                     .collect::<Vec<_>>()
                     .join(", ")
             )

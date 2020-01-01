@@ -35,6 +35,7 @@ pub struct AssistLabel {
 
 #[derive(Debug, Clone)]
 pub struct AssistAction {
+    pub label: Option<String>,
     pub edit: TextEdit,
     pub cursor_position: Option<TextUnit>,
     pub target: Option<TextRange>,
@@ -64,7 +65,7 @@ where
 ///
 /// Assists are returned in the "resolved" state, that is with edit fully
 /// computed.
-pub fn assists<H>(db: &H, range: FileRange) -> Vec<(AssistLabel, AssistAction)>
+pub fn assists<H>(db: &H, range: FileRange) -> Vec<(AssistLabel, AssistAction, Vec<AssistAction>)>
 where
     H: HirDatabase + 'static,
 {
@@ -75,7 +76,9 @@ where
             .iter()
             .filter_map(|f| f(ctx.clone()))
             .map(|a| match a {
-                Assist::Resolved { label, action } => (label, action),
+                Assist::Resolved { label, action, alternative_actions } => {
+                    (label, action, alternative_actions)
+                }
                 Assist::Unresolved { .. } => unreachable!(),
             })
             .collect::<Vec<_>>();

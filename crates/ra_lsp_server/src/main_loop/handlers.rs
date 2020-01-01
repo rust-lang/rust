@@ -644,7 +644,6 @@ pub fn handle_code_action(
     let line_index = world.analysis().file_line_index(file_id)?;
     let range = params.range.conv_with(&line_index);
 
-    let assists = world.analysis().assists(FileRange { file_id, range })?.into_iter();
     let diagnostics = world.analysis().diagnostics(file_id)?;
     let mut res = CodeActionResponse::default();
 
@@ -697,14 +696,19 @@ pub fn handle_code_action(
         res.push(action.into());
     }
 
-    for assist in assists {
-        let title = assist.change.label.clone();
+    for assist in world.analysis().assists(FileRange { file_id, range })?.into_iter() {
+        let title = assist.label.clone();
         let edit = assist.change.try_conv_with(&world)?;
+        let alternative_edits = assist
+            .alternative_changes
+            .into_iter()
+            .map(|change| change.try_conv_with(&world))
+            .collect::<Result<Vec<_>>>()?;
 
         let command = Command {
             title,
             command: "rust-analyzer.applySourceChange".to_string(),
-            arguments: Some(vec![to_value(edit).unwrap()]),
+            arguments: Some(vec![to_value(edit).unwrap(), to_value(alternative_edits).unwrap()]),
         };
         let action = CodeAction {
             title: command.title.clone(),

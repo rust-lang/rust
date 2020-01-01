@@ -9,7 +9,7 @@ export interface SourceChange {
     cursorPosition?: lc.TextDocumentPositionParams;
 }
 
-export async function applySourceChange(ctx: Ctx, change: SourceChange) {
+async function applySelectedSourceChange(ctx: Ctx, change: SourceChange) {
     const client = ctx.client;
     if (!client) return;
 
@@ -53,5 +53,15 @@ export async function applySourceChange(ctx: Ctx, change: SourceChange) {
             new vscode.Range(position, position),
             vscode.TextEditorRevealType.Default,
         );
+    }
+}
+
+export async function applySourceChange(ctx: Ctx, change: SourceChange, alternativeChanges: SourceChange[] | undefined) {
+    if (alternativeChanges !== undefined && alternativeChanges.length > 0) {
+        const selectedChange = await vscode.window.showQuickPick([change, ...alternativeChanges]);
+        if (!selectedChange) return;
+        await applySelectedSourceChange(ctx, selectedChange);
+    } else {
+        await applySelectedSourceChange(ctx, change);
     }
 }

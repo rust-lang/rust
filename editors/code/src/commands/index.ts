@@ -34,8 +34,8 @@ function showReferences(ctx: Ctx): Cmd {
 }
 
 function applySourceChange(ctx: Ctx): Cmd {
-    return async (change: sourceChange.SourceChange) => {
-        sourceChange.applySourceChange(ctx, change);
+    return async (change: sourceChange.SourceChange, alternativeChanges: sourceChange.SourceChange[] | undefined) => {
+        sourceChange.applySourceChange(ctx, change, alternativeChanges);
     };
 }
 
