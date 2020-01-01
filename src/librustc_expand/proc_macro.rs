@@ -1,9 +1,9 @@
 use crate::base::{self, *};
 use crate::proc_macro_server;
 
+use rustc_span::symbol::sym;
 use syntax::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
 use syntax::errors::{Applicability, FatalError};
-use syntax::symbol::sym;
 use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
 

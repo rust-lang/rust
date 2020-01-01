@@ -16,11 +16,11 @@ use crate::lint;
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::iter::{self};
 use syntax::ast::{self};
-use syntax::symbol::Symbol;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {

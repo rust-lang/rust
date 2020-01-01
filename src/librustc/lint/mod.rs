@@ -34,9 +34,9 @@ use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
+use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use syntax::ast;
-use syntax::symbol::Symbol;
 
 pub use crate::lint::context::{
     check_ast_crate, check_crate, late_lint_mod, BufferedEarlyLint, CheckLintNameResult,

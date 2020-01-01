@@ -94,7 +94,7 @@ macro_rules! arena_types {
                     >
                 >,
             [few] diagnostic_items: rustc_data_structures::fx::FxHashMap<
-                syntax::symbol::Symbol,
+                rustc_span::symbol::Symbol,
                 rustc::hir::def_id::DefId,
             >,
             [few] resolve_lifetimes: rustc::middle::resolve_lifetime::ResolveLifetimes,
@@ -105,7 +105,7 @@ macro_rules! arena_types {
             [few] privacy_access_levels: rustc::middle::privacy::AccessLevels,
             [few] target_features_whitelist: rustc_data_structures::fx::FxHashMap<
                 String,
-                Option<syntax::symbol::Symbol>
+                Option<rustc_span::symbol::Symbol>
             >,
             [few] wasm_import_module_map: rustc_data_structures::fx::FxHashMap<
                 rustc::hir::def_id::DefId,

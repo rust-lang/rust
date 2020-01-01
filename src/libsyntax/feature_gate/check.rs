@@ -3,7 +3,6 @@ use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData}
 use crate::attr;
 use crate::edition::{Edition, ALL_EDITIONS};
 use crate::sess::ParseSess;
-use crate::symbol::{sym, Symbol};
 use crate::visit::{self, FnKind, Visitor};
 
 use errors::{Applicability, DiagnosticBuilder, Handler};
@@ -16,6 +15,7 @@ use rustc_feature::{
     ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
 };
 use rustc_span::source_map::Spanned;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 
 use log::debug;

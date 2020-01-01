@@ -18,7 +18,7 @@ use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::fx::FxHashMap;
 
 use rustc_span;
-use syntax::symbol::sym;
+use rustc_span::symbol::sym;
 use syntax::{ast, attr};
 
 // Any local node that may call something in its body block should be

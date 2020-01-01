@@ -6,10 +6,10 @@ use rustc::session::config::PrintRequest;
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::UnstableFeatures;
+use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use std::ffi::CString;
-use syntax::symbol::sym;
 
 use std::slice;
 use std::str;

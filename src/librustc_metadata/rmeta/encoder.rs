@@ -26,6 +26,7 @@ use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 
 use log::{debug, trace};
 use rustc_span::source_map::Spanned;
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName, SourceFile, Span};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
@@ -34,7 +35,6 @@ use std::u32;
 use syntax::ast;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
-use syntax::symbol::{kw, sym, Ident, Symbol};
 
 use rustc::hir::intravisit;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};

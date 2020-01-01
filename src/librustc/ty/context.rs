@@ -60,6 +60,7 @@ use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_span::source_map::MultiSpan;
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
@@ -76,7 +77,6 @@ use std::sync::Arc;
 use syntax::ast;
 use syntax::attr;
 use syntax::expand::allocator::AllocatorKind;
-use syntax::symbol::{kw, sym, Symbol};
 
 pub struct AllArenas {
     pub interner: SyncDroplessArena,

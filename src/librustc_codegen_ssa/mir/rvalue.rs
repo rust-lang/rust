@@ -14,7 +14,7 @@ use rustc::ty::layout::{self, HasTyCtxt, LayoutOf};
 use rustc::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_apfloat::{ieee, Float, Round, Status};
 use rustc_span::source_map::{Span, DUMMY_SP};
-use syntax::symbol::sym;
+use rustc_span::symbol::sym;
 
 use std::{i128, u128};
 

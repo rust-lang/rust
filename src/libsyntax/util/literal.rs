@@ -1,17 +1,17 @@
 //! Code related to parsing literals.
 
 use crate::ast::{self, Lit, LitKind};
-use crate::symbol::{kw, sym, Symbol};
 use crate::token::{self, Token};
 use crate::tokenstream::TokenTree;
 
-use log::debug;
 use rustc_data_structures::sync::Lrc;
 use rustc_lexer::unescape::{unescape_byte, unescape_char};
 use rustc_lexer::unescape::{unescape_byte_str, unescape_str};
 use rustc_lexer::unescape::{unescape_raw_byte_str, unescape_raw_str};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
+use log::debug;
 use std::ascii;
 
 pub enum LitError {

@@ -97,7 +97,6 @@ pub mod ptr;
 pub mod show_span;
 pub use rustc_session::parse as sess;
 pub use rustc_span::edition;
-pub use rustc_span::symbol;
 pub mod token;
 pub mod tokenstream;
 pub mod visit;

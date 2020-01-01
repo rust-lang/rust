@@ -107,7 +107,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, InstanceDef, TyCtxt};
 use rustc::util::common::time;
 use rustc::util::nodemap::{DefIdSet, FxHashMap, FxHashSet};
-use syntax::symbol::Symbol;
+use rustc_span::symbol::Symbol;
 
 use crate::monomorphize::collector::InliningMap;
 use crate::monomorphize::collector::{self, MonoItemCollectionMode};

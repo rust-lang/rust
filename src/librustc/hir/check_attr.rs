@@ -12,11 +12,12 @@ use crate::lint::builtin::UNUSED_ATTRIBUTES;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 
-use rustc_span::Span;
-use std::fmt::{self, Display};
-use syntax::{attr, symbol::sym};
-
 use rustc_error_codes::*;
+use rustc_span::symbol::sym;
+use rustc_span::Span;
+use syntax::attr;
+
+use std::fmt::{self, Display};
 
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) enum MethodKind {

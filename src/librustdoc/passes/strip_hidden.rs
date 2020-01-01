@@ -1,6 +1,6 @@
 use rustc::util::nodemap::DefIdSet;
+use rustc_span::symbol::sym;
 use std::mem;
-use syntax::symbol::sym;
 
 use crate::clean::Item;
 use crate::clean::{self, AttributesExt, NestedAttributesExt};

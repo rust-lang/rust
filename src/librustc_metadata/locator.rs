@@ -225,10 +225,10 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 
 use errors::DiagnosticBuilder;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
 use syntax::struct_span_err;
-use syntax::symbol::{sym, Symbol};
 use syntax::{span_err, span_fatal};
 
 use std::cmp;

@@ -22,13 +22,13 @@ use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
 use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
+use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
 use syntax::ast;
 use syntax::errors::pluralize;
 use syntax::feature_gate::feature_err;
-use syntax::symbol::sym;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::collections::BTreeSet;

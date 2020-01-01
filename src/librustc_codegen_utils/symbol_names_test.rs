@@ -6,7 +6,7 @@
 
 use rustc::hir;
 use rustc::ty::{Instance, TyCtxt};
-use syntax::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
 const DEF_PATH: Symbol = sym::rustc_def_path;

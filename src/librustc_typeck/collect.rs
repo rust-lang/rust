@@ -32,12 +32,12 @@ use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::abi;
 
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 use syntax::feature_gate;
-use syntax::symbol::{kw, sym, Symbol};
 
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};

@@ -12,7 +12,7 @@ use crate::llvm::{self, ArchiveKind};
 use rustc::session::Session;
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
 use rustc_codegen_ssa::{looks_like_rust_object_file, METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
-use syntax::symbol::Symbol;
+use rustc_span::symbol::Symbol;
 
 struct ArchiveConfig<'a> {
     pub sess: &'a Session,

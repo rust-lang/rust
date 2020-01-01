@@ -3,9 +3,9 @@
 use rustc::hir::def_id::DefId;
 use rustc::session::config::nightly_options;
 use rustc::ty::TyCtxt;
+use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use syntax::feature_gate::feature_err;
-use syntax::symbol::sym;
 
 use super::{ConstKind, Item};
 

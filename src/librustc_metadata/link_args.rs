@@ -1,8 +1,8 @@
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
+use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
-use syntax::symbol::sym;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
     let mut collector = Collector { args: Vec::new() };

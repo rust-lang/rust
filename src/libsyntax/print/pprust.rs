@@ -6,7 +6,6 @@ use crate::print::pp::Breaks::{Consistent, Inconsistent};
 use crate::print::pp::{self, Breaks};
 use crate::ptr::P;
 use crate::sess::ParseSess;
-use crate::symbol::{kw, sym};
 use crate::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 use crate::util::classify;
@@ -14,6 +13,7 @@ use crate::util::comments;
 use crate::util::parser::{self, AssocOp, Fixity};
 
 use rustc_span::source_map::{dummy_spanned, SourceMap, Spanned};
+use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, FileName, Span};
 
 use std::borrow::Cow;

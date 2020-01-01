@@ -10,10 +10,10 @@ use rustc::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use errors::DiagnosticBuilder;
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;
 use syntax::feature_gate;
-use syntax::symbol::sym;
 
 use rustc::hir;
 use rustc::hir::itemlikevisit::ParItemLikeVisitor;

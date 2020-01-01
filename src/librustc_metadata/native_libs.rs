@@ -5,10 +5,10 @@ use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
 use rustc_span::source_map::Span;
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::feature_gate::feature_err;
-use syntax::symbol::{kw, sym, Symbol};
 use syntax::{span_err, struct_span_err};
 
 use rustc_error_codes::*;

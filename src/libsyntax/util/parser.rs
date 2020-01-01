@@ -1,6 +1,6 @@
 use crate::ast::{self, BinOpKind};
-use crate::symbol::kw;
 use crate::token::{self, BinOpToken, Token};
+use rustc_span::symbol::kw;
 
 /// Associative operator with precedence.
 ///
