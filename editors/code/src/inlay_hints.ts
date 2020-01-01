@@ -41,10 +41,11 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
 class HintsUpdater {
     private pending: Map<string, vscode.CancellationTokenSource> = new Map();
     private ctx: Ctx;
-    private enabled = true;
+    private enabled: boolean;
 
     constructor(ctx: Ctx) {
         this.ctx = ctx;
+        this.enabled = ctx.config.displayInlayHints;
     }
 
     async setEnabled(enabled: boolean) {
