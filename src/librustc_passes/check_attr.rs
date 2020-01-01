@@ -4,138 +4,28 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::hir::map::Map;
-use crate::ty::query::Providers;
-use crate::ty::TyCtxt;
+use rustc::hir::check_attr::{MethodKind, Target};
+use rustc::hir::map::Map;
+use rustc::ty::query::Providers;
+use rustc::ty::TyCtxt;
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::DUMMY_HIR_ID;
-use rustc_hir::{self, HirId, Item, ItemKind, TraitItem, TraitItemKind};
+use rustc_hir::{self, HirId, Item, ItemKind, TraitItem};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast::Attribute;
 use syntax::attr;
 
-use std::fmt::{self, Display};
-
-#[derive(Copy, Clone, PartialEq)]
-pub(crate) enum MethodKind {
-    Trait { body: bool },
-    Inherent,
+pub(crate) trait TargetExt {
+    fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target;
 }
 
-#[derive(Copy, Clone, PartialEq)]
-pub(crate) enum Target {
-    ExternCrate,
-    Use,
-    Static,
-    Const,
-    Fn,
-    Closure,
-    Mod,
-    ForeignMod,
-    GlobalAsm,
-    TyAlias,
-    OpaqueTy,
-    Enum,
-    Struct,
-    Union,
-    Trait,
-    TraitAlias,
-    Impl,
-    Expression,
-    Statement,
-    AssocConst,
-    Method(MethodKind),
-    AssocTy,
-    ForeignFn,
-    ForeignStatic,
-    ForeignTy,
-}
-
-impl Display for Target {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match *self {
-                Target::ExternCrate => "extern crate",
-                Target::Use => "use",
-                Target::Static => "static item",
-                Target::Const => "constant item",
-                Target::Fn => "function",
-                Target::Closure => "closure",
-                Target::Mod => "module",
-                Target::ForeignMod => "foreign module",
-                Target::GlobalAsm => "global asm",
-                Target::TyAlias => "type alias",
-                Target::OpaqueTy => "opaque type",
-                Target::Enum => "enum",
-                Target::Struct => "struct",
-                Target::Union => "union",
-                Target::Trait => "trait",
-                Target::TraitAlias => "trait alias",
-                Target::Impl => "item",
-                Target::Expression => "expression",
-                Target::Statement => "statement",
-                Target::AssocConst => "associated const",
-                Target::Method(_) => "method",
-                Target::AssocTy => "associated type",
-                Target::ForeignFn => "foreign function",
-                Target::ForeignStatic => "foreign static item",
-                Target::ForeignTy => "foreign type",
-            }
-        )
-    }
-}
-
-impl Target {
-    pub(crate) fn from_item(item: &Item<'_>) -> Target {
-        match item.kind {
-            ItemKind::ExternCrate(..) => Target::ExternCrate,
-            ItemKind::Use(..) => Target::Use,
-            ItemKind::Static(..) => Target::Static,
-            ItemKind::Const(..) => Target::Const,
-            ItemKind::Fn(..) => Target::Fn,
-            ItemKind::Mod(..) => Target::Mod,
-            ItemKind::ForeignMod(..) => Target::ForeignMod,
-            ItemKind::GlobalAsm(..) => Target::GlobalAsm,
-            ItemKind::TyAlias(..) => Target::TyAlias,
-            ItemKind::OpaqueTy(..) => Target::OpaqueTy,
-            ItemKind::Enum(..) => Target::Enum,
-            ItemKind::Struct(..) => Target::Struct,
-            ItemKind::Union(..) => Target::Union,
-            ItemKind::Trait(..) => Target::Trait,
-            ItemKind::TraitAlias(..) => Target::TraitAlias,
-            ItemKind::Impl { .. } => Target::Impl,
-        }
-    }
-
-    fn from_trait_item(trait_item: &TraitItem<'_>) -> Target {
-        match trait_item.kind {
-            TraitItemKind::Const(..) => Target::AssocConst,
-            TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
-                Target::Method(MethodKind::Trait { body: false })
-            }
-            TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
-                Target::Method(MethodKind::Trait { body: true })
-            }
-            TraitItemKind::Type(..) => Target::AssocTy,
-        }
-    }
-
-    fn from_foreign_item(foreign_item: &hir::ForeignItem<'_>) -> Target {
-        match foreign_item.kind {
-            hir::ForeignItemKind::Fn(..) => Target::ForeignFn,
-            hir::ForeignItemKind::Static(..) => Target::ForeignStatic,
-            hir::ForeignItemKind::Type => Target::ForeignTy,
-        }
-    }
-
+impl TargetExt for Target {
     fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
         match impl_item.kind {
             hir::ImplItemKind::Const(..) => Target::AssocConst,
