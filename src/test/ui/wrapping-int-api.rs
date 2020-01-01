@@ -1,6 +1,9 @@
 // run-pass
 // Test inherent wrapping_* methods for {i,u}{size,8,16,32,64}.
 
+// Don't warn about overflowing ops on 32-bit platforms
+#![cfg_attr(target_pointer_width = "32", allow(const_err))]
+
 use std::{i8, i16, i32, i64, isize};
 use std::{u8, u16, u32, u64, usize};
 
