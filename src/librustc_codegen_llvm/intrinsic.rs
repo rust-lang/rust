@@ -952,11 +952,15 @@ fn codegen_msvc_try(
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
 
+        // The flag value of 8 indicates that we are catching the exception by
+        // reference instead of by value.
+        //
+        // Source: MicrosoftCXXABI::getAddrOfCXXCatchHandlerType in clang
+        let flags = bx.const_i32(8);
         let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
             Some(did) => bx.get_static(did),
             None => bug!("eh_catch_typeinfo not defined, but needed for SEH unwinding"),
         };
-        let flags = bx.const_i32(8); // Catch by reference
         let funclet = catchpad.catch_pad(cs, &[tydesc, flags, slot]);
 
         let i64_align = bx.tcx().data_layout.i64_align.abi;
