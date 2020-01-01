@@ -10,7 +10,6 @@ use crate::mem;
 use crate::num::flt2dec;
 use crate::ops::Deref;
 use crate::result;
-use crate::slice;
 use crate::str;
 
 mod builders;
@@ -234,7 +233,6 @@ pub struct Formatter<'a> {
     precision: Option<usize>,
 
     buf: &'a mut (dyn Write + 'a),
-    curarg: slice::Iter<'a, ArgumentV1<'a>>,
     args: &'a [ArgumentV1<'a>],
 }
 
@@ -1044,7 +1042,6 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
         align: rt::v1::Alignment::Unknown,
         fill: ' ',
         args: args.args,
-        curarg: args.args.iter(),
     };
 
     let mut idx = 0;
@@ -1117,7 +1114,6 @@ impl<'a> Formatter<'a> {
 
             // These only exist in the struct for the `run` method,
             // which won’t be used together with this method.
-            curarg: self.curarg.clone(),
             args: self.args,
         }
     }
@@ -1134,9 +1130,17 @@ impl<'a> Formatter<'a> {
         self.precision = self.getcount(&arg.format.precision);
 
         // Extract the correct argument
-        let value = match arg.position {
-            rt::v1::Position::Next => *self.curarg.next().unwrap(),
-            rt::v1::Position::At(i) => self.args[i],
+        let value = {
+            #[cfg(bootstrap)]
+            {
+                match arg.position {
+                    rt::v1::Position::At(i) => self.args[i],
+                }
+            }
+            #[cfg(not(bootstrap))]
+            {
+                self.args[arg.position]
+            }
         };
 
         // Then actually do some printing
@@ -1148,7 +1152,6 @@ impl<'a> Formatter<'a> {
             rt::v1::Count::Is(n) => Some(n),
             rt::v1::Count::Implied => None,
             rt::v1::Count::Param(i) => self.args[i].as_usize(),
-            rt::v1::Count::NextParam => self.curarg.next()?.as_usize(),
         }
     }
 

@@ -590,17 +590,6 @@ impl<'a, 'b> Context<'a, 'b> {
             parse::NextArgument(ref arg) => {
                 // Build the position
                 let pos = {
-                    let pos = |c, arg| {
-                        let mut path = Context::rtpath(self.ecx, "Position");
-                        path.push(self.ecx.ident_of(c, sp));
-                        match arg {
-                            Some(i) => {
-                                let arg = self.ecx.expr_usize(sp, i);
-                                self.ecx.expr_call_global(sp, path, vec![arg])
-                            }
-                            None => self.ecx.expr_path(self.ecx.path_global(sp, path)),
-                        }
-                    };
                     match arg.position {
                         parse::ArgumentIs(i) | parse::ArgumentImplicitlyIs(i) => {
                             // Map to index in final generated argument array
@@ -615,7 +604,7 @@ impl<'a, 'b> Context<'a, 'b> {
                                     arg_idx
                                 }
                             };
-                            pos("At", Some(arg_idx))
+                            self.ecx.expr_usize(sp, arg_idx)
                         }
 
                         // should never be the case, because names are already
