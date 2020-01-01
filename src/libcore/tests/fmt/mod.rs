@@ -28,3 +28,18 @@ fn test_estimated_capacity() {
     assert_eq!(format_args!("{}, hello!", "World").estimated_capacity(), 0);
     assert_eq!(format_args!("{}. 16-bytes piece", "World").estimated_capacity(), 32);
 }
+
+#[test]
+fn pad_integral_resets() {
+    struct Bar;
+
+    impl core::fmt::Display for Bar {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            "1".fmt(f)?;
+            f.pad_integral(true, "", "5")?;
+            "1".fmt(f)
+        }
+    }
+
+    assert_eq!(format!("{:<03}", Bar), "1  0051  ");
+}
