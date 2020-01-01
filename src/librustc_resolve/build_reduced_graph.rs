@@ -472,7 +472,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
                         self.r
                             .session
-                            .struct_span_err(item.span, "`$crate` may not be imported");
+                            .struct_span_err(item.span, "`$crate` may not be imported")
+                            .emit();
                     }
                 }
 
