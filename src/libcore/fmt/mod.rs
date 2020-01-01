@@ -274,14 +274,119 @@ impl<'a> ArgumentV1<'a> {
 
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
-        unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
+    #[cfg(bootstrap)]
+    pub fn new<'b, T>(x: &'b T, formatter: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
+        unsafe { ArgumentV1 { value: mem::transmute(x), formatter: mem::transmute(formatter) } }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_display<T: Display>(x: &T) -> ArgumentV1<'_> {
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(<T as Display>::fmt as fn(_, _) -> _),
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_debug<T: Debug>(x: &T) -> ArgumentV1<'_> {
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(<T as Debug>::fmt as fn(_, _) -> _),
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_lowerexp<T: LowerExp>(x: &T) -> ArgumentV1<'_> {
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(<T as LowerExp>::fmt as fn(_, _) -> _),
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_upperexp<T: UpperExp>(x: &T) -> ArgumentV1<'_> {
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(<T as UpperExp>::fmt as fn(_, _) -> _),
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_octal<T: Octal>(x: &T) -> ArgumentV1<'_> {
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(<T as Octal>::fmt as fn(_, _) -> _),
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_pointer<T: Pointer>(x: &T) -> ArgumentV1<'_> {
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(<T as Pointer>::fmt as fn(_, _) -> _),
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_binary<T: Binary>(x: &T) -> ArgumentV1<'_> {
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(<T as Binary>::fmt as fn(_, _) -> _),
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_lowerhex<T: LowerHex>(x: &T) -> ArgumentV1<'_> {
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(<T as LowerHex>::fmt as fn(_, _) -> _),
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub fn new_upperhex<T: UpperHex>(x: &T) -> ArgumentV1<'_> {
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(<T as UpperHex>::fmt as fn(_, _) -> _),
+            }
+        }
     }
 
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
-        ArgumentV1::new(x, ArgumentV1::show_usize)
+        unsafe {
+            ArgumentV1 {
+                value: mem::transmute(x),
+                formatter: mem::transmute(ArgumentV1::show_usize as fn(_, _) -> _),
+            }
+        }
     }
 
     fn as_usize(&self) -> Option<usize> {
