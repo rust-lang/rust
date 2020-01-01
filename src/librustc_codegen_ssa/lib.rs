@@ -34,8 +34,8 @@ use rustc::ty::query::Providers;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
+use rustc_span::symbol::Symbol;
 use std::path::{Path, PathBuf};
-use syntax_pos::symbol::Symbol;
 
 pub mod back;
 pub mod base;

@@ -10,9 +10,9 @@ use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoB
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::{infer, traits};
+use rustc_span::Span;
 use rustc_target::spec::abi;
 use syntax::ast::Ident;
-use syntax_pos::Span;
 
 use rustc::hir;
 

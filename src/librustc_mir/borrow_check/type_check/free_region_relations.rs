@@ -7,8 +7,8 @@ use rustc::traits::query::outlives_bounds::{self, OutlivesBound};
 use rustc::traits::query::type_op::{self, TypeOp};
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
+use rustc_span::DUMMY_SP;
 use std::rc::Rc;
-use syntax_pos::DUMMY_SP;
 
 use crate::borrow_check::{
     nll::ToRegionVid,

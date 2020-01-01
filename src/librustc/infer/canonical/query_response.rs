@@ -25,8 +25,8 @@ use crate::ty::{self, BoundVar, Ty, TyCtxt};
 use crate::util::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
+use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
-use syntax_pos::DUMMY_SP;
 
 impl<'tcx> InferCtxtBuilder<'tcx> {
     /// The "main method" for a canonicalized trait query. Given the

@@ -855,7 +855,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let param_env = ty::ParamEnv::reveal_all();
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
-            use syntax_pos::DUMMY_SP;
+            use rustc_span::DUMMY_SP;
             if ty.is_sized(tcx.at(DUMMY_SP), param_env) {
                 return false;
             }

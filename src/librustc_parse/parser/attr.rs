@@ -1,11 +1,11 @@
 use super::{Parser, PathStyle, TokenType};
 use rustc_errors::PResult;
+use rustc_span::{Span, Symbol};
 use syntax::ast;
 use syntax::attr;
 use syntax::print::pprust;
 use syntax::token::{self, Nonterminal};
 use syntax::util::comments;
-use syntax_pos::{Span, Symbol};
 
 use log::debug;
 

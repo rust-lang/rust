@@ -15,9 +15,9 @@ mod active;
 mod builtin_attrs;
 mod removed;
 
+use rustc_span::{edition::Edition, symbol::Symbol, Span};
 use std::fmt;
 use std::num::NonZeroU32;
-use syntax_pos::{edition::Edition, symbol::Symbol, Span};
 
 #[derive(Clone, Copy)]
 pub enum State {

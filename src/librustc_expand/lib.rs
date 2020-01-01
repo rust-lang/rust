@@ -29,7 +29,7 @@ mod placeholders;
 mod proc_macro_server;
 
 pub use mbe::macro_rules::compile_declarative_macro;
-crate use syntax_pos::hygiene;
+crate use rustc_span::hygiene;
 pub mod base;
 pub mod build;
 pub mod expand;

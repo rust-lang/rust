@@ -8,9 +8,9 @@ use rustc::ty::steal::Steal;
 use rustc::ty::{InstanceDef, TyCtxt, TypeFoldable};
 use rustc::util::nodemap::DefIdSet;
 use rustc_index::vec::IndexVec;
+use rustc_span::Span;
 use std::borrow::Cow;
 use syntax::ast;
-use syntax_pos::Span;
 
 pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;

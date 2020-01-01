@@ -25,6 +25,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 
 use log::{debug, trace};
+use rustc_span::{self, FileName, SourceFile, Span};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -34,7 +35,6 @@ use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym, Ident, Symbol};
-use syntax_pos::{self, FileName, SourceFile, Span};
 
 use rustc::hir::intravisit;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
@@ -332,7 +332,7 @@ impl<'tcx> EncodeContext<'tcx> {
 
     fn encode_info_for_items(&mut self) {
         let krate = self.tcx.hir().krate();
-        let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Public };
+        let vis = Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public };
         self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.module, &krate.attrs, &vis);
         krate.visit_all_item_likes(&mut self.as_deep_visitor());
         for macro_def in krate.exported_macros {
@@ -345,7 +345,7 @@ impl<'tcx> EncodeContext<'tcx> {
         self.lazy(definitions.def_path_table())
     }
 
-    fn encode_source_map(&mut self) -> Lazy<[syntax_pos::SourceFile]> {
+    fn encode_source_map(&mut self) -> Lazy<[rustc_span::SourceFile]> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 

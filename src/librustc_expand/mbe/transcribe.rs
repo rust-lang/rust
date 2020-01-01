@@ -12,8 +12,8 @@ use smallvec::{smallvec, SmallVec};
 use errors::pluralize;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::hygiene::{ExpnId, Transparency};
-use syntax_pos::Span;
+use rustc_span::hygiene::{ExpnId, Transparency};
+use rustc_span::Span;
 
 use std::mem;
 

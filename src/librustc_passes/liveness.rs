@@ -109,6 +109,7 @@ use rustc::util::nodemap::{HirIdMap, HirIdSet};
 
 use errors::Applicability;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_span::Span;
 use std::collections::VecDeque;
 use std::io;
 use std::io::prelude::*;
@@ -116,7 +117,6 @@ use std::rc::Rc;
 use std::{fmt, u32};
 use syntax::ast;
 use syntax::symbol::sym;
-use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq)]
 struct Variable(u32);

@@ -11,6 +11,7 @@ use rustc::lint;
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_parse::validate_attr;
+use rustc_span::Span;
 use std::mem;
 use syntax::ast::*;
 use syntax::attr;
@@ -20,7 +21,6 @@ use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

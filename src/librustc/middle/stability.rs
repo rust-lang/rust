@@ -16,12 +16,12 @@ use crate::ty::{self, TyCtxt};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use errors::DiagnosticBuilder;
 use rustc_feature::GateIssue;
+use rustc_span::{MultiSpan, Span};
 use syntax::ast::{Attribute, CRATE_NODE_ID};
 use syntax::attr::{self, ConstStability, Deprecation, RustcDeprecation, Stability};
 use syntax::errors::Applicability;
 use syntax::feature_gate::{feature_err, feature_err_issue};
 use syntax::symbol::{sym, Symbol};
-use syntax_pos::{MultiSpan, Span};
 
 use std::cmp::Ordering;
 use std::mem::replace;

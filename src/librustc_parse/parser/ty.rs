@@ -5,6 +5,8 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 use rustc_error_codes::*;
 use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_span::source_map::Span;
+use rustc_span::symbol::kw;
 use syntax::ast::{
     self, BareFnTy, FunctionRetTy, GenericParam, Ident, Lifetime, MutTy, Ty, TyKind,
 };
@@ -15,8 +17,6 @@ use syntax::ast::{Mac, Mutability};
 use syntax::ptr::P;
 use syntax::struct_span_err;
 use syntax::token::{self, Token};
-use syntax_pos::source_map::Span;
-use syntax_pos::symbol::kw;
 
 /// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
 /// `IDENT<<u8 as Trait>::AssocTy>`.

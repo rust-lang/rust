@@ -12,7 +12,7 @@ use syntax::tokenstream::{self, TokenStream, TokenTree};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
-use syntax_pos::{FileName, SourceFile, Span};
+use rustc_span::{FileName, SourceFile, Span};
 
 use std::borrow::Cow;
 use std::path::Path;
@@ -373,7 +373,7 @@ fn prepend_attrs(
     sess: &ParseSess,
     attrs: &[ast::Attribute],
     tokens: Option<&tokenstream::TokenStream>,
-    span: syntax_pos::Span,
+    span: rustc_span::Span,
 ) -> Option<tokenstream::TokenStream> {
     let tokens = tokens?;
     if attrs.len() == 0 {

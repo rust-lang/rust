@@ -42,8 +42,8 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::UpvarRegion;
 use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_span::Span;
 use syntax::ast;
-use syntax_pos::Span;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {

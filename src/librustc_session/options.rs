@@ -9,7 +9,7 @@ use rustc_target::spec::TargetTriple;
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 
 use rustc_feature::UnstableFeatures;
-use syntax_pos::edition::Edition;
+use rustc_span::edition::Edition;
 
 use getopts;
 

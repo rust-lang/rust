@@ -4,7 +4,7 @@ use crate::ty::query::Query;
 use crate::ty::tls;
 
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 #[cfg(not(parallel_compiler))]
 use std::ptr;
@@ -17,9 +17,9 @@ use {
     rustc_data_structures::sync::Lock,
     rustc_data_structures::{jobserver, OnDrop},
     rustc_rayon_core as rayon_core,
+    rustc_span::DUMMY_SP,
     std::iter::FromIterator,
     std::{mem, process, thread},
-    syntax_pos::DUMMY_SP,
 };
 
 /// Represents a span and a query key.
@@ -432,16 +432,16 @@ pub unsafe fn handle_deadlock() {
     let gcx_ptr = tls::GCX_PTR.with(|gcx_ptr| gcx_ptr as *const _);
     let gcx_ptr = &*gcx_ptr;
 
-    let syntax_pos_globals =
-        syntax_pos::GLOBALS.with(|syntax_pos_globals| syntax_pos_globals as *const _);
-    let syntax_pos_globals = &*syntax_pos_globals;
+    let rustc_span_globals =
+        rustc_span::GLOBALS.with(|rustc_span_globals| rustc_span_globals as *const _);
+    let rustc_span_globals = &*rustc_span_globals;
     let syntax_globals = syntax::GLOBALS.with(|syntax_globals| syntax_globals as *const _);
     let syntax_globals = &*syntax_globals;
     thread::spawn(move || {
         tls::GCX_PTR.set(gcx_ptr, || {
             syntax::GLOBALS.set(syntax_globals, || {
-                syntax_pos::GLOBALS
-                    .set(syntax_pos_globals, || tls::with_global(|tcx| deadlock(tcx, &registry)))
+                rustc_span::GLOBALS
+                    .set(rustc_span_globals, || tls::with_global(|tcx| deadlock(tcx, &registry)))
             });
         })
     });

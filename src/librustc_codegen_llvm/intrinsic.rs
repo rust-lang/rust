@@ -23,7 +23,7 @@ use syntax::ast;
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::traits::*;
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use std::cmp::Ordering;
 use std::{i128, iter, u128};

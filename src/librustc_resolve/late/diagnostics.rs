@@ -12,11 +12,11 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::PrimTy;
 use rustc::session::config::nightly_options;
 use rustc::util::nodemap::FxHashSet;
+use rustc_span::hygiene::MacroKind;
+use rustc_span::Span;
 use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

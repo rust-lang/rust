@@ -5,8 +5,8 @@ use crate::Level;
 use crate::Substitution;
 use crate::SubstitutionPart;
 use crate::SuggestionStyle;
+use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
-use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]

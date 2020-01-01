@@ -22,10 +22,10 @@ use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTyp
 
 use rustc_index::vec::Idx;
 
+use rustc_span::{Span, DUMMY_SP};
 use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_error_codes::*;
 

@@ -9,8 +9,8 @@ use rustc::ty::util::ExplicitSelf;
 use rustc::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc::util::common::ErrorReported;
 
+use rustc_span::Span;
 use syntax::errors::pluralize;
-use syntax_pos::Span;
 
 use super::{potentially_plural_count, FnCtxt, Inherited};
 

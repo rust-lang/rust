@@ -34,7 +34,7 @@ extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_parse;
 extern crate rustc_resolve;
-extern crate rustc_span as syntax_pos;
+extern crate rustc_span as rustc_span;
 extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate syntax;

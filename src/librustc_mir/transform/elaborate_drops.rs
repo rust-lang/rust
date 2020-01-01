@@ -15,8 +15,8 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_index::bit_set::BitSet;
+use rustc_span::Span;
 use std::fmt;
-use syntax_pos::Span;
 
 pub struct ElaborateDrops;
 

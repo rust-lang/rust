@@ -24,9 +24,9 @@ use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId};
-use syntax_pos::edition::Edition;
-use syntax_pos::source_map;
-use syntax_pos::{MultiSpan, Span};
+use rustc_span::edition::Edition;
+use rustc_span::source_map;
+use rustc_span::{MultiSpan, Span};
 
 use rustc_data_structures::flock;
 use rustc_data_structures::jobserver::{self, Client};

@@ -2,7 +2,7 @@
 
 use crate::ast::*;
 use crate::visit::*;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 pub struct NodeCounter {
     pub count: usize,

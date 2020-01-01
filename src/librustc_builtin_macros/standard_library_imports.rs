@@ -1,12 +1,12 @@
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::ExpansionConfig;
+use rustc_span::hygiene::AstPass;
+use rustc_span::DUMMY_SP;
 use syntax::edition::Edition;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax::{ast, attr};
-use syntax_pos::hygiene::AstPass;
-use syntax_pos::DUMMY_SP;
 
 pub fn inject(
     mut krate: ast::Crate,

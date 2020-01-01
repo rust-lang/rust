@@ -9,10 +9,10 @@ use crate::ty::{fast_reject, TyCtxt};
 
 use std::cmp::Ord;
 
+use rustc_span::{BytePos, SourceFile};
 use syntax::ast;
 use syntax::source_map::SourceMap;
 use syntax::symbol::Symbol;
-use syntax_pos::{BytePos, SourceFile};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
@@ -270,7 +270,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
     }
 }
 
-impl<'a> syntax_pos::HashStableContext for StableHashingContext<'a> {
+impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     fn hash_spans(&self) -> bool {
         self.hash_spans
     }

@@ -7,8 +7,8 @@ use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagnosticBuilder;
+use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
 use syntax::symbol::kw;
-use syntax_pos::{symbol::Symbol, Span, DUMMY_SP};
 
 use crate::borrow_check::{
     nll::ToRegionVid, region_infer::RegionInferenceContext, universal_regions::DefiningTy,

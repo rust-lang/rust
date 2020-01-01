@@ -1,7 +1,7 @@
 use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::ty::subst::Subst;
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::LayoutOf;
-use syntax_pos::{Span, Symbol};
 
 use crate::interpret::{
     intrinsics::{InterpCx, Machine},

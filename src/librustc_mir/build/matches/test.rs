@@ -16,7 +16,7 @@ use rustc::ty::util::IntTypeExt;
 use rustc::ty::{self, adjustment::PointerCast, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
-use syntax_pos::symbol::sym;
+use rustc_span::symbol::sym;
 
 use std::cmp::Ordering;
 

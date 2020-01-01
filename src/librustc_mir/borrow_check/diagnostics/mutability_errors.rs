@@ -4,8 +4,8 @@ use rustc::mir::{self, ClearCrossCrate, Local, LocalInfo, Location, ReadOnlyBody
 use rustc::mir::{Mutability, Place, PlaceBase, PlaceRef, ProjectionElem};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_index::vec::Idx;
-use syntax_pos::symbol::kw;
-use syntax_pos::Span;
+use rustc_span::symbol::kw;
+use rustc_span::Span;
 
 use crate::borrow_check::diagnostics::BorrowedContentSource;
 use crate::borrow_check::MirBorrowckCtxt;

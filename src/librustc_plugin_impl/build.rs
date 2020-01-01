@@ -5,9 +5,9 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_span::Span;
 use syntax::attr;
 use syntax::symbol::sym;
-use syntax_pos::Span;
 
 struct RegistrarFinder {
     registrars: Vec<(hir::HirId, Span)>,

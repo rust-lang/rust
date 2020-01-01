@@ -6,7 +6,7 @@ use crate::build::Builder;
 use rustc::ty::{self, Ty};
 
 use rustc::mir::*;
-use syntax_pos::{Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of

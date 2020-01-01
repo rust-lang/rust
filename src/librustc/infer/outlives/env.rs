@@ -4,7 +4,7 @@ use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::outlives_bounds::{self, OutlivesBound};
 use crate::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 /// The `OutlivesEnvironment` collects information about what outlives
 /// what in a given type-checking setting. For example, if we have a

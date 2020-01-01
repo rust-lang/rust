@@ -25,11 +25,11 @@ use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use errors::{pluralize, Applicability, DiagnosticBuilder, Style};
 use rustc::hir::def_id::LOCAL_CRATE;
+use rustc_span::source_map::SourceMap;
+use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::{kw, sym};
-use syntax_pos::source_map::SourceMap;
-use syntax_pos::{ExpnKind, MultiSpan, Span, DUMMY_SP};
 
 use rustc_error_codes::*;
 

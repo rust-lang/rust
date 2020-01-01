@@ -14,9 +14,9 @@ use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
+use rustc_span::Span;
 use std::hash::Hash;
 use std::intrinsics;
-use syntax_pos::Span;
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -355,7 +355,7 @@ macro_rules! implement_ty_decoder {
             use $crate::ty::subst::SubstsRef;
             use $crate::hir::def_id::{CrateNum};
 
-            use syntax_pos::Span;
+            use rustc_span::Span;
 
             use super::$DecoderName;
 

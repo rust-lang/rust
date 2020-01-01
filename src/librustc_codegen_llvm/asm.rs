@@ -8,7 +8,7 @@ use rustc::hir;
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use libc::{c_char, c_uint};
 use log::debug;

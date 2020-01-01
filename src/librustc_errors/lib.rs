@@ -18,8 +18,8 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
-use syntax_pos::source_map::SourceMap;
-use syntax_pos::{Loc, MultiSpan, Span};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{Loc, MultiSpan, Span};
 
 use std::borrow::Cow;
 use std::panic;
@@ -146,7 +146,7 @@ impl CodeSuggestion {
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
     pub fn splice_lines(&self, cm: &SourceMap) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
-        use syntax_pos::{CharPos, Pos};
+        use rustc_span::{CharPos, Pos};
 
         fn push_trailing(
             buf: &mut String,
@@ -240,7 +240,7 @@ impl CodeSuggestion {
     }
 }
 
-pub use syntax_pos::fatal_error::{FatalError, FatalErrorMarker};
+pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.

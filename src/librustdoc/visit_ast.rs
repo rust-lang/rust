@@ -7,11 +7,11 @@ use rustc::hir::{self, Node};
 use rustc::middle::privacy::AccessLevel;
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_span::hygiene::MacroKind;
+use rustc_span::{self, Span};
 use syntax::ast;
 use syntax::source_map::Spanned;
 use syntax::symbol::sym;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::{self, Span};
 
 use std::mem;
 
@@ -65,7 +65,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let mut module = self.visit_mod_contents(
             krate.span,
             krate.attrs,
-            &Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Public },
+            &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.module,
             None,

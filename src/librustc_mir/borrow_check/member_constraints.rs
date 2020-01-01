@@ -3,9 +3,9 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::region_constraints::MemberConstraint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::Span;
 use std::hash::Hash;
 use std::ops::Index;
-use syntax_pos::Span;
 
 /// Compactly stores a set of `R0 member of [R1...Rn]` constraints,
 /// indexed by the region `R0`.

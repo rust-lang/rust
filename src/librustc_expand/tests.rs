@@ -1,10 +1,10 @@
 use rustc_parse::{new_parser_from_source_str, parser::Parser, source_file_to_stream};
+use rustc_span::{BytePos, MultiSpan, Span};
 use syntax::ast;
 use syntax::sess::ParseSess;
 use syntax::source_map::{FilePathMapping, SourceMap};
 use syntax::tokenstream::TokenStream;
 use syntax::with_default_globals;
-use syntax_pos::{BytePos, MultiSpan, Span};
 
 use errors::emitter::EmitterWriter;
 use errors::{Handler, PResult};

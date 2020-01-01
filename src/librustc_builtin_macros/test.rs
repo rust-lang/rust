@@ -3,12 +3,12 @@
 use crate::util::check_builtin_macro_attribute;
 
 use rustc_expand::base::*;
+use rustc_span::Span;
 use syntax::ast;
 use syntax::attr;
 use syntax::print::pprust;
 use syntax::source_map::respan;
 use syntax::symbol::{sym, Symbol};
-use syntax_pos::Span;
 
 use std::iter;
 

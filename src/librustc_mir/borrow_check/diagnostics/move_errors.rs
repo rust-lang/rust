@@ -1,7 +1,7 @@
 use rustc::mir::*;
 use rustc::ty;
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use crate::borrow_check::diagnostics::UseSpans;
 use crate::borrow_check::prefixes::PrefixSet;

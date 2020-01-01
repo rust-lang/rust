@@ -13,8 +13,8 @@ use crate::ty::query::QueryDescription;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 
+use rustc_span::symbol::Symbol;
 use std::borrow::Cow;
-use syntax_pos::symbol::Symbol;
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -497,7 +497,7 @@ rustc_queries! {
             desc { "extract field of const" }
         }
 
-        query const_caller_location(key: (syntax_pos::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
+        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
             no_force
             desc { "get a &core::panic::Location referring to a span" }
         }

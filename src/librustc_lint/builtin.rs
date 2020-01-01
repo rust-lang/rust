@@ -37,6 +37,7 @@ use rustc::util::nodemap::FxHashSet;
 use rustc_feature::Stability;
 use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, AttributeType};
 
+use rustc_span::{BytePos, Span};
 use syntax::ast::{self, Expr};
 use syntax::attr::{self, HasAttrs};
 use syntax::edition::Edition;
@@ -47,7 +48,6 @@ use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::visit::FnKind;
-use syntax_pos::{BytePos, Span};
 
 use rustc::hir::{self, GenericParamKind, PatKind};
 

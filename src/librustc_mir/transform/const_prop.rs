@@ -24,8 +24,8 @@ use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
+use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::Mutability;
-use syntax_pos::{Span, DUMMY_SP};
 
 use crate::const_eval::error_to_const_error;
 use crate::interpret::{

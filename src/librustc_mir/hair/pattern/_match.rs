@@ -246,8 +246,8 @@ use rustc::mir::Field;
 use rustc::util::captures::Captures;
 use rustc::util::common::ErrorReported;
 
+use rustc_span::{Span, DUMMY_SP};
 use syntax::attr::{SignedInt, UnsignedInt};
-use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
 

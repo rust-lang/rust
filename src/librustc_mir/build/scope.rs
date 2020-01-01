@@ -89,9 +89,9 @@ use rustc::hir::GeneratorKind;
 use rustc::middle::region;
 use rustc::mir::*;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_span::{Span, DUMMY_SP};
 use std::collections::hash_map::Entry;
 use std::mem;
-use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Debug)]
 struct Scope {

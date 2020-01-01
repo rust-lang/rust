@@ -16,16 +16,16 @@ use syntax::visit::Visitor;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
+use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
+use rustc_span::{FileName, MultiSpan, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
-use syntax_pos::{FileName, MultiSpan, Span, DUMMY_SP};
 
 use std::default::Default;
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-crate use syntax_pos::hygiene::MacroKind;
+crate use rustc_span::hygiene::MacroKind;
 
 #[derive(Debug, Clone)]
 pub enum Annotatable {

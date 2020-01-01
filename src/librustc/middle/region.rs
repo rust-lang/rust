@@ -16,7 +16,7 @@ use crate::util::nodemap::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
-use syntax_pos::{Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
 

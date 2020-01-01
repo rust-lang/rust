@@ -40,8 +40,8 @@ use crate::ty::subst::SubstsRef;
 use crate::ty::{self, InferConst, Ty, TyCtxt};
 use crate::ty::{IntType, UintType};
 
+use rustc_span::{Span, DUMMY_SP};
 use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'tcx> {

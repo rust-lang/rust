@@ -19,9 +19,9 @@ use crate::util::nodemap::FxHashMap;
 use crate::hir;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use rustc_macros::HashStable;
+use rustc_span::Span;
 use syntax::ast;
 use syntax::symbol::{sym, Symbol};
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

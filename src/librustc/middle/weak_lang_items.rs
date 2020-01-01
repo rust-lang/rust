@@ -9,10 +9,10 @@ use crate::hir::intravisit;
 use crate::hir::intravisit::{NestedVisitorMap, Visitor};
 use crate::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;
 use syntax::ast;
 use syntax::symbol::{sym, Symbol};
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

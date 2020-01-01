@@ -25,8 +25,8 @@ use std::collections::BTreeMap;
 use std::mem;
 use std::rc::Rc;
 
+use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::Name;
-use syntax_pos::{Span, DUMMY_SP};
 
 use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
 use crate::dataflow::move_paths::{HasMoveData, InitLocation, LookupResult, MoveData, MoveError};

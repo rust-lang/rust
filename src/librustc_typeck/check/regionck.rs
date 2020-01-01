@@ -85,9 +85,9 @@ use rustc::ty::{self, Ty};
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::{self, PatKind};
+use rustc_span::Span;
 use std::mem;
 use std::ops::Deref;
-use syntax_pos::Span;
 
 // a variation on try that just returns unit
 macro_rules! ignore_err {

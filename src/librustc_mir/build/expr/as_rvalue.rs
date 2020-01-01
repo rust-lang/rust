@@ -9,7 +9,7 @@ use rustc::middle::region;
 use rustc::mir::interpret::PanicInfo;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, UpvarSubsts};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current

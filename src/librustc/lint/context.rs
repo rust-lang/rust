@@ -34,11 +34,11 @@ use crate::util::nodemap::FxHashMap;
 
 use errors::DiagnosticBuilder;
 use rustc_data_structures::sync::{self, join, par_iter, ParallelIterator};
+use rustc_span::{symbol::Symbol, MultiSpan, Span};
 use std::slice;
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
-use syntax_pos::{symbol::Symbol, MultiSpan, Span};
 
 use rustc_error_codes::*;
 

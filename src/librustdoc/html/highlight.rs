@@ -12,11 +12,11 @@ use std::io;
 use std::io::prelude::*;
 
 use rustc_parse::lexer;
+use rustc_span::{FileName, Span};
 use syntax::sess::ParseSess;
 use syntax::source_map::SourceMap;
 use syntax::symbol::{kw, sym};
 use syntax::token::{self, Token};
-use syntax_pos::{FileName, Span};
 
 /// Highlights `src`, returning the HTML output.
 pub fn render_with_highlighting(

@@ -9,8 +9,8 @@ use rustc::hir::map::Map;
 use rustc::hir::{self, Destination, Movability, Node};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_span::Span;
 use syntax::struct_span_err;
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

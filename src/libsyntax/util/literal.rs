@@ -10,7 +10,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_lexer::unescape::{unescape_byte, unescape_char};
 use rustc_lexer::unescape::{unescape_byte_str, unescape_str};
 use rustc_lexer::unescape::{unescape_raw_byte_str, unescape_raw_str};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use std::ascii;
 

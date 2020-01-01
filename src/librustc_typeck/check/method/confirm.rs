@@ -12,7 +12,7 @@ use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Ty};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use std::ops::Deref;
 
@@ -142,7 +142,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             Some(n) => n,
             None => {
                 self.tcx.sess.delay_span_bug(
-                    syntax_pos::DUMMY_SP,
+                    rustc_span::DUMMY_SP,
                     &format!("failed autoderef {}", pick.autoderefs),
                 );
                 return self.tcx.types.err;

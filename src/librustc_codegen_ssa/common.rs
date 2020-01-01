@@ -2,7 +2,7 @@
 
 use rustc::session::Session;
 use rustc::ty::{Ty, TyCtxt};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use crate::base;
 use crate::traits::*;

@@ -1,7 +1,7 @@
 use rustc_expand::base::{self, ExtCtxt};
+use rustc_span::Span;
 use syntax::symbol::kw;
 use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax_pos::Span;
 
 pub fn expand_trace_macros(
     cx: &mut ExtCtxt<'_>,

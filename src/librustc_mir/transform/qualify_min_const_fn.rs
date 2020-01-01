@@ -2,10 +2,10 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::{self, adjustment::PointerCast, Predicate, Ty, TyCtxt};
+use rustc_span::Span;
 use std::borrow::Cow;
 use syntax::attr;
 use syntax::symbol::{sym, Symbol};
-use syntax_pos::Span;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 

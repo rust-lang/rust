@@ -22,15 +22,15 @@ pub use crate::util::parser::ExprPrecedence;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
-pub use syntax_pos::symbol::{Ident, Symbol as Name};
+pub use rustc_span::symbol::{Ident, Symbol as Name};
 
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
 use crate::token::{self, DelimToken};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
-use syntax_pos::symbol::{kw, sym, Symbol};
-use syntax_pos::{Span, DUMMY_SP};
+use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{Span, DUMMY_SP};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;

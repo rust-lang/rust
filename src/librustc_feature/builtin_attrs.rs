@@ -7,7 +7,7 @@ use crate::{Features, Stability};
 
 use lazy_static::lazy_static;
 use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 
 type GateFn = fn(&Features) -> bool;
 

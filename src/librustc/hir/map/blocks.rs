@@ -15,8 +15,8 @@ use crate::hir as ast;
 use crate::hir::intravisit::FnKind;
 use crate::hir::map;
 use crate::hir::{Expr, FnDecl, Node};
+use rustc_span::Span;
 use syntax::ast::{Attribute, Ident};
-use syntax_pos::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
 /// and a body (as well as a NodeId, a span, etc).

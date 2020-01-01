@@ -15,10 +15,10 @@ use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_error_codes::*;
 use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_span::symbol::sym;
+use rustc_span::{MultiSpan, Span};
 use syntax::ast::Mutability;
 use syntax::feature_gate::feature_err;
-use syntax_pos::symbol::sym;
-use syntax_pos::{MultiSpan, Span};
 
 use std::slice;
 

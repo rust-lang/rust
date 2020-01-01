@@ -1,7 +1,7 @@
 use super::BackendTypes;
 use crate::mir::place::PlaceRef;
 use rustc::hir::{GlobalAsm, InlineAsmInner};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 pub trait AsmBuilderMethods<'tcx>: BackendTypes {
     /// Take an inline assembly expression and splat it out via LLVM

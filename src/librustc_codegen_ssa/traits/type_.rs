@@ -5,8 +5,8 @@ use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 use rustc::ty::layout::{self, TyLayout};
 use rustc::ty::{self, Ty};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
-use syntax_pos::DUMMY_SP;
 
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
 // `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.

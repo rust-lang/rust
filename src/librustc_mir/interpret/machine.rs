@@ -8,7 +8,7 @@ use std::hash::Hash;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt};
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use super::{
     AllocId, Allocation, AllocationExtra, AssertMessage, Frame, ImmTy, InterpCx, InterpResult,

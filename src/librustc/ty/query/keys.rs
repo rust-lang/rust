@@ -8,8 +8,8 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, Ty, TyCtxt};
 
-use syntax_pos::symbol::Symbol;
-use syntax_pos::{Span, DUMMY_SP};
+use rustc_span::symbol::Symbol;
+use rustc_span::{Span, DUMMY_SP};
 
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.

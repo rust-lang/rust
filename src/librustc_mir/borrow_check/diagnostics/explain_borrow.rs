@@ -11,8 +11,8 @@ use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use rustc_index::vec::IndexVec;
-use syntax_pos::symbol::Symbol;
-use syntax_pos::Span;
+use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 
 use crate::borrow_check::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,

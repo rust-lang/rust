@@ -12,7 +12,7 @@ use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Predicate, Ty, TyCtxt};
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use rustc_error_codes::*;
 

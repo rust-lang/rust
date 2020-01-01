@@ -7,7 +7,7 @@ use rustc::infer::{self, InferCtxt, SubregionOrigin};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, TyCtxt};
-use syntax_pos::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use crate::borrow_check::{
     constraints::OutlivesConstraint,

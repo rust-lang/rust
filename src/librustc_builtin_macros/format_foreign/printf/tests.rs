@@ -37,7 +37,7 @@ fn test_parse() {
                         precision: $prec,
                         length: $len,
                         type_: $type_,
-                        position: syntax_pos::InnerSpan::new($pos.0, $pos.1),
+                        position: rustc_span::InnerSpan::new($pos.0, $pos.1),
                     }),
                     "!"
                 ))

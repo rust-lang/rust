@@ -8,8 +8,8 @@ use rustc::ty::{self, Ty, TyCtxt};
 
 use rustc_index::vec::{Idx, IndexVec};
 
+use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
-use syntax_pos::{sym, Span};
 
 use std::fmt;
 use std::iter;

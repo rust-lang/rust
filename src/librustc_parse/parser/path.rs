@@ -1,13 +1,13 @@
 use super::{Parser, TokenType};
 use crate::maybe_whole;
 use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_span::source_map::{BytePos, Span};
+use rustc_span::symbol::{kw, sym};
 use syntax::ast::{self, AngleBracketedArgs, Ident, ParenthesizedArgs, Path, PathSegment, QSelf};
 use syntax::ast::{
     AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode, GenericArg,
 };
 use syntax::token::{self, Token};
-use syntax_pos::source_map::{BytePos, Span};
-use syntax_pos::symbol::{kw, sym};
 
 use log::debug;
 use std::mem;

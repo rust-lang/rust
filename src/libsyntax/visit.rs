@@ -17,7 +17,7 @@ use crate::ast::*;
 use crate::token::Token;
 use crate::tokenstream::{TokenStream, TokenTree};
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {

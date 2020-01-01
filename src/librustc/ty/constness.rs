@@ -3,9 +3,9 @@ use crate::hir::def_id::DefId;
 use crate::hir::map::blocks::FnLikeNode;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 use syntax::attr;
-use syntax_pos::symbol::Symbol;
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Whether the `def_id` counts as const fn in your current crate, considering all active

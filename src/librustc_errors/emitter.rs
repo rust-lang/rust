@@ -9,8 +9,8 @@
 
 use Destination::*;
 
-use syntax_pos::source_map::SourceMap;
-use syntax_pos::{MultiSpan, SourceFile, Span};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{MultiSpan, SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;

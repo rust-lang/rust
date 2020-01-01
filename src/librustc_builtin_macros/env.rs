@@ -4,10 +4,10 @@
 //
 
 use rustc_expand::base::{self, *};
+use rustc_span::Span;
 use syntax::ast::{self, GenericArg, Ident};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::TokenStream;
-use syntax_pos::Span;
 
 use std::env;
 

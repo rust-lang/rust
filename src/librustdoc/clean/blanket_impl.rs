@@ -4,7 +4,7 @@ use rustc::infer::InferOk;
 use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty::ToPredicate;
-use syntax_pos::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use super::*;
 

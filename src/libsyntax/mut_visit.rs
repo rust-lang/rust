@@ -14,8 +14,8 @@ use crate::token::{self, Token};
 use crate::tokenstream::*;
 use crate::util::map_in_place::MapInPlace;
 
+use rustc_span::Span;
 use smallvec::{smallvec, Array, SmallVec};
-use syntax_pos::Span;
 
 use rustc_data_structures::sync::Lrc;
 use std::ops::DerefMut;

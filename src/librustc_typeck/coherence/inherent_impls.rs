@@ -12,8 +12,8 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::{self, CrateInherentImpls, TyCtxt};
 
+use rustc_span::Span;
 use syntax::ast;
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

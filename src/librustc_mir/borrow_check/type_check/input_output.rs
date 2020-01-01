@@ -12,7 +12,7 @@ use rustc::mir::*;
 use rustc::ty::Ty;
 
 use rustc_index::vec::Idx;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use crate::borrow_check::universal_regions::UniversalRegions;
 

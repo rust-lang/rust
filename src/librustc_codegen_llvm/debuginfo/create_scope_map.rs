@@ -9,7 +9,7 @@ use rustc::mir::{Body, SourceScope};
 
 use libc::c_uint;
 
-use syntax_pos::Pos;
+use rustc_span::Pos;
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;

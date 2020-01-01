@@ -7,8 +7,8 @@ use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_span::symbol::Symbol;
 use syntax::expand::allocator::AllocatorKind;
-use syntax_pos::symbol::Symbol;
 
 use std::sync::mpsc;
 use std::sync::Arc;

@@ -8,7 +8,7 @@ use rustc::traits::{
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::GenericArg;
 use rustc::ty::{self, Ty, TyCtxt};
-use syntax_pos::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use super::unify::*;
 use super::{ChalkArenas, ChalkExClause, ChalkInferenceContext, ConstrainedSubst};

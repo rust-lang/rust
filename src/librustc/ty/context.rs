@@ -59,6 +59,7 @@ use rustc_data_structures::stable_hasher::{
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_span::Span;
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
 use std::any::Any;
@@ -76,7 +77,6 @@ use syntax::attr;
 use syntax::expand::allocator::AllocatorKind;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::{kw, sym, Symbol};
-use syntax_pos::Span;
 
 pub struct AllArenas {
     pub interner: SyncDroplessArena,

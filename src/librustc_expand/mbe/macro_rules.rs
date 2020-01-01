@@ -11,6 +11,8 @@ use crate::mbe::transcribe::transcribe;
 use rustc_feature::Features;
 use rustc_parse::parser::Parser;
 use rustc_parse::Directory;
+use rustc_span::hygiene::Transparency;
+use rustc_span::Span;
 use syntax::ast;
 use syntax::attr::{self, TransparencyError};
 use syntax::edition::Edition;
@@ -19,8 +21,6 @@ use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::token::{self, NtTT, Token, TokenKind::*};
 use syntax::tokenstream::{DelimSpan, TokenStream};
-use syntax_pos::hygiene::Transparency;
-use syntax_pos::Span;
 
 use errors::{DiagnosticBuilder, FatalError};
 use log::debug;

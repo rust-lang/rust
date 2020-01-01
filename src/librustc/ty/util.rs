@@ -18,10 +18,10 @@ use crate::util::common::ErrorReported;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
+use rustc_span::{Span, DUMMY_SP};
 use std::{cmp, fmt};
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
-use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {

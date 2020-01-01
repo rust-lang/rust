@@ -10,6 +10,7 @@ use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 
+use rustc_span::{BytePos, Span};
 use syntax::ast;
 use syntax::attr;
 use syntax::errors::{pluralize, Applicability};
@@ -17,7 +18,6 @@ use syntax::print::pprust;
 use syntax::symbol::Symbol;
 use syntax::symbol::{kw, sym};
 use syntax::util::parser;
-use syntax_pos::{BytePos, Span};
 
 use log::debug;
 
@@ -468,13 +468,13 @@ impl EarlyLintPass for UnusedParens {
             }
 
             If(ref cond, ref block, ..) => {
-                let left = e.span.lo() + syntax_pos::BytePos(2);
+                let left = e.span.lo() + rustc_span::BytePos(2);
                 let right = block.span.lo();
                 (cond, "`if` condition", true, Some(left), Some(right))
             }
 
             While(ref cond, ref block, ..) => {
-                let left = e.span.lo() + syntax_pos::BytePos(5);
+                let left = e.span.lo() + rustc_span::BytePos(5);
                 let right = block.span.lo();
                 (cond, "`while` condition", true, Some(left), Some(right))
             }
@@ -485,12 +485,12 @@ impl EarlyLintPass for UnusedParens {
             }
 
             Match(ref head, _) => {
-                let left = e.span.lo() + syntax_pos::BytePos(5);
+                let left = e.span.lo() + rustc_span::BytePos(5);
                 (head, "`match` head expression", true, Some(left), None)
             }
 
             Ret(Some(ref value)) => {
-                let left = e.span.lo() + syntax_pos::BytePos(3);
+                let left = e.span.lo() + rustc_span::BytePos(3);
                 (value, "`return` value", false, Some(left), None)
             }
 

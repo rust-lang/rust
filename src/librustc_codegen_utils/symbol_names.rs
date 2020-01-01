@@ -95,7 +95,7 @@ use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Instance, TyCtxt};
 
-use syntax_pos::symbol::Symbol;
+use rustc_span::symbol::Symbol;
 
 use log::debug;
 

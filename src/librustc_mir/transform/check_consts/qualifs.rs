@@ -2,7 +2,7 @@
 
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
-use syntax_pos::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use super::Item as ConstCx;
 

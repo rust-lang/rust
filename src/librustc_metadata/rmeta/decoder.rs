@@ -36,11 +36,11 @@ use proc_macro::bridge::client::ProcMacro;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::source_map::{self, respan, Spanned};
-use syntax_pos::symbol::{sym, Symbol};
-use syntax_pos::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 
 pub use cstore_impl::{provide, provide_extern};
 
@@ -111,15 +111,15 @@ crate struct CrateMetadata {
     extern_crate: Lock<Option<ExternCrate>>,
 }
 
-/// Holds information about a syntax_pos::SourceFile imported from another crate.
+/// Holds information about a rustc_span::SourceFile imported from another crate.
 /// See `imported_source_files()` for more information.
 struct ImportedSourceFile {
     /// This SourceFile's byte-offset within the source_map of its original crate
-    original_start_pos: syntax_pos::BytePos,
+    original_start_pos: rustc_span::BytePos,
     /// The end of this SourceFile within the source_map of its original crate
-    original_end_pos: syntax_pos::BytePos,
+    original_end_pos: rustc_span::BytePos,
     /// The imported SourceFile's representation within the local source_map
-    translated_source_file: Lrc<syntax_pos::SourceFile>,
+    translated_source_file: Lrc<rustc_span::SourceFile>,
 }
 
 pub(super) struct DecodeContext<'a, 'tcx> {
@@ -1459,7 +1459,7 @@ impl<'a, 'tcx> CrateMetadata {
                 .map(|source_file_to_import| {
                     // We can't reuse an existing SourceFile, so allocate a new one
                     // containing the information we need.
-                    let syntax_pos::SourceFile {
+                    let rustc_span::SourceFile {
                         name,
                         name_was_remapped,
                         src_hash,

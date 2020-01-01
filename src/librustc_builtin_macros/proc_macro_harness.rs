@@ -2,6 +2,8 @@ use std::mem;
 
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
+use rustc_span::hygiene::AstPass;
+use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
@@ -11,8 +13,6 @@ use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
-use syntax_pos::hygiene::AstPass;
-use syntax_pos::{Span, DUMMY_SP};
 
 struct ProcMacroDerive {
     trait_name: ast::Name,

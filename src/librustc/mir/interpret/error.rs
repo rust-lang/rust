@@ -11,10 +11,10 @@ use backtrace::Backtrace;
 use errors::DiagnosticBuilder;
 use hir::GeneratorKind;
 use rustc_macros::HashStable;
+use rustc_span::{Pos, Span};
 use rustc_target::spec::abi::Abi;
 use std::{any::Any, env, fmt};
 use syntax::symbol::Symbol;
-use syntax_pos::{Pos, Span};
 
 use rustc_error_codes::*;
 

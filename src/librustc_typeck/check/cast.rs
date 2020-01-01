@@ -43,8 +43,8 @@ use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::error::TypeError;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_span::Span;
 use syntax::ast;
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

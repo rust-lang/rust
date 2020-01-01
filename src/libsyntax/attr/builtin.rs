@@ -9,9 +9,9 @@ use crate::sess::ParseSess;
 use errors::{Applicability, Handler};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
+use rustc_span::hygiene::Transparency;
+use rustc_span::{symbol::sym, symbol::Symbol, Span};
 use std::num::NonZeroU32;
-use syntax_pos::hygiene::Transparency;
-use syntax_pos::{symbol::sym, symbol::Symbol, Span};
 
 use rustc_error_codes::*;
 

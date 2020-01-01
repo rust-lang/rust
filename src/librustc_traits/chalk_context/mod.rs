@@ -19,7 +19,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, TyCtxt};
 use rustc_macros::{Lift, TypeFoldable};
-use syntax_pos::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;

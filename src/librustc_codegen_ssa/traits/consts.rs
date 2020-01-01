@@ -3,7 +3,7 @@ use crate::mir::place::PlaceRef;
 use rustc::mir::interpret::Allocation;
 use rustc::mir::interpret::Scalar;
 use rustc::ty::layout;
-use syntax_pos::Symbol;
+use rustc_span::Symbol;
 
 pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors

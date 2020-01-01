@@ -6,9 +6,9 @@ use errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::{self, is_range_literal, print, Node};
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use syntax::util::parser::PREC_POSTFIX;
-use syntax_pos::symbol::sym;
-use syntax_pos::Span;
 
 use super::method::probe;
 

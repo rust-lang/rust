@@ -32,8 +32,8 @@ use crate::ty::{self, AdtKind, GenericParamDefKind, List, ToPredicate, Ty, TyCtx
 use crate::util::common::ErrorReported;
 use chalk_engine;
 use rustc_macros::HashStable;
+use rustc_span::{Span, DUMMY_SP};
 use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt::Debug;
 use std::rc::Rc;

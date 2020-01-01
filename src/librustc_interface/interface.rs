@@ -13,6 +13,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
 use rustc_parse::new_parser_from_source_str;
+use rustc_span::edition;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
@@ -20,7 +21,6 @@ use syntax::ast::{self, MetaItemKind};
 use syntax::sess::ParseSess;
 use syntax::source_map::{FileLoader, FileName, SourceMap};
 use syntax::token;
-use syntax_pos::edition;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 

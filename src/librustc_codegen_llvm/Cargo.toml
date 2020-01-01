@@ -31,4 +31,4 @@ rustc_target = { path = "../librustc_target" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }
 rustc_expand = { path = "../librustc_expand" }
-syntax_pos = { path = "../librustc_span", package = "rustc_span" }
+rustc_span = { path = "../librustc_span" }

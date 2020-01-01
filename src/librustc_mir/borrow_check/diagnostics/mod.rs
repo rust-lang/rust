@@ -13,7 +13,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::print::Print;
 use rustc::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc_errors::DiagnosticBuilder;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;

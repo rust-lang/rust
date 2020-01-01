@@ -2,11 +2,11 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagnosticBuilder, FatalError};
 use rustc_lexer::unescape;
 use rustc_lexer::Base;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{BytePos, Pos, Span};
 use syntax::sess::ParseSess;
 use syntax::token::{self, Token, TokenKind};
 use syntax::util::comments;
-use syntax_pos::symbol::{sym, Symbol};
-use syntax_pos::{BytePos, Pos, Span};
 
 use log::debug;
 use std::char;
@@ -43,7 +43,7 @@ pub struct StringReader<'a> {
 impl<'a> StringReader<'a> {
     pub fn new(
         sess: &'a ParseSess,
-        source_file: Lrc<syntax_pos::SourceFile>,
+        source_file: Lrc<rustc_span::SourceFile>,
         override_span: Option<Span>,
     ) -> Self {
         if source_file.src.is_none() {

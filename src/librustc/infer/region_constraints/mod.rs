@@ -15,7 +15,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
 use rustc_index::vec::IndexVec;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use std::collections::BTreeMap;
 use std::ops::Range;

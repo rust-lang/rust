@@ -36,8 +36,8 @@ use super::itemlikevisit::DeepVisitor;
 use crate::hir::map::Map;
 use crate::hir::*;
 
+use rustc_span::Span;
 use syntax::ast::{Attribute, Ident, Name};
-use syntax_pos::Span;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {

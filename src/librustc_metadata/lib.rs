@@ -38,7 +38,7 @@ pub mod locator;
 pub fn validate_crate_name(
     sess: Option<&rustc::session::Session>,
     s: &str,
-    sp: Option<syntax_pos::Span>,
+    sp: Option<rustc_span::Span>,
 ) {
     let mut err_count = 0;
     {

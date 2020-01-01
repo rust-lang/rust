@@ -7,8 +7,8 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::Idx;
+use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
-use syntax_pos::{sym, Span};
 
 use rustc_error_codes::*;
 

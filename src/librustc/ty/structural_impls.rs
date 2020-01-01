@@ -274,7 +274,7 @@ CloneTypeFoldableAndLiftImpls! {
     crate::middle::region::Scope,
     ::syntax::ast::FloatTy,
     ::syntax::ast::NodeId,
-    ::syntax_pos::symbol::Symbol,
+    ::rustc_span::symbol::Symbol,
     crate::hir::def::Res,
     crate::hir::def_id::DefId,
     crate::hir::InlineAsmInner,
@@ -303,7 +303,7 @@ CloneTypeFoldableAndLiftImpls! {
     crate::ty::RegionVid,
     crate::ty::UniverseIndex,
     crate::ty::Variance,
-    ::syntax_pos::Span,
+    ::rustc_span::Span,
 }
 
 ///////////////////////////////////////////////////////////////////////////

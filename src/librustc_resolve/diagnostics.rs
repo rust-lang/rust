@@ -10,14 +10,14 @@ use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
 use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_span::hygiene::MacroKind;
+use rustc_span::{BytePos, MultiSpan, Span};
 use syntax::ast::{self, Ident, Path};
 use syntax::print::pprust;
 use syntax::source_map::SourceMap;
 use syntax::struct_span_err;
 use syntax::symbol::{kw, Symbol};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::{BytePos, MultiSpan, Span};
 
 use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::path_names_to_string;

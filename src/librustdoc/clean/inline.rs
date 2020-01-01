@@ -2,10 +2,10 @@
 
 use std::iter::once;
 
+use rustc_span::hygiene::MacroKind;
+use rustc_span::Span;
 use syntax::ast;
 use syntax::symbol::sym;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::Span;
 
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::DefId;

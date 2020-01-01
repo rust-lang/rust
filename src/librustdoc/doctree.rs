@@ -2,10 +2,10 @@
 //! manner (and with prettier names) before cleaning.
 pub use self::StructType::*;
 
+use rustc_span::hygiene::MacroKind;
+use rustc_span::{self, Span};
 use syntax::ast;
 use syntax::ast::Name;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::{self, Span};
 
 use rustc::hir;
 use rustc::hir::def_id::CrateNum;
@@ -47,8 +47,8 @@ impl Module<'hir> {
             name: name,
             id: hir::CRATE_HIR_ID,
             vis,
-            where_outer: syntax_pos::DUMMY_SP,
-            where_inner: syntax_pos::DUMMY_SP,
+            where_outer: rustc_span::DUMMY_SP,
+            where_inner: rustc_span::DUMMY_SP,
             attrs,
             extern_crates: Vec::new(),
             imports: Vec::new(),

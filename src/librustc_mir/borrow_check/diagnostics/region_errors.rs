@@ -9,10 +9,10 @@ use rustc::mir::{Body, ConstraintCategory, Location};
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::DiagnosticBuilder;
 use rustc_index::vec::IndexVec;
+use rustc_span::Span;
 use std::collections::VecDeque;
 use syntax::errors::Applicability;
 use syntax::symbol::kw;
-use syntax_pos::Span;
 
 use crate::util::borrowck_errors;
 

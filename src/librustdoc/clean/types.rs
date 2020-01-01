@@ -16,14 +16,14 @@ use rustc::middle::stability;
 use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
+use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{self, FileName};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
 use syntax::source_map::DUMMY_SP;
 use syntax::util::comments::strip_doc_comment_decoration;
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::symbol::{sym, Symbol};
-use syntax_pos::{self, FileName};
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -360,12 +360,12 @@ impl<I: IntoIterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum DocFragment {
     /// A doc fragment created from a `///` or `//!` doc comment.
-    SugaredDoc(usize, syntax_pos::Span, String),
+    SugaredDoc(usize, rustc_span::Span, String),
     /// A doc fragment created from a "raw" `#[doc=""]` attribute.
-    RawDoc(usize, syntax_pos::Span, String),
+    RawDoc(usize, rustc_span::Span, String),
     /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
     /// given filename and the file contents.
-    Include(usize, syntax_pos::Span, String, String),
+    Include(usize, rustc_span::Span, String, String),
 }
 
 impl DocFragment {
@@ -377,7 +377,7 @@ impl DocFragment {
         }
     }
 
-    pub fn span(&self) -> syntax_pos::Span {
+    pub fn span(&self) -> rustc_span::Span {
         match *self {
             DocFragment::SugaredDoc(_, span, _)
             | DocFragment::RawDoc(_, span, _)
@@ -411,7 +411,7 @@ pub struct Attributes {
     pub doc_strings: Vec<DocFragment>,
     pub other_attrs: Vec<ast::Attribute>,
     pub cfg: Option<Arc<Cfg>>,
-    pub span: Option<syntax_pos::Span>,
+    pub span: Option<rustc_span::Span>,
     /// map from Rust paths to resolved defs and potential URL fragments
     pub links: Vec<(String, Option<DefId>, Option<String>)>,
     pub inner_docs: bool,
@@ -1349,7 +1349,7 @@ pub struct Span {
     pub locol: usize,
     pub hiline: usize,
     pub hicol: usize,
-    pub original: syntax_pos::Span,
+    pub original: rustc_span::Span,
 }
 
 impl Span {
@@ -1360,11 +1360,11 @@ impl Span {
             locol: 0,
             hiline: 0,
             hicol: 0,
-            original: syntax_pos::DUMMY_SP,
+            original: rustc_span::DUMMY_SP,
         }
     }
 
-    pub fn span(&self) -> syntax_pos::Span {
+    pub fn span(&self) -> rustc_span::Span {
         self.original
     }
 }

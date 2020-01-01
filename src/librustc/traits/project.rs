@@ -21,9 +21,9 @@ use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt};
 use crate::util::common::FN_OUTPUT_NAME;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_macros::HashStable;
+use rustc_span::DUMMY_SP;
 use syntax::ast::Ident;
 use syntax::symbol::sym;
-use syntax_pos::DUMMY_SP;
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.

@@ -11,7 +11,7 @@ use rustc::hir;
 use rustc::ty;
 use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
-use syntax_pos::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 
 use std::hash::Hash;
 

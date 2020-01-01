@@ -9,10 +9,10 @@ use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Pattern;
 use rustc::ty::subst::GenericArg;
 use rustc::ty::{self, BindingMode, Ty, TypeFoldable};
+use rustc_span::hygiene::DesugaringKind;
+use rustc_span::Span;
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::hygiene::DesugaringKind;
-use syntax_pos::Span;
 
 use rustc_error_codes::*;
 

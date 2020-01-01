@@ -19,7 +19,7 @@ use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCau
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
-use syntax_pos::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use super::util::impl_trait_ref_and_oblig;
 use super::{FulfillmentContext, SelectionContext};

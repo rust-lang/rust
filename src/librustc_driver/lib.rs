@@ -58,10 +58,10 @@ use std::process::{self, Command, Stdio};
 use std::str;
 use std::time::Instant;
 
+use rustc_span::source_map::FileLoader;
+use rustc_span::symbol::sym;
+use rustc_span::FileName;
 use syntax::ast;
-use syntax_pos::source_map::FileLoader;
-use syntax_pos::symbol::sym;
-use syntax_pos::FileName;
 
 mod args;
 pub mod pretty;

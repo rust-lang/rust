@@ -9,9 +9,9 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::middle::lib_features::LibFeatures;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_span::{sym, Span};
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 use syntax::symbol::Symbol;
-use syntax_pos::{sym, Span};
 
 use rustc_error_codes::*;
 

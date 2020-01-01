@@ -12,7 +12,7 @@ use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc_index::vec::Idx;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {
     type Output = Expr<'tcx>;

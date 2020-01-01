@@ -9,7 +9,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 
 use rustc_index::vec::Idx;
 
-use syntax_pos::Span;
+use rustc_span::Span;
 
 use std::cell::Cell;
 

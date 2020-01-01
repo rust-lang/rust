@@ -6,7 +6,7 @@ use crate::infer::{Subtype, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
 use crate::ty::Ty;
 use crate::util::common::ErrorReported;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the `impl` doesn't conform to the `trait`.

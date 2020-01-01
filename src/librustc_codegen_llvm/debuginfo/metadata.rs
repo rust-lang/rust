@@ -42,10 +42,10 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::path_to_c_string;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::{self, FileName, Span};
 use rustc_target::abi::HasDataLayout;
 use syntax::ast;
 use syntax::symbol::{Interner, Symbol};
-use syntax_pos::{self, FileName, Span};
 
 use libc::{c_longlong, c_uint};
 use std::collections::hash_map::Entry;
@@ -506,7 +506,7 @@ fn trait_pointer_metadata(
             type_metadata: type_metadata(
                 cx,
                 cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
-                syntax_pos::DUMMY_SP,
+                rustc_span::DUMMY_SP,
             ),
             offset: layout.fields.offset(0),
             size: data_ptr_field.size,
@@ -516,7 +516,7 @@ fn trait_pointer_metadata(
         },
         MemberDescription {
             name: "vtable".to_owned(),
-            type_metadata: type_metadata(cx, vtable_field.ty, syntax_pos::DUMMY_SP),
+            type_metadata: type_metadata(cx, vtable_field.ty, rustc_span::DUMMY_SP),
             offset: layout.fields.offset(1),
             size: vtable_field.size,
             align: vtable_field.align.abi,
@@ -533,7 +533,7 @@ fn trait_pointer_metadata(
         member_descriptions,
         containing_scope,
         file_metadata,
-        syntax_pos::DUMMY_SP,
+        rustc_span::DUMMY_SP,
     )
 }
 
@@ -1816,7 +1816,7 @@ fn prepare_enum_metadata(
             None => {
                 let (discriminant_size, discriminant_align) = (discr.size(cx), discr.align(cx));
                 let discriminant_base_type_metadata =
-                    type_metadata(cx, discr.to_ty(cx.tcx), syntax_pos::DUMMY_SP);
+                    type_metadata(cx, discr.to_ty(cx.tcx), rustc_span::DUMMY_SP);
 
                 let discriminant_name = match enum_type.kind {
                     ty::Adt(..) => SmallCStr::new(&cx.tcx.item_name(enum_def_id).as_str()),
@@ -2146,7 +2146,7 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
                         let actual_type =
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                         let actual_type_metadata =
-                            type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
+                            type_metadata(cx, actual_type, rustc_span::DUMMY_SP);
                         let name = SmallCStr::new(&name.as_str());
                         Some(unsafe {
                             Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
@@ -2327,7 +2327,7 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
         return;
     }
 
-    let type_metadata = type_metadata(cx, ty, syntax_pos::DUMMY_SP);
+    let type_metadata = type_metadata(cx, ty, rustc_span::DUMMY_SP);
 
     unsafe {
         // `LLVMRustDIBuilderCreateStructType()` wants an empty array. A null
@@ -2376,7 +2376,7 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
 pub fn extend_scope_to_file(
     cx: &CodegenCx<'ll, '_>,
     scope_metadata: &'ll DIScope,
-    file: &syntax_pos::SourceFile,
+    file: &rustc_span::SourceFile,
     defining_crate: CrateNum,
 ) -> &'ll DILexicalBlock {
     let file_metadata = file_metadata(cx, &file.name, defining_crate);

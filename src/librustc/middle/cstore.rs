@@ -12,13 +12,13 @@ use rustc_data_structures::svh::Svh;
 
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_macros::HashStable;
+use rustc_span::Span;
 use rustc_target::spec::Target;
 use std::any::Any;
 use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::expand::allocator::AllocatorKind;
 use syntax::symbol::Symbol;
-use syntax_pos::Span;
 
 pub use self::NativeLibraryKind::*;
 pub use rustc_session::utils::NativeLibraryKind;

@@ -10,9 +10,9 @@ use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
 
+use rustc_span::FileName;
 use syntax::ast;
 use syntax::print::pprust;
-use syntax_pos::FileName;
 
 use std::cell::Cell;
 use std::fs::File;
@@ -298,7 +298,7 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
             pprust::AnnNode::Crate(_) => {
                 s.s.hardbreak();
                 let verbose = self.sess.verbose();
-                s.synth_comment(syntax_pos::hygiene::debug_hygiene_data(verbose));
+                s.synth_comment(rustc_span::hygiene::debug_hygiene_data(verbose));
                 s.s.hardbreak_if_not_bol();
             }
             _ => {}

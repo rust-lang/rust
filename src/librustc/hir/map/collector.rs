@@ -11,10 +11,10 @@ use crate::session::Session;
 use crate::util::nodemap::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;
+use rustc_span::Span;
 use std::iter::repeat;
 use syntax::ast::NodeId;
 use syntax::source_map::SourceMap;
-use syntax_pos::Span;
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

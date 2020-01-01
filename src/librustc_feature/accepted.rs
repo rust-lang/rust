@@ -1,7 +1,7 @@
 //! List of the accepted feature gates.
 
 use super::{Feature, State};
-use syntax_pos::symbol::sym;
+use rustc_span::symbol::sym;
 
 macro_rules! declare_features {
     ($(

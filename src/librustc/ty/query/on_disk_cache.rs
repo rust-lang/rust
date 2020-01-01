@@ -20,11 +20,11 @@ use rustc_serialize::{
     opaque, Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,
     UseSpecializedDecodable, UseSpecializedEncodable,
 };
+use rustc_span::hygiene::{ExpnId, SyntaxContext};
+use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
 use std::mem;
 use syntax::ast::{Ident, NodeId};
 use syntax::source_map::{SourceMap, StableSourceFileId};
-use syntax_pos::hygiene::{ExpnId, SyntaxContext};
-use syntax_pos::{BytePos, SourceFile, Span, DUMMY_SP};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 

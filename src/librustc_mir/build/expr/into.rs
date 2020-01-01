@@ -7,7 +7,7 @@ use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::symbol::sym;
+use rustc_span::symbol::sym;
 
 use rustc_target::spec::abi::Abi;
 

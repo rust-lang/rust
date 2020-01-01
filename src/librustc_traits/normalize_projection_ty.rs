@@ -4,8 +4,8 @@ use rustc::traits::query::{normalize::NormalizationResult, CanonicalProjectionGo
 use rustc::traits::{self, ObligationCause, SelectionContext, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
+use rustc_span::DUMMY_SP;
 use std::sync::atomic::Ordering;
-use syntax_pos::DUMMY_SP;
 
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers { normalize_projection_ty, ..*p };

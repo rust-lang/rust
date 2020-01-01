@@ -15,13 +15,13 @@ use errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc::lint;
 use rustc::session::Session;
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
+use rustc_span::Span;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::{replace, take};
 use syntax::ast;
 use syntax::attr;
 use syntax::symbol::{kw, sym};
-use syntax_pos::Span;
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::{self, GenericParamKind, LifetimeParamKind};

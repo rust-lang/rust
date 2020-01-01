@@ -15,10 +15,10 @@ use rustc::session::config::nightly_options;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_error_codes::*;
+use rustc_span::{sym, Span, Symbol};
 use syntax::ast::Mutability;
 use syntax::feature_gate::feature_err;
 use syntax::span_err;
-use syntax_pos::{sym, Span, Symbol};
 
 use std::fmt;
 

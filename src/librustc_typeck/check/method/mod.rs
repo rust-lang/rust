@@ -23,8 +23,8 @@ use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TypeFoldable};
 use rustc_data_structures::sync::Lrc;
+use rustc_span::Span;
 use syntax::ast;
-use syntax_pos::Span;
 
 use self::probe::{IsSuggestion, ProbeScope};
 
