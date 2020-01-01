@@ -130,5 +130,23 @@ error: it is more concise to loop over references to containers instead of using
 LL |     for _v in bs.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&bs`
 
-error: aborting due to 17 previous errors
+error: it is more concise to loop over containers instead of using explicit iteration methods`
+  --> $DIR/for_loop_fixable.rs:310:18
+   |
+LL |         for i in iterator.into_iter() {
+   |                  ^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `iterator`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:330:18
+   |
+LL |         for _ in t.into_iter() {}
+   |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `&t`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods`
+  --> $DIR/for_loop_fixable.rs:332:18
+   |
+LL |         for _ in r.into_iter() {}
+   |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `r`
+
+error: aborting due to 20 previous errors
 
