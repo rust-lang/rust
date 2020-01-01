@@ -5,7 +5,7 @@
 
 #[macro_use] extern crate unstable_macros;
 
-#[unstable(feature = "local_unstable", issue = "0")]
+#[unstable(feature = "local_unstable", issue = "none")]
 macro_rules! local_unstable { () => () }
 
 fn main() {

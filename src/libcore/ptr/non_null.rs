@@ -66,10 +66,7 @@ impl<T: Sized> NonNull<T> {
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_nonnull_dangling", since = "1.32.0"),
-    )]
+    #[rustc_const_stable(feature = "const_nonnull_dangling", since = "1.32.0")]
     #[inline]
     pub const fn dangling() -> Self {
         unsafe {
@@ -86,10 +83,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// `ptr` must be non-null.
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_nonnull_new_unchecked", since = "1.32.0"),
-    )]
+    #[rustc_const_stable(feature = "const_nonnull_new_unchecked", since = "1.32.0")]
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         NonNull { pointer: ptr as _ }
@@ -104,10 +98,7 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Acquires the underlying `*mut` pointer.
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0"),
-    )]
+    #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
     #[inline]
     pub const fn as_ptr(self) -> *mut T {
         self.pointer as *mut T
@@ -137,10 +128,7 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Casts to a pointer of another type.
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_const_stable(feature = "const_nonnull_cast", since = "1.32.0"),
-    )]
+    #[rustc_const_stable(feature = "const_nonnull_cast", since = "1.32.0")]
     #[inline]
     pub const fn cast<U>(self) -> NonNull<U> {
         unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
@@ -161,7 +149,7 @@ impl<T: ?Sized> Copy for NonNull<T> {}
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
-#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
@@ -213,7 +201,7 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
     }
 }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {

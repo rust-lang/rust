@@ -1,7 +1,7 @@
-use std::fmt;
 use rustc_index::vec::Idx;
-use rustc_serialize::{Encoder, Decoder};
-use syntax_pos::ExpnId;
+use rustc_serialize::{Decoder, Encoder};
+use rustc_span::ExpnId;
+use std::fmt;
 
 rustc_index::newtype_index! {
     pub struct NodeId {

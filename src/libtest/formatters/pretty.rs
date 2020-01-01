@@ -1,16 +1,13 @@
-use std::{
-    io,
-    io::prelude::Write,
-};
+use std::{io, io::prelude::Write};
 
-use crate::{
-    types::TestDesc,
-    time,
-    test_result::TestResult,
-    console::{ConsoleTestState, OutputLocation},
-    bench::fmt_bench_samples,
-};
 use super::OutputFormatter;
+use crate::{
+    bench::fmt_bench_samples,
+    console::{ConsoleTestState, OutputLocation},
+    test_result::TestResult,
+    time,
+    types::TestDesc,
+};
 
 pub(crate) struct PrettyFormatter<T> {
     out: OutputLocation<T>,
@@ -31,13 +28,7 @@ impl<T: Write> PrettyFormatter<T> {
         is_multithreaded: bool,
         time_options: Option<time::TestTimeOptions>,
     ) -> Self {
-        PrettyFormatter {
-            out,
-            use_color,
-            max_name_len,
-            is_multithreaded,
-            time_options
-        }
+        PrettyFormatter { out, use_color, max_name_len, is_multithreaded, time_options }
     }
 
     #[cfg(test)]
@@ -105,7 +96,7 @@ impl<T: Write> PrettyFormatter<T> {
     fn write_time(
         &mut self,
         desc: &TestDesc,
-        exec_time: Option<&time::TestExecTime>
+        exec_time: Option<&time::TestExecTime>,
     ) -> io::Result<()> {
         if let (Some(opts), Some(time)) = (self.time_options, exec_time) {
             let time_str = format!(" <{}>", time);
@@ -124,7 +115,7 @@ impl<T: Write> PrettyFormatter<T> {
 
             match color {
                 Some(color) => self.write_pretty(&time_str, color)?,
-                None => self.write_plain(&time_str)?
+                None => self.write_plain(&time_str)?,
             }
         }
 
@@ -134,7 +125,7 @@ impl<T: Write> PrettyFormatter<T> {
     fn write_results(
         &mut self,
         inputs: &Vec<(TestDesc, Vec<u8>)>,
-        results_type: &str
+        results_type: &str,
     ) -> io::Result<()> {
         let results_out_str = format!("\n{}:\n", results_type);
 
@@ -237,7 +228,8 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
 
         self.write_plain(&format!(
             "test {} has been running for over {} seconds\n",
-            desc.name, time::TEST_WARN_TIMEOUT_S
+            desc.name,
+            time::TEST_WARN_TIMEOUT_S
         ))
     }
 

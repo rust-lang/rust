@@ -1,8 +1,8 @@
 //! Utilities for validating string and char literals and turning them into
 //! values they represent.
 
-use std::str::Chars;
 use std::ops::Range;
+use std::str::Chars;
 
 #[cfg(test)]
 mod tests;
@@ -152,7 +152,6 @@ impl Mode {
     }
 }
 
-
 fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
     if first_char != '\\' {
         // Previous character was not a slash, and we don't expect it to be
@@ -246,7 +245,8 @@ fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: Mode) -> Result<ch
                         })?;
                     }
                     Some(c) => {
-                        let digit = c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?;
+                        let digit =
+                            c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?;
                         n_digits += 1;
                         if n_digits > 6 {
                             // Stop updating value since we're sure that it's is incorrect already.
@@ -334,8 +334,7 @@ where
 
         let result = match curr {
             '\r' => Err(EscapeError::BareCarriageReturnInRawString),
-            c if mode.is_bytes() && !c.is_ascii() =>
-                Err(EscapeError::NonAsciiCharInByteString),
+            c if mode.is_bytes() && !c.is_ascii() => Err(EscapeError::NonAsciiCharInByteString),
             c => Ok(c),
         };
         let end = initial_len - chars.as_str().len();

@@ -5,11 +5,11 @@ use std::fmt;
 use std::fs::File;
 use std::io;
 
+use crate::transform::{MirPass, MirSource};
+use crate::util as mir_util;
 use rustc::mir::{Body, BodyAndCache};
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
-use crate::transform::{MirPass, MirSource};
-use crate::util as mir_util;
 
 pub struct Marker(pub &'static str);
 
@@ -19,12 +19,16 @@ impl<'tcx> MirPass<'tcx> for Marker {
     }
 
     fn run_pass(
-        &self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body: &mut BodyAndCache<'tcx>
-    ) {}
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        _source: MirSource<'tcx>,
+        _body: &mut BodyAndCache<'tcx>,
+    ) {
+    }
 }
 
 pub struct Disambiguator {
-    is_after: bool
+    is_after: bool,
 }
 
 impl fmt::Display for Disambiguator {
@@ -43,13 +47,15 @@ pub fn on_mir_pass<'tcx>(
     is_after: bool,
 ) {
     if mir_util::dump_enabled(tcx, pass_name, source) {
-        mir_util::dump_mir(tcx,
-                           Some(pass_num),
-                           pass_name,
-                           &Disambiguator { is_after },
-                           source,
-                           body,
-                           |_, _| Ok(()) );
+        mir_util::dump_mir(
+            tcx,
+            Some(pass_num),
+            pass_name,
+            &Disambiguator { is_after },
+            source,
+            body,
+            |_, _| Ok(()),
+        );
     }
 }
 

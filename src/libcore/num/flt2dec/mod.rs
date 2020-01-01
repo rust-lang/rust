@@ -119,7 +119,7 @@ functions.
 #![unstable(
     feature = "flt2dec",
     reason = "internal routines only exposed for testing",
-    issue = "0"
+    issue = "none"
 )]
 
 pub use self::decoder::{decode, DecodableFloat, Decoded, FullDecoded};

@@ -7,10 +7,7 @@ pub fn iter<Ls>(
 where
     Ls: Links,
 {
-    VecLinkedListIterator {
-        links,
-        current: first,
-    }
+    VecLinkedListIterator { links, current: first }
 }
 
 pub struct VecLinkedListIterator<Ls>

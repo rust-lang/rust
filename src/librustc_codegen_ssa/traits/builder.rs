@@ -5,18 +5,19 @@ use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgAbiMethods;
 use super::{HasCodegen, StaticBuilderMethods};
 
-use crate::common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate,
-    SynchronizationScope};
+use crate::common::{
+    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope,
+};
 use crate::mir::operand::OperandRef;
 use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 
+use rustc::ty::layout::{Align, HasParamEnv, Size};
 use rustc::ty::Ty;
-use rustc::ty::layout::{Align, Size, HasParamEnv};
 use rustc_target::spec::HasTargetSpec;
 
-use std::ops::Range;
 use std::iter::TrustedLen;
+use std::ops::Range;
 
 #[derive(Copy, Clone)]
 pub enum OverflowOp {
@@ -35,7 +36,6 @@ pub trait BuilderMethods<'a, 'tcx>:
     + StaticBuilderMethods
     + HasParamEnv<'tcx>
     + HasTargetSpec
-
 {
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Function, name: &'b str) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
@@ -114,20 +114,15 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
     fn dynamic_alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
-    fn array_alloca(
-        &mut self,
-        ty: Self::Type,
-        len: Self::Value,
-        align: Align,
-    ) -> Self::Value;
+    fn array_alloca(&mut self, ty: Self::Type, len: Self::Value, align: Align) -> Self::Value;
 
     fn load(&mut self, ptr: Self::Value, align: Align) -> Self::Value;
     fn volatile_load(&mut self, ptr: Self::Value) -> Self::Value;
     fn atomic_load(&mut self, ptr: Self::Value, order: AtomicOrdering, size: Size) -> Self::Value;
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
-        -> OperandRef<'tcx, Self::Value>;
+    -> OperandRef<'tcx, Self::Value>;
 
-        /// Called for Rvalue::Repeat when the elem is neither a ZST nor optimizable using memset.
+    /// Called for Rvalue::Repeat when the elem is neither a ZST nor optimizable using memset.
     fn write_operand_repeatedly(
         self,
         elem: OperandRef<'tcx, Self::Value>,

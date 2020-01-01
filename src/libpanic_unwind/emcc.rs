@@ -8,10 +8,10 @@
 
 #![allow(private_no_mangle_fns)]
 
-use core::any::Any;
-use core::ptr;
-use core::mem;
 use alloc::boxed::Box;
+use core::any::Any;
+use core::mem;
+use core::ptr;
 use libc::{self, c_int};
 use unwind as uw;
 
@@ -72,12 +72,13 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
 
 #[lang = "eh_personality"]
 #[no_mangle]
-unsafe extern "C" fn rust_eh_personality(version: c_int,
-                                         actions: uw::_Unwind_Action,
-                                         exception_class: uw::_Unwind_Exception_Class,
-                                         exception_object: *mut uw::_Unwind_Exception,
-                                         context: *mut uw::_Unwind_Context)
-                                         -> uw::_Unwind_Reason_Code {
+unsafe extern "C" fn rust_eh_personality(
+    version: c_int,
+    actions: uw::_Unwind_Action,
+    exception_class: uw::_Unwind_Exception_Class,
+    exception_object: *mut uw::_Unwind_Exception,
+    context: *mut uw::_Unwind_Context,
+) -> uw::_Unwind_Reason_Code {
     __gxx_personality_v0(version, actions, exception_class, exception_object, context)
 }
 
@@ -85,13 +86,16 @@ extern "C" {
     fn __cxa_allocate_exception(thrown_size: libc::size_t) -> *mut libc::c_void;
     fn __cxa_begin_catch(thrown_exception: *mut libc::c_void) -> *mut libc::c_void;
     fn __cxa_end_catch();
-    fn __cxa_throw(thrown_exception: *mut libc::c_void,
-                   tinfo: *const TypeInfo,
-                   dest: *mut libc::c_void) -> !;
-    fn __gxx_personality_v0(version: c_int,
-                            actions: uw::_Unwind_Action,
-                            exception_class: uw::_Unwind_Exception_Class,
-                            exception_object: *mut uw::_Unwind_Exception,
-                            context: *mut uw::_Unwind_Context)
-                            -> uw::_Unwind_Reason_Code;
+    fn __cxa_throw(
+        thrown_exception: *mut libc::c_void,
+        tinfo: *const TypeInfo,
+        dest: *mut libc::c_void,
+    ) -> !;
+    fn __gxx_personality_v0(
+        version: c_int,
+        actions: uw::_Unwind_Action,
+        exception_class: uw::_Unwind_Exception_Class,
+        exception_object: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context,
+    ) -> uw::_Unwind_Reason_Code;
 }

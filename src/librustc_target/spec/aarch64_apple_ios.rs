@@ -1,5 +1,5 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 use super::apple_ios_base::{opts, Arch};
+use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let base = opts(Arch::Arm64)?;
@@ -19,7 +19,7 @@ pub fn target() -> TargetResult {
             eliminate_frame_pointer: false,
             max_atomic_width: Some(128),
             abi_blacklist: super::arm_base::abi_blacklist(),
-            .. base
+            ..base
         },
     })
 }

@@ -10,7 +10,7 @@ use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
     if !super::filter_dirs(path) {
-        return
+        return;
     }
     for entry in t!(path.read_dir(), path).map(|e| t!(e)) {
         // Look for `Cargo.toml` with a sibling `src/lib.rs` or `lib.rs`.
@@ -34,7 +34,7 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
     let librs = t!(fs::read_to_string(&libfile));
 
     if toml.contains("name = \"bootstrap\"") {
-        return
+        return;
     }
 
     // "Poor man's TOML parser" -- just assume we use one syntax for now.
@@ -51,36 +51,41 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
     // If we encounter a line starting with `[` then we assume it's the end of
     // the dependency section and bail out.
     let deps = match toml.find("[dependencies]") {
-        Some(i) => &toml[i+1..],
+        Some(i) => &toml[i + 1..],
         None => return,
     };
     for line in deps.lines() {
         if line.starts_with('[') {
-            break
+            break;
         }
 
         let mut parts = line.splitn(2, '=');
         let krate = parts.next().unwrap().trim();
         if parts.next().is_none() {
-            continue
+            continue;
         }
 
         // Don't worry about depending on core/std while not writing `extern crate
         // core/std` -- that's intentional.
         if krate == "core" || krate == "std" {
-            continue
+            continue;
         }
 
         // This is intentional -- this dependency just makes the crate available
         // for others later on.
         let whitelisted = krate.starts_with("panic");
         if toml.contains("name = \"std\"") && whitelisted {
-            continue
+            continue;
         }
 
         if !librs.contains(&format!("extern crate {}", krate)) {
-            tidy_error!(bad, "{} doesn't have `extern crate {}`, but Cargo.toml \
-                              depends on it", libfile.display(), krate);
+            tidy_error!(
+                bad,
+                "{} doesn't have `extern crate {}`, but Cargo.toml \
+                              depends on it",
+                libfile.display(),
+                krate
+            );
         }
     }
 }

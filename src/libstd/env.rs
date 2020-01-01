@@ -6,7 +6,7 @@
 //!
 //! There are several functions and structs in this module that have a
 //! counterpart ending in `os`. Those ending in `os` will return an [`OsString`]
-//! and those without will be returning a [`String`].
+//! and those without will return a [`String`].
 //!
 //! [`OsString`]: ../../std/ffi/struct.OsString.html
 //! [`String`]: ../string/struct.String.html
@@ -284,6 +284,7 @@ impl fmt::Display for VarError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Error for VarError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         match *self {
             VarError::NotPresent => "environment variable not found",
@@ -526,6 +527,7 @@ impl fmt::Display for JoinPathsError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Error for JoinPathsError {
+    #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         self.inner.description()
     }
@@ -550,7 +552,7 @@ impl Error for JoinPathsError {
 ///   (including to an empty string).
 /// - If both do not exist, [`GetUserProfileDirectory`][msdn] is used to return the path.
 ///
-/// [msdn]: https://msdn.microsoft.com/en-us/library/windows/desktop/bb762280(v=vs.85).aspx
+/// [msdn]: https://docs.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectorya
 ///
 /// # Examples
 ///
@@ -589,7 +591,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// This behavior is identical to that of [`GetTempPath`][msdn], which this
 /// function uses internally.
 ///
-/// [msdn]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992(v=vs.85).aspx
+/// [msdn]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppatha
 ///
 /// ```no_run
 /// use std::env;

@@ -440,6 +440,7 @@ pub struct NonIpSockAddr {
 }
 
 impl error::Error for NonIpSockAddr {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "Failed to convert address to SocketAddr"
     }

@@ -1,5 +1,5 @@
 error: index out of bounds: the len is 1 but the index is 1
-  --> $DIR/index_out_of_bounds_propagated.rs:3:5
+  --> $DIR/index_out_of_bounds_propagated.rs:5:5
    |
 LL |     array[1];
    |     ^^^^^^^^

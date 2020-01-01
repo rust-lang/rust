@@ -31,14 +31,14 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::fold::TypeFolder;
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::util::nodemap::FxHashMap;
 
 use std::collections::hash_map::Entry;
 
-use super::InferCtxt;
 use super::unify_key::ToType;
+use super::InferCtxt;
 
 pub struct TypeFreshener<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
@@ -123,30 +123,29 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 r
             }
 
-            ty::ReStatic |
-            ty::ReEarlyBound(..) |
-            ty::ReFree(_) |
-            ty::ReScope(_) |
-            ty::ReVar(_) |
-            ty::RePlaceholder(..) |
-            ty::ReEmpty |
-            ty::ReErased => {
+            ty::ReStatic
+            | ty::ReEarlyBound(..)
+            | ty::ReFree(_)
+            | ty::ReScope(_)
+            | ty::ReVar(_)
+            | ty::RePlaceholder(..)
+            | ty::ReEmpty
+            | ty::ReErased => {
                 // replace all free regions with 'erased
                 self.tcx().lifetimes.re_erased
             }
 
             ty::ReClosureBound(..) => {
-                bug!(
-                    "encountered unexpected region: {:?}",
-                    r,
-                );
+                bug!("encountered unexpected region: {:?}", r,);
             }
         }
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.needs_infer() && !t.has_erasable_regions() &&
-            !(t.has_closure_types() && self.infcx.in_progress_tables.is_some()) {
+        if !t.needs_infer()
+            && !t.has_erasable_regions()
+            && !(t.has_closure_types() && self.infcx.in_progress_tables.is_some())
+        {
             return t;
         }
 
@@ -155,83 +154,78 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         match t.kind {
             ty::Infer(ty::TyVar(v)) => {
                 let opt_ty = self.infcx.type_variables.borrow_mut().probe(v).known();
-                self.freshen_ty(
-                    opt_ty,
-                    ty::TyVar(v),
-                    ty::FreshTy)
+                self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy)
             }
 
-            ty::Infer(ty::IntVar(v)) => {
-                self.freshen_ty(
-                    self.infcx.int_unification_table.borrow_mut()
-                                                    .probe_value(v)
-                                                    .map(|v| v.to_type(tcx)),
-                    ty::IntVar(v),
-                    ty::FreshIntTy)
-            }
+            ty::Infer(ty::IntVar(v)) => self.freshen_ty(
+                self.infcx
+                    .int_unification_table
+                    .borrow_mut()
+                    .probe_value(v)
+                    .map(|v| v.to_type(tcx)),
+                ty::IntVar(v),
+                ty::FreshIntTy,
+            ),
 
-            ty::Infer(ty::FloatVar(v)) => {
-                self.freshen_ty(
-                    self.infcx.float_unification_table.borrow_mut()
-                                                      .probe_value(v)
-                                                      .map(|v| v.to_type(tcx)),
-                    ty::FloatVar(v),
-                    ty::FreshFloatTy)
-            }
+            ty::Infer(ty::FloatVar(v)) => self.freshen_ty(
+                self.infcx
+                    .float_unification_table
+                    .borrow_mut()
+                    .probe_value(v)
+                    .map(|v| v.to_type(tcx)),
+                ty::FloatVar(v),
+                ty::FreshFloatTy,
+            ),
 
-            ty::Infer(ty::FreshTy(ct)) |
-            ty::Infer(ty::FreshIntTy(ct)) |
-            ty::Infer(ty::FreshFloatTy(ct)) => {
+            ty::Infer(ty::FreshTy(ct))
+            | ty::Infer(ty::FreshIntTy(ct))
+            | ty::Infer(ty::FreshFloatTy(ct)) => {
                 if ct >= self.ty_freshen_count {
-                    bug!("Encountered a freshend type with id {} \
+                    bug!(
+                        "Encountered a freshend type with id {} \
                           but our counter is only at {}",
-                         ct,
-                         self.ty_freshen_count);
+                        ct,
+                        self.ty_freshen_count
+                    );
                 }
                 t
             }
 
-            ty::Generator(..) |
-            ty::Bool |
-            ty::Char |
-            ty::Int(..) |
-            ty::Uint(..) |
-            ty::Float(..) |
-            ty::Adt(..) |
-            ty::Str |
-            ty::Error |
-            ty::Array(..) |
-            ty::Slice(..) |
-            ty::RawPtr(..) |
-            ty::Ref(..) |
-            ty::FnDef(..) |
-            ty::FnPtr(_) |
-            ty::Dynamic(..) |
-            ty::Never |
-            ty::Tuple(..) |
-            ty::Projection(..) |
-            ty::UnnormalizedProjection(..) |
-            ty::Foreign(..) |
-            ty::Param(..) |
-            ty::Closure(..) |
-            ty::GeneratorWitness(..) |
-            ty::Opaque(..) => {
-                t.super_fold_with(self)
-            }
+            ty::Generator(..)
+            | ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Adt(..)
+            | ty::Str
+            | ty::Error
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::Dynamic(..)
+            | ty::Never
+            | ty::Tuple(..)
+            | ty::Projection(..)
+            | ty::UnnormalizedProjection(..)
+            | ty::Foreign(..)
+            | ty::Param(..)
+            | ty::Closure(..)
+            | ty::GeneratorWitness(..)
+            | ty::Opaque(..) => t.super_fold_with(self),
 
-            ty::Placeholder(..) |
-            ty::Bound(..) => bug!("unexpected type {:?}", t),
+            ty::Placeholder(..) | ty::Bound(..) => bug!("unexpected type {:?}", t),
         }
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         match ct.val {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
-                let opt_ct = self.infcx.const_unification_table
-                    .borrow_mut()
-                    .probe_value(v)
-                    .val
-                    .known();
+                let opt_ct =
+                    self.infcx.const_unification_table.borrow_mut().probe_value(v).val.known();
                 return self.freshen_const(
                     opt_ct,
                     ty::InferConst::Var(v),
@@ -251,14 +245,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 return ct;
             }
 
-            ty::ConstKind::Bound(..) |
-            ty::ConstKind::Placeholder(_) => {
+            ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
                 bug!("unexpected const {:?}", ct)
             }
 
-            ty::ConstKind::Param(_) |
-            ty::ConstKind::Value(_) |
-            ty::ConstKind::Unevaluated(..) => {}
+            ty::ConstKind::Param(_) | ty::ConstKind::Value(_) | ty::ConstKind::Unevaluated(..) => {}
         }
 
         ct.super_fold_with(self)

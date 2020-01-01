@@ -8,6 +8,7 @@
 
 #![deny(unsafe_code)]
 
+use crate::{Delimiter, Level, LineColumn, Spacing};
 use std::fmt;
 use std::hash::Hash;
 use std::marker;
@@ -17,7 +18,6 @@ use std::panic;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
 use std::thread;
-use crate::{Delimiter, Level, LineColumn, Spacing};
 
 /// Higher-order macro describing the server RPC API, allowing automatic
 /// generation of type-safe Rust APIs, both client-side and server-side.
@@ -270,10 +270,7 @@ struct Marked<T, M> {
 impl<T, M> Mark for Marked<T, M> {
     type Unmarked = T;
     fn mark(unmarked: Self::Unmarked) -> Self {
-        Marked {
-            value: unmarked,
-            _marker: marker::PhantomData,
-        }
+        Marked { value: unmarked, _marker: marker::PhantomData }
     }
 }
 impl<T, M> Unmark for Marked<T, M> {

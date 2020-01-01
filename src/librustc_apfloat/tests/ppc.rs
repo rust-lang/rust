@@ -1,5 +1,5 @@
-use rustc_apfloat::{Category, Float, Round};
 use rustc_apfloat::ppc::DoubleDouble;
+use rustc_apfloat::{Category, Float, Round};
 
 use std::cmp::Ordering;
 
@@ -23,15 +23,11 @@ fn ppc_double_double() {
     assert_eq!(0x3ff0000000000000, test.to_bits());
 
     // LDBL_MAX
-    let test = "1.79769313486231580793728971405301e+308"
-        .parse::<DoubleDouble>()
-        .unwrap();
+    let test = "1.79769313486231580793728971405301e+308".parse::<DoubleDouble>().unwrap();
     assert_eq!(0x7c8ffffffffffffe_7fefffffffffffff, test.to_bits());
 
     // LDBL_MIN
-    let test = "2.00416836000897277799610805135016e-292"
-        .parse::<DoubleDouble>()
-        .unwrap();
+    let test = "2.00416836000897277799610805135016e-292".parse::<DoubleDouble>().unwrap();
     assert_eq!(0x0000000000000000_0360000000000000, test.to_bits());
 }
 
@@ -39,12 +35,7 @@ fn ppc_double_double() {
 fn ppc_double_double_add_special() {
     let data = [
         // (1 + 0) + (-1 + 0) = Category::Zero
-        (
-            0x3ff0000000000000,
-            0xbff0000000000000,
-            Category::Zero,
-            Round::NearestTiesToEven,
-        ),
+        (0x3ff0000000000000, 0xbff0000000000000, Category::Zero, Round::NearestTiesToEven),
         // LDBL_MAX + (1.1 >> (1023 - 106) + 0)) = Category::Infinity
         (
             0x7c8ffffffffffffe_7fefffffffffffff,
@@ -70,12 +61,7 @@ fn ppc_double_double_add_special() {
             Round::NearestTiesToEven,
         ),
         // NaN + (1 + 0) = Category::NaN
-        (
-            0x7ff8000000000000,
-            0x3ff0000000000000,
-            Category::NaN,
-            Round::NearestTiesToEven,
-        ),
+        (0x7ff8000000000000, 0x3ff0000000000000, Category::NaN, Round::NearestTiesToEven),
     ];
 
     for &(op1, op2, expected, round) in &data {
@@ -199,63 +185,23 @@ fn ppc_double_double_subtract() {
 fn ppc_double_double_multiply_special() {
     let data = [
         // Category::NaN * Category::NaN = Category::NaN
-        (
-            0x7ff8000000000000,
-            0x7ff8000000000000,
-            Category::NaN,
-            Round::NearestTiesToEven,
-        ),
+        (0x7ff8000000000000, 0x7ff8000000000000, Category::NaN, Round::NearestTiesToEven),
         // Category::NaN * Category::Zero = Category::NaN
-        (
-            0x7ff8000000000000,
-            0,
-            Category::NaN,
-            Round::NearestTiesToEven,
-        ),
+        (0x7ff8000000000000, 0, Category::NaN, Round::NearestTiesToEven),
         // Category::NaN * Category::Infinity = Category::NaN
-        (
-            0x7ff8000000000000,
-            0x7ff0000000000000,
-            Category::NaN,
-            Round::NearestTiesToEven,
-        ),
+        (0x7ff8000000000000, 0x7ff0000000000000, Category::NaN, Round::NearestTiesToEven),
         // Category::NaN * Category::Normal = Category::NaN
-        (
-            0x7ff8000000000000,
-            0x3ff0000000000000,
-            Category::NaN,
-            Round::NearestTiesToEven,
-        ),
+        (0x7ff8000000000000, 0x3ff0000000000000, Category::NaN, Round::NearestTiesToEven),
         // Category::Infinity * Category::Infinity = Category::Infinity
-        (
-            0x7ff0000000000000,
-            0x7ff0000000000000,
-            Category::Infinity,
-            Round::NearestTiesToEven,
-        ),
+        (0x7ff0000000000000, 0x7ff0000000000000, Category::Infinity, Round::NearestTiesToEven),
         // Category::Infinity * Category::Zero = Category::NaN
-        (
-            0x7ff0000000000000,
-            0,
-            Category::NaN,
-            Round::NearestTiesToEven,
-        ),
+        (0x7ff0000000000000, 0, Category::NaN, Round::NearestTiesToEven),
         // Category::Infinity * Category::Normal = Category::Infinity
-        (
-            0x7ff0000000000000,
-            0x3ff0000000000000,
-            Category::Infinity,
-            Round::NearestTiesToEven,
-        ),
+        (0x7ff0000000000000, 0x3ff0000000000000, Category::Infinity, Round::NearestTiesToEven),
         // Category::Zero * Category::Zero = Category::Zero
         (0, 0, Category::Zero, Round::NearestTiesToEven),
         // Category::Zero * Category::Normal = Category::Zero
-        (
-            0,
-            0x3ff0000000000000,
-            Category::Zero,
-            Round::NearestTiesToEven,
-        ),
+        (0, 0x3ff0000000000000, Category::Zero, Round::NearestTiesToEven),
     ];
 
     for &(op1, op2, expected, round) in &data {
@@ -407,13 +353,7 @@ fn ppc_double_double_remainder() {
         let a2 = DoubleDouble::from_bits(op2);
         let result = a1.ieee_rem(a2).value;
 
-        assert_eq!(
-            expected,
-            result.to_bits(),
-            "ieee_rem({:#x}, {:#x})",
-            op1,
-            op2
-        );
+        assert_eq!(expected, result.to_bits(), "ieee_rem({:#x}, {:#x})", op1, op2);
     }
 }
 
@@ -449,14 +389,8 @@ fn ppc_double_double_mod() {
 fn ppc_double_double_fma() {
     // Sanity check for now.
     let mut a = "2".parse::<DoubleDouble>().unwrap();
-    a = a.mul_add(
-        "3".parse::<DoubleDouble>().unwrap(),
-        "4".parse::<DoubleDouble>().unwrap(),
-    ).value;
-    assert_eq!(
-        Some(Ordering::Equal),
-        "10".parse::<DoubleDouble>().unwrap().partial_cmp(&a)
-    );
+    a = a.mul_add("3".parse::<DoubleDouble>().unwrap(), "4".parse::<DoubleDouble>().unwrap()).value;
+    assert_eq!(Some(Ordering::Equal), "10".parse::<DoubleDouble>().unwrap().partial_cmp(&a));
 }
 
 #[test]
@@ -464,18 +398,12 @@ fn ppc_double_double_round_to_integral() {
     {
         let a = "1.5".parse::<DoubleDouble>().unwrap();
         let a = a.round_to_integral(Round::NearestTiesToEven).value;
-        assert_eq!(
-            Some(Ordering::Equal),
-            "2".parse::<DoubleDouble>().unwrap().partial_cmp(&a)
-        );
+        assert_eq!(Some(Ordering::Equal), "2".parse::<DoubleDouble>().unwrap().partial_cmp(&a));
     }
     {
         let a = "2.5".parse::<DoubleDouble>().unwrap();
         let a = a.round_to_integral(Round::NearestTiesToEven).value;
-        assert_eq!(
-            Some(Ordering::Equal),
-            "2".parse::<DoubleDouble>().unwrap().partial_cmp(&a)
-        );
+        assert_eq!(Some(Ordering::Equal), "2".parse::<DoubleDouble>().unwrap().partial_cmp(&a));
     }
 }
 
@@ -483,47 +411,25 @@ fn ppc_double_double_round_to_integral() {
 fn ppc_double_double_compare() {
     let data = [
         // (1 + 0) = (1 + 0)
-        (
-            0x3ff0000000000000,
-            0x3ff0000000000000,
-            Some(Ordering::Equal),
-        ),
+        (0x3ff0000000000000, 0x3ff0000000000000, Some(Ordering::Equal)),
         // (1 + 0) < (1.00...1 + 0)
         (0x3ff0000000000000, 0x3ff0000000000001, Some(Ordering::Less)),
         // (1.00...1 + 0) > (1 + 0)
-        (
-            0x3ff0000000000001,
-            0x3ff0000000000000,
-            Some(Ordering::Greater),
-        ),
+        (0x3ff0000000000001, 0x3ff0000000000000, Some(Ordering::Greater)),
         // (1 + 0) < (1 + epsilon)
-        (
-            0x3ff0000000000000,
-            0x0000000000000001_3ff0000000000001,
-            Some(Ordering::Less),
-        ),
+        (0x3ff0000000000000, 0x0000000000000001_3ff0000000000001, Some(Ordering::Less)),
         // NaN != NaN
         (0x7ff8000000000000, 0x7ff8000000000000, None),
         // (1 + 0) != NaN
         (0x3ff0000000000000, 0x7ff8000000000000, None),
         // Inf = Inf
-        (
-            0x7ff0000000000000,
-            0x7ff0000000000000,
-            Some(Ordering::Equal),
-        ),
+        (0x7ff0000000000000, 0x7ff0000000000000, Some(Ordering::Equal)),
     ];
 
     for &(op1, op2, expected) in &data {
         let a1 = DoubleDouble::from_bits(op1);
         let a2 = DoubleDouble::from_bits(op2);
-        assert_eq!(
-            expected,
-            a1.partial_cmp(&a2),
-            "compare({:#x}, {:#x})",
-            op1,
-            op2,
-        );
+        assert_eq!(expected, a1.partial_cmp(&a2), "compare({:#x}, {:#x})", op1, op2,);
     }
 }
 
@@ -537,11 +443,7 @@ fn ppc_double_double_bitwise_eq() {
         // NaN = NaN
         (0x7ff8000000000000, 0x7ff8000000000000, true),
         // NaN != NaN with a different bit pattern
-        (
-            0x7ff8000000000000,
-            0x3ff0000000000000_7ff8000000000000,
-            false,
-        ),
+        (0x7ff8000000000000, 0x3ff0000000000000_7ff8000000000000, false),
         // Inf = Inf
         (0x7ff0000000000000, 0x7ff0000000000000, true),
     ];
@@ -569,27 +471,12 @@ fn ppc_double_double_change_sign() {
 #[test]
 fn ppc_double_double_factories() {
     assert_eq!(0, DoubleDouble::ZERO.to_bits());
-    assert_eq!(
-        0x7c8ffffffffffffe_7fefffffffffffff,
-        DoubleDouble::largest().to_bits()
-    );
+    assert_eq!(0x7c8ffffffffffffe_7fefffffffffffff, DoubleDouble::largest().to_bits());
     assert_eq!(0x0000000000000001, DoubleDouble::SMALLEST.to_bits());
-    assert_eq!(
-        0x0360000000000000,
-        DoubleDouble::smallest_normalized().to_bits()
-    );
-    assert_eq!(
-        0x0000000000000000_8000000000000000,
-        (-DoubleDouble::ZERO).to_bits()
-    );
-    assert_eq!(
-        0xfc8ffffffffffffe_ffefffffffffffff,
-        (-DoubleDouble::largest()).to_bits()
-    );
-    assert_eq!(
-        0x0000000000000000_8000000000000001,
-        (-DoubleDouble::SMALLEST).to_bits()
-    );
+    assert_eq!(0x0360000000000000, DoubleDouble::smallest_normalized().to_bits());
+    assert_eq!(0x0000000000000000_8000000000000000, (-DoubleDouble::ZERO).to_bits());
+    assert_eq!(0xfc8ffffffffffffe_ffefffffffffffff, (-DoubleDouble::largest()).to_bits());
+    assert_eq!(0x0000000000000000_8000000000000001, (-DoubleDouble::SMALLEST).to_bits());
     assert_eq!(
         0x0000000000000000_8360000000000000,
         (-DoubleDouble::smallest_normalized()).to_bits()

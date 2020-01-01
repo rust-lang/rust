@@ -1,5 +1,5 @@
-use crate::ty::subst::{SubstsRef, GenericArgKind};
-use crate::ty::{self, Ty, TypeFlags, InferConst};
+use crate::ty::subst::{GenericArgKind, SubstsRef};
+use crate::ty::{self, InferConst, Ty, TypeFlags};
 
 #[derive(Debug)]
 pub struct FlagComputation {
@@ -11,10 +11,7 @@ pub struct FlagComputation {
 
 impl FlagComputation {
     fn new() -> FlagComputation {
-        FlagComputation {
-            flags: TypeFlags::empty(),
-            outer_exclusive_binder: ty::INNERMOST,
-        }
+        FlagComputation { flags: TypeFlags::empty(), outer_exclusive_binder: ty::INNERMOST }
     }
 
     #[allow(rustc::usage_of_ty_tykind)]
@@ -64,15 +61,14 @@ impl FlagComputation {
     #[allow(rustc::usage_of_ty_tykind)]
     fn add_kind(&mut self, kind: &ty::TyKind<'_>) {
         match kind {
-            &ty::Bool |
-            &ty::Char |
-            &ty::Int(_) |
-            &ty::Float(_) |
-            &ty::Uint(_) |
-            &ty::Never |
-            &ty::Str |
-            &ty::Foreign(..) => {
-            }
+            &ty::Bool
+            | &ty::Char
+            | &ty::Int(_)
+            | &ty::Float(_)
+            | &ty::Uint(_)
+            | &ty::Never
+            | &ty::Str
+            | &ty::Foreign(..) => {}
 
             // You might think that we could just return Error for
             // any type containing Error as a component, and get
@@ -81,9 +77,7 @@ impl FlagComputation {
             // But doing so caused sporadic memory corruption, and
             // neither I (tjc) nor nmatsakis could figure out why,
             // so we're doing it this way.
-            &ty::Error => {
-                self.add_flags(TypeFlags::HAS_TY_ERR)
-            }
+            &ty::Error => self.add_flags(TypeFlags::HAS_TY_ERR),
 
             &ty::Param(_) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
@@ -121,13 +115,9 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES); // it might, right?
                 self.add_flags(TypeFlags::HAS_TY_INFER);
                 match infer {
-                    ty::FreshTy(_) |
-                    ty::FreshIntTy(_) |
-                    ty::FreshFloatTy(_) => {}
+                    ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {}
 
-                    ty::TyVar(_) |
-                    ty::IntVar(_) |
-                    ty::FloatVar(_) => {
+                    ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
                         self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
                     }
                 }
@@ -145,7 +135,7 @@ impl FlagComputation {
             &ty::UnnormalizedProjection(ref data) => {
                 self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_projection_ty(data);
-            },
+            }
 
             &ty::Opaque(_, substs) => {
                 self.add_flags(TypeFlags::HAS_PROJECTION);
@@ -174,9 +164,7 @@ impl FlagComputation {
                 self.add_const(len);
             }
 
-            &ty::Slice(tt) => {
-                self.add_ty(tt)
-            }
+            &ty::Slice(tt) => self.add_ty(tt),
 
             &ty::RawPtr(ref m) => {
                 self.add_ty(m.ty);
@@ -234,7 +222,7 @@ impl FlagComputation {
             ty::ConstKind::Unevaluated(_, substs) => {
                 self.add_substs(substs);
                 self.add_flags(TypeFlags::HAS_PROJECTION);
-            },
+            }
             ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_CT_INFER);
                 match infer {

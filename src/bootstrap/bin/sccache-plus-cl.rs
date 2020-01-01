@@ -8,12 +8,12 @@ fn main() {
     env::set_var("CXX", env::var_os("SCCACHE_CXX").unwrap());
     let mut cfg = cc::Build::new();
     cfg.cargo_metadata(false)
-       .out_dir("/")
-       .target(&target)
-       .host(&target)
-       .opt_level(0)
-       .warnings(false)
-       .debug(false);
+        .out_dir("/")
+        .target(&target)
+        .host(&target)
+        .opt_level(0)
+        .warnings(false)
+        .debug(false);
     let compiler = cfg.get_compiler();
 
     // Invoke sccache with said compiler

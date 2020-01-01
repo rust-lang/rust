@@ -402,9 +402,7 @@ impl Error {
     ///     }
     /// }
     ///
-    /// impl error::Error for MyError {
-    ///     fn description(&self) -> &str { &self.v }
-    /// }
+    /// impl error::Error for MyError {}
     ///
     /// impl Display for MyError {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -536,6 +534,7 @@ impl fmt::Display for Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl error::Error for Error {
+    #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         match self.repr {
             Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
@@ -605,22 +604,18 @@ mod test {
         struct TestError;
 
         impl fmt::Display for TestError {
-            fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-                Ok(())
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("asdf")
             }
         }
 
-        impl error::Error for TestError {
-            fn description(&self) -> &str {
-                "asdf"
-            }
-        }
+        impl error::Error for TestError {}
 
         // we have to call all of these UFCS style right now since method
         // resolution won't implicitly drop the Send+Sync bounds
         let mut err = Error::new(ErrorKind::Other, TestError);
         assert!(err.get_ref().unwrap().is::<TestError>());
-        assert_eq!("asdf", err.get_ref().unwrap().description());
+        assert_eq!("asdf", err.get_ref().unwrap().to_string());
         assert!(err.get_mut().unwrap().is::<TestError>());
         let extracted = err.into_inner().unwrap();
         extracted.downcast::<TestError>().unwrap();

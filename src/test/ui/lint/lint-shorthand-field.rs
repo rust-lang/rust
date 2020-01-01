@@ -1,4 +1,6 @@
-#![allow(nonstandard_style, unused_variables)]
+// run-rustfix
+
+#![allow(nonstandard_style, unused_variables, unused_mut)]
 #![deny(non_shorthand_field_patterns)]
 
 struct Foo {
@@ -50,5 +52,19 @@ fn main() {
         match (Bar { x: Foo::x }) {
             Bar { x: Foo::x } => {},
         }
+    }
+
+    {
+        struct Baz {
+            x: isize,
+            y: isize,
+            z: isize,
+        }
+
+        let Baz {
+            x: mut x, //~ ERROR the `x:` in this pattern is redundant
+            y: ref y, //~ ERROR the `y:` in this pattern is redundant
+            z: ref mut z, //~ ERROR the `z:` in this pattern is redundant
+        } = Baz { x: 0, y: 0, z: 0 };
     }
 }

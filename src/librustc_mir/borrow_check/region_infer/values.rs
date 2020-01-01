@@ -1,7 +1,7 @@
-use rustc::mir::{BasicBlock, Location, Body, ReadOnlyBodyAndCache};
+use rustc::mir::{BasicBlock, Body, Location, ReadOnlyBodyAndCache};
 use rustc::ty::{self, RegionVid};
-use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
 use std::fmt::Debug;
@@ -22,7 +22,8 @@ crate struct RegionValueElements {
 impl RegionValueElements {
     crate fn new(body: &Body<'_>) -> Self {
         let mut num_points = 0;
-        let statements_before_block: IndexVec<BasicBlock, usize> = body.basic_blocks()
+        let statements_before_block: IndexVec<BasicBlock, usize> = body
+            .basic_blocks()
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -30,10 +31,7 @@ impl RegionValueElements {
                 v
             })
             .collect();
-        debug!(
-            "RegionValueElements: statements_before_block={:#?}",
-            statements_before_block
-        );
+        debug!("RegionValueElements: statements_before_block={:#?}", statements_before_block);
         debug!("RegionValueElements: num_points={:#?}", num_points);
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
@@ -41,11 +39,7 @@ impl RegionValueElements {
             basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
         }
 
-        Self {
-            statements_before_block,
-            basic_blocks,
-            num_points,
-        }
+        Self { statements_before_block, basic_blocks, num_points }
     }
 
     /// Total number of point indices
@@ -55,10 +49,7 @@ impl RegionValueElements {
 
     /// Converts a `Location` into a `PointIndex`. O(1).
     crate fn point_from_location(&self, location: Location) -> PointIndex {
-        let Location {
-            block,
-            statement_index,
-        } = location;
+        let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
         PointIndex::new(start_index + statement_index)
     }
@@ -75,10 +66,7 @@ impl RegionValueElements {
         let block = self.basic_blocks[index];
         let start_index = self.statements_before_block[block];
         let statement_index = index.index() - start_index;
-        Location {
-            block,
-            statement_index,
-        }
+        Location { block, statement_index }
     }
 
     /// Sometimes we get point-indices back from bitsets that may be
@@ -96,10 +84,7 @@ impl RegionValueElements {
         index: PointIndex,
         stack: &mut Vec<PointIndex>,
     ) {
-        let Location {
-            block,
-            statement_index,
-        } = self.to_location(index);
+        let Location { block, statement_index } = self.to_location(index);
         if statement_index == 0 {
             // If this is a basic block head, then the predecessors are
             // the terminators of other basic blocks
@@ -155,14 +140,11 @@ impl<N: Idx> LivenessValues<N> {
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
     crate fn new(elements: Rc<RegionValueElements>) -> Self {
-        Self {
-            points: SparseBitMatrix::new(elements.num_points),
-            elements: elements,
-        }
+        Self { points: SparseBitMatrix::new(elements.num_points), elements: elements }
     }
 
     /// Iterate through each region that has a value in this set.
-    crate fn rows(&self) -> impl Iterator<Item=N> {
+    crate fn rows(&self) -> impl Iterator<Item = N> {
         self.points.rows()
     }
 
@@ -177,10 +159,7 @@ impl<N: Idx> LivenessValues<N> {
     /// Adds all the elements in the given bit array into the given
     /// region. Returns whether any of them are newly added.
     crate fn add_elements(&mut self, row: N, locations: &HybridBitSet<PointIndex>) -> bool {
-        debug!(
-            "LivenessValues::add_elements(row={:?}, locations={:?})",
-            row, locations
-        );
+        debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
         self.points.union_into_row(row, locations)
     }
 
@@ -220,13 +199,8 @@ crate struct PlaceholderIndices {
 
 impl PlaceholderIndices {
     crate fn insert(&mut self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
-        let PlaceholderIndices {
-            to_index,
-            from_index,
-        } = self;
-        *to_index
-            .entry(placeholder)
-            .or_insert_with(|| from_index.push(placeholder))
+        let PlaceholderIndices { to_index, from_index } = self;
+        *to_index.entry(placeholder).or_insert_with(|| from_index.push(placeholder))
     }
 
     crate fn lookup_index(&self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
@@ -355,10 +329,7 @@ impl<N: Idx> RegionValues<N> {
         &'a self,
         r: N,
     ) -> impl Iterator<Item = RegionVid> + 'a {
-        self.free_regions
-            .row(r)
-            .into_iter()
-            .flat_map(|set| set.iter())
+        self.free_regions.row(r).into_iter().flat_map(|set| set.iter())
     }
 
     /// Returns all the elements contained in a given region's value.
@@ -377,15 +348,13 @@ impl<N: Idx> RegionValues<N> {
     crate fn elements_contained_in<'a>(&'a self, r: N) -> impl Iterator<Item = RegionElement> + 'a {
         let points_iter = self.locations_outlived_by(r).map(RegionElement::Location);
 
-        let free_regions_iter = self.universal_regions_outlived_by(r)
-            .map(RegionElement::RootUniversalRegion);
+        let free_regions_iter =
+            self.universal_regions_outlived_by(r).map(RegionElement::RootUniversalRegion);
 
-        let placeholder_universes_iter = self.placeholders_contained_in(r)
-            .map(RegionElement::PlaceholderRegion);
+        let placeholder_universes_iter =
+            self.placeholders_contained_in(r).map(RegionElement::PlaceholderRegion);
 
-        points_iter
-            .chain(free_regions_iter)
-            .chain(placeholder_universes_iter)
+        points_iter.chain(free_regions_iter).chain(placeholder_universes_iter)
     }
 
     /// Returns a "pretty" string value of the region. Meant for debugging.

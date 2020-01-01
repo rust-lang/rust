@@ -8,8 +8,8 @@ use rustc_index::bit_set::BitSet;
 
 use std::marker::PhantomData;
 
-use crate::dataflow::{self as old_dataflow, generic as dataflow};
 use super::{Item, Qualif};
+use crate::dataflow::{self as old_dataflow, generic as dataflow};
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
@@ -28,15 +28,8 @@ impl<Q> TransferFunction<'a, 'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    fn new(
-        item: &'a Item<'mir, 'tcx>,
-        qualifs_per_local: &'a mut BitSet<Local>,
-    ) -> Self {
-        TransferFunction {
-            item,
-            qualifs_per_local,
-            _qualif: PhantomData,
-        }
+    fn new(item: &'a Item<'mir, 'tcx>, qualifs_per_local: &'a mut BitSet<Local>) -> Self {
+        TransferFunction { item, qualifs_per_local, _qualif: PhantomData }
     }
 
     fn initialize_state(&mut self) {
@@ -78,13 +71,8 @@ where
         return_place: &mir::Place<'tcx>,
     ) {
         let return_ty = return_place.ty(*self.item.body, self.item.tcx).ty;
-        let qualif = Q::in_call(
-            self.item,
-            &|l| self.qualifs_per_local.contains(l),
-            func,
-            args,
-            return_ty,
-        );
+        let qualif =
+            Q::in_call(self.item, &|l| self.qualifs_per_local.contains(l), func, args, return_ty);
         if !return_place.is_indirect() {
             self.assign_qualif_direct(return_place, qualif);
         }
@@ -155,10 +143,7 @@ where
     Q: Qualif,
 {
     pub(super) fn new(_: Q, item: &'a Item<'mir, 'tcx>) -> Self {
-        FlowSensitiveAnalysis {
-            item,
-            _qualif: PhantomData,
-        }
+        FlowSensitiveAnalysis { item, _qualif: PhantomData }
     }
 
     fn transfer_function(

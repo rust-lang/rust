@@ -1,4 +1,4 @@
-#![unstable(issue = "0", feature = "windows_stdio")]
+#![unstable(issue = "none", feature = "windows_stdio")]
 
 use crate::char::decode_utf16;
 use crate::cmp;

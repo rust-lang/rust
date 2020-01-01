@@ -1,6 +1,6 @@
 use crate::traits::*;
 
-use rustc::ty::{self, Ty, Instance};
+use rustc::ty::{self, Instance, Ty};
 use rustc_target::abi::call::FnAbi;
 
 #[derive(Copy, Clone, Debug)]
@@ -24,10 +24,7 @@ impl<'a, 'tcx> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(
-            llvtable,
-            bx.type_ptr_to(bx.fn_ptr_backend_type(fn_abi))
-        );
+        let llvtable = bx.pointercast(llvtable, bx.type_ptr_to(bx.fn_ptr_backend_type(fn_abi)));
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let gep = bx.inbounds_gep(llvtable, &[bx.const_usize(self.0)]);
         let ptr = bx.load(gep, ptr_align);
@@ -96,7 +93,8 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
                     ty::ParamEnv::reveal_all(),
                     def_id,
                     substs,
-                ).unwrap()
+                )
+                .unwrap(),
             )
         })
     });
@@ -109,8 +107,12 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let components: Vec<_> = [
         cx.get_fn_addr(Instance::resolve_drop_in_place(cx.tcx(), ty)),
         cx.const_usize(layout.size.bytes()),
-        cx.const_usize(layout.align.abi.bytes())
-    ].iter().cloned().chain(methods).collect();
+        cx.const_usize(layout.align.abi.bytes()),
+    ]
+    .iter()
+    .cloned()
+    .chain(methods)
+    .collect();
 
     let vtable_const = cx.const_struct(&components, false);
     let align = cx.data_layout().pointer_align.abi;

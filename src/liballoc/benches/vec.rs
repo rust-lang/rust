@@ -1,5 +1,5 @@
+use std::iter::{repeat, FromIterator};
 use test::Bencher;
-use std::iter::{FromIterator, repeat};
 
 #[bench]
 fn bench_new(b: &mut Bencher) {

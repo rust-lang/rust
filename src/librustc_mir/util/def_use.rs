@@ -1,9 +1,9 @@
 //! Def-use analysis.
 
+use rustc::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc::mir::{
     Body, BodyAndCache, Local, Location, PlaceElem, ReadOnlyBodyAndCache, VarDebugInfo,
 };
-use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc::ty::TyCtxt;
 use rustc_index::vec::IndexVec;
 use std::mem;
@@ -27,9 +27,7 @@ pub struct Use {
 
 impl DefUseAnalysis {
     pub fn new(body: &Body<'_>) -> DefUseAnalysis {
-        DefUseAnalysis {
-            info: IndexVec::from_elem_n(Info::new(), body.local_decls.len()),
-        }
+        DefUseAnalysis { info: IndexVec::from_elem_n(Info::new(), body.local_decls.len()) }
     }
 
     pub fn analyze(&mut self, body: ReadOnlyBodyAndCache<'_, '_>) {
@@ -73,11 +71,13 @@ impl DefUseAnalysis {
     }
 
     // FIXME(pcwalton): this should update the def-use chains.
-    pub fn replace_all_defs_and_uses_with(&self,
-                                          local: Local,
-                                          body: &mut BodyAndCache<'tcx>,
-                                          new_local: Local,
-                                          tcx: TyCtxt<'tcx>) {
+    pub fn replace_all_defs_and_uses_with(
+        &self,
+        local: Local,
+        body: &mut BodyAndCache<'tcx>,
+        new_local: Local,
+        tcx: TyCtxt<'tcx>,
+    ) {
         self.mutate_defs_and_uses(local, body, new_local, tcx)
     }
 }
@@ -89,18 +89,12 @@ struct DefUseFinder {
 }
 
 impl Visitor<'_> for DefUseFinder {
-    fn visit_local(&mut self,
-                   &local: &Local,
-                   context: PlaceContext,
-                   location: Location) {
+    fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
         let info = &mut self.info[local];
         if self.in_var_debug_info {
             info.var_debug_info_indices.push(self.var_debug_info_index);
         } else {
-            info.defs_and_uses.push(Use {
-                context,
-                location,
-            });
+            info.defs_and_uses.push(Use { context, location });
         }
     }
     fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
@@ -114,10 +108,7 @@ impl Visitor<'_> for DefUseFinder {
 
 impl Info {
     fn new() -> Info {
-        Info {
-            defs_and_uses: vec![],
-            var_debug_info_indices: vec![],
-        }
+        Info { defs_and_uses: vec![], var_debug_info_indices: vec![] }
     }
 
     fn clear(&mut self) {
@@ -133,18 +124,14 @@ impl Info {
         self.defs_not_including_drop().count()
     }
 
-    pub fn defs_not_including_drop(
-        &self,
-    ) -> impl Iterator<Item=&Use> {
-        self.defs_and_uses.iter().filter(|place_use| {
-            place_use.context.is_mutating_use() && !place_use.context.is_drop()
-        })
+    pub fn defs_not_including_drop(&self) -> impl Iterator<Item = &Use> {
+        self.defs_and_uses
+            .iter()
+            .filter(|place_use| place_use.context.is_mutating_use() && !place_use.context.is_drop())
     }
 
     pub fn use_count(&self) -> usize {
-        self.defs_and_uses.iter().filter(|place_use| {
-            place_use.context.is_nonmutating_use()
-        }).count()
+        self.defs_and_uses.iter().filter(|place_use| place_use.context.is_nonmutating_use()).count()
     }
 }
 
@@ -155,11 +142,7 @@ struct MutateUseVisitor<'tcx> {
 }
 
 impl MutateUseVisitor<'tcx> {
-    fn new(
-        query: Local,
-        new_local: Local,
-        tcx: TyCtxt<'tcx>,
-    ) -> MutateUseVisitor<'tcx> {
+    fn new(query: Local, new_local: Local, tcx: TyCtxt<'tcx>) -> MutateUseVisitor<'tcx> {
         MutateUseVisitor { query, new_local, tcx }
     }
 }
@@ -169,19 +152,13 @@ impl MutVisitor<'tcx> for MutateUseVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self,
-                    local: &mut Local,
-                    _context: PlaceContext,
-                    _location: Location) {
+    fn visit_local(&mut self, local: &mut Local, _context: PlaceContext, _location: Location) {
         if *local == self.query {
             *local = self.new_local;
         }
     }
 
-    fn process_projection_elem(
-        &mut self,
-        elem: &PlaceElem<'tcx>,
-    ) -> Option<PlaceElem<'tcx>> {
+    fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
         match elem {
             PlaceElem::Index(local) if *local == self.query => {
                 Some(PlaceElem::Index(self.new_local))

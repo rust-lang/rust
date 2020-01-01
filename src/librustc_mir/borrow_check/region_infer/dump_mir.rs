@@ -3,9 +3,9 @@
 //! state of region inference. This code handles emitting the region
 //! context internal state.
 
+use super::{OutlivesConstraint, RegionInferenceContext};
 use rustc::infer::NLLRegionVariableOrigin;
 use std::io::{self, Write};
-use super::{OutlivesConstraint, RegionInferenceContext};
 
 // Room for "'_#NNNNr" before things get misaligned.
 // Easy enough to fix if this ever doesn't seem like
@@ -19,10 +19,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         for region in self.regions() {
             if let NLLRegionVariableOrigin::FreeRegion = self.definitions[region].origin {
-                let classification = self
-                    .universal_regions
-                    .region_classification(region)
-                    .unwrap();
+                let classification = self.universal_regions.region_classification(region).unwrap();
                 let outlived_by = self.universal_region_relations.regions_outlived_by(region);
                 writeln!(
                     out,
@@ -74,19 +71,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
         constraints.sort();
         for constraint in &constraints {
-            let OutlivesConstraint {
-                sup,
-                sub,
-                locations,
-                category,
-            } = constraint;
-            with_msg(&format!(
-                "{:?}: {:?} due to {:?} at {:?}",
-                sup,
-                sub,
-                category,
-                locations,
-            ))?;
+            let OutlivesConstraint { sup, sub, locations, category } = constraint;
+            with_msg(&format!("{:?}: {:?} due to {:?} at {:?}", sup, sub, category, locations,))?;
         }
 
         Ok(())

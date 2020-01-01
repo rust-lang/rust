@@ -2,9 +2,9 @@ use rustc::hir::def_id::CrateNum;
 use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::ich::NodeIdHashingMode;
 use rustc::mir::interpret::{ConstValue, Scalar};
-use rustc::ty::print::{PrettyPrinter, Printer, Print};
+use rustc::ty::print::{PrettyPrinter, Print, Printer};
 use rustc::ty::subst::{GenericArg, GenericArgKind};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Instance};
+use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
@@ -55,11 +55,9 @@ pub(super) fn mangle(
 
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 
-    let mut printer = SymbolPrinter {
-        tcx,
-        path: SymbolPath::new(),
-        keep_within_component: false,
-    }.print_def_path(def_id, &[]).unwrap();
+    let mut printer = SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false }
+        .print_def_path(def_id, &[])
+        .unwrap();
 
     if instance.is_vtable_shim() {
         let _ = printer.write_str("{{vtable-shim}}");
@@ -84,10 +82,7 @@ fn get_symbol_hash<'tcx>(
 ) -> u64 {
     let def_id = instance.def_id();
     let substs = instance.substs;
-    debug!(
-        "get_symbol_hash(def_id={:?}, parameters={:?})",
-        def_id, substs
-    );
+    debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
 
     let mut hasher = StableHasher::new();
     let mut hcx = tcx.create_stable_hashing_context();
@@ -121,10 +116,10 @@ fn get_symbol_hash<'tcx>(
         substs.hash_stable(&mut hcx, &mut hasher);
 
         if let Some(instantiating_crate) = instantiating_crate {
-            tcx.original_crate_name(instantiating_crate).as_str()
+            tcx.original_crate_name(instantiating_crate)
+                .as_str()
                 .hash_stable(&mut hcx, &mut hasher);
-            tcx.crate_disambiguator(instantiating_crate)
-                .hash_stable(&mut hcx, &mut hasher);
+            tcx.crate_disambiguator(instantiating_crate).hash_stable(&mut hcx, &mut hasher);
         }
 
         // We want to avoid accidental collision between different types of instances.
@@ -157,10 +152,8 @@ struct SymbolPath {
 
 impl SymbolPath {
     fn new() -> Self {
-        let mut result = SymbolPath {
-            result: String::with_capacity(64),
-            temp_buf: String::with_capacity(16),
-        };
+        let mut result =
+            SymbolPath { result: String::with_capacity(64), temp_buf: String::with_capacity(16) };
         result.result.push_str("_ZN"); // _Z == Begin name-sequence, N == nested
         result
     }
@@ -208,27 +201,19 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         self.tcx
     }
 
-    fn print_region(
-        self,
-        _region: ty::Region<'_>,
-    ) -> Result<Self::Region, Self::Error> {
+    fn print_region(self, _region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
         Ok(self)
     }
 
-    fn print_type(
-        self,
-        ty: Ty<'tcx>,
-    ) -> Result<Self::Type, Self::Error> {
+    fn print_type(self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         match ty.kind {
             // Print all nominal types as paths (unlike `pretty_print_type`).
-            ty::FnDef(def_id, substs) |
-            ty::Opaque(def_id, substs) |
-            ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs }) |
-            ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
-            ty::Closure(def_id, substs) |
-            ty::Generator(def_id, substs, _) => {
-                self.print_def_path(def_id, substs)
-            }
+            ty::FnDef(def_id, substs)
+            | ty::Opaque(def_id, substs)
+            | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::Closure(def_id, substs)
+            | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
             _ => self.pretty_print_type(ty),
         }
     }
@@ -248,10 +233,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         Ok(self)
     }
 
-    fn print_const(
-        mut self,
-        ct: &'tcx ty::Const<'tcx>,
-    ) -> Result<Self::Const, Self::Error> {
+    fn print_const(mut self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // only print integers
         if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { .. })) = ct.val {
             if ct.ty.is_integral() {
@@ -262,10 +244,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         Ok(self)
     }
 
-    fn path_crate(
-        mut self,
-        cnum: CrateNum,
-    ) -> Result<Self::Path, Self::Error> {
+    fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
         self.write_str(&self.tcx.original_crate_name(cnum).as_str())?;
         Ok(self)
     }
@@ -277,18 +256,18 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         // Similar to `pretty_path_qualified`, but for the other
         // types that are printed as paths (see `print_type` above).
         match self_ty.kind {
-            ty::FnDef(..) |
-            ty::Opaque(..) |
-            ty::Projection(_) |
-            ty::UnnormalizedProjection(_) |
-            ty::Closure(..) |
-            ty::Generator(..)
+            ty::FnDef(..)
+            | ty::Opaque(..)
+            | ty::Projection(_)
+            | ty::UnnormalizedProjection(_)
+            | ty::Closure(..)
+            | ty::Generator(..)
                 if trait_ref.is_none() =>
             {
                 self.print_type(self_ty)
             }
 
-            _ => self.pretty_path_qualified(self_ty, trait_ref)
+            _ => self.pretty_path_qualified(self_ty, trait_ref),
         }
     }
 
@@ -343,14 +322,12 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         args: &[GenericArg<'tcx>],
-    )  -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
-        let args = args.iter().cloned().filter(|arg| {
-            match arg.unpack() {
-                GenericArgKind::Lifetime(_) => false,
-                _ => true,
-            }
+        let args = args.iter().cloned().filter(|arg| match arg.unpack() {
+            GenericArgKind::Lifetime(_) => false,
+            _ => true,
         });
 
         if args.clone().next().is_some() {
@@ -362,10 +339,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
 }
 
 impl PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
-    fn region_should_not_be_omitted(
-        &self,
-        _region: ty::Region<'_>,
-    ) -> bool {
+    fn region_should_not_be_omitted(&self, _region: ty::Region<'_>) -> bool {
         false
     }
     fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
@@ -388,8 +362,7 @@ impl PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
     ) -> Result<Self, Self::Error> {
         write!(self, "<")?;
 
-        let kept_within_component =
-            mem::replace(&mut self.keep_within_component, true);
+        let kept_within_component = mem::replace(&mut self.keep_within_component, true);
         self = f(self)?;
         self.keep_within_component = kept_within_component;
 

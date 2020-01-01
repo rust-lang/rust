@@ -27,11 +27,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                         .splitn(2, '.')
                         .next()
                         .unwrap();
-                    if !file_path
-                        .with_file_name(testname)
-                        .with_extension("rs")
-                        .exists()
-                    {
+                    if !file_path.with_file_name(testname).with_extension("rs").exists() {
                         println!("Stray file with UI testing output: {:?}", file_path);
                         *bad = true;
                     }

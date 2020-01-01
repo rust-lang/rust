@@ -1,5 +1,5 @@
-use crate::graph::tests::TestGraph;
 use super::*;
+use crate::graph::tests::TestGraph;
 
 #[test]
 fn diamond() {
@@ -23,21 +23,15 @@ fn test_big_scc() {
     // hence it too will return a cycle.
 
     /*
-+-> 0
-|   |
-|   v
-|   1 -> 3
-|   |    |
-|   v    |
-+-- 2 <--+
-     */
-    let graph = TestGraph::new(0, &[
-        (0, 1),
-        (1, 2),
-        (1, 3),
-        (2, 0),
-        (3, 2),
-    ]);
+    +-> 0
+    |   |
+    |   v
+    |   1 -> 3
+    |   |    |
+    |   v    |
+    +-- 2 <--+
+         */
+    let graph = TestGraph::new(0, &[(0, 1), (1, 2), (1, 3), (2, 0), (3, 2)]);
     let sccs: Sccs<_, usize> = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), 1);
 }
@@ -45,20 +39,15 @@ fn test_big_scc() {
 #[test]
 fn test_three_sccs() {
     /*
-    0
-    |
-    v
-+-> 1    3
-|   |    |
-|   v    |
-+-- 2 <--+
-     */
-    let graph = TestGraph::new(0, &[
-        (0, 1),
-        (1, 2),
-        (2, 1),
-        (3, 2),
-    ]);
+        0
+        |
+        v
+    +-> 1    3
+    |   |    |
+    |   v    |
+    +-- 2 <--+
+         */
+    let graph = TestGraph::new(0, &[(0, 1), (1, 2), (2, 1), (3, 2)]);
     let sccs: Sccs<_, usize> = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), 3);
     assert_eq!(sccs.scc(0), 1);
@@ -86,15 +75,7 @@ fn test_find_state_2() {
     // |   v      |
     // +-- 2 <----+
 
-    let graph = TestGraph::new(0, &[
-        (0, 1),
-        (0, 4),
-        (1, 2),
-        (1, 3),
-        (2, 1),
-        (3, 0),
-        (4, 2),
-    ]);
+    let graph = TestGraph::new(0, &[(0, 1), (0, 4), (1, 2), (1, 3), (2, 1), (3, 0), (4, 2)]);
 
     // For this graph, we will start in our DFS by visiting:
     //
@@ -136,25 +117,17 @@ fn test_find_state_2() {
 #[test]
 fn test_find_state_3() {
     /*
-      /----+
-    0 <--+ |
-    |    | |
-    v    | |
-+-> 1 -> 3 4 5
-|   |      | |
-|   v      | |
-+-- 2 <----+-+
-     */
-    let graph = TestGraph::new(0, &[
-        (0, 1),
-        (0, 4),
-        (1, 2),
-        (1, 3),
-        (2, 1),
-        (3, 0),
-        (4, 2),
-        (5, 2),
-    ]);
+          /----+
+        0 <--+ |
+        |    | |
+        v    | |
+    +-> 1 -> 3 4 5
+    |   |      | |
+    |   v      | |
+    +-- 2 <----+-+
+         */
+    let graph =
+        TestGraph::new(0, &[(0, 1), (0, 4), (1, 2), (1, 3), (2, 1), (3, 0), (4, 2), (5, 2)]);
     let sccs: Sccs<_, usize> = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), 2);
     assert_eq!(sccs.scc(0), 0);

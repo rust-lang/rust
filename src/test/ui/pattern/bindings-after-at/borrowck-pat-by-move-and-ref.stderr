@@ -1,0 +1,12 @@
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/borrowck-pat-by-move-and-ref.rs:5:34
+   |
+LL |         ref op_string_ref @ Some(s) => {},
+   |         -------------------------^-
+   |         |                        |
+   |         |                        by-move pattern here
+   |         by-ref pattern here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0009`.

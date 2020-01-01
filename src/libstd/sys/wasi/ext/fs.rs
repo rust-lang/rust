@@ -1,6 +1,6 @@
 //! WASI-specific extensions to primitives in the `std::fs` module.
 
-#![unstable(feature = "wasi_ext", issue = "0")]
+#![unstable(feature = "wasi_ext", issue = "none")]
 
 use crate::fs::{self, File, Metadata, OpenOptions};
 use crate::io::{self, IoSlice, IoSliceMut};

@@ -1,7 +1,7 @@
+use crate::mir::*;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{CanonicalUserTypeAnnotation, Ty};
-use crate::mir::*;
-use syntax_pos::Span;
+use rustc_span::Span;
 
 // # The MIR Visitor
 //
@@ -570,6 +570,18 @@ macro_rules! make_mir_visitor {
                         self.visit_place(path, ctx, location);
                     }
 
+                    Rvalue::AddressOf(m, path) => {
+                        let ctx = match m {
+                            Mutability::Mut => PlaceContext::MutatingUse(
+                                MutatingUseContext::AddressOf
+                            ),
+                            Mutability::Not => PlaceContext::NonMutatingUse(
+                                NonMutatingUseContext::AddressOf
+                            ),
+                        };
+                        self.visit_place(path, ctx, location);
+                    }
+
                     Rvalue::Len(path) => {
                         self.visit_place(
                             path,
@@ -966,29 +978,26 @@ macro_rules! visit_place_fns {
 }
 
 make_mir_visitor!(Visitor,);
-make_mir_visitor!(MutVisitor,mut);
+make_mir_visitor!(MutVisitor, mut);
 
 pub trait MirVisitable<'tcx> {
     fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>);
 }
 
 impl<'tcx> MirVisitable<'tcx> for Statement<'tcx> {
-    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
-    {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>) {
         visitor.visit_statement(self, location)
     }
 }
 
 impl<'tcx> MirVisitable<'tcx> for Terminator<'tcx> {
-    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
-    {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>) {
         visitor.visit_terminator(self, location)
     }
 }
 
 impl<'tcx> MirVisitable<'tcx> for Option<Terminator<'tcx>> {
-    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
-    {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>) {
         visitor.visit_terminator(self.as_ref().unwrap(), location)
     }
 }
@@ -1031,6 +1040,8 @@ pub enum NonMutatingUseContext {
     ShallowBorrow,
     /// Unique borrow.
     UniqueBorrow,
+    /// AddressOf for *const pointer.
+    AddressOf,
     /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
     /// For example, the projection `x.y` is not marked as a mutation in these cases:
     ///
@@ -1054,6 +1065,8 @@ pub enum MutatingUseContext {
     Drop,
     /// Mutable borrow.
     Borrow,
+    /// AddressOf for *mut pointer.
+    AddressOf,
     /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
     ///
@@ -1096,10 +1109,10 @@ impl PlaceContext {
     /// Returns `true` if this place context represents a borrow.
     pub fn is_borrow(&self) -> bool {
         match *self {
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow) |
-            PlaceContext::MutatingUse(MutatingUseContext::Borrow) => true,
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
+            | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => true,
             _ => false,
         }
     }
@@ -1107,8 +1120,8 @@ impl PlaceContext {
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     pub fn is_storage_marker(&self) -> bool {
         match *self {
-            PlaceContext::NonUse(NonUseContext::StorageLive) |
-            PlaceContext::NonUse(NonUseContext::StorageDead) => true,
+            PlaceContext::NonUse(NonUseContext::StorageLive)
+            | PlaceContext::NonUse(NonUseContext::StorageDead) => true,
             _ => false,
         }
     }
@@ -1156,9 +1169,9 @@ impl PlaceContext {
     /// Returns `true` if this place context represents an assignment statement.
     pub fn is_place_assignment(&self) -> bool {
         match *self {
-            PlaceContext::MutatingUse(MutatingUseContext::Store) |
-            PlaceContext::MutatingUse(MutatingUseContext::Call) |
-            PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) => true,
+            PlaceContext::MutatingUse(MutatingUseContext::Store)
+            | PlaceContext::MutatingUse(MutatingUseContext::Call)
+            | PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) => true,
             _ => false,
         }
     }

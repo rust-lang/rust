@@ -2,13 +2,13 @@
 // pieces of AST and HIR. The resulting numbers are good approximations but not
 // completely accurate (some things might be counted twice, others missed).
 
-use rustc::hir::{self, HirId};
 use rustc::hir::intravisit as hir_visit;
+use rustc::hir::{self, HirId};
 use rustc::util::common::to_readable_str;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use syntax::ast::{self, NodeId, AttrId};
+use rustc_span::Span;
+use syntax::ast::{self, AttrId, NodeId};
 use syntax::visit as ast_visit;
-use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum Id {
@@ -23,12 +23,12 @@ struct NodeData {
 }
 
 struct StatCollector<'k> {
-    krate: Option<&'k hir::Crate>,
+    krate: Option<&'k hir::Crate<'k>>,
     data: FxHashMap<&'static str, NodeData>,
     seen: FxHashSet<Id>,
 }
 
-pub fn print_hir_stats(krate: &hir::Crate) {
+pub fn print_hir_stats(krate: &hir::Crate<'_>) {
     let mut collector = StatCollector {
         krate: Some(krate),
         data: FxHashMap::default(),
@@ -39,26 +39,19 @@ pub fn print_hir_stats(krate: &hir::Crate) {
 }
 
 pub fn print_ast_stats(krate: &ast::Crate, title: &str) {
-    let mut collector = StatCollector {
-        krate: None,
-        data: FxHashMap::default(),
-        seen: FxHashSet::default(),
-    };
+    let mut collector =
+        StatCollector { krate: None, data: FxHashMap::default(), seen: FxHashSet::default() };
     ast_visit::walk_crate(&mut collector, krate);
     collector.print(title);
 }
 
 impl<'k> StatCollector<'k> {
-
     fn record<T>(&mut self, label: &'static str, id: Id, node: &T) {
         if id != Id::None && !self.seen.insert(id) {
-            return
+            return;
         }
 
-        let entry = self.data.entry(label).or_insert(NodeData {
-            count: 0,
-            size: 0,
-        });
+        let entry = self.data.entry(label).or_insert(NodeData { count: 0, size: 0 });
 
         entry.count += 1;
         entry.size = std::mem::size_of_val(node);
@@ -73,28 +66,27 @@ impl<'k> StatCollector<'k> {
 
         println!("\n{}\n", title);
 
-        println!("{:<18}{:>18}{:>14}{:>14}",
-            "Name", "Accumulated Size", "Count", "Item Size");
+        println!("{:<18}{:>18}{:>14}{:>14}", "Name", "Accumulated Size", "Count", "Item Size");
         println!("----------------------------------------------------------------");
 
         for (label, data) in stats {
-            println!("{:<18}{:>18}{:>14}{:>14}",
+            println!(
+                "{:<18}{:>18}{:>14}{:>14}",
                 label,
                 to_readable_str(data.count * data.size),
                 to_readable_str(data.count),
-                to_readable_str(data.size));
+                to_readable_str(data.size)
+            );
 
             total_size += data.count * data.size;
         }
         println!("----------------------------------------------------------------");
-        println!("{:<18}{:>18}\n",
-                "Total",
-                to_readable_str(total_size));
+        println!("{:<18}{:>18}\n", "Total", to_readable_str(total_size));
     }
 }
 
 impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
-    fn visit_param(&mut self, param: &'v hir::Param) {
+    fn visit_param(&mut self, param: &'v hir::Param<'v>) {
         self.record("Param", Id::Node(param.hir_id), param);
         hir_visit::walk_param(self, param)
     }
@@ -123,95 +115,99 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.visit_body(nested_body)
     }
 
-    fn visit_item(&mut self, i: &'v hir::Item) {
+    fn visit_item(&mut self, i: &'v hir::Item<'v>) {
         self.record("Item", Id::Node(i.hir_id), i);
         hir_visit::walk_item(self, i)
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod, _s: Span, n: hir::HirId) {
+    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, n: hir::HirId) {
         self.record("Mod", Id::None, m);
         hir_visit::walk_mod(self, m, n)
     }
 
-    fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {
         self.record("ForeignItem", Id::Node(i.hir_id), i);
         hir_visit::walk_foreign_item(self, i)
     }
 
-    fn visit_local(&mut self, l: &'v hir::Local) {
+    fn visit_local(&mut self, l: &'v hir::Local<'v>) {
         self.record("Local", Id::Node(l.hir_id), l);
         hir_visit::walk_local(self, l)
     }
 
-    fn visit_block(&mut self, b: &'v hir::Block) {
+    fn visit_block(&mut self, b: &'v hir::Block<'v>) {
         self.record("Block", Id::Node(b.hir_id), b);
         hir_visit::walk_block(self, b)
     }
 
-    fn visit_stmt(&mut self, s: &'v hir::Stmt) {
+    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
         self.record("Stmt", Id::Node(s.hir_id), s);
         hir_visit::walk_stmt(self, s)
     }
 
-    fn visit_arm(&mut self, a: &'v hir::Arm) {
+    fn visit_arm(&mut self, a: &'v hir::Arm<'v>) {
         self.record("Arm", Id::Node(a.hir_id), a);
         hir_visit::walk_arm(self, a)
     }
 
-    fn visit_pat(&mut self, p: &'v hir::Pat) {
+    fn visit_pat(&mut self, p: &'v hir::Pat<'v>) {
         self.record("Pat", Id::Node(p.hir_id), p);
         hir_visit::walk_pat(self, p)
     }
 
-    fn visit_expr(&mut self, ex: &'v hir::Expr) {
+    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
         self.record("Expr", Id::Node(ex.hir_id), ex);
         hir_visit::walk_expr(self, ex)
     }
 
-    fn visit_ty(&mut self, t: &'v hir::Ty) {
+    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
         self.record("Ty", Id::Node(t.hir_id), t);
         hir_visit::walk_ty(self, t)
     }
 
-    fn visit_fn(&mut self,
-                fk: hir_visit::FnKind<'v>,
-                fd: &'v hir::FnDecl,
-                b: hir::BodyId,
-                s: Span,
-                id: hir::HirId) {
+    fn visit_fn(
+        &mut self,
+        fk: hir_visit::FnKind<'v>,
+        fd: &'v hir::FnDecl<'v>,
+        b: hir::BodyId,
+        s: Span,
+        id: hir::HirId,
+    ) {
         self.record("FnDecl", Id::None, fd);
         hir_visit::walk_fn(self, fk, fd, b, s, id)
     }
 
-    fn visit_where_predicate(&mut self, predicate: &'v hir::WherePredicate) {
+    fn visit_where_predicate(&mut self, predicate: &'v hir::WherePredicate<'v>) {
         self.record("WherePredicate", Id::None, predicate);
         hir_visit::walk_where_predicate(self, predicate)
     }
 
-    fn visit_trait_item(&mut self, ti: &'v hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) {
         self.record("TraitItem", Id::Node(ti.hir_id), ti);
         hir_visit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         self.record("ImplItem", Id::Node(ii.hir_id), ii);
         hir_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_param_bound(&mut self, bounds: &'v hir::GenericBound) {
+    fn visit_param_bound(&mut self, bounds: &'v hir::GenericBound<'v>) {
         self.record("GenericBound", Id::None, bounds);
         hir_visit::walk_param_bound(self, bounds)
     }
 
-    fn visit_struct_field(&mut self, s: &'v hir::StructField) {
+    fn visit_struct_field(&mut self, s: &'v hir::StructField<'v>) {
         self.record("StructField", Id::Node(s.hir_id), s);
         hir_visit::walk_struct_field(self, s)
     }
 
-    fn visit_variant(&mut self,
-                     v: &'v hir::Variant,
-                     g: &'v hir::Generics,
-                     item_id: hir::HirId) {
+    fn visit_variant(
+        &mut self,
+        v: &'v hir::Variant<'v>,
+        g: &'v hir::Generics<'v>,
+        item_id: hir::HirId,
+    ) {
         self.record("Variant", Id::None, v);
         hir_visit::walk_variant(self, v, g, item_id)
     }
@@ -221,24 +217,22 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: hir::HirId, span: Span) {
+    fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId, span: Span) {
         self.record("QPath", Id::None, qpath);
         hir_visit::walk_qpath(self, qpath, id, span)
     }
 
-    fn visit_path(&mut self, path: &'v hir::Path, _id: hir::HirId) {
+    fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)
     }
 
-    fn visit_path_segment(&mut self,
-                          path_span: Span,
-                          path_segment: &'v hir::PathSegment) {
+    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v hir::PathSegment<'v>) {
         self.record("PathSegment", Id::None, path_segment);
         hir_visit::walk_path_segment(self, path_span, path_segment)
     }
 
-    fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding) {
+    fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding<'v>) {
         self.record("TypeBinding", Id::Node(type_binding.hir_id), type_binding);
         hir_visit::walk_assoc_type_binding(self, type_binding)
     }
@@ -247,14 +241,13 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.record("Attribute", Id::Attr(attr.id), attr);
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'v hir::MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'v hir::MacroDef<'v>) {
         self.record("MacroDef", Id::Node(macro_def.hir_id), macro_def);
         hir_visit::walk_macro_def(self, macro_def)
     }
 }
 
 impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
-
     fn visit_mod(&mut self, m: &'v ast::Mod, _s: Span, _a: &[ast::Attribute], _n: NodeId) {
         self.record("Mod", Id::None, m);
         ast_visit::walk_mod(self, m)
@@ -305,21 +298,17 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_ty(self, t)
     }
 
-    fn visit_fn(&mut self,
-                fk: ast_visit::FnKind<'v>,
-                fd: &'v ast::FnDecl,
-                s: Span,
-                _: NodeId) {
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, fd: &'v ast::FnDecl, s: Span, _: NodeId) {
         self.record("FnDecl", Id::None, fd);
         ast_visit::walk_fn(self, fk, fd, s)
     }
 
-    fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'v ast::AssocItem) {
         self.record("TraitItem", Id::None, ti);
         ast_visit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'v ast::AssocItem) {
         self.record("ImplItem", Id::None, ii);
         ast_visit::walk_impl_item(self, ii)
     }
@@ -348,9 +337,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         self.record("Mac", Id::None, mac);
     }
 
-    fn visit_path_segment(&mut self,
-                          path_span: Span,
-                          path_segment: &'v ast::PathSegment) {
+    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v ast::PathSegment) {
         self.record("PathSegment", Id::None, path_segment);
         ast_visit::walk_path_segment(self, path_span, path_segment)
     }

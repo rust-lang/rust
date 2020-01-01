@@ -9,11 +9,11 @@
 //!
 //! into just `x`.
 
-use crate::transform::{MirPass, MirSource, simplify};
-use rustc::ty::{TyCtxt, Ty};
-use rustc::mir::*;
-use rustc_target::abi::VariantIdx;
+use crate::transform::{simplify, MirPass, MirSource};
 use itertools::Itertools as _;
+use rustc::mir::*;
+use rustc::ty::{Ty, TyCtxt};
+use rustc_target::abi::VariantIdx;
 
 /// Simplifies arms of form `Variant(x) => Variant(x)` to just a move.
 ///
@@ -119,10 +119,9 @@ fn match_set_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local
 /// ```
 fn match_set_discr<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, VariantIdx)> {
     match &stmt.kind {
-        StatementKind::SetDiscriminant { place, variant_index } => Some((
-            place.as_local()?,
-            *variant_index
-        )),
+        StatementKind::SetDiscriminant { place, variant_index } => {
+            Some((place.as_local()?, *variant_index))
+        }
         _ => None,
     }
 }
@@ -177,19 +176,14 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
                 .peekable();
 
             // We want to `goto -> bb_first`.
-            let bb_first = iter_bbs_reachable
-                .peek()
-                .map(|(idx, _)| *idx)
-                .unwrap_or(targets[0]);
+            let bb_first = iter_bbs_reachable.peek().map(|(idx, _)| *idx).unwrap_or(targets[0]);
 
             // All successor basic blocks should have the exact same form.
-            let all_successors_equivalent = iter_bbs_reachable
-                .map(|(_, bb)| bb)
-                .tuple_windows()
-                .all(|(bb_l, bb_r)| {
+            let all_successors_equivalent =
+                iter_bbs_reachable.map(|(_, bb)| bb).tuple_windows().all(|(bb_l, bb_r)| {
                     bb_l.is_cleanup == bb_r.is_cleanup
-                    && bb_l.terminator().kind == bb_r.terminator().kind
-                    && bb_l.statements.iter().eq_by(&bb_r.statements, |x, y| x.kind == y.kind)
+                        && bb_l.terminator().kind == bb_r.terminator().kind
+                        && bb_l.statements.iter().eq_by(&bb_r.statements, |x, y| x.kind == y.kind)
                 });
 
             if all_successors_equivalent {

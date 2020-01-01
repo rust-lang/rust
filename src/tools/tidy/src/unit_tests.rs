@@ -14,8 +14,8 @@ pub fn check(root_path: &Path, bad: &mut bool) {
     let libcore_tests = &root_path.join("libcore/tests");
     let libcore_benches = &root_path.join("libcore/benches");
     let is_core = |path: &Path| {
-        path.starts_with(libcore) &&
-        !(path.starts_with(libcore_tests) || path.starts_with(libcore_benches))
+        path.starts_with(libcore)
+            && !(path.starts_with(libcore_tests) || path.starts_with(libcore_benches))
     };
 
     let mut skip = |path: &Path| {
@@ -28,38 +28,38 @@ pub fn check(root_path: &Path, bad: &mut bool) {
             (file_name == "tests" || file_name == "benches") && !is_core(path)
         } else {
             let extension = path.extension().unwrap_or_default();
-            extension != "rs" ||
-            (file_name == "tests.rs" || file_name == "benches.rs") && !is_core(path)
+            extension != "rs"
+                || (file_name == "tests.rs" || file_name == "benches.rs") && !is_core(path)
         }
     };
 
-    super::walk(
-        root_path,
-        &mut skip,
-        &mut |entry, contents| {
-            let path = entry.path();
-            let is_libcore = path.starts_with(libcore);
-            for (i, line) in contents.lines().enumerate() {
-                let line = line.trim();
-                let is_test = || line.contains("#[test]") && !line.contains("`#[test]");
-                let is_bench = || line.contains("#[bench]") && !line.contains("`#[bench]");
-                if !line.starts_with("//") && (is_test() || is_bench()) {
-                    let explanation = if is_libcore {
-                        "libcore unit tests and benchmarks must be placed into \
+    super::walk(root_path, &mut skip, &mut |entry, contents| {
+        let path = entry.path();
+        let is_libcore = path.starts_with(libcore);
+        for (i, line) in contents.lines().enumerate() {
+            let line = line.trim();
+            let is_test = || line.contains("#[test]") && !line.contains("`#[test]");
+            let is_bench = || line.contains("#[bench]") && !line.contains("`#[bench]");
+            if !line.starts_with("//") && (is_test() || is_bench()) {
+                let explanation = if is_libcore {
+                    "libcore unit tests and benchmarks must be placed into \
                          `libcore/tests` or `libcore/benches`"
-                    } else {
-                        "unit tests and benchmarks must be placed into \
+                } else {
+                    "unit tests and benchmarks must be placed into \
                          separate files or directories named \
                          `tests.rs`, `benches.rs`, `tests` or `benches`"
-                    };
-                    let name = if is_test() { "test" } else { "bench" };
-                    tidy_error!(
-                        bad, "`{}:{}` contains `#[{}]`; {}",
-                        path.display(), i + 1, name, explanation,
-                    );
-                    return;
-                }
+                };
+                let name = if is_test() { "test" } else { "bench" };
+                tidy_error!(
+                    bad,
+                    "`{}:{}` contains `#[{}]`; {}",
+                    path.display(),
+                    i + 1,
+                    name,
+                    explanation,
+                );
+                return;
             }
-        },
-    );
+        }
+    });
 }

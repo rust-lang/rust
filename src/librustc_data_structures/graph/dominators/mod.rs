@@ -4,9 +4,9 @@
 //! Rice Computer Science TS-06-33870
 //! <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>
 
-use rustc_index::vec::{Idx, IndexVec};
 use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;
+use rustc_index::vec::{Idx, IndexVec};
 use std::borrow::BorrowMut;
 
 #[cfg(test)]
@@ -60,10 +60,7 @@ fn dominators_given_rpo<G: ControlFlowGraph + BorrowMut<G>>(
         }
     }
 
-    Dominators {
-        post_order_rank,
-        immediate_dominators,
-    }
+    Dominators { post_order_rank, immediate_dominators }
 }
 
 fn intersect<Node: Idx>(
@@ -103,10 +100,7 @@ impl<Node: Idx> Dominators<Node> {
 
     pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
         assert!(self.is_reachable(node), "node {:?} is not reachable", node);
-        Iter {
-            dominators: self,
-            node: Some(node),
-        }
+        Iter { dominators: self, node: Some(node) }
     }
 
     pub fn is_dominated_by(&self, node: Node, dom: Node) -> bool {

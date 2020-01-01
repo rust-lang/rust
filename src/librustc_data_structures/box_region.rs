@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::marker::PhantomData;
-use std::pin::Pin;
 use std::ops::{Generator, GeneratorState};
+use std::pin::Pin;
 
 #[derive(Copy, Clone)]
 pub struct AccessAction(*mut dyn FnMut());
@@ -21,23 +21,19 @@ pub enum Action {
 thread_local!(pub static BOX_REGION_ARG: Cell<Action> = Cell::new(Action::Complete));
 
 pub struct PinnedGenerator<I, A, R> {
-    generator: Pin<Box<dyn Generator<Yield = YieldType<I, A>, Return = R>>>
+    generator: Pin<Box<dyn Generator<Yield = YieldType<I, A>, Return = R>>>,
 }
 
 impl<I, A, R> PinnedGenerator<I, A, R> {
-    pub fn new<
-        T: Generator<Yield = YieldType<I, A>, Return = R> + 'static
-    >(generator: T) -> (I, Self) {
-        let mut result = PinnedGenerator {
-            generator: Box::pin(generator)
-        };
+    pub fn new<T: Generator<Yield = YieldType<I, A>, Return = R> + 'static>(
+        generator: T,
+    ) -> (I, Self) {
+        let mut result = PinnedGenerator { generator: Box::pin(generator) };
 
         // Run it to the first yield to set it up
         let init = match Pin::new(&mut result.generator).resume() {
-            GeneratorState::Yielded(
-                YieldType::Initial(y)
-            ) => y,
-            _ => panic!()
+            GeneratorState::Yielded(YieldType::Initial(y)) => y,
+            _ => panic!(),
         };
 
         (init, result)
@@ -56,16 +52,10 @@ impl<I, A, R> PinnedGenerator<I, A, R> {
 
     pub fn complete(&mut self) -> R {
         // Tell the generator we want it to complete, consuming it and yielding a result
-        BOX_REGION_ARG.with(|i| {
-            i.set(Action::Complete)
-        });
+        BOX_REGION_ARG.with(|i| i.set(Action::Complete));
 
         let result = Pin::new(&mut self.generator).resume();
-        if let GeneratorState::Complete(r) = result {
-            r
-        } else {
-            panic!()
-        }
+        if let GeneratorState::Complete(r) = result { r } else { panic!() }
     }
 }
 

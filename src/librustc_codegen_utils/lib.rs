@@ -3,7 +3,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -11,27 +10,25 @@
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(in_band_lifetimes)]
-
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc;
 
-use rustc::ty::TyCtxt;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::query::Providers;
-use rustc::hir::def_id::{LOCAL_CRATE, DefId};
+use rustc::ty::TyCtxt;
 use syntax::symbol::sym;
 
-pub mod link;
 pub mod codegen_backend;
+pub mod link;
 pub mod symbol_names;
 pub mod symbol_names_test;
-
 
 pub fn trigger_delay_span_bug(tcx: TyCtxt<'_>, key: DefId) {
     tcx.sess.delay_span_bug(
         tcx.def_span(key),
-        "delayed span bug triggered by #[rustc_error(delay_span_bug_from_inside_query)]"
+        "delayed span bug triggered by #[rustc_error(delay_span_bug_from_inside_query)]",
     );
 }
 
@@ -48,8 +45,8 @@ pub fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
                     // check if there is a #[rustc_error(delayed)]
                     Some(list) => {
                         if list.iter().any(|list_item| {
-                            list_item.ident().map(|i| i.name) ==
-                                Some(sym::delay_span_bug_from_inside_query)
+                            list_item.ident().map(|i| i.name)
+                                == Some(sym::delay_span_bug_from_inside_query)
                         }) {
                             tcx.ensure().trigger_delay_span_bug(def_id);
                         }
@@ -58,7 +55,7 @@ pub fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
                     None => {
                         tcx.sess.span_fatal(
                             tcx.def_span(def_id),
-                            "fatal error triggered by #[rustc_error]"
+                            "fatal error triggered by #[rustc_error]",
                         );
                     }
                 }
@@ -69,8 +66,5 @@ pub fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
 
 pub fn provide(providers: &mut Providers<'_>) {
     crate::symbol_names::provide(providers);
-    *providers = Providers {
-        trigger_delay_span_bug,
-        ..*providers
-    };
+    *providers = Providers { trigger_delay_span_bug, ..*providers };
 }

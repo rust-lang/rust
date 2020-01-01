@@ -1,3 +1,4 @@
+// build-fail
 // compile-flags: -Zforce-overflow-checks=on
 
 #![allow(exceeding_bitshifts)]

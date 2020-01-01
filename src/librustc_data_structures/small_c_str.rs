@@ -44,12 +44,9 @@ impl SmallCStr {
         SmallCStr { data: SmallVec::from_slice(s.as_bytes()) }
     }
 
-
     #[inline]
     pub fn as_c_str(&self) -> &ffi::CStr {
-        unsafe {
-            ffi::CStr::from_bytes_with_nul_unchecked(&self.data[..])
-        }
+        unsafe { ffi::CStr::from_bytes_with_nul_unchecked(&self.data[..]) }
     }
 
     #[inline]

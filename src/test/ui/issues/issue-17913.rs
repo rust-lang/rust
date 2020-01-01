@@ -1,3 +1,4 @@
+// build-fail
 // normalize-stderr-test "\[&usize; \d+\]" -> "[&usize; N]"
 // error-pattern: too big for the current architecture
 

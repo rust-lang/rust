@@ -1,11 +1,11 @@
 //! WASI-specific extensions to general I/O primitives
 
-#![unstable(feature = "wasi_ext", issue = "0")]
+#![unstable(feature = "wasi_ext", issue = "none")]
 
 use crate::fs;
 use crate::io;
-use crate::sys;
 use crate::net;
+use crate::sys;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// Raw file descriptors.

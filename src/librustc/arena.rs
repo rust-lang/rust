@@ -1,10 +1,10 @@
-use arena::{TypedArena, DroplessArena};
+use arena::{DroplessArena, TypedArena};
+use smallvec::SmallVec;
+use std::cell::RefCell;
+use std::marker::PhantomData;
 use std::mem;
 use std::ptr;
 use std::slice;
-use std::cell::RefCell;
-use std::marker::PhantomData;
-use smallvec::SmallVec;
 
 /// This declares a list of types which can be allocated by `Arena`.
 ///
@@ -93,7 +93,6 @@ macro_rules! arena_types {
                         rustc::hir::def_id::CrateNum
                     >
                 >,
-            [few] hir_forest: rustc::hir::map::Forest,
             [few] diagnostic_items: rustc_data_structures::fx::FxHashMap<
                 syntax::symbol::Symbol,
                 rustc::hir::def_id::DefId,
@@ -123,6 +122,40 @@ macro_rules! arena_types {
             [few] crate_variances: rustc::ty::CrateVariancesMap<'tcx>,
             [few] inferred_outlives_crate: rustc::ty::CratePredicatesMap<'tcx>,
             [] upvars: rustc_data_structures::fx::FxIndexMap<rustc::hir::HirId, rustc::hir::Upvar>,
+
+            // HIR types
+            [few] hir_forest: rustc::hir::map::Forest<$tcx>,
+            [] arm: rustc::hir::Arm<$tcx>,
+            [] attribute: syntax::ast::Attribute,
+            [] block: rustc::hir::Block<$tcx>,
+            [] bare_fn_ty: rustc::hir::BareFnTy<$tcx>,
+            [few] global_asm: rustc::hir::GlobalAsm,
+            [] generic_arg: rustc::hir::GenericArg<$tcx>,
+            [] generic_args: rustc::hir::GenericArgs<$tcx>,
+            [] generic_bound: rustc::hir::GenericBound<$tcx>,
+            [] generic_param: rustc::hir::GenericParam<$tcx>,
+            [] expr: rustc::hir::Expr<$tcx>,
+            [] field: rustc::hir::Field<$tcx>,
+            [] field_pat: rustc::hir::FieldPat<$tcx>,
+            [] fn_decl: rustc::hir::FnDecl<$tcx>,
+            [] foreign_item: rustc::hir::ForeignItem<$tcx>,
+            [] impl_item_ref: rustc::hir::ImplItemRef<$tcx>,
+            [] inline_asm: rustc::hir::InlineAsm<$tcx>,
+            [] local: rustc::hir::Local<$tcx>,
+            [few] macro_def: rustc::hir::MacroDef<$tcx>,
+            [] param: rustc::hir::Param<$tcx>,
+            [] pat: rustc::hir::Pat<$tcx>,
+            [] path: rustc::hir::Path<$tcx>,
+            [] path_segment: rustc::hir::PathSegment<$tcx>,
+            [] poly_trait_ref: rustc::hir::PolyTraitRef<$tcx>,
+            [] qpath: rustc::hir::QPath<$tcx>,
+            [] stmt: rustc::hir::Stmt<$tcx>,
+            [] struct_field: rustc::hir::StructField<$tcx>,
+            [] trait_item_ref: rustc::hir::TraitItemRef,
+            [] ty: rustc::hir::Ty<$tcx>,
+            [] type_binding: rustc::hir::TypeBinding<$tcx>,
+            [] variant: rustc::hir::Variant<$tcx>,
+            [] where_predicate: rustc::hir::WherePredicate<$tcx>,
         ], $tcx);
     )
 }
@@ -212,17 +245,14 @@ impl<'tcx> Arena<'tcx> {
     #[inline]
     pub fn alloc_slice<T: Copy>(&self, value: &[T]) -> &mut [T] {
         if value.len() == 0 {
-            return &mut []
+            return &mut [];
         }
         self.dropless.alloc_slice(value)
     }
 
-    pub fn alloc_from_iter<
-        T: ArenaAllocatable,
-        I: IntoIterator<Item = T>
-    >(
+    pub fn alloc_from_iter<T: ArenaAllocatable, I: IntoIterator<Item = T>>(
         &'a self,
-        iter: I
+        iter: I,
     ) -> &'a mut [T] {
         if !mem::needs_drop::<T>() {
             return self.dropless.alloc_from_iter(iter);
@@ -246,9 +276,7 @@ unsafe fn drop_for_type<T>(to_drop: *mut u8) {
 
 impl Drop for DropType {
     fn drop(&mut self) {
-        unsafe {
-            (self.drop_fn)(self.obj)
-        }
+        unsafe { (self.drop_fn)(self.obj) }
     }
 }
 
@@ -269,19 +297,16 @@ struct DropArena {
 impl DropArena {
     #[inline]
     unsafe fn alloc<T>(&self, object: T) -> &mut T {
-        let mem = self.arena.alloc_raw(
-            mem::size_of::<T>(),
-            mem::align_of::<T>()
-        ) as *mut _ as *mut T;
+        let mem =
+            self.arena.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut _ as *mut T;
         // Write into uninitialized memory.
         ptr::write(mem, object);
         let result = &mut *mem;
         // Record the destructor after doing the allocation as that may panic
         // and would cause `object`'s destuctor to run twice if it was recorded before
-        self.destructors.borrow_mut().push(DropType {
-            drop_fn: drop_for_type::<T>,
-            obj: result as *mut T as *mut u8,
-        });
+        self.destructors
+            .borrow_mut()
+            .push(DropType { drop_fn: drop_for_type::<T>, obj: result as *mut T as *mut u8 });
         result
     }
 
@@ -293,10 +318,10 @@ impl DropArena {
         }
         let len = vec.len();
 
-        let start_ptr = self.arena.alloc_raw(
-            len.checked_mul(mem::size_of::<T>()).unwrap(),
-            mem::align_of::<T>()
-        ) as *mut _ as *mut T;
+        let start_ptr = self
+            .arena
+            .alloc_raw(len.checked_mul(mem::size_of::<T>()).unwrap(), mem::align_of::<T>())
+            as *mut _ as *mut T;
 
         let mut destructors = self.destructors.borrow_mut();
         // Reserve space for the destructors so we can't panic while adding them

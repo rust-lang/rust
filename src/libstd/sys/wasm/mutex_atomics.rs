@@ -1,7 +1,7 @@
 use crate::arch::wasm32;
 use crate::cell::UnsafeCell;
 use crate::mem;
-use crate::sync::atomic::{AtomicUsize, AtomicU32, Ordering::SeqCst};
+use crate::sync::atomic::{AtomicU32, AtomicUsize, Ordering::SeqCst};
 use crate::sys::thread;
 
 pub struct Mutex {
@@ -81,10 +81,7 @@ unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
     pub unsafe fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex {
-            owner: AtomicU32::new(0),
-            recursions: UnsafeCell::new(0),
-        }
+        ReentrantMutex { owner: AtomicU32::new(0), recursions: UnsafeCell::new(0) }
     }
 
     pub unsafe fn init(&mut self) {

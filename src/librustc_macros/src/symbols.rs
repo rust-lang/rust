@@ -1,12 +1,9 @@
 use proc_macro::TokenStream;
-use syn::{
-    Token, Ident, LitStr,
-    braced, parse_macro_input,
-};
-use syn::parse::{Result, Parse, ParseStream};
-use syn;
-use std::collections::HashSet;
 use quote::quote;
+use std::collections::HashSet;
+use syn;
+use syn::parse::{Parse, ParseStream, Result};
+use syn::{braced, parse_macro_input, Ident, LitStr, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -26,10 +23,7 @@ impl Parse for Keyword {
         let value = input.parse()?;
         input.parse::<Token![,]>()?;
 
-        Ok(Keyword {
-            name,
-            value,
-        })
+        Ok(Keyword { name, value })
     }
 }
 
@@ -47,10 +41,7 @@ impl Parse for Symbol {
         };
         input.parse::<Token![,]>()?;
 
-        Ok(Symbol {
-            name,
-            value,
-        })
+        Ok(Symbol { name, value })
     }
 }
 
@@ -84,10 +75,7 @@ impl Parse for Input {
         braced!(content in input);
         let symbols = content.parse()?;
 
-        Ok(Input {
-            keywords,
-            symbols,
-        })
+        Ok(Input { keywords, symbols })
     }
 }
 

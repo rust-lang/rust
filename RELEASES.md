@@ -4951,10 +4951,10 @@ Stabilized APIs
 ---------------
 
 * [`std::panic`]
-* [`std::panic::catch_unwind`][] (renamed from `recover`)
-* [`std::panic::resume_unwind`][] (renamed from `propagate`)
-* [`std::panic::AssertUnwindSafe`][] (renamed from `AssertRecoverSafe`)
-* [`std::panic::UnwindSafe`][] (renamed from `RecoverSafe`)
+* [`std::panic::catch_unwind`] (renamed from `recover`)
+* [`std::panic::resume_unwind`] (renamed from `propagate`)
+* [`std::panic::AssertUnwindSafe`] (renamed from `AssertRecoverSafe`)
+* [`std::panic::UnwindSafe`] (renamed from `RecoverSafe`)
 * [`str::is_char_boundary`]
 * [`<*const T>::as_ref`]
 * [`<*mut T>::as_ref`]
@@ -5234,18 +5234,18 @@ Libraries
 ---------
 
 * Stabilized APIs:
-  * [`str::encode_utf16`][] (renamed from `utf16_units`)
-  * [`str::EncodeUtf16`][] (renamed from `Utf16Units`)
+  * [`str::encode_utf16`] (renamed from `utf16_units`)
+  * [`str::EncodeUtf16`] (renamed from `Utf16Units`)
   * [`Ref::map`]
   * [`RefMut::map`]
   * [`ptr::drop_in_place`]
   * [`time::Instant`]
   * [`time::SystemTime`]
   * [`Instant::now`]
-  * [`Instant::duration_since`][] (renamed from `duration_from_earlier`)
+  * [`Instant::duration_since`] (renamed from `duration_from_earlier`)
   * [`Instant::elapsed`]
   * [`SystemTime::now`]
-  * [`SystemTime::duration_since`][] (renamed from `duration_from_earlier`)
+  * [`SystemTime::duration_since`] (renamed from `duration_from_earlier`)
   * [`SystemTime::elapsed`]
   * Various `Add`/`Sub` impls for `Time` and `SystemTime`
   * [`SystemTimeError`]
@@ -5432,8 +5432,8 @@ Libraries
 
 * Stabilized APIs
   * `Path`
-    * [`Path::strip_prefix`][] (renamed from relative_from)
-    * [`path::StripPrefixError`][] (new error type returned from strip_prefix)
+    * [`Path::strip_prefix`] (renamed from relative_from)
+    * [`path::StripPrefixError`] (new error type returned from strip_prefix)
   * `Ipv4Addr`
     * [`Ipv4Addr::is_loopback`]
     * [`Ipv4Addr::is_private`]
@@ -5646,7 +5646,7 @@ Libraries
 
 * Stabilized APIs:
   [`Read::read_exact`],
-  [`ErrorKind::UnexpectedEof`][] (renamed from `UnexpectedEOF`),
+  [`ErrorKind::UnexpectedEof`] (renamed from `UnexpectedEOF`),
   [`fs::DirBuilder`], [`fs::DirBuilder::new`],
   [`fs::DirBuilder::recursive`], [`fs::DirBuilder::create`],
   [`os::unix::fs::DirBuilderExt`],
@@ -5659,11 +5659,11 @@ Libraries
   [`collections::hash_set::HashSet::drain`],
   [`collections::binary_heap::Drain`],
   [`collections::binary_heap::BinaryHeap::drain`],
-  [`Vec::extend_from_slice`][] (renamed from `push_all`),
+  [`Vec::extend_from_slice`] (renamed from `push_all`),
   [`Mutex::get_mut`], [`Mutex::into_inner`], [`RwLock::get_mut`],
   [`RwLock::into_inner`],
-  [`Iterator::min_by_key`][] (renamed from `min_by`),
-  [`Iterator::max_by_key`][] (renamed from `max_by`).
+  [`Iterator::min_by_key`] (renamed from `min_by`),
+  [`Iterator::max_by_key`] (renamed from `max_by`).
 * The [core library][1.6co] is stable, as are most of its APIs.
 * [The `assert_eq!` macro supports arguments that don't implement
   `Sized`][1.6ae], such as arrays. In this way it behaves more like

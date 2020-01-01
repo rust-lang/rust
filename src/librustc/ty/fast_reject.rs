@@ -1,11 +1,11 @@
 use crate::hir::def_id::DefId;
 use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+use crate::ty::{self, Ty, TyCtxt};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 use syntax::ast;
-use crate::ty::{self, Ty, TyCtxt};
 
 use self::SimplifiedTypeGen::*;
 
@@ -19,7 +19,8 @@ pub type SimplifiedType = SimplifiedTypeGen<DefId>;
 /// the non-stable but fast to construct DefId-version is the better choice.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 pub enum SimplifiedTypeGen<D>
-    where D: Copy + Debug + Ord + Eq
+where
+    D: Copy + Debug + Ord + Eq,
 {
     BoolSimplifiedType,
     CharSimplifiedType,
@@ -69,37 +70,26 @@ pub fn simplify_type(
         ty::Str => Some(StrSimplifiedType),
         ty::Array(..) | ty::Slice(_) => Some(ArraySimplifiedType),
         ty::RawPtr(_) => Some(PtrSimplifiedType),
-        ty::Dynamic(ref trait_info, ..) => {
-            match trait_info.principal_def_id() {
-                Some(principal_def_id) if !tcx.trait_is_auto(principal_def_id) => {
-                    Some(TraitSimplifiedType(principal_def_id))
-                }
-                _ => Some(MarkerTraitObjectSimplifiedType)
+        ty::Dynamic(ref trait_info, ..) => match trait_info.principal_def_id() {
+            Some(principal_def_id) if !tcx.trait_is_auto(principal_def_id) => {
+                Some(TraitSimplifiedType(principal_def_id))
             }
-        }
+            _ => Some(MarkerTraitObjectSimplifiedType),
+        },
         ty::Ref(_, ty, _) => {
             // since we introduce auto-refs during method lookup, we
             // just treat &T and T as equivalent from the point of
             // view of possibly unifying
             simplify_type(tcx, ty, can_simplify_params)
         }
-        ty::FnDef(def_id, _) |
-        ty::Closure(def_id, _) => {
-            Some(ClosureSimplifiedType(def_id))
-        }
-        ty::Generator(def_id, _, _) => {
-            Some(GeneratorSimplifiedType(def_id))
-        }
+        ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
+        ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
         ty::GeneratorWitness(ref tys) => {
             Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len()))
         }
         ty::Never => Some(NeverSimplifiedType),
-        ty::Tuple(ref tys) => {
-            Some(TupleSimplifiedType(tys.len()))
-        }
-        ty::FnPtr(ref f) => {
-            Some(FunctionSimplifiedType(f.skip_binder().inputs().len()))
-        }
+        ty::Tuple(ref tys) => Some(TupleSimplifiedType(tys.len())),
+        ty::FnPtr(ref f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
         ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
         ty::Projection(_) | ty::Param(_) => {
             if can_simplify_params {
@@ -113,20 +103,17 @@ pub fn simplify_type(
                 None
             }
         }
-        ty::Opaque(def_id, _) => {
-            Some(OpaqueSimplifiedType(def_id))
-        }
-        ty::Foreign(def_id) => {
-            Some(ForeignSimplifiedType(def_id))
-        }
+        ty::Opaque(def_id, _) => Some(OpaqueSimplifiedType(def_id)),
+        ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) | ty::Error => None,
     }
 }
 
 impl<D: Copy + Debug + Ord + Eq> SimplifiedTypeGen<D> {
     pub fn map_def<U, F>(self, map: F) -> SimplifiedTypeGen<U>
-        where F: Fn(D) -> U,
-              U: Copy + Debug + Ord + Eq,
+    where
+        F: Fn(D) -> U,
+        U: Copy + Debug + Ord + Eq,
     {
         match self {
             BoolSimplifiedType => BoolSimplifiedType,
@@ -160,14 +147,14 @@ where
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            BoolSimplifiedType |
-            CharSimplifiedType |
-            StrSimplifiedType |
-            ArraySimplifiedType |
-            PtrSimplifiedType |
-            NeverSimplifiedType |
-            ParameterSimplifiedType |
-            MarkerTraitObjectSimplifiedType => {
+            BoolSimplifiedType
+            | CharSimplifiedType
+            | StrSimplifiedType
+            | ArraySimplifiedType
+            | PtrSimplifiedType
+            | NeverSimplifiedType
+            | ParameterSimplifiedType
+            | MarkerTraitObjectSimplifiedType => {
                 // nothing to do
             }
             IntSimplifiedType(t) => t.hash_stable(hcx, hasher),

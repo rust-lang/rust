@@ -46,21 +46,15 @@ pub struct TraitImpls {
 }
 
 impl<'tcx> TraitDef {
-    pub fn new(def_id: DefId,
-               unsafety: hir::Unsafety,
-               paren_sugar: bool,
-               has_auto_impl: bool,
-               is_marker: bool,
-               def_path_hash: DefPathHash)
-               -> TraitDef {
-        TraitDef {
-            def_id,
-            unsafety,
-            paren_sugar,
-            has_auto_impl,
-            is_marker,
-            def_path_hash,
-        }
+    pub fn new(
+        def_id: DefId,
+        unsafety: hir::Unsafety,
+        paren_sugar: bool,
+        has_auto_impl: bool,
+        is_marker: bool,
+        def_path_hash: DefPathHash,
+    ) -> TraitDef {
+        TraitDef { def_id, unsafety, paren_sugar, has_auto_impl, is_marker, def_path_hash }
     }
 
     pub fn ancestors(
@@ -89,11 +83,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Iterate over every impl that could possibly match the
     /// self type `self_ty`.
-    pub fn for_each_relevant_impl<F: FnMut(DefId)>(self,
-                                                   def_id: DefId,
-                                                   self_ty: Ty<'tcx>,
-                                                   mut f: F)
-    {
+    pub fn for_each_relevant_impl<F: FnMut(DefId)>(
+        self,
+        def_id: DefId,
+        self_ty: Ty<'tcx>,
+        mut f: F,
+    ) {
         let impls = self.trait_impls_of(def_id);
 
         for &impl_def_id in impls.blanket_impls.iter() {
@@ -142,17 +137,17 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn all_impls(self, def_id: DefId) -> Vec<DefId> {
         let impls = self.trait_impls_of(def_id);
 
-        impls.blanket_impls.iter().chain(
-            impls.non_blanket_impls.values().flatten()
-        ).cloned().collect()
+        impls
+            .blanket_impls
+            .iter()
+            .chain(impls.non_blanket_impls.values().flatten())
+            .cloned()
+            .collect()
     }
 }
 
 // Query provider for `trait_impls_of`.
-pub(super) fn trait_impls_of_provider(
-    tcx: TyCtxt<'_>,
-    trait_id: DefId,
-) -> &TraitImpls {
+pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> &TraitImpls {
     let mut impls = TraitImpls::default();
 
     {
@@ -162,13 +157,8 @@ pub(super) fn trait_impls_of_provider(
                 return;
             }
 
-            if let Some(simplified_self_ty) =
-                fast_reject::simplify_type(tcx, impl_self_ty, false)
-            {
-                impls.non_blanket_impls
-                     .entry(simplified_self_ty)
-                     .or_default()
-                     .push(impl_def_id);
+            if let Some(simplified_self_ty) = fast_reject::simplify_type(tcx, impl_self_ty, false) {
+                impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
             } else {
                 impls.blanket_impls.push(impl_def_id);
             }
@@ -194,10 +184,7 @@ pub(super) fn trait_impls_of_provider(
 
 impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let TraitImpls {
-            ref blanket_impls,
-            ref non_blanket_impls,
-        } = *self;
+        let TraitImpls { ref blanket_impls, ref non_blanket_impls } = *self;
 
         ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, non_blanket_impls);
     }

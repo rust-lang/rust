@@ -1,5 +1,7 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult, PanicStrategy, MergeFunctions};
 use crate::spec::abi::Abi;
+use crate::spec::{
+    LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetOptions, TargetResult,
+};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -67,7 +69,7 @@ pub fn target() -> TargetResult {
                 Abi::AmdGpuKernel,
             ],
 
-            .. Default::default()
+            ..Default::default()
         },
     })
 }

@@ -1,35 +1,39 @@
 use crate::io::{self, Error, ErrorKind};
-use libc::{self, c_int, c_char};
-use libc::{RTP_ID};
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
 use crate::sys_common::thread;
+use libc::RTP_ID;
+use libc::{self, c_char, c_int};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Command {
-    pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
-                 -> io::Result<(Process, StdioPipes)> {
-        use crate::sys::{cvt_r};
+    pub fn spawn(
+        &mut self,
+        default: Stdio,
+        needs_stdin: bool,
+    ) -> io::Result<(Process, StdioPipes)> {
+        use crate::sys::cvt_r;
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new(ErrorKind::InvalidInput,
-                                      "nul byte found in provided data"));
+            return Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"));
         }
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
         let mut p = Process { pid: 0, status: None };
 
         unsafe {
             macro_rules! t {
-                ($e:expr) => (match $e {
-                    Ok(e) => e,
-                    Err(e) => return Err(e.into()),
-                })
+                ($e:expr) => {
+                    match $e {
+                        Ok(e) => e,
+                        Err(e) => return Err(e.into()),
+                    }
+                };
             }
 
             let mut orig_stdin = libc::STDIN_FILENO;
@@ -53,7 +57,9 @@ impl Command {
                 t!(cvt(libc::chdir(cwd.as_ptr())));
             }
 
-            let c_envp = envp.as_ref().map(|c| c.as_ptr())
+            let c_envp = envp
+                .as_ref()
+                .map(|c| c.as_ptr())
                 .unwrap_or_else(|| *sys::os::environ() as *const _);
             let stack_size = thread::min_stack();
 
@@ -61,13 +67,13 @@ impl Command {
             let _lock = sys::os::env_lock();
 
             let ret = libc::rtpSpawn(
-                self.get_argv()[0],                   // executing program
+                self.get_argv()[0],                             // executing program
                 self.get_argv().as_ptr() as *mut *const c_char, // argv
                 c_envp as *mut *const c_char,
-                100 as c_int,                         // initial priority
-                stack_size,                           // initial stack size.
-                0,                                    // options
-                0                                     // task options
+                100 as c_int, // initial priority
+                stack_size,   // initial stack size.
+                0,            // options
+                0,            // task options
             );
 
             // Because FileDesc was not used, each duplicated file descriptor
@@ -127,8 +133,10 @@ impl Process {
         // and used for another process, and we probably shouldn't be killing
         // random processes, so just return an error.
         if self.status.is_some() {
-            Err(Error::new(ErrorKind::InvalidInput,
-                           "invalid argument: can't kill an exited process"))
+            Err(Error::new(
+                ErrorKind::InvalidInput,
+                "invalid argument: can't kill an exited process",
+            ))
         } else {
             cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(|_| ())
         }
@@ -137,7 +145,7 @@ impl Process {
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use crate::sys::cvt_r;
         if let Some(status) = self.status {
-            return Ok(status)
+            return Ok(status);
         }
         let mut status = 0 as c_int;
         cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
@@ -147,12 +155,10 @@ impl Process {
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         if let Some(status) = self.status {
-            return Ok(Some(status))
+            return Ok(Some(status));
         }
         let mut status = 0 as c_int;
-        let pid = cvt(unsafe {
-            libc::waitpid(self.pid, &mut status, libc::WNOHANG)
-        })?;
+        let pid = cvt(unsafe { libc::waitpid(self.pid, &mut status, libc::WNOHANG) })?;
         if pid == 0 {
             Ok(None)
         } else {

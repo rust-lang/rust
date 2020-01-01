@@ -1,8 +1,8 @@
-use std::mem;
-use smallvec::SmallVec;
-use rustc::hir::CRATE_HIR_ID;
 use crate::ty::context::TyCtxt;
 use crate::ty::{DefId, DefIdTree};
+use rustc::hir::CRATE_HIR_ID;
+use smallvec::SmallVec;
+use std::mem;
 
 /// Represents a forest of `DefId`s closed under the ancestor relation. That is,
 /// if a `DefId` representing a module is contained in the forest then all
@@ -24,9 +24,7 @@ pub struct DefIdForest {
 impl<'tcx> DefIdForest {
     /// Creates an empty forest.
     pub fn empty() -> DefIdForest {
-        DefIdForest {
-            root_ids: SmallVec::new(),
-        }
+        DefIdForest { root_ids: SmallVec::new() }
     }
 
     /// Creates a forest consisting of a single tree representing the entire
@@ -41,9 +39,7 @@ impl<'tcx> DefIdForest {
     pub fn from_id(id: DefId) -> DefIdForest {
         let mut root_ids = SmallVec::new();
         root_ids.push(id);
-        DefIdForest {
-            root_ids,
-        }
+        DefIdForest { root_ids }
     }
 
     /// Tests whether the forest is empty.

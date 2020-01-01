@@ -7,7 +7,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(not(bootstrap))]
 use crate::convert::FloatToInt;
 #[cfg(not(test))]
 use crate::intrinsics;
@@ -31,7 +30,7 @@ pub const DIGITS: u32 = 6;
 ///
 /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const EPSILON: f32 = 1.19209290e-07_f32;
+pub const EPSILON: f32 = 1.1920929e-7_f32;
 
 /// Smallest finite `f32` value.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -63,7 +62,7 @@ pub const NAN: f32 = 0.0_f32 / 0.0_f32;
 /// Infinity (∞).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f32 = 1.0_f32 / 0.0_f32;
-/// Negative infinity (-∞).
+/// Negative infinity (−∞).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
@@ -227,7 +226,7 @@ impl f32 {
     }
 
     /// Returns `true` if the number is neither zero, infinite,
-    /// [subnormal][subnormal], or `NaN`.
+    /// [subnormal], or `NaN`.
     ///
     /// ```
     /// use std::f32;
@@ -343,7 +342,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
-    #[stable(feature = "f32_deg_rad_conversions", since="1.7.0")]
+    #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
     #[inline]
     pub fn to_degrees(self) -> f32 {
         // Use a constant for better precision.
@@ -362,7 +361,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
-    #[stable(feature = "f32_deg_rad_conversions", since="1.7.0")]
+    #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
     #[inline]
     pub fn to_radians(self) -> f32 {
         let value: f32 = consts::PI;
@@ -423,10 +422,12 @@ impl f32 {
     /// * Not be `NaN`
     /// * Not be infinite
     /// * Be representable in the return type `Int`, after truncating off its fractional part
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "float_approx_unchecked_to", issue = "67058")]
     #[inline]
-    pub unsafe fn approx_unchecked_to<Int>(self) -> Int where Self: FloatToInt<Int> {
+    pub unsafe fn approx_unchecked_to<Int>(self) -> Int
+    where
+        Self: FloatToInt<Int>,
+    {
         FloatToInt::<Int>::approx_unchecked(self)
     }
 

@@ -1,14 +1,13 @@
 use crate::hair::*;
 
 use rustc::hir;
-use rustc::hir::ptr::P;
 
 pub trait ToRef {
     type Output;
     fn to_ref(self) -> Self::Output;
 }
 
-impl<'tcx> ToRef for &'tcx hir::Expr {
+impl<'tcx> ToRef for &'tcx hir::Expr<'tcx> {
     type Output = ExprRef<'tcx>;
 
     fn to_ref(self) -> ExprRef<'tcx> {
@@ -16,7 +15,7 @@ impl<'tcx> ToRef for &'tcx hir::Expr {
     }
 }
 
-impl<'tcx> ToRef for &'tcx P<hir::Expr> {
+impl<'tcx> ToRef for &'tcx &'tcx hir::Expr<'tcx> {
     type Output = ExprRef<'tcx>;
 
     fn to_ref(self) -> ExprRef<'tcx> {
@@ -54,7 +53,7 @@ where
     }
 }
 
-impl<'tcx, T, U> ToRef for &'tcx P<[T]>
+impl<'tcx, T, U> ToRef for &'tcx [T]
 where
     &'tcx T: ToRef<Output = U>,
 {

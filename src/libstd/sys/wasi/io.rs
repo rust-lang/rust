@@ -10,13 +10,7 @@ pub struct IoSlice<'a> {
 impl<'a> IoSlice<'a> {
     #[inline]
     pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
-        IoSlice {
-            vec: wasi::Ciovec {
-                buf: buf.as_ptr(),
-                buf_len: buf.len(),
-            },
-            _p: PhantomData,
-        }
+        IoSlice { vec: wasi::Ciovec { buf: buf.as_ptr(), buf_len: buf.len() }, _p: PhantomData }
     }
 
     #[inline]
@@ -33,9 +27,7 @@ impl<'a> IoSlice<'a> {
 
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
-        unsafe {
-            slice::from_raw_parts(self.vec.buf as *const u8, self.vec.buf_len)
-        }
+        unsafe { slice::from_raw_parts(self.vec.buf as *const u8, self.vec.buf_len) }
     }
 }
 
@@ -49,10 +41,7 @@ impl<'a> IoSliceMut<'a> {
     #[inline]
     pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         IoSliceMut {
-            vec: wasi::Iovec {
-                buf: buf.as_mut_ptr(),
-                buf_len: buf.len()
-            },
+            vec: wasi::Iovec { buf: buf.as_mut_ptr(), buf_len: buf.len() },
             _p: PhantomData,
         }
     }
@@ -71,15 +60,11 @@ impl<'a> IoSliceMut<'a> {
 
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
-        unsafe {
-            slice::from_raw_parts(self.vec.buf as *const u8, self.vec.buf_len)
-        }
+        unsafe { slice::from_raw_parts(self.vec.buf as *const u8, self.vec.buf_len) }
     }
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        unsafe {
-            slice::from_raw_parts_mut(self.vec.buf as *mut u8, self.vec.buf_len)
-        }
+        unsafe { slice::from_raw_parts_mut(self.vec.buf as *mut u8, self.vec.buf_len) }
     }
 }

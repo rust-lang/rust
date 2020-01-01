@@ -1,0 +1,10 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/stmt_expr_attrs_placement.rs:7:13
+   |
+LL |     let a = #![allow(warnings)] (1, 2);
+   |             ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
+
+error: aborting due to previous error
+

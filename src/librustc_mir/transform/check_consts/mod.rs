@@ -36,13 +36,7 @@ impl Item<'mir, 'tcx> {
         let param_env = tcx.param_env(def_id);
         let const_kind = ConstKind::for_item(tcx, def_id);
 
-        Item {
-            body,
-            tcx,
-            def_id,
-            param_env,
-            const_kind,
-        }
+        Item { body, tcx, def_id, param_env, const_kind }
     }
 
     /// Returns the kind of const context this `Item` represents (`const`, `static`, etc.).
@@ -87,8 +81,8 @@ impl ConstKind {
 
             HirKind::Const => ConstKind::Const,
 
-            HirKind::Static(hir::Mutability::Immutable) => ConstKind::Static,
-            HirKind::Static(hir::Mutability::Mutable) => ConstKind::StaticMut,
+            HirKind::Static(hir::Mutability::Not) => ConstKind::Static,
+            HirKind::Static(hir::Mutability::Mut) => ConstKind::StaticMut,
         };
 
         Some(mode)
@@ -114,6 +108,5 @@ impl fmt::Display for ConstKind {
 
 /// Returns `true` if this `DefId` points to one of the official `panic` lang items.
 pub fn is_lang_panic_fn(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    Some(def_id) == tcx.lang_items().panic_fn() ||
-    Some(def_id) == tcx.lang_items().begin_panic_fn()
+    Some(def_id) == tcx.lang_items().panic_fn() || Some(def_id) == tcx.lang_items().begin_panic_fn()
 }

@@ -1,8 +1,8 @@
+use crate::borrow_check::borrow_set::LocalsStateAtExit;
 use rustc::hir;
 use rustc::mir::ProjectionElem;
-use rustc::mir::{Body, Place, PlaceBase, Mutability};
+use rustc::mir::{Body, Mutability, Place, PlaceBase};
 use rustc::ty::{self, TyCtxt};
-use crate::borrow_check::borrow_set::LocalsStateAtExit;
 
 /// Extension methods for the `Place` type.
 crate trait PlaceExt<'tcx> {
@@ -34,21 +34,19 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
             //
             // In particular, the variable cannot be mutated -- the "access checks" will fail --
             // so we don't have to worry about mutation while borrowed.
-            PlaceBase::Local(local) => {
-                match locals_state_at_exit {
-                    LocalsStateAtExit::AllAreInvalidated => local,
-                    LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } => {
-                        let ignore = !has_storage_dead_or_moved.contains(local) &&
-                            body.local_decls[local].mutability == Mutability::Not;
-                        debug!("ignore_borrow: local {:?} => {:?}", local, ignore);
-                        if ignore {
-                            return true;
-                        } else {
-                            local
-                        }
+            PlaceBase::Local(local) => match locals_state_at_exit {
+                LocalsStateAtExit::AllAreInvalidated => local,
+                LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } => {
+                    let ignore = !has_storage_dead_or_moved.contains(local)
+                        && body.local_decls[local].mutability == Mutability::Not;
+                    debug!("ignore_borrow: local {:?} => {:?}", local, ignore);
+                    if ignore {
+                        return true;
+                    } else {
+                        local
                     }
                 }
-            }
+            },
             PlaceBase::Static(_) => return true,
         };
 
@@ -58,7 +56,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
             if *elem == ProjectionElem::Deref {
                 let ty = Place::ty_from(&self.base, proj_base, body, tcx).ty;
                 match ty.kind {
-                    ty::Ref(_, _, hir::Mutability::Immutable) if i == 0 => {
+                    ty::Ref(_, _, hir::Mutability::Not) if i == 0 => {
                         // For references to thread-local statics, we do need
                         // to track the borrow.
                         if body.local_decls[local].is_ref_to_thread_local() {
@@ -66,7 +64,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                         }
                         return true;
                     }
-                    ty::RawPtr(..) | ty::Ref(_, _, hir::Mutability::Immutable) => {
+                    ty::RawPtr(..) | ty::Ref(_, _, hir::Mutability::Not) => {
                         // For both derefs of raw pointers and `&T`
                         // references, the original path is `Copy` and
                         // therefore not significant.  In particular,

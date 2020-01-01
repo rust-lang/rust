@@ -2,16 +2,16 @@ error[E0220]: associated type `F` not found for `Trait`
   --> $DIR/E0220.rs:5:22
    |
 LL | type Foo = dyn Trait<F=i32>;
-   |                      ^^^^^ associated type `F` not found
+   |                      ^ associated type `F` not found
 
-error[E0191]: the value of the associated type `Bar` (from the trait `Trait`) must be specified
-  --> $DIR/E0220.rs:5:12
+error[E0191]: the value of the associated type `Bar` (from trait `Trait`) must be specified
+  --> $DIR/E0220.rs:5:16
    |
 LL |     type Bar;
    |     --------- `Bar` defined here
 ...
 LL | type Foo = dyn Trait<F=i32>;
-   |            ^^^^^^^^^^^^^^^^ associated type `Bar` must be specified
+   |                ^^^^^^^^^^^^ help: specify the associated type: `Trait<F=i32, Bar = Type>`
 
 error: aborting due to 2 previous errors
 

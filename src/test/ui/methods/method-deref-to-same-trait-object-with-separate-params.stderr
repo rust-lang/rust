@@ -25,19 +25,28 @@ note: candidate #1 is defined in an impl of the trait `internal::X` for the type
    |
 LL |         fn foo(self: Smaht<Self, u64>) -> u64 {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `internal::X::foo(x)` instead
 note: candidate #2 is defined in an impl of the trait `nuisance_foo::NuisanceFoo` for the type `_`
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:70:9
    |
 LL |         fn foo(self) {}
    |         ^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `nuisance_foo::NuisanceFoo::foo(x)` instead
 note: candidate #3 is defined in the trait `FinalFoo`
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:57:5
    |
 LL |     fn foo(&self) -> u8;
    |     ^^^^^^^^^^^^^^^^^^^^
-   = help: to disambiguate the method call, write `FinalFoo::foo(x)` instead
+help: disambiguate the method call for candidate #1
+   |
+LL |     let z = internal::X::foo(x);
+   |             ^^^^^^^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #2
+   |
+LL |     let z = nuisance_foo::NuisanceFoo::foo(x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #3
+   |
+LL |     let z = FinalFoo::foo(x);
+   |             ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:137:24

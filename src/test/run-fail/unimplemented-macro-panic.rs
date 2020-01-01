@@ -1,4 +1,4 @@
-// error-pattern:not yet implemented
+// error-pattern:not implemented
 fn main() {
     unimplemented!()
 }

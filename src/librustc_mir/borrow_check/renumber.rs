@@ -1,8 +1,8 @@
+use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc::mir::visit::{MutVisitor, TyContext};
+use rustc::mir::{BodyAndCache, Location, PlaceElem, Promoted};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::mir::{BodyAndCache, Location, PlaceElem, Promoted};
-use rustc::mir::visit::{MutVisitor, TyContext};
-use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc_index::vec::IndexVec;
 
 /// Replaces all free regions appearing in the MIR with fresh
@@ -32,12 +32,10 @@ where
 {
     debug!("renumber_regions(value={:?})", value);
 
-    infcx
-        .tcx
-        .fold_regions(value, &mut false, |_region, _depth| {
-            let origin = NLLRegionVariableOrigin::Existential { from_forall: false };
-            infcx.next_nll_region_var(origin)
-        })
+    infcx.tcx.fold_regions(value, &mut false, |_region, _depth| {
+        let origin = NLLRegionVariableOrigin::Existential { from_forall: false };
+        infcx.next_nll_region_var(origin)
+    })
 }
 
 struct NLLVisitor<'a, 'tcx> {
@@ -66,10 +64,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
         debug!("visit_ty: ty={:?}", ty);
     }
 
-    fn process_projection_elem(
-        &mut self,
-        elem: &PlaceElem<'tcx>,
-    ) -> Option<PlaceElem<'tcx>> {
+    fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
         if let PlaceElem::Field(field, ty) = elem {
             let new_ty = self.renumber_regions(ty);
 

@@ -103,9 +103,9 @@ pub(super) fn populate_access_facts(
         };
         extractor.visit_body(body);
 
-        facts.var_drop_used.extend(drop_used.iter().map(|&(local, location)| {
-            (local, location_table.mid_index(location))
-        }));
+        facts.var_drop_used.extend(
+            drop_used.iter().map(|&(local, location)| (local, location_table.mid_index(location))),
+        );
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
             debug!("add var_uses_regions facts - local={:?}, type={:?}", local, local_decl.ty);

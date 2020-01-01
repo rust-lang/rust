@@ -17,9 +17,9 @@
 mod cursor;
 pub mod unescape;
 
-use crate::cursor::{Cursor, EOF_CHAR};
-use self::TokenKind::*;
 use self::LiteralKind::*;
+use self::TokenKind::*;
+use crate::cursor::{Cursor, EOF_CHAR};
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -39,7 +39,6 @@ impl Token {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenKind {
     // Multi-char tokens:
-
     /// "// comment"
     LineComment,
     /// "/* block comment */"
@@ -59,7 +58,6 @@ pub enum TokenKind {
     Lifetime { starts_with_number: bool },
 
     // One-char tokens:
-
     /// ";"
     Semi,
     /// ","
@@ -405,11 +403,7 @@ impl Cursor<'_> {
     }
 
     fn raw_ident(&mut self) -> TokenKind {
-        debug_assert!(
-            self.prev() == 'r'
-                && self.first() == '#'
-                && is_id_start(self.second())
-        );
+        debug_assert!(self.prev() == 'r' && self.first() == '#' && is_id_start(self.second()));
         // Eat "#" symbol.
         self.bump();
         // Eat the identifier part of RawIdent.
@@ -467,9 +461,7 @@ impl Cursor<'_> {
             // Don't be greedy if this is actually an
             // integer literal followed by field/method access or a range pattern
             // (`0..2` and `12.foo()`)
-            '.' if self.second() != '.'
-                && !is_id_start(self.second()) =>
-            {
+            '.' if self.second() != '.' && !is_id_start(self.second()) => {
                 // might have stuff after the ., and if it does, it needs to start
                 // with a number
                 self.bump();
@@ -710,7 +702,7 @@ impl Cursor<'_> {
     /// Returns amount of eaten symbols.
     fn eat_while<F>(&mut self, mut predicate: F) -> usize
     where
-        F: FnMut(char) -> bool
+        F: FnMut(char) -> bool,
     {
         let mut eaten: usize = 0;
         while predicate(self.first()) && !self.is_eof() {

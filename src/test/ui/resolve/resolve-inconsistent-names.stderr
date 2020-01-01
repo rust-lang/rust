@@ -86,6 +86,8 @@ LL |         (CONST1, _) | (_, Const2) => ()
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-names.rs:19:19
    |
+LL |     match x {
+   |           - this expression has type `(E, E)`
 LL |         (A, B) | (ref B, c) | (c, A) => ()
    |                   ^^^^^ expected enum `E`, found `&E`
 

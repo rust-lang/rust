@@ -10,8 +10,8 @@ use rustc::ty;
 use rustc_data_structures::fx::FxHashMap;
 
 use super::constraints::*;
-use super::terms::*;
 use super::terms::VarianceTerm::*;
+use super::terms::*;
 use super::xform::*;
 
 struct SolveContext<'a, 'tcx> {
@@ -23,7 +23,7 @@ struct SolveContext<'a, 'tcx> {
 }
 
 pub fn solve_constraints<'tcx>(
-    constraints_cx: ConstraintContext<'_, 'tcx>
+    constraints_cx: ConstraintContext<'_, 'tcx>,
 ) -> ty::CrateVariancesMap<'tcx> {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
 
@@ -35,11 +35,7 @@ pub fn solve_constraints<'tcx>(
         }
     }
 
-    let mut solutions_cx = SolveContext {
-        terms_cx,
-        constraints,
-        solutions,
-    };
+    let mut solutions_cx = SolveContext { terms_cx, constraints, solutions };
     solutions_cx.solve();
     let variances = solutions_cx.create_map();
 
@@ -64,12 +60,11 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 let old_value = self.solutions[inferred];
                 let new_value = glb(variance, old_value);
                 if old_value != new_value {
-                    debug!("updating inferred {} \
+                    debug!(
+                        "updating inferred {} \
                             from {:?} to {:?} due to {:?}",
-                           inferred,
-                           old_value,
-                           new_value,
-                           term);
+                        inferred, old_value, new_value, term
+                    );
 
                     self.solutions[inferred] = new_value;
                     changed = true;
@@ -98,27 +93,31 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         let tcx = self.terms_cx.tcx;
 
         let solutions = &self.solutions;
-        self.terms_cx.inferred_starts.iter().map(|(&id, &InferredIndex(start))| {
-            let def_id = tcx.hir().local_def_id(id);
-            let generics = tcx.generics_of(def_id);
-            let count = generics.count();
+        self.terms_cx
+            .inferred_starts
+            .iter()
+            .map(|(&id, &InferredIndex(start))| {
+                let def_id = tcx.hir().local_def_id(id);
+                let generics = tcx.generics_of(def_id);
+                let count = generics.count();
 
-            let variances = tcx.arena.alloc_slice(&solutions[start..(start + count)]);
+                let variances = tcx.arena.alloc_slice(&solutions[start..(start + count)]);
 
-            // Const parameters are always invariant.
-            self.enforce_const_invariance(generics, variances);
+                // Const parameters are always invariant.
+                self.enforce_const_invariance(generics, variances);
 
-            // Functions are permitted to have unused generic parameters: make those invariant.
-            if let ty::FnDef(..) = tcx.type_of(def_id).kind {
-                for variance in variances.iter_mut() {
-                    if *variance == ty::Bivariant {
-                        *variance = ty::Invariant;
+                // Functions are permitted to have unused generic parameters: make those invariant.
+                if let ty::FnDef(..) = tcx.type_of(def_id).kind {
+                    for variance in variances.iter_mut() {
+                        if *variance == ty::Bivariant {
+                            *variance = ty::Invariant;
+                        }
                     }
                 }
-            }
 
-            (def_id, &*variances)
-        }).collect()
+                (def_id, &*variances)
+            })
+            .collect()
     }
 
     fn evaluate(&self, term: VarianceTermPtr<'a>) -> ty::Variance {

@@ -9,9 +9,7 @@ unsafe impl Sync for RWLock {} // no threads on wasm
 
 impl RWLock {
     pub const fn new() -> RWLock {
-        RWLock {
-            mode: UnsafeCell::new(0),
-        }
+        RWLock { mode: UnsafeCell::new(0) }
     }
 
     #[inline]
@@ -67,6 +65,5 @@ impl RWLock {
     }
 
     #[inline]
-    pub unsafe fn destroy(&self) {
-    }
+    pub unsafe fn destroy(&self) {}
 }

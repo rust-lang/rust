@@ -16,7 +16,7 @@
 /// builds.
 #[macro_export]
 macro_rules! const_cstr {
-    ($s:expr) => ({
+    ($s:expr) => {{
         use std::ffi::CStr;
 
         let str_plus_nul = concat!($s, "\0");
@@ -24,9 +24,7 @@ macro_rules! const_cstr {
         if cfg!(debug_assertions) {
             CStr::from_bytes_with_nul(str_plus_nul.as_bytes()).unwrap()
         } else {
-            unsafe {
-                CStr::from_bytes_with_nul_unchecked(str_plus_nul.as_bytes())
-            }
+            unsafe { CStr::from_bytes_with_nul_unchecked(str_plus_nul.as_bytes()) }
         }
-    })
+    }};
 }

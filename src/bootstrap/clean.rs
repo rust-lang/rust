@@ -31,7 +31,7 @@ pub fn clean(build: &Build, all: bool) {
             for entry in entries {
                 let entry = t!(entry);
                 if entry.file_name().to_str() == Some("llvm") {
-                    continue
+                    continue;
                 }
                 let path = t!(entry.path().canonicalize());
                 rm_rf(&path);
@@ -47,7 +47,7 @@ fn rm_rf(path: &Path) {
                 return;
             }
             panic!("failed to get metadata for file {}: {}", path.display(), e);
-        },
+        }
         Ok(metadata) => {
             if metadata.file_type().is_file() || metadata.file_type().is_symlink() {
                 do_op(path, "remove file", |p| fs::remove_file(p));
@@ -58,20 +58,20 @@ fn rm_rf(path: &Path) {
                 rm_rf(&t!(file).path());
             }
             do_op(path, "remove dir", |p| fs::remove_dir(p));
-        },
+        }
     };
 }
 
 fn do_op<F>(path: &Path, desc: &str, mut f: F)
-    where F: FnMut(&Path) -> io::Result<()>
+where
+    F: FnMut(&Path) -> io::Result<()>,
 {
     match f(path) {
         Ok(()) => {}
         // On windows we can't remove a readonly file, and git will often clone files as readonly.
         // As a result, we have some special logic to remove readonly files on windows.
         // This is also the reason that we can't use things like fs::remove_dir_all().
-        Err(ref e) if cfg!(windows) &&
-                      e.kind() == ErrorKind::PermissionDenied => {
+        Err(ref e) if cfg!(windows) && e.kind() == ErrorKind::PermissionDenied => {
             let mut p = t!(path.symlink_metadata()).permissions();
             p.set_readonly(false);
             t!(fs::set_permissions(path, p));

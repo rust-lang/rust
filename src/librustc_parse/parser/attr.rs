@@ -1,10 +1,11 @@
-use super::{SeqSep, Parser, TokenType, PathStyle};
+use super::{Parser, PathStyle, TokenType};
 use rustc_errors::PResult;
-use syntax::attr;
+use rustc_span::{Span, Symbol};
 use syntax::ast;
-use syntax::util::comments;
+use syntax::attr;
+use syntax::print::pprust;
 use syntax::token::{self, Nonterminal};
-use syntax_pos::{Span, Symbol};
+use syntax::util::comments;
 
 use log::debug;
 
@@ -33,12 +34,11 @@ impl<'a> Parser<'a> {
                     } else {
                         DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG
                     };
-                    let inner_parse_policy =
-                        InnerAttributeParsePolicy::NotPermitted {
-                            reason: inner_error_reason,
-                            saw_doc_comment: just_parsed_doc_comment,
-                            prev_attr_sp: attrs.last().and_then(|a| Some(a.span))
-                        };
+                    let inner_parse_policy = InnerAttributeParsePolicy::NotPermitted {
+                        reason: inner_error_reason,
+                        saw_doc_comment: just_parsed_doc_comment,
+                        prev_attr_sp: attrs.last().and_then(|a| Some(a.span)),
+                    };
                     let attr = self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?;
                     attrs.push(attr);
                     just_parsed_doc_comment = false;
@@ -46,9 +46,12 @@ impl<'a> Parser<'a> {
                 token::DocComment(s) => {
                     let attr = self.mk_doc_comment(s);
                     if attr.style != ast::AttrStyle::Outer {
-                        let mut err = self.fatal("expected outer doc comment");
-                        err.note("inner doc comments like this (starting with \
-                                  `//!` or `/*!`) can only appear before items");
+                        let span = self.token.span;
+                        let mut err = self.struct_span_err(span, "expected outer doc comment");
+                        err.note(
+                            "inner doc comments like this (starting with \
+                                  `//!` or `/*!`) can only appear before items",
+                        );
                         return Err(err);
                     }
                     attrs.push(attr);
@@ -71,16 +74,14 @@ impl<'a> Parser<'a> {
     /// If `permit_inner` is `true`, then a leading `!` indicates an inner
     /// attribute.
     pub fn parse_attribute(&mut self, permit_inner: bool) -> PResult<'a, ast::Attribute> {
-        debug!("parse_attribute: permit_inner={:?} self.token={:?}",
-               permit_inner,
-               self.token);
+        debug!("parse_attribute: permit_inner={:?} self.token={:?}", permit_inner, self.token);
         let inner_parse_policy = if permit_inner {
             InnerAttributeParsePolicy::Permitted
         } else {
             InnerAttributeParsePolicy::NotPermitted {
                 reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG,
                 saw_doc_comment: false,
-                prev_attr_sp: None
+                prev_attr_sp: None,
             }
         };
         self.parse_attribute_with_inner_parse_policy(inner_parse_policy)
@@ -90,11 +91,12 @@ impl<'a> Parser<'a> {
     /// that prescribes how to handle inner attributes.
     fn parse_attribute_with_inner_parse_policy(
         &mut self,
-        inner_parse_policy: InnerAttributeParsePolicy<'_>
+        inner_parse_policy: InnerAttributeParsePolicy<'_>,
     ) -> PResult<'a, ast::Attribute> {
-        debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
-               inner_parse_policy,
-               self.token);
+        debug!(
+            "parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
+            inner_parse_policy, self.token
+        );
         let (span, item, style) = match self.token.kind {
             token::Pound => {
                 let lo = self.token.span;
@@ -120,17 +122,19 @@ impl<'a> Parser<'a> {
 
                 // Emit error if inner attribute is encountered and not permitted
                 if style == ast::AttrStyle::Inner {
-                    if let InnerAttributeParsePolicy::NotPermitted { reason,
-                        saw_doc_comment, prev_attr_sp } = inner_parse_policy {
+                    if let InnerAttributeParsePolicy::NotPermitted {
+                        reason,
+                        saw_doc_comment,
+                        prev_attr_sp,
+                    } = inner_parse_policy
+                    {
                         let prev_attr_note = if saw_doc_comment {
                             "previous doc comment"
                         } else {
                             "previous outer attribute"
                         };
 
-                        let mut diagnostic = self
-                            .diagnostic()
-                            .struct_span_err(attr_sp, reason);
+                        let mut diagnostic = self.struct_span_err(attr_sp, reason);
 
                         if let Some(prev_attr_sp) = prev_attr_sp {
                             diagnostic
@@ -139,10 +143,12 @@ impl<'a> Parser<'a> {
                         }
 
                         diagnostic
-                            .note("inner attributes, like `#![no_std]`, annotate the item \
+                            .note(
+                                "inner attributes, like `#![no_std]`, annotate the item \
                                    enclosing them, and are usually found at the beginning of \
                                    source files. Outer attributes, like `#[test]`, annotate the \
-                                   item following them.")
+                                   item following them.",
+                            )
                             .emit()
                     }
                 }
@@ -150,8 +156,9 @@ impl<'a> Parser<'a> {
                 (attr_sp, item, style)
             }
             _ => {
-                let token_str = self.this_token_to_string();
-                return Err(self.fatal(&format!("expected `#`, found `{}`", token_str)));
+                let token_str = pprust::token_to_string(&self.token);
+                let msg = &format!("expected `#`, found `{}`", token_str);
+                return Err(self.struct_span_err(self.token.span, msg));
             }
         };
 
@@ -226,11 +233,13 @@ impl<'a> Parser<'a> {
 
         if !lit.kind.is_unsuffixed() {
             let msg = "suffixed literals are not allowed in attributes";
-            self.diagnostic().struct_span_err(lit.span, msg)
-                             .help("instead of using a suffixed literal \
+            self.struct_span_err(lit.span, msg)
+                .help(
+                    "instead of using a suffixed literal \
                                     (1u8, 1.0f32, etc.), use an unsuffixed version \
-                                    (1, 1.0, etc.).")
-                             .emit()
+                                    (1, 1.0, etc.).",
+                )
+                .emit()
         }
 
         Ok(lit)
@@ -288,7 +297,7 @@ impl<'a> Parser<'a> {
                     Ok(meta)
                 }
                 None => self.unexpected(),
-            }
+            };
         }
 
         let lo = self.token.span;
@@ -301,8 +310,10 @@ impl<'a> Parser<'a> {
     crate fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
-        } else if self.eat(&token::OpenDelim(token::Paren)) {
-            ast::MetaItemKind::List(self.parse_meta_seq()?)
+        } else if self.check(&token::OpenDelim(token::Paren)) {
+            // Matches `meta_seq = ( COMMASEP(meta_item_inner) )`.
+            let (list, _) = self.parse_paren_comma_seq(|p| p.parse_meta_item_inner())?;
+            ast::MetaItemKind::List(list)
         } else {
             ast::MetaItemKind::Word
         })
@@ -311,28 +322,17 @@ impl<'a> Parser<'a> {
     /// Matches `meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;`.
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
         match self.parse_unsuffixed_lit() {
-            Ok(lit) => {
-                return Ok(ast::NestedMetaItem::Literal(lit))
-            }
+            Ok(lit) => return Ok(ast::NestedMetaItem::Literal(lit)),
             Err(ref mut err) => err.cancel(),
         }
 
         match self.parse_meta_item() {
-            Ok(mi) => {
-                return Ok(ast::NestedMetaItem::MetaItem(mi))
-            }
+            Ok(mi) => return Ok(ast::NestedMetaItem::MetaItem(mi)),
             Err(ref mut err) => err.cancel(),
         }
 
-        let found = self.this_token_to_string();
+        let found = pprust::token_to_string(&self.token);
         let msg = format!("expected unsuffixed literal or identifier, found `{}`", found);
-        Err(self.diagnostic().struct_span_err(self.token.span, &msg))
-    }
-
-    /// Matches `meta_seq = ( COMMASEP(meta_item_inner) )`.
-    fn parse_meta_seq(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
-        self.parse_seq_to_end(&token::CloseDelim(token::Paren),
-                              SeqSep::trailing_allowed(token::Comma),
-                              |p: &mut Parser<'a>| p.parse_meta_item_inner())
+        Err(self.struct_span_err(self.token.span, &msg))
     }
 }

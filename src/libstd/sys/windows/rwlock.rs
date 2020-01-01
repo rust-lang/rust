@@ -1,7 +1,9 @@
 use crate::cell::UnsafeCell;
 use crate::sys::c;
 
-pub struct RWLock { inner: UnsafeCell<c::SRWLOCK> }
+pub struct RWLock {
+    inner: UnsafeCell<c::SRWLOCK>,
+}
 
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}

@@ -44,9 +44,11 @@ rule j end {}
 "#;
 
     let mut ret = Vec::new();
-    get_differences(&load_css_paths(against.as_bytes()),
-                    &load_css_paths(text.as_bytes()),
-                    &mut ret);
+    get_differences(
+        &load_css_paths(against.as_bytes()),
+        &load_css_paths(text.as_bytes()),
+        &mut ret,
+    );
     assert!(ret.is_empty());
 }
 

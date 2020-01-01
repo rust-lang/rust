@@ -1,10 +1,9 @@
+use crate::borrow::Cow;
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
-
 use crate::env;
 use crate::fmt;
 use crate::io;
-use crate::borrow::Cow;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
 use crate::sync::atomic::{self, Ordering};
@@ -57,9 +56,7 @@ unsafe fn _print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
     }
     impl fmt::Display for DisplayBacktrace {
         fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-            unsafe {
-                _print_fmt(fmt, self.format)
-            }
+            unsafe { _print_fmt(fmt, self.format) }
         }
     }
     write!(w, "{}", DisplayBacktrace { format })
@@ -68,11 +65,7 @@ unsafe fn _print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
 unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::Result {
     // Always 'fail' to get the cwd when running under Miri -
     // this allows Miri to display backtraces in isolation mode
-    let cwd = if !cfg!(miri) {
-        env::current_dir().ok()
-    } else {
-        None
-    };
+    let cwd = if !cfg!(miri) { env::current_dir().ok() } else { None };
 
     let mut print_path = move |fmt: &mut fmt::Formatter<'_>, bows: BytesOrWideString<'_>| {
         output_filename(fmt, bows, print_fmt, cwd.as_ref())
@@ -206,9 +199,7 @@ pub fn output_filename(
             Cow::Owned(crate::ffi::OsString::from_wide(wide).into())
         }
         #[cfg(not(windows))]
-        BytesOrWideString::Wide(_wide) => {
-            Path::new("<unknown>").into()
-        }
+        BytesOrWideString::Wide(_wide) => Path::new("<unknown>").into(),
     };
     if print_fmt == PrintFmt::Short && file.is_absolute() {
         if let Some(cwd) = cwd {

@@ -18,29 +18,29 @@
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`UnOpKind`], [`BinOp`], [`BinOpKind`]: Unary and binary operators.
 
+pub use crate::util::parser::ExprPrecedence;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
-pub use crate::util::parser::ExprPrecedence;
 
-pub use syntax_pos::symbol::{Ident, Symbol as Name};
+pub use rustc_span::symbol::{Ident, Symbol as Name};
 
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
 use crate::token::{self, DelimToken};
-use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
+use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
-use syntax_pos::symbol::{kw, sym, Symbol};
-use syntax_pos::{Span, DUMMY_SP};
+use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{Span, DUMMY_SP};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
-use rustc_serialize::{self, Decoder, Encoder};
 use rustc_macros::HashStable_Generic;
+use rustc_serialize::{self, Decoder, Encoder};
 
-use std::iter;
 use std::fmt;
+use std::iter;
 
 #[cfg(test)]
 mod tests;
@@ -76,12 +76,7 @@ pub struct Lifetime {
 
 impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "lifetime({}: {})",
-            self.id,
-            self
-        )
+        write!(f, "lifetime({}: {})", self.id, self)
     }
 }
 
@@ -107,9 +102,7 @@ pub struct Path {
 
 impl PartialEq<Symbol> for Path {
     fn eq(&self, symbol: &Symbol) -> bool {
-        self.segments.len() == 1 && {
-            self.segments[0].ident.name == *symbol
-        }
+        self.segments.len() == 1 && { self.segments[0].ident.name == *symbol }
     }
 }
 
@@ -126,10 +119,7 @@ impl Path {
     // Convert a span and an identifier to the corresponding
     // one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
-        Path {
-            segments: vec![PathSegment::from_ident(ident)],
-            span: ident.span,
-        }
+        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span }
     }
 
     pub fn is_global(&self) -> bool {
@@ -254,7 +244,7 @@ pub struct ParenthesizedArgs {
     pub inputs: Vec<P<Ty>>,
 
     /// `C`
-    pub output: Option<P<Ty>>,
+    pub output: FunctionRetTy,
 }
 
 impl ParenthesizedArgs {
@@ -330,15 +320,19 @@ impl fmt::Display for ParamKindOrd {
 pub enum GenericParamKind {
     /// A lifetime definition (e.g., `'a: 'b + 'c + 'd`).
     Lifetime,
-    Type { default: Option<P<Ty>> },
-    Const { ty: P<Ty> },
+    Type {
+        default: Option<P<Ty>>,
+    },
+    Const {
+        ty: P<Ty>,
+    },
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct GenericParam {
     pub id: NodeId,
     pub ident: Ident,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     pub bounds: GenericBounds,
     pub is_placeholder: bool,
     pub kind: GenericParamKind,
@@ -358,10 +352,7 @@ impl Default for Generics {
     fn default() -> Generics {
         Generics {
             params: Vec::new(),
-            where_clause: WhereClause {
-                predicates: Vec::new(),
-                span: DUMMY_SP,
-            },
+            where_clause: WhereClause { predicates: Vec::new(), span: DUMMY_SP },
             span: DUMMY_SP,
         }
     }
@@ -509,15 +500,15 @@ impl Pat {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
             // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
-            PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) => {
+            PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None) => {
                 TyKind::Path(None, Path::from_ident(*ident))
             }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
             // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
-            PatKind::Ref(pat, mutbl) => pat
-                .to_ty()
-                .map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
+            PatKind::Ref(pat, mutbl) => {
+                pat.to_ty().map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?
+            }
             // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
             // when `P` can be reparsed as a type `T`.
             PatKind::Slice(pats) if pats.len() == 1 => pats[0].to_ty().map(TyKind::Slice)?,
@@ -534,11 +525,7 @@ impl Pat {
             _ => return None,
         };
 
-        Some(P(Ty {
-            kind,
-            id: self.id,
-            span: self.span,
-        }))
+        Some(P(Ty { kind, id: self.id, span: self.span }))
     }
 
     /// Walk top-down and call `it` in each place where a pattern occurs
@@ -557,15 +544,12 @@ impl Pat {
             PatKind::Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk(it)),
 
             // Sequence of patterns.
-            PatKind::TupleStruct(_, s)
-            | PatKind::Tuple(s)
-            | PatKind::Slice(s)
-            | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
+            PatKind::TupleStruct(_, s) | PatKind::Tuple(s) | PatKind::Slice(s) | PatKind::Or(s) => {
+                s.iter().for_each(|p| p.walk(it))
+            }
 
             // Trivial wrappers over inner patterns.
-            PatKind::Box(s)
-            | PatKind::Ref(s, _)
-            | PatKind::Paren(s) => s.walk(it),
+            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => s.walk(it),
 
             // These patterns do not contain subpatterns, skip.
             PatKind::Wild
@@ -574,7 +558,7 @@ impl Pat {
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
-            | PatKind::Mac(_) => {},
+            | PatKind::Mac(_) => {}
         }
     }
 
@@ -599,7 +583,7 @@ pub struct FieldPat {
     /// The pattern the field is destructured to
     pub pat: P<Pat>,
     pub is_shorthand: bool,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     pub id: NodeId,
     pub span: Span,
     pub is_placeholder: bool,
@@ -692,33 +676,44 @@ pub enum PatKind {
     Mac(Mac),
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    RustcEncodable,
+    RustcDecodable,
+    Debug,
+    Copy,
+    HashStable_Generic
+)]
 pub enum Mutability {
-    Mutable,
-    Immutable,
+    Mut,
+    Not,
 }
 
 impl Mutability {
     /// Returns `MutMutable` only if both `self` and `other` are mutable.
     pub fn and(self, other: Self) -> Self {
         match self {
-            Mutability::Mutable => other,
-            Mutability::Immutable => Mutability::Immutable,
+            Mutability::Mut => other,
+            Mutability::Not => Mutability::Not,
         }
     }
 
     pub fn invert(self) -> Self {
         match self {
-            Mutability::Mutable => Mutability::Immutable,
-            Mutability::Immutable => Mutability::Mutable,
+            Mutability::Mut => Mutability::Not,
+            Mutability::Not => Mutability::Mut,
         }
     }
 
     pub fn prefix_str(&self) -> &'static str {
         match self {
-            Mutability::Mutable => "mut ",
-            Mutability::Immutable => "",
+            Mutability::Mut => "mut ",
+            Mutability::Not => "",
         }
     }
 }
@@ -728,13 +723,13 @@ impl Mutability {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum BorrowKind {
-    /// A raw borrow, `&raw const $expr` or `&raw mut $expr`.
-    /// The resulting type is either `*const T` or `*mut T`
-    /// where `T = typeof($expr)`.
-    Ref,
     /// A normal borrow, `&$expr` or `&mut $expr`.
     /// The resulting type is either `&'a T` or `&'a mut T`
     /// where `T = typeof($expr)` and `'a` is some lifetime.
+    Ref,
+    /// A raw borrow, `&raw const $expr` or `&raw mut $expr`.
+    /// The resulting type is either `*const T` or `*mut T`
+    /// where `T = typeof($expr)`.
     Raw,
 }
 
@@ -911,7 +906,7 @@ pub enum StmtKind {
     /// Expr with a trailing semi-colon.
     Semi(P<Expr>),
     /// Macro.
-    Mac(P<(Mac, MacStmtStyle, ThinVec<Attribute>)>),
+    Mac(P<(Mac, MacStmtStyle, AttrVec)>),
 }
 
 #[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
@@ -936,7 +931,7 @@ pub struct Local {
     /// Initializer expression to set the value, if any.
     pub init: Option<P<Expr>>,
     pub span: Span,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
 }
 
 /// An arm of a 'match'.
@@ -966,7 +961,7 @@ pub struct Arm {
 /// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct field.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Field {
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     pub id: NodeId,
     pub span: Span,
     pub ident: Ident,
@@ -1004,7 +999,7 @@ pub struct Expr {
     pub id: NodeId,
     pub kind: ExprKind,
     pub span: Span,
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -1055,9 +1050,9 @@ impl Expr {
 
             ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
 
-            ExprKind::AddrOf(BorrowKind::Ref, mutbl, expr) => expr
-                .to_ty()
-                .map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
+            ExprKind::AddrOf(BorrowKind::Ref, mutbl, expr) => {
+                expr.to_ty().map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?
+            }
 
             ExprKind::Repeat(expr, expr_len) => {
                 expr.to_ty().map(|ty| TyKind::Array(ty, expr_len.clone()))?
@@ -1066,10 +1061,7 @@ impl Expr {
             ExprKind::Array(exprs) if exprs.len() == 1 => exprs[0].to_ty().map(TyKind::Slice)?,
 
             ExprKind::Tup(exprs) => {
-                let tys = exprs
-                    .iter()
-                    .map(|expr| expr.to_ty())
-                    .collect::<Option<Vec<_>>>()?;
+                let tys = exprs.iter().map(|expr| expr.to_ty()).collect::<Option<Vec<_>>>()?;
                 TyKind::Tup(tys)
             }
 
@@ -1088,11 +1080,7 @@ impl Expr {
             _ => return None,
         };
 
-        Some(P(Ty {
-            kind,
-            id: self.id,
-            span: self.span,
-        }))
+        Some(P(Ty { kind, id: self.id, span: self.span }))
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1228,7 +1216,8 @@ pub enum ExprKind {
     TryBlock(P<Block>),
 
     /// An assignment (`a = foo()`).
-    Assign(P<Expr>, P<Expr>),
+    /// The `Span` argument is the span of the `=` token.
+    Assign(P<Expr>, P<Expr>, Span),
     /// An assignment with an operator.
     ///
     /// E.g., `a += 1`.
@@ -1322,8 +1311,19 @@ pub enum CaptureBy {
 
 /// The movability of a generator / closure literal:
 /// whether a generator contains self-references, causing it to be `!Unpin`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    RustcEncodable,
+    RustcDecodable,
+    Debug,
+    Copy,
+    HashStable_Generic
+)]
 pub enum Movability {
     /// May contain self-references, `!Unpin`.
     Static,
@@ -1383,8 +1383,7 @@ impl MacArgs {
     pub fn inner_tokens(&self) -> TokenStream {
         match self {
             MacArgs::Empty => TokenStream::default(),
-            MacArgs::Delimited(.., tokens) |
-            MacArgs::Eq(.., tokens) => tokens.clone(),
+            MacArgs::Delimited(.., tokens) | MacArgs::Eq(.., tokens) => tokens.clone(),
         }
     }
 
@@ -1393,17 +1392,19 @@ impl MacArgs {
     pub fn outer_tokens(&self) -> TokenStream {
         match *self {
             MacArgs::Empty => TokenStream::default(),
-            MacArgs::Delimited(dspan, delim, ref tokens) =>
-                TokenTree::Delimited(dspan, delim.to_token(), tokens.clone()).into(),
-            MacArgs::Eq(eq_span, ref tokens) => iter::once(TokenTree::token(token::Eq, eq_span))
-                                                .chain(tokens.trees()).collect(),
+            MacArgs::Delimited(dspan, delim, ref tokens) => {
+                TokenTree::Delimited(dspan, delim.to_token(), tokens.clone()).into()
+            }
+            MacArgs::Eq(eq_span, ref tokens) => {
+                iter::once(TokenTree::token(token::Eq, eq_span)).chain(tokens.trees()).collect()
+            }
         }
     }
 
     /// Whether a macro with these arguments needs a semicolon
     /// when used as a standalone item or statement.
     pub fn need_semicolon(&self) -> bool {
-        !matches!(self, MacArgs::Delimited(_, MacDelimiter::Brace ,_))
+        !matches!(self, MacArgs::Delimited(_, MacDelimiter::Brace, _))
     }
 }
 
@@ -1603,35 +1604,10 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-/// Represents an item declaration within a trait declaration,
-/// possibly including a default implementation. A trait item is
-/// either required (meaning it doesn't have an implementation, just a
-/// signature) or provided (meaning it has a default implementation).
+/// Represents associated items.
+/// These include items in `impl` and `trait` definitions.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct TraitItem {
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub vis: Visibility,
-    pub ident: Ident,
-
-    pub generics: Generics,
-    pub kind: TraitItemKind,
-    /// See `Item::tokens` for what this is.
-    pub tokens: Option<TokenStream>,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum TraitItemKind {
-    Const(P<Ty>, Option<P<Expr>>),
-    Method(FnSig, Option<P<Block>>),
-    Type(GenericBounds, Option<P<Ty>>),
-    Macro(Mac),
-}
-
-/// Represents anything within an `impl` block.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct ImplItem {
+pub struct AssocItem {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
@@ -1640,22 +1616,47 @@ pub struct ImplItem {
 
     pub defaultness: Defaultness,
     pub generics: Generics,
-    pub kind: ImplItemKind,
+    pub kind: AssocItemKind,
     /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,
 }
 
 /// Represents various kinds of content within an `impl`.
+///
+/// The term "provided" in the variants below refers to the item having a default
+/// definition / body. Meanwhile, a "required" item lacks a definition / body.
+/// In an implementation, all items must be provided.
+/// The `Option`s below denote the bodies, where `Some(_)`
+/// means "provided" and conversely `None` means "required".
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ImplItemKind {
-    Const(P<Ty>, P<Expr>),
-    Method(FnSig, P<Block>),
-    TyAlias(P<Ty>),
+pub enum AssocItemKind {
+    /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
+    /// If `def` is parsed, then the associated constant is provided, and otherwise required.
+    Const(P<Ty>, Option<P<Expr>>),
+
+    /// An associated function.
+    Fn(FnSig, Option<P<Block>>),
+
+    /// An associated type.
+    TyAlias(GenericBounds, Option<P<Ty>>),
+
+    /// A macro expanding to an associated item.
     Macro(Mac),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic,
-         RustcEncodable, RustcDecodable, Debug)]
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    HashStable_Generic,
+    RustcEncodable,
+    RustcDecodable,
+    Debug
+)]
 pub enum FloatTy {
     F32,
     F64,
@@ -1684,8 +1685,19 @@ impl FloatTy {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic,
-         RustcEncodable, RustcDecodable, Debug)]
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    HashStable_Generic,
+    RustcEncodable,
+    RustcDecodable,
+    Debug
+)]
 pub enum IntTy {
     Isize,
     I8,
@@ -1749,8 +1761,19 @@ impl IntTy {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic,
-         RustcEncodable, RustcDecodable, Copy, Debug)]
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    HashStable_Generic,
+    RustcEncodable,
+    RustcDecodable,
+    Copy,
+    Debug
+)]
 pub enum UintTy {
     Usize,
     U8,
@@ -1825,13 +1848,9 @@ pub struct AssocTyConstraint {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum AssocTyConstraintKind {
     /// E.g., `A = Bar` in `Foo<A = Bar>`.
-    Equality {
-        ty: P<Ty>,
-    },
+    Equality { ty: P<Ty> },
     /// E.g. `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`.
-    Bound {
-        bounds: GenericBounds,
-    },
+    Bound { bounds: GenericBounds },
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1900,19 +1919,11 @@ pub enum TyKind {
 
 impl TyKind {
     pub fn is_implicit_self(&self) -> bool {
-        if let TyKind::ImplicitSelf = *self {
-            true
-        } else {
-            false
-        }
+        if let TyKind::ImplicitSelf = *self { true } else { false }
     }
 
     pub fn is_unit(&self) -> bool {
-        if let TyKind::Tup(ref tys) = *self {
-            tys.is_empty()
-        } else {
-            false
-        }
+        if let TyKind::Tup(ref tys) = *self { tys.is_empty() } else { false }
     }
 
     /// HACK(type_alias_impl_trait, Centril): A temporary crutch used
@@ -1972,7 +1983,7 @@ pub struct InlineAsm {
 /// E.g., `bar: usize` as in `fn foo(bar: usize)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Param {
-    pub attrs: ThinVec<Attribute>,
+    pub attrs: AttrVec,
     pub ty: P<Ty>,
     pub pat: P<Pat>,
     pub id: NodeId,
@@ -2025,13 +2036,9 @@ impl Param {
     }
 
     /// Builds a `Param` object from `ExplicitSelf`.
-    pub fn from_self(attrs: ThinVec<Attribute>, eself: ExplicitSelf, eself_ident: Ident) -> Param {
+    pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
-        let infer_ty = P(Ty {
-            id: DUMMY_NODE_ID,
-            kind: TyKind::ImplicitSelf,
-            span,
-        });
+        let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span });
         let param = |mutbl, ty| Param {
             attrs,
             pat: P(Pat {
@@ -2042,22 +2049,16 @@ impl Param {
             span,
             ty,
             id: DUMMY_NODE_ID,
-            is_placeholder: false
+            is_placeholder: false,
         };
         match eself.node {
             SelfKind::Explicit(ty, mutbl) => param(mutbl, ty),
             SelfKind::Value(mutbl) => param(mutbl, infer_ty),
             SelfKind::Region(lt, mutbl) => param(
-                Mutability::Immutable,
+                Mutability::Not,
                 P(Ty {
                     id: DUMMY_NODE_ID,
-                    kind: TyKind::Rptr(
-                        lt,
-                        MutTy {
-                            ty: infer_ty,
-                            mutbl,
-                        },
-                    ),
+                    kind: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
                 }),
             ),
@@ -2099,8 +2100,19 @@ pub enum IsAuto {
     No,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    RustcEncodable,
+    RustcDecodable,
+    Debug,
+    HashStable_Generic
+)]
 pub enum Unsafety {
     Unsafe,
     Normal,
@@ -2129,29 +2141,19 @@ impl fmt::Display for Unsafety {
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum IsAsync {
-    Async {
-        closure_id: NodeId,
-        return_impl_trait_id: NodeId,
-    },
+    Async { closure_id: NodeId, return_impl_trait_id: NodeId },
     NotAsync,
 }
 
 impl IsAsync {
     pub fn is_async(self) -> bool {
-        if let IsAsync::Async { .. } = self {
-            true
-        } else {
-            false
-        }
+        if let IsAsync::Async { .. } = self { true } else { false }
     }
 
     /// In ths case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
     pub fn opt_return_id(self) -> Option<NodeId> {
         match self {
-            IsAsync::Async {
-                return_impl_trait_id,
-                ..
-            } => Some(return_impl_trait_id),
+            IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
             IsAsync::NotAsync => None,
         }
     }
@@ -2190,6 +2192,7 @@ impl fmt::Debug for ImplPolarity {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum FunctionRetTy {
+    // FIXME(Centril): Rename to `FnRetTy` and in HIR also.
     /// Returns type is not specified.
     ///
     /// Functions default to `()` and closures default to inference.
@@ -2293,11 +2296,7 @@ impl UseTree {
         match self.kind {
             UseTreeKind::Simple(Some(rename), ..) => rename,
             UseTreeKind::Simple(None, ..) => {
-                self.prefix
-                    .segments
-                    .last()
-                    .expect("empty prefix in a simple import")
-                    .ident
+                self.prefix.segments.last().expect("empty prefix in a simple import").ident
             }
             _ => panic!("`UseTree::ident` can only be used on a simple import"),
         }
@@ -2343,6 +2342,9 @@ pub struct AttrItem {
     pub args: MacArgs,
 }
 
+/// A list of attributes.
+pub type AttrVec = ThinVec<Attribute>;
+
 /// Metadata associated with an item.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Attribute {
@@ -2362,10 +2364,6 @@ pub enum AttrKind {
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
-    ///
-    /// Note: `self.has_name(sym::doc)` and `self.check_name(sym::doc)` succeed
-    /// for this variant, but this may change in the future.
-    /// ```
     DocComment(Symbol),
 }
 
@@ -2396,10 +2394,7 @@ impl PolyTraitRef {
     pub fn new(generic_params: Vec<GenericParam>, path: Path, span: Span) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
-            trait_ref: TraitRef {
-                path,
-                ref_id: DUMMY_NODE_ID,
-            },
+            trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
             span,
         }
     }
@@ -2426,11 +2421,7 @@ pub enum VisibilityKind {
 
 impl VisibilityKind {
     pub fn is_pub(&self) -> bool {
-        if let VisibilityKind::Public = *self {
-            true
-        } else {
-            false
-        }
+        if let VisibilityKind::Public = *self { true } else { false }
     }
 }
 
@@ -2602,7 +2593,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<TraitItem>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<AssocItem>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2617,7 +2608,7 @@ pub enum ItemKind {
         Generics,
         Option<TraitRef>, // (optional) trait this impl implements
         P<Ty>,            // self
-        Vec<ImplItem>,
+        Vec<AssocItem>,
     ),
     /// A macro invocation.
     ///

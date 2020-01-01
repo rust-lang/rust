@@ -5,7 +5,7 @@ fn test_insert_and_iter() {
     let mut map = SortedMap::new();
     let mut expected = Vec::new();
 
-    for x in 0 .. 100 {
+    for x in 0..100 {
         assert_eq!(map.iter().cloned().collect::<Vec<_>>(), expected);
 
         let x = 1000 - x * 2;
@@ -19,7 +19,7 @@ fn test_get_and_index() {
     let mut map = SortedMap::new();
     let mut expected = Vec::new();
 
-    for x in 0 .. 100 {
+    for x in 0..100 {
         let x = 1000 - x;
         if x & 1 == 0 {
             map.insert(x, x);
@@ -48,14 +48,12 @@ fn test_range() {
     map.insert(6, 6);
     map.insert(9, 9);
 
-    let keys = |s: &[(_, _)]| {
-        s.into_iter().map(|e| e.0).collect::<Vec<u32>>()
-    };
+    let keys = |s: &[(_, _)]| s.into_iter().map(|e| e.0).collect::<Vec<u32>>();
 
-    for start in 0 .. 11 {
-        for end in 0 .. 11 {
+    for start in 0..11 {
+        for end in 0..11 {
             if end < start {
-                continue
+                continue;
             }
 
             let mut expected = vec![1, 3, 6, 9];
@@ -65,7 +63,6 @@ fn test_range() {
         }
     }
 }
-
 
 #[test]
 fn test_offset_keys() {
@@ -100,17 +97,17 @@ fn test_remove_range() {
     map.insert(6, 6);
     map.insert(9, 9);
 
-    for start in 0 .. 11 {
-        for end in 0 .. 11 {
+    for start in 0..11 {
+        for end in 0..11 {
             if end < start {
-                continue
+                continue;
             }
 
             let mut expected = vec![1, 3, 6, 9];
             expected.retain(|&x| x < start || x >= end);
 
             let mut map = map.clone();
-            map.remove_range(start .. end);
+            map.remove_range(start..end);
 
             assert_eq!(keys(map), expected, "range = {}..{}", start, end);
         }
@@ -127,7 +124,7 @@ fn test_remove() {
         expected.push((x, x));
     }
 
-    for x in 0 .. 10 {
+    for x in 0..10 {
         let mut map = map.clone();
         let mut expected = expected.clone();
 

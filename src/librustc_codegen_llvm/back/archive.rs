@@ -1,6 +1,6 @@
 //! A helper class for dealing with static archives
 
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -9,11 +9,9 @@ use std::str;
 
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind};
-use rustc_codegen_ssa::{
-    METADATA_FILENAME, RLIB_BYTECODE_EXTENSION, looks_like_rust_object_file
-};
-use rustc_codegen_ssa::back::archive::{ArchiveBuilder, find_library};
 use rustc::session::Session;
+use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
+use rustc_codegen_ssa::{looks_like_rust_object_file, METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
 use syntax::symbol::Symbol;
 
 struct ArchiveConfig<'a> {
@@ -34,15 +32,8 @@ pub struct LlvmArchiveBuilder<'a> {
 }
 
 enum Addition {
-    File {
-        path: PathBuf,
-        name_in_archive: String,
-    },
-    Archive {
-        path: PathBuf,
-        archive: ArchiveRO,
-        skip: Box<dyn FnMut(&str) -> bool>,
-    },
+    File { path: PathBuf, name_in_archive: String },
+    Archive { path: PathBuf, archive: ArchiveRO, skip: Box<dyn FnMut(&str) -> bool> },
 }
 
 impl Addition {
@@ -60,9 +51,7 @@ fn is_relevant_child(c: &Child<'_>) -> bool {
     }
 }
 
-fn archive_config<'a>(sess: &'a Session,
-                      output: &Path,
-                      input: Option<&Path>) -> ArchiveConfig<'a> {
+fn archive_config<'a>(sess: &'a Session, output: &Path, input: Option<&Path>) -> ArchiveConfig<'a> {
     use rustc_codegen_ssa::back::link::archive_search_paths;
     ArchiveConfig {
         sess,
@@ -75,9 +64,7 @@ fn archive_config<'a>(sess: &'a Session,
 impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     /// Creates a new static archive, ready for modifying the archive specified
     /// by `config`.
-    fn new(sess: &'a Session,
-            output: &Path,
-            input: Option<&Path>) -> LlvmArchiveBuilder<'a> {
+    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> LlvmArchiveBuilder<'a> {
         let config = archive_config(sess, output, input);
         LlvmArchiveBuilder {
             config,
@@ -96,28 +83,31 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     /// Lists all files in an archive
     fn src_files(&mut self) -> Vec<String> {
         if self.src_archive().is_none() {
-            return Vec::new()
+            return Vec::new();
         }
 
         let archive = self.src_archive.as_ref().unwrap().as_ref().unwrap();
 
-        archive.iter()
-               .filter_map(|child| child.ok())
-               .filter(is_relevant_child)
-               .filter_map(|child| child.name())
-               .filter(|name| !self.removals.iter().any(|x| x == name))
-               .map(|name| name.to_owned())
-               .collect()
+        archive
+            .iter()
+            .filter_map(|child| child.ok())
+            .filter(is_relevant_child)
+            .filter_map(|child| child.name())
+            .filter(|name| !self.removals.iter().any(|x| x == name))
+            .map(|name| name.to_owned())
+            .collect()
     }
 
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
     fn add_native_library(&mut self, name: Symbol) {
-        let location = find_library(name, &self.config.lib_search_paths,
-                                    self.config.sess);
+        let location = find_library(name, &self.config.lib_search_paths, self.config.sess);
         self.add_archive(&location, |_| false).unwrap_or_else(|e| {
-            self.config.sess.fatal(&format!("failed to add native library {}: {}",
-                                            location.to_string_lossy(), e));
+            self.config.sess.fatal(&format!(
+                "failed to add native library {}: {}",
+                location.to_string_lossy(),
+                e
+            ));
         });
     }
 
@@ -126,11 +116,13 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     ///
     /// This ignores adding the bytecode from the rlib, and if LTO is enabled
     /// then the object file also isn't added.
-    fn add_rlib(&mut self,
-                    rlib: &Path,
-                    name: &str,
-                    lto: bool,
-                    skip_objects: bool) -> io::Result<()> {
+    fn add_rlib(
+        &mut self,
+        rlib: &Path,
+        name: &str,
+        lto: bool,
+        skip_objects: bool,
+    ) -> io::Result<()> {
         // Ignoring obj file starting with the crate name
         // as simple comparison is not enough - there
         // might be also an extra name suffix
@@ -139,32 +131,30 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         self.add_archive(rlib, move |fname: &str| {
             // Ignore bytecode/metadata files, no matter the name.
             if fname.ends_with(RLIB_BYTECODE_EXTENSION) || fname == METADATA_FILENAME {
-                return true
+                return true;
             }
 
             // Don't include Rust objects if LTO is enabled
             if lto && looks_like_rust_object_file(fname) {
-                return true
+                return true;
             }
 
             // Otherwise if this is *not* a rust object and we're skipping
             // objects then skip this file
             if skip_objects && (!fname.starts_with(&obj_start) || !fname.ends_with(".o")) {
-                return true
+                return true;
             }
 
             // ok, don't skip this
-            return false
+            return false;
         })
     }
 
     /// Adds an arbitrary file to this archive
     fn add_file(&mut self, file: &Path) {
         let name = file.file_name().unwrap().to_str().unwrap();
-        self.additions.push(Addition::File {
-            path: file.to_path_buf(),
-            name_in_archive: name.to_owned(),
-        });
+        self.additions
+            .push(Addition::File { path: file.to_path_buf(), name_in_archive: name.to_owned() });
     }
 
     /// Indicate that the next call to `build` should update all symbols in
@@ -176,36 +166,36 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
     fn build(mut self) {
-        let kind = self.llvm_archive_kind().unwrap_or_else(|kind|
-            self.config.sess.fatal(&format!("Don't know how to build archive of type: {}", kind)));
+        let kind = self.llvm_archive_kind().unwrap_or_else(|kind| {
+            self.config.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
+        });
 
         if let Err(e) = self.build_with_llvm(kind) {
             self.config.sess.fatal(&format!("failed to build archive: {}", e));
         }
-
     }
 }
 
 impl<'a> LlvmArchiveBuilder<'a> {
     fn src_archive(&mut self) -> Option<&ArchiveRO> {
         if let Some(ref a) = self.src_archive {
-            return a.as_ref()
+            return a.as_ref();
         }
         let src = self.config.src.as_ref()?;
         self.src_archive = Some(ArchiveRO::open(src).ok());
         self.src_archive.as_ref().unwrap().as_ref()
     }
 
-    fn add_archive<F>(&mut self, archive: &Path, skip: F)
-                      -> io::Result<()>
-        where F: FnMut(&str) -> bool + 'static
+    fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
+    where
+        F: FnMut(&str) -> bool + 'static,
     {
         let archive_ro = match ArchiveRO::open(archive) {
             Ok(ar) => ar,
             Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
         };
         if self.additions.iter().any(|ar| ar.path() == archive) {
-            return Ok(())
+            return Ok(());
         }
         self.additions.push(Addition::Archive {
             path: archive.to_path_buf(),
@@ -238,13 +228,15 @@ impl<'a> LlvmArchiveBuilder<'a> {
                         None => continue,
                     };
                     if removals.iter().any(|r| r == child_name) {
-                        continue
+                        continue;
                     }
 
                     let name = CString::new(child_name)?;
-                    members.push(llvm::LLVMRustArchiveMemberNew(ptr::null(),
-                                                                name.as_ptr(),
-                                                                Some(child.raw)));
+                    members.push(llvm::LLVMRustArchiveMemberNew(
+                        ptr::null(),
+                        name.as_ptr(),
+                        Some(child.raw),
+                    ));
                     strings.push(name);
                 }
             }
@@ -253,9 +245,11 @@ impl<'a> LlvmArchiveBuilder<'a> {
                     Addition::File { path, name_in_archive } => {
                         let path = CString::new(path.to_str().unwrap())?;
                         let name = CString::new(name_in_archive.clone())?;
-                        members.push(llvm::LLVMRustArchiveMemberNew(path.as_ptr(),
-                                                                    name.as_ptr(),
-                                                                    None));
+                        members.push(llvm::LLVMRustArchiveMemberNew(
+                            path.as_ptr(),
+                            name.as_ptr(),
+                            None,
+                        ));
                         strings.push(path);
                         strings.push(name);
                     }
@@ -263,11 +257,11 @@ impl<'a> LlvmArchiveBuilder<'a> {
                         for child in archive.iter() {
                             let child = child.map_err(string_to_io_error)?;
                             if !is_relevant_child(&child) {
-                                continue
+                                continue;
                             }
                             let child_name = child.name().unwrap();
                             if skip(child_name) {
-                                continue
+                                continue;
                             }
 
                             // It appears that LLVM's archive writer is a little
@@ -276,13 +270,14 @@ impl<'a> LlvmArchiveBuilder<'a> {
                             // pass it in.
                             //
                             // See LLVM bug 25877 for more info.
-                            let child_name = Path::new(child_name)
-                                                  .file_name().unwrap()
-                                                  .to_str().unwrap();
+                            let child_name =
+                                Path::new(child_name).file_name().unwrap().to_str().unwrap();
                             let name = CString::new(child_name)?;
-                            let m = llvm::LLVMRustArchiveMemberNew(ptr::null(),
-                                                                   name.as_ptr(),
-                                                                   Some(child.raw));
+                            let m = llvm::LLVMRustArchiveMemberNew(
+                                ptr::null(),
+                                name.as_ptr(),
+                                Some(child.raw),
+                            );
                             members.push(m);
                             strings.push(name);
                         }
@@ -290,11 +285,13 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 }
             }
 
-            let r = llvm::LLVMRustWriteArchive(dst.as_ptr(),
-                                               members.len() as libc::size_t,
-                                               members.as_ptr() as *const &_,
-                                               should_update_symbols,
-                                               kind);
+            let r = llvm::LLVMRustWriteArchive(
+                dst.as_ptr(),
+                members.len() as libc::size_t,
+                members.as_ptr() as *const &_,
+                should_update_symbols,
+                kind,
+            );
             let ret = if r.into_result().is_err() {
                 let err = llvm::LLVMRustGetLastError();
                 let msg = if err.is_null() {

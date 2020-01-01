@@ -1,8 +1,8 @@
-error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/issue-23024.rs:9:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
-   |                                       ^^
+   |                                       ^^ help: use parenthetical notation instead: `Fn() -> ()`
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
@@ -13,11 +13,11 @@ error[E0107]: wrong number of type arguments: expected 1, found 0
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    |                                       ^^ expected 1 type argument
 
-error[E0191]: the value of the associated type `Output` (from the trait `std::ops::FnOnce`) must be specified
-  --> $DIR/issue-23024.rs:9:35
+error[E0191]: the value of the associated type `Output` (from trait `std::ops::FnOnce`) must be specified
+  --> $DIR/issue-23024.rs:9:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
-   |                                   ^^^^^^ associated type `Output` must be specified
+   |                                       ^^ help: specify the associated type: `Fn<Output = Type>`
 
 error: aborting due to 3 previous errors
 

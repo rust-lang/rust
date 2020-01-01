@@ -1,0 +1,22 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_ast_lowering"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+name = "rustc_ast_lowering"
+path = "lib.rs"
+doctest = false
+
+[dependencies]
+log = { version = "0.4", features = ["release_max_level_info", "std"] }
+rustc = { path = "../librustc" }
+rustc_target = { path = "../librustc_target" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_index = { path = "../librustc_index" }
+rustc_span = { path = "../librustc_span" }
+rustc_error_codes = { path = "../librustc_error_codes" }
+rustc_errors = { path = "../librustc_errors" }
+syntax = { path = "../libsyntax" }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }

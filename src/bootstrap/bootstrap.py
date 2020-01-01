@@ -322,6 +322,7 @@ class RustBuild(object):
         self.date = ''
         self._download_url = ''
         self.rustc_channel = ''
+        self.rustfmt_channel = ''
         self.build = ''
         self.build_dir = os.path.join(os.getcwd(), "build")
         self.clean = False
@@ -344,6 +345,7 @@ class RustBuild(object):
         """
         rustc_channel = self.rustc_channel
         cargo_channel = self.cargo_channel
+        rustfmt_channel = self.rustfmt_channel
 
         def support_xz():
             try:
@@ -393,13 +395,29 @@ class RustBuild(object):
             with output(self.cargo_stamp()) as cargo_stamp:
                 cargo_stamp.write(self.date)
 
-    def _download_stage0_helper(self, filename, pattern, tarball_suffix):
+        if self.rustfmt() and self.rustfmt().startswith(self.bin_root()) and (
+            not os.path.exists(self.rustfmt())
+            or self.program_out_of_date(self.rustfmt_stamp())
+        ):
+            if rustfmt_channel:
+                tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
+                [channel, date] = rustfmt_channel.split('-', 1)
+                filename = "rustfmt-{}-{}{}".format(channel, self.build, tarball_suffix)
+                self._download_stage0_helper(filename, "rustfmt-preview", tarball_suffix, date)
+                self.fix_executable("{}/bin/rustfmt".format(self.bin_root()))
+                self.fix_executable("{}/bin/cargo-fmt".format(self.bin_root()))
+                with output(self.rustfmt_stamp()) as rustfmt_stamp:
+                    rustfmt_stamp.write(self.date)
+
+    def _download_stage0_helper(self, filename, pattern, tarball_suffix, date=None):
+        if date is None:
+            date = self.date
         cache_dst = os.path.join(self.build_dir, "cache")
-        rustc_cache = os.path.join(cache_dst, self.date)
+        rustc_cache = os.path.join(cache_dst, date)
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
 
-        url = "{}/dist/{}".format(self._download_url, self.date)
+        url = "{}/dist/{}".format(self._download_url, date)
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
             get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
@@ -493,6 +511,16 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(), '.cargo-stamp')
 
+    def rustfmt_stamp(self):
+        """Return the path for .rustfmt-stamp
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.rustfmt_stamp() == os.path.join("build", "stage0", ".rustfmt-stamp")
+        True
+        """
+        return os.path.join(self.bin_root(), '.rustfmt-stamp')
+
     def program_out_of_date(self, stamp_path):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
@@ -564,6 +592,12 @@ class RustBuild(object):
     def rustc(self):
         """Return config path for rustc"""
         return self.program_config('rustc')
+
+    def rustfmt(self):
+        """Return config path for rustfmt"""
+        if not self.rustfmt_channel:
+            return None
+        return self.program_config('rustfmt')
 
     def program_config(self, program):
         """Return config path for the given program
@@ -868,6 +902,9 @@ def bootstrap(help_triggered):
     build.rustc_channel = data['rustc']
     build.cargo_channel = data['cargo']
 
+    if "rustfmt" in data:
+        build.rustfmt_channel = data['rustfmt']
+
     if 'dev' in data:
         build.set_dev_environment()
     else:
@@ -895,6 +932,8 @@ def bootstrap(help_triggered):
     env["RUSTC_BOOTSTRAP"] = '1'
     env["CARGO"] = build.cargo()
     env["RUSTC"] = build.rustc()
+    if build.rustfmt():
+        env["RUSTFMT"] = build.rustfmt()
     run(args, env=env, verbose=build.verbose)
 
 

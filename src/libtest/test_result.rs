@@ -1,9 +1,9 @@
 use std::any::Any;
 
 use super::bench::BenchSamples;
+use super::options::ShouldPanic;
 use super::time;
 use super::types::TestDesc;
-use super::options::ShouldPanic;
 
 pub use self::TestResult::*;
 
@@ -32,7 +32,7 @@ pub fn calc_result<'a>(
     desc: &TestDesc,
     task_result: Result<(), &'a (dyn Any + 'static + Send)>,
     time_opts: &Option<time::TestTimeOptions>,
-    exec_time: &Option<time::TestExecTime>
+    exec_time: &Option<time::TestExecTime>,
 ) -> TestResult {
     let result = match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TestResult::TrOk,

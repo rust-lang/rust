@@ -148,13 +148,7 @@ impl ExecutionStrategy for SameThread {
     ) -> Buffer<u8> {
         let mut dispatch = |b| dispatcher.dispatch(b);
 
-        run_client(
-            Bridge {
-                cached_buffer: input,
-                dispatch: (&mut dispatch).into(),
-            },
-            client_data,
-        )
+        run_client(Bridge { cached_buffer: input, dispatch: (&mut dispatch).into() }, client_data)
     }
 }
 
@@ -183,10 +177,7 @@ impl ExecutionStrategy for CrossThread1 {
             };
 
             run_client(
-                Bridge {
-                    cached_buffer: input,
-                    dispatch: (&mut dispatch).into(),
-                },
+                Bridge { cached_buffer: input, dispatch: (&mut dispatch).into() },
                 client_data,
             )
         });
@@ -233,10 +224,7 @@ impl ExecutionStrategy for CrossThread2 {
             };
 
             let r = run_client(
-                Bridge {
-                    cached_buffer: input,
-                    dispatch: (&mut dispatch).into(),
-                },
+                Bridge { cached_buffer: input, dispatch: (&mut dispatch).into() },
                 client_data,
             );
 
@@ -276,10 +264,8 @@ fn run_server<
     run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
     client_data: D,
 ) -> Result<O, PanicMessage> {
-    let mut dispatcher = Dispatcher {
-        handle_store: HandleStore::new(handle_counters),
-        server: MarkedTypes(server),
-    };
+    let mut dispatcher =
+        Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
 
     let mut b = Buffer::new();
     input.encode(&mut b, &mut dispatcher.handle_store);
@@ -296,11 +282,7 @@ impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {
         server: S,
         input: S::TokenStream,
     ) -> Result<S::TokenStream, PanicMessage> {
-        let client::Client {
-            get_handle_counters,
-            run,
-            f,
-        } = *self;
+        let client::Client { get_handle_counters, run, f } = *self;
         run_server(
             strategy,
             get_handle_counters(),
@@ -321,11 +303,7 @@ impl client::Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenSt
         input: S::TokenStream,
         input2: S::TokenStream,
     ) -> Result<S::TokenStream, PanicMessage> {
-        let client::Client {
-            get_handle_counters,
-            run,
-            f,
-        } = *self;
+        let client::Client { get_handle_counters, run, f } = *self;
         run_server(
             strategy,
             get_handle_counters(),

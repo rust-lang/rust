@@ -50,19 +50,13 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             // Find the universe this placeholder inhabits.
             let placeholder = match placeholder_region {
                 ty::RePlaceholder(p) => p,
-                _ => bug!(
-                    "leak_check: expected placeholder found {:?}",
-                    placeholder_region,
-                ),
+                _ => bug!("leak_check: expected placeholder found {:?}", placeholder_region,),
             };
 
             // Find all regions that are related to this placeholder
             // in some way. This means any region that either outlives
             // or is outlived by a placeholder.
-            let mut taint_set = TaintSet::new(
-                TaintDirections::both(),
-                placeholder_region,
-            );
+            let mut taint_set = TaintSet::new(TaintDirections::both(), placeholder_region);
             taint_set.fixed_point(tcx, &self.undo_log, &self.data.verifys);
             let tainted_regions = taint_set.into_set();
 
@@ -103,10 +97,7 @@ impl<'tcx> TaintSet<'tcx> {
     fn new(directions: TaintDirections, initial_region: ty::Region<'tcx>) -> Self {
         let mut regions = FxHashSet::default();
         regions.insert(initial_region);
-        TaintSet {
-            directions: directions,
-            regions: regions,
-        }
+        TaintSet { directions: directions, regions: regions }
     }
 
     fn fixed_point(
@@ -117,11 +108,7 @@ impl<'tcx> TaintSet<'tcx> {
     ) {
         let mut prev_len = 0;
         while prev_len < self.len() {
-            debug!(
-                "tainted: prev_len = {:?} new_len = {:?}",
-                prev_len,
-                self.len()
-            );
+            debug!("tainted: prev_len = {:?} new_len = {:?}", prev_len, self.len());
 
             prev_len = self.len();
 

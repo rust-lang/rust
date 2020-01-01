@@ -1,6 +1,7 @@
 // Test that the compiler will catch passing invalid values to inline assembly
 // operands.
 
+// build-fail
 // ignore-emscripten
 
 #![feature(asm)]

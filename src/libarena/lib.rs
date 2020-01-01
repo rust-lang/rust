@@ -8,14 +8,14 @@
 //! This crate implements `TypedArena`, a simple arena that can only hold
 //! objects of a single type.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
-       test(no_crate_inject, attr(deny(warnings))))]
-
+#![doc(
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    test(no_crate_inject, attr(deny(warnings)))
+)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(raw_vec_internals)]
 #![cfg_attr(test, feature(test))]
-
 #![allow(deprecated)]
 
 extern crate alloc;
@@ -61,10 +61,7 @@ struct TypedArenaChunk<T> {
 impl<T> TypedArenaChunk<T> {
     #[inline]
     unsafe fn new(capacity: usize) -> TypedArenaChunk<T> {
-        TypedArenaChunk {
-            storage: RawVec::with_capacity(capacity),
-            entries: 0,
-        }
+        TypedArenaChunk { storage: RawVec::with_capacity(capacity), entries: 0 }
     }
 
     /// Destroys this arena chunk.
@@ -133,9 +130,7 @@ impl<T> TypedArena<T> {
 
         unsafe {
             if mem::size_of::<T>() == 0 {
-                self.ptr
-                    .set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1)
-                        as *mut T);
+                self.ptr.set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1) as *mut T);
                 let ptr = mem::align_of::<T>() as *mut T;
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
@@ -260,7 +255,7 @@ impl<T> TypedArena<T> {
                 self.clear_last_chunk(&mut last_chunk);
                 let len = chunks_borrow.len();
                 // If `T` is ZST, code below has no effect.
-                for mut chunk in chunks_borrow.drain(..len-1) {
+                for mut chunk in chunks_borrow.drain(..len - 1) {
                     chunk.destroy(chunk.entries);
                 }
             }
@@ -360,10 +355,7 @@ impl DroplessArena {
             let (chunk, mut new_capacity);
             if let Some(last_chunk) = chunks.last_mut() {
                 let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
-                if last_chunk
-                    .storage
-                    .reserve_in_place(used_bytes, needed_bytes)
-                {
+                if last_chunk.storage.reserve_in_place(used_bytes, needed_bytes) {
                     self.end.set(last_chunk.end());
                     return;
                 } else {
@@ -399,9 +391,7 @@ impl DroplessArena {
 
             let ptr = self.ptr.get();
             // Set the pointer past ourselves
-            self.ptr.set(
-                intrinsics::arith_offset(self.ptr.get(), bytes as isize) as *mut u8,
-            );
+            self.ptr.set(intrinsics::arith_offset(self.ptr.get(), bytes as isize) as *mut u8);
             slice::from_raw_parts_mut(ptr, bytes)
         }
     }
@@ -410,9 +400,7 @@ impl DroplessArena {
     pub fn alloc<T>(&self, object: T) -> &mut T {
         assert!(!mem::needs_drop::<T>());
 
-        let mem = self.alloc_raw(
-            mem::size_of::<T>(),
-            mem::align_of::<T>()) as *mut _ as *mut T;
+        let mem = self.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut _ as *mut T;
 
         unsafe {
             // Write into uninitialized memory.
@@ -437,9 +425,8 @@ impl DroplessArena {
         assert!(mem::size_of::<T>() != 0);
         assert!(!slice.is_empty());
 
-        let mem = self.alloc_raw(
-            slice.len() * mem::size_of::<T>(),
-            mem::align_of::<T>()) as *mut _ as *mut T;
+        let mem = self.alloc_raw(slice.len() * mem::size_of::<T>(), mem::align_of::<T>()) as *mut _
+            as *mut T;
 
         unsafe {
             let arena_slice = slice::from_raw_parts_mut(mem, slice.len());
@@ -484,13 +471,11 @@ impl DroplessArena {
                 let len = min;
 
                 if len == 0 {
-                    return &mut []
+                    return &mut [];
                 }
                 let size = len.checked_mul(mem::size_of::<T>()).unwrap();
                 let mem = self.alloc_raw(size, mem::align_of::<T>()) as *mut _ as *mut T;
-                unsafe {
-                    self.write_from_iter(iter, len, mem)
-                }
+                unsafe { self.write_from_iter(iter, len, mem) }
             }
             (_, _) => {
                 cold_path(move || -> &mut [T] {
@@ -502,10 +487,9 @@ impl DroplessArena {
                     // the content of the SmallVec
                     unsafe {
                         let len = vec.len();
-                        let start_ptr = self.alloc_raw(
-                            len * mem::size_of::<T>(),
-                            mem::align_of::<T>()
-                        ) as *mut _ as *mut T;
+                        let start_ptr = self
+                            .alloc_raw(len * mem::size_of::<T>(), mem::align_of::<T>())
+                            as *mut _ as *mut T;
                         vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
                         vec.set_len(0);
                         slice::from_raw_parts_mut(start_ptr, len)

@@ -1,9 +1,9 @@
 use crate::cmp::Ordering;
+use crate::convert::TryInto;
 use crate::fmt;
 use crate::mem;
 use crate::sys::c;
 use crate::time::Duration;
-use crate::convert::TryInto;
 
 use core::hash::{Hash, Hasher};
 
@@ -53,8 +53,7 @@ impl Instant {
         // On windows there's a threshold below which we consider two timestamps
         // equivalent due to measurement error. For more details + doc link,
         // check the docs on epsilon.
-        let epsilon =
-            perf_counter::PerformanceCounterInstant::epsilon();
+        let epsilon = perf_counter::PerformanceCounterInstant::epsilon();
         if other.t > self.t && other.t - self.t <= epsilon {
             Some(Duration::new(0, 0))
         } else {
@@ -63,15 +62,11 @@ impl Instant {
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant {
-            t: self.t.checked_add(*other)?
-        })
+        Some(Instant { t: self.t.checked_add(*other)? })
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant {
-            t: self.t.checked_sub(*other)?
-        })
+        Some(Instant { t: self.t.checked_sub(*other)? })
     }
 }
 
@@ -89,7 +84,7 @@ impl SystemTime {
             t: c::FILETIME {
                 dwLowDateTime: intervals as c::DWORD,
                 dwHighDateTime: (intervals >> 32) as c::DWORD,
-            }
+            },
         }
     }
 
@@ -140,9 +135,7 @@ impl Ord for SystemTime {
 
 impl fmt::Debug for SystemTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SystemTime")
-         .field("intervals", &self.intervals())
-         .finish()
+        f.debug_struct("SystemTime").field("intervals", &self.intervals()).finish()
     }
 }
 
@@ -153,7 +146,7 @@ impl From<c::FILETIME> for SystemTime {
 }
 
 impl Hash for SystemTime {
-    fn hash<H : Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.intervals().hash(state)
     }
 }
@@ -167,26 +160,23 @@ fn checked_dur2intervals(dur: &Duration) -> Option<i64> {
 }
 
 fn intervals2dur(intervals: u64) -> Duration {
-    Duration::new(intervals / INTERVALS_PER_SEC,
-                  ((intervals % INTERVALS_PER_SEC) * 100) as u32)
+    Duration::new(intervals / INTERVALS_PER_SEC, ((intervals % INTERVALS_PER_SEC) * 100) as u32)
 }
 
 mod perf_counter {
-    use super::{NANOS_PER_SEC};
+    use super::NANOS_PER_SEC;
     use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-    use crate::sys_common::mul_div_u64;
     use crate::sys::c;
     use crate::sys::cvt;
+    use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
 
     pub struct PerformanceCounterInstant {
-        ts: c::LARGE_INTEGER
+        ts: c::LARGE_INTEGER,
     }
     impl PerformanceCounterInstant {
         pub fn now() -> Self {
-            Self {
-                ts: query()
-            }
+            Self { ts: query() }
         }
 
         // Per microsoft docs, the margin of error for cross-thread time comparisons
@@ -202,9 +192,7 @@ mod perf_counter {
         fn from(other: PerformanceCounterInstant) -> Self {
             let freq = frequency() as u64;
             let instant_nsec = mul_div_u64(other.ts as u64, NANOS_PER_SEC, freq);
-            Self {
-                t: Duration::from_nanos(instant_nsec)
-            }
+            Self { t: Duration::from_nanos(instant_nsec) }
         }
     }
 
@@ -234,9 +222,7 @@ mod perf_counter {
 
     fn query() -> c::LARGE_INTEGER {
         let mut qpc_value: c::LARGE_INTEGER = 0;
-        cvt(unsafe {
-            c::QueryPerformanceCounter(&mut qpc_value)
-        }).unwrap();
+        cvt(unsafe { c::QueryPerformanceCounter(&mut qpc_value) }).unwrap();
         qpc_value
     }
 }

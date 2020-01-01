@@ -1,0 +1,20 @@
+error[E0007]: cannot bind by-move with sub-bindings
+  --> $DIR/bind-by-move-no-subbindings-fun-param.rs:9:6
+   |
+LL | fn f(a @ A(u): A) -> Box<u8> {
+   |      ^^^^^^^^ binds an already bound by-move value by moving it
+
+error[E0382]: use of moved value
+  --> $DIR/bind-by-move-no-subbindings-fun-param.rs:9:12
+   |
+LL | fn f(a @ A(u): A) -> Box<u8> {
+   |      ------^-
+   |      |     |
+   |      |     value used here after move
+   |      value moved here
+   |      move occurs because value has type `A`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0007, E0382.
+For more information about an error, try `rustc --explain E0007`.

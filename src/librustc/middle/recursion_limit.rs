@@ -7,7 +7,7 @@
 
 use crate::session::Session;
 use syntax::ast;
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{sym, Symbol};
 
 use rustc_data_structures::sync::Once;
 

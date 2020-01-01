@@ -1,11 +1,8 @@
+use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::{self, Ty, TyCtxt, TypeFlags};
-use crate::ty::fold::{TypeFolder, TypeFoldable};
 
 pub(super) fn provide(providers: &mut ty::query::Providers<'_>) {
-    *providers = ty::query::Providers {
-        erase_regions_ty,
-        ..*providers
-    };
+    *providers = ty::query::Providers { erase_regions_ty, ..*providers };
 }
 
 fn erase_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -19,7 +16,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// that late-bound regions remain, because they are important for
     /// subtyping, but they are anonymized and normalized as well)..
     pub fn erase_regions<T>(self, value: &T) -> T
-        where T : TypeFoldable<'tcx>
+    where
+        T: TypeFoldable<'tcx>,
     {
         // If there's nothing to erase avoid performing the query at all
         if !value.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND | TypeFlags::HAS_FREE_REGIONS) {
@@ -42,15 +40,12 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.has_local_value() {
-            ty.super_fold_with(self)
-        } else {
-            self.tcx.erase_regions_ty(ty)
-        }
+        if ty.has_local_value() { ty.super_fold_with(self) } else { self.tcx.erase_regions_ty(ty) }
     }
 
     fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
-        where T : TypeFoldable<'tcx>
+    where
+        T: TypeFoldable<'tcx>,
     {
         let u = self.tcx.anonymize_late_bound_regions(t);
         u.super_fold_with(self)
@@ -67,7 +62,7 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
         // whenever a substitution occurs.
         match *r {
             ty::ReLateBound(..) => r,
-            _ => self.tcx.lifetimes.re_erased
+            _ => self.tcx.lifetimes.re_erased,
         }
     }
 }

@@ -2,7 +2,7 @@ error: expected `{`, found `}`
   --> $DIR/if-without-block.rs:7:1
    |
 LL |     if 5 == {
-   |     -- this `if` statement has a condition, but no block
+   |     -- this `if` expression has a condition, but no block
 ...
 LL | }
    | ^ expected `{`

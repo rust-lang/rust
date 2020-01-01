@@ -7,7 +7,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(not(bootstrap))]
 use crate::convert::FloatToInt;
 #[cfg(not(test))]
 use crate::intrinsics;
@@ -63,7 +62,7 @@ pub const NAN: f64 = 0.0_f64 / 0.0_f64;
 /// Infinity (∞).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f64 = 1.0_f64 / 0.0_f64;
-/// Negative infinity (-∞).
+/// Negative infinity (−∞).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
 
@@ -227,7 +226,7 @@ impl f64 {
     }
 
     /// Returns `true` if the number is neither zero, infinite,
-    /// [subnormal][subnormal], or `NaN`.
+    /// [subnormal], or `NaN`.
     ///
     /// ```
     /// use std::f64;
@@ -436,7 +435,6 @@ impl f64 {
     /// * Not be `NaN`
     /// * Not be infinite
     /// * Be representable in the return type `Int`, after truncating off its fractional part
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "float_approx_unchecked_to", issue = "67058")]
     #[inline]
     pub unsafe fn approx_unchecked_to<Int>(self) -> Int

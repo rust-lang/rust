@@ -116,6 +116,7 @@ E0211: include_str!("./error_codes/E0211.md"),
 E0214: include_str!("./error_codes/E0214.md"),
 E0220: include_str!("./error_codes/E0220.md"),
 E0221: include_str!("./error_codes/E0221.md"),
+E0222: include_str!("./error_codes/E0222.md"),
 E0223: include_str!("./error_codes/E0223.md"),
 E0225: include_str!("./error_codes/E0225.md"),
 E0229: include_str!("./error_codes/E0229.md"),
@@ -237,6 +238,7 @@ E0463: include_str!("./error_codes/E0463.md"),
 E0466: include_str!("./error_codes/E0466.md"),
 E0468: include_str!("./error_codes/E0468.md"),
 E0469: include_str!("./error_codes/E0469.md"),
+E0477: include_str!("./error_codes/E0477.md"),
 E0478: include_str!("./error_codes/E0478.md"),
 E0491: include_str!("./error_codes/E0491.md"),
 E0492: include_str!("./error_codes/E0492.md"),
@@ -346,6 +348,7 @@ E0622: include_str!("./error_codes/E0622.md"),
 E0623: include_str!("./error_codes/E0623.md"),
 E0624: include_str!("./error_codes/E0624.md"),
 E0626: include_str!("./error_codes/E0626.md"),
+E0627: include_str!("./error_codes/E0627.md"),
 E0631: include_str!("./error_codes/E0631.md"),
 E0633: include_str!("./error_codes/E0633.md"),
 E0635: include_str!("./error_codes/E0635.md"),
@@ -456,8 +459,6 @@ E0745: include_str!("./error_codes/E0745.md"),
 //  E0217, // ambiguous associated type, defined in multiple supertraits
 //  E0218, // no associated type defined
 //  E0219, // associated type defined in higher-ranked supertrait
-//  E0222, // Error code E0045 (variadic function must have C or cdecl calling
-           // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
@@ -531,7 +532,6 @@ E0745: include_str!("./error_codes/E0745.md"),
     E0474, // captured variable `..` does not outlive the enclosing closure
     E0475, // index of slice outside its lifetime
     E0476, // lifetime of the source pointer does not outlive lifetime bound...
-    E0477, // the type `..` does not fulfill the required lifetime...
     E0479, // the type `..` (provided as the value of a type parameter) is...
     E0480, // lifetime of method receiver does not outlive the method call
     E0481, // lifetime of function argument does not outlive the function call
@@ -574,7 +574,6 @@ E0745: include_str!("./error_codes/E0745.md"),
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0625, // thread-local statics cannot be accessed at compile-time
-    E0627, // yield statement outside of generator literal
     E0628, // generators cannot have explicit parameters
     E0629, // missing 'feature' (rustc_const_unstable)
     // rustc_const_unstable attribute must be paired with stable/unstable

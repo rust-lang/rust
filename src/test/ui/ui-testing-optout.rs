@@ -1,4 +1,4 @@
-// disable-ui-testing-normalization
+// compile-flags: -Z ui-testing=no
 
 // Line number < 10
 type A = B; //~ ERROR

@@ -20,12 +20,16 @@ impl Display for CheckInAllocMsg {
     /// When this is printed as an error the context looks like this
     /// "{test name} failed: pointer must be in-bounds at offset..."
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match *self {
-            CheckInAllocMsg::MemoryAccessTest => "Memory access",
-            CheckInAllocMsg::NullPointerTest => "Null pointer test",
-            CheckInAllocMsg::PointerArithmeticTest => "Pointer arithmetic",
-            CheckInAllocMsg::InboundsTest => "Inbounds test",
-        })
+        write!(
+            f,
+            "{}",
+            match *self {
+                CheckInAllocMsg::MemoryAccessTest => "Memory access",
+                CheckInAllocMsg::NullPointerTest => "Null pointer test",
+                CheckInAllocMsg::PointerArithmeticTest => "Pointer arithmetic",
+                CheckInAllocMsg::InboundsTest => "Inbounds test",
+            }
+        )
     }
 }
 
@@ -44,13 +48,13 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     #[inline]
     fn usize_max(&self) -> u64 {
         let max_usize_plus_1 = 1u128 << self.pointer_size().bits();
-        u64::try_from(max_usize_plus_1-1).unwrap()
+        u64::try_from(max_usize_plus_1 - 1).unwrap()
     }
 
     #[inline]
     fn isize_max(&self) -> i64 {
-        let max_isize_plus_1 = 1u128 << (self.pointer_size().bits()-1);
-        i64::try_from(max_isize_plus_1-1).unwrap()
+        let max_isize_plus_1 = 1u128 << (self.pointer_size().bits() - 1);
+        i64::try_from(max_isize_plus_1 - 1).unwrap()
     }
 
     /// Helper function: truncate given value-"overflowed flag" pair to pointer size and
@@ -107,8 +111,18 @@ impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 ///
 /// `Pointer` is also generic over the `Tag` associated with each pointer,
 /// which is used to do provenance tracking during execution.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd,
-         RustcEncodable, RustcDecodable, Hash, HashStable)]
+#[derive(
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    RustcEncodable,
+    RustcDecodable,
+    Hash,
+    HashStable
+)]
 pub struct Pointer<Tag = (), Id = AllocId> {
     pub alloc_id: Id,
     pub offset: Size,
@@ -144,8 +158,7 @@ impl Pointer<()> {
     }
 
     #[inline(always)]
-    pub fn with_tag<Tag>(self, tag: Tag) -> Pointer<Tag>
-    {
+    pub fn with_tag<Tag>(self, tag: Tag) -> Pointer<Tag> {
         Pointer::new_with_tag(self.alloc_id, self.offset, tag)
     }
 }
@@ -161,7 +174,7 @@ impl<'tcx, Tag> Pointer<Tag> {
         Ok(Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
-            self.tag
+            self.tag,
         ))
     }
 

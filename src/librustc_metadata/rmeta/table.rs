@@ -1,11 +1,11 @@
 use crate::rmeta::*;
 
+use log::debug;
 use rustc_index::vec::Idx;
-use rustc_serialize::{Encodable, opaque::Encoder};
+use rustc_serialize::{opaque::Encoder, Encodable};
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
-use log::debug;
 
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.
@@ -107,8 +107,7 @@ impl<T: Encodable> FixedSizeEncoding for Option<Lazy<[T]>> {
     }
 
     fn write_to_bytes(self, b: &mut [u8]) {
-        self.map(|lazy| Lazy::<T>::from_position(lazy.position))
-            .write_to_bytes(b);
+        self.map(|lazy| Lazy::<T>::from_position(lazy.position)).write_to_bytes(b);
 
         let len = self.map_or(0, |lazy| lazy.meta);
         let len: u32 = len.try_into().unwrap();
@@ -123,7 +122,10 @@ impl<T: Encodable> FixedSizeEncoding for Option<Lazy<[T]>> {
 /// A total of `(max_idx + 1) * <Option<T> as FixedSizeEncoding>::BYTE_LEN` bytes
 /// are used for a table, where `max_idx` is the largest index passed to
 /// `TableBuilder::set`.
-pub(super) struct Table<I: Idx, T> where Option<T>: FixedSizeEncoding {
+pub(super) struct Table<I: Idx, T>
+where
+    Option<T>: FixedSizeEncoding,
+{
     _marker: PhantomData<(fn(&I), T)>,
     // NOTE(eddyb) this makes `Table` not implement `Sized`, but no
     // value of `Table` is ever created (it's always behind `Lazy`).
@@ -131,7 +133,10 @@ pub(super) struct Table<I: Idx, T> where Option<T>: FixedSizeEncoding {
 }
 
 /// Helper for constructing a table's serialization (also see `Table`).
-pub(super) struct TableBuilder<I: Idx, T> where Option<T>: FixedSizeEncoding {
+pub(super) struct TableBuilder<I: Idx, T>
+where
+    Option<T>: FixedSizeEncoding,
+{
     // FIXME(eddyb) use `IndexVec<I, [u8; <Option<T>>::BYTE_LEN]>` instead of
     // `Vec<u8>`, once that starts working (i.e. lazy normalization).
     // Then again, that has the downside of not allowing `TableBuilder::encode` to
@@ -140,16 +145,19 @@ pub(super) struct TableBuilder<I: Idx, T> where Option<T>: FixedSizeEncoding {
     _marker: PhantomData<(fn(&I), T)>,
 }
 
-impl<I: Idx, T> Default for TableBuilder<I, T> where Option<T>: FixedSizeEncoding {
+impl<I: Idx, T> Default for TableBuilder<I, T>
+where
+    Option<T>: FixedSizeEncoding,
+{
     fn default() -> Self {
-        TableBuilder {
-            bytes: vec![],
-            _marker: PhantomData,
-        }
+        TableBuilder { bytes: vec![], _marker: PhantomData }
     }
 }
 
-impl<I: Idx, T> TableBuilder<I, T> where Option<T>: FixedSizeEncoding {
+impl<I: Idx, T> TableBuilder<I, T>
+where
+    Option<T>: FixedSizeEncoding,
+{
     pub(super) fn set(&mut self, i: I, value: T) {
         // FIXME(eddyb) investigate more compact encodings for sparse tables.
         // On the PR @michaelwoerister mentioned:
@@ -168,14 +176,14 @@ impl<I: Idx, T> TableBuilder<I, T> where Option<T>: FixedSizeEncoding {
     pub(super) fn encode(&self, buf: &mut Encoder) -> Lazy<Table<I, T>> {
         let pos = buf.position();
         buf.emit_raw_bytes(&self.bytes);
-        Lazy::from_position_and_meta(
-            NonZeroUsize::new(pos as usize).unwrap(),
-            self.bytes.len(),
-        )
+        Lazy::from_position_and_meta(NonZeroUsize::new(pos as usize).unwrap(), self.bytes.len())
     }
 }
 
-impl<I: Idx, T> LazyMeta for Table<I, T> where Option<T>: FixedSizeEncoding {
+impl<I: Idx, T> LazyMeta for Table<I, T>
+where
+    Option<T>: FixedSizeEncoding,
+{
     type Meta = usize;
 
     fn min_size(len: usize) -> usize {
@@ -183,14 +191,13 @@ impl<I: Idx, T> LazyMeta for Table<I, T> where Option<T>: FixedSizeEncoding {
     }
 }
 
-impl<I: Idx, T> Lazy<Table<I, T>> where Option<T>: FixedSizeEncoding {
+impl<I: Idx, T> Lazy<Table<I, T>>
+where
+    Option<T>: FixedSizeEncoding,
+{
     /// Given the metadata, extract out the value at a particular index (if any).
     #[inline(never)]
-    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
-        &self,
-        metadata: M,
-        i: I,
-    ) -> Option<T> {
+    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> Option<T> {
         debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
 
         let start = self.position.get();

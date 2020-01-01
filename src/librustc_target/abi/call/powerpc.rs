@@ -22,7 +22,9 @@ pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     }
 
     for arg in &mut fn_abi.args {
-        if arg.is_ignore() { continue; }
+        if arg.is_ignore() {
+            continue;
+        }
         classify_arg(arg);
     }
 }

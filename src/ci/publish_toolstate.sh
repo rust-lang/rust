@@ -14,12 +14,15 @@ printf 'https://%s:x-oauth-basic@github.com\n' "$TOOLSTATE_REPO_ACCESS_TOKEN" \
     > "$HOME/.git-credentials"
 git clone --depth=1 $TOOLSTATE_REPO
 
+GIT_COMMIT="$(git rev-parse HEAD)"
+GIT_COMMIT_MSG="$(git log --format=%s -n1 HEAD)"
+
 cd rust-toolstate
 FAILURE=1
 for RETRY_COUNT in 1 2 3 4 5; do
     #  The purpose is to publish the new "current" toolstate in the toolstate repo.
-    "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" \
-        "$(git log --format=%s -n1 HEAD)" \
+    "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$GIT_COMMIT" \
+        "$GIT_COMMIT_MSG" \
         "$MESSAGE_FILE" \
         "$TOOLSTATE_REPO_ACCESS_TOKEN"
     # `git commit` failing means nothing to commit.

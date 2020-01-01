@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use std::env;
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use rustc::hir::def_id::CrateNum;
 use rustc::middle::cstore::LibSource;
@@ -86,18 +86,13 @@ fn get_rpaths(config: &mut RPathConfig<'_>, libs: &[PathBuf]) -> Vec<String> {
     rpaths
 }
 
-fn get_rpaths_relative_to_output(config: &mut RPathConfig<'_>,
-                                 libs: &[PathBuf]) -> Vec<String> {
+fn get_rpaths_relative_to_output(config: &mut RPathConfig<'_>, libs: &[PathBuf]) -> Vec<String> {
     libs.iter().map(|a| get_rpath_relative_to_output(config, a)).collect()
 }
 
 fn get_rpath_relative_to_output(config: &mut RPathConfig<'_>, lib: &Path) -> String {
     // Mac doesn't appear to support $ORIGIN
-    let prefix = if config.is_like_osx {
-        "@loader_path"
-    } else {
-        "$ORIGIN"
-    };
+    let prefix = if config.is_like_osx { "@loader_path" } else { "$ORIGIN" };
 
     let cwd = env::current_dir().unwrap();
     let mut lib = fs::canonicalize(&cwd.join(lib)).unwrap_or_else(|_| cwd.join(lib));
@@ -105,8 +100,8 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig<'_>, lib: &Path) -> Str
     let mut output = cwd.join(&config.out_filename);
     output.pop(); // strip filename
     let output = fs::canonicalize(&output).unwrap_or(output);
-    let relative = path_relative_from(&lib, &output).unwrap_or_else(||
-        panic!("couldn't create relative path from {:?} to {:?}", output, lib));
+    let relative = path_relative_from(&lib, &output)
+        .unwrap_or_else(|| panic!("couldn't create relative path from {:?} to {:?}", output, lib));
     // FIXME (#9639): This needs to handle non-utf8 paths
     format!("{}/{}", prefix, relative.to_str().expect("non-utf8 component in path"))
 }
@@ -148,7 +143,6 @@ fn path_relative_from(path: &Path, base: &Path) -> Option<PathBuf> {
         Some(comps.iter().map(|c| c.as_os_str()).collect())
     }
 }
-
 
 fn get_install_prefix_rpath(config: &mut RPathConfig<'_>) -> String {
     let path = (config.get_install_prefix_lib_path)();

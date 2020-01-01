@@ -1,16 +1,13 @@
-use crate::infer::InferCtxt;
 use crate::infer::canonical::OriginalQueryValues;
+use crate::infer::InferCtxt;
 use crate::traits::{
-    EvaluationResult, PredicateObligation, SelectionContext, TraitQueryMode, OverflowError,
+    EvaluationResult, OverflowError, PredicateObligation, SelectionContext, TraitQueryMode,
 };
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
     /// in the given `ParamEnv`.
-    pub fn predicate_may_hold(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> bool {
+    pub fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool {
         self.evaluate_obligation_no_overflow(obligation).may_apply()
     }
 
@@ -45,8 +42,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         let mut _orig_values = OriginalQueryValues::default();
-        let c_pred = self.canonicalize_query(&obligation.param_env.and(obligation.predicate),
-                                             &mut _orig_values);
+        let c_pred = self
+            .canonicalize_query(&obligation.param_env.and(obligation.predicate), &mut _orig_values);
         // Run canonical query. If overflow occurs, rerun from scratch but this time
         // in standard trait query mode so that overflow is handled appropriately
         // within `SelectionContext`.
@@ -63,17 +60,15 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         match self.evaluate_obligation(obligation) {
             Ok(result) => result,
             Err(OverflowError) => {
-                let mut selcx =
-                    SelectionContext::with_query_mode(&self, TraitQueryMode::Standard);
-                selcx.evaluate_root_obligation(obligation)
-                    .unwrap_or_else(|r| {
-                        span_bug!(
-                            obligation.cause.span,
-                            "Overflow should be caught earlier in standard query mode: {:?}, {:?}",
-                            obligation,
-                            r,
-                        )
-                    })
+                let mut selcx = SelectionContext::with_query_mode(&self, TraitQueryMode::Standard);
+                selcx.evaluate_root_obligation(obligation).unwrap_or_else(|r| {
+                    span_bug!(
+                        obligation.cause.span,
+                        "Overflow should be caught earlier in standard query mode: {:?}, {:?}",
+                        obligation,
+                        r,
+                    )
+                })
             }
         }
     }

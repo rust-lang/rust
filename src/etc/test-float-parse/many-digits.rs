@@ -2,10 +2,10 @@ extern crate rand;
 
 mod _common;
 
-use std::char;
-use rand::{IsaacRng, Rng, SeedableRng};
-use rand::distributions::{Range, Sample};
 use _common::{validate, SEED};
+use rand::distributions::{Range, Sample};
+use rand::{IsaacRng, Rng, SeedableRng};
+use std::char;
 
 fn main() {
     let mut rnd = IsaacRng::from_seed(&SEED);

@@ -1,12 +1,28 @@
-error[E0070]: invalid left-hand side expression
-  --> $DIR/issue-26093.rs:3:9
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/issue-26093.rs:3:16
    |
 LL |         $thing = 42;
-   |         ^^^^^^^^^^^ left-hand of expression not valid
+   |                ^
 ...
 LL |     not_a_place!(99);
-   |     ----------------- in this macro invocation
+   |     -----------------
+   |     |            |
+   |     |            cannot assign to this expression
+   |     in this macro invocation
 
-error: aborting due to previous error
+error[E0067]: invalid left-hand side of assignment
+  --> $DIR/issue-26093.rs:5:16
+   |
+LL |         $thing += 42;
+   |                ^^
+...
+LL |     not_a_place!(99);
+   |     -----------------
+   |     |            |
+   |     |            cannot assign to this expression
+   |     in this macro invocation
 
-For more information about this error, try `rustc --explain E0070`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0067, E0070.
+For more information about an error, try `rustc --explain E0067`.

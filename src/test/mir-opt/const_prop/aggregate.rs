@@ -19,7 +19,7 @@ fn main() {
 //      ...
 //      _3 = (const 0i32, const 1i32, const 2i32);
 //      _2 = const 1i32;
-//      _1 = Add(move _2, const 0i32);
+//      _1 = const 1i32;
 //      ...
 //  }
 // END rustc.main.ConstProp.after.mir

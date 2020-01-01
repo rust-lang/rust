@@ -25,7 +25,7 @@ fn main() {
 //      _2 = const 2u8;
 //      ...
 //      _4 = const 2u8;
-//      _1 = Add(move _2, move _4);
+//      _1 = const 4u8;
 //      ...
 //  }
 // END rustc.main.ConstProp.after.mir

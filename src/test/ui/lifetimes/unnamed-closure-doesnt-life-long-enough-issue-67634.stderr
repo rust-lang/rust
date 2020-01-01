@@ -1,0 +1,15 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/unnamed-closure-doesnt-life-long-enough-issue-67634.rs:2:49
+   |
+LL |     [0].iter().flat_map(|a| [0].iter().map(|_| &a));
+   |                                             -   ^- ...but `a` will be dropped here, when the enclosing closure returns
+   |                                             |   |
+   |                                             |   `a` would have to be valid for `'_`...
+   |                                             has type `&i32`
+   |
+   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

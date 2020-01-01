@@ -3,7 +3,6 @@
 //! This module contains the code for creating and emitting diagnostics.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
 #![feature(crate_visibility_modifier)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
@@ -13,31 +12,31 @@ pub use emitter::ColorConfig;
 
 use Level::*;
 
-use emitter::{Emitter, EmitterWriter, is_case_difference};
+use emitter::{is_case_difference, Emitter, EmitterWriter};
 use registry::Registry;
-use rustc_data_structures::sync::{self, Lrc, Lock};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
-use syntax_pos::source_map::SourceMap;
-use syntax_pos::{Loc, Span, MultiSpan};
+use rustc_data_structures::sync::{self, Lock, Lrc};
+use rustc_data_structures::AtomicRef;
+use rustc_span::source_map::SourceMap;
+use rustc_span::{Loc, MultiSpan, Span};
 
 use std::borrow::Cow;
-use std::cell::Cell;
-use std::{error, fmt};
 use std::panic;
 use std::path::Path;
+use std::{error, fmt};
 
-use termcolor::{ColorSpec, Color};
+use termcolor::{Color, ColorSpec};
 
+pub mod annotate_snippet_emitter_writer;
 mod diagnostic;
 mod diagnostic_builder;
 pub mod emitter;
-pub mod annotate_snippet_emitter_writer;
-mod snippet;
-pub mod registry;
-mod styled_buffer;
-mod lock;
 pub mod json;
+mod lock;
+pub mod registry;
+mod snippet;
+mod styled_buffer;
 pub use snippet::Style;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
@@ -146,16 +145,15 @@ pub struct SubstitutionPart {
 impl CodeSuggestion {
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
-    pub fn splice_lines(
-        &self,
-        cm: &SourceMap,
-    ) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
-        use syntax_pos::{CharPos, Pos};
+    pub fn splice_lines(&self, cm: &SourceMap) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
+        use rustc_span::{CharPos, Pos};
 
-        fn push_trailing(buf: &mut String,
-                         line_opt: Option<&Cow<'_, str>>,
-                         lo: &Loc,
-                         hi_opt: Option<&Loc>) {
+        fn push_trailing(
+            buf: &mut String,
+            line_opt: Option<&Cow<'_, str>>,
+            lo: &Loc,
+            hi_opt: Option<&Loc>,
+        ) {
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
             if let Some(line) = line_opt {
                 if let Some(lo) = line.char_indices().map(|(i, _)| i).nth(lo) {
@@ -174,71 +172,75 @@ impl CodeSuggestion {
 
         assert!(!self.substitutions.is_empty());
 
-        self.substitutions.iter().cloned().map(|mut substitution| {
-            // Assumption: all spans are in the same file, and all spans
-            // are disjoint. Sort in ascending order.
-            substitution.parts.sort_by_key(|part| part.span.lo());
+        self.substitutions
+            .iter()
+            .cloned()
+            .map(|mut substitution| {
+                // Assumption: all spans are in the same file, and all spans
+                // are disjoint. Sort in ascending order.
+                substitution.parts.sort_by_key(|part| part.span.lo());
 
-            // Find the bounding span.
-            let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
-            let hi = substitution.parts.iter().map(|part| part.span.hi()).min().unwrap();
-            let bounding_span = Span::with_root_ctxt(lo, hi);
-            let lines = cm.span_to_lines(bounding_span).unwrap();
-            assert!(!lines.lines.is_empty());
+                // Find the bounding span.
+                let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
+                let hi = substitution.parts.iter().map(|part| part.span.hi()).min().unwrap();
+                let bounding_span = Span::with_root_ctxt(lo, hi);
+                let lines = cm.span_to_lines(bounding_span).unwrap();
+                assert!(!lines.lines.is_empty());
 
-            // To build up the result, we do this for each span:
-            // - push the line segment trailing the previous span
-            //   (at the beginning a "phantom" span pointing at the start of the line)
-            // - push lines between the previous and current span (if any)
-            // - if the previous and current span are not on the same line
-            //   push the line segment leading up to the current span
-            // - splice in the span substitution
-            //
-            // Finally push the trailing line segment of the last span
-            let fm = &lines.file;
-            let mut prev_hi = cm.lookup_char_pos(bounding_span.lo());
-            prev_hi.col = CharPos::from_usize(0);
+                // To build up the result, we do this for each span:
+                // - push the line segment trailing the previous span
+                //   (at the beginning a "phantom" span pointing at the start of the line)
+                // - push lines between the previous and current span (if any)
+                // - if the previous and current span are not on the same line
+                //   push the line segment leading up to the current span
+                // - splice in the span substitution
+                //
+                // Finally push the trailing line segment of the last span
+                let fm = &lines.file;
+                let mut prev_hi = cm.lookup_char_pos(bounding_span.lo());
+                prev_hi.col = CharPos::from_usize(0);
 
-            let mut prev_line = fm.get_line(lines.lines[0].line_index);
-            let mut buf = String::new();
+                let mut prev_line = fm.get_line(lines.lines[0].line_index);
+                let mut buf = String::new();
 
-            for part in &substitution.parts {
-                let cur_lo = cm.lookup_char_pos(part.span.lo());
-                if prev_hi.line == cur_lo.line {
-                    push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
-                } else {
-                    push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
-                    // push lines between the previous and current span (if any)
-                    for idx in prev_hi.line..(cur_lo.line - 1) {
-                        if let Some(line) = fm.get_line(idx) {
-                            buf.push_str(line.as_ref());
-                            buf.push('\n');
+                for part in &substitution.parts {
+                    let cur_lo = cm.lookup_char_pos(part.span.lo());
+                    if prev_hi.line == cur_lo.line {
+                        push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
+                    } else {
+                        push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
+                        // push lines between the previous and current span (if any)
+                        for idx in prev_hi.line..(cur_lo.line - 1) {
+                            if let Some(line) = fm.get_line(idx) {
+                                buf.push_str(line.as_ref());
+                                buf.push('\n');
+                            }
+                        }
+                        if let Some(cur_line) = fm.get_line(cur_lo.line - 1) {
+                            let end = std::cmp::min(cur_line.len(), cur_lo.col.to_usize());
+                            buf.push_str(&cur_line[..end]);
                         }
                     }
-                    if let Some(cur_line) = fm.get_line(cur_lo.line - 1) {
-                        let end = std::cmp::min(cur_line.len(), cur_lo.col.to_usize());
-                        buf.push_str(&cur_line[..end]);
-                    }
+                    buf.push_str(&part.snippet);
+                    prev_hi = cm.lookup_char_pos(part.span.hi());
+                    prev_line = fm.get_line(prev_hi.line - 1);
                 }
-                buf.push_str(&part.snippet);
-                prev_hi = cm.lookup_char_pos(part.span.hi());
-                prev_line = fm.get_line(prev_hi.line - 1);
-            }
-            let only_capitalization = is_case_difference(cm, &buf, bounding_span);
-            // if the replacement already ends with a newline, don't print the next line
-            if !buf.ends_with('\n') {
-                push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
-            }
-            // remove trailing newlines
-            while buf.ends_with('\n') {
-                buf.pop();
-            }
-            (buf, substitution.parts, only_capitalization)
-        }).collect()
+                let only_capitalization = is_case_difference(cm, &buf, bounding_span);
+                // if the replacement already ends with a newline, don't print the next line
+                if !buf.ends_with('\n') {
+                    push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
+                }
+                // remove trailing newlines
+                while buf.ends_with('\n') {
+                    buf.pop();
+                }
+                (buf, substitution.parts, only_capitalization)
+            })
+            .collect()
     }
 }
 
-pub use syntax_pos::fatal_error::{FatalError, FatalErrorMarker};
+pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
@@ -251,13 +253,9 @@ impl fmt::Display for ExplicitBug {
     }
 }
 
-impl error::Error for ExplicitBug {
-    fn description(&self) -> &str {
-        "The parser has encountered an internal bug"
-    }
-}
+impl error::Error for ExplicitBug {}
 
-pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString, DiagnosticId};
+pub use diagnostic::{Diagnostic, DiagnosticId, DiagnosticStyledString, SubDiagnostic};
 pub use diagnostic_builder::DiagnosticBuilder;
 
 /// A handler deals with errors and other compiler output.
@@ -311,8 +309,8 @@ pub enum StashKey {
 
 fn default_track_diagnostic(_: &Diagnostic) {}
 
-thread_local!(pub static TRACK_DIAGNOSTICS: Cell<fn(&Diagnostic)> =
-                Cell::new(default_track_diagnostic));
+pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&Diagnostic)> =
+    AtomicRef::new(&(default_track_diagnostic as fn(&_)));
 
 #[derive(Copy, Clone, Default)]
 pub struct HandlerFlags {
@@ -360,11 +358,7 @@ impl Handler {
         Self::with_tty_emitter_and_flags(
             color_config,
             cm,
-            HandlerFlags {
-                can_emit_warnings,
-                treat_err_as_bug,
-                .. Default::default()
-            },
+            HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
         )
     }
 
@@ -391,17 +385,13 @@ impl Handler {
     ) -> Self {
         Handler::with_emitter_and_flags(
             emitter,
-            HandlerFlags {
-                can_emit_warnings,
-                treat_err_as_bug,
-                .. Default::default()
-            },
+            HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
         )
     }
 
     pub fn with_emitter_and_flags(
         emitter: Box<dyn Emitter + sync::Send>,
-        flags: HandlerFlags
+        flags: HandlerFlags,
     ) -> Self {
         Self {
             flags,
@@ -457,7 +447,10 @@ impl Handler {
             old_diag.level = Bug;
             old_diag.note(&format!(
                 "{}:{}: already existing stashed diagnostic with (span = {:?}, key = {:?})",
-                file!(), line!(), span, key
+                file!(),
+                line!(),
+                span,
+                key
             ));
             inner.emit_diag_at_span(old_diag, span);
             panic!(ExplicitBug);
@@ -737,9 +730,7 @@ impl HandlerInner {
             return;
         }
 
-        TRACK_DIAGNOSTICS.with(|track_diagnostics| {
-            track_diagnostics.get()(diagnostic);
-        });
+        (*TRACK_DIAGNOSTICS)(diagnostic);
 
         if let Some(ref code) = diagnostic.code {
             self.emitted_diagnostic_codes.insert(code.clone());
@@ -779,7 +770,7 @@ impl HandlerInner {
         let s = match self.deduplicated_err_count {
             0 => return,
             1 => "aborting due to previous error".to_string(),
-            count => format!("aborting due to {} previous errors", count)
+            count => format!("aborting due to {} previous errors", count),
         };
         if self.treat_err_as_bug() {
             return;
@@ -804,16 +795,22 @@ impl HandlerInner {
                 error_codes.sort();
                 if error_codes.len() > 1 {
                     let limit = if error_codes.len() > 9 { 9 } else { error_codes.len() };
-                    self.failure(&format!("Some errors have detailed explanations: {}{}",
-                                          error_codes[..limit].join(", "),
-                                          if error_codes.len() > 9 { "..." } else { "." }));
-                    self.failure(&format!("For more information about an error, try \
+                    self.failure(&format!(
+                        "Some errors have detailed explanations: {}{}",
+                        error_codes[..limit].join(", "),
+                        if error_codes.len() > 9 { "..." } else { "." }
+                    ));
+                    self.failure(&format!(
+                        "For more information about an error, try \
                                            `rustc --explain {}`.",
-                                          &error_codes[0]));
+                        &error_codes[0]
+                    ));
                 } else {
-                    self.failure(&format!("For more information about this error, try \
+                    self.failure(&format!(
+                        "For more information about this error, try \
                                            `rustc --explain {}`.",
-                                          &error_codes[0]));
+                        &error_codes[0]
+                    ));
                 }
             }
         }
@@ -880,7 +877,7 @@ impl HandlerInner {
     }
 
     /// Emit an error; level should be `Error` or `Fatal`.
-    fn emit_error(&mut self, level: Level, msg: &str,) {
+    fn emit_error(&mut self, level: Level, msg: &str) {
         if self.treat_err_as_bug() {
             self.bug(msg);
         }
@@ -910,13 +907,10 @@ impl HandlerInner {
                 (0, _) => return,
                 (1, 1) => "aborting due to `-Z treat-err-as-bug=1`".to_string(),
                 (1, _) => return,
-                (count, as_bug) => {
-                    format!(
-                        "aborting after {} errors due to `-Z treat-err-as-bug={}`",
-                        count,
-                        as_bug,
-                    )
-                }
+                (count, as_bug) => format!(
+                    "aborting after {} errors due to `-Z treat-err-as-bug={}`",
+                    count, as_bug,
+                ),
             };
             panic!(s);
         }
@@ -946,20 +940,16 @@ impl Level {
         let mut spec = ColorSpec::new();
         match self {
             Bug | Fatal | Error => {
-                spec.set_fg(Some(Color::Red))
-                    .set_intense(true);
+                spec.set_fg(Some(Color::Red)).set_intense(true);
             }
             Warning => {
-                spec.set_fg(Some(Color::Yellow))
-                    .set_intense(cfg!(windows));
+                spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
             }
             Note => {
-                spec.set_fg(Some(Color::Green))
-                    .set_intense(true);
+                spec.set_fg(Some(Color::Green)).set_intense(true);
             }
             Help => {
-                spec.set_fg(Some(Color::Cyan))
-                    .set_intense(true);
+                spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
             Cancelled => unreachable!(),

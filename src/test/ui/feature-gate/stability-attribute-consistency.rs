@@ -9,7 +9,7 @@ fn foo_stable_1_0_0() {}
 //~^ ERROR feature `foo` is declared stable since 1.29.0
 fn foo_stable_1_29_0() {}
 
-#[unstable(feature = "foo", issue = "0")]
+#[unstable(feature = "foo", issue = "none")]
 //~^ ERROR feature `foo` is declared unstable
 fn foo_unstable() {}
 

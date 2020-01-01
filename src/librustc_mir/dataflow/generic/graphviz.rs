@@ -7,8 +7,8 @@ use rustc::mir::{self, BasicBlock, Body, Location};
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::Idx;
 
-use crate::util::graphviz_safe_def_name;
 use super::{Analysis, Results, ResultsRefCursor};
+use crate::util::graphviz_safe_def_name;
 
 pub struct Formatter<'a, 'tcx, A>
 where
@@ -25,22 +25,14 @@ impl<A> Formatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    pub fn new(
-        body: &'a Body<'tcx>,
-        def_id: DefId,
-        results: &'a Results<'tcx, A>,
-    ) -> Self {
+    pub fn new(body: &'a Body<'tcx>, def_id: DefId, results: &'a Results<'tcx, A>) -> Self {
         let block_formatter = BlockFormatter {
             bg: Background::Light,
             prev_state: BitSet::new_empty(results.analysis.bits_per_block(body)),
             results: ResultsRefCursor::new(body, results),
         };
 
-        Formatter {
-            body,
-            def_id,
-            block_formatter: RefCell::new(block_formatter),
-        }
+        Formatter { body, def_id, block_formatter: RefCell::new(block_formatter) }
     }
 }
 
@@ -78,10 +70,7 @@ where
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
         let mut label = Vec::new();
-        self.block_formatter
-            .borrow_mut()
-            .write_node_label(&mut label, self.body, *block)
-            .unwrap();
+        self.block_formatter.borrow_mut().write_node_label(&mut label, self.body, *block).unwrap();
         dot::LabelText::html(String::from_utf8(label).unwrap())
     }
 
@@ -90,12 +79,7 @@ where
     }
 
     fn edge_label(&self, e: &Self::Edge) -> dot::LabelText<'_> {
-        let label = &self.body
-            [e.source]
-            .terminator()
-            .kind
-            .fmt_successor_labels()
-            [e.index];
+        let label = &self.body[e.source].terminator().kind.fmt_successor_labels()[e.index];
         dot::LabelText::label(label.clone())
     }
 }
@@ -108,11 +92,7 @@ where
     type Edge = CfgEdge;
 
     fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
-        self.body
-            .basic_blocks()
-            .indices()
-            .collect::<Vec<_>>()
-            .into()
+        self.body.basic_blocks().indices().collect::<Vec<_>>().into()
     }
 
     fn edges(&self) -> dot::Edges<'_, Self::Edge> {
@@ -129,13 +109,7 @@ where
     }
 
     fn target(&self, edge: &Self::Edge) -> Self::Node {
-        self.body
-            [edge.source]
-            .terminator()
-            .successors()
-            .nth(edge.index)
-            .copied()
-            .unwrap()
+        self.body[edge.source].terminator().successors().nth(edge.index).copied().unwrap()
     }
 }
 
@@ -240,7 +214,7 @@ where
         self.prev_state.overwrite(self.results.get());
 
         // F: Exit state
-        if let mir::TerminatorKind::Call { destination: Some(_), ..  } = &terminator.kind {
+        if let mir::TerminatorKind::Call { destination: Some(_), .. } = &terminator.kind {
             self.write_row_with_curr_state(w, "", "(on unwind)")?;
 
             self.results.seek_after_assume_call_returns(location);
@@ -354,10 +328,7 @@ impl<T: Idx> BitSetDiff<T> {
             };
         }
 
-        BitSetDiff {
-            set,
-            clear,
-        }
+        BitSetDiff { set, clear }
     }
 }
 

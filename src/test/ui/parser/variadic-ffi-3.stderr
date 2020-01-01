@@ -1,9 +1,0 @@
-error[E0743]: only foreign functions are allowed to be C-variadic
-  --> $DIR/variadic-ffi-3.rs:1:18
-   |
-LL | fn foo(x: isize, ...) {
-   |                  ^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0743`.

@@ -280,7 +280,7 @@ pub use self::error::{Error, ErrorKind, Result};
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
-#[unstable(feature = "print_internals", issue = "0")]
+#[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
@@ -2765,8 +2765,7 @@ mod tests {
         let buf1 = [1; 8];
         let buf2 = [2; 16];
         let buf3 = [3; 8];
-        let mut bufs =
-            &mut [IoSlice::new(&buf1), IoSlice::new(&buf2), IoSlice::new(&buf3)][..];
+        let mut bufs = &mut [IoSlice::new(&buf1), IoSlice::new(&buf2), IoSlice::new(&buf3)][..];
 
         // Only in a single buffer..
         bufs = IoSlice::advance(bufs, 1);

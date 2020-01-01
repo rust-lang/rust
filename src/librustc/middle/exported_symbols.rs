@@ -1,10 +1,10 @@
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+use crate::ty::subst::SubstsRef;
+use crate::ty::{self, TyCtxt};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::cmp;
 use std::mem;
-use crate::ty::{self, TyCtxt};
-use crate::ty::subst::SubstsRef;
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
 /// the symbol will be exported. `C` symbols will be exported from any
@@ -34,15 +34,11 @@ pub enum ExportedSymbol<'tcx> {
 impl<'tcx> ExportedSymbol<'tcx> {
     pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> ty::SymbolName {
         match *self {
-            ExportedSymbol::NonGeneric(def_id) => {
-                tcx.symbol_name(ty::Instance::mono(tcx, def_id))
-            }
+            ExportedSymbol::NonGeneric(def_id) => tcx.symbol_name(ty::Instance::mono(tcx, def_id)),
             ExportedSymbol::Generic(def_id, substs) => {
                 tcx.symbol_name(ty::Instance::new(def_id, substs))
             }
-            ExportedSymbol::NoDefId(symbol_name) => {
-                symbol_name
-            }
+            ExportedSymbol::NoDefId(symbol_name) => symbol_name,
         }
     }
 
@@ -52,39 +48,31 @@ impl<'tcx> ExportedSymbol<'tcx> {
                 ExportedSymbol::NonGeneric(other_def_id) => {
                     tcx.def_path_hash(self_def_id).cmp(&tcx.def_path_hash(other_def_id))
                 }
-                ExportedSymbol::Generic(..) |
-                ExportedSymbol::NoDefId(_) => {
-                    cmp::Ordering::Less
-                }
-            }
+                ExportedSymbol::Generic(..) | ExportedSymbol::NoDefId(_) => cmp::Ordering::Less,
+            },
             ExportedSymbol::Generic(..) => match *other {
-                ExportedSymbol::NonGeneric(_) => {
-                    cmp::Ordering::Greater
-                }
-                ExportedSymbol::Generic(..) => {
-                    self.symbol_name(tcx).cmp(&other.symbol_name(tcx))
-                }
-                ExportedSymbol::NoDefId(_) => {
-                    cmp::Ordering::Less
-                }
-            }
+                ExportedSymbol::NonGeneric(_) => cmp::Ordering::Greater,
+                ExportedSymbol::Generic(..) => self.symbol_name(tcx).cmp(&other.symbol_name(tcx)),
+                ExportedSymbol::NoDefId(_) => cmp::Ordering::Less,
+            },
             ExportedSymbol::NoDefId(self_symbol_name) => match *other {
-                ExportedSymbol::NonGeneric(_) |
-                ExportedSymbol::Generic(..) => {
+                ExportedSymbol::NonGeneric(_) | ExportedSymbol::Generic(..) => {
                     cmp::Ordering::Greater
                 }
                 ExportedSymbol::NoDefId(ref other_symbol_name) => {
                     self_symbol_name.cmp(other_symbol_name)
                 }
-            }
+            },
         }
     }
 }
 
 pub fn metadata_symbol_name(tcx: TyCtxt<'_>) -> String {
-    format!("rust_metadata_{}_{}",
-            tcx.original_crate_name(LOCAL_CRATE),
-            tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex())
+    format!(
+        "rust_metadata_{}_{}",
+        tcx.original_crate_name(LOCAL_CRATE),
+        tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex()
+    )
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ExportedSymbol<'tcx> {

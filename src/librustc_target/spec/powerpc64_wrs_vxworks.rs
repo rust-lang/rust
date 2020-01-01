@@ -17,8 +17,6 @@ pub fn target() -> TargetResult {
         target_env: "gnu".to_string(),
         target_vendor: "wrs".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
-        options: TargetOptions {
-            .. base
-        },
+        options: TargetOptions { ..base },
     })
 }

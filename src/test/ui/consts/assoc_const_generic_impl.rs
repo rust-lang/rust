@@ -1,3 +1,5 @@
+// build-fail
+
 #![warn(const_err)]
 
 trait ZeroSized: Sized {

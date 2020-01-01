@@ -6,7 +6,7 @@
 //
 // For example, `-C target-cpu=cortex-a53`.
 
-use super::{LldFlavor, LinkerFlavor, Target, TargetOptions, PanicStrategy};
+use super::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
@@ -19,7 +19,7 @@ pub fn target() -> Result<Target, String> {
         max_atomic_width: Some(128),
         panic_strategy: PanicStrategy::Abort,
         abi_blacklist: super::arm_base::abi_blacklist(),
-        .. Default::default()
+        ..Default::default()
     };
     Ok(Target {
         llvm_target: "aarch64-unknown-none".to_string(),

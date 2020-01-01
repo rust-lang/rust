@@ -10,10 +10,7 @@ pub struct Subtype<'tcx> {
 
 impl<'tcx> Subtype<'tcx> {
     pub fn new(sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
-        Self {
-            sub,
-            sup,
-        }
+        Self { sub, sup }
     }
 }
 
@@ -21,11 +18,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for Subtype<'tcx> {
     type QueryResponse = ();
 
     fn try_fast_path(_tcx: TyCtxt<'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<()> {
-        if key.value.sub == key.value.sup {
-            Some(())
-        } else {
-            None
-        }
+        if key.value.sub == key.value.sup { Some(()) } else { None }
     }
 
     fn perform_query(

@@ -2,7 +2,7 @@ warning: irrefutable if-let pattern
   --> $DIR/if-let.rs:6:13
    |
 LL |               if let $p = $e $b
-   |               ^^
+   |               ^^^^^^^^^^^^^^^^^
 ...
 LL | /     foo!(a, 1, {
 LL | |         println!("irrefutable pattern");
@@ -15,7 +15,7 @@ warning: irrefutable if-let pattern
   --> $DIR/if-let.rs:6:13
    |
 LL |               if let $p = $e $b
-   |               ^^
+   |               ^^^^^^^^^^^^^^^^^
 ...
 LL | /     bar!(a, 1, {
 LL | |         println!("irrefutable pattern");

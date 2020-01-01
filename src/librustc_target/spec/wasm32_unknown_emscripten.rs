@@ -1,17 +1,20 @@
 use super::wasm32_base;
-use super::{LinkArgs, LinkerFlavor, Target, TargetOptions, PanicStrategy};
+use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Result<Target, String> {
     let mut post_link_args = LinkArgs::new();
-    post_link_args.insert(LinkerFlavor::Em,
-                          vec!["-s".to_string(),
-                               "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string(),
-                               "-s".to_string(),
-                               "ASSERTIONS=1".to_string(),
-                               "-s".to_string(),
-                               "ABORTING_MALLOC=0".to_string(),
-                               "-Wl,--fatal-warnings".to_string(),
-                               ]);
+    post_link_args.insert(
+        LinkerFlavor::Em,
+        vec![
+            "-s".to_string(),
+            "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string(),
+            "-s".to_string(),
+            "ASSERTIONS=1".to_string(),
+            "-s".to_string(),
+            "ABORTING_MALLOC=0".to_string(),
+            "-Wl,--fatal-warnings".to_string(),
+        ],
+    );
 
     let opts = TargetOptions {
         // emcc emits two files - a .js file to instantiate the wasm and supply platform
@@ -23,7 +26,7 @@ pub fn target() -> Result<Target, String> {
         panic_strategy: PanicStrategy::Unwind,
         post_link_args,
         target_family: Some("unix".to_string()),
-        .. wasm32_base::options()
+        ..wasm32_base::options()
     };
     Ok(Target {
         llvm_target: "wasm32-unknown-emscripten".to_string(),

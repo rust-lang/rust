@@ -2,9 +2,9 @@
 
 use std::cmp;
 use std::hash::Hasher;
-use std::slice;
-use std::ptr;
 use std::mem;
+use std::ptr;
+use std::slice;
 
 #[cfg(test)]
 mod tests;
@@ -14,9 +14,9 @@ pub struct SipHasher128 {
     k0: u64,
     k1: u64,
     length: usize, // how many bytes we've processed
-    state: State, // hash State
-    tail: u64, // unprocessed bytes le
-    ntail: usize, // how many bytes in tail are valid
+    state: State,  // hash State
+    tail: u64,     // unprocessed bytes le
+    ntail: usize,  // how many bytes in tail are valid
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -33,18 +33,23 @@ struct State {
 }
 
 macro_rules! compress {
-    ($state:expr) => ({
-        compress!($state.v0, $state.v1, $state.v2, $state.v3)
-    });
-    ($v0:expr, $v1:expr, $v2:expr, $v3:expr) =>
-    ({
-        $v0 = $v0.wrapping_add($v1); $v1 = $v1.rotate_left(13); $v1 ^= $v0;
+    ($state:expr) => {{ compress!($state.v0, $state.v1, $state.v2, $state.v3) }};
+    ($v0:expr, $v1:expr, $v2:expr, $v3:expr) => {{
+        $v0 = $v0.wrapping_add($v1);
+        $v1 = $v1.rotate_left(13);
+        $v1 ^= $v0;
         $v0 = $v0.rotate_left(32);
-        $v2 = $v2.wrapping_add($v3); $v3 = $v3.rotate_left(16); $v3 ^= $v2;
-        $v0 = $v0.wrapping_add($v3); $v3 = $v3.rotate_left(21); $v3 ^= $v0;
-        $v2 = $v2.wrapping_add($v1); $v1 = $v1.rotate_left(17); $v1 ^= $v2;
+        $v2 = $v2.wrapping_add($v3);
+        $v3 = $v3.rotate_left(16);
+        $v3 ^= $v2;
+        $v0 = $v0.wrapping_add($v3);
+        $v3 = $v3.rotate_left(21);
+        $v3 ^= $v0;
+        $v2 = $v2.wrapping_add($v1);
+        $v1 = $v1.rotate_left(17);
+        $v1 ^= $v2;
         $v2 = $v2.rotate_left(32);
-    });
+    }};
 }
 
 /// Loads an integer of the desired type from a byte stream, in LE order. Uses
@@ -53,15 +58,16 @@ macro_rules! compress {
 ///
 /// Unsafe because: unchecked indexing at i..i+size_of(int_ty)
 macro_rules! load_int_le {
-    ($buf:expr, $i:expr, $int_ty:ident) =>
-    ({
-       debug_assert!($i + mem::size_of::<$int_ty>() <= $buf.len());
-       let mut data = 0 as $int_ty;
-       ptr::copy_nonoverlapping($buf.get_unchecked($i),
-                                &mut data as *mut _ as *mut u8,
-                                mem::size_of::<$int_ty>());
-       data.to_le()
-    });
+    ($buf:expr, $i:expr, $int_ty:ident) => {{
+        debug_assert!($i + mem::size_of::<$int_ty>() <= $buf.len());
+        let mut data = 0 as $int_ty;
+        ptr::copy_nonoverlapping(
+            $buf.get_unchecked($i),
+            &mut data as *mut _ as *mut u8,
+            mem::size_of::<$int_ty>(),
+        );
+        data.to_le()
+    }};
 }
 
 /// Loads an u64 using up to 7 bytes of a byte slice.
@@ -88,7 +94,6 @@ unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
     out
 }
 
-
 impl SipHasher128 {
     #[inline]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher128 {
@@ -96,12 +101,7 @@ impl SipHasher128 {
             k0: key0,
             k1: key1,
             length: 0,
-            state: State {
-                v0: 0,
-                v1: 0,
-                v2: 0,
-                v3: 0,
-            },
+            state: State { v0: 0, v1: 0, v2: 0, v3: 0 },
             tail: 0,
             ntail: 0,
         };
@@ -155,9 +155,8 @@ impl SipHasher128 {
 
     #[inline(always)]
     fn short_write_gen<T>(&mut self, x: T) {
-        let bytes = unsafe {
-            slice::from_raw_parts(&x as *const T as *const u8, mem::size_of::<T>())
-        };
+        let bytes =
+            unsafe { slice::from_raw_parts(&x as *const T as *const u8, mem::size_of::<T>()) };
         self.short_write(bytes);
     }
 
@@ -243,7 +242,7 @@ impl Hasher for SipHasher128 {
             self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << (8 * self.ntail);
             if length < needed {
                 self.ntail += length;
-                return
+                return;
             } else {
                 self.state.v3 ^= self.tail;
                 Sip24Rounds::c_rounds(&mut self.state);

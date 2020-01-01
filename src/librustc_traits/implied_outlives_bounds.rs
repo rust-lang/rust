@@ -2,24 +2,21 @@
 //! Do not call this query directory. See [`rustc::traits::query::implied_outlives_bounds`].
 
 use rustc::hir;
-use rustc::infer::InferCtxt;
 use rustc::infer::canonical::{self, Canonical};
-use rustc::traits::{TraitEngine, TraitEngineExt};
+use rustc::infer::InferCtxt;
 use rustc::traits::query::outlives_bounds::OutlivesBound;
 use rustc::traits::query::{CanonicalTyGoal, Fallible, NoSolution};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::traits::FulfillmentContext;
+use rustc::traits::{TraitEngine, TraitEngineExt};
 use rustc::ty::outlives::Component;
 use rustc::ty::query::Providers;
 use rustc::ty::wf;
-use smallvec::{SmallVec, smallvec};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use smallvec::{smallvec, SmallVec};
 use syntax::source_map::DUMMY_SP;
-use rustc::traits::FulfillmentContext;
 
 crate fn provide(p: &mut Providers<'_>) {
-    *p = Providers {
-        implied_outlives_bounds,
-        ..*p
-    };
+    *p = Providers { implied_outlives_bounds, ..*p };
 }
 
 fn implied_outlives_bounds<'tcx>(
@@ -29,11 +26,10 @@ fn implied_outlives_bounds<'tcx>(
     &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
     NoSolution,
 > {
-    tcx.infer_ctxt()
-       .enter_canonical_trait_query(&goal, |infcx, _fulfill_cx, key| {
-           let (param_env, ty) = key.into_parts();
-           compute_implied_outlives_bounds(&infcx, param_env, ty)
-       })
+    tcx.infer_ctxt().enter_canonical_trait_query(&goal, |infcx, _fulfill_cx, key| {
+        let (param_env, ty) = key.into_parts();
+        compute_implied_outlives_bounds(&infcx, param_env, ty)
+    })
 }
 
 fn compute_implied_outlives_bounds<'tcx>(
@@ -88,10 +84,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // to avoids duplicate errors that otherwise show up.
         fulfill_cx.register_predicate_obligations(
             infcx,
-            obligations
-                .iter()
-                .filter(|o| o.predicate.has_infer_types())
-                .cloned(),
+            obligations.iter().filter(|o| o.predicate.has_infer_types()).cloned(),
         );
 
         // From the full set of obligations, just filter down to the
@@ -99,12 +92,12 @@ fn compute_implied_outlives_bounds<'tcx>(
         implied_bounds.extend(obligations.into_iter().flat_map(|obligation| {
             assert!(!obligation.has_escaping_bound_vars());
             match obligation.predicate {
-                ty::Predicate::Trait(..) |
-                ty::Predicate::Subtype(..) |
-                ty::Predicate::Projection(..) |
-                ty::Predicate::ClosureKind(..) |
-                ty::Predicate::ObjectSafe(..) |
-                ty::Predicate::ConstEvaluatable(..) => vec![],
+                ty::Predicate::Trait(..)
+                | ty::Predicate::Subtype(..)
+                | ty::Predicate::Projection(..)
+                | ty::Predicate::ClosureKind(..)
+                | ty::Predicate::ObjectSafe(..)
+                | ty::Predicate::ConstEvaluatable(..) => vec![],
 
                 ty::Predicate::WellFormed(subty) => {
                     wf_types.push(subty);
@@ -151,12 +144,9 @@ fn implied_bounds_from_components(
         .into_iter()
         .filter_map(|component| {
             match component {
-                Component::Region(r) =>
-                    Some(OutlivesBound::RegionSubRegion(sub_region, r)),
-                Component::Param(p) =>
-                    Some(OutlivesBound::RegionSubParam(sub_region, p)),
-                Component::Projection(p) =>
-                    Some(OutlivesBound::RegionSubProjection(sub_region, p)),
+                Component::Region(r) => Some(OutlivesBound::RegionSubRegion(sub_region, r)),
+                Component::Param(p) => Some(OutlivesBound::RegionSubParam(sub_region, p)),
+                Component::Projection(p) => Some(OutlivesBound::RegionSubProjection(sub_region, p)),
                 Component::EscapingProjection(_) =>
                 // If the projection has escaping regions, don't
                 // try to infer any implied bounds even for its
@@ -166,9 +156,10 @@ fn implied_bounds_from_components(
                 // idea is that the WAY that the caller proves
                 // that may change in the future and we want to
                 // give ourselves room to get smarter here.
-                    None,
-                Component::UnresolvedInferenceVariable(..) =>
-                    None,
+                {
+                    None
+                }
+                Component::UnresolvedInferenceVariable(..) => None,
             }
         })
         .collect()

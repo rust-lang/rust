@@ -1,7 +1,7 @@
 // This note is annotated because the purpose of the test
 // is to ensure that certain other notes are not generated.
 #![deny(unused_unsafe)] //~ NOTE
-#![allow(deprecated)]
+
 
 // (test that no note is generated on this unsafe fn)
 pub unsafe fn a() {
@@ -20,8 +20,8 @@ pub fn b() {
             unsafe { /* unnecessary */ } //~ ERROR unnecessary `unsafe`
                                          //~^ NOTE
         }
-
-        let () = ::std::mem::uninitialized();
+        // `()` is fine to zero-initialize as it is zero sized and inhabited.
+        let () = ::std::mem::zeroed();
 
         inner()
     }

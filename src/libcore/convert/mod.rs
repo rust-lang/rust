@@ -101,7 +101,7 @@ pub use num::FloatToInt;
 /// assert_eq!(vec![1, 3], filtered);
 /// ```
 #[stable(feature = "convert_id", since = "1.33.0")]
-#[cfg_attr(not(bootstrap), rustc_const_stable(feature = "const_identity", since = "1.33.0"))]
+#[rustc_const_stable(feature = "const_identity", since = "1.33.0")]
 #[inline]
 pub const fn identity<T>(x: T) -> T {
     x

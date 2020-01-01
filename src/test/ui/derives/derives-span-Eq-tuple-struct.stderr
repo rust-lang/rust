@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Error: std::cmp::Eq` is not satisfied
-  --> $DIR/derives-span-Eq-tuple-struct.rs:9:5
+  --> $DIR/derives-span-Eq-tuple-struct.rs:12:5
    |
 LL |     Error
    |     ^^^^^ the trait `std::cmp::Eq` is not implemented for `Error`

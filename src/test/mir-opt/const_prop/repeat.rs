@@ -30,7 +30,7 @@ fn main() {
 //  }
 //  bb1: {
 //      _2 = const 42u32;
-//      _1 = Add(move _2, const 0u32);
+//      _1 = const 42u32;
 //      ...
 //      return;
 //  }

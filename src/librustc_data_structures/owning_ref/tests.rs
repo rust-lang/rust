@@ -1,10 +1,10 @@
 mod owning_ref {
     use super::super::OwningRef;
-    use super::super::{RcRef, BoxRef, Erased, ErasedBoxRef};
-    use std::cmp::{PartialEq, Ord, PartialOrd, Ordering};
-    use std::hash::{Hash, Hasher};
+    use super::super::{BoxRef, Erased, ErasedBoxRef, RcRef};
+    use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
     use std::collections::hash_map::DefaultHasher;
     use std::collections::HashMap;
+    use std::hash::{Hash, Hasher};
     use std::rc::Rc;
 
     #[derive(Debug, PartialEq)]
@@ -60,9 +60,7 @@ mod owning_ref {
 
     #[test]
     fn map_chained_inference() {
-        let or = BoxRef::new(Box::new(example().1))
-            .map(|x| &x[..5])
-            .map(|x| &x[1..3]);
+        let or = BoxRef::new(Box::new(example().1)).map(|x| &x[..5]).map(|x| &x[1..3]);
         assert_eq!(&*or, "el");
     }
 
@@ -93,11 +91,9 @@ mod owning_ref {
 
     #[test]
     fn erased_owner() {
-        let o1: BoxRef<Example, str> = BoxRef::new(Box::new(example()))
-            .map(|x| &x.1[..]);
+        let o1: BoxRef<Example, str> = BoxRef::new(Box::new(example())).map(|x| &x.1[..]);
 
-        let o2: BoxRef<String, str> = BoxRef::new(Box::new(example().1))
-            .map(|x| &x[..]);
+        let o2: BoxRef<String, str> = BoxRef::new(Box::new(example().1)).map(|x| &x[..]);
 
         let os: Vec<ErasedBoxRef<str>> = vec![o1.erase_owner(), o2.erase_owner()];
         assert!(os.iter().all(|e| &e[..] == "hello world"));
@@ -105,9 +101,9 @@ mod owning_ref {
 
     #[test]
     fn raii_locks() {
-        use super::super::{RefRef, RefMutRef};
-        use std::cell::RefCell;
         use super::super::{MutexGuardRef, RwLockReadGuardRef, RwLockWriteGuardRef};
+        use super::super::{RefMutRef, RefRef};
+        use std::cell::RefCell;
         use std::sync::{Mutex, RwLock};
 
         {
@@ -200,7 +196,7 @@ mod owning_ref {
     #[test]
     fn borrow() {
         let mut hash = HashMap::new();
-        let     key  = RcRef::<String>::new(Rc::new("foo-bar".to_string())).map(|s| &s[..]);
+        let key = RcRef::<String>::new(Rc::new("foo-bar".to_string())).map(|s| &s[..]);
 
         hash.insert(key.clone().map(|s| &s[..3]), 42);
         hash.insert(key.clone().map(|s| &s[4..]), 23);
@@ -211,13 +207,12 @@ mod owning_ref {
 
     #[test]
     fn total_erase() {
-        let a: OwningRef<Vec<u8>, [u8]>
-            = OwningRef::new(vec![]).map(|x| &x[..]);
-        let b: OwningRef<Box<[u8]>, [u8]>
-            = OwningRef::new(vec![].into_boxed_slice()).map(|x| &x[..]);
+        let a: OwningRef<Vec<u8>, [u8]> = OwningRef::new(vec![]).map(|x| &x[..]);
+        let b: OwningRef<Box<[u8]>, [u8]> =
+            OwningRef::new(vec![].into_boxed_slice()).map(|x| &x[..]);
 
-        let c: OwningRef<Rc<Vec<u8>>, [u8]> = unsafe {a.map_owner(Rc::new)};
-        let d: OwningRef<Rc<Box<[u8]>>, [u8]> = unsafe {b.map_owner(Rc::new)};
+        let c: OwningRef<Rc<Vec<u8>>, [u8]> = unsafe { a.map_owner(Rc::new) };
+        let d: OwningRef<Rc<Box<[u8]>>, [u8]> = unsafe { b.map_owner(Rc::new) };
 
         let e: OwningRef<Rc<dyn Erased>, [u8]> = c.erase_owner();
         let f: OwningRef<Rc<dyn Erased>, [u8]> = d.erase_owner();
@@ -228,10 +223,9 @@ mod owning_ref {
 
     #[test]
     fn total_erase_box() {
-        let a: OwningRef<Vec<u8>, [u8]>
-            = OwningRef::new(vec![]).map(|x| &x[..]);
-        let b: OwningRef<Box<[u8]>, [u8]>
-            = OwningRef::new(vec![].into_boxed_slice()).map(|x| &x[..]);
+        let a: OwningRef<Vec<u8>, [u8]> = OwningRef::new(vec![]).map(|x| &x[..]);
+        let b: OwningRef<Box<[u8]>, [u8]> =
+            OwningRef::new(vec![].into_boxed_slice()).map(|x| &x[..]);
 
         let c: OwningRef<Box<Vec<u8>>, [u8]> = a.map_owner_box();
         let d: OwningRef<Box<Box<[u8]>>, [u8]> = b.map_owner_box();
@@ -264,8 +258,8 @@ mod owning_ref {
 mod owning_handle {
     use super::super::OwningHandle;
     use super::super::RcRef;
-    use std::rc::Rc;
     use std::cell::RefCell;
+    use std::rc::Rc;
     use std::sync::Arc;
     use std::sync::RwLock;
 
@@ -274,9 +268,8 @@ mod owning_handle {
         use std::cell::RefCell;
         let cell = Rc::new(RefCell::new(2));
         let cell_ref = RcRef::new(cell);
-        let mut handle = OwningHandle::new_with_fn(cell_ref, |x| {
-            unsafe { x.as_ref() }.unwrap().borrow_mut()
-        });
+        let mut handle =
+            OwningHandle::new_with_fn(cell_ref, |x| unsafe { x.as_ref() }.unwrap().borrow_mut());
         assert_eq!(*handle, 2);
         *handle = 3;
         assert_eq!(*handle, 3);
@@ -288,10 +281,9 @@ mod owning_handle {
         let cell = Rc::new(RefCell::new(2));
         let cell_ref = RcRef::new(cell);
         let mut handle = OwningHandle::try_new::<_, ()>(cell_ref, |x| {
-            Ok(unsafe {
-                x.as_ref()
-            }.unwrap().borrow_mut())
-        }).unwrap();
+            Ok(unsafe { x.as_ref() }.unwrap().borrow_mut())
+        })
+        .unwrap();
         assert_eq!(*handle, 2);
         *handle = 3;
         assert_eq!(*handle, 3);
@@ -304,9 +296,7 @@ mod owning_handle {
         let cell_ref = RcRef::new(cell);
         let handle = OwningHandle::try_new::<_, ()>(cell_ref, |x| {
             if false {
-                return Ok(unsafe {
-                    x.as_ref()
-                }.unwrap().borrow_mut())
+                return Ok(unsafe { x.as_ref() }.unwrap().borrow_mut());
             }
             Err(())
         });
@@ -321,9 +311,8 @@ mod owning_handle {
         let result = {
             let complex = Rc::new(RefCell::new(Arc::new(RwLock::new("someString"))));
             let curr = RcRef::new(complex);
-            let curr = OwningHandle::new_with_fn(curr, |x| {
-                unsafe { x.as_ref() }.unwrap().borrow_mut()
-            });
+            let curr =
+                OwningHandle::new_with_fn(curr, |x| unsafe { x.as_ref() }.unwrap().borrow_mut());
             let mut curr = OwningHandle::new_with_fn(curr, |x| {
                 unsafe { x.as_ref() }.unwrap().try_write().unwrap()
             });
@@ -359,9 +348,8 @@ mod owning_handle {
         let result = {
             let complex = Rc::new(RefCell::new(Arc::new(RwLock::new("someString"))));
             let curr = RcRef::new(complex);
-            let curr = OwningHandle::new_with_fn(curr, |x| {
-                unsafe { x.as_ref() }.unwrap().borrow_mut()
-            });
+            let curr =
+                OwningHandle::new_with_fn(curr, |x| unsafe { x.as_ref() }.unwrap().borrow_mut());
             let mut curr = OwningHandle::new_with_fn(curr, |x| {
                 unsafe { x.as_ref() }.unwrap().try_write().unwrap()
             });
@@ -374,12 +362,12 @@ mod owning_handle {
 }
 
 mod owning_ref_mut {
-    use super::super::{OwningRefMut, BoxRefMut, Erased, ErasedBoxRefMut};
     use super::super::BoxRef;
-    use std::cmp::{PartialEq, Ord, PartialOrd, Ordering};
-    use std::hash::{Hash, Hasher};
+    use super::super::{BoxRefMut, Erased, ErasedBoxRefMut, OwningRefMut};
+    use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
     use std::collections::hash_map::DefaultHasher;
     use std::collections::HashMap;
+    use std::hash::{Hash, Hasher};
 
     #[derive(Debug, PartialEq)]
     struct Example(u32, String, [u8; 3]);
@@ -516,17 +504,16 @@ mod owning_ref_mut {
         let or: BoxRefMut<String> = Box::new(example().1).into();
         let or = or.map_mut(|x| &mut x[..5]);
         let s = format!("{:?}", or);
-        assert_eq!(&s,
-                   "OwningRefMut { owner: \"hello world\", reference: \"hello\" }");
+        assert_eq!(&s, "OwningRefMut { owner: \"hello world\", reference: \"hello\" }");
     }
 
     #[test]
     fn erased_owner() {
-        let o1: BoxRefMut<Example, str> = BoxRefMut::new(Box::new(example()))
-            .map_mut(|x| &mut x.1[..]);
+        let o1: BoxRefMut<Example, str> =
+            BoxRefMut::new(Box::new(example())).map_mut(|x| &mut x.1[..]);
 
-        let o2: BoxRefMut<String, str> = BoxRefMut::new(Box::new(example().1))
-            .map_mut(|x| &mut x[..]);
+        let o2: BoxRefMut<String, str> =
+            BoxRefMut::new(Box::new(example().1)).map_mut(|x| &mut x[..]);
 
         let os: Vec<ErasedBoxRefMut<str>> = vec![o1.erase_owner(), o2.erase_owner()];
         assert!(os.iter().all(|e| &e[..] == "hello world"));
@@ -535,8 +522,8 @@ mod owning_ref_mut {
     #[test]
     fn raii_locks() {
         use super::super::RefMutRefMut;
-        use std::cell::RefCell;
         use super::super::{MutexGuardRefMut, RwLockWriteGuardRefMut};
+        use std::cell::RefCell;
         use std::sync::{Mutex, RwLock};
 
         {
@@ -609,8 +596,8 @@ mod owning_ref_mut {
     #[test]
     fn borrow() {
         let mut hash = HashMap::new();
-        let     key1 = BoxRefMut::<String>::new(Box::new("foo".to_string())).map(|s| &s[..]);
-        let     key2 = BoxRefMut::<String>::new(Box::new("bar".to_string())).map(|s| &s[..]);
+        let key1 = BoxRefMut::<String>::new(Box::new("foo".to_string())).map(|s| &s[..]);
+        let key2 = BoxRefMut::<String>::new(Box::new("bar".to_string())).map(|s| &s[..]);
 
         hash.insert(key1, 42);
         hash.insert(key2, 23);
@@ -621,13 +608,12 @@ mod owning_ref_mut {
 
     #[test]
     fn total_erase() {
-        let a: OwningRefMut<Vec<u8>, [u8]>
-            = OwningRefMut::new(vec![]).map_mut(|x| &mut x[..]);
-        let b: OwningRefMut<Box<[u8]>, [u8]>
-            = OwningRefMut::new(vec![].into_boxed_slice()).map_mut(|x| &mut x[..]);
+        let a: OwningRefMut<Vec<u8>, [u8]> = OwningRefMut::new(vec![]).map_mut(|x| &mut x[..]);
+        let b: OwningRefMut<Box<[u8]>, [u8]> =
+            OwningRefMut::new(vec![].into_boxed_slice()).map_mut(|x| &mut x[..]);
 
-        let c: OwningRefMut<Box<Vec<u8>>, [u8]> = unsafe {a.map_owner(Box::new)};
-        let d: OwningRefMut<Box<Box<[u8]>>, [u8]> = unsafe {b.map_owner(Box::new)};
+        let c: OwningRefMut<Box<Vec<u8>>, [u8]> = unsafe { a.map_owner(Box::new) };
+        let d: OwningRefMut<Box<Box<[u8]>>, [u8]> = unsafe { b.map_owner(Box::new) };
 
         let _e: OwningRefMut<Box<dyn Erased>, [u8]> = c.erase_owner();
         let _f: OwningRefMut<Box<dyn Erased>, [u8]> = d.erase_owner();
@@ -635,10 +621,9 @@ mod owning_ref_mut {
 
     #[test]
     fn total_erase_box() {
-        let a: OwningRefMut<Vec<u8>, [u8]>
-            = OwningRefMut::new(vec![]).map_mut(|x| &mut x[..]);
-        let b: OwningRefMut<Box<[u8]>, [u8]>
-            = OwningRefMut::new(vec![].into_boxed_slice()).map_mut(|x| &mut x[..]);
+        let a: OwningRefMut<Vec<u8>, [u8]> = OwningRefMut::new(vec![]).map_mut(|x| &mut x[..]);
+        let b: OwningRefMut<Box<[u8]>, [u8]> =
+            OwningRefMut::new(vec![].into_boxed_slice()).map_mut(|x| &mut x[..]);
 
         let c: OwningRefMut<Box<Vec<u8>>, [u8]> = a.map_owner_box();
         let d: OwningRefMut<Box<Box<[u8]>>, [u8]> = b.map_owner_box();

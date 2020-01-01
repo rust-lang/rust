@@ -1,0 +1,13 @@
+error[E0271]: type mismatch resolving `for<'a> <<T as Baz>::Baa<'a> as std::ops::Deref>::Target == <<T as Baz>::Quux<'a> as Foo>::Bar<'a, 'static>`
+  --> $DIR/construct_with_other_type.rs:19:9
+   |
+LL | impl<T> Baz for T where T: Foo {
+   |         ^^^ expected type parameter `T`, found associated type
+   |
+   = note: expected associated type `<T as Foo>::Bar<'_, 'static>`
+              found associated type `<<T as Baz>::Quux<'_> as Foo>::Bar<'_, 'static>`
+   = note: you might be missing a type parameter or trait bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

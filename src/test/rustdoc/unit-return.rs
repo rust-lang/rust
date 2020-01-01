@@ -10,8 +10,8 @@ pub fn f0<F: FnMut(u8) + Clone>(f: F) {}
 // @has 'foo/fn.f1.html' '//*[@class="rust fn"]' 'F: FnMut(u16) + Clone'
 pub fn f1<F: FnMut(u16) -> () + Clone>(f: F) {}
 
-// @has 'foo/fn.f2.html' '//*[@class="rust fn"]' 'F: FnMut(u32) + Clone'
+// @has 'foo/fn.f2.html' '//*[@class="rust fn"]' 'F: Clone + FnMut(u32)'
 pub use unit_return::f2;
 
-// @has 'foo/fn.f3.html' '//*[@class="rust fn"]' 'F: FnMut(u64) + Clone'
+// @has 'foo/fn.f3.html' '//*[@class="rust fn"]' 'F: Clone + FnMut(u64)'
 pub use unit_return::f3;

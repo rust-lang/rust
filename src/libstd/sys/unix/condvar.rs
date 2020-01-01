@@ -2,15 +2,15 @@ use crate::cell::UnsafeCell;
 use crate::sys::mutex::{self, Mutex};
 use crate::time::Duration;
 
-pub struct Condvar { inner: UnsafeCell<libc::pthread_cond_t> }
+pub struct Condvar {
+    inner: UnsafeCell<libc::pthread_cond_t>,
+}
 
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
-const TIMESPEC_MAX: libc::timespec = libc::timespec {
-    tv_sec: <libc::time_t>::max_value(),
-    tv_nsec: 1_000_000_000 - 1,
-};
+const TIMESPEC_MAX: libc::timespec =
+    libc::timespec { tv_sec: <libc::time_t>::max_value(), tv_nsec: 1_000_000_000 - 1 };
 
 fn saturating_cast_to_time_t(value: u64) -> libc::time_t {
     if value > <libc::time_t>::max_value() as u64 {
@@ -27,18 +27,22 @@ impl Condvar {
         Condvar { inner: UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER) }
     }
 
-    #[cfg(any(target_os = "macos",
-              target_os = "ios",
-              target_os = "l4re",
-              target_os = "android",
-              target_os = "redox"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "l4re",
+        target_os = "android",
+        target_os = "redox"
+    ))]
     pub unsafe fn init(&mut self) {}
 
-    #[cfg(not(any(target_os = "macos",
-                  target_os = "ios",
-                  target_os = "l4re",
-                  target_os = "android",
-                  target_os = "redox")))]
+    #[cfg(not(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "l4re",
+        target_os = "android",
+        target_os = "redox"
+    )))]
     pub unsafe fn init(&mut self) {
         use crate::mem::MaybeUninit;
         let mut attr = MaybeUninit::<libc::pthread_condattr_t>::uninit();
@@ -74,9 +78,7 @@ impl Condvar {
     // where we configure condition variable to use monotonic clock (instead of
     // default system clock). This approach avoids all problems that result
     // from changes made to the system time.
-    #[cfg(not(any(target_os = "macos",
-                  target_os = "ios",
-                  target_os = "android")))]
+    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use crate::mem;
 
@@ -92,16 +94,13 @@ impl Condvar {
             .and_then(|s| s.checked_add(now.tv_sec));
         let nsec = nsec % 1_000_000_000;
 
-        let timeout = sec.map(|s| {
-            libc::timespec { tv_sec: s, tv_nsec: nsec as _}
-        }).unwrap_or(TIMESPEC_MAX);
+        let timeout =
+            sec.map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec as _ }).unwrap_or(TIMESPEC_MAX);
 
-        let r = libc::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex),
-                                            &timeout);
+        let r = libc::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex), &timeout);
         assert!(r == libc::ETIMEDOUT || r == 0);
         r == 0
     }
-
 
     // This implementation is modeled after libcxx's condition_variable
     // https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46
@@ -138,21 +137,20 @@ impl Condvar {
         let r = libc::gettimeofday(&mut sys_now, ptr::null_mut());
         debug_assert_eq!(r, 0);
 
-        let nsec = dur.subsec_nanos() as libc::c_long +
-                   (sys_now.tv_usec * 1000) as libc::c_long;
+        let nsec = dur.subsec_nanos() as libc::c_long + (sys_now.tv_usec * 1000) as libc::c_long;
         let extra = (nsec / 1_000_000_000) as libc::time_t;
         let nsec = nsec % 1_000_000_000;
         let seconds = saturating_cast_to_time_t(dur.as_secs());
 
-        let timeout = sys_now.tv_sec.checked_add(extra).and_then(|s| {
-            s.checked_add(seconds)
-        }).map(|s| {
-            libc::timespec { tv_sec: s, tv_nsec: nsec }
-        }).unwrap_or(TIMESPEC_MAX);
+        let timeout = sys_now
+            .tv_sec
+            .checked_add(extra)
+            .and_then(|s| s.checked_add(seconds))
+            .map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec })
+            .unwrap_or(TIMESPEC_MAX);
 
         // And wait!
-        let r = libc::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex),
-                                            &timeout);
+        let r = libc::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex), &timeout);
         debug_assert!(r == libc::ETIMEDOUT || r == 0);
 
         // ETIMEDOUT is not a totally reliable method of determining timeout due

@@ -1,10 +1,10 @@
 //! List of the active feature gates.
 
-use super::{State, Feature};
+use super::{Feature, State};
 
-use syntax_pos::edition::Edition;
-use syntax_pos::Span;
-use syntax_pos::symbol::{Symbol, sym};
+use rustc_span::edition::Edition;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 
 macro_rules! set {
     ($field: ident) => {{
@@ -12,7 +12,7 @@ macro_rules! set {
             features.$field = true;
         }
         f as fn(&mut Features, Span)
-    }}
+    }};
 }
 
 macro_rules! declare_features {
@@ -72,7 +72,7 @@ impl Feature {
     pub fn set(&self, features: &mut Features, span: Span) {
         match self.state {
             State::Active { set } => set(features, span),
-            _ => panic!("called `set` on feature `{}` which is not `active`", self.name)
+            _ => panic!("called `set` on feature `{}` which is not `active`", self.name),
         }
     }
 }
@@ -91,6 +91,7 @@ impl Feature {
 // N.B., `tools/tidy/src/features.rs` parses this information directly out of the
 // source, so take care when modifying it.
 
+#[rustfmt::skip]
 declare_features! (
     // -------------------------------------------------------------------------
     // feature-group-start: internal feature gates
@@ -538,6 +539,10 @@ declare_features! (
 
     /// Allows the use of `loop` and `while` in constants.
     (active, const_loop, "1.41.0", Some(52000), None),
+
+    /// Allows bindings in the subpattern of a binding pattern.
+    /// For example, you can write `x @ Some(y)`.
+    (active, bindings_after_at, "1.41.0", Some(65490), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

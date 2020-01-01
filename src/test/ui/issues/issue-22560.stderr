@@ -1,48 +1,58 @@
 error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/issue-22560.rs:6:13
+  --> $DIR/issue-22560.rs:9:23
    |
-LL |             Sub;
-   |             ^^^ missing reference to `Rhs`
+LL | / trait Sub<Rhs=Self> {
+LL | |     type Output;
+LL | | }
+   | |_- type parameter `Rhs` must be specified for this
+LL | 
+LL |   type Test = dyn Add + Sub;
+   |                         ^^^ help: set the type parameter to the desired type: `Sub<Rhs>`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 
 error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/issue-22560.rs:3:17
+  --> $DIR/issue-22560.rs:9:17
    |
-LL | type Test = dyn Add +
-   |                 ^^^ missing reference to `Rhs`
+LL | / trait Add<Rhs=Self> {
+LL | |     type Output;
+LL | | }
+   | |_- type parameter `Rhs` must be specified for this
+...
+LL |   type Test = dyn Add + Sub;
+   |                   ^^^ help: set the type parameter to the desired type: `Add<Rhs>`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/issue-22560.rs:6:13
+  --> $DIR/issue-22560.rs:9:23
    |
-LL | type Test = dyn Add +
-   |                 ---
-   |                 |
+LL | type Test = dyn Add + Sub;
+   |                 ---   ^^^
+   |                 |     |
+   |                 |     additional non-auto trait
+   |                 |     trait alias used in trait object type (additional use)
    |                 first non-auto trait
    |                 trait alias used in trait object type (first use)
-...
-LL |             Sub;
-   |             ^^^
-   |             |
-   |             additional non-auto trait
-   |             trait alias used in trait object type (additional use)
 
-error[E0191]: the value of the associated types `Output` (from the trait `std::ops::Add`), `Output` (from the trait `std::ops::Sub`) must be specified
-  --> $DIR/issue-22560.rs:3:13
+error[E0191]: the value of the associated types `Output` (from trait `Add`), `Output` (from trait `Sub`) must be specified
+  --> $DIR/issue-22560.rs:9:17
    |
-LL |   type Test = dyn Add +
-   |  _____________^
-   | |_____________|
-   | |
-LL | |
-LL | |
-LL | |             Sub;
-   | |               ^
-   | |_______________|
-   | |_______________associated type `Output` must be specified
+LL |     type Output;
+   |     ------------ `Output` defined here
+...
+LL |     type Output;
+   |     ------------ `Output` defined here
+...
+LL | type Test = dyn Add + Sub;
+   |                 ^^^   ^^^ associated type `Output` must be specified
+   |                 |
    |                 associated type `Output` must be specified
+   |
+help: specify the associated types
+   |
+LL | type Test = dyn Add<Output = Type> + Sub<Output = Type>;
+   |                 ^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

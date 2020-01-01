@@ -2,21 +2,23 @@
 
 extern crate serialize as rustc_serialize;
 
-use rustc_serialize::{Encodable, Decodable};
-use rustc_serialize::json;
-use json::Json::*;
-use json::ErrorCode::*;
-use json::ParserError::*;
 use json::DecoderError::*;
+use json::ErrorCode::*;
+use json::Json::*;
 use json::JsonEvent::*;
-use json::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser, StackElement,
-           Decoder, Encoder, EncoderError};
+use json::ParserError::*;
+use json::{
+    from_str, DecodeResult, Decoder, DecoderError, Encoder, EncoderError, Json, JsonEvent, Parser,
+    StackElement,
+};
+use rustc_serialize::json;
+use rustc_serialize::{Decodable, Encodable};
 
-use Animal::*;
-use std::{i64, u64, f32, f64};
-use std::io::prelude::*;
 use std::collections::BTreeMap;
+use std::io::prelude::*;
 use std::string;
+use std::{f32, f64, i64, u64};
+use Animal::*;
 
 #[derive(RustcDecodable, Eq, PartialEq, Debug)]
 struct OptionData {
@@ -25,7 +27,7 @@ struct OptionData {
 
 #[test]
 fn test_decode_option_none() {
-    let s ="{}";
+    let s = "{}";
     let obj: OptionData = json::decode(s).unwrap();
     assert_eq!(obj, OptionData { opt: None });
 }
@@ -39,16 +41,20 @@ fn test_decode_option_some() {
 
 #[test]
 fn test_decode_option_malformed() {
-    check_err::<OptionData>("{ \"opt\": [] }",
-                            ExpectedError("Number".to_string(), "[]".to_string()));
-    check_err::<OptionData>("{ \"opt\": false }",
-                            ExpectedError("Number".to_string(), "false".to_string()));
+    check_err::<OptionData>(
+        "{ \"opt\": [] }",
+        ExpectedError("Number".to_string(), "[]".to_string()),
+    );
+    check_err::<OptionData>(
+        "{ \"opt\": false }",
+        ExpectedError("Number".to_string(), "false".to_string()),
+    );
 }
 
 #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
 enum Animal {
     Dog,
-    Frog(string::String, isize)
+    Frog(string::String, isize),
 }
 
 #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
@@ -68,9 +74,11 @@ fn mk_object(items: &[(string::String, Json)]) -> Json {
 
     for item in items {
         match *item {
-            (ref key, ref value) => { d.insert((*key).clone(), (*value).clone()); },
+            (ref key, ref value) => {
+                d.insert((*key).clone(), (*value).clone());
+            }
         }
-    };
+    }
 
     Object(d)
 }
@@ -158,13 +166,10 @@ fn test_write_array() {
         ]"
     );
 
-    let long_test_array = Array(vec![
-        Boolean(false),
-        Null,
-        Array(vec![String("foo\nbar".to_string()), F64(3.5)])]);
+    let long_test_array =
+        Array(vec![Boolean(false), Null, Array(vec![String("foo\nbar".to_string()), F64(3.5)])]);
 
-    assert_eq!(long_test_array.to_string(),
-        "[false,null,[\"foo\\nbar\",3.5]]");
+    assert_eq!(long_test_array.to_string(), "[false,null,[\"foo\\nbar\",3.5]]");
     assert_eq!(
         long_test_array.pretty().to_string(),
         "\
@@ -184,12 +189,7 @@ fn test_write_object() {
     assert_eq!(mk_object(&[]).to_string(), "{}");
     assert_eq!(mk_object(&[]).pretty().to_string(), "{}");
 
-    assert_eq!(
-        mk_object(&[
-            ("a".to_string(), Boolean(true))
-        ]).to_string(),
-        "{\"a\":true}"
-    );
+    assert_eq!(mk_object(&[("a".to_string(), Boolean(true))]).to_string(), "{\"a\":true}");
     assert_eq!(
         mk_object(&[("a".to_string(), Boolean(true))]).pretty().to_string(),
         "\
@@ -198,12 +198,13 @@ fn test_write_object() {
         }"
     );
 
-    let complex_obj = mk_object(&[
-            ("b".to_string(), Array(vec![
-                mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
-                mk_object(&[("d".to_string(), String("".to_string()))])
-            ]))
-        ]);
+    let complex_obj = mk_object(&[(
+        "b".to_string(),
+        Array(vec![
+            mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
+            mk_object(&[("d".to_string(), String("".to_string()))]),
+        ]),
+    )]);
 
     assert_eq!(
         complex_obj.to_string(),
@@ -231,10 +232,13 @@ fn test_write_object() {
 
     let a = mk_object(&[
         ("a".to_string(), Boolean(true)),
-        ("b".to_string(), Array(vec![
-            mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
-            mk_object(&[("d".to_string(), String("".to_string()))])
-        ]))
+        (
+            "b".to_string(),
+            Array(vec![
+                mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
+                mk_object(&[("d".to_string(), String("".to_string()))]),
+            ]),
+        ),
     ]);
 
     // We can't compare the strings directly because the object fields be
@@ -246,14 +250,8 @@ fn test_write_object() {
 #[test]
 fn test_write_enum() {
     let animal = Dog;
-    assert_eq!(
-        json::as_json(&animal).to_string(),
-        "\"Dog\""
-    );
-    assert_eq!(
-        json::as_pretty_json(&animal).to_string(),
-        "\"Dog\""
-    );
+    assert_eq!(json::as_json(&animal).to_string(), "\"Dog\"");
+    assert_eq!(json::as_pretty_json(&animal).to_string(), "\"Dog\"");
 
     let animal = Frog("Henry".to_string(), 349);
     assert_eq!(
@@ -273,13 +271,13 @@ fn test_write_enum() {
 }
 
 macro_rules! check_encoder_for_simple {
-    ($value:expr, $expected:expr) => ({
+    ($value:expr, $expected:expr) => {{
         let s = json::as_json(&$value).to_string();
         assert_eq!(s, $expected);
 
         let s = json::as_pretty_json(&$value).to_string();
         assert_eq!(s, $expected);
-    })
+    }};
 }
 
 #[test]
@@ -306,22 +304,22 @@ fn test_write_char() {
 
 #[test]
 fn test_trailing_characters() {
-    assert_eq!(from_str("nulla"),  Err(SyntaxError(TrailingCharacters, 1, 5)));
-    assert_eq!(from_str("truea"),  Err(SyntaxError(TrailingCharacters, 1, 5)));
+    assert_eq!(from_str("nulla"), Err(SyntaxError(TrailingCharacters, 1, 5)));
+    assert_eq!(from_str("truea"), Err(SyntaxError(TrailingCharacters, 1, 5)));
     assert_eq!(from_str("falsea"), Err(SyntaxError(TrailingCharacters, 1, 6)));
-    assert_eq!(from_str("1a"),     Err(SyntaxError(TrailingCharacters, 1, 2)));
-    assert_eq!(from_str("[]a"),    Err(SyntaxError(TrailingCharacters, 1, 3)));
-    assert_eq!(from_str("{}a"),    Err(SyntaxError(TrailingCharacters, 1, 3)));
+    assert_eq!(from_str("1a"), Err(SyntaxError(TrailingCharacters, 1, 2)));
+    assert_eq!(from_str("[]a"), Err(SyntaxError(TrailingCharacters, 1, 3)));
+    assert_eq!(from_str("{}a"), Err(SyntaxError(TrailingCharacters, 1, 3)));
 }
 
 #[test]
 fn test_read_identifiers() {
-    assert_eq!(from_str("n"),    Err(SyntaxError(InvalidSyntax, 1, 2)));
-    assert_eq!(from_str("nul"),  Err(SyntaxError(InvalidSyntax, 1, 4)));
-    assert_eq!(from_str("t"),    Err(SyntaxError(InvalidSyntax, 1, 2)));
+    assert_eq!(from_str("n"), Err(SyntaxError(InvalidSyntax, 1, 2)));
+    assert_eq!(from_str("nul"), Err(SyntaxError(InvalidSyntax, 1, 4)));
+    assert_eq!(from_str("t"), Err(SyntaxError(InvalidSyntax, 1, 2)));
     assert_eq!(from_str("truz"), Err(SyntaxError(InvalidSyntax, 1, 4)));
-    assert_eq!(from_str("f"),    Err(SyntaxError(InvalidSyntax, 1, 2)));
-    assert_eq!(from_str("faz"),  Err(SyntaxError(InvalidSyntax, 1, 3)));
+    assert_eq!(from_str("f"), Err(SyntaxError(InvalidSyntax, 1, 2)));
+    assert_eq!(from_str("faz"), Err(SyntaxError(InvalidSyntax, 1, 3)));
 
     assert_eq!(from_str("null"), Ok(Null));
     assert_eq!(from_str("true"), Ok(Boolean(true)));
@@ -345,13 +343,13 @@ fn test_decode_identifiers() {
 
 #[test]
 fn test_read_number() {
-    assert_eq!(from_str("+"),   Err(SyntaxError(InvalidSyntax, 1, 1)));
-    assert_eq!(from_str("."),   Err(SyntaxError(InvalidSyntax, 1, 1)));
+    assert_eq!(from_str("+"), Err(SyntaxError(InvalidSyntax, 1, 1)));
+    assert_eq!(from_str("."), Err(SyntaxError(InvalidSyntax, 1, 1)));
     assert_eq!(from_str("NaN"), Err(SyntaxError(InvalidSyntax, 1, 1)));
-    assert_eq!(from_str("-"),   Err(SyntaxError(InvalidNumber, 1, 2)));
-    assert_eq!(from_str("00"),  Err(SyntaxError(InvalidNumber, 1, 2)));
-    assert_eq!(from_str("1."),  Err(SyntaxError(InvalidNumber, 1, 3)));
-    assert_eq!(from_str("1e"),  Err(SyntaxError(InvalidNumber, 1, 3)));
+    assert_eq!(from_str("-"), Err(SyntaxError(InvalidNumber, 1, 2)));
+    assert_eq!(from_str("00"), Err(SyntaxError(InvalidNumber, 1, 2)));
+    assert_eq!(from_str("1."), Err(SyntaxError(InvalidNumber, 1, 3)));
+    assert_eq!(from_str("1e"), Err(SyntaxError(InvalidNumber, 1, 3)));
     assert_eq!(from_str("1e+"), Err(SyntaxError(InvalidNumber, 1, 4)));
 
     assert_eq!(from_str("18446744073709551616"), Err(SyntaxError(InvalidNumber, 1, 20)));
@@ -407,13 +405,12 @@ fn test_decode_numbers() {
     assert_eq!(v, i64::MAX);
 
     let res: DecodeResult<i64> = json::decode("765.25");
-    assert_eq!(res, Err(ExpectedError("Integer".to_string(),
-                                      "765.25".to_string())));
+    assert_eq!(res, Err(ExpectedError("Integer".to_string(), "765.25".to_string())));
 }
 
 #[test]
 fn test_read_str() {
-    assert_eq!(from_str("\""),    Err(SyntaxError(EOFWhileParsingString, 1, 2)));
+    assert_eq!(from_str("\""), Err(SyntaxError(EOFWhileParsingString, 1, 2)));
     assert_eq!(from_str("\"lol"), Err(SyntaxError(EOFWhileParsingString, 1, 5)));
 
     assert_eq!(from_str("\"\""), Ok(String("".to_string())));
@@ -430,15 +427,17 @@ fn test_read_str() {
 
 #[test]
 fn test_decode_str() {
-    let s = [("\"\"", ""),
-             ("\"foo\"", "foo"),
-             ("\"\\\"\"", "\""),
-             ("\"\\b\"", "\x08"),
-             ("\"\\n\"", "\n"),
-             ("\"\\r\"", "\r"),
-             ("\"\\t\"", "\t"),
-             ("\"\\u12ab\"", "\u{12ab}"),
-             ("\"\\uAB12\"", "\u{AB12}")];
+    let s = [
+        ("\"\"", ""),
+        ("\"foo\"", "foo"),
+        ("\"\\\"\"", "\""),
+        ("\"\\b\"", "\x08"),
+        ("\"\\n\"", "\n"),
+        ("\"\\r\"", "\r"),
+        ("\"\\t\"", "\t"),
+        ("\"\\u12ab\"", "\u{12ab}"),
+        ("\"\\uAB12\"", "\u{AB12}"),
+    ];
 
     for &(i, o) in &s {
         let v: string::String = json::decode(i).unwrap();
@@ -448,23 +447,20 @@ fn test_decode_str() {
 
 #[test]
 fn test_read_array() {
-    assert_eq!(from_str("["),     Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
-    assert_eq!(from_str("[1"),    Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
-    assert_eq!(from_str("[1,"),   Err(SyntaxError(EOFWhileParsingValue, 1, 4)));
-    assert_eq!(from_str("[1,]"),  Err(SyntaxError(InvalidSyntax,        1, 4)));
-    assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax,        1, 4)));
+    assert_eq!(from_str("["), Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
+    assert_eq!(from_str("[1"), Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
+    assert_eq!(from_str("[1,"), Err(SyntaxError(EOFWhileParsingValue, 1, 4)));
+    assert_eq!(from_str("[1,]"), Err(SyntaxError(InvalidSyntax, 1, 4)));
+    assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax, 1, 4)));
 
     assert_eq!(from_str("[]"), Ok(Array(vec![])));
     assert_eq!(from_str("[ ]"), Ok(Array(vec![])));
     assert_eq!(from_str("[true]"), Ok(Array(vec![Boolean(true)])));
     assert_eq!(from_str("[ false ]"), Ok(Array(vec![Boolean(false)])));
     assert_eq!(from_str("[null]"), Ok(Array(vec![Null])));
-    assert_eq!(from_str("[3, 1]"),
-                 Ok(Array(vec![U64(3), U64(1)])));
-    assert_eq!(from_str("\n[3, 2]\n"),
-                 Ok(Array(vec![U64(3), U64(2)])));
-    assert_eq!(from_str("[2, [4, 1]]"),
-           Ok(Array(vec![U64(2), Array(vec![U64(4), U64(1)])])));
+    assert_eq!(from_str("[3, 1]"), Ok(Array(vec![U64(3), U64(1)])));
+    assert_eq!(from_str("\n[3, 2]\n"), Ok(Array(vec![U64(3), U64(2)])));
+    assert_eq!(from_str("[2, [4, 1]]"), Ok(Array(vec![U64(2), Array(vec![U64(4), U64(1)])])));
 }
 
 #[test]
@@ -506,57 +502,58 @@ fn test_decode_tuple_malformed_length() {
 
 #[test]
 fn test_read_object() {
-    assert_eq!(from_str("{"),       Err(SyntaxError(EOFWhileParsingObject, 1, 2)));
-    assert_eq!(from_str("{ "),      Err(SyntaxError(EOFWhileParsingObject, 1, 3)));
-    assert_eq!(from_str("{1"),      Err(SyntaxError(KeyMustBeAString,      1, 2)));
+    assert_eq!(from_str("{"), Err(SyntaxError(EOFWhileParsingObject, 1, 2)));
+    assert_eq!(from_str("{ "), Err(SyntaxError(EOFWhileParsingObject, 1, 3)));
+    assert_eq!(from_str("{1"), Err(SyntaxError(KeyMustBeAString, 1, 2)));
     assert_eq!(from_str("{ \"a\""), Err(SyntaxError(EOFWhileParsingObject, 1, 6)));
-    assert_eq!(from_str("{\"a\""),  Err(SyntaxError(EOFWhileParsingObject, 1, 5)));
+    assert_eq!(from_str("{\"a\""), Err(SyntaxError(EOFWhileParsingObject, 1, 5)));
     assert_eq!(from_str("{\"a\" "), Err(SyntaxError(EOFWhileParsingObject, 1, 6)));
 
-    assert_eq!(from_str("{\"a\" 1"),   Err(SyntaxError(ExpectedColon,         1, 6)));
-    assert_eq!(from_str("{\"a\":"),    Err(SyntaxError(EOFWhileParsingValue,  1, 6)));
-    assert_eq!(from_str("{\"a\":1"),   Err(SyntaxError(EOFWhileParsingObject, 1, 7)));
-    assert_eq!(from_str("{\"a\":1 1"), Err(SyntaxError(InvalidSyntax,         1, 8)));
-    assert_eq!(from_str("{\"a\":1,"),  Err(SyntaxError(EOFWhileParsingObject, 1, 8)));
+    assert_eq!(from_str("{\"a\" 1"), Err(SyntaxError(ExpectedColon, 1, 6)));
+    assert_eq!(from_str("{\"a\":"), Err(SyntaxError(EOFWhileParsingValue, 1, 6)));
+    assert_eq!(from_str("{\"a\":1"), Err(SyntaxError(EOFWhileParsingObject, 1, 7)));
+    assert_eq!(from_str("{\"a\":1 1"), Err(SyntaxError(InvalidSyntax, 1, 8)));
+    assert_eq!(from_str("{\"a\":1,"), Err(SyntaxError(EOFWhileParsingObject, 1, 8)));
 
     assert_eq!(from_str("{}").unwrap(), mk_object(&[]));
-    assert_eq!(from_str("{\"a\": 3}").unwrap(),
-                mk_object(&[("a".to_string(), U64(3))]));
+    assert_eq!(from_str("{\"a\": 3}").unwrap(), mk_object(&[("a".to_string(), U64(3))]));
 
-    assert_eq!(from_str(
-                    "{ \"a\": null, \"b\" : true }").unwrap(),
-                mk_object(&[
-                    ("a".to_string(), Null),
-                    ("b".to_string(), Boolean(true))]));
-    assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
-                mk_object(&[
-                    ("a".to_string(), Null),
-                    ("b".to_string(), Boolean(true))]));
-    assert_eq!(from_str(
-                    "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
-                mk_object(&[
-                    ("a".to_string(), F64(1.0)),
-                    ("b".to_string(), Array(vec![Boolean(true)]))
-                ]));
-    assert_eq!(from_str(
-                    "{\
+    assert_eq!(
+        from_str("{ \"a\": null, \"b\" : true }").unwrap(),
+        mk_object(&[("a".to_string(), Null), ("b".to_string(), Boolean(true))])
+    );
+    assert_eq!(
+        from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
+        mk_object(&[("a".to_string(), Null), ("b".to_string(), Boolean(true))])
+    );
+    assert_eq!(
+        from_str("{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
+        mk_object(&[("a".to_string(), F64(1.0)), ("b".to_string(), Array(vec![Boolean(true)]))])
+    );
+    assert_eq!(
+        from_str(
+            "{\
                         \"a\": 1.0, \
                         \"b\": [\
                             true,\
                             \"foo\\nbar\", \
                             { \"c\": {\"d\": null} } \
                         ]\
-                    }").unwrap(),
-                mk_object(&[
-                    ("a".to_string(), F64(1.0)),
-                    ("b".to_string(), Array(vec![
-                        Boolean(true),
-                        String("foo\nbar".to_string()),
-                        mk_object(&[
-                            ("c".to_string(), mk_object(&[("d".to_string(), Null)]))
-                        ])
-                    ]))
-                ]));
+                    }"
+        )
+        .unwrap(),
+        mk_object(&[
+            ("a".to_string(), F64(1.0)),
+            (
+                "b".to_string(),
+                Array(vec![
+                    Boolean(true),
+                    String("foo\nbar".to_string()),
+                    mk_object(&[("c".to_string(), mk_object(&[("d".to_string(), Null)]))])
+                ])
+            )
+        ])
+    );
 }
 
 #[test]
@@ -570,18 +567,14 @@ fn test_decode_struct() {
     let v: Outer = json::decode(s).unwrap();
     assert_eq!(
         v,
-        Outer {
-            inner: vec![
-                Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }
-            ]
-        }
+        Outer { inner: vec![Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }] }
     );
 }
 
 #[derive(RustcDecodable)]
 struct FloatStruct {
     f: f64,
-    a: Vec<f64>
+    a: Vec<f64>,
 }
 #[test]
 fn test_decode_struct_with_nan() {
@@ -623,8 +616,7 @@ fn test_decode_map() {
 
 #[test]
 fn test_multiline_errors() {
-    assert_eq!(from_str("{\n  \"foo\":\n \"bar\""),
-        Err(SyntaxError(EOFWhileParsingObject, 3, 8)));
+    assert_eq!(from_str("{\n  \"foo\":\n \"bar\""), Err(SyntaxError(EOFWhileParsingObject, 3, 8)));
 }
 
 #[derive(RustcDecodable)]
@@ -633,23 +625,21 @@ struct DecodeStruct {
     x: f64,
     y: bool,
     z: string::String,
-    w: Vec<DecodeStruct>
+    w: Vec<DecodeStruct>,
 }
 #[derive(RustcDecodable)]
 enum DecodeEnum {
     A(f64),
-    B(string::String)
+    B(string::String),
 }
 fn check_err<T: Decodable>(to_parse: &'static str, expected: DecoderError) {
     let res: DecodeResult<T> = match from_str(to_parse) {
         Err(e) => Err(ParseError(e)),
-        Ok(json) => Decodable::decode(&mut Decoder::new(json))
+        Ok(json) => Decodable::decode(&mut Decoder::new(json)),
     };
     match res {
-        Ok(_) => panic!("`{:?}` parsed & decoded ok, expecting error `{:?}`",
-                           to_parse, expected),
-        Err(ParseError(e)) => panic!("`{:?}` is not valid json: {:?}",
-                                        to_parse, e),
+        Ok(_) => panic!("`{:?}` parsed & decoded ok, expecting error `{:?}`", to_parse, expected),
+        Err(ParseError(e)) => panic!("`{:?}` is not valid json: {:?}", to_parse, e),
         Err(e) => {
             assert_eq!(e, expected);
         }
@@ -658,54 +648,68 @@ fn check_err<T: Decodable>(to_parse: &'static str, expected: DecoderError) {
 #[test]
 fn test_decode_errors_struct() {
     check_err::<DecodeStruct>("[]", ExpectedError("Object".to_string(), "[]".to_string()));
-    check_err::<DecodeStruct>("{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
-                              ExpectedError("Number".to_string(), "true".to_string()));
-    check_err::<DecodeStruct>("{\"x\": 1, \"y\": [], \"z\": \"\", \"w\": []}",
-                              ExpectedError("Boolean".to_string(), "[]".to_string()));
-    check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
-                              ExpectedError("String".to_string(), "{}".to_string()));
-    check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
-                              ExpectedError("Array".to_string(), "null".to_string()));
-    check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\"}",
-                              MissingFieldError("w".to_string()));
+    check_err::<DecodeStruct>(
+        "{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
+        ExpectedError("Number".to_string(), "true".to_string()),
+    );
+    check_err::<DecodeStruct>(
+        "{\"x\": 1, \"y\": [], \"z\": \"\", \"w\": []}",
+        ExpectedError("Boolean".to_string(), "[]".to_string()),
+    );
+    check_err::<DecodeStruct>(
+        "{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
+        ExpectedError("String".to_string(), "{}".to_string()),
+    );
+    check_err::<DecodeStruct>(
+        "{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
+        ExpectedError("Array".to_string(), "null".to_string()),
+    );
+    check_err::<DecodeStruct>(
+        "{\"x\": 1, \"y\": true, \"z\": \"\"}",
+        MissingFieldError("w".to_string()),
+    );
 }
 #[test]
 fn test_decode_errors_enum() {
-    check_err::<DecodeEnum>("{}",
-                            MissingFieldError("variant".to_string()));
-    check_err::<DecodeEnum>("{\"variant\": 1}",
-                            ExpectedError("String".to_string(), "1".to_string()));
-    check_err::<DecodeEnum>("{\"variant\": \"A\"}",
-                            MissingFieldError("fields".to_string()));
-    check_err::<DecodeEnum>("{\"variant\": \"A\", \"fields\": null}",
-                            ExpectedError("Array".to_string(), "null".to_string()));
-    check_err::<DecodeEnum>("{\"variant\": \"C\", \"fields\": []}",
-                            UnknownVariantError("C".to_string()));
+    check_err::<DecodeEnum>("{}", MissingFieldError("variant".to_string()));
+    check_err::<DecodeEnum>(
+        "{\"variant\": 1}",
+        ExpectedError("String".to_string(), "1".to_string()),
+    );
+    check_err::<DecodeEnum>("{\"variant\": \"A\"}", MissingFieldError("fields".to_string()));
+    check_err::<DecodeEnum>(
+        "{\"variant\": \"A\", \"fields\": null}",
+        ExpectedError("Array".to_string(), "null".to_string()),
+    );
+    check_err::<DecodeEnum>(
+        "{\"variant\": \"C\", \"fields\": []}",
+        UnknownVariantError("C".to_string()),
+    );
 }
 
 #[test]
-fn test_find(){
+fn test_find() {
     let json_value = from_str("{\"dog\" : \"cat\"}").unwrap();
     let found_str = json_value.find("dog");
     assert!(found_str.unwrap().as_string().unwrap() == "cat");
 }
 
 #[test]
-fn test_find_path(){
+fn test_find_path() {
     let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
     let found_str = json_value.find_path(&["dog", "cat", "mouse"]);
     assert!(found_str.unwrap().as_string().unwrap() == "cheese");
 }
 
 #[test]
-fn test_search(){
+fn test_search() {
     let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
     let found_str = json_value.search("mouse").and_then(|j| j.as_string());
     assert!(found_str.unwrap() == "cheese");
 }
 
 #[test]
-fn test_index(){
+fn test_index() {
     let json_value = from_str("{\"animals\":[\"dog\",\"cat\",\"mouse\"]}").unwrap();
     let ref array = json_value["animals"];
     assert_eq!(array[0].as_string().unwrap(), "dog");
@@ -714,26 +718,26 @@ fn test_index(){
 }
 
 #[test]
-fn test_is_object(){
+fn test_is_object() {
     let json_value = from_str("{}").unwrap();
     assert!(json_value.is_object());
 }
 
 #[test]
-fn test_as_object(){
+fn test_as_object() {
     let json_value = from_str("{}").unwrap();
     let json_object = json_value.as_object();
     assert!(json_object.is_some());
 }
 
 #[test]
-fn test_is_array(){
+fn test_is_array() {
     let json_value = from_str("[1, 2, 3]").unwrap();
     assert!(json_value.is_array());
 }
 
 #[test]
-fn test_as_array(){
+fn test_as_array() {
     let json_value = from_str("[1, 2, 3]").unwrap();
     let json_array = json_value.as_array();
     let expected_length = 3;
@@ -741,13 +745,13 @@ fn test_as_array(){
 }
 
 #[test]
-fn test_is_string(){
+fn test_is_string() {
     let json_value = from_str("\"dog\"").unwrap();
     assert!(json_value.is_string());
 }
 
 #[test]
-fn test_as_string(){
+fn test_as_string() {
     let json_value = from_str("\"dog\"").unwrap();
     let json_str = json_value.as_string();
     let expected_str = "dog";
@@ -755,13 +759,13 @@ fn test_as_string(){
 }
 
 #[test]
-fn test_is_number(){
+fn test_is_number() {
     let json_value = from_str("12").unwrap();
     assert!(json_value.is_number());
 }
 
 #[test]
-fn test_is_i64(){
+fn test_is_i64() {
     let json_value = from_str("-12").unwrap();
     assert!(json_value.is_i64());
 
@@ -773,7 +777,7 @@ fn test_is_i64(){
 }
 
 #[test]
-fn test_is_u64(){
+fn test_is_u64() {
     let json_value = from_str("12").unwrap();
     assert!(json_value.is_u64());
 
@@ -785,7 +789,7 @@ fn test_is_u64(){
 }
 
 #[test]
-fn test_is_f64(){
+fn test_is_f64() {
     let json_value = from_str("12").unwrap();
     assert!(!json_value.is_f64());
 
@@ -800,34 +804,34 @@ fn test_is_f64(){
 }
 
 #[test]
-fn test_as_i64(){
+fn test_as_i64() {
     let json_value = from_str("-12").unwrap();
     let json_num = json_value.as_i64();
     assert_eq!(json_num, Some(-12));
 }
 
 #[test]
-fn test_as_u64(){
+fn test_as_u64() {
     let json_value = from_str("12").unwrap();
     let json_num = json_value.as_u64();
     assert_eq!(json_num, Some(12));
 }
 
 #[test]
-fn test_as_f64(){
+fn test_as_f64() {
     let json_value = from_str("12.0").unwrap();
     let json_num = json_value.as_f64();
     assert_eq!(json_num, Some(12f64));
 }
 
 #[test]
-fn test_is_boolean(){
+fn test_is_boolean() {
     let json_value = from_str("false").unwrap();
     assert!(json_value.is_boolean());
 }
 
 #[test]
-fn test_as_boolean(){
+fn test_as_boolean() {
     let json_value = from_str("false").unwrap();
     let json_bool = json_value.as_boolean();
     let expected_bool = false;
@@ -835,13 +839,13 @@ fn test_as_boolean(){
 }
 
 #[test]
-fn test_is_null(){
+fn test_is_null() {
     let json_value = from_str("null").unwrap();
     assert!(json_value.is_null());
 }
 
 #[test]
-fn test_as_null(){
+fn test_as_null() {
     let json_value = from_str("null").unwrap();
     let json_null = json_value.as_null();
     let expected_null = ();
@@ -850,8 +854,8 @@ fn test_as_null(){
 
 #[test]
 fn test_encode_hashmap_with_numeric_key() {
-    use std::str::from_utf8;
     use std::collections::HashMap;
+    use std::str::from_utf8;
     let mut hm: HashMap<usize, bool> = HashMap::new();
     hm.insert(1, true);
     let mut mem_buf = Vec::new();
@@ -865,8 +869,8 @@ fn test_encode_hashmap_with_numeric_key() {
 
 #[test]
 fn test_prettyencode_hashmap_with_numeric_key() {
-    use std::str::from_utf8;
     use std::collections::HashMap;
+    use std::str::from_utf8;
     let mut hm: HashMap<usize, bool> = HashMap::new();
     hm.insert(1, true);
     let mut mem_buf = Vec::new();
@@ -880,8 +884,8 @@ fn test_prettyencode_hashmap_with_numeric_key() {
 
 #[test]
 fn test_prettyencoder_indent_level_param() {
-    use std::str::from_utf8;
     use std::collections::BTreeMap;
+    use std::str::from_utf8;
 
     let mut tree = BTreeMap::new();
 
@@ -891,12 +895,12 @@ fn test_prettyencoder_indent_level_param() {
     let json = Array(
         // The following layout below should look a lot like
         // the pretty-printed JSON (indent * x)
-        vec!
-        ( // 0x
+        vec![
+            // 0x
             String("greetings".to_string()), // 1x
-            Object(tree), // 1x + 2x + 2x + 1x
-        ) // 0x
-        // End JSON array (7 lines)
+            Object(tree),                    // 1x + 2x + 2x + 1x
+        ], // 0x
+           // End JSON array (7 lines)
     );
 
     // Helper function for counting indents
@@ -908,8 +912,7 @@ fn test_prettyencoder_indent_level_param() {
     // Test up to 4 spaces of indents (more?)
     for i in 0..4 {
         let mut writer = Vec::new();
-        write!(&mut writer, "{}",
-                json::as_pretty_json(&json).indent(i)).unwrap();
+        write!(&mut writer, "{}", json::as_pretty_json(&json).indent(i)).unwrap();
 
         let printed = from_utf8(&writer[..]).unwrap();
 
@@ -953,7 +956,7 @@ fn test_hashmap_with_numeric_key_can_handle_double_quote_delimited_key() {
     let json_str = "{\"1\":true}";
     let json_obj = match from_str(json_str) {
         Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
-        Ok(o) => o
+        Ok(o) => o,
     };
     let mut decoder = Decoder::new(json_obj);
     let _hm: HashMap<usize, bool> = Decodable::decode(&mut decoder).unwrap();
@@ -965,28 +968,29 @@ fn test_hashmap_with_numeric_key_will_error_with_string_keys() {
     let json_str = "{\"a\":true}";
     let json_obj = match from_str(json_str) {
         Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
-        Ok(o) => o
+        Ok(o) => o,
     };
     let mut decoder = Decoder::new(json_obj);
     let result: Result<HashMap<usize, bool>, DecoderError> = Decodable::decode(&mut decoder);
     assert_eq!(result, Err(ExpectedError("Number".to_string(), "a".to_string())));
 }
 
-fn assert_stream_equal(src: &str,
-                        expected: Vec<(JsonEvent, Vec<StackElement<'_>>)>) {
+fn assert_stream_equal(src: &str, expected: Vec<(JsonEvent, Vec<StackElement<'_>>)>) {
     let mut parser = Parser::new(src.chars());
     let mut i = 0;
     loop {
         let evt = match parser.next() {
             Some(e) => e,
-            None => { break; }
+            None => {
+                break;
+            }
         };
         let (ref expected_evt, ref expected_stack) = expected[i];
         if !parser.stack().is_equal_to(expected_stack) {
             panic!("Parser stack is not equal to {:?}", expected_stack);
         }
         assert_eq!(&evt, expected_evt);
-        i+=1;
+        i += 1;
     }
 }
 #[test]
@@ -994,26 +998,23 @@ fn test_streaming_parser() {
     assert_stream_equal(
         r#"{ "foo":"bar", "array" : [0, 1, 2, 3, 4, 5], "idents":[null,true,false]}"#,
         vec![
-            (ObjectStart,             vec![]),
-              (StringValue("bar".to_string()),   vec![StackElement::Key("foo")]),
-              (ArrayStart,            vec![StackElement::Key("array")]),
-                (U64Value(0),         vec![StackElement::Key("array"), StackElement::Index(0)]),
-                (U64Value(1),         vec![StackElement::Key("array"), StackElement::Index(1)]),
-                (U64Value(2),         vec![StackElement::Key("array"), StackElement::Index(2)]),
-                (U64Value(3),         vec![StackElement::Key("array"), StackElement::Index(3)]),
-                (U64Value(4),         vec![StackElement::Key("array"), StackElement::Index(4)]),
-                (U64Value(5),         vec![StackElement::Key("array"), StackElement::Index(5)]),
-              (ArrayEnd,              vec![StackElement::Key("array")]),
-              (ArrayStart,            vec![StackElement::Key("idents")]),
-                (NullValue,           vec![StackElement::Key("idents"),
-                                           StackElement::Index(0)]),
-                (BooleanValue(true),  vec![StackElement::Key("idents"),
-                                           StackElement::Index(1)]),
-                (BooleanValue(false), vec![StackElement::Key("idents"),
-                                           StackElement::Index(2)]),
-              (ArrayEnd,              vec![StackElement::Key("idents")]),
-            (ObjectEnd,               vec![]),
-        ]
+            (ObjectStart, vec![]),
+            (StringValue("bar".to_string()), vec![StackElement::Key("foo")]),
+            (ArrayStart, vec![StackElement::Key("array")]),
+            (U64Value(0), vec![StackElement::Key("array"), StackElement::Index(0)]),
+            (U64Value(1), vec![StackElement::Key("array"), StackElement::Index(1)]),
+            (U64Value(2), vec![StackElement::Key("array"), StackElement::Index(2)]),
+            (U64Value(3), vec![StackElement::Key("array"), StackElement::Index(3)]),
+            (U64Value(4), vec![StackElement::Key("array"), StackElement::Index(4)]),
+            (U64Value(5), vec![StackElement::Key("array"), StackElement::Index(5)]),
+            (ArrayEnd, vec![StackElement::Key("array")]),
+            (ArrayStart, vec![StackElement::Key("idents")]),
+            (NullValue, vec![StackElement::Key("idents"), StackElement::Index(0)]),
+            (BooleanValue(true), vec![StackElement::Key("idents"), StackElement::Index(1)]),
+            (BooleanValue(false), vec![StackElement::Key("idents"), StackElement::Index(2)]),
+            (ArrayEnd, vec![StackElement::Key("idents")]),
+            (ObjectEnd, vec![]),
+        ],
     );
 }
 fn last_event(src: &str) -> JsonEvent {
@@ -1029,50 +1030,47 @@ fn last_event(src: &str) -> JsonEvent {
 
 #[test]
 fn test_read_object_streaming() {
-    assert_eq!(last_event("{ "),      Error(SyntaxError(EOFWhileParsingObject, 1, 3)));
-    assert_eq!(last_event("{1"),      Error(SyntaxError(KeyMustBeAString,      1, 2)));
+    assert_eq!(last_event("{ "), Error(SyntaxError(EOFWhileParsingObject, 1, 3)));
+    assert_eq!(last_event("{1"), Error(SyntaxError(KeyMustBeAString, 1, 2)));
     assert_eq!(last_event("{ \"a\""), Error(SyntaxError(EOFWhileParsingObject, 1, 6)));
-    assert_eq!(last_event("{\"a\""),  Error(SyntaxError(EOFWhileParsingObject, 1, 5)));
+    assert_eq!(last_event("{\"a\""), Error(SyntaxError(EOFWhileParsingObject, 1, 5)));
     assert_eq!(last_event("{\"a\" "), Error(SyntaxError(EOFWhileParsingObject, 1, 6)));
 
-    assert_eq!(last_event("{\"a\" 1"),   Error(SyntaxError(ExpectedColon,         1, 6)));
-    assert_eq!(last_event("{\"a\":"),    Error(SyntaxError(EOFWhileParsingValue,  1, 6)));
-    assert_eq!(last_event("{\"a\":1"),   Error(SyntaxError(EOFWhileParsingObject, 1, 7)));
-    assert_eq!(last_event("{\"a\":1 1"), Error(SyntaxError(InvalidSyntax,         1, 8)));
-    assert_eq!(last_event("{\"a\":1,"),  Error(SyntaxError(EOFWhileParsingObject, 1, 8)));
+    assert_eq!(last_event("{\"a\" 1"), Error(SyntaxError(ExpectedColon, 1, 6)));
+    assert_eq!(last_event("{\"a\":"), Error(SyntaxError(EOFWhileParsingValue, 1, 6)));
+    assert_eq!(last_event("{\"a\":1"), Error(SyntaxError(EOFWhileParsingObject, 1, 7)));
+    assert_eq!(last_event("{\"a\":1 1"), Error(SyntaxError(InvalidSyntax, 1, 8)));
+    assert_eq!(last_event("{\"a\":1,"), Error(SyntaxError(EOFWhileParsingObject, 1, 8)));
     assert_eq!(last_event("{\"a\":1,}"), Error(SyntaxError(TrailingComma, 1, 8)));
 
-    assert_stream_equal(
-        "{}",
-        vec![(ObjectStart, vec![]), (ObjectEnd, vec![])]
-    );
+    assert_stream_equal("{}", vec![(ObjectStart, vec![]), (ObjectEnd, vec![])]);
     assert_stream_equal(
         "{\"a\": 3}",
         vec![
-            (ObjectStart,        vec![]),
-              (U64Value(3),      vec![StackElement::Key("a")]),
-            (ObjectEnd,          vec![]),
-        ]
+            (ObjectStart, vec![]),
+            (U64Value(3), vec![StackElement::Key("a")]),
+            (ObjectEnd, vec![]),
+        ],
     );
     assert_stream_equal(
         "{ \"a\": null, \"b\" : true }",
         vec![
-            (ObjectStart,           vec![]),
-              (NullValue,           vec![StackElement::Key("a")]),
-              (BooleanValue(true),  vec![StackElement::Key("b")]),
-            (ObjectEnd,             vec![]),
-        ]
+            (ObjectStart, vec![]),
+            (NullValue, vec![StackElement::Key("a")]),
+            (BooleanValue(true), vec![StackElement::Key("b")]),
+            (ObjectEnd, vec![]),
+        ],
     );
     assert_stream_equal(
         "{\"a\" : 1.0 ,\"b\": [ true ]}",
         vec![
-            (ObjectStart,           vec![]),
-              (F64Value(1.0),       vec![StackElement::Key("a")]),
-              (ArrayStart,          vec![StackElement::Key("b")]),
-                (BooleanValue(true),vec![StackElement::Key("b"), StackElement::Index(0)]),
-              (ArrayEnd,            vec![StackElement::Key("b")]),
-            (ObjectEnd,             vec![]),
-        ]
+            (ObjectStart, vec![]),
+            (F64Value(1.0), vec![StackElement::Key("a")]),
+            (ArrayStart, vec![StackElement::Key("b")]),
+            (BooleanValue(true), vec![StackElement::Key("b"), StackElement::Index(0)]),
+            (ArrayEnd, vec![StackElement::Key("b")]),
+            (ObjectEnd, vec![]),
+        ],
     );
     assert_stream_equal(
         r#"{
@@ -1084,120 +1082,109 @@ fn test_read_object_streaming() {
             ]
         }"#,
         vec![
-            (ObjectStart,                   vec![]),
-              (F64Value(1.0),               vec![StackElement::Key("a")]),
-              (ArrayStart,                  vec![StackElement::Key("b")]),
-                (BooleanValue(true),        vec![StackElement::Key("b"),
-                                                StackElement::Index(0)]),
-                (StringValue("foo\nbar".to_string()),  vec![StackElement::Key("b"),
-                                                            StackElement::Index(1)]),
-                (ObjectStart,               vec![StackElement::Key("b"),
-                                                 StackElement::Index(2)]),
-                  (ObjectStart,             vec![StackElement::Key("b"),
-                                                 StackElement::Index(2),
-                                                 StackElement::Key("c")]),
-                    (NullValue,             vec![StackElement::Key("b"),
-                                                 StackElement::Index(2),
-                                                 StackElement::Key("c"),
-                                                 StackElement::Key("d")]),
-                  (ObjectEnd,               vec![StackElement::Key("b"),
-                                                 StackElement::Index(2),
-                                                 StackElement::Key("c")]),
-                (ObjectEnd,                 vec![StackElement::Key("b"),
-                                                 StackElement::Index(2)]),
-              (ArrayEnd,                    vec![StackElement::Key("b")]),
-            (ObjectEnd,                     vec![]),
-        ]
+            (ObjectStart, vec![]),
+            (F64Value(1.0), vec![StackElement::Key("a")]),
+            (ArrayStart, vec![StackElement::Key("b")]),
+            (BooleanValue(true), vec![StackElement::Key("b"), StackElement::Index(0)]),
+            (
+                StringValue("foo\nbar".to_string()),
+                vec![StackElement::Key("b"), StackElement::Index(1)],
+            ),
+            (ObjectStart, vec![StackElement::Key("b"), StackElement::Index(2)]),
+            (
+                ObjectStart,
+                vec![StackElement::Key("b"), StackElement::Index(2), StackElement::Key("c")],
+            ),
+            (
+                NullValue,
+                vec![
+                    StackElement::Key("b"),
+                    StackElement::Index(2),
+                    StackElement::Key("c"),
+                    StackElement::Key("d"),
+                ],
+            ),
+            (
+                ObjectEnd,
+                vec![StackElement::Key("b"), StackElement::Index(2), StackElement::Key("c")],
+            ),
+            (ObjectEnd, vec![StackElement::Key("b"), StackElement::Index(2)]),
+            (ArrayEnd, vec![StackElement::Key("b")]),
+            (ObjectEnd, vec![]),
+        ],
     );
 }
 #[test]
 fn test_read_array_streaming() {
-    assert_stream_equal(
-        "[]",
-        vec![
-            (ArrayStart, vec![]),
-            (ArrayEnd,   vec![]),
-        ]
-    );
-    assert_stream_equal(
-        "[ ]",
-        vec![
-            (ArrayStart, vec![]),
-            (ArrayEnd,   vec![]),
-        ]
-    );
+    assert_stream_equal("[]", vec![(ArrayStart, vec![]), (ArrayEnd, vec![])]);
+    assert_stream_equal("[ ]", vec![(ArrayStart, vec![]), (ArrayEnd, vec![])]);
     assert_stream_equal(
         "[true]",
         vec![
-            (ArrayStart,             vec![]),
-                (BooleanValue(true), vec![StackElement::Index(0)]),
-            (ArrayEnd,               vec![]),
-        ]
+            (ArrayStart, vec![]),
+            (BooleanValue(true), vec![StackElement::Index(0)]),
+            (ArrayEnd, vec![]),
+        ],
     );
     assert_stream_equal(
         "[ false ]",
         vec![
-            (ArrayStart,              vec![]),
-                (BooleanValue(false), vec![StackElement::Index(0)]),
-            (ArrayEnd,                vec![]),
-        ]
+            (ArrayStart, vec![]),
+            (BooleanValue(false), vec![StackElement::Index(0)]),
+            (ArrayEnd, vec![]),
+        ],
     );
     assert_stream_equal(
         "[null]",
-        vec![
-            (ArrayStart,    vec![]),
-                (NullValue, vec![StackElement::Index(0)]),
-            (ArrayEnd,      vec![]),
-        ]
+        vec![(ArrayStart, vec![]), (NullValue, vec![StackElement::Index(0)]), (ArrayEnd, vec![])],
     );
     assert_stream_equal(
         "[3, 1]",
         vec![
-            (ArrayStart,      vec![]),
-                (U64Value(3), vec![StackElement::Index(0)]),
-                (U64Value(1), vec![StackElement::Index(1)]),
-            (ArrayEnd,        vec![]),
-        ]
+            (ArrayStart, vec![]),
+            (U64Value(3), vec![StackElement::Index(0)]),
+            (U64Value(1), vec![StackElement::Index(1)]),
+            (ArrayEnd, vec![]),
+        ],
     );
     assert_stream_equal(
         "\n[3, 2]\n",
         vec![
-            (ArrayStart,      vec![]),
-                (U64Value(3), vec![StackElement::Index(0)]),
-                (U64Value(2), vec![StackElement::Index(1)]),
-            (ArrayEnd,        vec![]),
-        ]
+            (ArrayStart, vec![]),
+            (U64Value(3), vec![StackElement::Index(0)]),
+            (U64Value(2), vec![StackElement::Index(1)]),
+            (ArrayEnd, vec![]),
+        ],
     );
     assert_stream_equal(
         "[2, [4, 1]]",
         vec![
-            (ArrayStart,           vec![]),
-                (U64Value(2),      vec![StackElement::Index(0)]),
-                (ArrayStart,       vec![StackElement::Index(1)]),
-                    (U64Value(4),  vec![StackElement::Index(1), StackElement::Index(0)]),
-                    (U64Value(1),  vec![StackElement::Index(1), StackElement::Index(1)]),
-                (ArrayEnd,         vec![StackElement::Index(1)]),
-            (ArrayEnd,             vec![]),
-        ]
+            (ArrayStart, vec![]),
+            (U64Value(2), vec![StackElement::Index(0)]),
+            (ArrayStart, vec![StackElement::Index(1)]),
+            (U64Value(4), vec![StackElement::Index(1), StackElement::Index(0)]),
+            (U64Value(1), vec![StackElement::Index(1), StackElement::Index(1)]),
+            (ArrayEnd, vec![StackElement::Index(1)]),
+            (ArrayEnd, vec![]),
+        ],
     );
 
-    assert_eq!(last_event("["), Error(SyntaxError(EOFWhileParsingValue, 1,  2)));
+    assert_eq!(last_event("["), Error(SyntaxError(EOFWhileParsingValue, 1, 2)));
 
-    assert_eq!(from_str("["),     Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
-    assert_eq!(from_str("[1"),    Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
-    assert_eq!(from_str("[1,"),   Err(SyntaxError(EOFWhileParsingValue, 1, 4)));
-    assert_eq!(from_str("[1,]"),  Err(SyntaxError(InvalidSyntax,        1, 4)));
-    assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax,        1, 4)));
-
+    assert_eq!(from_str("["), Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
+    assert_eq!(from_str("[1"), Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
+    assert_eq!(from_str("[1,"), Err(SyntaxError(EOFWhileParsingValue, 1, 4)));
+    assert_eq!(from_str("[1,]"), Err(SyntaxError(InvalidSyntax, 1, 4)));
+    assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax, 1, 4)));
 }
 #[test]
 fn test_trailing_characters_streaming() {
-    assert_eq!(last_event("nulla"),  Error(SyntaxError(TrailingCharacters, 1, 5)));
-    assert_eq!(last_event("truea"),  Error(SyntaxError(TrailingCharacters, 1, 5)));
+    assert_eq!(last_event("nulla"), Error(SyntaxError(TrailingCharacters, 1, 5)));
+    assert_eq!(last_event("truea"), Error(SyntaxError(TrailingCharacters, 1, 5)));
     assert_eq!(last_event("falsea"), Error(SyntaxError(TrailingCharacters, 1, 6)));
-    assert_eq!(last_event("1a"),     Error(SyntaxError(TrailingCharacters, 1, 2)));
-    assert_eq!(last_event("[]a"),    Error(SyntaxError(TrailingCharacters, 1, 3)));
-    assert_eq!(last_event("{}a"),    Error(SyntaxError(TrailingCharacters, 1, 3)));
+    assert_eq!(last_event("1a"), Error(SyntaxError(TrailingCharacters, 1, 2)));
+    assert_eq!(last_event("[]a"), Error(SyntaxError(TrailingCharacters, 1, 3)));
+    assert_eq!(last_event("{}a"), Error(SyntaxError(TrailingCharacters, 1, 3)));
 }
 #[test]
 fn test_read_identifiers_streaming() {
@@ -1205,18 +1192,18 @@ fn test_read_identifiers_streaming() {
     assert_eq!(Parser::new("true".chars()).next(), Some(BooleanValue(true)));
     assert_eq!(Parser::new("false".chars()).next(), Some(BooleanValue(false)));
 
-    assert_eq!(last_event("n"),    Error(SyntaxError(InvalidSyntax, 1, 2)));
-    assert_eq!(last_event("nul"),  Error(SyntaxError(InvalidSyntax, 1, 4)));
-    assert_eq!(last_event("t"),    Error(SyntaxError(InvalidSyntax, 1, 2)));
+    assert_eq!(last_event("n"), Error(SyntaxError(InvalidSyntax, 1, 2)));
+    assert_eq!(last_event("nul"), Error(SyntaxError(InvalidSyntax, 1, 4)));
+    assert_eq!(last_event("t"), Error(SyntaxError(InvalidSyntax, 1, 2)));
     assert_eq!(last_event("truz"), Error(SyntaxError(InvalidSyntax, 1, 4)));
-    assert_eq!(last_event("f"),    Error(SyntaxError(InvalidSyntax, 1, 2)));
-    assert_eq!(last_event("faz"),  Error(SyntaxError(InvalidSyntax, 1, 3)));
+    assert_eq!(last_event("f"), Error(SyntaxError(InvalidSyntax, 1, 2)));
+    assert_eq!(last_event("faz"), Error(SyntaxError(InvalidSyntax, 1, 3)));
 }
 
 #[test]
 fn test_to_json() {
-    use std::collections::{HashMap,BTreeMap};
     use json::ToJson;
+    use std::collections::{BTreeMap, HashMap};
 
     let array2 = Array(vec![U64(1), U64(2)]);
     let array3 = Array(vec![U64(1), U64(2), U64(3)]);
@@ -1279,6 +1266,6 @@ fn test_encode_hashmap_with_arbitrary_key() {
     let result = hm.encode(&mut encoder);
     match result.unwrap_err() {
         EncoderError::BadHashmapKey => (),
-        _ => panic!("expected bad hash map key")
+        _ => panic!("expected bad hash map key"),
     }
 }

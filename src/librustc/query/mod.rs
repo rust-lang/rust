@@ -1,21 +1,20 @@
-use crate::ty::query::QueryDescription;
-use crate::ty::query::queries;
-use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use crate::ty::subst::SubstsRef;
-use crate::dep_graph::{RecoverKey,DepKind, DepNode, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, RecoverKey, SerializedDepNodeIndex};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::traits;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal,
-    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
-    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
-    CanonicalTypeOpNormalizeGoal,
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
+use crate::ty::query::queries;
+use crate::ty::query::QueryDescription;
+use crate::ty::subst::SubstsRef;
+use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 
+use rustc_span::symbol::Symbol;
 use std::borrow::Cow;
-use syntax_pos::symbol::Symbol;
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -399,6 +398,16 @@ rustc_queries! {
                 typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
             }
         }
+        query diagnostic_only_typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
+            cache_on_disk_if { key.is_local() }
+            load_cached(tcx, id) {
+                let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
+                    .queries.on_disk_cache
+                    .try_load_query_result(tcx, id);
+
+                typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
+            }
+        }
     }
 
     Other {
@@ -448,7 +457,8 @@ rustc_queries! {
         ///
         /// **Do not use this** outside const eval. Const eval uses this to break query cycles
         /// during validation. Please add a comment to every use site explaining why using
-        /// `const_eval` isn't sufficient.
+        /// `const_eval_validated` isn't sufficient. The returned constant also isn't in a suitable
+        /// form to be used outside of const eval.
         query const_eval_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalRawResult<'tcx> {
             no_force
@@ -460,7 +470,13 @@ rustc_queries! {
 
         /// Results of evaluating const items or constants embedded in
         /// other items (such as enum variant explicit discriminants).
-        query const_eval(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+        ///
+        /// In contrast to `const_eval_raw` this performs some validation on the constant, and
+        /// returns a proper constant that is usable by the rest of the compiler.
+        ///
+        /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
+        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_promoted`.
+        query const_eval_validated(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx> {
             no_force
             desc { |tcx|
@@ -481,7 +497,7 @@ rustc_queries! {
             desc { "extract field of const" }
         }
 
-        query const_caller_location(key: (syntax_pos::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
+        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
             no_force
             desc { "get a &core::panic::Location referring to a span" }
         }
@@ -504,7 +520,7 @@ rustc_queries! {
     }
 
     Other {
-        query reachable_set(_: CrateNum) -> ReachableSet {
+        query reachable_set(_: CrateNum) -> Lrc<HirIdSet> {
             desc { "reachability" }
         }
 

@@ -1,5 +1,5 @@
 error[E0080]: erroneous constant used
-  --> $DIR/assoc_const_2.rs:27:13
+  --> $DIR/assoc_const_2.rs:29:13
    |
 LL |     let y = <String as Bar<String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors

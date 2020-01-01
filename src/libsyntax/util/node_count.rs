@@ -1,8 +1,8 @@
 // Simply gives a rought count of the number of nodes in an AST.
 
-use crate::visit::*;
 use crate::ast::*;
-use syntax_pos::Span;
+use crate::visit::*;
+use rustc_span::Span;
 
 pub struct NodeCounter {
     pub count: usize,
@@ -10,9 +10,7 @@ pub struct NodeCounter {
 
 impl NodeCounter {
     pub fn new() -> NodeCounter {
-        NodeCounter {
-            count: 0,
-        }
+        NodeCounter { count: 0 }
     }
 }
 
@@ -73,13 +71,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_fn(self, fk, fd, s)
     }
-    fn visit_trait_item(&mut self, ti: &TraitItem) {
+    fn visit_assoc_item(&mut self, ti: &AssocItem) {
         self.count += 1;
-        walk_trait_item(self, ti)
-    }
-    fn visit_impl_item(&mut self, ii: &ImplItem) {
-        self.count += 1;
-        walk_impl_item(self, ii)
+        walk_assoc_item(self, ti)
     }
     fn visit_trait_ref(&mut self, t: &TraitRef) {
         self.count += 1;
@@ -101,8 +95,13 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_struct_field(self, s)
     }
-    fn visit_enum_def(&mut self, enum_definition: &EnumDef,
-                      generics: &Generics, item_id: NodeId, _: Span) {
+    fn visit_enum_def(
+        &mut self,
+        enum_definition: &EnumDef,
+        generics: &Generics,
+        item_id: NodeId,
+        _: Span,
+    ) {
         self.count += 1;
         walk_enum_def(self, enum_definition, generics, item_id)
     }

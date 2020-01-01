@@ -114,7 +114,6 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
             root_is_start_block: root == START_BLOCK,
         };
 
-
         let data = &po.body[root];
 
         if let Some(ref term) = data.terminator {
@@ -254,27 +253,22 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 pub struct ReversePostorder<'a, 'tcx> {
     body: &'a Body<'tcx>,
     blocks: Vec<BasicBlock>,
-    idx: usize
+    idx: usize,
 }
 
 impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
     pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> ReversePostorder<'a, 'tcx> {
-        let blocks : Vec<_> = Postorder::new(body, root).map(|(bb, _)| bb).collect();
+        let blocks: Vec<_> = Postorder::new(body, root).map(|(bb, _)| bb).collect();
 
         let len = blocks.len();
 
-        ReversePostorder {
-            body,
-            blocks,
-            idx: len
-        }
+        ReversePostorder { body, blocks, idx: len }
     }
 
     pub fn reset(&mut self) {
         self.idx = self.blocks.len();
     }
 }
-
 
 pub fn reverse_postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> ReversePostorder<'a, 'tcx> {
     ReversePostorder::new(body, START_BLOCK)
@@ -284,7 +278,9 @@ impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
 
     fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
-        if self.idx == 0 { return None; }
+        if self.idx == 0 {
+            return None;
+        }
         self.idx -= 1;
 
         self.blocks.get(self.idx).map(|&bb| (bb, &self.body[bb]))

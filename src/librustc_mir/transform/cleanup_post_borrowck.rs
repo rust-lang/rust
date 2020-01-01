@@ -16,11 +16,11 @@
 //! [`FakeRead`]: rustc::mir::StatementKind::FakeRead
 //! [`Nop`]: rustc::mir::StatementKind::Nop
 
-use rustc::mir::{BodyAndCache, BorrowKind, Rvalue, Location};
-use rustc::mir::{Statement, StatementKind};
-use rustc::mir::visit::MutVisitor;
-use rustc::ty::TyCtxt;
 use crate::transform::{MirPass, MirSource};
+use rustc::mir::visit::MutVisitor;
+use rustc::mir::{BodyAndCache, BorrowKind, Location, Rvalue};
+use rustc::mir::{Statement, StatementKind};
+use rustc::ty::TyCtxt;
 
 pub struct CleanupNonCodegenStatements;
 
@@ -29,9 +29,7 @@ pub struct DeleteNonCodegenStatements<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
-    fn run_pass(
-        &self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
-    ) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         let mut delete = DeleteNonCodegenStatements { tcx };
         delete.visit_body(body);
     }
@@ -42,12 +40,10 @@ impl<'tcx> MutVisitor<'tcx> for DeleteNonCodegenStatements<'tcx> {
         self.tcx
     }
 
-    fn visit_statement(&mut self,
-                       statement: &mut Statement<'tcx>,
-                       location: Location) {
+    fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::AscribeUserType(..)
-            | StatementKind::Assign(box(_, Rvalue::Ref(_, BorrowKind::Shallow, _)))
+            | StatementKind::Assign(box (_, Rvalue::Ref(_, BorrowKind::Shallow, _)))
             | StatementKind::FakeRead(..) => statement.make_nop(),
             _ => (),
         }

@@ -1,3 +1,4 @@
+use crate::num::NonZeroUsize;
 /// A simple queue implementation for synchronization primitives.
 ///
 /// This queue is used to implement condition variable and mutexes.
@@ -9,23 +10,21 @@
 /// Since userspace may send spurious wake-ups, the wakeup event state is
 /// recorded in the enclave. The wakeup event state is protected by a spinlock.
 /// The queue and associated wait state are stored in a `WaitVariable`.
-
 use crate::ops::{Deref, DerefMut};
-use crate::num::NonZeroUsize;
 
-use fortanix_sgx_abi::{Tcs, EV_UNPARK, WAIT_INDEFINITE};
-use super::abi::usercalls;
 use super::abi::thread;
+use super::abi::usercalls;
+use fortanix_sgx_abi::{Tcs, EV_UNPARK, WAIT_INDEFINITE};
 
+pub use self::spin_mutex::{try_lock_or_false, SpinMutex, SpinMutexGuard};
 use self::unsafe_list::{UnsafeList, UnsafeListEntry};
-pub use self::spin_mutex::{SpinMutex, SpinMutexGuard, try_lock_or_false};
 
 /// An queue entry in a `WaitQueue`.
 struct WaitEntry {
     /// TCS address of the thread that is waiting
     tcs: Tcs,
     /// Whether this thread has been notified to be awoken
-    wake: bool
+    wake: bool,
 }
 
 /// Data stored with a `WaitQueue` alongside it. This ensures accesses to the
@@ -36,15 +35,12 @@ struct WaitEntry {
 #[derive(Default)]
 pub struct WaitVariable<T> {
     queue: WaitQueue,
-    lock: T
+    lock: T,
 }
 
 impl<T> WaitVariable<T> {
     pub const fn new(var: T) -> Self {
-        WaitVariable {
-            queue: WaitQueue::new(),
-            lock: var
-        }
+        WaitVariable { queue: WaitQueue::new(), lock: var }
     }
 
     pub fn queue_empty(&self) -> bool {
@@ -63,14 +59,14 @@ impl<T> WaitVariable<T> {
 #[derive(Copy, Clone)]
 pub enum NotifiedTcs {
     Single(Tcs),
-    All { count: NonZeroUsize }
+    All { count: NonZeroUsize },
 }
 
 /// An RAII guard that will notify a set of target threads as well as unlock
 /// a mutex on drop.
 pub struct WaitGuard<'a, T: 'a> {
     mutex_guard: Option<SpinMutexGuard<'a, WaitVariable<T>>>,
-    notified_tcs: NotifiedTcs
+    notified_tcs: NotifiedTcs,
 }
 
 /// A queue of threads that are waiting on some synchronization primitive.
@@ -125,7 +121,7 @@ impl<'a, T> Drop for WaitGuard<'a, T> {
         drop(self.mutex_guard.take());
         let target_tcs = match self.notified_tcs {
             NotifiedTcs::Single(tcs) => Some(tcs),
-            NotifiedTcs::All { .. } => None
+            NotifiedTcs::All { .. } => None,
         };
         rtunwrap!(Ok, usercalls::send(EV_UNPARK, target_tcs));
     }
@@ -133,9 +129,7 @@ impl<'a, T> Drop for WaitGuard<'a, T> {
 
 impl WaitQueue {
     pub const fn new() -> Self {
-        WaitQueue {
-            inner: UnsafeList::new()
-        }
+        WaitQueue { inner: UnsafeList::new() }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -151,7 +145,7 @@ impl WaitQueue {
         unsafe {
             let mut entry = UnsafeListEntry::new(SpinMutex::new(WaitEntry {
                 tcs: thread::current(),
-                wake: false
+                wake: false,
             }));
             let entry = guard.queue.inner.push(&mut entry);
             drop(guard);
@@ -169,19 +163,16 @@ impl WaitQueue {
     ///
     /// If a waiter is found, a `WaitGuard` is returned which will notify the
     /// waiter when it is dropped.
-    pub fn notify_one<T>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>)
-        -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>>
-    {
+    pub fn notify_one<T>(
+        mut guard: SpinMutexGuard<'_, WaitVariable<T>>,
+    ) -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>> {
         unsafe {
             if let Some(entry) = guard.queue.inner.pop() {
                 let mut entry_guard = entry.lock();
                 let tcs = entry_guard.tcs;
                 entry_guard.wake = true;
                 drop(entry);
-                Ok(WaitGuard {
-                    mutex_guard: Some(guard),
-                    notified_tcs: NotifiedTcs::Single(tcs)
-                })
+                Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::Single(tcs) })
             } else {
                 Err(guard)
             }
@@ -193,9 +184,9 @@ impl WaitQueue {
     ///
     /// If at least one waiter is found, a `WaitGuard` is returned which will
     /// notify all waiters when it is dropped.
-    pub fn notify_all<T>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>)
-        -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>>
-    {
+    pub fn notify_all<T>(
+        mut guard: SpinMutexGuard<'_, WaitVariable<T>>,
+    ) -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>> {
         unsafe {
             let mut count = 0;
             while let Some(entry) = guard.queue.inner.pop() {
@@ -204,10 +195,7 @@ impl WaitQueue {
                 entry_guard.wake = true;
             }
             if let Some(count) = NonZeroUsize::new(count) {
-                Ok(WaitGuard {
-                    mutex_guard: Some(guard),
-                    notified_tcs: NotifiedTcs::All { count }
-                })
+                Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::All { count } })
             } else {
                 Err(guard)
             }
@@ -218,29 +206,22 @@ impl WaitQueue {
 /// A doubly-linked list where callers are in charge of memory allocation
 /// of the nodes in the list.
 mod unsafe_list {
-    use crate::ptr::NonNull;
     use crate::mem;
+    use crate::ptr::NonNull;
 
     pub struct UnsafeListEntry<T> {
         next: NonNull<UnsafeListEntry<T>>,
         prev: NonNull<UnsafeListEntry<T>>,
-        value: Option<T>
+        value: Option<T>,
     }
 
     impl<T> UnsafeListEntry<T> {
         fn dummy() -> Self {
-            UnsafeListEntry {
-                next: NonNull::dangling(),
-                prev: NonNull::dangling(),
-                value: None
-            }
+            UnsafeListEntry { next: NonNull::dangling(), prev: NonNull::dangling(), value: None }
         }
 
         pub fn new(value: T) -> Self {
-            UnsafeListEntry {
-                value: Some(value),
-                ..Self::dummy()
-            }
+            UnsafeListEntry { value: Some(value), ..Self::dummy() }
         }
     }
 
@@ -252,10 +233,7 @@ mod unsafe_list {
     impl<T> UnsafeList<T> {
         pub const fn new() -> Self {
             unsafe {
-                UnsafeList {
-                    head_tail: NonNull::new_unchecked(1 as _),
-                    head_tail_entry: None
-                }
+                UnsafeList { head_tail: NonNull::new_unchecked(1 as _), head_tail_entry: None }
             }
         }
 
@@ -416,8 +394,8 @@ mod unsafe_list {
 // FIXME: Perhaps use Intel TSX to avoid locking?
 mod spin_mutex {
     use crate::cell::UnsafeCell;
-    use crate::sync::atomic::{AtomicBool, Ordering, spin_loop_hint};
     use crate::ops::{Deref, DerefMut};
+    use crate::sync::atomic::{spin_loop_hint, AtomicBool, Ordering};
 
     #[derive(Default)]
     pub struct SpinMutex<T> {
@@ -437,20 +415,19 @@ mod spin_mutex {
 
     impl<T> SpinMutex<T> {
         pub const fn new(value: T) -> Self {
-            SpinMutex {
-                value: UnsafeCell::new(value),
-                lock: AtomicBool::new(false)
-            }
+            SpinMutex { value: UnsafeCell::new(value), lock: AtomicBool::new(false) }
         }
 
         #[inline(always)]
         pub fn lock(&self) -> SpinMutexGuard<'_, T> {
             loop {
                 match self.try_lock() {
-                    None => while self.lock.load(Ordering::Relaxed) {
-                        spin_loop_hint()
-                    },
-                    Some(guard) => return guard
+                    None => {
+                        while self.lock.load(Ordering::Relaxed) {
+                            spin_loop_hint()
+                        }
+                    }
+                    Some(guard) => return guard,
                 }
             }
         }
@@ -458,9 +435,7 @@ mod spin_mutex {
         #[inline(always)]
         pub fn try_lock(&self) -> Option<SpinMutexGuard<'_, T>> {
             if !self.lock.compare_and_swap(false, true, Ordering::Acquire) {
-                Some(SpinMutexGuard {
-                    mutex: self,
-                })
+                Some(SpinMutexGuard { mutex: self })
             } else {
                 None
             }
@@ -468,31 +443,21 @@ mod spin_mutex {
     }
 
     /// Lock the Mutex or return false.
-    pub macro try_lock_or_false {
-        ($e:expr) => {
-            if let Some(v) = $e.try_lock() {
-                v
-            } else {
-                return false
-            }
-        }
+    pub macro try_lock_or_false($e:expr) {
+        if let Some(v) = $e.try_lock() { v } else { return false }
     }
 
     impl<'a, T> Deref for SpinMutexGuard<'a, T> {
         type Target = T;
 
         fn deref(&self) -> &T {
-            unsafe {
-                &*self.mutex.value.get()
-            }
+            unsafe { &*self.mutex.value.get() }
         }
     }
 
     impl<'a, T> DerefMut for SpinMutexGuard<'a, T> {
         fn deref_mut(&mut self) -> &mut T {
-            unsafe {
-                &mut*self.mutex.value.get()
-            }
+            unsafe { &mut *self.mutex.value.get() }
         }
     }
 
@@ -509,7 +474,7 @@ mod spin_mutex {
         use super::*;
         use crate::sync::Arc;
         use crate::thread;
-        use crate::time::{SystemTime, Duration};
+        use crate::time::{Duration, SystemTime};
 
         #[test]
         fn sleep() {
@@ -552,7 +517,7 @@ mod tests {
             assert!(WaitQueue::notify_one(wq2.lock()).is_ok());
         });
 
-        WaitQueue::wait(locked, ||{});
+        WaitQueue::wait(locked, || {});
 
         t1.join().unwrap();
     }

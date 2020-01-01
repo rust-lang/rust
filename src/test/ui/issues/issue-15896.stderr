@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-15896.rs:11:11
    |
 LL |     let u = match e {
-   |                   - this match expression has type `main::R`
+   |                   - this expression has type `main::E`
 LL |         E::B(
 LL |           Tau{t: x},
    |           ^^^^^^^^^ expected enum `main::R`, found struct `main::Tau`

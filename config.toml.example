@@ -14,6 +14,12 @@
 # =============================================================================
 [llvm]
 
+# Indicates whether LLVM rebuild should be skipped when running bootstrap. If
+# this is `false` then the compiler's LLVM will be rebuilt whenever the built
+# version doesn't have the correct hash. If it is `true` then LLVM will never
+# be rebuilt. The default value is `false`.
+#skip-rebuild = false
+
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
 

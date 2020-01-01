@@ -1,7 +1,7 @@
 use crate::sys::mutex::Mutex;
 use crate::time::Duration;
 
-use super::waitqueue::{WaitVariable, WaitQueue, SpinMutex};
+use super::waitqueue::{SpinMutex, WaitQueue, WaitVariable};
 
 pub struct Condvar {
     inner: SpinMutex<WaitVariable<()>>,

@@ -1,8 +1,6 @@
 //! Panic support in the standard library.
 
-#![unstable(feature = "core_panic_info",
-            reason = "newly available in libcore",
-            issue = "44489")]
+#![stable(feature = "core_panic_info", since = "1.41.0")]
 
 use crate::any::Any;
 use crate::fmt;
@@ -39,10 +37,12 @@ pub struct PanicInfo<'a> {
 }
 
 impl<'a> PanicInfo<'a> {
-    #![unstable(feature = "panic_internals",
-                reason = "internal details of the implementation of the `panic!` \
-                          and related macros",
-                issue = "0")]
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
+                         and related macros",
+        issue = "none"
+    )]
     #[doc(hidden)]
     #[inline]
     pub fn internal_constructor(
@@ -50,13 +50,15 @@ impl<'a> PanicInfo<'a> {
         location: &'a Location<'a>,
     ) -> Self {
         struct NoPayload;
-        PanicInfo {
-            location,
-            message,
-            payload: &NoPayload,
-        }
+        PanicInfo { location, message, payload: &NoPayload }
     }
 
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
+                         and related macros",
+        issue = "none"
+    )]
     #[doc(hidden)]
     #[inline]
     pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
@@ -90,7 +92,7 @@ impl<'a> PanicInfo<'a> {
     /// returns that message ready to be used for example with [`fmt::write`]
     ///
     /// [`fmt::write`]: ../fmt/fn.write.html
-    #[unstable(feature = "panic_info_message", issue = "44489")]
+    #[unstable(feature = "panic_info_message", issue = "66745")]
     pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
         self.message
     }
@@ -220,10 +222,11 @@ impl<'a> Location<'a> {
     /// assert_ne!(this_location.line(), another_location.line());
     /// assert_ne!(this_location.column(), another_location.column());
     /// ```
-    #[cfg(not(bootstrap))]
-    #[unstable(feature = "track_caller",
-               reason = "uses #[track_caller] which is not yet stable",
-               issue = "47809")]
+    #[unstable(
+        feature = "track_caller",
+        reason = "uses #[track_caller] which is not yet stable",
+        issue = "47809"
+    )]
     #[track_caller]
     pub const fn caller() -> &'static Location<'static> {
         crate::intrinsics::caller_location()
@@ -231,10 +234,12 @@ impl<'a> Location<'a> {
 }
 
 impl<'a> Location<'a> {
-    #![unstable(feature = "panic_internals",
-                reason = "internal details of the implementation of the `panic!` \
+    #![unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
                           and related macros",
-                issue = "0")]
+        issue = "none"
+    )]
     #[doc(hidden)]
     pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
         Location { file, line, col }
@@ -317,7 +322,7 @@ impl fmt::Display for Location<'_> {
 /// An internal trait used by libstd to pass data from libstd to `panic_unwind`
 /// and other panic runtimes. Not intended to be stabilized any time soon, do
 /// not use.
-#[unstable(feature = "std_internals", issue = "0")]
+#[unstable(feature = "std_internals", issue = "none")]
 #[doc(hidden)]
 pub unsafe trait BoxMeUp {
     /// Take full ownership of the contents.

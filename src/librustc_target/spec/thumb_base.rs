@@ -27,8 +27,8 @@
 // differentiate these targets from our other `arm(v7)-*-*-gnueabi(hf)` targets in the context of
 // build scripts / gcc flags.
 
-use std::default::Default;
 use crate::spec::{PanicStrategy, TargetOptions};
+use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
@@ -50,6 +50,6 @@ pub fn opts() -> TargetOptions {
         // until we figure a way to add the pretty printers without requiring a volatile load cf.
         // rust-lang/rust#44993.
         emit_debug_gdb_scripts: false,
-        .. Default::default()
+        ..Default::default()
     }
 }

@@ -7,8 +7,8 @@
 //! `normalize_ty_after_erasing_regions` query for each type found
 //! within. (This underlying query is what is cached.)
 
-use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
+use crate::ty::{self, Ty, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Erase the regions in `value` and then fully normalize all the

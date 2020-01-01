@@ -4,7 +4,7 @@ error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
 LL |     1.create_a_type_error[
    |       ^^^^^^^^^^^^^^^^^^^
 
-error[E0369]: binary operation `+` cannot be applied to type `()`
+error[E0369]: cannot add `()` to `()`
   --> $DIR/issue-24363.rs:3:11
    |
 LL |         ()+()

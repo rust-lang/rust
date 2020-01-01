@@ -12,20 +12,19 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
+use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
-use crate::build::matches::{Ascription, Binding, MatchPair, Candidate};
 use crate::hair::{self, *};
+use rustc::hir::RangeEnd;
+use rustc::mir::interpret::truncate;
 use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
 use syntax::attr::{SignedInt, UnsignedInt};
-use rustc::hir::RangeEnd;
-use rustc::mir::interpret::truncate;
 
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn simplify_candidate<'pat>(&mut self,
-                                    candidate: &mut Candidate<'pat, 'tcx>) {
+    pub fn simplify_candidate<'pat>(&mut self, candidate: &mut Candidate<'pat, 'tcx>) {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
@@ -51,19 +50,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// have been pushed into the candidate. If no simplification is
     /// possible, `Err` is returned and no changes are made to
     /// candidate.
-    fn simplify_match_pair<'pat>(&mut self,
-                                 match_pair: MatchPair<'pat, 'tcx>,
-                                 candidate: &mut Candidate<'pat, 'tcx>)
-                                 -> Result<(), MatchPair<'pat, 'tcx>> {
+    fn simplify_match_pair<'pat>(
+        &mut self,
+        match_pair: MatchPair<'pat, 'tcx>,
+        candidate: &mut Candidate<'pat, 'tcx>,
+    ) -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.hir.tcx();
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: hair::pattern::Ascription {
-                    variance,
-                    ref user_ty,
-                    user_ty_span,
-                },
+                ascription: hair::pattern::Ascription { variance, ref user_ty, user_ty_span },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
                 // value being matched, taking the variance field into account.
@@ -147,11 +143,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     // irrefutable
-                    self.prefix_slice_suffix(&mut candidate.match_pairs,
-                                             &match_pair.place,
-                                             prefix,
-                                             slice.as_ref(),
-                                             suffix);
+                    self.prefix_slice_suffix(
+                        &mut candidate.match_pairs,
+                        &match_pair.place,
+                        prefix,
+                        slice.as_ref(),
+                        suffix,
+                    );
                     Ok(())
                 } else {
                     Err(match_pair)
@@ -161,10 +159,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().features().exhaustive_patterns &&
-                        !v.uninhabited_from(self.hir.tcx(), substs, adt_def.adt_kind()).is_empty()
+                        self.hir.tcx().features().exhaustive_patterns
+                            && !v
+                                .uninhabited_from(self.hir.tcx(), substs, adt_def.adt_kind())
+                                .is_empty()
                     }
-                }) && (adt_def.did.is_local() || !adt_def.is_variant_list_non_exhaustive());
+                }) && (adt_def.did.is_local()
+                    || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
                     let place = tcx.mk_place_downcast(match_pair.place, adt_def, variant_index);
                     candidate.match_pairs.extend(self.field_match_pairs(place, subpatterns));
@@ -175,18 +176,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                self.prefix_slice_suffix(&mut candidate.match_pairs,
-                                         &match_pair.place,
-                                         prefix,
-                                         slice.as_ref(),
-                                         suffix);
+                self.prefix_slice_suffix(
+                    &mut candidate.match_pairs,
+                    &match_pair.place,
+                    prefix,
+                    slice.as_ref(),
+                    suffix,
+                );
                 Ok(())
             }
 
             PatKind::Leaf { ref subpatterns } => {
                 // tuple struct, match subpats (if any)
-                candidate.match_pairs
-                         .extend(self.field_match_pairs(match_pair.place, subpatterns));
+                candidate.match_pairs.extend(self.field_match_pairs(match_pair.place, subpatterns));
                 Ok(())
             }
 
@@ -196,9 +198,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatKind::Or { .. } => {
-                Err(match_pair)
-            }
+            PatKind::Or { .. } => Err(match_pair),
         }
     }
 }

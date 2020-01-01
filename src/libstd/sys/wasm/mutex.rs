@@ -13,8 +13,7 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {
-    }
+    pub unsafe fn init(&mut self) {}
 
     #[inline]
     pub unsafe fn lock(&self) {
@@ -40,18 +39,16 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn destroy(&self) {
-    }
+    pub unsafe fn destroy(&self) {}
 }
 
 // All empty stubs because wasm has no threads yet, so lock acquisition always
 // succeeds.
-pub struct ReentrantMutex {
-}
+pub struct ReentrantMutex {}
 
 impl ReentrantMutex {
     pub unsafe fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex { }
+        ReentrantMutex {}
     }
 
     pub unsafe fn init(&mut self) {}

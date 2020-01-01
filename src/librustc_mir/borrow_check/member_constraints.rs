@@ -3,9 +3,9 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::region_constraints::MemberConstraint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::Span;
 use std::hash::Hash;
 use std::ops::Index;
-use syntax_pos::Span;
 
 /// Compactly stores a set of `R0 member of [R1...Rn]` constraints,
 /// indexed by the region `R0`.
@@ -141,11 +141,7 @@ where
             first_constraints2.insert(r2, start1);
         }
 
-        MemberConstraintSet {
-            first_constraints: first_constraints2,
-            constraints,
-            choice_regions,
-        }
+        MemberConstraintSet { first_constraints: first_constraints2, constraints, choice_regions }
     }
 }
 
@@ -153,9 +149,7 @@ impl<R> MemberConstraintSet<'tcx, R>
 where
     R: Copy + Hash + Eq,
 {
-    crate fn all_indices(
-        &self,
-    ) -> impl Iterator<Item = NllMemberConstraintIndex> {
+    crate fn all_indices(&self) -> impl Iterator<Item = NllMemberConstraintIndex> {
         self.constraints.indices()
     }
 

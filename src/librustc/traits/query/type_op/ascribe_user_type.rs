@@ -1,8 +1,8 @@
+use crate::hir::def_id::DefId;
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
-use crate::hir::def_id::DefId;
-use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
 use crate::ty::subst::UserSubsts;
+use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
 pub struct AscribeUserType<'tcx> {
@@ -12,12 +12,8 @@ pub struct AscribeUserType<'tcx> {
 }
 
 impl<'tcx> AscribeUserType<'tcx> {
-    pub fn new(
-        mir_ty: Ty<'tcx>,
-        def_id: DefId,
-        user_substs: UserSubsts<'tcx>,
-    ) -> Self {
-        Self { mir_ty,  def_id, user_substs }
+    pub fn new(mir_ty: Ty<'tcx>, def_id: DefId, user_substs: UserSubsts<'tcx>) -> Self {
+        Self { mir_ty, def_id, user_substs }
     }
 }
 

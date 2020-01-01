@@ -1,11 +1,11 @@
-use super::SubregionOrigin;
 use super::combine::{CombineFields, RelationDir};
+use super::SubregionOrigin;
 
 use crate::traits::Obligation;
-use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::TyVar;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use crate::ty::TyVar;
+use crate::ty::{self, Ty, TyCtxt};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
@@ -31,15 +31,24 @@ impl<'combine, 'infcx, 'tcx> Sub<'combine, 'infcx, 'tcx> {
 }
 
 impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
-    fn tag(&self) -> &'static str { "Sub" }
-    fn tcx(&self) -> TyCtxt<'tcx> { self.fields.infcx.tcx }
+    fn tag(&self) -> &'static str {
+        "Sub"
+    }
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.fields.infcx.tcx
+    }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.fields.param_env }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.fields.param_env
+    }
 
-    fn a_is_expected(&self) -> bool { self.a_is_expected }
+    fn a_is_expected(&self) -> bool {
+        self.a_is_expected
+    }
 
-    fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R
-        where F: FnOnce(&mut Self) -> R
+    fn with_cause<F, R>(&mut self, cause: Cause, f: F) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
     {
         debug!("sub with_cause={:?}", cause);
         let old_cause = mem::replace(&mut self.fields.cause, Some(cause));
@@ -49,24 +58,26 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
         r
     }
 
-    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
-                                             variance: ty::Variance,
-                                             a: &T,
-                                             b: &T)
-                                             -> RelateResult<'tcx, T>
-    {
+    fn relate_with_variance<T: Relate<'tcx>>(
+        &mut self,
+        variance: ty::Variance,
+        a: &T,
+        b: &T,
+    ) -> RelateResult<'tcx, T> {
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
             ty::Bivariant => Ok(a.clone()),
-            ty::Contravariant => self.with_expected_switched(|this| { this.relate(b, a) }),
+            ty::Contravariant => self.with_expected_switched(|this| this.relate(b, a)),
         }
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({:?}, {:?})", self.tag(), a, b);
 
-        if a == b { return Ok(a); }
+        if a == b {
+            return Ok(a);
+        }
 
         let infcx = self.fields.infcx;
         let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
@@ -85,22 +96,20 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
                 // the two variables are equal modulo subtyping, which
                 // is important to the occurs check later on.
                 infcx.type_variables.borrow_mut().sub(a_vid, b_vid);
-                self.fields.obligations.push(
-                    Obligation::new(
-                        self.fields.trace.cause.clone(),
-                        self.fields.param_env,
-                        ty::Predicate::Subtype(
-                            ty::Binder::dummy(ty::SubtypePredicate {
-                                a_is_expected: self.a_is_expected,
-                                a,
-                                b,
-                            }))));
+                self.fields.obligations.push(Obligation::new(
+                    self.fields.trace.cause.clone(),
+                    self.fields.param_env,
+                    ty::Predicate::Subtype(ty::Binder::dummy(ty::SubtypePredicate {
+                        a_is_expected: self.a_is_expected,
+                        a,
+                        b,
+                    })),
+                ));
 
                 Ok(a)
             }
             (&ty::Infer(TyVar(a_id)), _) => {
-                self.fields
-                    .instantiate(b, RelationDir::SupertypeOf, a_id, !self.a_is_expected)?;
+                self.fields.instantiate(b, RelationDir::SupertypeOf, a_id, !self.a_is_expected)?;
                 Ok(a)
             }
             (_, &ty::Infer(TyVar(b_id))) => {
@@ -120,17 +129,18 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
         }
     }
 
-    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>)
-               -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?}) self.cause={:?}",
-               self.tag(), a, b, self.fields.cause);
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        debug!("{}.regions({:?}, {:?}) self.cause={:?}", self.tag(), a, b, self.fields.cause);
 
         // FIXME -- we have more fine-grained information available
         // from the "cause" field, we could perhaps give more tailored
         // error messages.
         let origin = SubregionOrigin::Subtype(box self.fields.trace.clone());
-        self.fields.infcx.borrow_region_constraints()
-                         .make_subregion(origin, a, b);
+        self.fields.infcx.borrow_region_constraints().make_subregion(origin, a, b);
 
         Ok(a)
     }
@@ -143,9 +153,13 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'tcx>
+    fn binders<T>(
+        &mut self,
+        a: &ty::Binder<T>,
+        b: &ty::Binder<T>,
+    ) -> RelateResult<'tcx, ty::Binder<T>>
+    where
+        T: Relate<'tcx>,
     {
         self.fields.higher_ranked_sub(a, b, self.a_is_expected)
     }

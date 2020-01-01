@@ -1,5 +1,5 @@
 use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
-use crate::back::write::{CodegenContext, ModuleConfig, FatLTOInput};
+use crate::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use crate::{CompiledModule, ModuleCodegen};
 
 use rustc::dep_graph::WorkProduct;
@@ -45,12 +45,8 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError>;
-    fn prepare_thin(
-        module: ModuleCodegen<Self::Module>
-    ) -> (String, Self::ThinBuffer);
-    fn serialize_module(
-        module: ModuleCodegen<Self::Module>
-    ) -> (String, Self::ModuleBuffer);
+    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer);
+    fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer);
     fn run_lto_pass_manager(
         cgcx: &CodegenContext<Self>,
         llmod: &ModuleCodegen<Self::Module>,

@@ -12,8 +12,7 @@ pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     base.features = "+v7,+thumb-mode,+thumb2,+vfp3,-d32,-neon".to_string();
     base.max_atomic_width = Some(64);
-    base.pre_link_args
-        .get_mut(&LinkerFlavor::Gcc).unwrap().push("-march=armv7-a".to_string());
+    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-march=armv7-a".to_string());
 
     Ok(Target {
         llvm_target: "armv7-none-linux-android".to_string(),
@@ -26,9 +25,6 @@ pub fn target() -> TargetResult {
         target_env: String::new(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
-        options: TargetOptions {
-            abi_blacklist: super::arm_base::abi_blacklist(),
-            .. base
-        },
+        options: TargetOptions { abi_blacklist: super::arm_base::abi_blacklist(), ..base },
     })
 }

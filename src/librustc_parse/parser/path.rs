@@ -1,15 +1,16 @@
 use super::{Parser, TokenType};
 use crate::maybe_whole;
-use rustc_errors::{PResult, Applicability, pluralize};
-use syntax::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
-use syntax::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
-use syntax::ThinVec;
+use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_span::source_map::{BytePos, Span};
+use rustc_span::symbol::{kw, sym};
+use syntax::ast::{self, AngleBracketedArgs, Ident, ParenthesizedArgs, Path, PathSegment, QSelf};
+use syntax::ast::{
+    AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode, GenericArg,
+};
 use syntax::token::{self, Token};
-use syntax_pos::source_map::{Span, BytePos};
-use syntax_pos::symbol::{kw, sym};
 
-use std::mem;
 use log::debug;
+use std::mem;
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -90,9 +91,9 @@ impl<'a> Parser<'a> {
     /// `Fn::(Args)` (with disambiguator)
     pub fn parse_path(&mut self, style: PathStyle) -> PResult<'a, Path> {
         maybe_whole!(self, NtPath, |path| {
-            if style == PathStyle::Mod &&
-               path.segments.iter().any(|segment| segment.args.is_some()) {
-                self.diagnostic().span_err(path.span, "unexpected generic arguments in path");
+            if style == PathStyle::Mod && path.segments.iter().any(|segment| segment.args.is_some())
+            {
+                self.struct_span_err(path.span, "unexpected generic arguments in path").emit();
             }
             path
         });
@@ -146,55 +147,58 @@ impl<'a> Parser<'a> {
         let ident = self.parse_path_segment_ident()?;
 
         let is_args_start = |token: &Token| match token.kind {
-            token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren)
+            token::Lt
+            | token::BinOp(token::Shl)
+            | token::OpenDelim(token::Paren)
             | token::LArrow => true,
             _ => false,
         };
         let check_args_start = |this: &mut Self| {
-            this.expected_tokens.extend_from_slice(
-                &[TokenType::Token(token::Lt), TokenType::Token(token::OpenDelim(token::Paren))]
-            );
+            this.expected_tokens.extend_from_slice(&[
+                TokenType::Token(token::Lt),
+                TokenType::Token(token::OpenDelim(token::Paren)),
+            ]);
             is_args_start(&this.token)
         };
 
-        Ok(if style == PathStyle::Type && check_args_start(self) ||
-              style != PathStyle::Mod && self.check(&token::ModSep)
-                                      && self.look_ahead(1, |t| is_args_start(t)) {
-            // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
-            // it isn't, then we reset the unmatched angle bracket count as we're about to start
-            // parsing a new path.
-            if style == PathStyle::Expr {
-                self.unmatched_angle_bracket_count = 0;
-                self.max_angle_bracket_count = 0;
-            }
+        Ok(
+            if style == PathStyle::Type && check_args_start(self)
+                || style != PathStyle::Mod
+                    && self.check(&token::ModSep)
+                    && self.look_ahead(1, |t| is_args_start(t))
+            {
+                // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
+                // it isn't, then we reset the unmatched angle bracket count as we're about to start
+                // parsing a new path.
+                if style == PathStyle::Expr {
+                    self.unmatched_angle_bracket_count = 0;
+                    self.max_angle_bracket_count = 0;
+                }
 
-            // Generic arguments are found - `<`, `(`, `::<` or `::(`.
-            self.eat(&token::ModSep);
-            let lo = self.token.span;
-            let args = if self.eat_lt() {
-                // `<'a, T, A = U>`
-                let (args, constraints) =
-                    self.parse_generic_args_with_leaning_angle_bracket_recovery(style, lo)?;
-                self.expect_gt()?;
-                let span = lo.to(self.prev_span);
-                AngleBracketedArgs { args, constraints, span }.into()
-            } else {
-                // `(T, U) -> R`
-                let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
-                let span = ident.span.to(self.prev_span);
-                let output = if self.eat(&token::RArrow) {
-                    Some(self.parse_ty_common(false, false, false)?)
+                // Generic arguments are found - `<`, `(`, `::<` or `::(`.
+                self.eat(&token::ModSep);
+                let lo = self.token.span;
+                let args = if self.eat_lt() {
+                    // `<'a, T, A = U>`
+                    let (args, constraints) =
+                        self.parse_generic_args_with_leading_angle_bracket_recovery(style, lo)?;
+                    self.expect_gt()?;
+                    let span = lo.to(self.prev_span);
+                    AngleBracketedArgs { args, constraints, span }.into()
                 } else {
-                    None
+                    // `(T, U) -> R`
+                    let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
+                    let span = ident.span.to(self.prev_span);
+                    let output = self.parse_ret_ty(false, false)?;
+                    ParenthesizedArgs { inputs, output, span }.into()
                 };
-                ParenthesizedArgs { inputs, output, span }.into()
-            };
 
-            PathSegment { ident, args, id: ast::DUMMY_NODE_ID }
-        } else {
-            // Generic arguments are not found.
-            PathSegment::from_ident(ident)
-        })
+                PathSegment { ident, args, id: ast::DUMMY_NODE_ID }
+            } else {
+                // Generic arguments are not found.
+                PathSegment::from_ident(ident)
+            },
+        )
     }
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
@@ -217,7 +221,7 @@ impl<'a> Parser<'a> {
     /// bar::<<<<T as Foo>::Output>();
     ///      ^^ help: remove extra angle brackets
     /// ```
-    fn parse_generic_args_with_leaning_angle_bracket_recovery(
+    fn parse_generic_args_with_leading_angle_bracket_recovery(
         &mut self,
         style: PathStyle,
         lo: Span,
@@ -293,11 +297,7 @@ impl<'a> Parser<'a> {
 
         let is_first_invocation = style == PathStyle::Expr;
         // Take a snapshot before attempting to parse - we can restore this later.
-        let snapshot = if is_first_invocation {
-            Some(self.clone())
-        } else {
-            None
-        };
+        let snapshot = if is_first_invocation { Some(self.clone()) } else { None };
 
         debug!("parse_generic_args_with_leading_angle_bracket_recovery: (snapshotting)");
         match self.parse_generic_args() {
@@ -324,31 +324,28 @@ impl<'a> Parser<'a> {
                 }
 
                 // Make a span over ${unmatched angle bracket count} characters.
-                let span = lo.with_hi(
-                    lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count)
-                );
-                self.diagnostic()
-                    .struct_span_err(
-                        span,
-                        &format!(
-                            "unmatched angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                    )
-                    .span_suggestion(
-                        span,
-                        &format!(
-                            "remove extra angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                let span = lo.with_hi(lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count));
+                self.struct_span_err(
+                    span,
+                    &format!(
+                        "unmatched angle bracket{}",
+                        pluralize!(snapshot.unmatched_angle_bracket_count)
+                    ),
+                )
+                .span_suggestion(
+                    span,
+                    &format!(
+                        "remove extra angle bracket{}",
+                        pluralize!(snapshot.unmatched_angle_bracket_count)
+                    ),
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
 
                 // Try again without unmatched angle bracket characters.
                 self.parse_generic_args()
-            },
+            }
             Err(e) => Err(e),
         }
     }
@@ -375,9 +372,7 @@ impl<'a> Parser<'a> {
                 let lo = self.token.span;
                 let ident = self.parse_ident()?;
                 let kind = if self.eat(&token::Eq) {
-                    AssocTyConstraintKind::Equality {
-                        ty: self.parse_ty()?,
-                    }
+                    AssocTyConstraintKind::Equality { ty: self.parse_ty()? }
                 } else if self.eat(&token::Colon) {
                     AssocTyConstraintKind::Bound {
                         bounds: self.parse_generic_bounds(Some(self.prev_span))?,
@@ -393,18 +388,16 @@ impl<'a> Parser<'a> {
                     self.sess.gated_spans.gate(sym::associated_type_bounds, span);
                 }
 
-                constraints.push(AssocTyConstraint {
-                    id: ast::DUMMY_NODE_ID,
-                    ident,
-                    kind,
-                    span,
-                });
+                constraints.push(AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, kind, span });
                 assoc_ty_constraints.push(span);
             } else if self.check_const_arg() {
                 // Parse const argument.
                 let expr = if let token::OpenDelim(token::Brace) = self.token.kind {
                     self.parse_block_expr(
-                        None, self.token.span, BlockCheckMode::Default, ThinVec::new()
+                        None,
+                        self.token.span,
+                        BlockCheckMode::Default,
+                        ast::AttrVec::new(),
                     )?
                 } else if self.token.is_ident() {
                     // FIXME(const_generics): to distinguish between idents for types and consts,
@@ -413,17 +406,16 @@ impl<'a> Parser<'a> {
                     if self.token.is_bool_lit() {
                         self.parse_literal_maybe_minus()?
                     } else {
-                        return Err(
-                            self.fatal("identifiers may currently not be used for const generics")
-                        );
+                        let span = self.token.span;
+                        let msg = "identifiers may currently not be used for const generics";
+                        self.struct_span_err(span, msg).emit();
+                        let block = self.mk_block_err(span);
+                        self.mk_expr(span, ast::ExprKind::Block(block, None), ast::AttrVec::new())
                     }
                 } else {
                     self.parse_literal_maybe_minus()?
                 };
-                let value = AnonConst {
-                    id: ast::DUMMY_NODE_ID,
-                    value: expr,
-                };
+                let value = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
                 args.push(GenericArg::Const(value));
                 misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
             } else if self.check_type() {
@@ -431,11 +423,11 @@ impl<'a> Parser<'a> {
                 args.push(GenericArg::Type(self.parse_ty()?));
                 misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
             } else {
-                break
+                break;
             }
 
             if !self.eat(&token::Comma) {
-                break
+                break;
             }
         }
 

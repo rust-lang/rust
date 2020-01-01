@@ -4,10 +4,10 @@
 //! - Check whether test is timed out.
 //! - Provide helpers for `report-time` and `measure-time` options.
 
-use std::time::{Duration, Instant};
-use std::str::FromStr;
-use std::fmt;
 use std::env;
+use std::fmt;
+use std::str::FromStr;
+use std::time::{Duration, Instant};
 
 use super::types::{TestDesc, TestType};
 
@@ -23,8 +23,8 @@ pub const TEST_WARN_TIMEOUT_S: u64 = 60;
 /// Example of the expected format is `RUST_TEST_TIME_xxx=100,200`, where 100 means
 /// warn time, and 200 means critical time.
 pub mod time_constants {
-    use std::time::Duration;
     use super::TEST_WARN_TIMEOUT_S;
+    use std::time::Duration;
 
     /// Environment variable for overriding default threshold for unit-tests.
     pub const UNIT_ENV_NAME: &str = "RUST_TEST_TIME_UNIT";
@@ -80,10 +80,7 @@ pub struct TimeThreshold {
 impl TimeThreshold {
     /// Creates a new `TimeThreshold` instance with provided durations.
     pub fn new(warn: Duration, critical: Duration) -> Self {
-        Self {
-            warn,
-            critical,
-        }
+        Self { warn, critical }
     }
 
     /// Attempts to create a `TimeThreshold` instance with values obtained
@@ -99,16 +96,14 @@ impl TimeThreshold {
         let durations_str = env::var(env_var_name).ok()?;
 
         // Split string into 2 substrings by comma and try to parse numbers.
-        let mut durations = durations_str
-            .splitn(2, ',')
-            .map(|v| {
-                u64::from_str(v).unwrap_or_else(|_| {
-                    panic!(
-                        "Duration value in variable {} is expected to be a number, but got {}",
-                        env_var_name, v
-                    )
-                })
-            });
+        let mut durations = durations_str.splitn(2, ',').map(|v| {
+            u64::from_str(v).unwrap_or_else(|_| {
+                panic!(
+                    "Duration value in variable {} is expected to be a number, but got {}",
+                    env_var_name, v
+                )
+            })
+        });
 
         // Callback to be called if the environment variable has unexpected structure.
         let panic_on_incorrect_value = || {
@@ -120,7 +115,7 @@ impl TimeThreshold {
 
         let (warn, critical) = (
             durations.next().unwrap_or_else(panic_on_incorrect_value),
-            durations.next().unwrap_or_else(panic_on_incorrect_value)
+            durations.next().unwrap_or_else(panic_on_incorrect_value),
         );
 
         if warn > critical {
@@ -145,25 +140,17 @@ pub struct TestTimeOptions {
 
 impl TestTimeOptions {
     pub fn new_from_env(error_on_excess: bool, colored: bool) -> Self {
-        let unit_threshold =
-            TimeThreshold::from_env_var(time_constants::UNIT_ENV_NAME)
-                .unwrap_or_else(Self::default_unit);
+        let unit_threshold = TimeThreshold::from_env_var(time_constants::UNIT_ENV_NAME)
+            .unwrap_or_else(Self::default_unit);
 
         let integration_threshold =
             TimeThreshold::from_env_var(time_constants::INTEGRATION_ENV_NAME)
                 .unwrap_or_else(Self::default_integration);
 
-        let doctest_threshold =
-            TimeThreshold::from_env_var(time_constants::DOCTEST_ENV_NAME)
-                .unwrap_or_else(Self::default_doctest);
+        let doctest_threshold = TimeThreshold::from_env_var(time_constants::DOCTEST_ENV_NAME)
+            .unwrap_or_else(Self::default_doctest);
 
-        Self {
-            error_on_excess,
-            colored,
-            unit_threshold,
-            integration_threshold,
-            doctest_threshold,
-        }
+        Self { error_on_excess, colored, unit_threshold, integration_threshold, doctest_threshold }
     }
 
     pub fn is_warn(&self, test: &TestDesc, exec_time: &TestExecTime) -> bool {

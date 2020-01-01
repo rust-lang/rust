@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::thread::ThreadId;
 use std::u32;
 
-use measureme::{StringId};
+use measureme::StringId;
 
 /// MmapSerializatioSink is faster on macOS and Linux
 /// but FileSerializationSink is faster on Windows
@@ -59,14 +59,13 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("generic-activity", EventFilter::GENERIC_ACTIVITIES),
     ("query-provider", EventFilter::QUERY_PROVIDERS),
     ("query-cache-hit", EventFilter::QUERY_CACHE_HITS),
-    ("query-blocked" , EventFilter::QUERY_BLOCKED),
+    ("query-blocked", EventFilter::QUERY_BLOCKED),
     ("incr-cache-load", EventFilter::INCR_CACHE_LOADS),
 ];
 
 fn thread_id_to_u32(tid: ThreadId) -> u32 {
     unsafe { mem::transmute::<ThreadId, u64>(tid) as u32 }
 }
-
 
 /// A reference to the SelfProfiler. It can be cloned and sent across thread
 /// boundaries at will.
@@ -83,19 +82,13 @@ pub struct SelfProfilerRef {
 }
 
 impl SelfProfilerRef {
-
     pub fn new(profiler: Option<Arc<SelfProfiler>>) -> SelfProfilerRef {
         // If there is no SelfProfiler then the filter mask is set to NONE,
         // ensuring that nothing ever tries to actually access it.
-        let event_filter_mask = profiler
-            .as_ref()
-            .map(|p| p.event_filter_mask)
-            .unwrap_or(EventFilter::NONE);
+        let event_filter_mask =
+            profiler.as_ref().map(|p| p.event_filter_mask).unwrap_or(EventFilter::NONE);
 
-        SelfProfilerRef {
-            profiler,
-            event_filter_mask,
-        }
+        SelfProfilerRef { profiler, event_filter_mask }
     }
 
     // This shim makes sure that calls only get executed if the filter mask
@@ -105,11 +98,13 @@ impl SelfProfilerRef {
     // path.
     #[inline(always)]
     fn exec<F>(&self, event_filter: EventFilter, f: F) -> TimingGuard<'_>
-        where F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>
+    where
+        F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
     {
         #[inline(never)]
         fn cold_call<F>(profiler_ref: &SelfProfilerRef, f: F) -> TimingGuard<'_>
-            where F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>
+        where
+            F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
         {
             let profiler = profiler_ref.profiler.as_ref().unwrap();
             f(&**profiler)
@@ -128,11 +123,7 @@ impl SelfProfilerRef {
     pub fn generic_activity(&self, event_id: &str) -> TimingGuard<'_> {
         self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
             let event_id = profiler.profiler.alloc_string(event_id);
-            TimingGuard::start(
-                profiler,
-                profiler.generic_activity_event_kind,
-                event_id
-            )
+            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
         })
     }
 
@@ -174,11 +165,7 @@ impl SelfProfilerRef {
     pub fn incr_cache_loading(&self, query_name: impl QueryName) -> TimingGuard<'_> {
         self.exec(EventFilter::INCR_CACHE_LOADS, |profiler| {
             let event_id = SelfProfiler::get_query_name_string_id(query_name);
-            TimingGuard::start(
-                profiler,
-                profiler.incremental_load_result_event_kind,
-                event_id
-            )
+            TimingGuard::start(profiler, profiler.incremental_load_result_event_kind, event_id)
         })
     }
 
@@ -193,11 +180,7 @@ impl SelfProfilerRef {
             let event_id = SelfProfiler::get_query_name_string_id(query_name);
             let thread_id = thread_id_to_u32(std::thread::current().id());
 
-            profiler.profiler.record_instant_event(
-                event_kind(profiler),
-                event_id,
-                thread_id,
-            );
+            profiler.profiler.record_instant_event(event_kind(profiler), event_id, thread_id);
 
             TimingGuard::none()
         }));
@@ -224,7 +207,7 @@ impl SelfProfiler {
     pub fn new(
         output_directory: &Path,
         crate_name: Option<&str>,
-        event_filters: &Option<Vec<String>>
+        event_filters: &Option<Vec<String>>,
     ) -> Result<SelfProfiler, Box<dyn Error>> {
         fs::create_dir_all(output_directory)?;
 
@@ -244,8 +227,9 @@ impl SelfProfiler {
         if let Some(ref event_filters) = *event_filters {
             let mut unknown_events = vec![];
             for item in event_filters {
-                if let Some(&(_, mask)) = EVENT_FILTERS_BY_NAME.iter()
-                                                               .find(|&(name, _)| name == item) {
+                if let Some(&(_, mask)) =
+                    EVENT_FILTERS_BY_NAME.iter().find(|&(name, _)| name == item)
+                {
                     event_filter_mask |= mask;
                 } else {
                     unknown_events.push(item.clone());
@@ -257,12 +241,15 @@ impl SelfProfiler {
                 unknown_events.sort();
                 unknown_events.dedup();
 
-                warn!("Unknown self-profiler events specified: {}. Available options are: {}.",
+                warn!(
+                    "Unknown self-profiler events specified: {}. Available options are: {}.",
                     unknown_events.join(", "),
-                    EVENT_FILTERS_BY_NAME.iter()
-                                         .map(|&(name, _)| name.to_string())
-                                         .collect::<Vec<_>>()
-                                         .join(", "));
+                    EVENT_FILTERS_BY_NAME
+                        .iter()
+                        .map(|&(name, _)| name.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
             }
         } else {
             event_filter_mask = EventFilter::DEFAULT;
@@ -280,9 +267,8 @@ impl SelfProfiler {
     }
 
     fn get_query_name_string_id(query_name: impl QueryName) -> StringId {
-        let discriminant = unsafe {
-            mem::transmute::<Discriminant<_>, u64>(query_name.discriminant())
-        };
+        let discriminant =
+            unsafe { mem::transmute::<Discriminant<_>, u64>(query_name.discriminant()) };
 
         StringId::reserved(discriminant as u32)
     }
@@ -305,9 +291,8 @@ impl<'a> TimingGuard<'a> {
     ) -> TimingGuard<'a> {
         let thread_id = thread_id_to_u32(std::thread::current().id());
         let raw_profiler = &profiler.profiler;
-        let timing_guard = raw_profiler.start_recording_interval_event(event_kind,
-                                                                       event_id,
-                                                                       thread_id);
+        let timing_guard =
+            raw_profiler.start_recording_interval_event(event_kind, event_id, thread_id);
         TimingGuard(Some(timing_guard))
     }
 

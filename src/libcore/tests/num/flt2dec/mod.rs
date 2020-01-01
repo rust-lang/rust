@@ -1,9 +1,10 @@
-use std::{str, i16, f32, f64, fmt};
+use std::{f32, f64, fmt, i16, str};
 
-use core::num::flt2dec::{decode, DecodableFloat, FullDecoded, Decoded};
-use core::num::flt2dec::{MAX_SIG_DIGITS, round_up, Part, Formatted, Sign};
-use core::num::flt2dec::{to_shortest_str, to_shortest_exp_str,
-                         to_exact_exp_str, to_exact_fixed_str};
+use core::num::flt2dec::{decode, DecodableFloat, Decoded, FullDecoded};
+use core::num::flt2dec::{round_up, Formatted, Part, Sign, MAX_SIG_DIGITS};
+use core::num::flt2dec::{
+    to_exact_exp_str, to_exact_fixed_str, to_shortest_exp_str, to_shortest_str,
+};
 
 pub use test::Bencher;
 
@@ -17,7 +18,7 @@ mod random;
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
         FullDecoded::Finite(decoded) => decoded,
-        full_decoded => panic!("expected finite, got {:?} instead", full_decoded)
+        full_decoded => panic!("expected finite, got {:?} instead", full_decoded),
     }
 }
 
@@ -81,7 +82,7 @@ fn ldexp_f32(a: f32, b: i32) -> f32 {
 }
 
 fn ldexp_f64(a: f64, b: i32) -> f64 {
-    extern {
+    extern "C" {
         fn ldexp(x: f64, n: i32) -> f64;
     }
     // SAFETY: assuming a correct `ldexp` has been supplied, the given arguments cannot possibly
@@ -90,7 +91,10 @@ fn ldexp_f64(a: f64, b: i32) -> f64 {
 }
 
 fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16)
-        where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+where
+    T: DecodableFloat,
+    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+{
     // use a large enough buffer
     let mut buf = [b'_'; 1024];
     let mut expected_ = [b'_'; 1024];
@@ -105,14 +109,18 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
         if expected[i] >= b'5' {
             // check if this is a rounding-to-even case.
             // we avoid rounding ...x5000... (with infinite zeroes) to ...(x+1) when x is even.
-            if !(i+1 < expected.len() && expected[i-1] & 1 == 0 &&
-                                         expected[i] == b'5' &&
-                                         expected[i+1] == b' ') {
+            if !(i + 1 < expected.len()
+                && expected[i - 1] & 1 == 0
+                && expected[i] == b'5'
+                && expected[i + 1] == b' ')
+            {
                 // if this returns true, expected_[..i] is all `9`s and being rounded up.
                 // we should always return `100..00` (`i` digits) instead, since that's
                 // what we can came up with `i` digits anyway. `round_up` assumes that
                 // the adjustment to the length is done by caller, which we simply ignore.
-                if let Some(_) = round_up(&mut expected_, i) { expectedk_ += 1; }
+                if let Some(_) = round_up(&mut expected_, i) {
+                    expectedk_ += 1;
+                }
             }
         }
 
@@ -146,9 +154,11 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
 
     // check infinite zero digits
     if let Some(cut) = cut {
-        for i in cut..expected.len()-1 {
+        for i in cut..expected.len() - 1 {
             expected_[..cut].copy_from_slice(&expected[..cut]);
-            for c in &mut expected_[cut..i] { *c = b'0'; }
+            for c in &mut expected_[cut..i] {
+                *c = b'0';
+            }
 
             try_exact!(f(&decoded) => &mut buf, &expected_[..i], expectedk;
                        "exact infzero mismatch for v={v}, i={i}: \
@@ -162,23 +172,29 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
     }
 }
 
-trait TestableFloat : DecodableFloat + fmt::Display {
+trait TestableFloat: DecodableFloat + fmt::Display {
     /// Returns `x * 2^exp`. Almost same to `std::{f32,f64}::ldexp`.
     /// This is used for testing.
     fn ldexpi(f: i64, exp: isize) -> Self;
 }
 
 impl TestableFloat for f32 {
-    fn ldexpi(f: i64, exp: isize) -> Self { f as Self * (exp as Self).exp2() }
+    fn ldexpi(f: i64, exp: isize) -> Self {
+        f as Self * (exp as Self).exp2()
+    }
 }
 
 impl TestableFloat for f64 {
-    fn ldexpi(f: i64, exp: isize) -> Self { f as Self * (exp as Self).exp2() }
+    fn ldexpi(f: i64, exp: isize) -> Self {
+        f as Self * (exp as Self).exp2()
+    }
 }
 
 fn check_exact_one<F, T>(mut f: F, x: i64, e: isize, tstr: &str, expected: &[u8], expectedk: i16)
-        where T: TestableFloat,
-              F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+where
+    T: TestableFloat,
+    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+{
     // use a large enough buffer
     let mut buf = [b'_'; 1024];
     let v: T = TestableFloat::ldexpi(x, e);
@@ -193,15 +209,15 @@ fn check_exact_one<F, T>(mut f: F, x: i64, e: isize, tstr: &str, expected: &[u8]
 }
 
 macro_rules! check_exact {
-    ($f:ident($v:expr) => $buf:expr, $exp:expr) => (
-        check_exact(|d,b,k| $f(d,b,k), $v, stringify!($v), $buf, $exp)
-    )
+    ($f:ident($v:expr) => $buf:expr, $exp:expr) => {
+        check_exact(|d, b, k| $f(d, b, k), $v, stringify!($v), $buf, $exp)
+    };
 }
 
 macro_rules! check_exact_one {
-    ($f:ident($x:expr, $e:expr; $t:ty) => $buf:expr, $exp:expr) => (
-        check_exact_one::<_, $t>(|d,b,k| $f(d,b,k), $x, $e, stringify!($t), $buf, $exp)
-    )
+    ($f:ident($x:expr, $e:expr; $t:ty) => $buf:expr, $exp:expr) => {
+        check_exact_one::<_, $t>(|d, b, k| $f(d, b, k), $x, $e, stringify!($t), $buf, $exp)
+    };
 }
 
 // in the following comments, three numbers are spaced by 1 ulp apart,
@@ -212,7 +228,10 @@ macro_rules! check_exact_one {
 // [1] Vern Paxson, A Program for Testing IEEE Decimal-Binary Conversion
 //     ftp://ftp.ee.lbl.gov/testbase-report.ps.Z
 
-pub fn f32_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
+pub fn f32_shortest_sanity_test<F>(mut f: F)
+where
+    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+{
     // 0.0999999940395355224609375
     // 0.100000001490116119384765625
     // 0.10000000894069671630859375
@@ -257,7 +276,9 @@ pub fn f32_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
 }
 
 pub fn f32_exact_sanity_test<F>(mut f: F)
-        where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+where
+    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+{
     let minf32 = ldexp_f32(1.0, -149);
 
     check_exact!(f(0.1f32)            => b"100000001490116119384765625             ", 0);
@@ -298,7 +319,10 @@ pub fn f32_exact_sanity_test<F>(mut f: F)
     check_exact_one!(f(13248074,   95; f32) => b"524810279937",  36);
 }
 
-pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
+pub fn f64_shortest_sanity_test<F>(mut f: F)
+where
+    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+{
     // 0.0999999999999999777955395074968691915273...
     // 0.1000000000000000055511151231257827021181...
     // 0.1000000000000000333066907387546962127089...
@@ -362,7 +386,9 @@ pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
 }
 
 pub fn f64_exact_sanity_test<F>(mut f: F)
-        where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+where
+    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+{
     let minf64 = ldexp_f64(1.0, -1074);
 
     check_exact!(f(0.1f64)            => b"1000000000000000055511151231257827021181", 0);
@@ -446,7 +472,10 @@ pub fn f64_exact_sanity_test<F>(mut f: F)
     check_exact_one!(f(8549497411294502,  -448; f64) => b"1176257830728540379990", -118);
 }
 
-pub fn more_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
+pub fn more_shortest_sanity_test<F>(mut f: F)
+where
+    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+{
     check_shortest!(f{mant: 99_999_999_999_999_999, minus: 1, plus: 1,
                       exp: 0, inclusive: true} => b"1", 18);
     check_shortest!(f{mant: 99_999_999_999_999_999, minus: 1, plus: 1,
@@ -454,7 +483,9 @@ pub fn more_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8]
 }
 
 fn to_string_with_parts<F>(mut f: F) -> String
-        where F: for<'a> FnMut(&'a mut [u8], &'a mut [Part<'a>]) -> Formatted<'a> {
+where
+    F: for<'a> FnMut(&'a mut [u8], &'a mut [Part<'a>]) -> Formatted<'a>,
+{
     let mut buf = [0; 1024];
     let mut parts = [Part::Zero(0); 16];
     let formatted = f(&mut buf, &mut parts);
@@ -464,66 +495,72 @@ fn to_string_with_parts<F>(mut f: F) -> String
 }
 
 pub fn to_shortest_str_test<F>(mut f_: F)
-        where F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
+where
+    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+{
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, frac_digits: usize, upper: bool) -> String
-            where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
-        to_string_with_parts(|buf, parts| to_shortest_str(|d,b| f(d,b), v, sign,
-                                                          frac_digits, upper, buf, parts))
+    where
+        T: DecodableFloat,
+        F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    {
+        to_string_with_parts(|buf, parts| {
+            to_shortest_str(|d, b| f(d, b), v, sign, frac_digits, upper, buf, parts)
+        })
     }
 
     let f = &mut f_;
 
-    assert_eq!(to_string(f,  0.0, Minus,        0, false), "0");
-    assert_eq!(to_string(f,  0.0, MinusRaw,     0, false), "0");
-    assert_eq!(to_string(f,  0.0, MinusPlus,    0, false), "+0");
-    assert_eq!(to_string(f,  0.0, MinusPlusRaw, 0, false), "+0");
-    assert_eq!(to_string(f, -0.0, Minus,        0, false), "0");
-    assert_eq!(to_string(f, -0.0, MinusRaw,     0, false), "-0");
-    assert_eq!(to_string(f, -0.0, MinusPlus,    0, false), "+0");
+    assert_eq!(to_string(f, 0.0, Minus, 0, false), "0");
+    assert_eq!(to_string(f, 0.0, MinusRaw, 0, false), "0");
+    assert_eq!(to_string(f, 0.0, MinusPlus, 0, false), "+0");
+    assert_eq!(to_string(f, 0.0, MinusPlusRaw, 0, false), "+0");
+    assert_eq!(to_string(f, -0.0, Minus, 0, false), "0");
+    assert_eq!(to_string(f, -0.0, MinusRaw, 0, false), "-0");
+    assert_eq!(to_string(f, -0.0, MinusPlus, 0, false), "+0");
     assert_eq!(to_string(f, -0.0, MinusPlusRaw, 0, false), "-0");
-    assert_eq!(to_string(f,  0.0, Minus,        1,  true), "0.0");
-    assert_eq!(to_string(f,  0.0, MinusRaw,     1,  true), "0.0");
-    assert_eq!(to_string(f,  0.0, MinusPlus,    1,  true), "+0.0");
-    assert_eq!(to_string(f,  0.0, MinusPlusRaw, 1,  true), "+0.0");
-    assert_eq!(to_string(f, -0.0, Minus,        8,  true), "0.00000000");
-    assert_eq!(to_string(f, -0.0, MinusRaw,     8,  true), "-0.00000000");
-    assert_eq!(to_string(f, -0.0, MinusPlus,    8,  true), "+0.00000000");
-    assert_eq!(to_string(f, -0.0, MinusPlusRaw, 8,  true), "-0.00000000");
+    assert_eq!(to_string(f, 0.0, Minus, 1, true), "0.0");
+    assert_eq!(to_string(f, 0.0, MinusRaw, 1, true), "0.0");
+    assert_eq!(to_string(f, 0.0, MinusPlus, 1, true), "+0.0");
+    assert_eq!(to_string(f, 0.0, MinusPlusRaw, 1, true), "+0.0");
+    assert_eq!(to_string(f, -0.0, Minus, 8, true), "0.00000000");
+    assert_eq!(to_string(f, -0.0, MinusRaw, 8, true), "-0.00000000");
+    assert_eq!(to_string(f, -0.0, MinusPlus, 8, true), "+0.00000000");
+    assert_eq!(to_string(f, -0.0, MinusPlusRaw, 8, true), "-0.00000000");
 
-    assert_eq!(to_string(f,  1.0/0.0, Minus,         0, false), "inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusRaw,      0,  true), "inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusPlus,     0, false), "+inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusPlusRaw,  0,  true), "+inf");
-    assert_eq!(to_string(f,  0.0/0.0, Minus,         0, false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusRaw,      1,  true), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlus,     8, false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw, 64,  true), "NaN");
-    assert_eq!(to_string(f, -1.0/0.0, Minus,         0, false), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusRaw,      1,  true), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusPlus,     8, false), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusPlusRaw, 64,  true), "-inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, Minus, 0, false), "inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusRaw, 0, true), "inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusPlus, 0, false), "+inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusPlusRaw, 0, true), "+inf");
+    assert_eq!(to_string(f, 0.0 / 0.0, Minus, 0, false), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusRaw, 1, true), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusPlus, 8, false), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusPlusRaw, 64, true), "NaN");
+    assert_eq!(to_string(f, -1.0 / 0.0, Minus, 0, false), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusRaw, 1, true), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusPlus, 8, false), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusPlusRaw, 64, true), "-inf");
 
-    assert_eq!(to_string(f,  3.14, Minus,        0, false), "3.14");
-    assert_eq!(to_string(f,  3.14, MinusRaw,     0, false), "3.14");
-    assert_eq!(to_string(f,  3.14, MinusPlus,    0, false), "+3.14");
-    assert_eq!(to_string(f,  3.14, MinusPlusRaw, 0, false), "+3.14");
-    assert_eq!(to_string(f, -3.14, Minus,        0, false), "-3.14");
-    assert_eq!(to_string(f, -3.14, MinusRaw,     0, false), "-3.14");
-    assert_eq!(to_string(f, -3.14, MinusPlus,    0, false), "-3.14");
+    assert_eq!(to_string(f, 3.14, Minus, 0, false), "3.14");
+    assert_eq!(to_string(f, 3.14, MinusRaw, 0, false), "3.14");
+    assert_eq!(to_string(f, 3.14, MinusPlus, 0, false), "+3.14");
+    assert_eq!(to_string(f, 3.14, MinusPlusRaw, 0, false), "+3.14");
+    assert_eq!(to_string(f, -3.14, Minus, 0, false), "-3.14");
+    assert_eq!(to_string(f, -3.14, MinusRaw, 0, false), "-3.14");
+    assert_eq!(to_string(f, -3.14, MinusPlus, 0, false), "-3.14");
     assert_eq!(to_string(f, -3.14, MinusPlusRaw, 0, false), "-3.14");
-    assert_eq!(to_string(f,  3.14, Minus,        1,  true), "3.14");
-    assert_eq!(to_string(f,  3.14, MinusRaw,     2,  true), "3.14");
-    assert_eq!(to_string(f,  3.14, MinusPlus,    3,  true), "+3.140");
-    assert_eq!(to_string(f,  3.14, MinusPlusRaw, 4,  true), "+3.1400");
-    assert_eq!(to_string(f, -3.14, Minus,        8,  true), "-3.14000000");
-    assert_eq!(to_string(f, -3.14, MinusRaw,     8,  true), "-3.14000000");
-    assert_eq!(to_string(f, -3.14, MinusPlus,    8,  true), "-3.14000000");
-    assert_eq!(to_string(f, -3.14, MinusPlusRaw, 8,  true), "-3.14000000");
+    assert_eq!(to_string(f, 3.14, Minus, 1, true), "3.14");
+    assert_eq!(to_string(f, 3.14, MinusRaw, 2, true), "3.14");
+    assert_eq!(to_string(f, 3.14, MinusPlus, 3, true), "+3.140");
+    assert_eq!(to_string(f, 3.14, MinusPlusRaw, 4, true), "+3.1400");
+    assert_eq!(to_string(f, -3.14, Minus, 8, true), "-3.14000000");
+    assert_eq!(to_string(f, -3.14, MinusRaw, 8, true), "-3.14000000");
+    assert_eq!(to_string(f, -3.14, MinusPlus, 8, true), "-3.14000000");
+    assert_eq!(to_string(f, -3.14, MinusPlusRaw, 8, true), "-3.14000000");
 
-    assert_eq!(to_string(f, 7.5e-11, Minus,  0, false), "0.000000000075");
-    assert_eq!(to_string(f, 7.5e-11, Minus,  3, false), "0.000000000075");
+    assert_eq!(to_string(f, 7.5e-11, Minus, 0, false), "0.000000000075");
+    assert_eq!(to_string(f, 7.5e-11, Minus, 3, false), "0.000000000075");
     assert_eq!(to_string(f, 7.5e-11, Minus, 12, false), "0.000000000075");
     assert_eq!(to_string(f, 7.5e-11, Minus, 13, false), "0.0000000000750");
 
@@ -536,23 +573,24 @@ pub fn to_shortest_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f32::MAX, Minus, 8, false), format!("34028235{:0>31}.00000000", ""));
 
     let minf32 = ldexp_f32(1.0, -149);
-    assert_eq!(to_string(f, minf32, Minus,  0, false), format!("0.{:0>44}1", ""));
+    assert_eq!(to_string(f, minf32, Minus, 0, false), format!("0.{:0>44}1", ""));
     assert_eq!(to_string(f, minf32, Minus, 45, false), format!("0.{:0>44}1", ""));
     assert_eq!(to_string(f, minf32, Minus, 46, false), format!("0.{:0>44}10", ""));
 
-    assert_eq!(to_string(f, f64::MAX, Minus, 0, false),
-               format!("17976931348623157{:0>292}", ""));
-    assert_eq!(to_string(f, f64::MAX, Minus, 1, false),
-               format!("17976931348623157{:0>292}.0", ""));
-    assert_eq!(to_string(f, f64::MAX, Minus, 8, false),
-               format!("17976931348623157{:0>292}.00000000", ""));
+    assert_eq!(to_string(f, f64::MAX, Minus, 0, false), format!("17976931348623157{:0>292}", ""));
+    assert_eq!(to_string(f, f64::MAX, Minus, 1, false), format!("17976931348623157{:0>292}.0", ""));
+    assert_eq!(
+        to_string(f, f64::MAX, Minus, 8, false),
+        format!("17976931348623157{:0>292}.00000000", "")
+    );
 
     let minf64 = ldexp_f64(1.0, -1074);
-    assert_eq!(to_string(f, minf64, Minus,   0, false), format!("0.{:0>323}5", ""));
+    assert_eq!(to_string(f, minf64, Minus, 0, false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, 324, false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, 325, false), format!("0.{:0>323}50", ""));
 
-    if cfg!(miri) { // Miri is too slow
+    if cfg!(miri) {
+        // Miri is too slow
         return;
     }
 
@@ -561,86 +599,92 @@ pub fn to_shortest_str_test<F>(mut f_: F)
 }
 
 pub fn to_shortest_exp_str_test<F>(mut f_: F)
-        where F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
+where
+    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+{
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, exp_bounds: (i16, i16), upper: bool) -> String
-            where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
-        to_string_with_parts(|buf, parts| to_shortest_exp_str(|d,b| f(d,b), v, sign,
-                                                              exp_bounds, upper, buf, parts))
+    where
+        T: DecodableFloat,
+        F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    {
+        to_string_with_parts(|buf, parts| {
+            to_shortest_exp_str(|d, b| f(d, b), v, sign, exp_bounds, upper, buf, parts)
+        })
     }
 
     let f = &mut f_;
 
-    assert_eq!(to_string(f,  0.0, Minus,        (-4, 16), false), "0");
-    assert_eq!(to_string(f,  0.0, MinusRaw,     (-4, 16), false), "0");
-    assert_eq!(to_string(f,  0.0, MinusPlus,    (-4, 16), false), "+0");
-    assert_eq!(to_string(f,  0.0, MinusPlusRaw, (-4, 16), false), "+0");
-    assert_eq!(to_string(f, -0.0, Minus,        (-4, 16), false), "0");
-    assert_eq!(to_string(f, -0.0, MinusRaw,     (-4, 16), false), "-0");
-    assert_eq!(to_string(f, -0.0, MinusPlus,    (-4, 16), false), "+0");
+    assert_eq!(to_string(f, 0.0, Minus, (-4, 16), false), "0");
+    assert_eq!(to_string(f, 0.0, MinusRaw, (-4, 16), false), "0");
+    assert_eq!(to_string(f, 0.0, MinusPlus, (-4, 16), false), "+0");
+    assert_eq!(to_string(f, 0.0, MinusPlusRaw, (-4, 16), false), "+0");
+    assert_eq!(to_string(f, -0.0, Minus, (-4, 16), false), "0");
+    assert_eq!(to_string(f, -0.0, MinusRaw, (-4, 16), false), "-0");
+    assert_eq!(to_string(f, -0.0, MinusPlus, (-4, 16), false), "+0");
     assert_eq!(to_string(f, -0.0, MinusPlusRaw, (-4, 16), false), "-0");
-    assert_eq!(to_string(f,  0.0, Minus,        ( 0,  0),  true), "0E0");
-    assert_eq!(to_string(f,  0.0, MinusRaw,     ( 0,  0), false), "0e0");
-    assert_eq!(to_string(f,  0.0, MinusPlus,    (-9, -5),  true), "+0E0");
-    assert_eq!(to_string(f,  0.0, MinusPlusRaw, ( 5,  9), false), "+0e0");
-    assert_eq!(to_string(f, -0.0, Minus,        ( 0,  0),  true), "0E0");
-    assert_eq!(to_string(f, -0.0, MinusRaw,     ( 0,  0), false), "-0e0");
-    assert_eq!(to_string(f, -0.0, MinusPlus,    (-9, -5),  true), "+0E0");
-    assert_eq!(to_string(f, -0.0, MinusPlusRaw, ( 5,  9), false), "-0e0");
+    assert_eq!(to_string(f, 0.0, Minus, (0, 0), true), "0E0");
+    assert_eq!(to_string(f, 0.0, MinusRaw, (0, 0), false), "0e0");
+    assert_eq!(to_string(f, 0.0, MinusPlus, (-9, -5), true), "+0E0");
+    assert_eq!(to_string(f, 0.0, MinusPlusRaw, (5, 9), false), "+0e0");
+    assert_eq!(to_string(f, -0.0, Minus, (0, 0), true), "0E0");
+    assert_eq!(to_string(f, -0.0, MinusRaw, (0, 0), false), "-0e0");
+    assert_eq!(to_string(f, -0.0, MinusPlus, (-9, -5), true), "+0E0");
+    assert_eq!(to_string(f, -0.0, MinusPlusRaw, (5, 9), false), "-0e0");
 
-    assert_eq!(to_string(f,  1.0/0.0, Minus,        (-4, 16), false), "inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusRaw,     (-4, 16),  true), "inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusPlus,    (-4, 16), false), "+inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusPlusRaw, (-4, 16),  true), "+inf");
-    assert_eq!(to_string(f,  0.0/0.0, Minus,        ( 0,  0), false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusRaw,     ( 0,  0),  true), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlus,    (-9, -5), false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw, ( 5,  9),  true), "NaN");
-    assert_eq!(to_string(f, -1.0/0.0, Minus,        ( 0,  0), false), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusRaw,     ( 0,  0),  true), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusPlus,    (-9, -5), false), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusPlusRaw, ( 5,  9),  true), "-inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, Minus, (-4, 16), false), "inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusRaw, (-4, 16), true), "inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusPlus, (-4, 16), false), "+inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusPlusRaw, (-4, 16), true), "+inf");
+    assert_eq!(to_string(f, 0.0 / 0.0, Minus, (0, 0), false), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusRaw, (0, 0), true), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusPlus, (-9, -5), false), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusPlusRaw, (5, 9), true), "NaN");
+    assert_eq!(to_string(f, -1.0 / 0.0, Minus, (0, 0), false), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusRaw, (0, 0), true), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusPlus, (-9, -5), false), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusPlusRaw, (5, 9), true), "-inf");
 
-    assert_eq!(to_string(f,  3.14, Minus,        (-4, 16), false), "3.14");
-    assert_eq!(to_string(f,  3.14, MinusRaw,     (-4, 16), false), "3.14");
-    assert_eq!(to_string(f,  3.14, MinusPlus,    (-4, 16), false), "+3.14");
-    assert_eq!(to_string(f,  3.14, MinusPlusRaw, (-4, 16), false), "+3.14");
-    assert_eq!(to_string(f, -3.14, Minus,        (-4, 16), false), "-3.14");
-    assert_eq!(to_string(f, -3.14, MinusRaw,     (-4, 16), false), "-3.14");
-    assert_eq!(to_string(f, -3.14, MinusPlus,    (-4, 16), false), "-3.14");
+    assert_eq!(to_string(f, 3.14, Minus, (-4, 16), false), "3.14");
+    assert_eq!(to_string(f, 3.14, MinusRaw, (-4, 16), false), "3.14");
+    assert_eq!(to_string(f, 3.14, MinusPlus, (-4, 16), false), "+3.14");
+    assert_eq!(to_string(f, 3.14, MinusPlusRaw, (-4, 16), false), "+3.14");
+    assert_eq!(to_string(f, -3.14, Minus, (-4, 16), false), "-3.14");
+    assert_eq!(to_string(f, -3.14, MinusRaw, (-4, 16), false), "-3.14");
+    assert_eq!(to_string(f, -3.14, MinusPlus, (-4, 16), false), "-3.14");
     assert_eq!(to_string(f, -3.14, MinusPlusRaw, (-4, 16), false), "-3.14");
-    assert_eq!(to_string(f,  3.14, Minus,        ( 0,  0),  true), "3.14E0");
-    assert_eq!(to_string(f,  3.14, MinusRaw,     ( 0,  0), false), "3.14e0");
-    assert_eq!(to_string(f,  3.14, MinusPlus,    (-9, -5),  true), "+3.14E0");
-    assert_eq!(to_string(f,  3.14, MinusPlusRaw, ( 5,  9), false), "+3.14e0");
-    assert_eq!(to_string(f, -3.14, Minus,        ( 0,  0),  true), "-3.14E0");
-    assert_eq!(to_string(f, -3.14, MinusRaw,     ( 0,  0), false), "-3.14e0");
-    assert_eq!(to_string(f, -3.14, MinusPlus,    (-9, -5),  true), "-3.14E0");
-    assert_eq!(to_string(f, -3.14, MinusPlusRaw, ( 5,  9), false), "-3.14e0");
+    assert_eq!(to_string(f, 3.14, Minus, (0, 0), true), "3.14E0");
+    assert_eq!(to_string(f, 3.14, MinusRaw, (0, 0), false), "3.14e0");
+    assert_eq!(to_string(f, 3.14, MinusPlus, (-9, -5), true), "+3.14E0");
+    assert_eq!(to_string(f, 3.14, MinusPlusRaw, (5, 9), false), "+3.14e0");
+    assert_eq!(to_string(f, -3.14, Minus, (0, 0), true), "-3.14E0");
+    assert_eq!(to_string(f, -3.14, MinusRaw, (0, 0), false), "-3.14e0");
+    assert_eq!(to_string(f, -3.14, MinusPlus, (-9, -5), true), "-3.14E0");
+    assert_eq!(to_string(f, -3.14, MinusPlusRaw, (5, 9), false), "-3.14e0");
 
-    assert_eq!(to_string(f,  0.1, Minus,        (-4, 16), false), "0.1");
-    assert_eq!(to_string(f,  0.1, MinusRaw,     (-4, 16), false), "0.1");
-    assert_eq!(to_string(f,  0.1, MinusPlus,    (-4, 16), false), "+0.1");
-    assert_eq!(to_string(f,  0.1, MinusPlusRaw, (-4, 16), false), "+0.1");
-    assert_eq!(to_string(f, -0.1, Minus,        (-4, 16), false), "-0.1");
-    assert_eq!(to_string(f, -0.1, MinusRaw,     (-4, 16), false), "-0.1");
-    assert_eq!(to_string(f, -0.1, MinusPlus,    (-4, 16), false), "-0.1");
+    assert_eq!(to_string(f, 0.1, Minus, (-4, 16), false), "0.1");
+    assert_eq!(to_string(f, 0.1, MinusRaw, (-4, 16), false), "0.1");
+    assert_eq!(to_string(f, 0.1, MinusPlus, (-4, 16), false), "+0.1");
+    assert_eq!(to_string(f, 0.1, MinusPlusRaw, (-4, 16), false), "+0.1");
+    assert_eq!(to_string(f, -0.1, Minus, (-4, 16), false), "-0.1");
+    assert_eq!(to_string(f, -0.1, MinusRaw, (-4, 16), false), "-0.1");
+    assert_eq!(to_string(f, -0.1, MinusPlus, (-4, 16), false), "-0.1");
     assert_eq!(to_string(f, -0.1, MinusPlusRaw, (-4, 16), false), "-0.1");
-    assert_eq!(to_string(f,  0.1, Minus,        ( 0,  0),  true), "1E-1");
-    assert_eq!(to_string(f,  0.1, MinusRaw,     ( 0,  0), false), "1e-1");
-    assert_eq!(to_string(f,  0.1, MinusPlus,    (-9, -5),  true), "+1E-1");
-    assert_eq!(to_string(f,  0.1, MinusPlusRaw, ( 5,  9), false), "+1e-1");
-    assert_eq!(to_string(f, -0.1, Minus,        ( 0,  0),  true), "-1E-1");
-    assert_eq!(to_string(f, -0.1, MinusRaw,     ( 0,  0), false), "-1e-1");
-    assert_eq!(to_string(f, -0.1, MinusPlus,    (-9, -5),  true), "-1E-1");
-    assert_eq!(to_string(f, -0.1, MinusPlusRaw, ( 5,  9), false), "-1e-1");
+    assert_eq!(to_string(f, 0.1, Minus, (0, 0), true), "1E-1");
+    assert_eq!(to_string(f, 0.1, MinusRaw, (0, 0), false), "1e-1");
+    assert_eq!(to_string(f, 0.1, MinusPlus, (-9, -5), true), "+1E-1");
+    assert_eq!(to_string(f, 0.1, MinusPlusRaw, (5, 9), false), "+1e-1");
+    assert_eq!(to_string(f, -0.1, Minus, (0, 0), true), "-1E-1");
+    assert_eq!(to_string(f, -0.1, MinusRaw, (0, 0), false), "-1e-1");
+    assert_eq!(to_string(f, -0.1, MinusPlus, (-9, -5), true), "-1E-1");
+    assert_eq!(to_string(f, -0.1, MinusPlusRaw, (5, 9), false), "-1e-1");
 
-    assert_eq!(to_string(f, 7.5e-11, Minus, ( -4, 16), false), "7.5e-11");
+    assert_eq!(to_string(f, 7.5e-11, Minus, (-4, 16), false), "7.5e-11");
     assert_eq!(to_string(f, 7.5e-11, Minus, (-11, 10), false), "0.000000000075");
     assert_eq!(to_string(f, 7.5e-11, Minus, (-10, 11), false), "7.5e-11");
 
-    assert_eq!(to_string(f, 1.9971e20, Minus, ( -4, 16), false), "1.9971e20");
+    assert_eq!(to_string(f, 1.9971e20, Minus, (-4, 16), false), "1.9971e20");
     assert_eq!(to_string(f, 1.9971e20, Minus, (-20, 21), false), "199710000000000000000");
     assert_eq!(to_string(f, 1.9971e20, Minus, (-21, 20), false), "1.9971e20");
 
@@ -649,24 +693,24 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, 1.0e23, Minus, (23, 24), false), "100000000000000000000000");
     assert_eq!(to_string(f, 1.0e23, Minus, (24, 25), false), "1e23");
 
-    assert_eq!(to_string(f, f32::MAX, Minus, ( -4, 16), false), "3.4028235e38");
+    assert_eq!(to_string(f, f32::MAX, Minus, (-4, 16), false), "3.4028235e38");
     assert_eq!(to_string(f, f32::MAX, Minus, (-39, 38), false), "3.4028235e38");
     assert_eq!(to_string(f, f32::MAX, Minus, (-38, 39), false), format!("34028235{:0>31}", ""));
 
     let minf32 = ldexp_f32(1.0, -149);
-    assert_eq!(to_string(f, minf32, Minus, ( -4, 16), false), "1e-45");
+    assert_eq!(to_string(f, minf32, Minus, (-4, 16), false), "1e-45");
     assert_eq!(to_string(f, minf32, Minus, (-44, 45), false), "1e-45");
     assert_eq!(to_string(f, minf32, Minus, (-45, 44), false), format!("0.{:0>44}1", ""));
 
-    assert_eq!(to_string(f, f64::MAX, Minus, (  -4,  16), false),
-               "1.7976931348623157e308");
-    assert_eq!(to_string(f, f64::MAX, Minus, (-308, 309), false),
-               format!("17976931348623157{:0>292}", ""));
-    assert_eq!(to_string(f, f64::MAX, Minus, (-309, 308), false),
-               "1.7976931348623157e308");
+    assert_eq!(to_string(f, f64::MAX, Minus, (-4, 16), false), "1.7976931348623157e308");
+    assert_eq!(
+        to_string(f, f64::MAX, Minus, (-308, 309), false),
+        format!("17976931348623157{:0>292}", "")
+    );
+    assert_eq!(to_string(f, f64::MAX, Minus, (-309, 308), false), "1.7976931348623157e308");
 
     let minf64 = ldexp_f64(1.0, -1074);
-    assert_eq!(to_string(f, minf64, Minus, (  -4,  16), false), "5e-324");
+    assert_eq!(to_string(f, minf64, Minus, (-4, 16), false), "5e-324");
     assert_eq!(to_string(f, minf64, Minus, (-324, 323), false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, (-323, 324), false), "5e-324");
 
@@ -674,88 +718,94 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
 }
 
 pub fn to_exact_exp_str_test<F>(mut f_: F)
-        where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+where
+    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+{
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, ndigits: usize, upper: bool) -> String
-            where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
-        to_string_with_parts(|buf, parts| to_exact_exp_str(|d,b,l| f(d,b,l), v, sign,
-                                                           ndigits, upper, buf, parts))
+    where
+        T: DecodableFloat,
+        F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    {
+        to_string_with_parts(|buf, parts| {
+            to_exact_exp_str(|d, b, l| f(d, b, l), v, sign, ndigits, upper, buf, parts)
+        })
     }
 
     let f = &mut f_;
 
-    assert_eq!(to_string(f,  0.0, Minus,        1,  true), "0E0");
-    assert_eq!(to_string(f,  0.0, MinusRaw,     1, false), "0e0");
-    assert_eq!(to_string(f,  0.0, MinusPlus,    1,  true), "+0E0");
-    assert_eq!(to_string(f,  0.0, MinusPlusRaw, 1, false), "+0e0");
-    assert_eq!(to_string(f, -0.0, Minus,        1,  true), "0E0");
-    assert_eq!(to_string(f, -0.0, MinusRaw,     1, false), "-0e0");
-    assert_eq!(to_string(f, -0.0, MinusPlus,    1,  true), "+0E0");
+    assert_eq!(to_string(f, 0.0, Minus, 1, true), "0E0");
+    assert_eq!(to_string(f, 0.0, MinusRaw, 1, false), "0e0");
+    assert_eq!(to_string(f, 0.0, MinusPlus, 1, true), "+0E0");
+    assert_eq!(to_string(f, 0.0, MinusPlusRaw, 1, false), "+0e0");
+    assert_eq!(to_string(f, -0.0, Minus, 1, true), "0E0");
+    assert_eq!(to_string(f, -0.0, MinusRaw, 1, false), "-0e0");
+    assert_eq!(to_string(f, -0.0, MinusPlus, 1, true), "+0E0");
     assert_eq!(to_string(f, -0.0, MinusPlusRaw, 1, false), "-0e0");
-    assert_eq!(to_string(f,  0.0, Minus,        2,  true), "0.0E0");
-    assert_eq!(to_string(f,  0.0, MinusRaw,     2, false), "0.0e0");
-    assert_eq!(to_string(f,  0.0, MinusPlus,    2,  true), "+0.0E0");
-    assert_eq!(to_string(f,  0.0, MinusPlusRaw, 2, false), "+0.0e0");
-    assert_eq!(to_string(f, -0.0, Minus,        8,  true), "0.0000000E0");
-    assert_eq!(to_string(f, -0.0, MinusRaw,     8, false), "-0.0000000e0");
-    assert_eq!(to_string(f, -0.0, MinusPlus,    8,  true), "+0.0000000E0");
+    assert_eq!(to_string(f, 0.0, Minus, 2, true), "0.0E0");
+    assert_eq!(to_string(f, 0.0, MinusRaw, 2, false), "0.0e0");
+    assert_eq!(to_string(f, 0.0, MinusPlus, 2, true), "+0.0E0");
+    assert_eq!(to_string(f, 0.0, MinusPlusRaw, 2, false), "+0.0e0");
+    assert_eq!(to_string(f, -0.0, Minus, 8, true), "0.0000000E0");
+    assert_eq!(to_string(f, -0.0, MinusRaw, 8, false), "-0.0000000e0");
+    assert_eq!(to_string(f, -0.0, MinusPlus, 8, true), "+0.0000000E0");
     assert_eq!(to_string(f, -0.0, MinusPlusRaw, 8, false), "-0.0000000e0");
 
-    assert_eq!(to_string(f,  1.0/0.0, Minus,         1, false), "inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusRaw,      1,  true), "inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusPlus,     1, false), "+inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusPlusRaw,  1,  true), "+inf");
-    assert_eq!(to_string(f,  0.0/0.0, Minus,         8, false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusRaw,      8,  true), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlus,     8, false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw,  8,  true), "NaN");
-    assert_eq!(to_string(f, -1.0/0.0, Minus,        64, false), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusRaw,     64,  true), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusPlus,    64, false), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusPlusRaw, 64,  true), "-inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, Minus, 1, false), "inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusRaw, 1, true), "inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusPlus, 1, false), "+inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusPlusRaw, 1, true), "+inf");
+    assert_eq!(to_string(f, 0.0 / 0.0, Minus, 8, false), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusRaw, 8, true), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusPlus, 8, false), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusPlusRaw, 8, true), "NaN");
+    assert_eq!(to_string(f, -1.0 / 0.0, Minus, 64, false), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusRaw, 64, true), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusPlus, 64, false), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusPlusRaw, 64, true), "-inf");
 
-    assert_eq!(to_string(f,  3.14, Minus,        1,  true), "3E0");
-    assert_eq!(to_string(f,  3.14, MinusRaw,     1, false), "3e0");
-    assert_eq!(to_string(f,  3.14, MinusPlus,    1,  true), "+3E0");
-    assert_eq!(to_string(f,  3.14, MinusPlusRaw, 1, false), "+3e0");
-    assert_eq!(to_string(f, -3.14, Minus,        2,  true), "-3.1E0");
-    assert_eq!(to_string(f, -3.14, MinusRaw,     2, false), "-3.1e0");
-    assert_eq!(to_string(f, -3.14, MinusPlus,    2,  true), "-3.1E0");
+    assert_eq!(to_string(f, 3.14, Minus, 1, true), "3E0");
+    assert_eq!(to_string(f, 3.14, MinusRaw, 1, false), "3e0");
+    assert_eq!(to_string(f, 3.14, MinusPlus, 1, true), "+3E0");
+    assert_eq!(to_string(f, 3.14, MinusPlusRaw, 1, false), "+3e0");
+    assert_eq!(to_string(f, -3.14, Minus, 2, true), "-3.1E0");
+    assert_eq!(to_string(f, -3.14, MinusRaw, 2, false), "-3.1e0");
+    assert_eq!(to_string(f, -3.14, MinusPlus, 2, true), "-3.1E0");
     assert_eq!(to_string(f, -3.14, MinusPlusRaw, 2, false), "-3.1e0");
-    assert_eq!(to_string(f,  3.14, Minus,        3,  true), "3.14E0");
-    assert_eq!(to_string(f,  3.14, MinusRaw,     3, false), "3.14e0");
-    assert_eq!(to_string(f,  3.14, MinusPlus,    3,  true), "+3.14E0");
-    assert_eq!(to_string(f,  3.14, MinusPlusRaw, 3, false), "+3.14e0");
-    assert_eq!(to_string(f, -3.14, Minus,        4,  true), "-3.140E0");
-    assert_eq!(to_string(f, -3.14, MinusRaw,     4, false), "-3.140e0");
-    assert_eq!(to_string(f, -3.14, MinusPlus,    4,  true), "-3.140E0");
+    assert_eq!(to_string(f, 3.14, Minus, 3, true), "3.14E0");
+    assert_eq!(to_string(f, 3.14, MinusRaw, 3, false), "3.14e0");
+    assert_eq!(to_string(f, 3.14, MinusPlus, 3, true), "+3.14E0");
+    assert_eq!(to_string(f, 3.14, MinusPlusRaw, 3, false), "+3.14e0");
+    assert_eq!(to_string(f, -3.14, Minus, 4, true), "-3.140E0");
+    assert_eq!(to_string(f, -3.14, MinusRaw, 4, false), "-3.140e0");
+    assert_eq!(to_string(f, -3.14, MinusPlus, 4, true), "-3.140E0");
     assert_eq!(to_string(f, -3.14, MinusPlusRaw, 4, false), "-3.140e0");
 
-    assert_eq!(to_string(f,  0.195, Minus,        1, false), "2e-1");
-    assert_eq!(to_string(f,  0.195, MinusRaw,     1,  true), "2E-1");
-    assert_eq!(to_string(f,  0.195, MinusPlus,    1, false), "+2e-1");
-    assert_eq!(to_string(f,  0.195, MinusPlusRaw, 1,  true), "+2E-1");
-    assert_eq!(to_string(f, -0.195, Minus,        2, false), "-2.0e-1");
-    assert_eq!(to_string(f, -0.195, MinusRaw,     2,  true), "-2.0E-1");
-    assert_eq!(to_string(f, -0.195, MinusPlus,    2, false), "-2.0e-1");
-    assert_eq!(to_string(f, -0.195, MinusPlusRaw, 2,  true), "-2.0E-1");
-    assert_eq!(to_string(f,  0.195, Minus,        3, false), "1.95e-1");
-    assert_eq!(to_string(f,  0.195, MinusRaw,     3,  true), "1.95E-1");
-    assert_eq!(to_string(f,  0.195, MinusPlus,    3, false), "+1.95e-1");
-    assert_eq!(to_string(f,  0.195, MinusPlusRaw, 3,  true), "+1.95E-1");
-    assert_eq!(to_string(f, -0.195, Minus,        4, false), "-1.950e-1");
-    assert_eq!(to_string(f, -0.195, MinusRaw,     4,  true), "-1.950E-1");
-    assert_eq!(to_string(f, -0.195, MinusPlus,    4, false), "-1.950e-1");
-    assert_eq!(to_string(f, -0.195, MinusPlusRaw, 4,  true), "-1.950E-1");
+    assert_eq!(to_string(f, 0.195, Minus, 1, false), "2e-1");
+    assert_eq!(to_string(f, 0.195, MinusRaw, 1, true), "2E-1");
+    assert_eq!(to_string(f, 0.195, MinusPlus, 1, false), "+2e-1");
+    assert_eq!(to_string(f, 0.195, MinusPlusRaw, 1, true), "+2E-1");
+    assert_eq!(to_string(f, -0.195, Minus, 2, false), "-2.0e-1");
+    assert_eq!(to_string(f, -0.195, MinusRaw, 2, true), "-2.0E-1");
+    assert_eq!(to_string(f, -0.195, MinusPlus, 2, false), "-2.0e-1");
+    assert_eq!(to_string(f, -0.195, MinusPlusRaw, 2, true), "-2.0E-1");
+    assert_eq!(to_string(f, 0.195, Minus, 3, false), "1.95e-1");
+    assert_eq!(to_string(f, 0.195, MinusRaw, 3, true), "1.95E-1");
+    assert_eq!(to_string(f, 0.195, MinusPlus, 3, false), "+1.95e-1");
+    assert_eq!(to_string(f, 0.195, MinusPlusRaw, 3, true), "+1.95E-1");
+    assert_eq!(to_string(f, -0.195, Minus, 4, false), "-1.950e-1");
+    assert_eq!(to_string(f, -0.195, MinusRaw, 4, true), "-1.950E-1");
+    assert_eq!(to_string(f, -0.195, MinusPlus, 4, false), "-1.950e-1");
+    assert_eq!(to_string(f, -0.195, MinusPlusRaw, 4, true), "-1.950E-1");
 
-    assert_eq!(to_string(f, 9.5, Minus,  1, false), "1e1");
-    assert_eq!(to_string(f, 9.5, Minus,  2, false), "9.5e0");
-    assert_eq!(to_string(f, 9.5, Minus,  3, false), "9.50e0");
+    assert_eq!(to_string(f, 9.5, Minus, 1, false), "1e1");
+    assert_eq!(to_string(f, 9.5, Minus, 2, false), "9.5e0");
+    assert_eq!(to_string(f, 9.5, Minus, 3, false), "9.50e0");
     assert_eq!(to_string(f, 9.5, Minus, 30, false), "9.50000000000000000000000000000e0");
 
-    assert_eq!(to_string(f, 1.0e25, Minus,  1, false), "1e25");
-    assert_eq!(to_string(f, 1.0e25, Minus,  2, false), "1.0e25");
+    assert_eq!(to_string(f, 1.0e25, Minus, 1, false), "1e25");
+    assert_eq!(to_string(f, 1.0e25, Minus, 2, false), "1.0e25");
     assert_eq!(to_string(f, 1.0e25, Minus, 15, false), "1.00000000000000e25");
     assert_eq!(to_string(f, 1.0e25, Minus, 16, false), "1.000000000000000e25");
     assert_eq!(to_string(f, 1.0e25, Minus, 17, false), "1.0000000000000001e25");
@@ -771,104 +821,136 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, 1.0e25, Minus, 27, false), "1.00000000000000009059696640e25");
     assert_eq!(to_string(f, 1.0e25, Minus, 30, false), "1.00000000000000009059696640000e25");
 
-    assert_eq!(to_string(f, 1.0e-6, Minus,  1, false), "1e-6");
-    assert_eq!(to_string(f, 1.0e-6, Minus,  2, false), "1.0e-6");
+    assert_eq!(to_string(f, 1.0e-6, Minus, 1, false), "1e-6");
+    assert_eq!(to_string(f, 1.0e-6, Minus, 2, false), "1.0e-6");
     assert_eq!(to_string(f, 1.0e-6, Minus, 16, false), "1.000000000000000e-6");
     assert_eq!(to_string(f, 1.0e-6, Minus, 17, false), "9.9999999999999995e-7");
     assert_eq!(to_string(f, 1.0e-6, Minus, 18, false), "9.99999999999999955e-7");
     assert_eq!(to_string(f, 1.0e-6, Minus, 19, false), "9.999999999999999547e-7");
     assert_eq!(to_string(f, 1.0e-6, Minus, 20, false), "9.9999999999999995475e-7");
     assert_eq!(to_string(f, 1.0e-6, Minus, 30, false), "9.99999999999999954748111825886e-7");
-    assert_eq!(to_string(f, 1.0e-6, Minus, 40, false),
-               "9.999999999999999547481118258862586856139e-7");
-    assert_eq!(to_string(f, 1.0e-6, Minus, 50, false),
-               "9.9999999999999995474811182588625868561393872369081e-7");
-    assert_eq!(to_string(f, 1.0e-6, Minus, 60, false),
-               "9.99999999999999954748111825886258685613938723690807819366455e-7");
-    assert_eq!(to_string(f, 1.0e-6, Minus, 70, false),
-               "9.999999999999999547481118258862586856139387236908078193664550781250000e-7");
+    assert_eq!(
+        to_string(f, 1.0e-6, Minus, 40, false),
+        "9.999999999999999547481118258862586856139e-7"
+    );
+    assert_eq!(
+        to_string(f, 1.0e-6, Minus, 50, false),
+        "9.9999999999999995474811182588625868561393872369081e-7"
+    );
+    assert_eq!(
+        to_string(f, 1.0e-6, Minus, 60, false),
+        "9.99999999999999954748111825886258685613938723690807819366455e-7"
+    );
+    assert_eq!(
+        to_string(f, 1.0e-6, Minus, 70, false),
+        "9.999999999999999547481118258862586856139387236908078193664550781250000e-7"
+    );
 
-    assert_eq!(to_string(f, f32::MAX, Minus,  1, false), "3e38");
-    assert_eq!(to_string(f, f32::MAX, Minus,  2, false), "3.4e38");
-    assert_eq!(to_string(f, f32::MAX, Minus,  4, false), "3.403e38");
-    assert_eq!(to_string(f, f32::MAX, Minus,  8, false), "3.4028235e38");
+    assert_eq!(to_string(f, f32::MAX, Minus, 1, false), "3e38");
+    assert_eq!(to_string(f, f32::MAX, Minus, 2, false), "3.4e38");
+    assert_eq!(to_string(f, f32::MAX, Minus, 4, false), "3.403e38");
+    assert_eq!(to_string(f, f32::MAX, Minus, 8, false), "3.4028235e38");
     assert_eq!(to_string(f, f32::MAX, Minus, 16, false), "3.402823466385289e38");
     assert_eq!(to_string(f, f32::MAX, Minus, 32, false), "3.4028234663852885981170418348452e38");
-    assert_eq!(to_string(f, f32::MAX, Minus, 64, false),
-               "3.402823466385288598117041834845169254400000000000000000000000000e38");
+    assert_eq!(
+        to_string(f, f32::MAX, Minus, 64, false),
+        "3.402823466385288598117041834845169254400000000000000000000000000e38"
+    );
 
     let minf32 = ldexp_f32(1.0, -149);
-    assert_eq!(to_string(f, minf32, Minus,   1, false), "1e-45");
-    assert_eq!(to_string(f, minf32, Minus,   2, false), "1.4e-45");
-    assert_eq!(to_string(f, minf32, Minus,   4, false), "1.401e-45");
-    assert_eq!(to_string(f, minf32, Minus,   8, false), "1.4012985e-45");
-    assert_eq!(to_string(f, minf32, Minus,  16, false), "1.401298464324817e-45");
-    assert_eq!(to_string(f, minf32, Minus,  32, false), "1.4012984643248170709237295832899e-45");
-    assert_eq!(to_string(f, minf32, Minus,  64, false),
-               "1.401298464324817070923729583289916131280261941876515771757068284e-45");
-    assert_eq!(to_string(f, minf32, Minus, 128, false),
-               "1.401298464324817070923729583289916131280261941876515771757068283\
-                 8897910826858606014866381883621215820312500000000000000000000000e-45");
+    assert_eq!(to_string(f, minf32, Minus, 1, false), "1e-45");
+    assert_eq!(to_string(f, minf32, Minus, 2, false), "1.4e-45");
+    assert_eq!(to_string(f, minf32, Minus, 4, false), "1.401e-45");
+    assert_eq!(to_string(f, minf32, Minus, 8, false), "1.4012985e-45");
+    assert_eq!(to_string(f, minf32, Minus, 16, false), "1.401298464324817e-45");
+    assert_eq!(to_string(f, minf32, Minus, 32, false), "1.4012984643248170709237295832899e-45");
+    assert_eq!(
+        to_string(f, minf32, Minus, 64, false),
+        "1.401298464324817070923729583289916131280261941876515771757068284e-45"
+    );
+    assert_eq!(
+        to_string(f, minf32, Minus, 128, false),
+        "1.401298464324817070923729583289916131280261941876515771757068283\
+                 8897910826858606014866381883621215820312500000000000000000000000e-45"
+    );
 
-    if cfg!(miri) { // Miri is too slow
+    if cfg!(miri) {
+        // Miri is too slow
         return;
     }
 
-    assert_eq!(to_string(f, f64::MAX, Minus,   1, false), "2e308");
-    assert_eq!(to_string(f, f64::MAX, Minus,   2, false), "1.8e308");
-    assert_eq!(to_string(f, f64::MAX, Minus,   4, false), "1.798e308");
-    assert_eq!(to_string(f, f64::MAX, Minus,   8, false), "1.7976931e308");
-    assert_eq!(to_string(f, f64::MAX, Minus,  16, false), "1.797693134862316e308");
-    assert_eq!(to_string(f, f64::MAX, Minus,  32, false), "1.7976931348623157081452742373170e308");
-    assert_eq!(to_string(f, f64::MAX, Minus,  64, false),
-               "1.797693134862315708145274237317043567980705675258449965989174768e308");
-    assert_eq!(to_string(f, f64::MAX, Minus, 128, false),
-               "1.797693134862315708145274237317043567980705675258449965989174768\
-                 0315726078002853876058955863276687817154045895351438246423432133e308");
-    assert_eq!(to_string(f, f64::MAX, Minus, 256, false),
-               "1.797693134862315708145274237317043567980705675258449965989174768\
+    assert_eq!(to_string(f, f64::MAX, Minus, 1, false), "2e308");
+    assert_eq!(to_string(f, f64::MAX, Minus, 2, false), "1.8e308");
+    assert_eq!(to_string(f, f64::MAX, Minus, 4, false), "1.798e308");
+    assert_eq!(to_string(f, f64::MAX, Minus, 8, false), "1.7976931e308");
+    assert_eq!(to_string(f, f64::MAX, Minus, 16, false), "1.797693134862316e308");
+    assert_eq!(to_string(f, f64::MAX, Minus, 32, false), "1.7976931348623157081452742373170e308");
+    assert_eq!(
+        to_string(f, f64::MAX, Minus, 64, false),
+        "1.797693134862315708145274237317043567980705675258449965989174768e308"
+    );
+    assert_eq!(
+        to_string(f, f64::MAX, Minus, 128, false),
+        "1.797693134862315708145274237317043567980705675258449965989174768\
+                 0315726078002853876058955863276687817154045895351438246423432133e308"
+    );
+    assert_eq!(
+        to_string(f, f64::MAX, Minus, 256, false),
+        "1.797693134862315708145274237317043567980705675258449965989174768\
                  0315726078002853876058955863276687817154045895351438246423432132\
                  6889464182768467546703537516986049910576551282076245490090389328\
-                 9440758685084551339423045832369032229481658085593321233482747978e308");
-    assert_eq!(to_string(f, f64::MAX, Minus, 512, false),
-               "1.797693134862315708145274237317043567980705675258449965989174768\
+                 9440758685084551339423045832369032229481658085593321233482747978e308"
+    );
+    assert_eq!(
+        to_string(f, f64::MAX, Minus, 512, false),
+        "1.797693134862315708145274237317043567980705675258449965989174768\
                  0315726078002853876058955863276687817154045895351438246423432132\
                  6889464182768467546703537516986049910576551282076245490090389328\
                  9440758685084551339423045832369032229481658085593321233482747978\
                  2620414472316873817718091929988125040402618412485836800000000000\
                  0000000000000000000000000000000000000000000000000000000000000000\
                  0000000000000000000000000000000000000000000000000000000000000000\
-                 0000000000000000000000000000000000000000000000000000000000000000e308");
+                 0000000000000000000000000000000000000000000000000000000000000000e308"
+    );
 
     // okay, this is becoming tough. fortunately for us, this is almost the worst case.
     let minf64 = ldexp_f64(1.0, -1074);
-    assert_eq!(to_string(f, minf64, Minus,    1, false), "5e-324");
-    assert_eq!(to_string(f, minf64, Minus,    2, false), "4.9e-324");
-    assert_eq!(to_string(f, minf64, Minus,    4, false), "4.941e-324");
-    assert_eq!(to_string(f, minf64, Minus,    8, false), "4.9406565e-324");
-    assert_eq!(to_string(f, minf64, Minus,   16, false), "4.940656458412465e-324");
-    assert_eq!(to_string(f, minf64, Minus,   32, false), "4.9406564584124654417656879286822e-324");
-    assert_eq!(to_string(f, minf64, Minus,   64, false),
-               "4.940656458412465441765687928682213723650598026143247644255856825e-324");
-    assert_eq!(to_string(f, minf64, Minus,  128, false),
-               "4.940656458412465441765687928682213723650598026143247644255856825\
-                 0067550727020875186529983636163599237979656469544571773092665671e-324");
-    assert_eq!(to_string(f, minf64, Minus,  256, false),
-               "4.940656458412465441765687928682213723650598026143247644255856825\
+    assert_eq!(to_string(f, minf64, Minus, 1, false), "5e-324");
+    assert_eq!(to_string(f, minf64, Minus, 2, false), "4.9e-324");
+    assert_eq!(to_string(f, minf64, Minus, 4, false), "4.941e-324");
+    assert_eq!(to_string(f, minf64, Minus, 8, false), "4.9406565e-324");
+    assert_eq!(to_string(f, minf64, Minus, 16, false), "4.940656458412465e-324");
+    assert_eq!(to_string(f, minf64, Minus, 32, false), "4.9406564584124654417656879286822e-324");
+    assert_eq!(
+        to_string(f, minf64, Minus, 64, false),
+        "4.940656458412465441765687928682213723650598026143247644255856825e-324"
+    );
+    assert_eq!(
+        to_string(f, minf64, Minus, 128, false),
+        "4.940656458412465441765687928682213723650598026143247644255856825\
+                 0067550727020875186529983636163599237979656469544571773092665671e-324"
+    );
+    assert_eq!(
+        to_string(f, minf64, Minus, 256, false),
+        "4.940656458412465441765687928682213723650598026143247644255856825\
                  0067550727020875186529983636163599237979656469544571773092665671\
                  0355939796398774796010781878126300713190311404527845817167848982\
-                 1036887186360569987307230500063874091535649843873124733972731696e-324");
-    assert_eq!(to_string(f, minf64, Minus,  512, false),
-               "4.940656458412465441765687928682213723650598026143247644255856825\
+                 1036887186360569987307230500063874091535649843873124733972731696e-324"
+    );
+    assert_eq!(
+        to_string(f, minf64, Minus, 512, false),
+        "4.940656458412465441765687928682213723650598026143247644255856825\
                  0067550727020875186529983636163599237979656469544571773092665671\
                  0355939796398774796010781878126300713190311404527845817167848982\
                  1036887186360569987307230500063874091535649843873124733972731696\
                  1514003171538539807412623856559117102665855668676818703956031062\
                  4931945271591492455329305456544401127480129709999541931989409080\
                  4165633245247571478690147267801593552386115501348035264934720193\
-                 7902681071074917033322268447533357208324319360923828934583680601e-324");
-    assert_eq!(to_string(f, minf64, Minus, 1024, false),
-               "4.940656458412465441765687928682213723650598026143247644255856825\
+                 7902681071074917033322268447533357208324319360923828934583680601e-324"
+    );
+    assert_eq!(
+        to_string(f, minf64, Minus, 1024, false),
+        "4.940656458412465441765687928682213723650598026143247644255856825\
                  0067550727020875186529983636163599237979656469544571773092665671\
                  0355939796398774796010781878126300713190311404527845817167848982\
                  1036887186360569987307230500063874091535649843873124733972731696\
@@ -883,100 +965,117 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
                  0000000000000000000000000000000000000000000000000000000000000000\
                  0000000000000000000000000000000000000000000000000000000000000000\
                  0000000000000000000000000000000000000000000000000000000000000000\
-                 0000000000000000000000000000000000000000000000000000000000000000e-324");
+                 0000000000000000000000000000000000000000000000000000000000000000e-324"
+    );
 
     // very large output
-    assert_eq!(to_string(f, 0.0,     Minus, 80000, false), format!("0.{:0>79999}e0", ""));
-    assert_eq!(to_string(f, 1.0e1,   Minus, 80000, false), format!("1.{:0>79999}e1", ""));
-    assert_eq!(to_string(f, 1.0e0,   Minus, 80000, false), format!("1.{:0>79999}e0", ""));
-    assert_eq!(to_string(f, 1.0e-1,  Minus, 80000, false),
-               format!("1.000000000000000055511151231257827021181583404541015625{:0>79945}\
-                        e-1", ""));
-    assert_eq!(to_string(f, 1.0e-20, Minus, 80000, false),
-               format!("9.999999999999999451532714542095716517295037027873924471077157760\
-                         66783064379706047475337982177734375{:0>79901}e-21", ""));
+    assert_eq!(to_string(f, 0.0, Minus, 80000, false), format!("0.{:0>79999}e0", ""));
+    assert_eq!(to_string(f, 1.0e1, Minus, 80000, false), format!("1.{:0>79999}e1", ""));
+    assert_eq!(to_string(f, 1.0e0, Minus, 80000, false), format!("1.{:0>79999}e0", ""));
+    assert_eq!(
+        to_string(f, 1.0e-1, Minus, 80000, false),
+        format!(
+            "1.000000000000000055511151231257827021181583404541015625{:0>79945}\
+                        e-1",
+            ""
+        )
+    );
+    assert_eq!(
+        to_string(f, 1.0e-20, Minus, 80000, false),
+        format!(
+            "9.999999999999999451532714542095716517295037027873924471077157760\
+                         66783064379706047475337982177734375{:0>79901}e-21",
+            ""
+        )
+    );
 }
 
 pub fn to_exact_fixed_str_test<F>(mut f_: F)
-        where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+where
+    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+{
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, frac_digits: usize, upper: bool) -> String
-            where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
-        to_string_with_parts(|buf, parts| to_exact_fixed_str(|d,b,l| f(d,b,l), v, sign,
-                                                             frac_digits, upper, buf, parts))
+    where
+        T: DecodableFloat,
+        F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    {
+        to_string_with_parts(|buf, parts| {
+            to_exact_fixed_str(|d, b, l| f(d, b, l), v, sign, frac_digits, upper, buf, parts)
+        })
     }
 
     let f = &mut f_;
 
-    assert_eq!(to_string(f,  0.0, Minus,        0, false), "0");
-    assert_eq!(to_string(f,  0.0, MinusRaw,     0, false), "0");
-    assert_eq!(to_string(f,  0.0, MinusPlus,    0, false), "+0");
-    assert_eq!(to_string(f,  0.0, MinusPlusRaw, 0, false), "+0");
-    assert_eq!(to_string(f, -0.0, Minus,        0, false), "0");
-    assert_eq!(to_string(f, -0.0, MinusRaw,     0, false), "-0");
-    assert_eq!(to_string(f, -0.0, MinusPlus,    0, false), "+0");
+    assert_eq!(to_string(f, 0.0, Minus, 0, false), "0");
+    assert_eq!(to_string(f, 0.0, MinusRaw, 0, false), "0");
+    assert_eq!(to_string(f, 0.0, MinusPlus, 0, false), "+0");
+    assert_eq!(to_string(f, 0.0, MinusPlusRaw, 0, false), "+0");
+    assert_eq!(to_string(f, -0.0, Minus, 0, false), "0");
+    assert_eq!(to_string(f, -0.0, MinusRaw, 0, false), "-0");
+    assert_eq!(to_string(f, -0.0, MinusPlus, 0, false), "+0");
     assert_eq!(to_string(f, -0.0, MinusPlusRaw, 0, false), "-0");
-    assert_eq!(to_string(f,  0.0, Minus,        1,  true), "0.0");
-    assert_eq!(to_string(f,  0.0, MinusRaw,     1,  true), "0.0");
-    assert_eq!(to_string(f,  0.0, MinusPlus,    1,  true), "+0.0");
-    assert_eq!(to_string(f,  0.0, MinusPlusRaw, 1,  true), "+0.0");
-    assert_eq!(to_string(f, -0.0, Minus,        8,  true), "0.00000000");
-    assert_eq!(to_string(f, -0.0, MinusRaw,     8,  true), "-0.00000000");
-    assert_eq!(to_string(f, -0.0, MinusPlus,    8,  true), "+0.00000000");
-    assert_eq!(to_string(f, -0.0, MinusPlusRaw, 8,  true), "-0.00000000");
+    assert_eq!(to_string(f, 0.0, Minus, 1, true), "0.0");
+    assert_eq!(to_string(f, 0.0, MinusRaw, 1, true), "0.0");
+    assert_eq!(to_string(f, 0.0, MinusPlus, 1, true), "+0.0");
+    assert_eq!(to_string(f, 0.0, MinusPlusRaw, 1, true), "+0.0");
+    assert_eq!(to_string(f, -0.0, Minus, 8, true), "0.00000000");
+    assert_eq!(to_string(f, -0.0, MinusRaw, 8, true), "-0.00000000");
+    assert_eq!(to_string(f, -0.0, MinusPlus, 8, true), "+0.00000000");
+    assert_eq!(to_string(f, -0.0, MinusPlusRaw, 8, true), "-0.00000000");
 
-    assert_eq!(to_string(f,  1.0/0.0, Minus,         0, false), "inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusRaw,      1,  true), "inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusPlus,     8, false), "+inf");
-    assert_eq!(to_string(f,  1.0/0.0, MinusPlusRaw, 64,  true), "+inf");
-    assert_eq!(to_string(f,  0.0/0.0, Minus,         0, false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusRaw,      1,  true), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlus,     8, false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw, 64,  true), "NaN");
-    assert_eq!(to_string(f, -1.0/0.0, Minus,         0, false), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusRaw,      1,  true), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusPlus,     8, false), "-inf");
-    assert_eq!(to_string(f, -1.0/0.0, MinusPlusRaw, 64,  true), "-inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, Minus, 0, false), "inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusRaw, 1, true), "inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusPlus, 8, false), "+inf");
+    assert_eq!(to_string(f, 1.0 / 0.0, MinusPlusRaw, 64, true), "+inf");
+    assert_eq!(to_string(f, 0.0 / 0.0, Minus, 0, false), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusRaw, 1, true), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusPlus, 8, false), "NaN");
+    assert_eq!(to_string(f, 0.0 / 0.0, MinusPlusRaw, 64, true), "NaN");
+    assert_eq!(to_string(f, -1.0 / 0.0, Minus, 0, false), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusRaw, 1, true), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusPlus, 8, false), "-inf");
+    assert_eq!(to_string(f, -1.0 / 0.0, MinusPlusRaw, 64, true), "-inf");
 
-    assert_eq!(to_string(f,  3.14, Minus,        0, false), "3");
-    assert_eq!(to_string(f,  3.14, MinusRaw,     0, false), "3");
-    assert_eq!(to_string(f,  3.14, MinusPlus,    0, false), "+3");
-    assert_eq!(to_string(f,  3.14, MinusPlusRaw, 0, false), "+3");
-    assert_eq!(to_string(f, -3.14, Minus,        0, false), "-3");
-    assert_eq!(to_string(f, -3.14, MinusRaw,     0, false), "-3");
-    assert_eq!(to_string(f, -3.14, MinusPlus,    0, false), "-3");
+    assert_eq!(to_string(f, 3.14, Minus, 0, false), "3");
+    assert_eq!(to_string(f, 3.14, MinusRaw, 0, false), "3");
+    assert_eq!(to_string(f, 3.14, MinusPlus, 0, false), "+3");
+    assert_eq!(to_string(f, 3.14, MinusPlusRaw, 0, false), "+3");
+    assert_eq!(to_string(f, -3.14, Minus, 0, false), "-3");
+    assert_eq!(to_string(f, -3.14, MinusRaw, 0, false), "-3");
+    assert_eq!(to_string(f, -3.14, MinusPlus, 0, false), "-3");
     assert_eq!(to_string(f, -3.14, MinusPlusRaw, 0, false), "-3");
-    assert_eq!(to_string(f,  3.14, Minus,        1,  true), "3.1");
-    assert_eq!(to_string(f,  3.14, MinusRaw,     2,  true), "3.14");
-    assert_eq!(to_string(f,  3.14, MinusPlus,    3,  true), "+3.140");
-    assert_eq!(to_string(f,  3.14, MinusPlusRaw, 4,  true), "+3.1400");
-    assert_eq!(to_string(f, -3.14, Minus,        8,  true), "-3.14000000");
-    assert_eq!(to_string(f, -3.14, MinusRaw,     8,  true), "-3.14000000");
-    assert_eq!(to_string(f, -3.14, MinusPlus,    8,  true), "-3.14000000");
-    assert_eq!(to_string(f, -3.14, MinusPlusRaw, 8,  true), "-3.14000000");
+    assert_eq!(to_string(f, 3.14, Minus, 1, true), "3.1");
+    assert_eq!(to_string(f, 3.14, MinusRaw, 2, true), "3.14");
+    assert_eq!(to_string(f, 3.14, MinusPlus, 3, true), "+3.140");
+    assert_eq!(to_string(f, 3.14, MinusPlusRaw, 4, true), "+3.1400");
+    assert_eq!(to_string(f, -3.14, Minus, 8, true), "-3.14000000");
+    assert_eq!(to_string(f, -3.14, MinusRaw, 8, true), "-3.14000000");
+    assert_eq!(to_string(f, -3.14, MinusPlus, 8, true), "-3.14000000");
+    assert_eq!(to_string(f, -3.14, MinusPlusRaw, 8, true), "-3.14000000");
 
-    assert_eq!(to_string(f,  0.195, Minus,        0, false), "0");
-    assert_eq!(to_string(f,  0.195, MinusRaw,     0, false), "0");
-    assert_eq!(to_string(f,  0.195, MinusPlus,    0, false), "+0");
-    assert_eq!(to_string(f,  0.195, MinusPlusRaw, 0, false), "+0");
-    assert_eq!(to_string(f, -0.195, Minus,        0, false), "-0");
-    assert_eq!(to_string(f, -0.195, MinusRaw,     0, false), "-0");
-    assert_eq!(to_string(f, -0.195, MinusPlus,    0, false), "-0");
+    assert_eq!(to_string(f, 0.195, Minus, 0, false), "0");
+    assert_eq!(to_string(f, 0.195, MinusRaw, 0, false), "0");
+    assert_eq!(to_string(f, 0.195, MinusPlus, 0, false), "+0");
+    assert_eq!(to_string(f, 0.195, MinusPlusRaw, 0, false), "+0");
+    assert_eq!(to_string(f, -0.195, Minus, 0, false), "-0");
+    assert_eq!(to_string(f, -0.195, MinusRaw, 0, false), "-0");
+    assert_eq!(to_string(f, -0.195, MinusPlus, 0, false), "-0");
     assert_eq!(to_string(f, -0.195, MinusPlusRaw, 0, false), "-0");
-    assert_eq!(to_string(f,  0.195, Minus,        1,  true), "0.2");
-    assert_eq!(to_string(f,  0.195, MinusRaw,     2,  true), "0.20");
-    assert_eq!(to_string(f,  0.195, MinusPlus,    3,  true), "+0.195");
-    assert_eq!(to_string(f,  0.195, MinusPlusRaw, 4,  true), "+0.1950");
-    assert_eq!(to_string(f, -0.195, Minus,        5,  true), "-0.19500");
-    assert_eq!(to_string(f, -0.195, MinusRaw,     6,  true), "-0.195000");
-    assert_eq!(to_string(f, -0.195, MinusPlus,    7,  true), "-0.1950000");
-    assert_eq!(to_string(f, -0.195, MinusPlusRaw, 8,  true), "-0.19500000");
+    assert_eq!(to_string(f, 0.195, Minus, 1, true), "0.2");
+    assert_eq!(to_string(f, 0.195, MinusRaw, 2, true), "0.20");
+    assert_eq!(to_string(f, 0.195, MinusPlus, 3, true), "+0.195");
+    assert_eq!(to_string(f, 0.195, MinusPlusRaw, 4, true), "+0.1950");
+    assert_eq!(to_string(f, -0.195, Minus, 5, true), "-0.19500");
+    assert_eq!(to_string(f, -0.195, MinusRaw, 6, true), "-0.195000");
+    assert_eq!(to_string(f, -0.195, MinusPlus, 7, true), "-0.1950000");
+    assert_eq!(to_string(f, -0.195, MinusPlusRaw, 8, true), "-0.19500000");
 
-    assert_eq!(to_string(f, 999.5, Minus,  0, false), "1000");
-    assert_eq!(to_string(f, 999.5, Minus,  1, false), "999.5");
-    assert_eq!(to_string(f, 999.5, Minus,  2, false), "999.50");
-    assert_eq!(to_string(f, 999.5, Minus,  3, false), "999.500");
+    assert_eq!(to_string(f, 999.5, Minus, 0, false), "1000");
+    assert_eq!(to_string(f, 999.5, Minus, 1, false), "999.5");
+    assert_eq!(to_string(f, 999.5, Minus, 2, false), "999.50");
+    assert_eq!(to_string(f, 999.5, Minus, 3, false), "999.500");
     assert_eq!(to_string(f, 999.5, Minus, 30, false), "999.500000000000000000000000000000");
 
     assert_eq!(to_string(f, 0.5, Minus, 0, false), "1");
@@ -984,32 +1083,32 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, 0.5, Minus, 2, false), "0.50");
     assert_eq!(to_string(f, 0.5, Minus, 3, false), "0.500");
 
-    assert_eq!(to_string(f, 0.95, Minus,  0, false), "1");
-    assert_eq!(to_string(f, 0.95, Minus,  1, false), "0.9"); // because it really is less than 0.95
-    assert_eq!(to_string(f, 0.95, Minus,  2, false), "0.95");
-    assert_eq!(to_string(f, 0.95, Minus,  3, false), "0.950");
+    assert_eq!(to_string(f, 0.95, Minus, 0, false), "1");
+    assert_eq!(to_string(f, 0.95, Minus, 1, false), "0.9"); // because it really is less than 0.95
+    assert_eq!(to_string(f, 0.95, Minus, 2, false), "0.95");
+    assert_eq!(to_string(f, 0.95, Minus, 3, false), "0.950");
     assert_eq!(to_string(f, 0.95, Minus, 10, false), "0.9500000000");
     assert_eq!(to_string(f, 0.95, Minus, 30, false), "0.949999999999999955591079014994");
 
-    assert_eq!(to_string(f, 0.095, Minus,  0, false), "0");
-    assert_eq!(to_string(f, 0.095, Minus,  1, false), "0.1");
-    assert_eq!(to_string(f, 0.095, Minus,  2, false), "0.10");
-    assert_eq!(to_string(f, 0.095, Minus,  3, false), "0.095");
-    assert_eq!(to_string(f, 0.095, Minus,  4, false), "0.0950");
+    assert_eq!(to_string(f, 0.095, Minus, 0, false), "0");
+    assert_eq!(to_string(f, 0.095, Minus, 1, false), "0.1");
+    assert_eq!(to_string(f, 0.095, Minus, 2, false), "0.10");
+    assert_eq!(to_string(f, 0.095, Minus, 3, false), "0.095");
+    assert_eq!(to_string(f, 0.095, Minus, 4, false), "0.0950");
     assert_eq!(to_string(f, 0.095, Minus, 10, false), "0.0950000000");
     assert_eq!(to_string(f, 0.095, Minus, 30, false), "0.095000000000000001110223024625");
 
-    assert_eq!(to_string(f, 0.0095, Minus,  0, false), "0");
-    assert_eq!(to_string(f, 0.0095, Minus,  1, false), "0.0");
-    assert_eq!(to_string(f, 0.0095, Minus,  2, false), "0.01");
-    assert_eq!(to_string(f, 0.0095, Minus,  3, false), "0.009"); // really is less than 0.0095
-    assert_eq!(to_string(f, 0.0095, Minus,  4, false), "0.0095");
-    assert_eq!(to_string(f, 0.0095, Minus,  5, false), "0.00950");
+    assert_eq!(to_string(f, 0.0095, Minus, 0, false), "0");
+    assert_eq!(to_string(f, 0.0095, Minus, 1, false), "0.0");
+    assert_eq!(to_string(f, 0.0095, Minus, 2, false), "0.01");
+    assert_eq!(to_string(f, 0.0095, Minus, 3, false), "0.009"); // really is less than 0.0095
+    assert_eq!(to_string(f, 0.0095, Minus, 4, false), "0.0095");
+    assert_eq!(to_string(f, 0.0095, Minus, 5, false), "0.00950");
     assert_eq!(to_string(f, 0.0095, Minus, 10, false), "0.0095000000");
     assert_eq!(to_string(f, 0.0095, Minus, 30, false), "0.009499999999999999764077607267");
 
-    assert_eq!(to_string(f, 7.5e-11, Minus,  0, false), "0");
-    assert_eq!(to_string(f, 7.5e-11, Minus,  3, false), "0.000");
+    assert_eq!(to_string(f, 7.5e-11, Minus, 0, false), "0");
+    assert_eq!(to_string(f, 7.5e-11, Minus, 3, false), "0.000");
     assert_eq!(to_string(f, 7.5e-11, Minus, 10, false), "0.0000000001");
     assert_eq!(to_string(f, 7.5e-11, Minus, 11, false), "0.00000000007"); // ditto
     assert_eq!(to_string(f, 7.5e-11, Minus, 12, false), "0.000000000075");
@@ -1021,77 +1120,102 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, 1.0e25, Minus, 1, false), "10000000000000000905969664.0");
     assert_eq!(to_string(f, 1.0e25, Minus, 3, false), "10000000000000000905969664.000");
 
-    assert_eq!(to_string(f, 1.0e-6, Minus,  0, false), "0");
-    assert_eq!(to_string(f, 1.0e-6, Minus,  3, false), "0.000");
-    assert_eq!(to_string(f, 1.0e-6, Minus,  6, false), "0.000001");
-    assert_eq!(to_string(f, 1.0e-6, Minus,  9, false), "0.000001000");
+    assert_eq!(to_string(f, 1.0e-6, Minus, 0, false), "0");
+    assert_eq!(to_string(f, 1.0e-6, Minus, 3, false), "0.000");
+    assert_eq!(to_string(f, 1.0e-6, Minus, 6, false), "0.000001");
+    assert_eq!(to_string(f, 1.0e-6, Minus, 9, false), "0.000001000");
     assert_eq!(to_string(f, 1.0e-6, Minus, 12, false), "0.000001000000");
     assert_eq!(to_string(f, 1.0e-6, Minus, 22, false), "0.0000010000000000000000");
     assert_eq!(to_string(f, 1.0e-6, Minus, 23, false), "0.00000099999999999999995");
     assert_eq!(to_string(f, 1.0e-6, Minus, 24, false), "0.000000999999999999999955");
     assert_eq!(to_string(f, 1.0e-6, Minus, 25, false), "0.0000009999999999999999547");
     assert_eq!(to_string(f, 1.0e-6, Minus, 35, false), "0.00000099999999999999995474811182589");
-    assert_eq!(to_string(f, 1.0e-6, Minus, 45, false),
-               "0.000000999999999999999954748111825886258685614");
-    assert_eq!(to_string(f, 1.0e-6, Minus, 55, false),
-               "0.0000009999999999999999547481118258862586856139387236908");
-    assert_eq!(to_string(f, 1.0e-6, Minus, 65, false),
-               "0.00000099999999999999995474811182588625868561393872369080781936646");
-    assert_eq!(to_string(f, 1.0e-6, Minus, 75, false),
-               "0.000000999999999999999954748111825886258685613938723690807819366455078125000");
+    assert_eq!(
+        to_string(f, 1.0e-6, Minus, 45, false),
+        "0.000000999999999999999954748111825886258685614"
+    );
+    assert_eq!(
+        to_string(f, 1.0e-6, Minus, 55, false),
+        "0.0000009999999999999999547481118258862586856139387236908"
+    );
+    assert_eq!(
+        to_string(f, 1.0e-6, Minus, 65, false),
+        "0.00000099999999999999995474811182588625868561393872369080781936646"
+    );
+    assert_eq!(
+        to_string(f, 1.0e-6, Minus, 75, false),
+        "0.000000999999999999999954748111825886258685613938723690807819366455078125000"
+    );
 
-    assert_eq!(to_string(f, f32::MAX, Minus, 0, false),
-               "340282346638528859811704183484516925440");
-    assert_eq!(to_string(f, f32::MAX, Minus, 1, false),
-               "340282346638528859811704183484516925440.0");
-    assert_eq!(to_string(f, f32::MAX, Minus, 2, false),
-               "340282346638528859811704183484516925440.00");
+    assert_eq!(to_string(f, f32::MAX, Minus, 0, false), "340282346638528859811704183484516925440");
+    assert_eq!(
+        to_string(f, f32::MAX, Minus, 1, false),
+        "340282346638528859811704183484516925440.0"
+    );
+    assert_eq!(
+        to_string(f, f32::MAX, Minus, 2, false),
+        "340282346638528859811704183484516925440.00"
+    );
 
-    if cfg!(miri) { // Miri is too slow
+    if cfg!(miri) {
+        // Miri is too slow
         return;
     }
 
     let minf32 = ldexp_f32(1.0, -149);
-    assert_eq!(to_string(f, minf32, Minus,   0, false), "0");
-    assert_eq!(to_string(f, minf32, Minus,   1, false), "0.0");
-    assert_eq!(to_string(f, minf32, Minus,   2, false), "0.00");
-    assert_eq!(to_string(f, minf32, Minus,   4, false), "0.0000");
-    assert_eq!(to_string(f, minf32, Minus,   8, false), "0.00000000");
-    assert_eq!(to_string(f, minf32, Minus,  16, false), "0.0000000000000000");
-    assert_eq!(to_string(f, minf32, Minus,  32, false), "0.00000000000000000000000000000000");
-    assert_eq!(to_string(f, minf32, Minus,  64, false),
-               "0.0000000000000000000000000000000000000000000014012984643248170709");
-    assert_eq!(to_string(f, minf32, Minus, 128, false),
-               "0.0000000000000000000000000000000000000000000014012984643248170709\
-                  2372958328991613128026194187651577175706828388979108268586060149");
-    assert_eq!(to_string(f, minf32, Minus, 256, false),
-               "0.0000000000000000000000000000000000000000000014012984643248170709\
+    assert_eq!(to_string(f, minf32, Minus, 0, false), "0");
+    assert_eq!(to_string(f, minf32, Minus, 1, false), "0.0");
+    assert_eq!(to_string(f, minf32, Minus, 2, false), "0.00");
+    assert_eq!(to_string(f, minf32, Minus, 4, false), "0.0000");
+    assert_eq!(to_string(f, minf32, Minus, 8, false), "0.00000000");
+    assert_eq!(to_string(f, minf32, Minus, 16, false), "0.0000000000000000");
+    assert_eq!(to_string(f, minf32, Minus, 32, false), "0.00000000000000000000000000000000");
+    assert_eq!(
+        to_string(f, minf32, Minus, 64, false),
+        "0.0000000000000000000000000000000000000000000014012984643248170709"
+    );
+    assert_eq!(
+        to_string(f, minf32, Minus, 128, false),
+        "0.0000000000000000000000000000000000000000000014012984643248170709\
+                  2372958328991613128026194187651577175706828388979108268586060149"
+    );
+    assert_eq!(
+        to_string(f, minf32, Minus, 256, false),
+        "0.0000000000000000000000000000000000000000000014012984643248170709\
                   2372958328991613128026194187651577175706828388979108268586060148\
                   6638188362121582031250000000000000000000000000000000000000000000\
-                  0000000000000000000000000000000000000000000000000000000000000000");
+                  0000000000000000000000000000000000000000000000000000000000000000"
+    );
 
-    assert_eq!(to_string(f, f64::MAX, Minus, 0, false),
-               "1797693134862315708145274237317043567980705675258449965989174768\
+    assert_eq!(
+        to_string(f, f64::MAX, Minus, 0, false),
+        "1797693134862315708145274237317043567980705675258449965989174768\
                 0315726078002853876058955863276687817154045895351438246423432132\
                 6889464182768467546703537516986049910576551282076245490090389328\
                 9440758685084551339423045832369032229481658085593321233482747978\
-                26204144723168738177180919299881250404026184124858368");
-    assert_eq!(to_string(f, f64::MAX, Minus, 10, false),
-               "1797693134862315708145274237317043567980705675258449965989174768\
+                26204144723168738177180919299881250404026184124858368"
+    );
+    assert_eq!(
+        to_string(f, f64::MAX, Minus, 10, false),
+        "1797693134862315708145274237317043567980705675258449965989174768\
                 0315726078002853876058955863276687817154045895351438246423432132\
                 6889464182768467546703537516986049910576551282076245490090389328\
                 9440758685084551339423045832369032229481658085593321233482747978\
-                26204144723168738177180919299881250404026184124858368.0000000000");
+                26204144723168738177180919299881250404026184124858368.0000000000"
+    );
 
     let minf64 = ldexp_f64(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus, 0, false), "0");
     assert_eq!(to_string(f, minf64, Minus, 1, false), "0.0");
     assert_eq!(to_string(f, minf64, Minus, 10, false), "0.0000000000");
-    assert_eq!(to_string(f, minf64, Minus, 100, false),
-               "0.0000000000000000000000000000000000000000000000000000000000000000\
-                  000000000000000000000000000000000000");
-    assert_eq!(to_string(f, minf64, Minus, 1000, false),
-               "0.0000000000000000000000000000000000000000000000000000000000000000\
+    assert_eq!(
+        to_string(f, minf64, Minus, 100, false),
+        "0.0000000000000000000000000000000000000000000000000000000000000000\
+                  000000000000000000000000000000000000"
+    );
+    assert_eq!(
+        to_string(f, minf64, Minus, 1000, false),
+        "0.0000000000000000000000000000000000000000000000000000000000000000\
                   0000000000000000000000000000000000000000000000000000000000000000\
                   0000000000000000000000000000000000000000000000000000000000000000\
                   0000000000000000000000000000000000000000000000000000000000000000\
@@ -1106,15 +1230,23 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
                   1937902681071074917033322268447533357208324319360923828934583680\
                   6010601150616980975307834227731832924790498252473077637592724787\
                   4656084778203734469699533647017972677717585125660551199131504891\
-                  1014510378627381672509558373897335989937");
+                  1014510378627381672509558373897335989937"
+    );
 
     // very large output
-    assert_eq!(to_string(f, 0.0,     Minus, 80000, false), format!("0.{:0>80000}", ""));
-    assert_eq!(to_string(f, 1.0e1,   Minus, 80000, false), format!("10.{:0>80000}", ""));
-    assert_eq!(to_string(f, 1.0e0,   Minus, 80000, false), format!("1.{:0>80000}", ""));
-    assert_eq!(to_string(f, 1.0e-1,  Minus, 80000, false),
-               format!("0.1000000000000000055511151231257827021181583404541015625{:0>79945}", ""));
-    assert_eq!(to_string(f, 1.0e-20, Minus, 80000, false),
-               format!("0.0000000000000000000099999999999999994515327145420957165172950370\
-                          2787392447107715776066783064379706047475337982177734375{:0>79881}", ""));
+    assert_eq!(to_string(f, 0.0, Minus, 80000, false), format!("0.{:0>80000}", ""));
+    assert_eq!(to_string(f, 1.0e1, Minus, 80000, false), format!("10.{:0>80000}", ""));
+    assert_eq!(to_string(f, 1.0e0, Minus, 80000, false), format!("1.{:0>80000}", ""));
+    assert_eq!(
+        to_string(f, 1.0e-1, Minus, 80000, false),
+        format!("0.1000000000000000055511151231257827021181583404541015625{:0>79945}", "")
+    );
+    assert_eq!(
+        to_string(f, 1.0e-20, Minus, 80000, false),
+        format!(
+            "0.0000000000000000000099999999999999994515327145420957165172950370\
+                          2787392447107715776066783064379706047475337982177734375{:0>79881}",
+            ""
+        )
+    );
 }

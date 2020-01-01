@@ -19,10 +19,7 @@ impl<T> OwnedStore<T> {
         // when `NonZeroU32::new` (aka `Handle::new`) is called in `alloc`.
         assert_ne!(counter.load(Ordering::SeqCst), 0);
 
-        OwnedStore {
-            counter,
-            data: BTreeMap::new(),
-        }
+        OwnedStore { counter, data: BTreeMap::new() }
     }
 }
 
@@ -35,26 +32,20 @@ impl<T> OwnedStore<T> {
     }
 
     pub(super) fn take(&mut self, h: Handle) -> T {
-        self.data
-            .remove(&h)
-            .expect("use-after-free in `proc_macro` handle")
+        self.data.remove(&h).expect("use-after-free in `proc_macro` handle")
     }
 }
 
 impl<T> Index<Handle> for OwnedStore<T> {
     type Output = T;
     fn index(&self, h: Handle) -> &T {
-        self.data
-            .get(&h)
-            .expect("use-after-free in `proc_macro` handle")
+        self.data.get(&h).expect("use-after-free in `proc_macro` handle")
     }
 }
 
 impl<T> IndexMut<Handle> for OwnedStore<T> {
     fn index_mut(&mut self, h: Handle) -> &mut T {
-        self.data
-            .get_mut(&h)
-            .expect("use-after-free in `proc_macro` handle")
+        self.data.get_mut(&h).expect("use-after-free in `proc_macro` handle")
     }
 }
 
@@ -65,10 +56,7 @@ pub(super) struct InternedStore<T: 'static> {
 
 impl<T: Copy + Eq + Hash> InternedStore<T> {
     pub(super) fn new(counter: &'static AtomicUsize) -> Self {
-        InternedStore {
-            owned: OwnedStore::new(counter),
-            interner: HashMap::new(),
-        }
+        InternedStore { owned: OwnedStore::new(counter), interner: HashMap::new() }
     }
 
     pub(super) fn alloc(&mut self, x: T) -> Handle {
