@@ -275,7 +275,6 @@ impl CodegenBackend for LlvmCodegenBackend {
         dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
-        use rustc::util::common::time;
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -284,7 +283,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             rustc_codegen_ssa::back::write::dump_incremental_data(&codegen_results);
         }
 
-        time(sess, "serialize work products", move || {
+        sess.time("serialize work products", move || {
             rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
         });
 
@@ -301,9 +300,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        time(sess, "linking", || {
-            let _prof_timer = sess.prof.generic_activity("link_crate");
-
+        sess.time("linking", || {
             use crate::back::archive::LlvmArchiveBuilder;
             use rustc_codegen_ssa::back::link::link_binary;
 

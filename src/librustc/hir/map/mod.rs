@@ -11,9 +11,7 @@ use crate::hir::DefKind;
 use crate::hir::*;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
-use crate::util::common::time;
 use crate::util::nodemap::FxHashMap;
-
 use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
@@ -1244,7 +1242,7 @@ pub fn map_crate<'hir>(
         definitions,
     };
 
-    time(sess, "validate HIR map", || {
+    sess.time("validate HIR map", || {
         hir_id_validator::check_crate(&map);
     });
 

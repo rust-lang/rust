@@ -108,7 +108,6 @@ use rustc::util;
 use rustc::util::common::ErrorReported;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use util::common::time;
 
 use rustc_error_codes::*;
 
@@ -304,13 +303,13 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
-    let _prof_timer = tcx.prof.generic_activity("type_check_crate");
+    let _prof_timer = tcx.sess.timer("type_check_crate");
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     // FIXME(matthewjasper) We shouldn't need to do this.
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "type collecting", || {
+        tcx.sess.time("type collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
                 tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
             }
@@ -319,35 +318,35 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            time(tcx.sess, "outlives testing", || outlives::test::test_inferred_outlives(tcx));
+            tcx.sess.time("outlives testing", || outlives::test::test_inferred_outlives(tcx));
         })?;
     }
 
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "impl wf inference", || impl_wf_check::impl_wf_check(tcx));
+        tcx.sess.time("impl wf inference", || impl_wf_check::impl_wf_check(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "coherence checking", || coherence::check_coherence(tcx));
+        tcx.sess.time("coherence checking", || coherence::check_coherence(tcx));
     })?;
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            time(tcx.sess, "variance testing", || variance::test::test_variance(tcx));
+            tcx.sess.time("variance testing", || variance::test::test_variance(tcx));
         })?;
     }
 
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "wf checking", || check::check_wf_new(tcx));
+        tcx.sess.time("wf checking", || check::check_wf_new(tcx));
     })?;
 
-    time(tcx.sess, "item-types checking", || {
+    tcx.sess.time("item-types checking", || {
         for &module in tcx.hir().krate().modules.keys() {
             tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
         }
     });
 
-    time(tcx.sess, "item-bodies checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
+    tcx.sess.time("item-bodies checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);

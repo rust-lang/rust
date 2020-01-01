@@ -29,9 +29,7 @@ use crate::middle::privacy::AccessLevels;
 use crate::session::Session;
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
-use crate::util::common::time;
 use crate::util::nodemap::FxHashMap;
-
 use errors::DiagnosticBuilder;
 use rustc_data_structures::sync::{self, join, par_iter, ParallelIterator};
 use rustc_span::{symbol::Symbol, MultiSpan, Span};
@@ -1413,7 +1411,7 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
         late_lint_pass_crate(tcx, builtin_lints);
     } else {
         for pass in &mut passes {
-            time(tcx.sess, &format!("running late lint: {}", pass.name()), || {
+            tcx.sess.time(&format!("running late lint: {}", pass.name()), || {
                 late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
             });
         }
@@ -1422,7 +1420,7 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
             tcx.lint_store.late_module_passes.iter().map(|pass| (pass)()).collect();
 
         for pass in &mut passes {
-            time(tcx.sess, &format!("running late module lint: {}", pass.name()), || {
+            tcx.sess.time(&format!("running late module lint: {}", pass.name()), || {
                 late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
             });
         }
@@ -1436,13 +1434,13 @@ pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 ) {
     join(
         || {
-            time(tcx.sess, "crate lints", || {
+            tcx.sess.time("crate lints", || {
                 // Run whole crate non-incremental lints
                 late_lint_crate(tcx, builtin_lints());
             });
         },
         || {
-            time(tcx.sess, "module lints", || {
+            tcx.sess.time("module lints", || {
                 // Run per-module lints
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
                     tcx.ensure().lint_mod(tcx.hir().local_def_id(module));
@@ -1540,7 +1538,7 @@ pub fn check_ast_crate<T: EarlyLintPass>(
         }
     } else {
         for pass in &mut passes {
-            buffered = time(sess, &format!("running lint: {}", pass.name()), || {
+            buffered = sess.time(&format!("running lint: {}", pass.name()), || {
                 early_lint_crate(
                     sess,
                     lint_store,

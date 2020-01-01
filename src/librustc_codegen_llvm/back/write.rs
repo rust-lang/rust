@@ -16,7 +16,6 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::config::{self, Lto, OutputType, Passes, Sanitizer, SwitchWithOptPath};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc::util::common::time_ext;
 use rustc_codegen_ssa::back::write::{run_assembler, CodegenContext, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, RLIB_BYTECODE_EXTENSION};
@@ -425,20 +424,14 @@ pub(crate) unsafe fn optimize(
 
         // Finally, run the actual optimization passes
         {
-            let _timer = cgcx.prof.generic_activity("LLVM_module_optimize_function_passes");
-            time_ext(
-                config.time_passes,
-                &format!("llvm function passes [{}]", module_name.unwrap()),
-                || llvm::LLVMRustRunFunctionPassManager(fpm, llmod),
-            );
+            let desc = &format!("llvm function passes [{}]", module_name.unwrap());
+            let _timer = if config.time_module { Some(cgcx.prof.generic_pass(desc)) } else { None };
+            llvm::LLVMRustRunFunctionPassManager(fpm, llmod);
         }
         {
-            let _timer = cgcx.prof.generic_activity("LLVM_module_optimize_module_passes");
-            time_ext(
-                config.time_passes,
-                &format!("llvm module passes [{}]", module_name.unwrap()),
-                || llvm::LLVMRunPassManager(mpm, llmod),
-            );
+            let desc = &format!("llvm module passes [{}]", module_name.unwrap());
+            let _timer = if config.time_module { Some(cgcx.prof.generic_pass(desc)) } else { None };
+            llvm::LLVMRunPassManager(mpm, llmod);
         }
 
         // Deallocate managers that we're now done with
@@ -561,103 +554,97 @@ pub(crate) unsafe fn codegen(
             embed_bitcode(cgcx, llcx, llmod, None);
         }
 
-        time_ext(
-            config.time_passes,
-            &format!("codegen passes [{}]", module_name.unwrap()),
-            || -> Result<(), FatalError> {
-                if config.emit_ir {
-                    let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_emit_ir");
-                    let out =
-                        cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
-                    let out_c = path_to_c_string(&out);
+        {
+            let desc = &format!("codegen passes [{}]", module_name.unwrap());
+            let _timer = if config.time_module { Some(cgcx.prof.generic_pass(desc)) } else { None };
 
-                    extern "C" fn demangle_callback(
-                        input_ptr: *const c_char,
-                        input_len: size_t,
-                        output_ptr: *mut c_char,
-                        output_len: size_t,
-                    ) -> size_t {
-                        let input = unsafe {
-                            slice::from_raw_parts(input_ptr as *const u8, input_len as usize)
-                        };
+            if config.emit_ir {
+                let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_emit_ir");
+                let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
+                let out_c = path_to_c_string(&out);
 
-                        let input = match str::from_utf8(input) {
-                            Ok(s) => s,
-                            Err(_) => return 0,
-                        };
+                extern "C" fn demangle_callback(
+                    input_ptr: *const c_char,
+                    input_len: size_t,
+                    output_ptr: *mut c_char,
+                    output_len: size_t,
+                ) -> size_t {
+                    let input = unsafe {
+                        slice::from_raw_parts(input_ptr as *const u8, input_len as usize)
+                    };
 
-                        let output = unsafe {
-                            slice::from_raw_parts_mut(output_ptr as *mut u8, output_len as usize)
-                        };
-                        let mut cursor = io::Cursor::new(output);
+                    let input = match str::from_utf8(input) {
+                        Ok(s) => s,
+                        Err(_) => return 0,
+                    };
 
-                        let demangled = match rustc_demangle::try_demangle(input) {
-                            Ok(d) => d,
-                            Err(_) => return 0,
-                        };
+                    let output = unsafe {
+                        slice::from_raw_parts_mut(output_ptr as *mut u8, output_len as usize)
+                    };
+                    let mut cursor = io::Cursor::new(output);
 
-                        if let Err(_) = write!(cursor, "{:#}", demangled) {
-                            // Possible only if provided buffer is not big enough
-                            return 0;
-                        }
+                    let demangled = match rustc_demangle::try_demangle(input) {
+                        Ok(d) => d,
+                        Err(_) => return 0,
+                    };
 
-                        cursor.position() as size_t
+                    if let Err(_) = write!(cursor, "{:#}", demangled) {
+                        // Possible only if provided buffer is not big enough
+                        return 0;
                     }
 
-                    let result =
-                        llvm::LLVMRustPrintModule(llmod, out_c.as_ptr(), demangle_callback);
-                    result.into_result().map_err(|()| {
-                        let msg = format!("failed to write LLVM IR to {}", out.display());
-                        llvm_err(diag_handler, &msg)
-                    })?;
+                    cursor.position() as size_t
                 }
 
-                if config.emit_asm || asm_to_obj {
-                    let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_emit_asm");
-                    let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+                let result = llvm::LLVMRustPrintModule(llmod, out_c.as_ptr(), demangle_callback);
+                result.into_result().map_err(|()| {
+                    let msg = format!("failed to write LLVM IR to {}", out.display());
+                    llvm_err(diag_handler, &msg)
+                })?;
+            }
 
-                    // We can't use the same module for asm and binary output, because that triggers
-                    // various errors like invalid IR or broken binaries, so we might have to clone the
-                    // module to produce the asm output
-                    let llmod = if config.emit_obj { llvm::LLVMCloneModule(llmod) } else { llmod };
-                    with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                        write_output_file(
-                            diag_handler,
-                            tm,
-                            cpm,
-                            llmod,
-                            &path,
-                            llvm::FileType::AssemblyFile,
-                        )
-                    })?;
+            if config.emit_asm || asm_to_obj {
+                let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_emit_asm");
+                let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+
+                // We can't use the same module for asm and binary output, because that triggers
+                // various errors like invalid IR or broken binaries, so we might have to clone the
+                // module to produce the asm output
+                let llmod = if config.emit_obj { llvm::LLVMCloneModule(llmod) } else { llmod };
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    write_output_file(
+                        diag_handler,
+                        tm,
+                        cpm,
+                        llmod,
+                        &path,
+                        llvm::FileType::AssemblyFile,
+                    )
+                })?;
+            }
+
+            if write_obj {
+                let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_emit_obj");
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    write_output_file(
+                        diag_handler,
+                        tm,
+                        cpm,
+                        llmod,
+                        &obj_out,
+                        llvm::FileType::ObjectFile,
+                    )
+                })?;
+            } else if asm_to_obj {
+                let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_asm_to_obj");
+                let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+                run_assembler(cgcx, diag_handler, &assembly, &obj_out);
+
+                if !config.emit_asm && !cgcx.save_temps {
+                    drop(fs::remove_file(&assembly));
                 }
-
-                if write_obj {
-                    let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_emit_obj");
-                    with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                        write_output_file(
-                            diag_handler,
-                            tm,
-                            cpm,
-                            llmod,
-                            &obj_out,
-                            llvm::FileType::ObjectFile,
-                        )
-                    })?;
-                } else if asm_to_obj {
-                    let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_asm_to_obj");
-                    let assembly =
-                        cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-                    run_assembler(cgcx, diag_handler, &assembly, &obj_out);
-
-                    if !config.emit_asm && !cgcx.save_temps {
-                        drop(fs::remove_file(&assembly));
-                    }
-                }
-
-                Ok(())
-            },
-        )?;
+            }
+        }
 
         if copy_bc_to_obj {
             debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
