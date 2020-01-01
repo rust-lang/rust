@@ -34,8 +34,9 @@ use rustc::session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
 use rustc::session::{config, DiagnosticOutput, Session};
 use rustc::session::{early_error, early_warn};
 use rustc::ty::TyCtxt;
-use rustc::util::common::{print_time_passes_entry, set_time_depth, time, ErrorReported};
+use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::SeqCst;
 use rustc_feature::{find_gated_cfg, UnstableFeatures};
 use rustc_interface::util::get_builtin_codegen_backend;
@@ -368,7 +369,7 @@ pub fn run_compiler(
                 queries.global_ctxt()?.peek_mut().enter(|tcx| {
                     let result = tcx.analysis(LOCAL_CRATE);
 
-                    time(sess, "save analysis", || {
+                    sess.time("save analysis", || {
                         save::process_crate(
                             tcx,
                             &expanded_crate,
@@ -1260,7 +1261,6 @@ pub fn main() {
         Err(_) => EXIT_FAILURE,
     };
     // The extra `\t` is necessary to align this label with the others.
-    set_time_depth(0);
     print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
     process::exit(exit_code);
 }

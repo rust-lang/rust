@@ -11,7 +11,6 @@ use rustc::dep_graph::WorkProduct;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
-use rustc::util::common::time_ext;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
@@ -121,7 +120,7 @@ fn prepare_lto(
                 info!("adding bytecode {}", name);
                 let bc_encoded = data.data();
 
-                let (bc, id) = time_ext(cgcx.time_passes, &format!("decode {}", name), || {
+                let (bc, id) = cgcx.prof.generic_pass(&format!("decode {}", name)).run(|| {
                     match DecodedBytecode::new(bc_encoded) {
                         Ok(b) => Ok((b.bytecode(), b.identifier().to_string())),
                         Err(e) => Err(diag_handler.fatal(&e)),
@@ -281,9 +280,8 @@ fn fat_lto(
         // save and persist everything with the original module.
         let mut linker = Linker::new(llmod);
         for (bc_decoded, name) in serialized_modules {
-            let _timer = cgcx.prof.generic_activity("LLVM_fat_lto_link_module");
             info!("linking {:?}", name);
-            time_ext(cgcx.time_passes, &format!("ll link {:?}", name), || {
+            cgcx.prof.generic_pass(&format!("ll link {:?}", name)).run(|| {
                 let data = bc_decoded.data();
                 linker.add(&data).map_err(|()| {
                     let msg = format!("failed to load bc of {:?}", name);
@@ -634,9 +632,9 @@ pub(crate) fn run_pass_manager(
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
-        time_ext(cgcx.time_passes, "LTO passes", || {
-            llvm::LLVMRunPassManager(pm, module.module_llvm.llmod())
-        });
+        cgcx.prof
+            .generic_pass("LTO passes")
+            .run(|| llvm::LLVMRunPassManager(pm, module.module_llvm.llmod()));
 
         llvm::LLVMDisposePassManager(pm);
     }

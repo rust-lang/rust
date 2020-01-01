@@ -18,7 +18,6 @@ use rustc::lint::{EarlyContext, LintStore};
 use rustc::lint::{EarlyLintPass, EarlyLintPassObject};
 use rustc::lint::{LintBuffer, LintContext, LintPass};
 use rustc::session::Session;
-use rustc::util::common::time;
 
 use rustc_span::Span;
 use std::slice;
@@ -351,7 +350,7 @@ pub fn check_ast_crate<T: EarlyLintPass>(
         }
     } else {
         for pass in &mut passes {
-            buffered = time(sess, &format!("running lint: {}", pass.name()), || {
+            buffered = sess.time(&format!("running lint: {}", pass.name()), || {
                 early_lint_crate(
                     sess,
                     lint_store,
