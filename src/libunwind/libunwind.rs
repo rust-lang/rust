@@ -23,6 +23,7 @@ pub type _Unwind_Word = uintptr_t;
 pub type _Unwind_Ptr = uintptr_t;
 pub type _Unwind_Trace_Fn =
     extern "C" fn(ctx: *mut _Unwind_Context, arg: *mut c_void) -> _Unwind_Reason_Code;
+
 #[cfg(target_arch = "x86")]
 pub const unwinder_private_data_size: usize = 5;
 
@@ -152,6 +153,7 @@ if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm
     use _Unwind_VRS_DataRepresentation::*;
 
     pub const UNWIND_POINTER_REG: c_int = 12;
+    pub const UNWIND_SP_REG: c_int = 13;
     pub const UNWIND_IP_REG: c_int = 15;
 
     #[cfg_attr(all(feature = "llvm-libunwind",
