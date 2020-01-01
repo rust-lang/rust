@@ -122,33 +122,22 @@ fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Opti
     // Unfortunately we're not 100% full of valid links today to we need a few
     // whitelists to get this past `make check` today.
     // FIXME(#32129)
-    if file.ends_with("std/string/struct.String.html")
-        || file.ends_with("interpret/struct.ImmTy.html")
-        || file.ends_with("ast/struct.ThinVec.html")
-        || file.ends_with("util/struct.ThinVec.html")
-        || file.ends_with("layout/struct.TyLayout.html")
-        || file.ends_with("humantime/struct.Timestamp.html")
-        || file.ends_with("log/index.html")
-        || file.ends_with("ty/struct.Slice.html")
-        || file.ends_with("ty/enum.Attributes.html")
-        || file.ends_with("ty/struct.SymbolName.html")
-        || file.ends_with("io/struct.IoSlice.html")
-        || file.ends_with("io/struct.IoSliceMut.html")
+    if file.ends_with("std/io/struct.IoSlice.html")
+        || file.ends_with("std/string/struct.String.html")
     {
         return None;
     }
     // FIXME(#32553)
-    if file.ends_with("string/struct.String.html") {
+    if file.ends_with("alloc/string/struct.String.html") {
         return None;
     }
     // FIXME(#32130)
-    if file.ends_with("btree_set/struct.BTreeSet.html")
-        || file.ends_with("struct.BTreeSet.html")
-        || file.ends_with("btree_map/struct.BTreeMap.html")
-        || file.ends_with("hash_map/struct.HashMap.html")
-        || file.ends_with("hash_set/struct.HashSet.html")
-        || file.ends_with("sync/struct.Lrc.html")
-        || file.ends_with("sync/struct.RwLock.html")
+    if file.ends_with("alloc/collections/btree_map/struct.BTreeMap.html")
+        || file.ends_with("alloc/collections/btree_set/struct.BTreeSet.html")
+        || file.ends_with("std/collections/btree_map/struct.BTreeMap.html")
+        || file.ends_with("std/collections/btree_set/struct.BTreeSet.html")
+        || file.ends_with("std/collections/hash_map/struct.HashMap.html")
+        || file.ends_with("std/collections/hash_set/struct.HashSet.html")
     {
         return None;
     }
