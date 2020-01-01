@@ -239,9 +239,11 @@ fn substitute_type_params<N: AstNode>(
 
 use hir::PathResolution;
 
-// TODO handle partial paths, with generic args
+// TODO handle generic args
+// TODO handle associated item paths
 // TODO handle value ns?
 
+// FIXME extract this to a general utility as well
 fn qualify_paths<N: AstNode>(db: &impl HirDatabase, node: hir::InFile<N>, from: hir::Module) -> N {
     let path_replacements = node
         .value
@@ -249,6 +251,10 @@ fn qualify_paths<N: AstNode>(db: &impl HirDatabase, node: hir::InFile<N>, from: 
         .descendants()
         .filter_map(ast::Path::cast)
         .filter_map(|p| {
+            if p.segment().and_then(|s| s.param_list()).is_some() {
+                // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
+                return None;
+            }
             let analyzer = hir::SourceAnalyzer::new(db, node.with_value(p.syntax()), None);
             let resolution = analyzer.resolve_path(db, &p)?;
             match resolution {
@@ -464,6 +470,125 @@ mod foo {
 struct S;
 impl foo::Foo for S {
     <|>fn foo(&self, bar: foo::Bar) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_generic() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub struct Bar<T>;
+    trait Foo { fn foo(&self, bar: Bar<u32>); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    pub struct Bar<T>;
+    trait Foo { fn foo(&self, bar: Bar<u32>); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: foo::Bar<u32>) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_and_substitute_param() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub struct Bar<T>;
+    trait Foo<T> { fn foo(&self, bar: Bar<T>); }
+}
+struct S;
+impl foo::Foo<u32> for S { <|> }",
+            "
+mod foo {
+    pub struct Bar<T>;
+    trait Foo<T> { fn foo(&self, bar: Bar<T>); }
+}
+struct S;
+impl foo::Foo<u32> for S {
+    <|>fn foo(&self, bar: foo::Bar<u32>) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_associated_item() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub struct Bar<T>;
+    impl Bar<T> { type Assoc = u32; }
+    trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    pub struct Bar<T>;
+    impl Bar { type Assoc = u32; }
+    trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: foo::Bar<u32>::Assoc) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_nested() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub struct Bar<T>;
+    pub struct Baz;
+    trait Foo { fn foo(&self, bar: Bar<Baz>); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    pub struct Bar<T>;
+    pub struct Baz;
+    trait Foo { fn foo(&self, bar: Bar<Baz>); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: foo::Bar<foo::Baz>) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_fn_trait_notation() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub trait Fn<Args> { type Output; }
+    trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    pub trait Fn<Args> { type Output; }
+    trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: dyn Fn(u32) -> i32) { unimplemented!() }
 }",
         );
     }
