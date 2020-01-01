@@ -7,6 +7,7 @@ fn parse_diagnostic(val: &str) -> cargo_metadata::diagnostic::Diagnostic {
 }
 
 #[test]
+#[cfg(not(windows))]
 fn snap_rustc_incompatible_type_for_trait() {
     let diag = parse_diagnostic(
         r##"{
@@ -60,6 +61,7 @@ fn snap_rustc_incompatible_type_for_trait() {
 }
 
 #[test]
+#[cfg(not(windows))]
 fn snap_rustc_unused_variable() {
     let diag = parse_diagnostic(
         r##"{
@@ -142,6 +144,7 @@ fn snap_rustc_unused_variable() {
 }
 
 #[test]
+#[cfg(not(windows))]
 fn snap_rustc_wrong_number_of_parameters() {
     let diag = parse_diagnostic(
         r##"{
@@ -266,6 +269,7 @@ fn snap_rustc_wrong_number_of_parameters() {
 }
 
 #[test]
+#[cfg(not(windows))]
 fn snap_clippy_pass_by_ref() {
     let diag = parse_diagnostic(
         r##"{
@@ -386,6 +390,7 @@ fn snap_clippy_pass_by_ref() {
 }
 
 #[test]
+#[cfg(not(windows))]
 fn snap_rustc_mismatched_type() {
     let diag = parse_diagnostic(
         r##"{
@@ -429,6 +434,7 @@ fn snap_rustc_mismatched_type() {
 }
 
 #[test]
+#[cfg(not(windows))]
 fn snap_handles_macro_location() {
     let diag = parse_diagnostic(
         r##"{
@@ -700,6 +706,7 @@ fn snap_handles_macro_location() {
 }
 
 #[test]
+#[cfg(not(windows))]
 fn snap_macro_compiler_error() {
     let diag = parse_diagnostic(
         r##"{
