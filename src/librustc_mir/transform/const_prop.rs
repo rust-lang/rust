@@ -264,7 +264,6 @@ struct ConstPropagator<'mir, 'tcx> {
     // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
     // the last known `SourceInfo` here and just keep revisiting it.
     source_info: Option<SourceInfo>,
-    lint_root: Option<HirId>,
 }
 
 impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
@@ -344,7 +343,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             local_decls: body.local_decls.clone(),
             ret: ret.map(Into::into),
             source_info: None,
-            lint_root: None,
         }
     }
 
@@ -378,6 +376,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         self.ecx.tcx.span = source_info.span;
+        // FIXME(eddyb) move this to the `Panic(_)` error case, so that
+        // `f(self)` is always called, and that the only difference when the
+        // scope's `local_data` is missing, is that the lint isn't emitted.
+        let lint_root = self.lint_root(source_info)?;
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
@@ -411,7 +413,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         diagnostic.report_as_lint(
                             self.ecx.tcx,
                             "this expression will panic at runtime",
-                            self.lint_root?,
+                            lint_root,
                             None,
                         );
                     }
@@ -423,7 +425,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         r
     }
 
-    fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<Const<'tcx>> {
+    fn eval_constant(
+        &mut self,
+        c: &Constant<'tcx>,
+        source_info: SourceInfo,
+    ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = c.span;
 
         // FIXME we need to revisit this for #67176
@@ -435,7 +441,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(op) => Some(op),
             Err(error) => {
                 let err = error_to_const_error(&self.ecx, error);
-                match self.lint_root {
+                match self.lint_root(source_info) {
                     Some(lint_root) if c.literal.needs_subst() => {
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
@@ -462,7 +468,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c),
+            Operand::Constant(ref c) => self.eval_constant(c, source_info),
             Operand::Move(ref place) | Operand::Copy(ref place) => {
                 self.eval_place(place, source_info)
             }
@@ -801,14 +807,13 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
-        self.eval_constant(constant);
+        self.eval_constant(constant, self.source_info.unwrap());
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         trace!("visit_statement: {:?}", statement);
         let source_info = statement.source_info;
         self.source_info = Some(source_info);
-        self.lint_root = self.lint_root(source_info);
         if let StatementKind::Assign(box (ref place, ref mut rval)) = statement.kind {
             let place_ty: Ty<'tcx> = place.ty(&self.local_decls, self.tcx).ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
@@ -860,7 +865,6 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         let source_info = terminator.source_info;
         self.source_info = Some(source_info);
         self.super_terminator(terminator, location);
-        self.lint_root = self.lint_root(source_info);
         match &mut terminator.kind {
             TerminatorKind::Assert { expected, ref msg, ref mut cond, .. } => {
                 if let Some(value) = self.eval_operand(&cond, source_info) {
