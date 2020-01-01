@@ -218,6 +218,12 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
 //
 // Note that x86 Windows uses the "thiscall" calling convention for C++ member
 // functions instead of the default "C" calling convention.
+//
+// The exception_copy function is a bit special here: it is invoked by the MSVC
+// runtime under a try/catch block and the panic that we generate here will be
+// used as the result of the exception copy. This is used by the C++ runtime to
+// support capturing exceptions with std::exception_ptr, which we can't support
+// because Box<dyn Any> isn't clonable.
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "x86")] {
         unsafe extern "thiscall" fn exception_cleanup(e: *mut [u64; 2]) {
@@ -225,6 +231,7 @@ cfg_if::cfg_if! {
                 cleanup(*e);
             }
         }
+        #[unwind(allowed)]
         unsafe extern "thiscall" fn exception_copy(_dest: *mut [u64; 2],
                                                    _src: *mut [u64; 2])
                                                    -> *mut [u64; 2] {
@@ -236,6 +243,7 @@ cfg_if::cfg_if! {
                 cleanup(*e);
             }
         }
+        #[unwind(allowed)]
         unsafe extern "C" fn exception_copy(_dest: *mut [u64; 2],
                                             _src: *mut [u64; 2])
                                             -> *mut [u64; 2] {
