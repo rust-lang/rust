@@ -21,6 +21,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{self, Pos};
@@ -895,7 +896,7 @@ impl Clean<Item> for doctree::Function<'_> {
             enter_impl_trait(cx, || (self.generics.clean(cx), (self.decl, self.body).clean(cx)));
 
         let did = cx.tcx.hir().local_def_id(self.id);
-        let constness = if cx.tcx.is_min_const_fn(did) {
+        let constness = if is_min_const_fn(cx.tcx, did) {
             hir::Constness::Const
         } else {
             hir::Constness::NotConst
@@ -1187,7 +1188,7 @@ impl Clean<Item> for ty::AssocItem {
                 };
                 let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
                 if provided {
-                    let constness = if cx.tcx.is_min_const_fn(self.def_id) {
+                    let constness = if is_min_const_fn(cx.tcx, self.def_id) {
                         hir::Constness::Const
                     } else {
                         hir::Constness::NotConst
