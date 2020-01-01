@@ -86,9 +86,8 @@ pub mod util {
 
 pub mod ast;
 pub mod attr;
-pub mod expand;
-pub use rustc_span::source_map;
 pub mod entry;
+pub mod expand;
 pub mod feature_gate {
     mod check;
     pub use check::{check_attribute, check_crate, feature_err, feature_err_issue, get_features};

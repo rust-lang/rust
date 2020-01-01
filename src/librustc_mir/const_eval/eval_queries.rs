@@ -10,8 +10,8 @@ use rustc::mir;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::traits::Reveal;
 use rustc::ty::{self, layout, layout::LayoutOf, subst::Subst, TyCtxt};
+use rustc_span::source_map::Span;
 use std::convert::TryInto;
-use syntax::source_map::Span;
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
     "The rules on what exactly is undefined behavior aren't clear, \

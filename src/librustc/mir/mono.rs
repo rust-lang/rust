@@ -8,10 +8,10 @@ use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt
 use crate::util::nodemap::FxHashMap;
 use rustc_data_structures::base_n;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_span::source_map::Span;
 use std::fmt;
 use std::hash::Hash;
 use syntax::attr::InlineAttr;
-use syntax::source_map::Span;
 use syntax::symbol::Symbol;
 
 /// Describes how a monomorphization will be instantiated in object files.

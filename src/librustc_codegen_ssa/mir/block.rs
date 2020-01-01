@@ -1,26 +1,25 @@
+use super::operand::OperandRef;
+use super::operand::OperandValue::{Immediate, Pair, Ref};
+use super::place::PlaceRef;
+use super::{FunctionCx, LocalRef};
+
 use crate::base;
 use crate::common::{self, IntPredicate};
 use crate::meth;
+use crate::traits::*;
 use crate::MemFlags;
+
 use rustc::middle::lang_items;
 use rustc::mir::interpret::PanicInfo;
 use rustc::mir::{self, PlaceBase, Static, StaticKind};
 use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_index::vec::Idx;
+use rustc_span::{source_map::Span, symbol::Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::abi::Abi;
 
-use crate::traits::*;
-
 use std::borrow::Cow;
-
-use syntax::{source_map::Span, symbol::Symbol};
-
-use super::operand::OperandRef;
-use super::operand::OperandValue::{Immediate, Pair, Ref};
-use super::place::PlaceRef;
-use super::{FunctionCx, LocalRef};
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
 /// e.g., creating a basic block, calling a function, etc.

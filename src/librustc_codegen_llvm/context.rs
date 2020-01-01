@@ -27,12 +27,12 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::abi::Abi;
+use rustc_span::source_map::{Span, DUMMY_SP};
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
 use std::iter;
 use std::str;
 use std::sync::Arc;
-use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol::Symbol;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM

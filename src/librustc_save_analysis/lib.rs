@@ -26,11 +26,11 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
+use rustc_span::source_map::Spanned;
 use rustc_span::*;
 use syntax::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
 use syntax::print::pprust;
 use syntax::print::pprust::{param_to_string, ty_to_string};
-use syntax::source_map::Spanned;
 use syntax::util::comments::strip_doc_comment_decoration;
 use syntax::visit::{self, Visitor};
 

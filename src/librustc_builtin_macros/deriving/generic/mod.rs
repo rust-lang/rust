@@ -182,13 +182,13 @@ use std::iter;
 use std::vec;
 
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_span::source_map::respan;
 use rustc_span::Span;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{GenericArg, GenericParamKind, VariantData};
 use syntax::attr;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
-use syntax::source_map::respan;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::util::map_in_place::MapInPlace;
 

@@ -9,9 +9,9 @@ use crate::ty::{fast_reject, TyCtxt};
 
 use std::cmp::Ord;
 
+use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, SourceFile};
 use syntax::ast;
-use syntax::source_map::SourceMap;
 use syntax::symbol::Symbol;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

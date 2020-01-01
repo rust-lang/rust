@@ -3,28 +3,24 @@
 use crate::hir::def_id::DefId;
 use lint::{LateContext, LintArray, LintContext};
 use lint::{LateLintPass, LintPass};
+use rustc::hir;
 use rustc::hir::{is_range_literal, ExprKind, Node};
+use rustc::mir::interpret::{sign_extend, truncate};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::{lint, util};
+use rustc::{lint, util::nodemap::FxHashSet};
 use rustc_index::vec::Idx;
-use util::nodemap::FxHashSet;
-
-use std::cmp;
-use std::{f32, f64, i16, i32, i64, i8, u16, u32, u64, u8};
-
+use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use syntax::errors::Applicability;
-use syntax::{ast, attr, source_map};
-
-use rustc::hir;
-
-use rustc::mir::interpret::{sign_extend, truncate};
+use syntax::{ast, attr};
 
 use log::debug;
+use std::cmp;
+use std::{f32, f64, i16, i32, i64, i8, u16, u32, u64, u8};
 
 declare_lint! {
     UNUSED_COMPARISONS,

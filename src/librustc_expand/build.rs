@@ -1,9 +1,9 @@
 use crate::base::ExtCtxt;
 
+use rustc_span::source_map::{respan, Spanned};
 use syntax::ast::{self, AttrVec, BlockCheckMode, Expr, Ident, PatKind, UnOp};
 use syntax::attr;
 use syntax::ptr::P;
-use syntax::source_map::{respan, Spanned};
 use syntax::symbol::{kw, sym, Symbol};
 
 use rustc_span::{Pos, Span};

@@ -33,9 +33,9 @@ use crate::ty::TyCtxt;
 use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_span::hygiene::MacroKind;
+use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use rustc_span::Span;
 use syntax::ast;
-use syntax::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use syntax::symbol::Symbol;
 
 pub use crate::lint::context::{

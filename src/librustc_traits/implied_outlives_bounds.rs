@@ -12,8 +12,8 @@ use rustc::ty::outlives::Component;
 use rustc::ty::query::Providers;
 use rustc::ty::wf;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_span::source_map::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
-use syntax::source_map::DUMMY_SP;
 
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers { implied_outlives_bounds, ..*p };
