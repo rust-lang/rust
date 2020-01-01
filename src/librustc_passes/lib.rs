@@ -5,6 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![feature(bool_to_option)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(slice_patterns)]
@@ -30,6 +31,7 @@ pub mod loops;
 mod reachable;
 mod region;
 pub mod stability;
+mod ty;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_const::provide(providers);
@@ -42,4 +44,5 @@ pub fn provide(providers: &mut Providers<'_>) {
     reachable::provide(providers);
     region::provide(providers);
     stability::provide(providers);
+    ty::provide(providers);
 }
