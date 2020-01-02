@@ -1,5 +1,5 @@
 // Test for issue #67776: binding named the same as enum variant
-// should report a warning even when matching against a borrow
+// should report a warning even when matching against a reference type
 
 // check-pass
 
