@@ -786,12 +786,23 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
             },
             {
+                tcx.get_lang_items(LOCAL_CRATE);
+
+                let _timer = tcx.sess.timer("misc_module_passes");
                 par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
                     let local_def_id = tcx.hir().local_def_id(module);
                     tcx.ensure().check_mod_loops(local_def_id);
                     tcx.ensure().check_mod_attrs(local_def_id);
-                    tcx.ensure().check_mod_unstable_api_usage(local_def_id);
                     tcx.ensure().check_mod_const_bodies(local_def_id);
+                });
+            },
+            {
+                tcx.stability_index(LOCAL_CRATE);
+
+                let _timer = tcx.sess.timer("check_unstable_api_usage");
+                par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
+                    let local_def_id = tcx.hir().local_def_id(module);
+                    tcx.ensure().check_mod_unstable_api_usage(local_def_id);
                 });
             }
         );
