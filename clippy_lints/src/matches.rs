@@ -267,7 +267,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
             check_wild_err_arm(cx, ex, arms);
             check_wild_enum_match(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
-            check_pats_wild_match(cx, arms);
+            check_pats_wild_match(cx, ex, arms);
         }
         if let ExprKind::Match(ref ex, ref arms, _) = expr.kind {
             check_match_ref_pats(cx, ex, arms, expr);
@@ -686,20 +686,45 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
     }
 }
 
-fn check_pats_wild_match(cx: &LateContext<'_, '_>, arms: &[Arm]) {
+fn check_pats_wild_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+    let mut is_non_exhaustive_enum = false;
+    let ty = cx.tables.expr_ty(ex);
+    if ty.is_enum() {
+        if let ty::Adt(def, _) = ty.kind {
+            if def.is_variant_list_non_exhaustive() {
+                is_non_exhaustive_enum = true;
+            }
+        }
+    }
+
     for arm in arms {
         if let PatKind::Or(ref fields) = arm.pat.kind {
-            // look for multiple fields where one at least matches Wild pattern
-            if fields.len() > 1 && fields.into_iter().any(is_wild) {
-                span_lint_and_sugg(
+            // look for multiple fields in this arm that contains at least one Wild pattern
+            if fields.len() > 1 && fields.iter().any(is_wild) {
+                span_lint_and_then(
                     cx,
                     PATS_WITH_WILD_MATCH_ARM,
                     arm.pat.span,
-                    "wildcard pattern covers any other pattern as it will match anyway. Consider replacing with wildcard pattern only",
-                    "try this",
-                    "_".to_string(),
-                    Applicability::MachineApplicable,
-                )
+                    "wildcard pattern covers any other pattern as it will match anyway.",
+                    |db| {
+                        // handle case where a non exhaustive enum is being used
+                        if is_non_exhaustive_enum {
+                            db.span_suggestion(
+                                arm.pat.span,
+                                "consider handling `_` separately.",
+                                "_ => ...".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            db.span_suggestion(
+                                arm.pat.span,
+                                "consider replacing with wildcard pattern only",
+                                "_".to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    },
+                );
             }
         }
     }
