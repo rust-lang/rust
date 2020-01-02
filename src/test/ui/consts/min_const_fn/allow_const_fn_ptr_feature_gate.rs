@@ -7,5 +7,6 @@ const fn error(_: fn()) {}
 #[rustc_allow_const_fn_ptr]
 //~^ ERROR internal implementation detail
 const fn compiles(_: fn()) {}
+//~^ ERROR rustc_promotable and rustc_allow_const_fn_ptr attributes must be paired
 
 fn main() {}
