@@ -102,7 +102,17 @@ pub mod print {
 
 pub mod early_buffered_lints;
 
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc.
-pub trait HashStableContext: rustc_span::HashStableContext {}
+pub trait HashStableContext: rustc_span::HashStableContext {
+    fn hash_attr(&mut self, _: &ast::Attribute, hasher: &mut StableHasher);
+}
+
+impl<AstCtx: crate::HashStableContext> HashStable<AstCtx> for ast::Attribute {
+    fn hash_stable(&self, hcx: &mut AstCtx, hasher: &mut StableHasher) {
+        hcx.hash_attr(self, hasher)
+    }
+}

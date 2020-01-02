@@ -1,5 +1,20 @@
+//! HIR datatypes. See the [rustc guide] for more info.
+//!
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
+
+#![feature(crate_visibility_modifier)]
+#![feature(const_fn)]
+#![feature(in_band_lifetimes)]
 #![feature(specialization)]
 
+pub mod def;
 pub mod def_id;
+mod hir;
 pub mod hir_id;
+pub mod itemlikevisit;
+pub mod pat_util;
+pub mod print;
+mod stable_hash_impls;
+pub use hir::*;
 pub use hir_id::*;
+pub use stable_hash_impls::HashStableContext;

@@ -1,7 +1,7 @@
+use crate::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir;
-use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 
-use rustc_macros::HashStable;
+use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
 use syntax::ast;
 use syntax::ast::NodeId;
@@ -9,7 +9,8 @@ use syntax::ast::NodeId;
 use std::fmt::Debug;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum CtorOf {
     /// This `DefKind::Ctor` is a synthesized constructor of a tuple or unit struct.
     Struct,
@@ -17,7 +18,8 @@ pub enum CtorOf {
     Variant,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum CtorKind {
     /// Constructor function automatically created by a tuple struct/variant.
     Fn,
@@ -27,7 +29,8 @@ pub enum CtorKind {
     Fictive,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum NonMacroAttrKind {
     /// Single-segment attribute defined by the language (`#[inline]`)
     Builtin,
@@ -39,7 +42,8 @@ pub enum NonMacroAttrKind {
     Registered,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum DefKind {
     // Type namespace
     Mod,
@@ -93,7 +97,7 @@ impl DefKind {
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) => {
-                bug!("impossible struct constructor")
+                panic!("impossible struct constructor")
             }
             DefKind::OpaqueTy => "opaque type",
             DefKind::TyAlias => "type alias",
@@ -154,7 +158,8 @@ impl DefKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum Res<Id = hir::HirId> {
     Def(DefKind, DefId),
 
@@ -341,7 +346,8 @@ impl<Id> Res<Id> {
     where
         Id: Debug,
     {
-        self.opt_def_id().unwrap_or_else(|| bug!("attempted .def_id() on invalid res: {:?}", self))
+        self.opt_def_id()
+            .unwrap_or_else(|| panic!("attempted .def_id() on invalid res: {:?}", self))
     }
 
     /// Return `Some(..)` with the `DefId` of this `Res` if it has a ID, else `None`.

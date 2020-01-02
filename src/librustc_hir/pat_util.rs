@@ -1,5 +1,5 @@
-use crate::hir::def::{CtorOf, DefKind, Res};
-use crate::hir::def_id::DefId;
+use crate::def::{CtorOf, DefKind, Res};
+use crate::def_id::DefId;
 use crate::hir::{self, HirId, PatKind};
 use rustc_span::Span;
 use syntax::ast;
