@@ -48,12 +48,28 @@ jobs:
         with:
           command: test
 
-      - name: Prepare build directory for cache
+      - name: Prepare build directory for cache (UNIX)
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         run: |
           find ./target/debug -maxdepth 1 -type f -delete \
           && rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*heavy_test*,*gen_lsp*,*thread_worker*} \
           && rm -f  ./target/.rustc_info.json \
           && rm ./target/.slow_tests_cookie
+
+      - name: Prepare build directory for cache (Windows)
+        if: matrix.os == 'windows-latest'
+        run: >-
+          (Get-ChildItem ./target/debug -Recurse -Depth 1 -File | Remove-Item) -and
+          (Remove-Item -Force -Recurse ./target/debug/deps/*ra_*) -and
+          (Remove-Item -Force -Recurse ./target/debug/deps/*heavy_test*) -and
+          (Remove-Item -Force -Recurse ./target/debug/deps/*gen_lsp*) -and
+          (Remove-Item -Force -Recurse ./target/debug/deps/*thread_worker*) -and
+          (Remove-Item -Force -Recurse ./target/debug/.fingerprint/*ra_*) -and
+          (Remove-Item -Force -Recurse ./target/debug/.fingerprint/*heavy_test*) -and
+          (Remove-Item -Force -Recurse ./target/debug/.fingerprint/*gen_lsp*) -and
+          (Remove-Item -Force -Recurse ./target/debug/.fingerprint/*thread_worker*) -and
+          (Remove-Item -Force ./target/.rustc_info.json) -and
+          (Remove-Item ./target/.slow_tests_cookie)
 
   type-script:
     name: TypeScript
