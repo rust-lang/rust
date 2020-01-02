@@ -10,7 +10,10 @@ on:
 jobs:
   rust:
     name: Rust
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     env:
       RUSTFLAGS: -D warnings
       CARGO_INCREMENTAL: 0
