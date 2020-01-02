@@ -2765,10 +2765,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         Lrc::new(tcx.glob_map.get(&id).cloned().unwrap_or_default())
     };
 
-    providers.stability_index = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.arena.alloc(stability::Index::new(tcx))
-    };
     providers.lookup_stability = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
         let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
