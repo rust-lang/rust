@@ -6,6 +6,10 @@
 #![feature(const_fn)]
 #![feature(in_band_lifetimes)]
 #![feature(specialization)]
+#![recursion_limit = "256"]
+
+#[macro_use]
+extern crate rustc_data_structures;
 
 pub mod def;
 pub mod def_id;

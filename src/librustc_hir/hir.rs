@@ -667,7 +667,7 @@ impl Crate<'_> {
     where
         V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
     {
-        rustc_data_structures::parallel!(
+        parallel!(
             {
                 par_for_each_in(&self.items, |(_, item)| {
                     visitor.visit_item(item);
