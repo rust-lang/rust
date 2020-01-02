@@ -21,7 +21,6 @@
 extern crate alloc;
 
 use rustc_data_structures::cold_path;
-use rustc_data_structures::sync::MTLock;
 use smallvec::SmallVec;
 
 use std::cell::{Cell, RefCell};
@@ -116,11 +115,6 @@ impl<T> Default for TypedArena<T> {
 }
 
 impl<T> TypedArena<T> {
-    pub fn in_arena(&self, ptr: *const T) -> bool {
-        let ptr = ptr as *const T as *mut T;
-
-        self.chunks.borrow().iter().any(|chunk| chunk.start() <= ptr && ptr < chunk.end())
-    }
     /// Allocates an object in the `TypedArena`, returning a reference to it.
     #[inline]
     pub fn alloc(&self, object: T) -> &mut T {
@@ -334,12 +328,6 @@ impl Default for DroplessArena {
 }
 
 impl DroplessArena {
-    pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
-        let ptr = ptr as *const u8 as *mut u8;
-
-        self.chunks.borrow().iter().any(|chunk| chunk.start() <= ptr && ptr < chunk.end())
-    }
-
     #[inline]
     fn align(&self, align: usize) {
         let final_address = ((self.ptr.get() as usize) + align - 1) & !(align - 1);
@@ -497,67 +485,6 @@ impl DroplessArena {
                 })
             }
         }
-    }
-}
-
-#[derive(Default)]
-// FIXME(@Zoxc): this type is entirely unused in rustc
-pub struct SyncTypedArena<T> {
-    lock: MTLock<TypedArena<T>>,
-}
-
-impl<T> SyncTypedArena<T> {
-    #[inline(always)]
-    pub fn alloc(&self, object: T) -> &mut T {
-        // Extend the lifetime of the result since it's limited to the lock guard
-        unsafe { &mut *(self.lock.lock().alloc(object) as *mut T) }
-    }
-
-    #[inline(always)]
-    pub fn alloc_slice(&self, slice: &[T]) -> &mut [T]
-    where
-        T: Copy,
-    {
-        // Extend the lifetime of the result since it's limited to the lock guard
-        unsafe { &mut *(self.lock.lock().alloc_slice(slice) as *mut [T]) }
-    }
-
-    #[inline(always)]
-    pub fn clear(&mut self) {
-        self.lock.get_mut().clear();
-    }
-}
-
-#[derive(Default)]
-pub struct SyncDroplessArena {
-    lock: MTLock<DroplessArena>,
-}
-
-impl SyncDroplessArena {
-    #[inline(always)]
-    pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
-        self.lock.lock().in_arena(ptr)
-    }
-
-    #[inline(always)]
-    pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
-        // Extend the lifetime of the result since it's limited to the lock guard
-        unsafe { &mut *(self.lock.lock().alloc_raw(bytes, align) as *mut [u8]) }
-    }
-
-    #[inline(always)]
-    pub fn alloc<T>(&self, object: T) -> &mut T {
-        // Extend the lifetime of the result since it's limited to the lock guard
-        unsafe { &mut *(self.lock.lock().alloc(object) as *mut T) }
-    }
-
-    #[inline(always)]
-    pub fn alloc_slice<T>(&self, slice: &[T]) -> &mut [T]
-    where
-        T: Copy,
-    {
-        // Extend the lifetime of the result since it's limited to the lock guard
-        unsafe { &mut *(self.lock.lock().alloc_slice(slice) as *mut [T]) }
     }
 }
 
