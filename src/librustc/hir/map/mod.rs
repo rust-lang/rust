@@ -8,10 +8,12 @@ use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
+
+use rustc_data_structures::sync::{self, par_for_each};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::intravisit;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_hir::print::Nested;
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
@@ -580,6 +582,40 @@ impl<'hir> Map<'hir> {
         for id in &module.impl_items {
             visitor.visit_impl_item(self.expect_impl_item(id.hir_id));
         }
+    }
+
+    /// A parallel version of `visit_item_likes_in_module`.
+    pub fn par_visit_item_likes_in_module<V>(&self, module: DefId, visitor: &V)
+    where
+        V: ParItemLikeVisitor<'hir> + sync::Sync,
+    {
+        let hir_id = self.as_local_hir_id(module).unwrap();
+
+        // Read the module so we'll be re-executed if new items
+        // appear immediately under in the module. If some new item appears
+        // in some nested item in the module, we'll be re-executed due to reads
+        // in the expect_* calls the loops below
+        self.read(hir_id);
+
+        let module = &self.forest.krate.modules[&hir_id];
+
+        parallel!(
+            {
+                par_for_each(&module.items, |id| {
+                    visitor.visit_item(self.expect_item(*id));
+                });
+            },
+            {
+                par_for_each(&module.trait_items, |id| {
+                    visitor.visit_trait_item(self.expect_trait_item(id.hir_id));
+                });
+            },
+            {
+                par_for_each(&module.impl_items, |id| {
+                    visitor.visit_impl_item(self.expect_impl_item(id.hir_id));
+                });
+            }
+        );
     }
 
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.

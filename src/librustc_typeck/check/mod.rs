@@ -123,7 +123,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
 use rustc_index::vec::Idx;
 use rustc_span::hygiene::DesugaringKind;
@@ -729,12 +729,12 @@ struct CheckItemTypesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
-    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
+impl ParItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
+    fn visit_item(&self, i: &'tcx hir::Item<'tcx>) {
         check_item_type(self.tcx, i);
     }
-    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) {}
-    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
+    fn visit_trait_item(&self, _: &'tcx hir::TraitItem<'tcx>) {}
+    fn visit_impl_item(&self, _: &'tcx hir::ImplItem<'tcx>) {}
 }
 
 pub fn check_wf_new(tcx: TyCtxt<'_>) {
@@ -743,7 +743,7 @@ pub fn check_wf_new(tcx: TyCtxt<'_>) {
 }
 
 fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
+    tcx.hir().par_visit_item_likes_in_module(module_def_id, &CheckItemTypesVisitor { tcx });
 }
 
 fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
