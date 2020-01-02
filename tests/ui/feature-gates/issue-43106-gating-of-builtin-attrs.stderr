@@ -281,14 +281,6 @@ LL | #![link(name = "x")]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: the feature `rust1` has been stable since 1.0.0 and no longer requires an attribute to enable
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:100:12
-   |
-LL | #![feature(rust1)]
-   |            ^^^^^
-   |
-   = note: `#[warn(stable_features)]` on by default
-
 warning: crate-level attribute should be in the root module
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:505:17
    |
@@ -636,6 +628,14 @@ help: add a `!`
    |
 LL |     #![no_builtins] impl S { }
    |      +
+
+warning: the feature `rust1` has been stable since 1.0.0 and no longer requires an attribute to enable
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:100:12
+   |
+LL | #![feature(rust1)]
+   |            ^^^^^
+   |
+   = note: `#[warn(stable_features)]` on by default
 
 warning: `#[macro_use]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:191:5

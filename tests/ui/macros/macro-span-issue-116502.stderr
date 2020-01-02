@@ -5,6 +5,17 @@ LL |             _
    |             ^ not allowed in type signatures
 ...
 LL |     struct S<T = m!()>(m!(), T)
+   |                        ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
+  --> $DIR/macro-span-issue-116502.rs:7:13
+   |
+LL |             _
+   |             ^ not allowed in type signatures
+...
+LL |     struct S<T = m!()>(m!(), T)
    |                  ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -17,17 +28,6 @@ LL |             _
 ...
 LL |         T: Trait<m!()>;
    |                  ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
-  --> $DIR/macro-span-issue-116502.rs:7:13
-   |
-LL |             _
-   |             ^ not allowed in type signatures
-...
-LL |     struct S<T = m!()>(m!(), T)
-   |                        ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
