@@ -1,0 +1,32 @@
+error: identifier contains uncommon Unicode codepoints
+  --> $DIR/lint-uncommon-codepoints.rs:4:7
+   |
+LL | const µ: f64 = 0.000001;
+   |       ^
+   |
+note: lint level defined here
+  --> $DIR/lint-uncommon-codepoints.rs:2:9
+   |
+LL | #![deny(uncommon_codepoints)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: identifier contains uncommon Unicode codepoints
+  --> $DIR/lint-uncommon-codepoints.rs:6:4
+   |
+LL | fn dĳkstra() {}
+   |    ^^^^^^^
+
+error: identifier contains uncommon Unicode codepoints
+  --> $DIR/lint-uncommon-codepoints.rs:9:9
+   |
+LL |     let ㇻㇲㇳ = "rust";
+   |         ^^^^^^
+
+error: identifier contains uncommon Unicode codepoints
+  --> $DIR/lint-uncommon-codepoints.rs:10:20
+   |
+LL |     println!("{}", ㇻㇲㇳ);
+   |                    ^^^^^^
+
+error: aborting due to 4 previous errors
+
