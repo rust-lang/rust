@@ -2,21 +2,15 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 
-pub use self::BlockCheckMode::*;
-pub use self::FunctionRetTy::*;
-pub use self::PrimTy::*;
-pub use self::UnOp::*;
-pub use self::UnsafeSource::*;
-
 use crate::hir::def::{DefKind, Res};
 use crate::hir::def_id::DefId;
 use crate::hir::itemlikevisit;
 use crate::hir::print;
+use rustc_hir::hir_id::HirId;
 
 use errors::FatalError;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
-use rustc_hir::hir_id::*;
 use rustc_macros::HashStable;
 use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::{SourceMap, Spanned};
@@ -1068,16 +1062,16 @@ pub enum UnOp {
 impl UnOp {
     pub fn as_str(self) -> &'static str {
         match self {
-            UnDeref => "*",
-            UnNot => "!",
-            UnNeg => "-",
+            Self::UnDeref => "*",
+            Self::UnNot => "!",
+            Self::UnNeg => "-",
         }
     }
 
     /// Returns `true` if the unary operator takes its argument by value.
     pub fn is_by_value(self) -> bool {
         match self {
-            UnNeg | UnNot => true,
+            Self::UnNeg | Self::UnNot => true,
             _ => false,
         }
     }
@@ -1387,7 +1381,7 @@ impl Expr<'_> {
             // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
             ExprKind::Type(ref e, _) => e.is_place_expr(allow_projections_from),
 
-            ExprKind::Unary(UnDeref, _) => true,
+            ExprKind::Unary(UnOp::UnDeref, _) => true,
 
             ExprKind::Field(ref base, _) | ExprKind::Index(ref base, _) => {
                 allow_projections_from(base) || base.is_place_expr(allow_projections_from)
@@ -2145,8 +2139,8 @@ pub enum FunctionRetTy<'hir> {
 impl fmt::Display for FunctionRetTy<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Return(ref ty) => print::to_string(print::NO_ANN, |s| s.print_type(ty)).fmt(f),
-            DefaultReturn(_) => "()".fmt(f),
+            Self::Return(ref ty) => print::to_string(print::NO_ANN, |s| s.print_type(ty)).fmt(f),
+            Self::DefaultReturn(_) => "()".fmt(f),
         }
     }
 }
@@ -2154,8 +2148,8 @@ impl fmt::Display for FunctionRetTy<'_> {
 impl FunctionRetTy<'_> {
     pub fn span(&self) -> Span {
         match *self {
-            DefaultReturn(span) => span,
-            Return(ref ty) => ty.span,
+            Self::DefaultReturn(span) => span,
+            Self::Return(ref ty) => ty.span,
         }
     }
 }
