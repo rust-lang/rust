@@ -6,7 +6,7 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_error_codes::*;
 use rustc_errors::{pluralize, struct_span_err, Applicability, PResult};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 use syntax::ast::{
     self, BareFnTy, FunctionRetTy, GenericParam, Ident, Lifetime, MutTy, Ty, TyKind,
 };
@@ -16,6 +16,24 @@ use syntax::ast::{
 use syntax::ast::{Mac, Mutability};
 use syntax::ptr::P;
 use syntax::token::{self, Token};
+
+/// Any `?` or `?const` modifiers that appear at the start of a bound.
+struct BoundModifiers {
+    /// `?Trait`.
+    maybe: Option<Span>,
+
+    /// `?const Trait`.
+    maybe_const: Option<Span>,
+}
+
+impl BoundModifiers {
+    fn trait_bound_modifier(&self) -> TraitBoundModifier {
+        match self.maybe {
+            Some(_) => TraitBoundModifier::Maybe,
+            None => TraitBoundModifier::None,
+        }
+    }
+}
 
 /// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
 /// `IDENT<<u8 as Trait>::AssocTy>`.
@@ -195,7 +213,9 @@ impl<'a> Parser<'a> {
         lo: Span,
         parse_plus: bool,
     ) -> PResult<'a, TyKind> {
-        let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_span));
+        assert_ne!(self.token, token::Question);
+
+        let poly_trait_ref = PolyTraitRef::new(generic_params, path, None, lo.to(self.prev_span));
         let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
@@ -421,12 +441,15 @@ impl<'a> Parser<'a> {
         let has_parens = self.eat(&token::OpenDelim(token::Paren));
         let inner_lo = self.token.span;
         let is_negative = self.eat(&token::Not);
-        let question = self.eat(&token::Question).then_some(self.prev_span);
+
+        let modifiers = self.parse_ty_bound_modifiers();
         let bound = if self.token.is_lifetime() {
-            self.parse_generic_lt_bound(lo, inner_lo, has_parens, question)?
+            self.error_lt_bound_with_modifiers(modifiers);
+            self.parse_generic_lt_bound(lo, inner_lo, has_parens)?
         } else {
-            self.parse_generic_ty_bound(lo, has_parens, question)?
+            self.parse_generic_ty_bound(lo, has_parens, modifiers)?
         };
+
         Ok(if is_negative { Err(anchor_lo.to(self.prev_span)) } else { Ok(bound) })
     }
 
@@ -439,9 +462,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         inner_lo: Span,
         has_parens: bool,
-        question: Option<Span>,
     ) -> PResult<'a, GenericBound> {
-        self.error_opt_out_lifetime(question);
         let bound = GenericBound::Outlives(self.expect_lifetime());
         if has_parens {
             // FIXME(Centril): Consider not erroring here and accepting `('lt)` instead,
@@ -451,8 +472,17 @@ impl<'a> Parser<'a> {
         Ok(bound)
     }
 
-    fn error_opt_out_lifetime(&self, question: Option<Span>) {
-        if let Some(span) = question {
+    /// Emits an error if any trait bound modifiers were present.
+    fn error_lt_bound_with_modifiers(&self, modifiers: BoundModifiers) {
+        if let Some(span) = modifiers.maybe_const {
+            self.struct_span_err(
+                span,
+                "`?const` may only modify trait bounds, not lifetime bounds",
+            )
+            .emit();
+        }
+
+        if let Some(span) = modifiers.maybe {
             self.struct_span_err(span, "`?` may only modify trait bounds, not lifetime bounds")
                 .emit();
         }
@@ -478,25 +508,58 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    /// Parses the modifiers that may precede a trait in a bound, e.g. `?Trait` or `?const Trait`.
+    ///
+    /// If no modifiers are present, this does not consume any tokens.
+    ///
+    /// ```
+    /// TY_BOUND_MODIFIERS = "?" ["const" ["?"]]
+    /// ```
+    fn parse_ty_bound_modifiers(&mut self) -> BoundModifiers {
+        if !self.eat(&token::Question) {
+            return BoundModifiers { maybe: None, maybe_const: None };
+        }
+
+        // `? ...`
+        let first_question = self.prev_span;
+        if !self.eat_keyword(kw::Const) {
+            return BoundModifiers { maybe: Some(first_question), maybe_const: None };
+        }
+
+        // `?const ...`
+        let maybe_const = first_question.to(self.prev_span);
+        self.sess.gated_spans.gate(sym::const_trait_bound_opt_out, maybe_const);
+        if !self.eat(&token::Question) {
+            return BoundModifiers { maybe: None, maybe_const: Some(maybe_const) };
+        }
+
+        // `?const ? ...`
+        let second_question = self.prev_span;
+        BoundModifiers { maybe: Some(second_question), maybe_const: Some(maybe_const) }
+    }
+
     /// Parses a type bound according to:
     /// ```
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
-    /// TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g., `?for<'a: 'b> m::Trait<'a>`)
+    /// TY_BOUND_NOPAREN = [TY_BOUND_MODIFIERS] [for<LT_PARAM_DEFS>] SIMPLE_PATH
     /// ```
+    ///
+    /// For example, this grammar accepts `?const ?for<'a: 'b> m::Trait<'a>`.
     fn parse_generic_ty_bound(
         &mut self,
         lo: Span,
         has_parens: bool,
-        question: Option<Span>,
+        modifiers: BoundModifiers,
     ) -> PResult<'a, GenericBound> {
         let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
         let path = self.parse_path(PathStyle::Type)?;
         if has_parens {
             self.expect(&token::CloseDelim(token::Paren))?;
         }
-        let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_span));
-        let modifier = question.map_or(TraitBoundModifier::None, |_| TraitBoundModifier::Maybe);
-        Ok(GenericBound::Trait(poly_trait, modifier))
+
+        let constness = modifiers.maybe_const.map(|_| ast::Constness::NotConst);
+        let poly_trait = PolyTraitRef::new(lifetime_defs, path, constness, lo.to(self.prev_span));
+        Ok(GenericBound::Trait(poly_trait, modifiers.trait_bound_modifier()))
     }
 
     /// Optionally parses `for<$generic_params>`.
