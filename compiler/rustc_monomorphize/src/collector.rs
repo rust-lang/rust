@@ -211,7 +211,7 @@ use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::{MTLock, par_for_each_in};
+use rustc_data_structures::sync::{MTLock, join, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
@@ -1806,9 +1806,20 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 ) -> (Vec<MonoItem<'tcx>>, UsageMap<'tcx>) {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
-    let roots = tcx
-        .sess
-        .time("monomorphization_collector_root_collections", || collect_roots(tcx, strategy));
+    let (roots, _) = join(
+        || {
+            tcx.sess.time("monomorphization_collector_root_collections", || {
+                collect_roots(tcx, strategy)
+            })
+        },
+        || {
+            if tcx.sess.opts.share_generics() {
+                // Prefetch upstream_monomorphizations as it's very likely to be used in
+                // code generation later and this is decent spot to compute it.
+                tcx.ensure_ok().upstream_monomorphizations(());
+            }
+        },
+    );
 
     debug!("building mono item graph, beginning at roots");
 

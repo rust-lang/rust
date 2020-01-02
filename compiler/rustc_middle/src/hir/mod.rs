@@ -9,7 +9,7 @@ pub mod place;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
+use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lints::DelayedLint;
@@ -99,46 +99,62 @@ impl ModuleItems {
     }
 
     /// Closures and inline consts
-    pub fn par_nested_bodies(
+    pub fn try_par_nested_bodies(
         &self,
         f: impl Fn(LocalDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         try_par_for_each_in(&self.nested_bodies[..], |&&id| f(id))
     }
 
-    pub fn par_items(
+    pub fn try_par_items(
         &self,
         f: impl Fn(ItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         try_par_for_each_in(&self.free_items[..], |&&id| f(id))
     }
 
-    pub fn par_trait_items(
+    pub fn try_par_trait_items(
         &self,
         f: impl Fn(TraitItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         try_par_for_each_in(&self.trait_items[..], |&&id| f(id))
     }
 
-    pub fn par_impl_items(
+    pub fn try_par_impl_items(
         &self,
         f: impl Fn(ImplItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         try_par_for_each_in(&self.impl_items[..], |&&id| f(id))
     }
 
-    pub fn par_foreign_items(
+    pub fn try_par_foreign_items(
         &self,
         f: impl Fn(ForeignItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         try_par_for_each_in(&self.foreign_items[..], |&&id| f(id))
     }
 
-    pub fn par_opaques(
+    pub fn try_par_opaques(
         &self,
         f: impl Fn(LocalDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         try_par_for_each_in(&self.opaques[..], |&&id| f(id))
+    }
+
+    pub fn par_items(&self, f: impl Fn(ItemId) + DynSend + DynSync) {
+        par_for_each_in(&self.free_items[..], |&&id| f(id))
+    }
+
+    pub fn par_trait_items(&self, f: impl Fn(TraitItemId) + DynSend + DynSync) {
+        par_for_each_in(&self.trait_items[..], |&&id| f(id))
+    }
+
+    pub fn par_impl_items(&self, f: impl Fn(ImplItemId) + DynSend + DynSync) {
+        par_for_each_in(&self.impl_items[..], |&&id| f(id))
+    }
+
+    pub fn par_foreign_items(&self, f: impl Fn(ForeignItemId) + DynSend + DynSync) {
+        par_for_each_in(&self.foreign_items[..], |&&id| f(id))
     }
 }
 
