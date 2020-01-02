@@ -4,7 +4,6 @@ use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkPr
 use rustc::session::Session;
 use rustc::ty::query::OnDiskCache;
 use rustc::ty::TyCtxt;
-use rustc::util::common::time_ext;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::opaque::Decoder;
 use rustc_serialize::Decodable as RustcDecodable;
@@ -96,7 +95,6 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     // Since `sess` isn't `Sync`, we perform all accesses to `sess`
     // before we fire the background thread.
 
-    let time_passes = sess.time_passes();
     let prof = sess.prof.clone();
 
     if sess.opts.incremental.is_none() {
@@ -161,38 +159,36 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     }
 
     MaybeAsync::Async(std::thread::spawn(move || {
-        time_ext(time_passes, "background load prev dep-graph", move || {
-            let _prof_timer = prof.generic_activity("incr_comp_load_dep_graph");
+        let _prof_timer = prof.generic_pass("background load prev dep-graph");
 
-            match load_data(report_incremental_info, &path) {
-                LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
-                LoadResult::Error { message } => LoadResult::Error { message },
-                LoadResult::Ok { data: (bytes, start_pos) } => {
-                    let mut decoder = Decoder::new(&bytes, start_pos);
-                    let prev_commandline_args_hash = u64::decode(&mut decoder)
-                        .expect("Error reading commandline arg hash from cached dep-graph");
+        match load_data(report_incremental_info, &path) {
+            LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
+            LoadResult::Error { message } => LoadResult::Error { message },
+            LoadResult::Ok { data: (bytes, start_pos) } => {
+                let mut decoder = Decoder::new(&bytes, start_pos);
+                let prev_commandline_args_hash = u64::decode(&mut decoder)
+                    .expect("Error reading commandline arg hash from cached dep-graph");
 
-                    if prev_commandline_args_hash != expected_hash {
-                        if report_incremental_info {
-                            println!(
-                                "[incremental] completely ignoring cache because of \
+                if prev_commandline_args_hash != expected_hash {
+                    if report_incremental_info {
+                        println!(
+                            "[incremental] completely ignoring cache because of \
                                     differing commandline arguments"
-                            );
-                        }
-                        // We can't reuse the cache, purge it.
-                        debug!("load_dep_graph_new: differing commandline arg hashes");
-
-                        // No need to do any further work
-                        return LoadResult::DataOutOfDate;
+                        );
                     }
+                    // We can't reuse the cache, purge it.
+                    debug!("load_dep_graph_new: differing commandline arg hashes");
 
-                    let dep_graph = SerializedDepGraph::decode(&mut decoder)
-                        .expect("Error reading cached dep-graph");
-
-                    LoadResult::Ok { data: (PreviousDepGraph::new(dep_graph), prev_work_products) }
+                    // No need to do any further work
+                    return LoadResult::DataOutOfDate;
                 }
+
+                let dep_graph = SerializedDepGraph::decode(&mut decoder)
+                    .expect("Error reading cached dep-graph");
+
+                LoadResult::Ok { data: (PreviousDepGraph::new(dep_graph), prev_work_products) }
             }
-        })
+        }
     }))
 }
 

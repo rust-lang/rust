@@ -11,7 +11,7 @@ use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::session::Session;
 use rustc::ty::steal::Steal;
 use rustc::ty::{AllArenas, GlobalCtxt, ResolverOutputs};
-use rustc::util::common::{time, ErrorReported};
+use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
 use rustc_incremental::DepGraphFuture;
@@ -195,7 +195,7 @@ impl<'tcx> Queries<'tcx> {
                 None => DepGraph::new_disabled(),
                 Some(future) => {
                     let (prev_graph, prev_work_products) =
-                        time(self.session(), "blocked while dep-graph loading finishes", || {
+                        self.session().time("blocked while dep-graph loading finishes", || {
                             future
                                 .open()
                                 .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
