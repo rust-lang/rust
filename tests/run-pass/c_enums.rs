@@ -1,3 +1,5 @@
+#![allow(const_err)] // don't warn about truncating casts
+
 enum Foo {
     Bar = 42,
     Baz,
