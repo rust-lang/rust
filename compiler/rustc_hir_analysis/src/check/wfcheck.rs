@@ -2351,14 +2351,21 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
 fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), ErrorGuaranteed> {
     let items = tcx.hir_module_items(module);
-    let res = items
-        .par_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id))
-        .and(items.par_impl_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
-        .and(items.par_trait_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
-        .and(
-            items.par_foreign_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)),
-        )
-        .and(items.par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
+    let res =
+        items
+            .try_par_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id))
+            .and(
+                items.try_par_impl_items(|item| {
+                    tcx.ensure_ok().check_well_formed(item.owner_id.def_id)
+                }),
+            )
+            .and(items.try_par_trait_items(|item| {
+                tcx.ensure_ok().check_well_formed(item.owner_id.def_id)
+            }))
+            .and(items.try_par_foreign_items(|item| {
+                tcx.ensure_ok().check_well_formed(item.owner_id.def_id)
+            }))
+            .and(items.try_par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
     if module == LocalModDefId::CRATE_DEF_ID {
         super::entry::check_for_entry_fn(tcx);
     }
