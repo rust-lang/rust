@@ -7,10 +7,10 @@
 // or type checking or some other kind of complex analysis.
 
 use rustc::lint;
-use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, FatalError};
 use rustc_parse::validate_attr;
+use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
