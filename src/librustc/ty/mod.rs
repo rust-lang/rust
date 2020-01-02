@@ -6,8 +6,9 @@ pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
-use crate::hir::def::{CtorKind, CtorOf, DefKind, ExportMap, Res};
+use crate::hir::def::{CtorKind, CtorOf, DefKind, Res};
 use crate::hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::hir::exports::ExportMap;
 use crate::hir::Node;
 use crate::hir::{map as hir_map, GlobMap, TraitMap};
 use crate::ich::Fingerprint;

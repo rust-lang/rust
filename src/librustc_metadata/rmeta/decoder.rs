@@ -5,8 +5,9 @@ use crate::rmeta::*;
 
 use rustc::dep_graph::{self, DepNodeIndex};
 use rustc::hir;
-use rustc::hir::def::{self, CtorKind, CtorOf, DefKind, Res};
+use rustc::hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::exports::Export;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::middle::cstore::{CrateSource, ExternCrate};
@@ -930,7 +931,7 @@ impl<'a, 'tcx> CrateMetadata {
     /// Iterates over each child of the given item.
     fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F, sess: &Session)
     where
-        F: FnMut(def::Export<hir::HirId>),
+        F: FnMut(Export<hir::HirId>),
     {
         if let Some(proc_macros_ids) = self.root.proc_macro_data.map(|d| d.decode(self)) {
             /* If we are loading as a proc macro, we want to return the view of this crate
@@ -944,12 +945,7 @@ impl<'a, 'tcx> CrateMetadata {
                         self.local_def_id(def_index),
                     );
                     let ident = Ident::from_str(raw_macro.name());
-                    callback(def::Export {
-                        ident: ident,
-                        res: res,
-                        vis: ty::Visibility::Public,
-                        span: DUMMY_SP,
-                    });
+                    callback(Export { ident, res, vis: ty::Visibility::Public, span: DUMMY_SP });
                 }
             }
             return;
@@ -989,7 +985,7 @@ impl<'a, 'tcx> CrateMetadata {
                             .unwrap_or(Lazy::empty());
                         for child_index in child_children.decode((self, sess)) {
                             if let Some(kind) = self.def_kind(child_index) {
-                                callback(def::Export {
+                                callback(Export {
                                     res: Res::Def(kind, self.local_def_id(child_index)),
                                     ident: Ident::with_dummy_span(self.item_name(child_index)),
                                     vis: self.get_visibility(child_index),
@@ -1019,7 +1015,7 @@ impl<'a, 'tcx> CrateMetadata {
                     let vis = self.get_visibility(child_index);
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
-                    callback(def::Export { res, ident, vis, span });
+                    callback(Export { res, ident, vis, span });
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
                     match kind {
@@ -1029,7 +1025,7 @@ impl<'a, 'tcx> CrateMetadata {
                                 let ctor_res =
                                     Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                                 let vis = self.get_visibility(ctor_def_id.index);
-                                callback(def::Export { res: ctor_res, vis, ident, span });
+                                callback(Export { res: ctor_res, vis, ident, span });
                             }
                         }
                         DefKind::Variant => {
@@ -1053,7 +1049,7 @@ impl<'a, 'tcx> CrateMetadata {
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
                             }
-                            callback(def::Export { res: ctor_res, ident, vis, span });
+                            callback(Export { res: ctor_res, ident, vis, span });
                         }
                         _ => {}
                     }

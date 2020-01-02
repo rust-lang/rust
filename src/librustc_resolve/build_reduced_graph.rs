@@ -19,6 +19,7 @@ use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segmen
 use rustc::bug;
 use rustc::hir::def::{self, *};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::exports::Export;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty;
 use rustc_metadata::creader::LoadedMacro;

@@ -3,8 +3,9 @@
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepConstructor, DepNode};
-use crate::hir::def::{DefKind, Export, Res};
+use crate::hir::def::{DefKind, Res};
 use crate::hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
+use crate::hir::exports::Export;
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
 use crate::hir::{self, HirId, Node, TraitCandidate};

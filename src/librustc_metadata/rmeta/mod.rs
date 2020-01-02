@@ -2,8 +2,9 @@ use decoder::Metadata;
 use table::{Table, TableBuilder};
 
 use rustc::hir;
-use rustc::hir::def::{self, CtorKind};
+use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::exports::Export;
 use rustc::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::lang_items;
@@ -317,7 +318,7 @@ struct RenderedConst(String);
 
 #[derive(RustcEncodable, RustcDecodable)]
 struct ModData {
-    reexports: Lazy<[def::Export<hir::HirId>]>,
+    reexports: Lazy<[Export<hir::HirId>]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

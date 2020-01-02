@@ -1,6 +1,7 @@
 use crate::dep_graph::{self, DepNode};
-use crate::hir::def::{DefKind, Export};
+use crate::hir::def::DefKind;
 use crate::hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex};
+use crate::hir::exports::Export;
 use crate::hir::{self, HirIdSet, ItemLocalId, TraitCandidate};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint;

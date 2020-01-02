@@ -22,8 +22,9 @@ use Determinacy::*;
 
 use errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::def::Namespace::*;
-use rustc::hir::def::{self, CtorKind, CtorOf, DefKind, ExportMap, NonMacroAttrKind, PartialRes};
+use rustc::hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::exports::ExportMap;
 use rustc::hir::map::Definitions;
 use rustc::hir::{Bool, Char, Float, Int, PrimTy, Str, Uint};
 use rustc::hir::{GlobMap, TraitMap};

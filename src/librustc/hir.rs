@@ -4,6 +4,7 @@
 
 pub mod check_attr;
 pub mod def;
+pub mod exports;
 pub use rustc_hir::def_id;
 pub use rustc_hir::hir_id::*;
 pub mod intravisit;
