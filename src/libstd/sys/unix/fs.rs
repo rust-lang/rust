@@ -814,7 +814,7 @@ impl File {
             use crate::convert::TryInto;
             let size: off64_t =
                 size.try_into().map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-            cvt_r(|| unsafe { ftruncate64(self.0.raw(), size) }).map(|_| ())
+            cvt_r(|| unsafe { ftruncate64(self.0.raw(), size) }).map(drop)
         }
     }
 
