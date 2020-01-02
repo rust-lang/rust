@@ -21,6 +21,7 @@
 //!   thing we relate in chalk are basically domain goals and their
 //!   constituents)
 
+use crate::infer::combine::ConstEquateRelation;
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
 use rustc_data_structures::fx::FxHashMap;
@@ -595,14 +596,6 @@ where
         }
 
         match (a.val, b.val) {
-            (ty::ConstKind::Unevaluated(..), _) => {
-                self.delegate.const_equate(a, b);
-                Ok(b)
-            }
-            (_, ty::ConstKind::Unevaluated(..)) => {
-                self.delegate.const_equate(a, b);
-                Ok(a)
-            }
             (_, ty::ConstKind::Infer(InferConst::Var(_))) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
                 bug!("unexpected inference var {:?}", b)
@@ -722,6 +715,15 @@ where
         }
 
         Ok(a.clone())
+    }
+}
+
+impl<'tcx, D> ConstEquateRelation<'tcx> for TypeRelating<'_, 'tcx, D>
+where
+    D: TypeRelatingDelegate<'tcx>,
+{
+    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+        self.delegate.const_equate(a, b);
     }
 }
 
