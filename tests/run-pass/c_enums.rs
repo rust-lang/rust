@@ -1,4 +1,4 @@
-#![allow(const_err)] // don't warn about truncating casts
+#![allow(const_err)] // don't warn about truncating casts. FIXME: remove this, the error shouldn't even be shown
 
 enum Foo {
     Bar = 42,
