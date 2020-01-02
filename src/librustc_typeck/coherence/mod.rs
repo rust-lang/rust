@@ -10,7 +10,6 @@ use crate::hir::HirId;
 use rustc::traits;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
-use rustc::util::common::time;
 
 use rustc_error_codes::*;
 
@@ -146,8 +145,8 @@ pub fn check_coherence(tcx: TyCtxt<'_>) {
         tcx.ensure().coherent_trait(trait_def_id);
     }
 
-    time(tcx.sess, "unsafety checking", || unsafety::check(tcx));
-    time(tcx.sess, "orphan checking", || orphan::check(tcx));
+    tcx.sess.time("unsafety checking", || unsafety::check(tcx));
+    tcx.sess.time("orphan checking", || orphan::check(tcx));
 
     // these queries are executed for side-effects (error reporting):
     tcx.ensure().crate_inherent_impls(LOCAL_CRATE);
