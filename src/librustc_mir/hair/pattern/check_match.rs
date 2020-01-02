@@ -294,7 +294,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                         let ty_path = cx.tcx.def_path_str(edef.did);
                         cx.tcx
                             .struct_span_lint_hir(
-                                lint::builtin::BINDING_VARIANT_NAME,
+                                lint::builtin::BINDINGS_WITH_VARIANT_NAME,
                                 p.hir_id,
                                 p.span,
                                 &format!(

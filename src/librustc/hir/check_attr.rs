@@ -8,11 +8,11 @@ use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::hir::DUMMY_HIR_ID;
 use crate::hir::{self, Attribute, HirId, Item, ItemKind, TraitItem, TraitItemKind};
-use crate::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
+use crate::lint::builtin::UNUSED_ATTRIBUTES;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 
-use errors::{error_code, struct_span_err};
+use errors::struct_span_err;
 use rustc_span::Span;
 
 use std::fmt::{self, Display};
@@ -194,7 +194,7 @@ impl CheckAttrVisitor<'tcx> {
             self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 
-        self.check_repr(attrs, span, target, item, hir_id);
+        self.check_repr(attrs, span, target, item);
         self.check_used(attrs, target);
     }
 
@@ -355,7 +355,6 @@ impl CheckAttrVisitor<'tcx> {
         span: &Span,
         target: Target,
         item: Option<&Item<'_>>,
-        hir_id: HirId,
     ) {
         // Extract the names of all repr hints, e.g., [foo, bar, align] for:
         // ```
@@ -445,15 +444,13 @@ impl CheckAttrVisitor<'tcx> {
             || (is_simd && is_c)
             || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item)))
         {
-            self.tcx
-                .struct_span_lint_hir(
-                    CONFLICTING_REPR_HINTS,
-                    hir_id,
-                    hint_spans.collect::<Vec<Span>>(),
-                    "conflicting representation hints",
-                )
-                .code(error_code!(E0566))
-                .emit();
+            struct_span_err!(
+                self.tcx.sess,
+                hint_spans.collect::<Vec<Span>>(),
+                E0566,
+                "conflicting representation hints",
+            )
+            .emit();
         }
     }
 

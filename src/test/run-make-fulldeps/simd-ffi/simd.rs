@@ -4,35 +4,28 @@
 // cross-compiled standard libraries.
 #![feature(no_core, optin_builtin_traits)]
 #![no_core]
-
 #![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items, rustc_attrs)]
 
-
-#[repr(C)]
 #[derive(Copy)]
 #[repr(simd)]
 pub struct f32x4(f32, f32, f32, f32);
 
-
-extern {
+extern "C" {
     #[link_name = "llvm.sqrt.v4f32"]
     fn vsqrt(x: f32x4) -> f32x4;
 }
 
 pub fn foo(x: f32x4) -> f32x4 {
-    unsafe {vsqrt(x)}
+    unsafe { vsqrt(x) }
 }
 
-#[repr(C)]
 #[derive(Copy)]
 #[repr(simd)]
 pub struct i32x4(i32, i32, i32, i32);
 
-
-extern {
+extern "C" {
     // _mm_sll_epi32
-    #[cfg(any(target_arch = "x86",
-              target_arch = "x86-64"))]
+    #[cfg(any(target_arch = "x86", target_arch = "x86-64"))]
     #[link_name = "llvm.x86.sse2.psll.d"]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 
@@ -48,22 +41,24 @@ extern {
     // just some substitute foreign symbol, not an LLVM intrinsic; so
     // we still get type checking, but not as detailed as (ab)using
     // LLVM.
-    #[cfg(not(any(target_arch = "x86",
-                  target_arch = "x86-64",
-                  target_arch = "arm",
-                  target_arch = "aarch64")))]
+    #[cfg(not(any(
+        target_arch = "x86",
+        target_arch = "x86-64",
+        target_arch = "arm",
+        target_arch = "aarch64"
+    )))]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 }
 
 pub fn bar(a: i32x4, b: i32x4) -> i32x4 {
-    unsafe {integer(a, b)}
+    unsafe { integer(a, b) }
 }
 
 #[lang = "sized"]
-pub trait Sized { }
+pub trait Sized {}
 
 #[lang = "copy"]
-pub trait Copy { }
+pub trait Copy {}
 
 impl Copy for f32 {}
 impl Copy for i32 {}
@@ -77,4 +72,6 @@ auto trait Freeze {}
 
 #[macro_export]
 #[rustc_builtin_macro]
-macro_rules! Copy { () => () }
+macro_rules! Copy {
+    () => {};
+}
