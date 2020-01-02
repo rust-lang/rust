@@ -204,7 +204,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // ABI check
         {
             let callee_abi = {
-                let instance_ty = instance.ty(*self.tcx);
+                let instance_ty = instance.ty_env(*self.tcx, self.param_env);
                 match instance_ty.kind {
                     ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
                     ty::Closure(..) => Abi::RustCall,
