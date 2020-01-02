@@ -76,10 +76,20 @@ fn good() {
     { let foo = u64::max_value(); };
     { let foo = u128::max_value(); };
 
-    let _ = match 42 {
+    let x = 42;
+
+    let _ = match x {
         std::i8::MIN => -1,
         1..=std::i8::MAX => 1,
         _ => 0
+    };
+
+    let _ = if let std::i8::MIN = x {
+        -1
+    } else if let 1..=std::i8::MAX = x {
+        1
+    } else {
+        0
     };
 }
 
