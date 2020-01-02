@@ -542,10 +542,11 @@ impl<'a> Parser<'a> {
     ///    impl<'a, T> TYPE { /* impl items */ }
     ///    impl<'a, T> TRAIT for TYPE { /* impl items */ }
     ///    impl<'a, T> !TRAIT for TYPE { /* impl items */ }
+    ///    impl<'a, T> const TRAIT for TYPE { /* impl items */ }
     ///
     /// We actually parse slightly more relaxed grammar for better error reporting and recovery.
-    ///     `impl` GENERICS `!`? TYPE `for`? (TYPE | `..`) (`where` PREDICATES)? `{` BODY `}`
-    ///     `impl` GENERICS `!`? TYPE (`where` PREDICATES)? `{` BODY `}`
+    ///   `impl` GENERICS `const`? `!`? TYPE `for`? (TYPE | `..`) (`where` PREDICATES)? `{` BODY `}`
+    ///   `impl` GENERICS `const`? `!`? TYPE (`where` PREDICATES)? `{` BODY `}`
     fn parse_item_impl(
         &mut self,
         unsafety: Unsafety,
@@ -556,6 +557,13 @@ impl<'a> Parser<'a> {
             self.parse_generics()?
         } else {
             Generics::default()
+        };
+
+        let constness = if self.eat_keyword(kw::Const) {
+            self.sess.gated_spans.gate(sym::const_trait_impl, self.prev_span);
+            Some(Constness::Const)
+        } else {
+            None
         };
 
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
@@ -618,7 +626,7 @@ impl<'a> Parser<'a> {
                         err_path(ty_first.span)
                     }
                 };
-                let trait_ref = TraitRef { path, ref_id: ty_first.id };
+                let trait_ref = TraitRef { path, constness, ref_id: ty_first.id };
 
                 ItemKind::Impl(
                     unsafety,
