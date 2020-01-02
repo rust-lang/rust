@@ -77,7 +77,8 @@ pub mod entry;
 pub mod expand;
 pub mod feature_gate {
     mod check;
-    pub use check::{check_attribute, check_crate, feature_err, feature_err_issue, get_features};
+    pub use check::{check_attribute, check_crate, get_features};
+    pub use rustc_session::parse::{feature_err, feature_err_issue};
 }
 pub mod mut_visit;
 pub mod ptr;

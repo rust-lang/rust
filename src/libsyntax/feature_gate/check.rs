@@ -1,22 +1,21 @@
 use crate::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
 use crate::attr;
-use crate::sess::ParseSess;
+use crate::sess::{feature_err, leveled_feature_err, GateStrength, ParseSess};
 use crate::visit::{self, FnKind, Visitor};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_error_codes::*;
-use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Handler};
-use rustc_feature::{find_feature_issue, GateIssue};
+use rustc_errors::{error_code, struct_span_err, Applicability, Handler};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
-use rustc_feature::{Feature, Features, State as FeatureState, UnstableFeatures};
+use rustc_feature::{Feature, Features, GateIssue, State as FeatureState, UnstableFeatures};
 use rustc_feature::{
     ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
 };
 use rustc_span::edition::{Edition, ALL_EDITIONS};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 
 use log::debug;
 
@@ -51,70 +50,6 @@ macro_rules! gate_feature {
 
 pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
     PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum GateStrength {
-    /// A hard error. (Most feature gates should use this.)
-    Hard,
-    /// Only a warning. (Use this only as backwards-compatibility demands.)
-    Soft,
-}
-
-pub fn feature_err<'a>(
-    sess: &'a ParseSess,
-    feature: Symbol,
-    span: impl Into<MultiSpan>,
-    explain: &str,
-) -> DiagnosticBuilder<'a> {
-    feature_err_issue(sess, feature, span, GateIssue::Language, explain)
-}
-
-pub fn feature_err_issue<'a>(
-    sess: &'a ParseSess,
-    feature: Symbol,
-    span: impl Into<MultiSpan>,
-    issue: GateIssue,
-    explain: &str,
-) -> DiagnosticBuilder<'a> {
-    leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
-}
-
-fn leveled_feature_err<'a>(
-    sess: &'a ParseSess,
-    feature: Symbol,
-    span: impl Into<MultiSpan>,
-    issue: GateIssue,
-    explain: &str,
-    level: GateStrength,
-) -> DiagnosticBuilder<'a> {
-    let diag = &sess.span_diagnostic;
-
-    let mut err = match level {
-        GateStrength::Hard => diag.struct_span_err_with_code(span, explain, error_code!(E0658)),
-        GateStrength::Soft => diag.struct_span_warn(span, explain),
-    };
-
-    if let Some(n) = find_feature_issue(feature, issue) {
-        err.note(&format!(
-            "for more information, see https://github.com/rust-lang/rust/issues/{}",
-            n,
-        ));
-    }
-
-    // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if sess.unstable_features.is_nightly_build() {
-        err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feature));
-    }
-
-    // If we're on stable and only emitting a "soft" warning, add a note to
-    // clarify that the feature isn't "on" (rather than being on but
-    // warning-worthy).
-    if !sess.unstable_features.is_nightly_build() && level == GateStrength::Soft {
-        err.help("a nightly build of the compiler is required to enable this feature");
-    }
-
-    err
 }
 
 struct PostExpansionVisitor<'a> {
