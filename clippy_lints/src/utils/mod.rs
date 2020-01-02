@@ -1111,6 +1111,15 @@ pub fn match_function_call<'a, 'tcx>(
     None
 }
 
+/// Checks if `Ty` is normalizable. This function is useful
+/// to avoid crashes on `layout_of`.
+pub fn is_normalizable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
+    cx.tcx.infer_ctxt().enter(|infcx| {
+        let cause = rustc::traits::ObligationCause::dummy();
+        infcx.at(&cause, param_env).normalize(&ty).is_ok()
+    })
+}
+
 #[cfg(test)]
 mod test {
     use super::{trim_multiline, without_block_comments};

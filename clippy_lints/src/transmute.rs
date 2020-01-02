@@ -1,4 +1,6 @@
-use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then, sugg};
+use crate::utils::{
+    is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then, sugg,
+};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
 use rustc::hir::*;
@@ -641,12 +643,7 @@ fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath<'_>, to_ref_ty: Ty<'_
 fn is_layout_incompatible<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
     let empty_param_env = ty::ParamEnv::empty();
     // check if `from` and `to` are normalizable to avoid ICE (#4968)
-    let is_normalizable = cx.tcx.infer_ctxt().enter(|infcx| {
-        let cause = rustc::traits::ObligationCause::dummy();
-        infcx.at(&cause, empty_param_env).normalize(&from).is_ok()
-            && infcx.at(&cause, empty_param_env).normalize(&to).is_ok()
-    });
-    if !is_normalizable {
+    if !(is_normalizable(cx, empty_param_env, from) && is_normalizable(cx, empty_param_env, to)) {
         return false;
     }
     let from_ty_layout = cx.tcx.layout_of(empty_param_env.and(from));
