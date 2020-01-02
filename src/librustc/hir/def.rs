@@ -1,5 +1,3 @@
-use self::Namespace::*;
-
 use crate::hir;
 use crate::hir::def_id::{DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ty;
@@ -238,9 +236,9 @@ pub enum Namespace {
 impl Namespace {
     pub fn descr(self) -> &'static str {
         match self {
-            TypeNS => "type",
-            ValueNS => "value",
-            MacroNS => "macro",
+            Self::TypeNS => "type",
+            Self::ValueNS => "value",
+            Self::MacroNS => "macro",
         }
     }
 }
@@ -264,9 +262,9 @@ impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
 
     fn index(&self, ns: Namespace) -> &T {
         match ns {
-            ValueNS => &self.value_ns,
-            TypeNS => &self.type_ns,
-            MacroNS => &self.macro_ns,
+            Namespace::ValueNS => &self.value_ns,
+            Namespace::TypeNS => &self.type_ns,
+            Namespace::MacroNS => &self.macro_ns,
         }
     }
 }
@@ -274,9 +272,9 @@ impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
 impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
     fn index_mut(&mut self, ns: Namespace) -> &mut T {
         match ns {
-            ValueNS => &mut self.value_ns,
-            TypeNS => &mut self.type_ns,
-            MacroNS => &mut self.macro_ns,
+            Namespace::ValueNS => &mut self.value_ns,
+            Namespace::TypeNS => &mut self.type_ns,
+            Namespace::MacroNS => &mut self.macro_ns,
         }
     }
 }
