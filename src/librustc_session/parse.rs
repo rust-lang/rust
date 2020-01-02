@@ -62,6 +62,8 @@ impl GatedSpans {
     }
 }
 
+/// The strenght of a feature gate.
+/// Either it is a `Hard` error, or only a `Soft` warning.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum GateStrength {
     /// A hard error. (Most feature gates should use this.)
@@ -70,6 +72,20 @@ pub enum GateStrength {
     Soft,
 }
 
+/// Construct a diagnostic for a language feature error due to the given `span`.
+/// The `feature`'s `Symbol` is the one you used in `active.rs` and `rustc_span::symbols`.
+///
+/// Example usage:
+///
+/// ```ignore
+/// feature_err(
+///     parse_sess,
+///     sym::stmt_expr_attributes,
+///     attr.span,
+///     "attributes on expressions are unstable",
+/// )
+/// .emit();
+/// ```
 pub fn feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
@@ -79,6 +95,10 @@ pub fn feature_err<'a>(
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
 
+/// Construct a diagnostic for a feature gate error.
+///
+/// This variant allows you to control whether it is a library or language feature.
+/// Almost always, you want to use this for a language feature. If so, prefer `feature_err`.
 pub fn feature_err_issue<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
@@ -89,6 +109,9 @@ pub fn feature_err_issue<'a>(
     leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
 }
 
+/// Construct a diagnostic for a feature gate error / warning.
+///
+/// You should typically just use `feature_err` instead.
 pub fn leveled_feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
