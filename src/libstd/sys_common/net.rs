@@ -659,7 +659,7 @@ impl UdpSocket {
 
     pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {
         let (addrp, len) = addr?.into_inner();
-        cvt_r(|| unsafe { c::connect(*self.inner.as_inner(), addrp, len) }).map(|_| ())
+        cvt_r(|| unsafe { c::connect(*self.inner.as_inner(), addrp, len) }).map(drop)
     }
 }
 

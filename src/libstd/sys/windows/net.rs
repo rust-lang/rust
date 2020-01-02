@@ -355,7 +355,7 @@ impl Socket {
     #[cfg(not(target_vendor = "uwp"))]
     fn set_no_inherit(&self) -> io::Result<()> {
         sys::cvt(unsafe { c::SetHandleInformation(self.0 as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0) })
-            .map(|_| ())
+            .map(drop)
     }
 
     #[cfg(target_vendor = "uwp")]

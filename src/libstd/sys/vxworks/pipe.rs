@@ -66,11 +66,11 @@ pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> 
 
         if fds[0].revents != 0 && read(&p1, v1)? {
             p2.set_nonblocking_pipe(false)?;
-            return p2.read_to_end(v2).map(|_| ());
+            return p2.read_to_end(v2).map(drop);
         }
         if fds[1].revents != 0 && read(&p2, v2)? {
             p1.set_nonblocking_pipe(false)?;
-            return p1.read_to_end(v1).map(|_| ());
+            return p1.read_to_end(v1).map(drop);
         }
     }
 

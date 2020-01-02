@@ -151,7 +151,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
 
     unsafe {
         let _guard = env_lock();
-        cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(|_| ())
+        cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
     }
 }
 
@@ -160,7 +160,7 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
 
     unsafe {
         let _guard = env_lock();
-        cvt(libc::unsetenv(nbuf.as_ptr())).map(|_| ())
+        cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
     }
 }
 

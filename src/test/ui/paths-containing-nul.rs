@@ -17,7 +17,7 @@ fn assert_invalid_input<T>(on: &str, result: io::Result<T>) {
                               "{} returned a strange {:?} on a path with NUL", on, e.kind()),
         }
     }
-    inner(on, result.map(|_| ()))
+    inner(on, result.map(drop))
 }
 
 fn main() {
