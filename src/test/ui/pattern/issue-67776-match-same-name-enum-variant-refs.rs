@@ -12,20 +12,29 @@ enum Foo {
 }
 
 
-fn fn2(e: Foo) {
+fn fn1(e: Foo) {
     match e {
-        Bar => println!("A"),
+        Bar => {},
         //~^ WARNING named the same as one of the variants of the type `Foo`
-        Baz => println!("B"),
+        Baz => {},
         //~^ WARNING named the same as one of the variants of the type `Foo`
     }
 }
 
-fn fn1(e: &Foo) {
+fn fn2(e: &Foo) {
     match e {
-        Bar => println!("A"),
+        Bar => {},
         //~^ WARNING named the same as one of the variants of the type `Foo`
-        Baz => println!("B"),
+        Baz => {},
+        //~^ WARNING named the same as one of the variants of the type `Foo`
+    }
+}
+
+fn fn3(e: &mut &&mut Foo) {
+    match e {
+        Bar => {},
+        //~^ WARNING named the same as one of the variants of the type `Foo`
+        Baz => {},
         //~^ WARNING named the same as one of the variants of the type `Foo`
     }
 }
