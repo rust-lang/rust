@@ -8,9 +8,9 @@ crate use BlockCheckMode::*;
 crate use FunctionRetTy::*;
 crate use UnsafeSource::*;
 
-use errors::FatalError;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
+use rustc_errors::FatalError;
 use rustc_macros::HashStable_Generic;
 use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::{SourceMap, Spanned};
