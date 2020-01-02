@@ -18,7 +18,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::CRATE_NODE_ID;
 use syntax::attr::{self, ConstStability, Deprecation, RustcDeprecation, Stability};
-use syntax::feature_gate::feature_err_issue;
+use syntax::sess::feature_err_issue;
 
 use std::num::NonZeroU32;
 

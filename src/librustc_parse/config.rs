@@ -22,10 +22,9 @@ use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, AttrItem, Attribute, MetaItem};
 use syntax::attr;
 use syntax::attr::HasAttrs;
-use syntax::feature_gate::feature_err;
 use syntax::mut_visit::*;
 use syntax::ptr::P;
-use syntax::sess::ParseSess;
+use syntax::sess::{feature_err, ParseSess};
 use syntax::util::map_in_place::MapInPlace;
 
 use smallvec::SmallVec;

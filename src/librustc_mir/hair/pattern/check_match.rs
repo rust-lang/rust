@@ -6,6 +6,7 @@ use super::{PatCtxt, PatKind, PatternError};
 
 use rustc::hir::map::Map;
 use rustc::lint;
+use rustc::session::parse::feature_err;
 use rustc::session::Session;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -19,7 +20,6 @@ use rustc_hir::{HirId, Pat};
 use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::Mutability;
-use syntax::feature_gate::feature_err;
 
 use std::slice;
 
