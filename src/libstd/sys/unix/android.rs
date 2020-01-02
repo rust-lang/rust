@@ -93,12 +93,12 @@ pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
 
     unsafe {
         match ftruncate64.get() {
-            Some(f) => cvt_r(|| f(fd, size as i64)).map(|_| ()),
+            Some(f) => cvt_r(|| f(fd, size as i64)).map(drop),
             None => {
                 if size > i32::max_value() as u64 {
                     Err(io::Error::new(io::ErrorKind::InvalidInput, "cannot truncate >2GB"))
                 } else {
-                    cvt_r(|| ftruncate(fd, size as i32)).map(|_| ())
+                    cvt_r(|| ftruncate(fd, size as i32)).map(drop)
                 }
             }
         }
@@ -107,7 +107,7 @@ pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
 
 #[cfg(target_pointer_width = "64")]
 pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
-    unsafe { cvt_r(|| ftruncate(fd, size as i64)).map(|_| ()) }
+    unsafe { cvt_r(|| ftruncate(fd, size as i64)).map(drop) }
 }
 
 #[cfg(target_pointer_width = "32")]

@@ -340,7 +340,7 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        return cvt_r(|| unsafe { ftruncate(self.0.raw(), size as off_t) }).map(|_| ());
+        return cvt_r(|| unsafe { ftruncate(self.0.raw(), size as off_t) }).map(drop);
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
