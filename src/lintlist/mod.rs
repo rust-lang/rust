@@ -561,6 +561,13 @@ pub const ALL_LINTS: [Lint; 346] = [
         module: "fallible_impl_from",
     },
     Lint {
+        name: "filetype_is_file",
+        group: "style",
+        desc: "`FileType::is_file` is not recommended to test for readable file type.",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "filter_map",
         group: "pedantic",
         desc: "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call",
