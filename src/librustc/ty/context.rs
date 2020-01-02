@@ -50,7 +50,6 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRA
 use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
 
-use arena::SyncDroplessArena;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
@@ -81,21 +80,11 @@ use syntax::ast;
 use syntax::attr;
 use syntax::expand::allocator::AllocatorKind;
 
-pub struct AllArenas {
-    pub interner: SyncDroplessArena,
-}
-
-impl AllArenas {
-    pub fn new() -> Self {
-        AllArenas { interner: SyncDroplessArena::default() }
-    }
-}
-
 type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc. are allocated from.
-    arena: &'tcx SyncDroplessArena,
+    arena: &'tcx WorkerLocal<Arena<'tcx>>,
 
     /// Specifically use a speedy hash algorithm for these hash sets, since
     /// they're accessed quite often.
@@ -115,7 +104,7 @@ pub struct CtxtInterners<'tcx> {
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
-    fn new(arena: &'tcx SyncDroplessArena) -> CtxtInterners<'tcx> {
+    fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
         CtxtInterners {
             arena,
             type_: Default::default(),
@@ -1118,7 +1107,6 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_store: Lrc<lint::LintStore>,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
-        arenas: &'tcx AllArenas,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         hir: hir_map::Map<'tcx>,
@@ -1129,7 +1117,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
             s.fatal(&err);
         });
-        let interners = CtxtInterners::new(&arenas.interner);
+        let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
@@ -2087,7 +2075,7 @@ macro_rules! slice_interners {
         $(impl<'tcx> TyCtxt<'tcx> {
             pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
                 self.interners.$field.intern_ref(v, || {
-                    Interned(List::from_arena(&self.interners.arena, v))
+                    Interned(List::from_arena(&*self.arena, v))
                 }).0
             }
         })+
