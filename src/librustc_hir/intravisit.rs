@@ -70,6 +70,13 @@ pub trait IntoVisitor<'hir> {
     fn into_visitor(&self) -> Self::Visitor;
 }
 
+impl<'hir, T: Clone + Visitor<'hir>> IntoVisitor<'hir> for T {
+    type Visitor = Self;
+    fn into_visitor(&self) -> Self::Visitor {
+        self.clone()
+    }
+}
+
 pub struct ParDeepVisitor<V>(pub V);
 
 impl<'hir, V> ParItemLikeVisitor<'hir> for ParDeepVisitor<V>

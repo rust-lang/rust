@@ -38,7 +38,7 @@ use rustc_errors::{struct_span_err, Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, NestedVisitorMap, ParDeepVisitor, Visitor};
 use rustc_hir::{GenericParamKind, Node, Unsafety};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -55,9 +55,9 @@ struct OnlySelfBounds(bool);
 // Main entry point
 
 fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(
+    tcx.hir().par_visit_item_likes_in_module(
         module_def_id,
-        &mut CollectItemTypesVisitor { tcx }.as_deep_visitor(),
+        &ParDeepVisitor(CollectItemTypesVisitor { tcx }),
     );
 }
 
@@ -118,6 +118,7 @@ impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
     }
 }
 
+#[derive(Clone)]
 struct CollectItemTypesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }

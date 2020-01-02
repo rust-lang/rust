@@ -102,6 +102,7 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util;
 use rustc::util::common::ErrorReported;
+use rustc_data_structures::sync::par_for_each;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -310,9 +311,13 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     // FIXME(matthewjasper) We shouldn't need to do this.
     tcx.sess.track_errors(|| {
         tcx.sess.time("type_collecting", || {
-            for &module in tcx.hir().krate().modules.keys() {
+            // Run dependencies of type collecting before entering the loop
+            tcx.inferred_outlives_crate(LOCAL_CRATE);
+
+            let _prof_timer = tcx.sess.timer("type_collecting_loop");
+            par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
                 tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
-            }
+            });
         });
     })?;
 
@@ -341,9 +346,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     })?;
 
     tcx.sess.time("item_types_checking", || {
-        for &module in tcx.hir().krate().modules.keys() {
+        par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
             tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
-        }
+        });
     });
 
     tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
