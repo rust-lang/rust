@@ -1,7 +1,7 @@
 use super::*;
 use crate::dep_graph::{DepGraph, DepKind, DepNodeIndex};
 use crate::hir;
-use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
+use crate::hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
 use crate::hir::intravisit::{NestedVisitorMap, Visitor};
 use crate::hir::map::HirEntryMap;
 use crate::ich::Fingerprint;

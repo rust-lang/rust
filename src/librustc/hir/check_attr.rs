@@ -7,7 +7,7 @@
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::hir::DUMMY_HIR_ID;
-use crate::hir::{self, Attribute, HirId, Item, ItemKind, TraitItem, TraitItemKind};
+use crate::hir::{self, HirId, Item, ItemKind, TraitItem, TraitItemKind};
 use crate::lint::builtin::UNUSED_ATTRIBUTES;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
@@ -15,6 +15,7 @@ use crate::ty::TyCtxt;
 use rustc_error_codes::*;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use syntax::ast::Attribute;
 use syntax::attr;
 
 use std::fmt::{self, Display};

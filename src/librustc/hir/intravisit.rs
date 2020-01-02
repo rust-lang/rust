@@ -37,7 +37,7 @@ use crate::hir::map::Map;
 use crate::hir::*;
 
 use rustc_span::Span;
-use syntax::ast::{Attribute, Ident, Name};
+use syntax::ast::{Attribute, Ident, Label, Name};
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {

@@ -9,12 +9,14 @@ pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
 use crate::hir::def::{DefKind, Res};
-use crate::hir::def_id::{DefId, DefIndex};
-use crate::ty::query::Providers;
+use crate::hir::def_id::DefId;
+use crate::hir::itemlikevisit;
+use crate::hir::print;
 
 use errors::FatalError;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
+use rustc_hir::hir_id::*;
 use rustc_macros::HashStable;
 use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::{SourceMap, Spanned};
@@ -30,17 +32,6 @@ pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use syntax::ast::{CaptureBy, Constness, Movability, Mutability, Unsafety};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
-
-pub mod check_attr;
-pub mod def;
-pub use rustc_hir::def_id;
-pub use rustc_hir::hir_id::*;
-pub mod intravisit;
-pub mod itemlikevisit;
-pub mod map;
-pub mod pat_util;
-pub mod print;
-pub mod upvars;
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Lifetime {
@@ -2580,12 +2571,6 @@ pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.
 pub type GlobMap = NodeMap<FxHashSet<Name>>;
-
-pub fn provide(providers: &mut Providers<'_>) {
-    check_attr::provide(providers);
-    map::provide(providers);
-    upvars::provide(providers);
-}
 
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'hir> {
