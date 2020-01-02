@@ -5,6 +5,5 @@
 
 fn main() {
     m!();
-    //~^ WARN `$crate` may not be imported
-    //~| NOTE `use $crate;` was erroneously allowed and will become a hard error
+    //~^ ERROR `$crate` may not be imported
 }
