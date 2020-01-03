@@ -1,6 +1,6 @@
 use crate::utils::{
-    attrs::is_proc_macro, is_must_use_ty, iter_input_pats, match_def_path, must_use_attr, qpath_res, return_ty,
-    snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then, trait_ref_of_method,
+    attr_by_name, attrs::is_proc_macro, is_must_use_ty, iter_input_pats, match_def_path, must_use_attr, qpath_res,
+    return_ty, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then, trait_ref_of_method,
     type_is_unsafe_function,
 };
 use matches::matches;
@@ -236,7 +236,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
                 check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
                 return;
             }
-            if cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(&item.attrs) {
+            if cx.access_levels.is_exported(item.hir_id)
+                && !is_proc_macro(&item.attrs)
+                && attr_by_name(&item.attrs, "no_mangle").is_none()
+            {
                 check_must_use_candidate(
                     cx,
                     &sig.decl,

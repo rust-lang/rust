@@ -83,6 +83,11 @@ pub unsafe fn mutates_static() -> usize {
     COUNTER
 }
 
+#[no_mangle]
+pub fn unmangled(i: bool) -> bool {
+    !i
+}
+
 fn main() {
     assert_eq!(1, pure(1));
 }
