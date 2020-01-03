@@ -118,17 +118,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             // The rest is integer/pointer-"like", including fn ptr casts and casts from enums that
             // are represented as integers.
-            _ => {
-                assert!(
-                    src.layout.ty.is_bool()
-                        || src.layout.ty.is_char()
-                        || src.layout.ty.is_enum()
-                        || src.layout.ty.is_integral()
-                        || src.layout.ty.is_any_ptr(),
-                    "Unexpected cast from type {:?}",
-                    src.layout.ty
-                )
-            }
+            _ => assert!(
+                src.layout.ty.is_bool()
+                    || src.layout.ty.is_char()
+                    || src.layout.ty.is_enum()
+                    || src.layout.ty.is_integral()
+                    || src.layout.ty.is_any_ptr(),
+                "Unexpected cast from type {:?}",
+                src.layout.ty
+            ),
         }
 
         // Handle cast from a univariant (ZST) enum.
