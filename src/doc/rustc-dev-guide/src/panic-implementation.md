@@ -49,29 +49,30 @@ The `extract` function converts the `panic_handler` attribute to a `panic_impl` 
 
 Now, we have a matching `panic_handler` lang item in the `libstd`. This function goes
 through the same process as the `extern { fn panic_impl }` definition in `libcore`, ending
-up with a symbol name of `rust_begin_unwind`. At link time, the symbol refernce in `libcore`
+up with a symbol name of `rust_begin_unwind`. At link time, the symbol reference in `libcore`
 will be resolved to the definition of `libstd` (the function called `begin_panic_handler` in the
 Rust source).
 
 Thus, control flow will pass from libcore to std at runtime. This allows panics from `libcore`
-to go through the same infratructure that other panics use (panic hooks, unwinding, etc)
+to go through the same infrastructure that other panics use (panic hooks, unwinding, etc)
 
 ##### libstd implementation of panic!
 
-This is where the actual panic-related logic begins. In `src/libstd/pancking.rs`,
+This is where the actual panic-related logic begins. In `src/libstd/panicking.rs`,
 control passes to `rust_panic_with_hook`. This method is responsible
 for invoking the global panic hook, and checking for double panics. Finally,
-we call ```__rust_start_panic```, which is provided by the panic runtime.
+we call `__rust_start_panic`, which is provided by the panic runtime.
 
-The call to ```__rust_start_panic``` is very weird - it is passed a ```*mut &mut dyn BoxMeUp```,
+The call to `__rust_start_panic` is very weird - it is passed a `*mut &mut dyn BoxMeUp`,
 converted to an `usize`. Let's break this type down:
 
 1. `BoxMeUp` is an internal trait. It is implemented for `PanicPayload`
 (a wrapper around the user-supplied payload type), and has a method
-```fn box_me_up(&mut self) -> *mut (dyn Any + Send)```.
-This method takes the user-provided payload (`T: Any + Send`), boxes it, and convertes the box to a raw pointer.
+`fn box_me_up(&mut self) -> *mut (dyn Any + Send)`.
+This method takes the user-provided payload (`T: Any + Send`),
+boxes it, and converts the box to a raw pointer.
 
-2. When we call ```__rust_start_panic```, we have an `&mut dyn BoxMeUp`.
+2. When we call `__rust_start_panic`, we have an `&mut dyn BoxMeUp`.
 However, this is a fat pointer (twice the size of a `usize`).
 To pass this to the panic runtime across an FFI boundary, we take a mutable
 reference *to this mutable reference* (`&mut &mut dyn BoxMeUp`), and convert it to a raw pointer
@@ -79,19 +80,19 @@ reference *to this mutable reference* (`&mut &mut dyn BoxMeUp`), and convert it 
 type (a mutable reference). Therefore, we can convert this thin pointer into a `usize`, which
 is suitable for passing across an FFI boundary.
 
-Finally, we call ```__rust_start_panic``` with this `usize`. We have now entered the panic runtime.
+Finally, we call `__rust_start_panic` with this `usize`. We have now entered the panic runtime.
 
 #### Step 2: The panic runtime
 
 Rust provides two panic runtimes: `libpanic_abort` and `libpanic_unwind`. The user chooses
 between them at build time via their `Cargo.toml`
 
-`libpanic_abort` is extremely simple: its implementation of ```__rust_start_panic``` just aborts,
+`libpanic_abort` is extremely simple: its implementation of `__rust_start_panic` just aborts,
 as you would expect.
 
 `libpanic_unwind` is the more interesting case. 
 
-In its implementation of ```__rust_start_panic```, we take the `usize`, convert
+In its implementation of `__rust_start_panic`, we take the `usize`, convert
 it back to a `*mut &mut dyn BoxMeUp`, dereference it, and call `box_me_up`
 on the `&mut dyn BoxMeUp`. At this point, we have a raw pointer to the payload
 itself (a `*mut (dyn Send + Any)`): that is, a raw pointer to the actual value
