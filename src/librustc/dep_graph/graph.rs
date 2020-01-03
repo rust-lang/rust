@@ -2,18 +2,17 @@ use crate::ty::{self, TyCtxt};
 use errors::Diagnostic;
 use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_index::vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
-use rustc_data_structures::profiling::QueryInvocationId;
-use std::sync::atomic::Ordering::Relaxed;
 use std::env;
 use std::hash::Hash;
 use std::mem;
-use std::sync::atomic::Ordering::SeqCst;
+use std::sync::atomic::Ordering::Relaxed;
 
 use crate::ich::{Fingerprint, StableHashingContext, StableHashingContextProvider};
 
@@ -46,7 +45,7 @@ impl DepNodeIndex {
 impl std::convert::From<DepNodeIndex> for QueryInvocationId {
     #[inline]
     fn from(dep_node_index: DepNodeIndex) -> Self {
-         QueryInvocationId(dep_node_index.as_u32())
+        QueryInvocationId(dep_node_index.as_u32())
     }
 }
 
@@ -125,10 +124,7 @@ impl DepGraph {
     }
 
     pub fn new_disabled() -> DepGraph {
-        DepGraph {
-            data: None,
-            virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
-        }
+        DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.

@@ -257,11 +257,7 @@ impl SelfProfilerRef {
         self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
             let event_id = profiler.get_or_alloc_cached_string(event_id);
             let event_id = EventId::from_label(event_id);
-            TimingGuard::start(
-                profiler,
-                profiler.generic_activity_event_kind,
-                event_id
-            )
+            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
         })
     }
 
@@ -290,11 +286,7 @@ impl SelfProfilerRef {
     #[inline(always)]
     pub fn query_blocked(&self) -> TimingGuard<'_> {
         self.exec(EventFilter::QUERY_BLOCKED, |profiler| {
-            TimingGuard::start(
-                profiler,
-                profiler.query_blocked_event_kind,
-                EventId::INVALID,
-            )
+            TimingGuard::start(profiler, profiler.query_blocked_event_kind, EventId::INVALID)
         })
     }
 
@@ -438,7 +430,7 @@ impl SelfProfiler {
             let string_cache = self.string_cache.read();
 
             if let Some(&id) = string_cache.get(s) {
-                return id
+                return id;
             }
         }
 
@@ -448,21 +440,14 @@ impl SelfProfiler {
         *string_cache.entry(s).or_insert_with(|| self.profiler.alloc_string(s))
     }
 
-    pub fn map_query_invocation_id_to_string(
-        &self,
-        from: QueryInvocationId,
-        to: StringId
-    ) {
+    pub fn map_query_invocation_id_to_string(&self, from: QueryInvocationId, to: StringId) {
         let from = StringId::new_virtual(from.0);
         self.profiler.map_virtual_to_concrete_string(from, to);
     }
 
-    pub fn bulk_map_query_invocation_id_to_single_string<I>(
-        &self,
-        from: I,
-        to: StringId
-    )
-        where I: Iterator<Item=QueryInvocationId> + ExactSizeIterator
+    pub fn bulk_map_query_invocation_id_to_single_string<I>(&self, from: I, to: StringId)
+    where
+        I: Iterator<Item = QueryInvocationId> + ExactSizeIterator,
     {
         let from = from.map(|qid| StringId::new_virtual(qid.0));
         self.profiler.bulk_map_virtual_to_single_concrete_string(from, to);
