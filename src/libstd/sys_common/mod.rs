@@ -36,7 +36,7 @@ macro_rules! rtunwrap {
         match $e {
             $ok(v) => v,
             ref err => {
-                let err = err.as_ref().map(|_| ()); // map Ok/Some which might not be Debug
+                let err = err.as_ref().map(drop); // map Ok/Some which might not be Debug
                 rtabort!(concat!("unwrap failed: ", stringify!($e), " = {:?}"), err)
             }
         }

@@ -232,7 +232,7 @@ impl<R: Seek> BufReader<R> {
                 }
             }
         }
-        self.seek(SeekFrom::Current(offset)).map(|_| ())
+        self.seek(SeekFrom::Current(offset)).map(drop)
     }
 }
 

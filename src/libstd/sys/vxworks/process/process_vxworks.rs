@@ -138,7 +138,7 @@ impl Process {
                 "invalid argument: can't kill an exited process",
             ))
         } else {
-            cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(|_| ())
+            cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
         }
     }
 

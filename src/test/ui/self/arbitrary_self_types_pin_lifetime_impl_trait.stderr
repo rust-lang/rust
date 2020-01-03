@@ -11,7 +11,7 @@ note: ...can't outlive the anonymous lifetime #1 defined on the method body at 8
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: you can add a constraint to the return type to make it last less than `'static` and match the anonymous lifetime #1 defined on the method body at 8:5
+help: you can add a bound to the return type to make it last less than `'static` and match the anonymous lifetime #1 defined on the method body at 8:5
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
    |                               ^^^^^^^^^^^^^^^

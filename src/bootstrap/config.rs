@@ -108,6 +108,7 @@ pub struct Config {
     pub rust_dist_src: bool,
     pub rust_codegen_backends: Vec<Interned<String>>,
     pub rust_verify_llvm_ir: bool,
+    pub rust_thin_lto_import_instr_limit: Option<u32>,
     pub rust_remap_debuginfo: bool,
 
     pub build: Interned<String>,
@@ -202,6 +203,7 @@ struct Build {
     target: Vec<String>,
     cargo: Option<String>,
     rustc: Option<String>,
+    rustfmt: Option<String>, /* allow bootstrap.py to use rustfmt key */
     docs: Option<bool>,
     compiler_docs: Option<bool>,
     submodules: Option<bool>,
@@ -325,6 +327,7 @@ struct Rust {
     deny_warnings: Option<bool>,
     backtrace_on_ice: Option<bool>,
     verify_llvm_ir: Option<bool>,
+    thin_lto_import_instr_limit: Option<u32>,
     remap_debuginfo: Option<bool>,
     jemalloc: Option<bool>,
     test_compare_mode: Option<bool>,
@@ -569,6 +572,7 @@ impl Config {
             set(&mut config.deny_warnings, flags.deny_warnings.or(rust.deny_warnings));
             set(&mut config.backtrace_on_ice, rust.backtrace_on_ice);
             set(&mut config.rust_verify_llvm_ir, rust.verify_llvm_ir);
+            config.rust_thin_lto_import_instr_limit = rust.thin_lto_import_instr_limit;
             set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);
 
             if let Some(ref backends) = rust.codegen_backends {

@@ -815,7 +815,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             span,
                             &format!(
                                 "to allow this `impl Trait` to capture borrowed data with lifetime \
-                                 `{}`, add `{}` as a constraint",
+                                 `{}`, add `{}` as a bound",
                                 fr_name, suggestable_fr_name,
                             ),
                             format!("{} + {}", snippet, suggestable_fr_name),
