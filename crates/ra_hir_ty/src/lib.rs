@@ -58,7 +58,7 @@ use crate::{
 use display::{HirDisplay, HirFormatter};
 
 pub use autoderef::autoderef;
-pub use infer::{infer_query, InferTy, InferenceResult};
+pub use infer::{do_infer_query, InferTy, InferenceResult};
 pub use lower::CallableDef;
 pub use lower::{callable_item_sig, TyDefId, ValueTyDefId};
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};

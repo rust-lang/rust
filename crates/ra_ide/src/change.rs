@@ -273,7 +273,7 @@ impl RootDatabase {
         self.query(hir::db::BodyWithSourceMapQuery).sweep(sweep);
 
         self.query(hir::db::ExprScopesQuery).sweep(sweep);
-        self.query(hir::db::InferQuery).sweep(sweep);
+        self.query(hir::db::DoInferQuery).sweep(sweep);
         self.query(hir::db::BodyQuery).sweep(sweep);
     }
 
@@ -320,7 +320,7 @@ impl RootDatabase {
             hir::db::LangItemQuery
             hir::db::DocumentationQuery
             hir::db::ExprScopesQuery
-            hir::db::InferQuery
+            hir::db::DoInferQuery
             hir::db::TyQuery
             hir::db::ValueTyQuery
             hir::db::FieldTypesQuery
