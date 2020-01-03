@@ -17,12 +17,11 @@ use ra_db::{CrateGraph, CrateId, Edition, Env, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
-use crate::workspace_error::WorkspaceError;
-
 pub use crate::{
     cargo_workspace::{CargoFeatures, CargoWorkspace, Package, Target, TargetKind},
     json_project::JsonProject,
     sysroot::Sysroot,
+    workspace_error::WorkspaceError,
 };
 
 #[derive(Debug, Clone)]
