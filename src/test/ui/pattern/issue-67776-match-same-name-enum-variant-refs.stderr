@@ -1,0 +1,36 @@
+warning[E0170]: pattern binding `Bar` is named the same as one of the variants of the type `Foo`
+  --> $DIR/issue-67776-match-same-name-enum-variant-refs.rs:17:9
+   |
+LL |         Bar => {},
+   |         ^^^ help: to match on the variant, qualify the path: `Foo::Bar`
+
+warning[E0170]: pattern binding `Baz` is named the same as one of the variants of the type `Foo`
+  --> $DIR/issue-67776-match-same-name-enum-variant-refs.rs:19:9
+   |
+LL |         Baz => {},
+   |         ^^^ help: to match on the variant, qualify the path: `Foo::Baz`
+
+warning[E0170]: pattern binding `Bar` is named the same as one of the variants of the type `Foo`
+  --> $DIR/issue-67776-match-same-name-enum-variant-refs.rs:26:9
+   |
+LL |         Bar => {},
+   |         ^^^ help: to match on the variant, qualify the path: `Foo::Bar`
+
+warning[E0170]: pattern binding `Baz` is named the same as one of the variants of the type `Foo`
+  --> $DIR/issue-67776-match-same-name-enum-variant-refs.rs:28:9
+   |
+LL |         Baz => {},
+   |         ^^^ help: to match on the variant, qualify the path: `Foo::Baz`
+
+warning[E0170]: pattern binding `Bar` is named the same as one of the variants of the type `Foo`
+  --> $DIR/issue-67776-match-same-name-enum-variant-refs.rs:35:9
+   |
+LL |         Bar => {},
+   |         ^^^ help: to match on the variant, qualify the path: `Foo::Bar`
+
+warning[E0170]: pattern binding `Baz` is named the same as one of the variants of the type `Foo`
+  --> $DIR/issue-67776-match-same-name-enum-variant-refs.rs:37:9
+   |
+LL |         Baz => {},
+   |         ^^^ help: to match on the variant, qualify the path: `Foo::Baz`
+

@@ -284,7 +284,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
             if let Some(ty::BindByValue(hir::Mutability::Not)) =
                 cx.tables.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
             {
-                let pat_ty = cx.tables.pat_ty(p);
+                let pat_ty = cx.tables.pat_ty(p).peel_refs();
                 if let ty::Adt(edef, _) = pat_ty.kind {
                     if edef.is_enum()
                         && edef.variants.iter().any(|variant| {
