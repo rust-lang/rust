@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use crate::traits;
@@ -17,6 +19,7 @@ pub struct VerifyBoundCx<'cx, 'tcx> {
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
+    elaborator: RefCell<traits::Elaborator<'tcx>>,
 }
 
 impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
@@ -26,7 +29,13 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
-        Self { tcx, region_bound_pairs, implicit_region_bound, param_env }
+        Self {
+            tcx,
+            region_bound_pairs,
+            implicit_region_bound,
+            param_env,
+            elaborator: RefCell::new(traits::Elaborator::new(tcx)),
+        }
     }
 
     /// Returns a "verify bound" that encodes what we know about
@@ -113,10 +122,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
 
         // Search the env for where clauses like `P: 'a`.
-        let env_bounds = self
-            .projection_approx_declared_bounds_from_env(projection_ty)
-            .into_iter()
-            .map(|ty::OutlivesPredicate(ty, r)| {
+        let mut bounds = Vec::new();
+
+        bounds.extend(self.projection_approx_declared_bounds_from_env(projection_ty).map(
+            |ty::OutlivesPredicate(ty, r)| {
                 let vb = VerifyBound::OutlivedBy(r);
                 if ty == projection_ty_as_ty {
                     // Micro-optimize if this is an exact match (this
@@ -126,18 +135,20 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 } else {
                     VerifyBound::IfEq(ty, Box::new(vb))
                 }
-            });
+            },
+        ));
 
         // Extend with bounds that we can find from the trait.
-        let trait_bounds = self
-            .projection_declared_bounds_from_trait(projection_ty)
-            .map(|r| VerifyBound::OutlivedBy(r));
+        bounds.extend(
+            self.projection_declared_bounds_from_trait(projection_ty)
+                .map(|r| VerifyBound::OutlivedBy(r)),
+        );
 
         // see the extensive comment in projection_must_outlive
         let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
         let recursive_bound = self.recursive_type_bound(ty);
 
-        VerifyBound::AnyBound(env_bounds.chain(trait_bounds).collect()).or(recursive_bound)
+        VerifyBound::AnyBound(bounds).or(recursive_bound)
     }
 
     fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
@@ -154,7 +165,11 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             .filter(|b| !b.must_hold())
             .collect::<Vec<_>>();
 
-        if bounds.len() == 1 { bounds.pop().unwrap() } else { VerifyBound::AllBounds(bounds) }
+        if bounds.len() == 1 {
+            bounds.pop().unwrap()
+        } else {
+            VerifyBound::AllBounds(bounds)
+        }
     }
 
     /// Searches the environment for where-clauses like `G: 'a` where
@@ -281,13 +296,16 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();
-        let trait_predicates =
-            tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p).collect();
+        let trait_predicates = tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p);
+        let mut elaborator = self.elaborator.borrow_mut();
+        elaborator.clear();
+        elaborator.extend(trait_predicates);
         let identity_substs = InternalSubsts::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
+
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,
-            traits::elaborate_predicates(tcx, trait_predicates),
+            std::iter::from_fn(move || elaborator.next()),
         )
         .map(|b| b.1)
     }

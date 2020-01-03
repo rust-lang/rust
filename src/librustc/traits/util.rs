@@ -120,6 +120,15 @@ pub fn elaborate_predicates<'tcx>(
 }
 
 impl Elaborator<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self { stack: Vec::new(), visited: PredicateSet::new(tcx) }
+    }
+
+    pub fn clear(&mut self) {
+        self.stack.clear();
+        self.visited.set.clear();
+    }
+
     pub fn filter_to_traits(self) -> FilterToTraits<Self> {
         FilterToTraits::new(self)
     }
@@ -137,14 +146,7 @@ impl Elaborator<'tcx> {
                     .map(|(pred, _)| pred.subst_supertrait(tcx, &data.to_poly_trait_ref()));
                 debug!("super_predicates: data={:?} predicates={:?}", data, predicates.clone());
 
-                // Only keep those bounds that we haven't already seen.
-                // This is necessary to prevent infinite recursion in some
-                // cases. One common case is when people define
-                // `trait Sized: Sized { }` rather than `trait Sized { }`.
-                let visited = &mut self.visited;
-                let predicates = predicates.filter(|pred| visited.insert(pred));
-
-                self.stack.extend(predicates);
+                self.extend(predicates);
             }
             ty::Predicate::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,
@@ -192,43 +194,48 @@ impl Elaborator<'tcx> {
                     return;
                 }
 
-                let visited = &mut self.visited;
                 let mut components = smallvec![];
                 tcx.push_outlives_components(ty_max, &mut components);
-                self.stack.extend(
-                    components
-                        .into_iter()
-                        .filter_map(|component| match component {
-                            Component::Region(r) => {
-                                if r.is_late_bound() {
-                                    None
-                                } else {
-                                    Some(ty::Predicate::RegionOutlives(ty::Binder::dummy(
-                                        ty::OutlivesPredicate(r, r_min),
-                                    )))
-                                }
-                            }
+                self.extend(components.into_iter().filter_map(|component| match component {
+                    Component::Region(r) => {
+                        if r.is_late_bound() {
+                            None
+                        } else {
+                            Some(ty::Predicate::RegionOutlives(ty::Binder::dummy(
+                                ty::OutlivesPredicate(r, r_min),
+                            )))
+                        }
+                    }
 
-                            Component::Param(p) => {
-                                let ty = tcx.mk_ty_param(p.index, p.name);
-                                Some(ty::Predicate::TypeOutlives(ty::Binder::dummy(
-                                    ty::OutlivesPredicate(ty, r_min),
-                                )))
-                            }
+                    Component::Param(p) => {
+                        let ty = tcx.mk_ty_param(p.index, p.name);
+                        Some(ty::Predicate::TypeOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
+                            ty, r_min,
+                        ))))
+                    }
 
-                            Component::UnresolvedInferenceVariable(_) => None,
+                    Component::UnresolvedInferenceVariable(_) => None,
 
-                            Component::Projection(_) | Component::EscapingProjection(_) => {
-                                // We can probably do more here. This
-                                // corresponds to a case like `<T as
-                                // Foo<'a>>::U: 'b`.
-                                None
-                            }
-                        })
-                        .filter(|p| visited.insert(p)),
-                );
+                    Component::Projection(_) | Component::EscapingProjection(_) => {
+                        // We can probably do more here. This
+                        // corresponds to a case like `<T as
+                        // Foo<'a>>::U: 'b`.
+                        None
+                    }
+                }));
             }
         }
+    }
+}
+
+impl<'tcx> Extend<ty::Predicate<'tcx>> for Elaborator<'tcx> {
+    fn extend<I: IntoIterator<Item = ty::Predicate<'tcx>>>(&mut self, iter: I) {
+        let visited = &mut self.visited;
+        // Only keep those bounds that we haven't already seen.
+        // This is necessary to prevent infinite recursion in some
+        // cases. One common case is when people define
+        // `trait Sized: Sized { }` rather than `trait Sized { }`.
+        self.stack.extend(iter.into_iter().filter(|pred| visited.insert(pred)));
     }
 }
 
