@@ -81,7 +81,8 @@ impl<'tcx> Instance<'tcx> {
         if self.substs.has_param_types() {
             bug!(
                 "Instance.ty called for type {:?} with projections in substs: {:?}",
-                ty, self.substs
+                ty,
+                self.substs
             );
         }
         tcx.subst_and_normalize_erasing_regions(self.substs, ty::ParamEnv::reveal_all(), &ty)
