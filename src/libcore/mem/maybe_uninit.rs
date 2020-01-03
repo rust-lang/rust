@@ -44,6 +44,9 @@ use crate::mem::ManuallyDrop;
 /// use std::mem::MaybeUninit;
 ///
 /// let x: i32 = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior!
+///
+/// let x_copy = x;
+/// assert_eq!(x, x_copy); // may _fail_ because x doesn't have a well-defined value!
 /// ```
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
 /// until they are, it is advisable to avoid them.)
