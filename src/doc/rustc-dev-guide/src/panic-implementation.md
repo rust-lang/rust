@@ -36,9 +36,9 @@ Actually resolving this goes through several layers of indirection:
 
 ```rust
 /// Entry point of panic from the libcore crate.
-[cfg(not(test))]
-[panic_handler]
-[unwind(allowed)]
+#[cfg(not(test))]
+#[panic_handler]
+#[unwind(allowed)]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     ...
 }
