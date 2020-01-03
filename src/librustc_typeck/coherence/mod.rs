@@ -8,6 +8,7 @@
 use rustc::traits;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
+use rustc_data_structures::sync::par_for_each;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::HirId;
@@ -140,9 +141,9 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
 }
 
 pub fn check_coherence(tcx: TyCtxt<'_>) {
-    for &trait_def_id in tcx.hir().krate().trait_impls.keys() {
+    par_for_each(&tcx.hir().krate().trait_impls, |(&trait_def_id, _)| {
         tcx.ensure().coherent_trait(trait_def_id);
-    }
+    });
 
     tcx.sess.time("unsafety_checking", || unsafety::check(tcx));
     tcx.sess.time("orphan_checking", || orphan::check(tcx));
