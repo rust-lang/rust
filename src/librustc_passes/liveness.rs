@@ -106,6 +106,7 @@ use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -182,11 +183,28 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     }
 }
 
+struct LivenessVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    module_def_id: DefId,
+}
+
+impl<'tcx> ParItemLikeVisitor<'tcx> for LivenessVisitor<'tcx> {
+    fn visit_item(&self, item: &'tcx hir::Item<'tcx>) {
+        IrMaps::new(self.tcx, self.module_def_id).visit_item(item);
+    }
+
+    fn visit_trait_item(&self, trait_item: &'tcx hir::TraitItem<'tcx>) {
+        IrMaps::new(self.tcx, self.module_def_id).visit_trait_item(trait_item);
+    }
+
+    fn visit_impl_item(&self, impl_item: &'tcx hir::ImplItem<'tcx>) {
+        IrMaps::new(self.tcx, self.module_def_id).visit_impl_item(impl_item);
+    }
+}
+
 fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(
-        module_def_id,
-        &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),
-    );
+    tcx.hir()
+        .par_visit_item_likes_in_module(module_def_id, &LivenessVisitor { tcx, module_def_id });
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

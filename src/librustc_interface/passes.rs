@@ -814,14 +814,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     sess.time("misc_checking_2", || {
         parallel!(
             {
-                sess.time("match_checking", || {
-                    tcx.par_body_owners(|def_id| {
-                        tcx.ensure().check_match(def_id);
-                    });
-                });
-            },
-            {
-                sess.time("liveness_and_intrinsic_checking", || {
+                sess.time("liveness_checking", || {
                     par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
                         // this must run before MIR dump, because
                         // "not all control paths return a value" is reported here.
@@ -830,6 +823,20 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                         let local_def_id = tcx.hir().local_def_id(module);
 
                         tcx.ensure().check_mod_liveness(local_def_id);
+                    });
+                });
+            },
+            {
+                sess.time("match_checking", || {
+                    tcx.par_body_owners(|def_id| {
+                        tcx.ensure().check_match(def_id);
+                    });
+                });
+            },
+            {
+                sess.time("intrinsic_checking", || {
+                    par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
+                        let local_def_id = tcx.hir().local_def_id(module);
                         tcx.ensure().check_mod_intrinsics(local_def_id);
                     });
                 });
