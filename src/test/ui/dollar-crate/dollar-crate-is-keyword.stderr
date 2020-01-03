@@ -19,7 +19,7 @@ LL | m!();
 error: `$crate` may not be imported
   --> $DIR/dollar-crate-is-keyword.rs:9:9
    |
-LL |         use $crate; // ERROR `$crate` may not be imported
+LL |         use $crate;
    |         ^^^^^^^^^^^
 ...
 LL | m!();
@@ -35,4 +35,3 @@ LL | m!();
    | ----- in this macro invocation
 
 error: aborting due to 4 previous errors
-
