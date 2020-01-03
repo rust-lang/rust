@@ -189,7 +189,7 @@ use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::{par_for_each, MTLock, MTRef};
+use rustc_data_structures::sync::{join, par_for_each, MTLock, MTRef};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -278,8 +278,16 @@ pub fn collect_crate_mono_items(
 ) -> (FxHashSet<MonoItem<'_>>, InliningMap<'_>) {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
-    let roots =
-        tcx.sess.time("monomorphization_collector_root_collections", || collect_roots(tcx, mode));
+    let (roots, _) = join(
+        || {
+            tcx.sess
+                .time("monomorphization_collector_root_collections", || collect_roots(tcx, mode))
+        },
+        || {
+            // Prefetch upstream_monomorphizations
+            tcx.upstream_monomorphizations(LOCAL_CRATE);
+        },
+    );
 
     debug!("building mono item graph, beginning at roots");
 
