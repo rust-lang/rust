@@ -1,11 +1,11 @@
 //! FIXME: write short doc here
 
 pub use hir_def::db::{
-    BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQuery, CrateLangItemsQuery,
-    DefDatabase, DefDatabaseStorage, DocumentationQuery, EnumDataQuery, ExprScopesQuery,
-    FunctionDataQuery, GenericParamsQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage,
-    LangItemQuery, ModuleLangItemsQuery, RawItemsQuery, StaticDataQuery, StructDataQuery,
-    TraitDataQuery, TypeAliasDataQuery,
+    BodyQuery, BodyWithSourceMapQuery, ComputeCrateDefMapQuery, ConstDataQuery,
+    CrateLangItemsQuery, DefDatabase, DefDatabaseStorage, DocumentationQuery, EnumDataQuery,
+    ExprScopesQuery, FunctionDataQuery, GenericParamsQuery, ImplDataQuery, InternDatabase,
+    InternDatabaseStorage, LangItemQuery, ModuleLangItemsQuery, RawItemsQuery, StaticDataQuery,
+    StructDataQuery, TraitDataQuery, TypeAliasDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
