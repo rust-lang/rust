@@ -156,12 +156,12 @@ fn add_missing_impl_members_inner(
             .collect();
         let items = missing_items
             .into_iter()
+            .map(|it| {
+                substitute_type_params(db, hir::InFile::new(file_id.into(), it), &substs_by_param)
+            })
             .map(|it| match module {
                 Some(module) => qualify_paths(db, hir::InFile::new(file_id.into(), it), module),
                 None => it,
-            })
-            .map(|it| {
-                substitute_type_params(db, hir::InFile::new(file_id.into(), it), &substs_by_param)
             })
             .map(|it| match it {
                 ast::ImplItem::FnDef(def) => ast::ImplItem::FnDef(add_body(def)),
@@ -239,11 +239,9 @@ fn substitute_type_params<N: AstNode>(
 
 use hir::PathResolution;
 
-// TODO handle generic args
-// TODO handle associated item paths
-// TODO handle value ns?
-
 // FIXME extract this to a general utility as well
+// FIXME handle value ns?
+// FIXME this doesn't 'commute' with `substitute_type_params`, since type params in newly generated type arg lists don't resolve. Currently we can avoid this problem, but it's worth thinking about a solution
 fn qualify_paths<N: AstNode>(db: &impl HirDatabase, node: hir::InFile<N>, from: hir::Module) -> N {
     let path_replacements = node
         .value
@@ -255,12 +253,17 @@ fn qualify_paths<N: AstNode>(db: &impl HirDatabase, node: hir::InFile<N>, from: 
                 // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
                 return None;
             }
+            // FIXME check if some ancestor is already being replaced, if so skip this
             let analyzer = hir::SourceAnalyzer::new(db, node.with_value(p.syntax()), None);
             let resolution = analyzer.resolve_path(db, &p)?;
             match resolution {
                 PathResolution::Def(def) => {
                     let found_path = from.find_path(db, def)?;
-                    Some((p, found_path.to_ast()))
+                    let args = p
+                        .segment()
+                        .and_then(|s| s.type_arg_list())
+                        .map(|arg_list| qualify_paths(db, node.with_value(arg_list), from));
+                    Some((p, make::path_with_type_arg_list(found_path.to_ast(), args)))
                 }
                 PathResolution::Local(_)
                 | PathResolution::TypeParam(_)
@@ -535,7 +538,7 @@ impl foo::Foo for S { <|> }",
             "
 mod foo {
     pub struct Bar<T>;
-    impl Bar { type Assoc = u32; }
+    impl Bar<T> { type Assoc = u32; }
     trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
 }
 struct S;

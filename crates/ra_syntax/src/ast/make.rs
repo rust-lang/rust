@@ -21,6 +21,13 @@ pub fn path_qualified(qual: ast::Path, name_ref: ast::NameRef) -> ast::Path {
 fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(text)
 }
+pub fn path_with_type_arg_list(path: ast::Path, args: Option<ast::TypeArgList>) -> ast::Path {
+    if let Some(args) = args {
+        ast_from_text(&format!("const X: {}{}", path.syntax(), args.syntax()))
+    } else {
+        path
+    }
+}
 
 pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
     return match expr {
