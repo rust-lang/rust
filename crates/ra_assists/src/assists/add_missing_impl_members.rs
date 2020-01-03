@@ -134,8 +134,9 @@ fn add_missing_impl_members_inner(
         return None;
     }
 
-    let file_id = ctx.frange.file_id;
     let db = ctx.db;
+    let file_id = ctx.frange.file_id;
+    let trait_file_id = trait_.source(db).file_id;
 
     ctx.add_assist(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
@@ -157,10 +158,10 @@ fn add_missing_impl_members_inner(
         let items = missing_items
             .into_iter()
             .map(|it| {
-                substitute_type_params(db, hir::InFile::new(file_id.into(), it), &substs_by_param)
+                substitute_type_params(db, hir::InFile::new(trait_file_id, it), &substs_by_param)
             })
             .map(|it| match module {
-                Some(module) => qualify_paths(db, hir::InFile::new(file_id.into(), it), module),
+                Some(module) => qualify_paths(db, hir::InFile::new(trait_file_id, it), module),
                 None => it,
             })
             .map(|it| match it {
@@ -259,6 +260,7 @@ fn qualify_paths<N: AstNode>(db: &impl HirDatabase, node: hir::InFile<N>, from: 
             match resolution {
                 PathResolution::Def(def) => {
                     let found_path = from.find_path(db, def)?;
+                    // TODO fix type arg replacements being qualified
                     let args = p
                         .segment()
                         .and_then(|s| s.type_arg_list())
@@ -519,6 +521,32 @@ mod foo {
 struct S;
 impl foo::Foo<u32> for S {
     <|>fn foo(&self, bar: foo::Bar<u32>) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_substitute_param_no_qualify() {
+        // when substituting params, the substituted param should not be qualified!
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    trait Foo<T> { fn foo(&self, bar: T); }
+    pub struct Param;
+}
+struct Param;
+struct S;
+impl foo::Foo<Param> for S { <|> }",
+            "
+mod foo {
+    trait Foo<T> { fn foo(&self, bar: T); }
+    pub struct Param;
+}
+struct Param;
+struct S;
+impl foo::Foo<Param> for S {
+    <|>fn foo(&self, bar: Param) { unimplemented!() }
 }",
         );
     }
