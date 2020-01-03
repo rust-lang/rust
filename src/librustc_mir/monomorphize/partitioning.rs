@@ -112,14 +112,6 @@ use rustc_span::symbol::Symbol;
 use crate::monomorphize::collector::InliningMap;
 use crate::monomorphize::collector::{self, MonoItemCollectionMode};
 
-pub enum PartitioningStrategy {
-    /// Generates one codegen unit per source-level module.
-    PerModule,
-
-    /// Partition the whole crate into a fixed number of codegen units.
-    FixedUnitCount(usize),
-}
-
 // Anything we can't find a proper codegen unit for goes into this.
 fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
@@ -128,7 +120,7 @@ fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
 pub fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
     mono_items: I,
-    strategy: PartitioningStrategy,
+    max_cgu_count: usize,
     inlining_map: &InliningMap<'tcx>,
 ) -> Vec<CodegenUnit<'tcx>>
 where
@@ -148,11 +140,10 @@ where
 
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
-    // If the partitioning should produce a fixed count of codegen units, merge
-    // until that count is reached.
-    if let PartitioningStrategy::FixedUnitCount(count) = strategy {
+    // Merge until we have at most `max_cgu_count` codegen units.
+    {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
-        merge_codegen_units(tcx, &mut initial_partitioning, count);
+        merge_codegen_units(tcx, &mut initial_partitioning, max_cgu_count);
         debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
 
@@ -875,13 +866,7 @@ fn collect_and_partition_mono_items(
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
             || {
-                let strategy = if tcx.sess.opts.incremental.is_some() {
-                    PartitioningStrategy::PerModule
-                } else {
-                    PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
-                };
-
-                partition(tcx, items.iter().cloned(), strategy, &inlining_map)
+                partition(tcx, items.iter().cloned(), tcx.sess.codegen_units(), &inlining_map)
                     .into_iter()
                     .map(Arc::new)
                     .collect::<Vec<_>>()
