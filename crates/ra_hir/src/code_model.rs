@@ -25,6 +25,7 @@ use hir_ty::{
     TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
 };
 use ra_db::{CrateId, Edition, FileId};
+use ra_prof::profile;
 use ra_syntax::ast;
 
 use crate::{
@@ -189,6 +190,7 @@ impl Module {
     }
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
+        let _p = profile("Module::diagnostics");
         db.crate_def_map(self.id.krate).add_diagnostics(db, self.id.local_id, sink);
         for decl in self.declarations(db) {
             match decl {
@@ -507,6 +509,7 @@ impl Function {
     }
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
+        let _p = profile("Function::diagnostics");
         let infer = db.infer(self.id.into());
         infer.add_diagnostics(db, self.id, sink);
         let mut validator = ExprValidator::new(self.id, infer, sink);
