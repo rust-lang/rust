@@ -152,10 +152,16 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
         &mut self,
     ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
         match self.value {
-            LocalValue::Dead => throw_unsup!(DeadLocal),
-            LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
+            LocalValue::Dead => {
+                throw_unsup!(DeadLocal)
+            }
+            LocalValue::Live(Operand::Indirect(mplace)) => {
+                Ok(Err(mplace))
+            }
             ref mut local @ LocalValue::Live(Operand::Immediate(_))
-            | ref mut local @ LocalValue::Uninitialized => Ok(Ok(local)),
+            | ref mut local @ LocalValue::Uninitialized => {
+                Ok(Ok(local))
+            }
         }
     }
 }
