@@ -96,6 +96,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub BINDINGS_WITH_VARIANT_NAME,
+    Warn,
+    "detects pattern bindings with the same name as one of the matched variants"
+}
+
+declare_lint! {
     pub UNUSED_MACROS,
     Warn,
     "detects macros that were not used"
@@ -459,6 +465,7 @@ declare_lint_pass! {
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         OVERLAPPING_PATTERNS,
+        BINDINGS_WITH_VARIANT_NAME,
         UNUSED_MACROS,
         WARNINGS,
         UNUSED_FEATURES,

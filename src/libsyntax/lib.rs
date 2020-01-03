@@ -68,12 +68,6 @@ where
 
 scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
-#[macro_use]
-pub mod diagnostics {
-    #[macro_use]
-    pub mod macros;
-}
-
 pub mod util {
     pub mod classify;
     pub mod comments;

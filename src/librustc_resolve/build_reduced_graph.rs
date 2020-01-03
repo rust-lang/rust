@@ -27,7 +27,7 @@ use rustc_data_structures::sync::Lrc;
 use std::cell::Cell;
 use std::ptr;
 
-use errors::Applicability;
+use errors::{struct_span_err, Applicability};
 
 use rustc_expand::base::SyntaxExtension;
 use rustc_expand::expand::AstFragment;
@@ -38,7 +38,6 @@ use syntax::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use syntax::ast::{Ident, Name};
 use syntax::attr;
 use syntax::source_map::{respan, Spanned};
-use syntax::span_err;
 use syntax::symbol::{kw, sym};
 use syntax::token::{self, Token};
 use syntax::visit::{self, Visitor};
@@ -957,22 +956,27 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         for attr in &item.attrs {
             if attr.check_name(sym::macro_use) {
                 if self.parent_scope.module.parent.is_some() {
-                    span_err!(
+                    struct_span_err!(
                         self.r.session,
                         item.span,
                         E0468,
                         "an `extern crate` loading macros must be at the crate root"
-                    );
+                    )
+                    .emit();
                 }
                 if let ItemKind::ExternCrate(Some(orig_name)) = item.kind {
                     if orig_name == kw::SelfLower {
-                        self.r.session.span_err(
-                            attr.span,
-                            "`macro_use` is not supported on `extern crate self`",
-                        );
+                        self.r
+                            .session
+                            .struct_span_err(
+                                attr.span,
+                                "`macro_use` is not supported on `extern crate self`",
+                            )
+                            .emit();
                     }
                 }
-                let ill_formed = |span| span_err!(self.r.session, span, E0466, "bad macro import");
+                let ill_formed =
+                    |span| struct_span_err!(self.r.session, span, E0466, "bad macro import").emit();
                 match attr.meta() {
                     Some(meta) => match meta.kind {
                         MetaItemKind::Word => {
@@ -1045,7 +1049,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         allow_shadowing,
                     );
                 } else {
-                    span_err!(self.r.session, ident.span, E0469, "imported macro not found");
+                    struct_span_err!(self.r.session, ident.span, E0469, "imported macro not found")
+                        .emit();
                 }
             }
         }

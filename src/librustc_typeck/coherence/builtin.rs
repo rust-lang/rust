@@ -1,22 +1,19 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
+use errors::struct_span_err;
+use rustc::hir::def_id::DefId;
+use rustc::hir::{self, ItemKind, Node};
+use rustc::infer;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::SuppressRegionErrors;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 use rustc::middle::region;
-
-use rustc::infer;
 use rustc::traits::{self, ObligationCause, TraitEngine};
 use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::util::CopyImplementationError;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
-
-use hir::Node;
-use rustc::hir::def_id::DefId;
-use rustc::hir::{self, ItemKind};
-
 use rustc_error_codes::*;
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
@@ -401,7 +398,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 if def_a != def_b {
                     let source_path = tcx.def_path_str(def_a.did);
                     let target_path = tcx.def_path_str(def_b.did);
-                    span_err!(
+                    struct_span_err!(
                         tcx.sess,
                         span,
                         E0377,
@@ -410,7 +407,8 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                                definition; expected `{}`, found `{}`",
                         source_path,
                         target_path
-                    );
+                    )
+                    .emit();
                     return err_info;
                 }
 
@@ -487,14 +485,15 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                     .collect::<Vec<_>>();
 
                 if diff_fields.is_empty() {
-                    span_err!(
+                    struct_span_err!(
                         tcx.sess,
                         span,
                         E0374,
                         "the trait `CoerceUnsized` may only be implemented \
                                for a coercion between structures with one field \
                                being coerced, none found"
-                    );
+                    )
+                    .emit();
                     return err_info;
                 } else if diff_fields.len() > 1 {
                     let item = tcx.hir().expect_item(impl_hir_id);
@@ -504,19 +503,19 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                         tcx.hir().span(impl_hir_id)
                     };
 
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         tcx.sess,
                         span,
                         E0375,
                         "implementing the trait \
                                                     `CoerceUnsized` requires multiple \
                                                     coercions"
-                    );
-                    err.note(
+                    )
+                    .note(
                         "`CoerceUnsized` may only be implemented for \
                               a coercion between structures with one field being coerced",
-                    );
-                    err.note(&format!(
+                    )
+                    .note(&format!(
                         "currently, {} fields need coercions: {}",
                         diff_fields.len(),
                         diff_fields
@@ -526,9 +525,9 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                             })
                             .collect::<Vec<_>>()
                             .join(", ")
-                    ));
-                    err.span_label(span, "requires multiple coercions");
-                    err.emit();
+                    ))
+                    .span_label(span, "requires multiple coercions")
+                    .emit();
                     return err_info;
                 }
 
@@ -538,13 +537,14 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             }
 
             _ => {
-                span_err!(
+                struct_span_err!(
                     tcx.sess,
                     span,
                     E0376,
                     "the trait `CoerceUnsized` may only be implemented \
                            for a coercion between structures"
-                );
+                )
+                .emit();
                 return err_info;
             }
         };

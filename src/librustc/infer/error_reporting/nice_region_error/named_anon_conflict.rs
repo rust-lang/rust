@@ -3,7 +3,7 @@
 use crate::hir::{FunctionRetTy, TyKind};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::ty;
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 
 use rustc_error_codes::*;
 

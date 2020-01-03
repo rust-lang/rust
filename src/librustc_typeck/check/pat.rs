@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
 use crate::util::nodemap::FxHashMap;
-use errors::{pluralize, Applicability, DiagnosticBuilder};
+use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::hir::{self, HirId, Pat, PatKind};
@@ -982,22 +982,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Require `..` if struct has non_exhaustive attribute.
         if variant.is_field_list_non_exhaustive() && !adt.did.is_local() && !etc {
-            span_err!(
+            struct_span_err!(
                 tcx.sess,
                 span,
                 E0638,
                 "`..` required with {} marked as non-exhaustive",
                 kind_name
-            );
+            )
+            .emit();
         }
 
         // Report an error if incorrect number of the fields were specified.
         if kind_name == "union" {
             if fields.len() != 1 {
-                tcx.sess.span_err(span, "union patterns should have exactly one field");
+                tcx.sess
+                    .struct_span_err(span, "union patterns should have exactly one field")
+                    .emit();
             }
             if etc {
-                tcx.sess.span_err(span, "`..` cannot be used in union patterns");
+                tcx.sess.struct_span_err(span, "`..` cannot be used in union patterns").emit();
             }
         } else if !etc && unmentioned_fields.len() > 0 {
             self.error_unmentioned_fields(span, &unmentioned_fields, variant);

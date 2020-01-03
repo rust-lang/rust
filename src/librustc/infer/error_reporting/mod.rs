@@ -65,7 +65,7 @@ use crate::ty::{
     Region, Ty, TyCtxt, TypeFoldable,
 };
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use errors::{struct_span_err, Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_error_codes::*;
 use rustc_span::{Pos, Span};
 use rustc_target::spec::abi;

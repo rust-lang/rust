@@ -1,8 +1,9 @@
 use super::autoderef::Autoderef;
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
+use crate::type_error_struct;
 
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use hir::def::Res;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};

@@ -1,8 +1,8 @@
 use crate::check::regionck::RegionCtxt;
-
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::util::common::ErrorReported;
+use errors::struct_span_err;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{InferOk, SuppressRegionErrors};
 use rustc::middle::region;

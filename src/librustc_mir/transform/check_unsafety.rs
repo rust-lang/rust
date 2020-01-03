@@ -1,5 +1,3 @@
-use rustc_data_structures::fx::FxHashSet;
-
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::Node;
@@ -9,7 +7,8 @@ use rustc::mir::*;
 use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
-
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::struct_span_err;
 use syntax::symbol::{sym, Symbol};
 
 use std::ops::Bound;

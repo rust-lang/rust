@@ -9,7 +9,7 @@ use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
-use errors::DiagnosticBuilder;
+use errors::{struct_span_err, DiagnosticBuilder};
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -523,11 +523,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err.span_label(span, label);
 
         if nightly_options::is_nightly_build() {
-            help!(
-                err,
-                "add #![feature(member_constraints)] to the crate attributes \
-                   to enable"
-            );
+            err.help("add #![feature(member_constraints)] to the crate attributes to enable");
         }
 
         err.emit();

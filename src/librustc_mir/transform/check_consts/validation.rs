@@ -8,6 +8,7 @@ use rustc::traits::{self, TraitEngine};
 use rustc::ty::cast::CastTy;
 use rustc::ty::{self, TyCtxt};
 use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
 use rustc_index::bit_set::BitSet;
 use rustc_span::Span;
 use syntax::symbol::sym;

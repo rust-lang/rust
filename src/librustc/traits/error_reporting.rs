@@ -23,7 +23,7 @@ use crate::ty::TypeckTables;
 use crate::ty::{self, AdtKind, DefIdTree, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
-use errors::{pluralize, Applicability, DiagnosticBuilder, Style};
+use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};

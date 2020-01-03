@@ -1,3 +1,4 @@
+use errors::struct_span_err;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::middle::cstore::{self, NativeLibrary};
@@ -9,7 +10,6 @@ use syntax::attr;
 use syntax::feature_gate::feature_err;
 use syntax::source_map::Span;
 use syntax::symbol::{kw, sym, Symbol};
-use syntax::{span_err, struct_span_err};
 
 use rustc_error_codes::*;
 
@@ -159,7 +159,7 @@ impl Collector<'tcx> {
         if lib.kind == cstore::NativeFramework && !is_osx {
             let msg = "native frameworks are only available on macOS targets";
             match span {
-                Some(span) => span_err!(self.tcx.sess, span, E0455, "{}", msg),
+                Some(span) => struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit(),
                 None => self.tcx.sess.err(msg),
             }
         }

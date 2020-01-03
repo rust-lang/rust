@@ -19,7 +19,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{GenericArg, SubstsRef};
 use rustc::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
-
+use rustc_errors::struct_span_err;
 use rustc_index::vec::Idx;
 
 use rustc_span::{Span, DUMMY_SP};
@@ -463,12 +463,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                                 PatKind::Range(PatRange { lo, hi, end })
                             }
                             (RangeEnd::Excluded, _) => {
-                                span_err!(
+                                struct_span_err!(
                                     self.tcx.sess,
                                     lo_expr.span,
                                     E0579,
                                     "lower range bound must be less than upper",
-                                );
+                                )
+                                .emit();
                                 PatKind::Wild
                             }
                             (RangeEnd::Included, Some(Ordering::Equal)) => {

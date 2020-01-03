@@ -1,4 +1,5 @@
 use rustc::mir;
+use rustc_errors::struct_span_err;
 
 use super::FunctionCx;
 use super::LocalRef;
@@ -81,12 +82,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if let OperandValue::Immediate(_) = op.val {
                             acc.push(op.immediate());
                         } else {
-                            span_err!(
+                            struct_span_err!(
                                 bx.sess(),
                                 span.to_owned(),
                                 E0669,
                                 "invalid value for constraint in inline assembly"
-                            );
+                            )
+                            .emit();
                         }
                         acc
                     },
@@ -100,12 +102,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         statement.source_info.span,
                     );
                     if !res {
-                        span_err!(
+                        struct_span_err!(
                             bx.sess(),
                             statement.source_info.span,
                             E0668,
                             "malformed inline assembly"
-                        );
+                        )
+                        .emit();
                     }
                 }
                 bx

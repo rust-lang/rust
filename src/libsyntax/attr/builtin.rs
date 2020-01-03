@@ -6,7 +6,7 @@ use crate::feature_gate::feature_err;
 use crate::print::pprust;
 use crate::sess::ParseSess;
 
-use errors::{Applicability, Handler};
+use errors::{struct_span_err, Applicability, Handler};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::Transparency;
@@ -31,17 +31,21 @@ enum AttrError {
 fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
     let diag = &sess.span_diagnostic;
     match error {
-        AttrError::MultipleItem(item) => span_err!(diag, span, E0538, "multiple '{}' items", item),
+        AttrError::MultipleItem(item) => {
+            struct_span_err!(diag, span, E0538, "multiple '{}' items", item).emit();
+        }
         AttrError::UnknownMetaItem(item, expected) => {
             let expected = expected.iter().map(|name| format!("`{}`", name)).collect::<Vec<_>>();
             struct_span_err!(diag, span, E0541, "unknown meta item '{}'", item)
                 .span_label(span, format!("expected one of {}", expected.join(", ")))
                 .emit();
         }
-        AttrError::MissingSince => span_err!(diag, span, E0542, "missing 'since'"),
-        AttrError::MissingFeature => span_err!(diag, span, E0546, "missing 'feature'"),
+        AttrError::MissingSince => struct_span_err!(diag, span, E0542, "missing 'since'").emit(),
+        AttrError::MissingFeature => {
+            struct_span_err!(diag, span, E0546, "missing 'feature'").emit();
+        }
         AttrError::MultipleStabilityLevels => {
-            span_err!(diag, span, E0544, "multiple stability levels")
+            struct_span_err!(diag, span, E0544, "multiple stability levels").emit();
         }
         AttrError::UnsupportedLiteral(msg, is_bytestr) => {
             let mut err = struct_span_err!(diag, span, E0565, "{}", msg);
@@ -283,7 +287,7 @@ where
                     *item = Some(v);
                     true
                 } else {
-                    span_err!(diagnostic, meta.span, E0539, "incorrect meta item");
+                    struct_span_err!(diagnostic, meta.span, E0539, "incorrect meta item").emit();
                     false
                 }
             };
@@ -331,12 +335,13 @@ where
             match meta_name {
                 sym::rustc_deprecated => {
                     if rustc_depr.is_some() {
-                        span_err!(
+                        struct_span_err!(
                             diagnostic,
                             item_sp,
                             E0540,
                             "multiple rustc_deprecated attributes"
-                        );
+                        )
+                        .emit();
                         continue 'outer;
                     }
 
@@ -351,7 +356,8 @@ where
                             continue;
                         }
                         _ => {
-                            span_err!(diagnostic, attr.span, E0543, "missing 'reason'");
+                            struct_span_err!(diagnostic, attr.span, E0543, "missing 'reason'")
+                                .emit();
                             continue;
                         }
                     }
@@ -426,12 +432,13 @@ where
                                         // Disallowing this requires updates to some submodules
                                         NonZeroU32::new(num)
                                     } else {
-                                        span_err!(
+                                        struct_span_err!(
                                             diagnostic,
                                             attr.span,
                                             E0545,
                                             "incorrect 'issue'"
-                                        );
+                                        )
+                                        .emit();
                                         continue;
                                     }
                                 }
@@ -453,7 +460,8 @@ where
                             continue;
                         }
                         _ => {
-                            span_err!(diagnostic, attr.span, E0547, "missing 'issue'");
+                            struct_span_err!(diagnostic, attr.span, E0547, "missing 'issue'")
+                                .emit();
                             continue;
                         }
                     }
@@ -539,13 +547,14 @@ where
         if let Some(ref mut stab) = stab {
             stab.rustc_depr = Some(rustc_depr);
         } else {
-            span_err!(
+            struct_span_err!(
                 diagnostic,
                 item_sp,
                 E0549,
                 "rustc_deprecated attribute must be paired with \
                        either stable or unstable attribute"
-            );
+            )
+            .emit();
         }
     }
 
@@ -555,14 +564,15 @@ where
             stab.promotable = promotable;
             stab.allow_const_fn_ptr = allow_const_fn_ptr;
         } else {
-            span_err!(
+            struct_span_err!(
                 diagnostic,
                 item_sp,
                 E0717,
                 "rustc_promotable and rustc_allow_const_fn_ptr attributes \
                       must be paired with either a rustc_const_unstable or a rustc_const_stable \
                       attribute"
-            );
+            )
+            .emit();
         }
     }
 
@@ -649,20 +659,27 @@ pub fn eval_condition(
                 }
                 sym::not => {
                     if mis.len() != 1 {
-                        span_err!(sess.span_diagnostic, cfg.span, E0536, "expected 1 cfg-pattern");
+                        struct_span_err!(
+                            sess.span_diagnostic,
+                            cfg.span,
+                            E0536,
+                            "expected 1 cfg-pattern"
+                        )
+                        .emit();
                         return false;
                     }
 
                     !eval_condition(mis[0].meta_item().unwrap(), sess, eval)
                 }
                 _ => {
-                    span_err!(
+                    struct_span_err!(
                         sess.span_diagnostic,
                         cfg.span,
                         E0537,
                         "invalid predicate `{}`",
                         pprust::path_to_string(&cfg.path)
-                    );
+                    )
+                    .emit();
                     false
                 }
             }
@@ -703,7 +720,7 @@ where
         }
 
         if depr.is_some() {
-            span_err!(diagnostic, item_sp, E0550, "multiple deprecated attributes");
+            struct_span_err!(diagnostic, item_sp, E0550, "multiple deprecated attributes").emit();
             break;
         }
 
@@ -741,7 +758,8 @@ where
                                 ),
                             );
                         } else {
-                            span_err!(diagnostic, meta.span, E0551, "incorrect meta item");
+                            struct_span_err!(diagnostic, meta.span, E0551, "incorrect meta item")
+                                .emit();
                         }
 
                         false
@@ -900,13 +918,14 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                         };
                     }
                     if let Some(literal_error) = literal_error {
-                        span_err!(
+                        struct_span_err!(
                             diagnostic,
                             item.span(),
                             E0589,
                             "invalid `repr(align)` attribute: {}",
                             literal_error
-                        );
+                        )
+                        .emit();
                     }
                 } else {
                     if let Some(meta_item) = item.meta_item() {
@@ -945,7 +964,13 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                 }
                 if !recognised {
                     // Not a word we recognize
-                    span_err!(diagnostic, item.span(), E0552, "unrecognized representation hint");
+                    struct_span_err!(
+                        diagnostic,
+                        item.span(),
+                        E0552,
+                        "unrecognized representation hint"
+                    )
+                    .emit();
                 }
             }
         }

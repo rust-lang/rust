@@ -18,6 +18,7 @@ use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::{self, TyCtxt, TypeFoldable};
+use errors::struct_span_err;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::DUMMY_SP;
 

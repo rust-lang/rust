@@ -16,7 +16,7 @@ LL | #[repr(simd)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/27731
    = help: add `#![feature(repr_simd)]` to the crate attributes to enable
 
-warning[E0566]: conflicting representation hints
+error[E0566]: conflicting representation hints
   --> $DIR/feature-gate-repr-simd.rs:4:8
    |
 LL | #[repr(C)]
@@ -24,7 +24,7 @@ LL | #[repr(C)]
 LL | #[repr(simd)]
    |        ^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0566, E0658.
 For more information about an error, try `rustc --explain E0566`.

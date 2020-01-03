@@ -50,8 +50,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for VariadicError<'tcx> {
     }
 
     fn code(&self) -> DiagnosticId {
-        syntax::diagnostic_used!(E0617);
-        DiagnosticId::Error("E0617".to_owned())
+        errors::error_code!(E0617)
     }
 
     fn common(&self) -> DiagnosticBuilder<'tcx> {
@@ -112,8 +111,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCastError<'tcx> {
     }
 
     fn code(&self) -> DiagnosticId {
-        syntax::diagnostic_used!(E0607);
-        DiagnosticId::Error("E0607".to_owned())
+        errors::error_code!(E0607)
     }
 
     fn common(&self) -> DiagnosticBuilder<'tcx> {

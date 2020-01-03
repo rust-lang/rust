@@ -1,70 +1,73 @@
-warning[E0566]: conflicting representation hints
-  --> $DIR/conflicting-repr-hints.rs:9:8
+error[E0566]: conflicting representation hints
+  --> $DIR/conflicting-repr-hints.rs:13:8
    |
 LL | #[repr(C, u64)]
    |        ^  ^^^
 
-warning[E0566]: conflicting representation hints
-  --> $DIR/conflicting-repr-hints.rs:12:8
+error[E0566]: conflicting representation hints
+  --> $DIR/conflicting-repr-hints.rs:18:8
    |
 LL | #[repr(u32, u64)]
    |        ^^^  ^^^
 
 error[E0587]: type has conflicting packed and align representation hints
-  --> $DIR/conflicting-repr-hints.rs:19:1
+  --> $DIR/conflicting-repr-hints.rs:27:1
    |
 LL | struct F(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0587]: type has conflicting packed and align representation hints
-  --> $DIR/conflicting-repr-hints.rs:23:1
+  --> $DIR/conflicting-repr-hints.rs:31:1
    |
 LL | struct G(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0587]: type has conflicting packed and align representation hints
-  --> $DIR/conflicting-repr-hints.rs:27:1
+  --> $DIR/conflicting-repr-hints.rs:35:1
    |
 LL | struct H(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0634]: type has conflicting packed representation hints
-  --> $DIR/conflicting-repr-hints.rs:30:1
+  --> $DIR/conflicting-repr-hints.rs:38:1
    |
 LL | struct I(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0634]: type has conflicting packed representation hints
-  --> $DIR/conflicting-repr-hints.rs:34:1
+  --> $DIR/conflicting-repr-hints.rs:42:1
    |
 LL | struct J(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0587]: type has conflicting packed and align representation hints
-  --> $DIR/conflicting-repr-hints.rs:40:1
+  --> $DIR/conflicting-repr-hints.rs:48:1
    |
 LL | / union X {
-LL | |     i: i32
+LL | |
+LL | |     i: i32,
 LL | | }
    | |_^
 
 error[E0587]: type has conflicting packed and align representation hints
-  --> $DIR/conflicting-repr-hints.rs:46:1
+  --> $DIR/conflicting-repr-hints.rs:55:1
    |
 LL | / union Y {
-LL | |     i: i32
+LL | |
+LL | |     i: i32,
 LL | | }
    | |_^
 
 error[E0587]: type has conflicting packed and align representation hints
-  --> $DIR/conflicting-repr-hints.rs:52:1
+  --> $DIR/conflicting-repr-hints.rs:62:1
    |
 LL | / union Z {
-LL | |     i: i32
+LL | |
+LL | |     i: i32,
 LL | | }
    | |_^
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0566, E0587.
 For more information about an error, try `rustc --explain E0566`.
