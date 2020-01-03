@@ -1,0 +1,10 @@
+error: `const` cannot modify an inherent impl
+  --> $DIR/inherent-impl.rs:11:6
+   |
+LL | impl const T {}
+   |      ^^^^^
+   |
+   = help: only a trait impl can be `const`
+
+error: aborting due to previous error
+

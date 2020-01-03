@@ -1,0 +1,8 @@
+error: `?const` on trait bounds is not yet implemented
+  --> $DIR/feature-gate.rs:11:29
+   |
+LL | const fn get_assoc_const<S: ?const T>() -> i32 { <S as T>::CONST }
+   |                             ^^^^^^^^
+
+error: aborting due to previous error
+

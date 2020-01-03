@@ -1,0 +1,14 @@
+error: `?const` is not permitted in supertraits
+  --> $DIR/in-trait-bounds.rs:5:10
+   |
+LL | trait T: ?const Super {}
+   |          ^^^^^^^^^^^^
+
+error: `?const` on trait bounds is not yet implemented
+  --> $DIR/in-trait-bounds.rs:5:10
+   |
+LL | trait T: ?const Super {}
+   |          ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
