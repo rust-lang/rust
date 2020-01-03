@@ -220,6 +220,41 @@ pub union MaybeUninit<T> {
     value: ManuallyDrop<T>,
 }
 
+/// `Clone` and `Copy` are implementing for `T: Copy` by copying the bytes. But remember that
+/// uninitialized memory is special because the compiler knows that it doesn't have a fixed value.
+/// This example is *incorrect* because we fail to uphold the [initialization invariant][inv]:
+///
+/// ```rust,no_run
+/// # #![allow(invalid_value)]
+/// use std::mem::MaybeUninit;
+///
+/// let x: MaybeUninit<i32> = MaybeUninit::uninit();
+///
+/// // Safe, but the compiler is allowed to omit actually copying anything because the value of x
+/// // is undefined...
+/// let x_copy: MaybeUninit<i32> = x;
+///
+/// unsafe {
+///     // ...so x_copy is also undefined, and this assertion may _fail_!
+///     assert_eq!(x.assume_init(), x_copy.assume_init());
+/// }
+/// ```
+/// Copying initialized bytes and then using them is defined behavior, as we've upheld the
+/// initialization invariant:
+///
+/// ```rust
+/// use std::mem::MaybeUninit;
+/// let x: MaybeUninit<i32> = MaybeUninit::new(42); // initialized to 42
+///
+/// // We gave x a well-defined value, so the compiler has to actually copy that value..
+/// let x_copy: MaybeUninit<i32> = x;
+///
+/// unsafe {
+///     // ...thus x_copy's value is well-defined, and this assertion succeeds:
+///     assert_eq!(x.assume_init(), x_copy.assume_init());
+/// }
+/// ```
+/// [inv]: #initialization-invariant
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 impl<T: Copy> Clone for MaybeUninit<T> {
     #[inline(always)]
