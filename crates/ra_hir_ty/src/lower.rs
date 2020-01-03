@@ -331,7 +331,7 @@ pub(super) fn substs_from_path_segment(
     if let Some(generic_args) = &segment.args_and_bindings {
         // if args are provided, it should be all of them, but we can't rely on that
         let self_param_correction = if add_self_param { 1 } else { 0 };
-        let child_len = child_len + self_param_correction;
+        let child_len = child_len - self_param_correction;
         for arg in generic_args.args.iter().take(child_len) {
             match arg {
                 GenericArg::Type(type_ref) => {
