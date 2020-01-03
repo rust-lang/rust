@@ -9,7 +9,7 @@ use rustc::mir::{
 use rustc::ty::adjustment::PointerCast;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_index::vec::IndexVec;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -206,6 +206,47 @@ impl BorrowExplanation {
                         ),
                     );
                 };
+
+                self.add_lifetime_bound_suggestion_to_diagnostic(
+                    tcx,
+                    err,
+                    &category,
+                    span,
+                    region_name,
+                );
+            }
+            _ => {}
+        }
+    }
+    pub(in crate::borrow_check) fn add_lifetime_bound_suggestion_to_diagnostic<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
+        category: &ConstraintCategory,
+        span: Span,
+        region_name: &RegionName,
+    ) {
+        match category {
+            ConstraintCategory::OpaqueType => {
+                if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
+                    let suggestable_name = if region_name.was_named() {
+                        region_name.to_string()
+                    } else {
+                        "'_".to_string()
+                    };
+
+                    err.span_suggestion(
+                        span,
+                        &format!(
+                            "you can add a bound to the {}to make it last less than \
+                             `'static` and match `{}`",
+                            category.description(),
+                            region_name,
+                        ),
+                        format!("{} + {}", snippet, suggestable_name),
+                        Applicability::Unspecified,
+                    );
+                }
             }
             _ => {}
         }
