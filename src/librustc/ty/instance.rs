@@ -80,7 +80,7 @@ impl<'tcx> Instance<'tcx> {
         // ParamEnv
         if self.substs.has_param_types() {
             bug!(
-                "Instance.ty called for type {:?} with projections in substs: {:?}",
+                "Instance.ty called for type {:?} with params in substs: {:?}",
                 ty,
                 self.substs
             );
