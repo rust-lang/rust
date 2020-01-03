@@ -1,13 +1,13 @@
-error: incorrect close delimiter: `}`
+error: mismatched closing delimiter: `}`
   --> $DIR/unclosed_delim_mod.rs:7:1
    |
 LL | pub fn new() -> Result<Value, ()> {
-   |                                   - close delimiter possibly meant for this
+   |                                   - closing delimiter possibly meant for this
 LL |     Ok(Value {
-   |       - un-closed delimiter
+   |       - unclosed delimiter
 LL |     }
 LL | }
-   | ^ incorrect close delimiter
+   | ^ mismatched closing delimiter
 
 error: aborting due to previous error
 

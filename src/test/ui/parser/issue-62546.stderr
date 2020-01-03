@@ -1,11 +1,11 @@
-error: this file contains an un-closed delimiter
-  --> $DIR/issue-62546.rs:3:53
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62546.rs:3:52
    |
 LL | pub t(#
-   |      - un-closed delimiter
+   |      - unclosed delimiter
 LL |
 LL |
-   |                                                     ^
+   |                                                    ^
 
 error: missing `fn` or `struct` for function or struct definition
   --> $DIR/issue-62546.rs:1:4

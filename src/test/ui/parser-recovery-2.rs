@@ -5,7 +5,7 @@
 trait Foo {
     fn bar() {
         let x = foo(); //~ ERROR cannot find function `foo` in this scope
-    ) //~ ERROR incorrect close delimiter: `)`
+    ) //~ ERROR mismatched closing delimiter: `)`
 }
 
 fn main() {

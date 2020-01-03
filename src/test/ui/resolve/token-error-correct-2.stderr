@@ -1,11 +1,11 @@
-error: incorrect close delimiter: `)`
+error: mismatched closing delimiter: `)`
   --> $DIR/token-error-correct-2.rs:6:5
    |
 LL |     if foo {
-   |            - un-closed delimiter
+   |            - unclosed delimiter
 LL |
 LL |     )
-   |     ^ incorrect close delimiter
+   |     ^ mismatched closing delimiter
 
 error[E0425]: cannot find value `foo` in this scope
   --> $DIR/token-error-correct-2.rs:4:8

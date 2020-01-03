@@ -1,11 +1,11 @@
-error: this file contains an un-closed delimiter
-  --> $DIR/issue-62881.rs:6:53
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62881.rs:6:52
    |
 LL | fn f() -> isize { fn f() -> isize {} pub f<
-   |                 - un-closed delimiter
+   |                 - unclosed delimiter
 ...
 LL |
-   |                                                     ^
+   |                                                    ^
 
 error: missing `fn` or `struct` for function or struct definition
   --> $DIR/issue-62881.rs:3:41
