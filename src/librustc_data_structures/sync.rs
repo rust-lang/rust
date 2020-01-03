@@ -175,7 +175,11 @@ cfg_if! {
             where A: FnOnce() -> RA,
                   B: FnOnce() -> RB
         {
-            (oper_a(), oper_b())
+            let panic = Lock::new(None);
+            let a = catch(&panic, oper_a);
+            let b = catch(&panic, oper_b);
+            resume(panic);
+            (a.unwrap(), b.unwrap())
         }
 
         pub struct SerialScope;
@@ -204,8 +208,8 @@ cfg_if! {
                     $crate::sync::catch(&panic, || $blocks);
                 )*
                 $crate::sync::resume(panic);
+                }
             }
-        }
 
         use std::iter::{Iterator, IntoIterator, FromIterator};
 
@@ -220,7 +224,7 @@ cfg_if! {
                 catch(&panic, || for_each(i));
             });
             resume(panic);
-        }
+            }
 
         pub fn par_map<T: IntoIterator, R, C: FromIterator<R>>(
             t: T,
