@@ -1,0 +1,14 @@
+error: expected identifier, found keyword `const`
+  --> $DIR/opt-out-twice.rs:6:21
+   |
+LL | struct S<T: ?const ?const Tr>;
+   |                     ^^^^^ expected identifier, found keyword
+
+error: expected one of `(`, `+`, `,`, `::`, `<`, `=`, or `>`, found `Tr`
+  --> $DIR/opt-out-twice.rs:6:27
+   |
+LL | struct S<T: ?const ?const Tr>;
+   |                           ^^ expected one of 7 possible tokens
+
+error: aborting due to 2 previous errors
+

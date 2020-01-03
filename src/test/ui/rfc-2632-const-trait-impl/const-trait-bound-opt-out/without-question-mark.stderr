@@ -1,0 +1,8 @@
+error: expected one of `!`, `(`, `,`, `=`, `>`, `?`, `for`, lifetime, or path, found keyword `const`
+  --> $DIR/without-question-mark.rs:6:13
+   |
+LL | struct S<T: const Tr>;
+   |             ^^^^^ expected one of 9 possible tokens
+
+error: aborting due to previous error
+
