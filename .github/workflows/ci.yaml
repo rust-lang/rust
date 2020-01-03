@@ -97,3 +97,10 @@ jobs:
         working-directory: ./editors/code
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ubuntu-editors
+          path: /home/runner/work/rust-analyzer/editors
+
