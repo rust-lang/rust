@@ -59,7 +59,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.alloc_caller_location(file, line, column)
     }
 
-    pub fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
+    pub(super) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (
