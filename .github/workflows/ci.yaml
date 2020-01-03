@@ -23,6 +23,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v1
 
+      - name: Cleanup Rust components (Windows)
+        if: matrix.os == 'windows-latest'
+        run: rustup component remove rust-docs
+
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
