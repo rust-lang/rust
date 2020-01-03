@@ -172,7 +172,7 @@ pub struct ModuleData {
 }
 
 impl CrateDefMap {
-    pub(crate) fn compute_crate_def_map(
+    pub(crate) fn compute_crate_def_map_query(
         // Note that this doesn't have `+ AstDatabase`!
         // This gurantess that `CrateDefMap` is stable across reparses.
         db: &impl DefDatabase,

@@ -50,7 +50,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
     #[salsa::transparent]
     fn crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
 
-    #[salsa::invoke(CrateDefMap::compute_crate_def_map)]
+    #[salsa::invoke(CrateDefMap::compute_crate_def_map_query)]
     fn compute_crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
 
     #[salsa::invoke(StructData::struct_data_query)]
