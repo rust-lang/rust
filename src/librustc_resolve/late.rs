@@ -345,7 +345,7 @@ struct DiagnosticMetadata {
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
 
-    /// The current enclosing funciton (used for better errors).
+    /// The current enclosing function (used for better errors).
     current_function: Option<Span>,
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
