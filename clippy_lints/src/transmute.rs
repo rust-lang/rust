@@ -1,4 +1,6 @@
-use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then, sugg};
+use crate::utils::{
+    is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then, sugg,
+};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
 use rustc::hir::*;
@@ -639,8 +641,13 @@ fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath<'_>, to_ref_ty: Ty<'_
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment
 fn is_layout_incompatible<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
-    let from_ty_layout = cx.tcx.layout_of(ty::ParamEnv::empty().and(from));
-    let to_ty_layout = cx.tcx.layout_of(ty::ParamEnv::empty().and(to));
+    let empty_param_env = ty::ParamEnv::empty();
+    // check if `from` and `to` are normalizable to avoid ICE (#4968)
+    if !(is_normalizable(cx, empty_param_env, from) && is_normalizable(cx, empty_param_env, to)) {
+        return false;
+    }
+    let from_ty_layout = cx.tcx.layout_of(empty_param_env.and(from));
+    let to_ty_layout = cx.tcx.layout_of(empty_param_env.and(to));
     if let (Ok(from_layout), Ok(to_layout)) = (from_ty_layout, to_ty_layout) {
         from_layout.size != to_layout.size || from_layout.align != to_layout.align || from_layout.abi != to_layout.abi
     } else {
