@@ -72,6 +72,7 @@ fn main() {
         cfg.file(root.join("lib").join("profile").join(src));
     }
 
+    cfg.include(root.join("include"));
     cfg.warnings(false);
     cfg.compile("profiler-rt");
 }
