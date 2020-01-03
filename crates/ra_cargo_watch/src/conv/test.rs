@@ -1,7 +1,9 @@
 //! This module contains the large and verbose snapshot tests for the
 //! conversions between `cargo check` json and LSP diagnostics.
+#[cfg(not(windows))]
 use crate::*;
 
+#[cfg(not(windows))]
 fn parse_diagnostic(val: &str) -> cargo_metadata::diagnostic::Diagnostic {
     serde_json::from_str::<cargo_metadata::diagnostic::Diagnostic>(val).unwrap()
 }
