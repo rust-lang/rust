@@ -3,9 +3,9 @@
 mod cargo_workspace;
 mod json_project;
 mod sysroot;
+mod workspace_error;
 
 use std::{
-    fmt,
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
@@ -13,67 +13,17 @@ use std::{
 };
 
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateId, Edition, Env, FileId, ParseEditionError};
+use ra_db::{CrateGraph, CrateId, Edition, Env, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
+
+use crate::workspace_error::WorkspaceError;
 
 pub use crate::{
     cargo_workspace::{CargoFeatures, CargoWorkspace, Package, Target, TargetKind},
     json_project::JsonProject,
     sysroot::Sysroot,
 };
-
-#[derive(Debug)]
-pub enum WorkspaceError {
-    CargoMetadataFailed(cargo_metadata::Error),
-    CargoTomlNotFound(PathBuf),
-    NoStdLib(PathBuf),
-    OpenWorkspaceError(std::io::Error),
-    ParseEditionError(ParseEditionError),
-    ReadWorkspaceError(serde_json::Error),
-    RustcCfgError,
-    RustcError(std::io::Error),
-    RustcOutputError(std::string::FromUtf8Error),
-    SysrootNotFound,
-}
-
-impl fmt::Display for WorkspaceError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::OpenWorkspaceError(err) | Self::RustcError(err) => write!(f, "{}", err),
-            Self::ParseEditionError(err) => write!(f, "{}", err),
-            Self::ReadWorkspaceError(err) => write!(f, "{}", err),
-            Self::RustcOutputError(err) => write!(f, "{}", err),
-            Self::CargoMetadataFailed(err) => write!(f, "cargo metadata failed: {}", err),
-            Self::RustcCfgError => write!(f, "failed to get rustc cfgs"),
-            Self::SysrootNotFound => write!(f, "failed to locate sysroot"),
-            Self::CargoTomlNotFound(path) => {
-                write!(f, "can't find Cargo.toml at {}", path.display())
-            }
-            Self::NoStdLib(sysroot) => write!(
-                f,
-                "can't load standard library from sysroot\n\
-                 {:?}\n\
-                 try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
-                sysroot,
-            ),
-        }
-    }
-}
-
-impl std::error::Error for WorkspaceError {}
-
-impl From<ParseEditionError> for WorkspaceError {
-    fn from(err: ParseEditionError) -> Self {
-        Self::ParseEditionError(err.into())
-    }
-}
-
-impl From<cargo_metadata::Error> for WorkspaceError {
-    fn from(err: cargo_metadata::Error) -> Self {
-        Self::CargoMetadataFailed(err.into())
-    }
-}
 
 #[derive(Debug, Clone)]
 pub enum ProjectWorkspace {
