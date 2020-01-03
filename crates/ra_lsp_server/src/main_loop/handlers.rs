@@ -531,8 +531,8 @@ pub fn handle_references(
     let locations = if params.context.include_declaration {
         refs.into_iter()
             .filter_map(|r| {
-                let line_index = world.analysis().file_line_index(r.file_id).ok()?;
-                to_location(r.file_id, r.range, &world, &line_index).ok()
+                let line_index = world.analysis().file_line_index(r.file_range.file_id).ok()?;
+                to_location(r.file_range.file_id, r.file_range.range, &world, &line_index).ok()
             })
             .collect()
     } else {
@@ -540,8 +540,8 @@ pub fn handle_references(
         refs.references()
             .iter()
             .filter_map(|r| {
-                let line_index = world.analysis().file_line_index(r.file_id).ok()?;
-                to_location(r.file_id, r.range, &world, &line_index).ok()
+                let line_index = world.analysis().file_line_index(r.file_range.file_id).ok()?;
+                to_location(r.file_range.file_id, r.file_range.range, &world, &line_index).ok()
             })
             .collect()
     };
@@ -830,8 +830,11 @@ pub fn handle_document_highlight(
 
     Ok(Some(
         refs.into_iter()
-            .filter(|r| r.file_id == file_id)
-            .map(|r| DocumentHighlight { range: r.range.conv_with(&line_index), kind: None })
+            .filter(|r| r.file_range.file_id == file_id)
+            .map(|r| DocumentHighlight {
+                range: r.file_range.range.conv_with(&line_index),
+                kind: None,
+            })
             .collect(),
     ))
 }
