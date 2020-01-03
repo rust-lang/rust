@@ -172,13 +172,13 @@ pub struct ModuleData {
 }
 
 impl CrateDefMap {
-    pub(crate) fn crate_def_map_query(
+    pub(crate) fn compute_crate_def_map(
         // Note that this doesn't have `+ AstDatabase`!
         // This gurantess that `CrateDefMap` is stable across reparses.
         db: &impl DefDatabase,
         krate: CrateId,
     ) -> Arc<CrateDefMap> {
-        let _p = profile("crate_def_map_query");
+        let _p = profile("compute_crate_def_map");
         let def_map = {
             let crate_graph = db.crate_graph();
             let edition = crate_graph.edition(krate);

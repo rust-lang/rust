@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use hir_expand::{db::AstDatabase, HirFileId};
 use ra_db::{salsa, CrateId, SourceDatabase};
+use ra_prof::profile;
 use ra_syntax::SmolStr;
 
 use crate::{
@@ -46,8 +47,11 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
     #[salsa::invoke(RawItems::raw_items_query)]
     fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
 
-    #[salsa::invoke(CrateDefMap::crate_def_map_query)]
+    #[salsa::transparent]
     fn crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
+
+    #[salsa::invoke(CrateDefMap::compute_crate_def_map)]
+    fn compute_crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
 
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
@@ -103,4 +107,9 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
     // Remove this query completely, in favor of `Attrs::docs` method
     #[salsa::invoke(Documentation::documentation_query)]
     fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
+}
+
+fn crate_def_map(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
+    let _p = profile("crate_def_map");
+    db.compute_crate_def_map(krate)
 }
