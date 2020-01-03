@@ -1,23 +1,3 @@
-warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `foo::Foo`
-  --> $DIR/lint-uppercase-variables.rs:22:9
-   |
-LL |         Foo => {}
-   |         ^^^ help: to match on the variant, qualify the path: `foo::Foo::Foo`
-   |
-   = note: `#[warn(bindings_with_variant_name)]` on by default
-
-warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `foo::Foo`
-  --> $DIR/lint-uppercase-variables.rs:28:9
-   |
-LL |     let Foo = foo::Foo::Foo;
-   |         ^^^ help: to match on the variant, qualify the path: `foo::Foo::Foo`
-
-warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `foo::Foo`
-  --> $DIR/lint-uppercase-variables.rs:33:17
-   |
-LL |     fn in_param(Foo: foo::Foo) {}
-   |                 ^^^ help: to match on the variant, qualify the path: `foo::Foo::Foo`
-
 warning: unused variable: `Foo`
   --> $DIR/lint-uppercase-variables.rs:22:9
    |
@@ -42,6 +22,26 @@ warning: unused variable: `Foo`
    |
 LL |     fn in_param(Foo: foo::Foo) {}
    |                 ^^^ help: consider prefixing with an underscore: `_Foo`
+
+warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `foo::Foo`
+  --> $DIR/lint-uppercase-variables.rs:22:9
+   |
+LL |         Foo => {}
+   |         ^^^ help: to match on the variant, qualify the path: `foo::Foo::Foo`
+   |
+   = note: `#[warn(bindings_with_variant_name)]` on by default
+
+warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `foo::Foo`
+  --> $DIR/lint-uppercase-variables.rs:28:9
+   |
+LL |     let Foo = foo::Foo::Foo;
+   |         ^^^ help: to match on the variant, qualify the path: `foo::Foo::Foo`
+
+warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `foo::Foo`
+  --> $DIR/lint-uppercase-variables.rs:33:17
+   |
+LL |     fn in_param(Foo: foo::Foo) {}
+   |                 ^^^ help: to match on the variant, qualify the path: `foo::Foo::Foo`
 
 error: structure field `X` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:10:5
