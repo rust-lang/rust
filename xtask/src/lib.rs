@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 pub mod codegen;
+mod ast_src;
 
 use anyhow::Context;
 pub use anyhow::Result;

@@ -3,149 +3,142 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.
 
-use std::{collections::BTreeMap, fs};
-
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
-use ron;
-use serde::Deserialize;
 
 use crate::{
+    ast_src::{AstSrc, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
     codegen::{self, update, Mode},
     project_root, Result,
 };
 
 pub fn generate_syntax(mode: Mode) -> Result<()> {
-    let grammar = project_root().join(codegen::GRAMMAR);
-    let grammar: Grammar = {
-        let text = fs::read_to_string(grammar)?;
-        ron::de::from_str(&text)?
-    };
-
     let syntax_kinds_file = project_root().join(codegen::SYNTAX_KINDS);
-    let syntax_kinds = generate_syntax_kinds(&grammar)?;
+    let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
     let ast_file = project_root().join(codegen::AST);
-    let ast = generate_ast(&grammar)?;
+    let ast = generate_ast(AST_SRC)?;
     update(ast_file.as_path(), &ast, mode)?;
 
     Ok(())
 }
 
-fn generate_ast(grammar: &Grammar) -> Result<String> {
-    let nodes = grammar.ast.iter().map(|(name, ast_node)| {
-        let variants =
-            ast_node.variants.iter().map(|var| format_ident!("{}", var)).collect::<Vec<_>>();
-        let name = format_ident!("{}", name);
-
-        let adt = if variants.is_empty() {
-            let kind = format_ident!("{}", to_upper_snake_case(&name.to_string()));
-            quote! {
-                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-                pub struct #name {
-                    pub(crate) syntax: SyntaxNode,
-                }
-
-                impl AstNode for #name {
-                    fn can_cast(kind: SyntaxKind) -> bool {
-                        match kind {
-                            #kind => true,
-                            _ => false,
-                        }
-                    }
-                    fn cast(syntax: SyntaxNode) -> Option<Self> {
-                        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-                    }
-                    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-                }
-            }
-        } else {
-            let kinds = variants
-                .iter()
-                .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
-                .collect::<Vec<_>>();
-
-            quote! {
-                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-                pub enum #name {
-                    #(#variants(#variants),)*
-                }
-
-                #(
-                impl From<#variants> for #name {
-                    fn from(node: #variants) -> #name {
-                        #name::#variants(node)
-                    }
-                }
-                )*
-
-                impl AstNode for #name {
-                    fn can_cast(kind: SyntaxKind) -> bool {
-                        match kind {
-                            #(#kinds)|* => true,
-                            _ => false,
-                        }
-                    }
-                    fn cast(syntax: SyntaxNode) -> Option<Self> {
-                        let res = match syntax.kind() {
-                            #(
-                            #kinds => #name::#variants(#variants { syntax }),
-                            )*
-                            _ => return None,
-                        };
-                        Some(res)
-                    }
-                    fn syntax(&self) -> &SyntaxNode {
-                        match self {
-                            #(
-                            #name::#variants(it) => &it.syntax,
-                            )*
-                        }
-                    }
-                }
-            }
-        };
-
-        let traits = ast_node.traits.iter().map(|trait_name| {
+fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
+    let nodes = grammar.nodes.iter().map(|node| {
+        let name = format_ident!("{}", node.name);
+        let kind = format_ident!("{}", to_upper_snake_case(&name.to_string()));
+        let traits = node.traits.iter().map(|trait_name| {
             let trait_name = format_ident!("{}", trait_name);
             quote!(impl ast::#trait_name for #name {})
         });
 
-        let collections = ast_node.collections.iter().map(|(name, kind)| {
-            let method_name = format_ident!("{}", name);
-            let kind = format_ident!("{}", kind);
-            quote! {
-                pub fn #method_name(&self) -> AstChildren<#kind> {
-                    AstChildren::new(&self.syntax)
-                }
-            }
-        });
+        let methods = node.fields.iter().map(|(name, field)| {
+            let method_name = match field {
+                FieldSrc::Shorthand => format_ident!("{}", to_lower_snake_case(&name)),
+                _ => format_ident!("{}", name),
+            };
+            let ty = match field {
+                FieldSrc::Optional(ty) | FieldSrc::Many(ty) => ty,
+                FieldSrc::Shorthand => name,
+            };
+            let ty = format_ident!("{}", ty);
 
-        let options = ast_node.options.iter().map(|attr| {
-            let method_name = match attr {
-                Attr::Type(t) => format_ident!("{}", to_lower_snake_case(&t)),
-                Attr::NameType(n, _) => format_ident!("{}", n),
-            };
-            let ty = match attr {
-                Attr::Type(t) | Attr::NameType(_, t) => format_ident!("{}", t),
-            };
-            quote! {
-                pub fn #method_name(&self) -> Option<#ty> {
-                    AstChildren::new(&self.syntax).next()
+            match field {
+                FieldSrc::Many(_) => {
+                    quote! {
+                        pub fn #method_name(&self) -> AstChildren<#ty> {
+                            AstChildren::new(&self.syntax)
+                        }
+                    }
+                }
+                FieldSrc::Optional(_) | FieldSrc::Shorthand => {
+                    quote! {
+                        pub fn #method_name(&self) -> Option<#ty> {
+                            AstChildren::new(&self.syntax).next()
+                        }
+                    }
                 }
             }
         });
 
         quote! {
-            #adt
+            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+            pub struct #name {
+                pub(crate) syntax: SyntaxNode,
+            }
 
+            impl AstNode for #name {
+                fn can_cast(kind: SyntaxKind) -> bool {
+                    match kind {
+                        #kind => true,
+                        _ => false,
+                    }
+                }
+                fn cast(syntax: SyntaxNode) -> Option<Self> {
+                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+                }
+                fn syntax(&self) -> &SyntaxNode { &self.syntax }
+            }
             #(#traits)*
 
             impl #name {
-                #(#collections)*
-                #(#options)*
+                #(#methods)*
             }
+        }
+    });
+
+    let enums = grammar.enums.iter().map(|en| {
+        let variants = en.variants.iter().map(|var| format_ident!("{}", var)).collect::<Vec<_>>();
+        let name = format_ident!("{}", en.name);
+        let kinds = variants
+            .iter()
+            .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
+            .collect::<Vec<_>>();
+        let traits = en.traits.iter().map(|trait_name| {
+            let trait_name = format_ident!("{}", trait_name);
+            quote!(impl ast::#trait_name for #name {})
+        });
+
+        quote! {
+            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+            pub enum #name {
+                #(#variants(#variants),)*
+            }
+
+            #(
+            impl From<#variants> for #name {
+                fn from(node: #variants) -> #name {
+                    #name::#variants(node)
+                }
+            }
+            )*
+
+            impl AstNode for #name {
+                fn can_cast(kind: SyntaxKind) -> bool {
+                    match kind {
+                        #(#kinds)|* => true,
+                        _ => false,
+                    }
+                }
+                fn cast(syntax: SyntaxNode) -> Option<Self> {
+                    let res = match syntax.kind() {
+                        #(
+                        #kinds => #name::#variants(#variants { syntax }),
+                        )*
+                        _ => return None,
+                    };
+                    Some(res)
+                }
+                fn syntax(&self) -> &SyntaxNode {
+                    match self {
+                        #(
+                        #name::#variants(it) => &it.syntax,
+                        )*
+                    }
+                }
+            }
+            #(#traits)*
         }
     });
 
@@ -156,13 +149,14 @@ fn generate_ast(grammar: &Grammar) -> Result<String> {
         };
 
         #(#nodes)*
+        #(#enums)*
     };
 
     let pretty = codegen::reformat(ast)?;
     Ok(pretty)
 }
 
-fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
+fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
     let (single_byte_tokens_values, single_byte_tokens): (Vec<_>, Vec<_>) = grammar
         .punct
         .iter()
@@ -272,38 +266,6 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
     };
 
     codegen::reformat(ast)
-}
-
-#[derive(Deserialize, Debug)]
-struct Grammar {
-    punct: Vec<(String, String)>,
-    keywords: Vec<String>,
-    contextual_keywords: Vec<String>,
-    literals: Vec<String>,
-    tokens: Vec<String>,
-    nodes: Vec<String>,
-    ast: BTreeMap<String, AstNode>,
-}
-
-#[derive(Deserialize, Debug)]
-struct AstNode {
-    #[serde(default)]
-    #[serde(rename = "enum")]
-    variants: Vec<String>,
-
-    #[serde(default)]
-    traits: Vec<String>,
-    #[serde(default)]
-    collections: Vec<(String, String)>,
-    #[serde(default)]
-    options: Vec<Attr>,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(untagged)]
-enum Attr {
-    Type(String),
-    NameType(String, String),
 }
 
 fn to_upper_snake_case(s: &str) -> String {

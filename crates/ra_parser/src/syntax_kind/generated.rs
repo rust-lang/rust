@@ -61,46 +61,46 @@ pub enum SyntaxKind {
     SHR,
     SHLEQ,
     SHREQ,
-    ASYNC_KW,
-    USE_KW,
-    FN_KW,
-    STRUCT_KW,
-    ENUM_KW,
-    TRAIT_KW,
-    IMPL_KW,
-    DYN_KW,
-    TRUE_KW,
-    FALSE_KW,
     AS_KW,
-    EXTERN_KW,
-    CRATE_KW,
-    MOD_KW,
-    PUB_KW,
-    SELF_KW,
-    SUPER_KW,
-    IN_KW,
-    WHERE_KW,
-    FOR_KW,
-    LOOP_KW,
-    WHILE_KW,
-    CONTINUE_KW,
-    BREAK_KW,
-    IF_KW,
-    ELSE_KW,
-    MATCH_KW,
-    CONST_KW,
-    STATIC_KW,
-    MUT_KW,
-    UNSAFE_KW,
-    TYPE_KW,
-    REF_KW,
-    LET_KW,
-    MOVE_KW,
-    RETURN_KW,
-    TRY_KW,
-    BOX_KW,
+    ASYNC_KW,
     AWAIT_KW,
+    BOX_KW,
+    BREAK_KW,
+    CONST_KW,
+    CONTINUE_KW,
+    CRATE_KW,
+    DYN_KW,
+    ELSE_KW,
+    ENUM_KW,
+    EXTERN_KW,
+    FALSE_KW,
+    FN_KW,
+    FOR_KW,
+    IF_KW,
+    IMPL_KW,
+    IN_KW,
+    LET_KW,
+    LOOP_KW,
     MACRO_KW,
+    MATCH_KW,
+    MOD_KW,
+    MOVE_KW,
+    MUT_KW,
+    PUB_KW,
+    REF_KW,
+    RETURN_KW,
+    SELF_KW,
+    STATIC_KW,
+    STRUCT_KW,
+    SUPER_KW,
+    TRAIT_KW,
+    TRUE_KW,
+    TRY_KW,
+    TYPE_KW,
+    UNSAFE_KW,
+    USE_KW,
+    WHERE_KW,
+    WHILE_KW,
     AUTO_KW,
     DEFAULT_KW,
     EXISTENTIAL_KW,
@@ -249,12 +249,12 @@ use self::SyntaxKind::*;
 impl SyntaxKind {
     pub fn is_keyword(self) -> bool {
         match self {
-            ASYNC_KW | USE_KW | FN_KW | STRUCT_KW | ENUM_KW | TRAIT_KW | IMPL_KW | DYN_KW
-            | TRUE_KW | FALSE_KW | AS_KW | EXTERN_KW | CRATE_KW | MOD_KW | PUB_KW | SELF_KW
-            | SUPER_KW | IN_KW | WHERE_KW | FOR_KW | LOOP_KW | WHILE_KW | CONTINUE_KW
-            | BREAK_KW | IF_KW | ELSE_KW | MATCH_KW | CONST_KW | STATIC_KW | MUT_KW | UNSAFE_KW
-            | TYPE_KW | REF_KW | LET_KW | MOVE_KW | RETURN_KW | TRY_KW | BOX_KW | AWAIT_KW
-            | MACRO_KW | AUTO_KW | DEFAULT_KW | EXISTENTIAL_KW | UNION_KW => true,
+            AS_KW | ASYNC_KW | AWAIT_KW | BOX_KW | BREAK_KW | CONST_KW | CONTINUE_KW | CRATE_KW
+            | DYN_KW | ELSE_KW | ENUM_KW | EXTERN_KW | FALSE_KW | FN_KW | FOR_KW | IF_KW
+            | IMPL_KW | IN_KW | LET_KW | LOOP_KW | MACRO_KW | MATCH_KW | MOD_KW | MOVE_KW
+            | MUT_KW | PUB_KW | REF_KW | RETURN_KW | SELF_KW | STATIC_KW | STRUCT_KW | SUPER_KW
+            | TRAIT_KW | TRUE_KW | TRY_KW | TYPE_KW | UNSAFE_KW | USE_KW | WHERE_KW | WHILE_KW
+            | AUTO_KW | DEFAULT_KW | EXISTENTIAL_KW | UNION_KW => true,
             _ => false,
         }
     }
@@ -278,46 +278,46 @@ impl SyntaxKind {
     }
     pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
         let kw = match ident {
-            "async" => ASYNC_KW,
-            "use" => USE_KW,
-            "fn" => FN_KW,
-            "struct" => STRUCT_KW,
-            "enum" => ENUM_KW,
-            "trait" => TRAIT_KW,
-            "impl" => IMPL_KW,
-            "dyn" => DYN_KW,
-            "true" => TRUE_KW,
-            "false" => FALSE_KW,
             "as" => AS_KW,
-            "extern" => EXTERN_KW,
-            "crate" => CRATE_KW,
-            "mod" => MOD_KW,
-            "pub" => PUB_KW,
-            "self" => SELF_KW,
-            "super" => SUPER_KW,
-            "in" => IN_KW,
-            "where" => WHERE_KW,
-            "for" => FOR_KW,
-            "loop" => LOOP_KW,
-            "while" => WHILE_KW,
-            "continue" => CONTINUE_KW,
-            "break" => BREAK_KW,
-            "if" => IF_KW,
-            "else" => ELSE_KW,
-            "match" => MATCH_KW,
-            "const" => CONST_KW,
-            "static" => STATIC_KW,
-            "mut" => MUT_KW,
-            "unsafe" => UNSAFE_KW,
-            "type" => TYPE_KW,
-            "ref" => REF_KW,
-            "let" => LET_KW,
-            "move" => MOVE_KW,
-            "return" => RETURN_KW,
-            "try" => TRY_KW,
-            "box" => BOX_KW,
+            "async" => ASYNC_KW,
             "await" => AWAIT_KW,
+            "box" => BOX_KW,
+            "break" => BREAK_KW,
+            "const" => CONST_KW,
+            "continue" => CONTINUE_KW,
+            "crate" => CRATE_KW,
+            "dyn" => DYN_KW,
+            "else" => ELSE_KW,
+            "enum" => ENUM_KW,
+            "extern" => EXTERN_KW,
+            "false" => FALSE_KW,
+            "fn" => FN_KW,
+            "for" => FOR_KW,
+            "if" => IF_KW,
+            "impl" => IMPL_KW,
+            "in" => IN_KW,
+            "let" => LET_KW,
+            "loop" => LOOP_KW,
             "macro" => MACRO_KW,
+            "match" => MATCH_KW,
+            "mod" => MOD_KW,
+            "move" => MOVE_KW,
+            "mut" => MUT_KW,
+            "pub" => PUB_KW,
+            "ref" => REF_KW,
+            "return" => RETURN_KW,
+            "self" => SELF_KW,
+            "static" => STATIC_KW,
+            "struct" => STRUCT_KW,
+            "super" => SUPER_KW,
+            "trait" => TRAIT_KW,
+            "true" => TRUE_KW,
+            "try" => TRY_KW,
+            "type" => TYPE_KW,
+            "unsafe" => UNSAFE_KW,
+            "use" => USE_KW,
+            "where" => WHERE_KW,
+            "while" => WHILE_KW,
             _ => return None,
         };
         Some(kw)
@@ -515,125 +515,125 @@ macro_rules! T {
     ( >>= ) => {
         $crate::SyntaxKind::SHREQ
     };
-    ( async ) => {
-        $crate::SyntaxKind::ASYNC_KW
-    };
-    ( use ) => {
-        $crate::SyntaxKind::USE_KW
-    };
-    ( fn ) => {
-        $crate::SyntaxKind::FN_KW
-    };
-    ( struct ) => {
-        $crate::SyntaxKind::STRUCT_KW
-    };
-    ( enum ) => {
-        $crate::SyntaxKind::ENUM_KW
-    };
-    ( trait ) => {
-        $crate::SyntaxKind::TRAIT_KW
-    };
-    ( impl ) => {
-        $crate::SyntaxKind::IMPL_KW
-    };
-    ( dyn ) => {
-        $crate::SyntaxKind::DYN_KW
-    };
-    ( true ) => {
-        $crate::SyntaxKind::TRUE_KW
-    };
-    ( false ) => {
-        $crate::SyntaxKind::FALSE_KW
-    };
     ( as ) => {
         $crate::SyntaxKind::AS_KW
     };
-    ( extern ) => {
-        $crate::SyntaxKind::EXTERN_KW
-    };
-    ( crate ) => {
-        $crate::SyntaxKind::CRATE_KW
-    };
-    ( mod ) => {
-        $crate::SyntaxKind::MOD_KW
-    };
-    ( pub ) => {
-        $crate::SyntaxKind::PUB_KW
-    };
-    ( self ) => {
-        $crate::SyntaxKind::SELF_KW
-    };
-    ( super ) => {
-        $crate::SyntaxKind::SUPER_KW
-    };
-    ( in ) => {
-        $crate::SyntaxKind::IN_KW
-    };
-    ( where ) => {
-        $crate::SyntaxKind::WHERE_KW
-    };
-    ( for ) => {
-        $crate::SyntaxKind::FOR_KW
-    };
-    ( loop ) => {
-        $crate::SyntaxKind::LOOP_KW
-    };
-    ( while ) => {
-        $crate::SyntaxKind::WHILE_KW
-    };
-    ( continue ) => {
-        $crate::SyntaxKind::CONTINUE_KW
-    };
-    ( break ) => {
-        $crate::SyntaxKind::BREAK_KW
-    };
-    ( if ) => {
-        $crate::SyntaxKind::IF_KW
-    };
-    ( else ) => {
-        $crate::SyntaxKind::ELSE_KW
-    };
-    ( match ) => {
-        $crate::SyntaxKind::MATCH_KW
-    };
-    ( const ) => {
-        $crate::SyntaxKind::CONST_KW
-    };
-    ( static ) => {
-        $crate::SyntaxKind::STATIC_KW
-    };
-    ( mut ) => {
-        $crate::SyntaxKind::MUT_KW
-    };
-    ( unsafe ) => {
-        $crate::SyntaxKind::UNSAFE_KW
-    };
-    ( type ) => {
-        $crate::SyntaxKind::TYPE_KW
-    };
-    ( ref ) => {
-        $crate::SyntaxKind::REF_KW
-    };
-    ( let ) => {
-        $crate::SyntaxKind::LET_KW
-    };
-    ( move ) => {
-        $crate::SyntaxKind::MOVE_KW
-    };
-    ( return ) => {
-        $crate::SyntaxKind::RETURN_KW
-    };
-    ( try ) => {
-        $crate::SyntaxKind::TRY_KW
-    };
-    ( box ) => {
-        $crate::SyntaxKind::BOX_KW
+    ( async ) => {
+        $crate::SyntaxKind::ASYNC_KW
     };
     ( await ) => {
         $crate::SyntaxKind::AWAIT_KW
     };
+    ( box ) => {
+        $crate::SyntaxKind::BOX_KW
+    };
+    ( break ) => {
+        $crate::SyntaxKind::BREAK_KW
+    };
+    ( const ) => {
+        $crate::SyntaxKind::CONST_KW
+    };
+    ( continue ) => {
+        $crate::SyntaxKind::CONTINUE_KW
+    };
+    ( crate ) => {
+        $crate::SyntaxKind::CRATE_KW
+    };
+    ( dyn ) => {
+        $crate::SyntaxKind::DYN_KW
+    };
+    ( else ) => {
+        $crate::SyntaxKind::ELSE_KW
+    };
+    ( enum ) => {
+        $crate::SyntaxKind::ENUM_KW
+    };
+    ( extern ) => {
+        $crate::SyntaxKind::EXTERN_KW
+    };
+    ( false ) => {
+        $crate::SyntaxKind::FALSE_KW
+    };
+    ( fn ) => {
+        $crate::SyntaxKind::FN_KW
+    };
+    ( for ) => {
+        $crate::SyntaxKind::FOR_KW
+    };
+    ( if ) => {
+        $crate::SyntaxKind::IF_KW
+    };
+    ( impl ) => {
+        $crate::SyntaxKind::IMPL_KW
+    };
+    ( in ) => {
+        $crate::SyntaxKind::IN_KW
+    };
+    ( let ) => {
+        $crate::SyntaxKind::LET_KW
+    };
+    ( loop ) => {
+        $crate::SyntaxKind::LOOP_KW
+    };
     ( macro ) => {
         $crate::SyntaxKind::MACRO_KW
+    };
+    ( match ) => {
+        $crate::SyntaxKind::MATCH_KW
+    };
+    ( mod ) => {
+        $crate::SyntaxKind::MOD_KW
+    };
+    ( move ) => {
+        $crate::SyntaxKind::MOVE_KW
+    };
+    ( mut ) => {
+        $crate::SyntaxKind::MUT_KW
+    };
+    ( pub ) => {
+        $crate::SyntaxKind::PUB_KW
+    };
+    ( ref ) => {
+        $crate::SyntaxKind::REF_KW
+    };
+    ( return ) => {
+        $crate::SyntaxKind::RETURN_KW
+    };
+    ( self ) => {
+        $crate::SyntaxKind::SELF_KW
+    };
+    ( static ) => {
+        $crate::SyntaxKind::STATIC_KW
+    };
+    ( struct ) => {
+        $crate::SyntaxKind::STRUCT_KW
+    };
+    ( super ) => {
+        $crate::SyntaxKind::SUPER_KW
+    };
+    ( trait ) => {
+        $crate::SyntaxKind::TRAIT_KW
+    };
+    ( true ) => {
+        $crate::SyntaxKind::TRUE_KW
+    };
+    ( try ) => {
+        $crate::SyntaxKind::TRY_KW
+    };
+    ( type ) => {
+        $crate::SyntaxKind::TYPE_KW
+    };
+    ( unsafe ) => {
+        $crate::SyntaxKind::UNSAFE_KW
+    };
+    ( use ) => {
+        $crate::SyntaxKind::USE_KW
+    };
+    ( where ) => {
+        $crate::SyntaxKind::WHERE_KW
+    };
+    ( while ) => {
+        $crate::SyntaxKind::WHILE_KW
     };
     ( auto ) => {
         $crate::SyntaxKind::AUTO_KW
