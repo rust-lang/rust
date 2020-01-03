@@ -79,7 +79,7 @@ impl<'tcx> Instance<'tcx> {
         // Instance.ty_env should have been used to provide the proper
         // ParamEnv
         if self.substs.has_param_types() {
-            panic!(
+            bug!(
                 "Instance.ty called for type {:?} with projections in substs: {:?}",
                 ty, self.substs
             );
