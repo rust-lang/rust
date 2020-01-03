@@ -18,10 +18,7 @@ use crate::mem::ManuallyDrop;
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
-/// use std::mem::{self, MaybeUninit};
-///
-/// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
-/// // The equivalent code with `MaybeUninit<&i32>`:
+/// use std::mem::MaybeUninit;
 /// let x: &i32 = unsafe { MaybeUninit::zeroed().assume_init() }; // undefined behavior!
 /// ```
 ///
@@ -33,10 +30,7 @@ use crate::mem::ManuallyDrop;
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
-/// use std::mem::{self, MaybeUninit};
-///
-/// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior!
-/// // The equivalent code with `MaybeUninit<bool>`:
+/// use std::mem::MaybeUninit;
 /// let b: bool = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior!
 /// ```
 ///
@@ -47,10 +41,8 @@ use crate::mem::ManuallyDrop;
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
-/// use std::mem::{self, MaybeUninit};
+/// use std::mem::MaybeUninit;
 ///
-/// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
-/// // The equivalent code with `MaybeUninit<i32>`:
 /// let x: i32 = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior!
 /// ```
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
