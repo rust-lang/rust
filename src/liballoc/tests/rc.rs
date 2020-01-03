@@ -138,7 +138,7 @@ fn shared_from_iter_trustedlen_normal() {
 
     // Try a ZST to make sure it is handled well.
     {
-        let iter = (0..SHARED_ITER_MAX).map(|_| ());
+        let iter = (0..SHARED_ITER_MAX).map(drop);
         let vec = iter.clone().collect::<Vec<_>>();
         let rc = iter.collect::<Rc<[_]>>();
         assert_eq!(&*vec, &*rc);

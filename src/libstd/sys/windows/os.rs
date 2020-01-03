@@ -247,7 +247,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     let mut p = p.encode_wide().collect::<Vec<_>>();
     p.push(0);
 
-    cvt(unsafe { c::SetCurrentDirectoryW(p.as_ptr()) }).map(|_| ())
+    cvt(unsafe { c::SetCurrentDirectoryW(p.as_ptr()) }).map(drop)
 }
 
 pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
@@ -272,12 +272,12 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let k = to_u16s(k)?;
     let v = to_u16s(v)?;
 
-    cvt(unsafe { c::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr()) }).map(|_| ())
+    cvt(unsafe { c::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr()) }).map(drop)
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let v = to_u16s(n)?;
-    cvt(unsafe { c::SetEnvironmentVariableW(v.as_ptr(), ptr::null()) }).map(|_| ())
+    cvt(unsafe { c::SetEnvironmentVariableW(v.as_ptr(), ptr::null()) }).map(drop)
 }
 
 pub fn temp_dir() -> PathBuf {
