@@ -557,7 +557,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
     }
 }
 
-/// Replace `dest` with the default value of `T`, and return the previous `dest` value.
+/// Replaces `dest` with the default value of `T`, returning the previous `dest` value.
 ///
 /// # Examples
 ///
