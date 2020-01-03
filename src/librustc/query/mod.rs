@@ -393,6 +393,7 @@ rustc_queries! {
 
     TypeChecking {
         query typeck_item_bodies(_: CrateNum) -> () {
+            eval_always
             desc { "type-checking all item bodies" }
         }
 
