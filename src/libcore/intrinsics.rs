@@ -1452,6 +1452,9 @@ fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
 ///   size_of::<T>()` bytes must *not* overlap with the region of memory
 ///   beginning at `dst` with the same size.
 ///
+/// * For every uninitialized byte in `src`, the corresponding byte in `dst` will also be
+///   uninitialized; using copied uninitialized bytes is undefined behavior.
+///
 /// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using *both* the values
 /// in the region beginning at `*src` and the region beginning at `*dst` can
@@ -1545,6 +1548,9 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
 ///
 /// * Both `src` and `dst` must be properly aligned.
+///
+/// * For every uninitialized byte in `src`, the corresponding byte in `dst` will also be
+///   uninitialized; using copied uninitialized bytes is undefined behavior.
 ///
 /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the values
